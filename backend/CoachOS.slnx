@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="CoachOS.API/CoachOS.API.csproj" />
+  <Project Path="CoachOS.Application/CoachOS.Application.csproj" />
+  <Project Path="CoachOS.Domain/CoachOS.Domain.csproj" />
+  <Project Path="CoachOS.Infrastructure/CoachOS.Infrastructure.csproj" />
+  <Project Path="CoachOS.Tests/CoachOS.Tests.csproj" />
+</Solution>

@@ -1,0 +1,140 @@
+# CoachOS Development Rules for Claude Code
+
+## Project Context
+
+- Name: CoachOS
+- Purpose: Tennis/padel lesson planning SaaS for Benelux
+- Target: Small-to-medium schools (2-15 trainers)
+- Languages: Dutch (MVP), French (later)
+- Tech: .NET 10 backend, Next.js 15 frontend
+
+## Architecture Requirements
+
+### Backend (.NET 10)
+
+- ALWAYS use Clean Architecture layers (Domain → Application → Infrastructure → API)
+- ALWAYS use CQRS pattern via MediatR for business logic
+- ALWAYS validate with FluentValidation
+- ALWAYS return Result<T> pattern (no exceptions for business logic)
+- ALWAYS scope queries/commands by OrganizationId (multi-tenancy)
+- ALWAYS use async/await
+- ALWAYS add audit fields (CreatedAt, UpdatedAt via BaseEntity)
+
+### Frontend (Next.js 15)
+
+- ALWAYS use App Router (not Pages Router)
+- ALWAYS use Server Components by default
+- ONLY use Client Components when needed (forms, interactivity)
+- ALWAYS use TypeScript
+- ALWAYS use Shadcn UI components (not custom UI from scratch)
+- ALWAYS use Tailwind for styling
+- ALWAYS use next-intl for strings (no hardcoded Dutch text)
+
+### Database (PostgreSQL + EF Core)
+
+- ALWAYS use Guid for primary keys
+- ALWAYS add OrganizationId foreign key for multi-tenancy
+- ALWAYS create EF Core configuration classes (not Fluent API in DbContext)
+- ALWAYS create migrations after entity changes
+- NEVER use CASCADE delete (use RESTRICT or manual cleanup)
+
+## Code Style
+
+### Naming Conventions
+
+- Commands: {Verb}{Entity}Command (CreateLessonCommand)
+- Queries: Get{Entity(s)}Query (GetLessonsQuery)
+- DTOs: {Entity}Dto
+- Controllers: {Entity}sController (plural)
+- Components: PascalCase (LessonCard)
+- Files (frontend): kebab-case (lesson-card.tsx)
+
+### File Organization
+
+- Backend: Group by feature, then CQRS (Application/Lessons/Commands/CreateLesson/)
+- Frontend: Group by route (app/dashboard/lessons/)
+- Shared: lib/ for utils, components/ for reusable UI
+
+## Implementation Patterns
+
+### When creating a new entity:
+
+1. Create Domain entity (extends BaseEntity)
+2. Create EF Core configuration
+3. Add DbSet to ApplicationDbContext
+4. Create migration
+5. Create DTOs in Application layer
+6. Create Commands/Queries with handlers + validators
+7. Create Controller
+8. Create frontend API client
+9. Create frontend components
+
+### When creating a form:
+
+1. Define Zod schema
+2. Use react-hook-form with zodResolver
+3. Use Shadcn Form components
+4. Call API via lib/api-client
+5. Handle loading/error states
+6. Show success feedback (toast)
+
+### When adding i18n strings:
+
+1. Add to messages/nl.json (NEVER hardcode Dutch)
+2. Use useTranslations('section') in components
+3. Use \_localizer["Key"] in backend
+
+## What NOT to do
+
+- DON'T put business logic in Controllers (use CQRS handlers)
+- DON'T put business logic in React components (use API)
+- DON'T hardcode strings (use i18n)
+- DON'T use var in C# (use explicit types)
+- DON'T use any in TypeScript
+- DON'T create custom UI components (use Shadcn)
+- DON'T forget validators for Commands
+- DON'T forget to scope by OrganizationId
+
+## Documentation Requirements
+
+- ALWAYS add XML comments to public APIs
+- ALWAYS add JSDoc to exported functions
+- ALWAYS update README when adding major features
+- ALWAYS commit migration files
+
+## Testing Requirements
+
+- ALWAYS write unit tests for CQRS handlers
+- ALWAYS write validators tests
+- PREFER integration tests over unit tests for Controllers
+- Use InMemory database for tests
+
+## Security Requirements
+
+- ALWAYS validate OrganizationId matches authenticated user
+- ALWAYS use [Authorize] attribute on protected endpoints
+- ALWAYS sanitize user input in validators
+- NEVER trust client-side data
+
+## Performance Requirements
+
+- ALWAYS use .AsNoTracking() for read-only queries
+- ALWAYS paginate list results (take/skip)
+- ALWAYS use indexes on foreign keys
+- AVOID N+1 queries (use .Include() properly)
+
+## Benelux-Specific Requirements
+
+- Use Mollie for payments (NOT Stripe)
+- Support Bancontact, iDEAL payment methods
+- Date formats: dd/MM/yyyy (European)
+- Currency: EUR (€)
+- Time zone: CET/CEST
+- GDPR compliance (especially for minors' data)
+
+## References
+
+- Full analysis: docs/project-analysis.md
+- Market context: docs/market-analysis.md
+- Competition: docs/competition-analysis.md
+- Development patterns: docs/development-guide.md
