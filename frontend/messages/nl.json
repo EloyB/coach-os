@@ -1,0 +1,35 @@
+{
+  "common": {
+    "loading": "Laden...",
+    "save": "Opslaan",
+    "cancel": "Annuleren",
+    "delete": "Verwijderen",
+    "edit": "Bewerken",
+    "back": "Terug",
+    "create": "Aanmaken",
+    "search": "Zoeken"
+  },
+  "navigation": {
+    "dashboard": "Dashboard",
+    "courts": "Banen",
+    "lessons": "Lessen",
+    "students": "Leerlingen",
+    "settings": "Instellingen",
+    "logout": "Uitloggen"
+  },
+  "courts": {
+    "title": "Banen",
+    "create": "Nieuwe baan",
+    "name": "Naam",
+    "type": "Type",
+    "surface": "Ondergrond",
+    "indoor": "Overdekt"
+  },
+  "auth": {
+    "login": "Inloggen",
+    "email": "E-mailadres",
+    "password": "Wachtwoord",
+    "loginButton": "Inloggen",
+    "forgotPassword": "Wachtwoord vergeten?"
+  }
+}
