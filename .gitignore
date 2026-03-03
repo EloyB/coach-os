@@ -1,5 +1,6 @@
 node_modules/
 bin/
+bin\Debug/
 obj/
 .env
 .env.local
