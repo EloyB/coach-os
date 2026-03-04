@@ -1,4 +1,5 @@
 import { DashboardSidebar } from "@/components/layouts/dashboard-sidebar";
+import { MobileBottomNav } from "@/components/layouts/dashboard-bottom-nav";
 
 export default function DashboardLayout({
   children,
@@ -27,8 +28,10 @@ export default function DashboardLayout({
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto px-8 py-8">{children}</main>
+        <main className="flex-1 overflow-y-auto px-8 py-8 pb-16 lg:pb-8">{children}</main>
       </div>
+
+      <MobileBottomNav />
     </div>
   );
 }

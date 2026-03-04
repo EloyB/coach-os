@@ -2,24 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  LayoutDashboard,
-  Map,
-  BookOpen,
-  Users,
-  Settings,
-  LogOut,
-} from "lucide-react";
+import { LogOut } from "lucide-react";
 import { CourtLines } from "@/components/ui/court-lines";
 import { TennisBallIcon } from "@/components/ui/tennis-ball-icon";
-
-const navItems = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, exact: true },
-  { label: "Banen", href: "/dashboard/courts", icon: Map, exact: false },
-  { label: "Lessen", href: "/dashboard/lessons", icon: BookOpen, exact: false },
-  { label: "Leerlingen", href: "/dashboard/students", icon: Users, exact: false },
-  { label: "Instellingen", href: "/dashboard/settings", icon: Settings, exact: false },
-];
+import { navItems } from "@/lib/nav-items";
 
 export function DashboardSidebar() {
   const pathname = usePathname();
