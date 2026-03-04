@@ -27,9 +27,28 @@
   },
   "auth": {
     "login": "Inloggen",
+    "register": "Registreren",
     "email": "E-mailadres",
     "password": "Wachtwoord",
     "loginButton": "Inloggen",
-    "forgotPassword": "Wachtwoord vergeten?"
+    "registerButton": "Account aanmaken",
+    "forgotPassword": "Wachtwoord vergeten?",
+    "organizationName": "Naam organisatie",
+    "firstName": "Voornaam",
+    "lastName": "Achternaam",
+    "loginError": "Inloggen mislukt. Controleer je gegevens.",
+    "registerError": "Registratie mislukt. Probeer het opnieuw.",
+    "noAccount": "Nog geen account?",
+    "hasAccount": "Al een account?",
+    "loading": "Bezig...",
+    "welcomeBack": "Welkom terug",
+    "tagline": "Beheer je banen, lessen en leerlingen — alles op één plek.",
+    "heroLine1": "Lesplanning",
+    "heroLine2": "gemakkelijk",
+    "heroLine3": "gemaakt.",
+    "feature1": "Lessen plannen in seconden",
+    "feature2": "Leerlingen bijhouden",
+    "feature3": "Baanreservering geïntegreerd",
+    "emailPlaceholder": "naam@club.be"
   }
 }

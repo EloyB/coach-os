@@ -48,6 +48,12 @@ try
 
     builder.Services.AddAuthorization();
 
+    builder.Services.AddCors(options =>
+        options.AddPolicy("Frontend", policy =>
+            policy.WithOrigins("http://localhost:3000")
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()));
+
     WebApplication app = builder.Build();
 
     if (app.Environment.IsDevelopment())
@@ -59,6 +65,7 @@ try
     }
 
     app.UseHttpsRedirection();
+    app.UseCors("Frontend");
     app.UseAuthentication();
     app.UseAuthorization();
     app.MapControllers();

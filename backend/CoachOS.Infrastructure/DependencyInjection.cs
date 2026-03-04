@@ -1,3 +1,4 @@
+using CoachOS.Application.Auth;
 using CoachOS.Infrastructure.Identity;
 using CoachOS.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
@@ -32,6 +33,8 @@ public static class DependencyInjection
             .AddRoles<IdentityRole<Guid>>()
             .AddEntityFrameworkStores<ApplicationDbContext>()
             .AddDefaultTokenProviders();
+
+        services.AddScoped<IAuthService, AuthService>();
 
         return services;
     }
