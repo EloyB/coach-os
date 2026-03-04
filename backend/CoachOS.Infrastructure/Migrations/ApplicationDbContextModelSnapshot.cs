@@ -22,45 +22,6 @@ namespace CoachOS.Infrastructure.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("CoachOS.Domain.Entities.Court", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("IsIndoor")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<Guid>("OrganizationId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("Surface")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("Type")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("OrganizationId");
-
-                    b.ToTable("Courts");
-                });
-
             modelBuilder.Entity("CoachOS.Domain.Entities.Enrollment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -118,8 +79,10 @@ namespace CoachOS.Infrastructure.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
-                    b.Property<Guid>("CourtId")
-                        .HasColumnType("uuid");
+                    b.Property<string>("CourtName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -160,8 +123,6 @@ namespace CoachOS.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CourtId");
-
                     b.HasIndex("Date");
 
                     b.HasIndex("LessonSeriesId");
@@ -181,14 +142,8 @@ namespace CoachOS.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("CourtId")
-                        .HasColumnType("uuid");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("DayOfWeek")
-                        .HasColumnType("integer");
 
                     b.Property<string>("Description")
                         .HasMaxLength(1000)
@@ -206,9 +161,6 @@ namespace CoachOS.Infrastructure.Migrations
                     b.Property<int>("Level")
                         .HasColumnType("integer");
 
-                    b.Property<int>("MaxStudents")
-                        .HasColumnType("integer");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -224,8 +176,8 @@ namespace CoachOS.Infrastructure.Migrations
                     b.Property<DateOnly>("StartDate")
                         .HasColumnType("date");
 
-                    b.Property<TimeOnly>("StartTime")
-                        .HasColumnType("time without time zone");
+                    b.Property<Guid>("TennisClubId")
+                        .HasColumnType("uuid");
 
                     b.Property<Guid>("TrainerId")
                         .HasColumnType("uuid");
@@ -235,9 +187,9 @@ namespace CoachOS.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CourtId");
-
                     b.HasIndex("OrganizationId");
+
+                    b.HasIndex("TennisClubId");
 
                     b.HasIndex("TrainerId");
 
@@ -400,6 +352,38 @@ namespace CoachOS.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("Subscriptions");
+                });
+
+            modelBuilder.Entity("CoachOS.Domain.Entities.TennisClub", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Address")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId");
+
+                    b.ToTable("TennisClubs");
                 });
 
             modelBuilder.Entity("CoachOS.Infrastructure.Identity.ApplicationUser", b =>
@@ -627,17 +611,6 @@ namespace CoachOS.Infrastructure.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("CoachOS.Domain.Entities.Court", b =>
-                {
-                    b.HasOne("CoachOS.Domain.Entities.Organization", "Organization")
-                        .WithMany("Courts")
-                        .HasForeignKey("OrganizationId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Organization");
-                });
-
             modelBuilder.Entity("CoachOS.Domain.Entities.Enrollment", b =>
                 {
                     b.HasOne("CoachOS.Domain.Entities.Lesson", "Lesson")
@@ -665,12 +638,6 @@ namespace CoachOS.Infrastructure.Migrations
 
             modelBuilder.Entity("CoachOS.Domain.Entities.Lesson", b =>
                 {
-                    b.HasOne("CoachOS.Domain.Entities.Court", "Court")
-                        .WithMany("Lessons")
-                        .HasForeignKey("CourtId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("CoachOS.Domain.Entities.LessonSeries", "LessonSeries")
                         .WithMany("Lessons")
                         .HasForeignKey("LessonSeriesId")
@@ -682,8 +649,6 @@ namespace CoachOS.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.Navigation("Court");
-
                     b.Navigation("LessonSeries");
 
                     b.Navigation("Organization");
@@ -691,21 +656,21 @@ namespace CoachOS.Infrastructure.Migrations
 
             modelBuilder.Entity("CoachOS.Domain.Entities.LessonSeries", b =>
                 {
-                    b.HasOne("CoachOS.Domain.Entities.Court", "Court")
-                        .WithMany()
-                        .HasForeignKey("CourtId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("CoachOS.Domain.Entities.Organization", "Organization")
                         .WithMany("LessonSeries")
                         .HasForeignKey("OrganizationId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.Navigation("Court");
+                    b.HasOne("CoachOS.Domain.Entities.TennisClub", "TennisClub")
+                        .WithMany()
+                        .HasForeignKey("TennisClubId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.Navigation("Organization");
+
+                    b.Navigation("TennisClub");
                 });
 
             modelBuilder.Entity("CoachOS.Domain.Entities.Payment", b =>
@@ -732,6 +697,17 @@ namespace CoachOS.Infrastructure.Migrations
                     b.HasOne("CoachOS.Domain.Entities.Organization", "Organization")
                         .WithOne("Subscription")
                         .HasForeignKey("CoachOS.Domain.Entities.Subscription", "OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Organization");
+                });
+
+            modelBuilder.Entity("CoachOS.Domain.Entities.TennisClub", b =>
+                {
+                    b.HasOne("CoachOS.Domain.Entities.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -798,11 +774,6 @@ namespace CoachOS.Infrastructure.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("CoachOS.Domain.Entities.Court", b =>
-                {
-                    b.Navigation("Lessons");
-                });
-
             modelBuilder.Entity("CoachOS.Domain.Entities.Enrollment", b =>
                 {
                     b.Navigation("Payments");
@@ -822,8 +793,6 @@ namespace CoachOS.Infrastructure.Migrations
 
             modelBuilder.Entity("CoachOS.Domain.Entities.Organization", b =>
                 {
-                    b.Navigation("Courts");
-
                     b.Navigation("LessonSeries");
 
                     b.Navigation("Subscription");

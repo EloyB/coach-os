@@ -28,14 +28,14 @@ public class LessonSeriesConfiguration : IEntityTypeConfiguration<LessonSeries>
             .HasForeignKey(ls => ls.OrganizationId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasOne(ls => ls.Court)
+        builder.HasOne(ls => ls.TennisClub)
             .WithMany()
-            .HasForeignKey(ls => ls.CourtId)
+            .HasForeignKey(ls => ls.TennisClubId)
             .OnDelete(DeleteBehavior.Restrict);
 
         // TrainerId verwijst naar ApplicationUser (geen nav property in Domain)
         builder.HasIndex(ls => ls.OrganizationId);
         builder.HasIndex(ls => ls.TrainerId);
-        builder.HasIndex(ls => ls.CourtId);
+        builder.HasIndex(ls => ls.TennisClubId);
     }
 }

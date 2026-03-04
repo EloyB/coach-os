@@ -11,6 +11,8 @@ import axios from "axios";
 
 import { login } from "@/lib/api/auth";
 import { setToken, setAuthUser } from "@/lib/auth";
+import { CourtPattern } from "@/components/ui/court-pattern";
+import { TennisBallIcon } from "@/components/ui/tennis-ball-icon";
 import {
   Form,
   FormControl,
@@ -28,128 +30,6 @@ const loginSchema = z.object({
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
-
-function CourtPattern() {
-  return (
-    <svg
-      className="absolute inset-0 w-full h-full"
-      viewBox="0 0 520 760"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      preserveAspectRatio="xMidYMid slice"
-      aria-hidden="true"
-    >
-      {/* Outer boundary */}
-      <rect
-        x="60"
-        y="60"
-        width="400"
-        height="640"
-        stroke="white"
-        strokeWidth="2.5"
-        strokeOpacity="0.15"
-      />
-      {/* Singles sidelines */}
-      <line
-        x1="110"
-        y1="60"
-        x2="110"
-        y2="700"
-        stroke="white"
-        strokeWidth="1.5"
-        strokeOpacity="0.1"
-      />
-      <line
-        x1="410"
-        y1="60"
-        x2="410"
-        y2="700"
-        stroke="white"
-        strokeWidth="1.5"
-        strokeOpacity="0.1"
-      />
-      {/* Net */}
-      <line
-        x1="60"
-        y1="380"
-        x2="460"
-        y2="380"
-        stroke="white"
-        strokeWidth="3"
-        strokeOpacity="0.2"
-      />
-      {/* Service boxes top */}
-      <line
-        x1="110"
-        y1="192"
-        x2="410"
-        y2="192"
-        stroke="white"
-        strokeWidth="1.5"
-        strokeOpacity="0.12"
-      />
-      {/* Service boxes bottom */}
-      <line
-        x1="110"
-        y1="568"
-        x2="410"
-        y2="568"
-        stroke="white"
-        strokeWidth="1.5"
-        strokeOpacity="0.12"
-      />
-      {/* Center service line */}
-      <line
-        x1="260"
-        y1="192"
-        x2="260"
-        y2="568"
-        stroke="white"
-        strokeWidth="1.5"
-        strokeOpacity="0.12"
-      />
-      {/* Center marks */}
-      <line
-        x1="255"
-        y1="60"
-        x2="265"
-        y2="60"
-        stroke="white"
-        strokeWidth="2.5"
-        strokeOpacity="0.2"
-      />
-      <line
-        x1="255"
-        y1="700"
-        x2="265"
-        y2="700"
-        stroke="white"
-        strokeWidth="2.5"
-        strokeOpacity="0.2"
-      />
-      {/* Net posts */}
-      <circle cx="60" cy="380" r="5" fill="white" fillOpacity="0.2" />
-      <circle cx="460" cy="380" r="5" fill="white" fillOpacity="0.2" />
-      {/* Decorative large circle (ball) */}
-      <circle
-        cx="420"
-        cy="120"
-        r="80"
-        stroke="white"
-        strokeWidth="1"
-        strokeOpacity="0.06"
-      />
-      <circle
-        cx="420"
-        cy="120"
-        r="50"
-        stroke="white"
-        strokeWidth="1"
-        strokeOpacity="0.06"
-      />
-    </svg>
-  );
-}
 
 function Spinner() {
   return (
@@ -232,32 +112,7 @@ export default function LoginPage() {
         <div className="relative z-10">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-full bg-tennis-lime flex items-center justify-center">
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                className="w-5 h-5"
-                aria-hidden="true"
-              >
-                <circle
-                  cx="12"
-                  cy="12"
-                  r="9"
-                  stroke="#2D5016"
-                  strokeWidth="2"
-                />
-                <path
-                  d="M3.5 8.5Q12 6 20.5 8.5"
-                  stroke="#2D5016"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                />
-                <path
-                  d="M3.5 15.5Q12 18 20.5 15.5"
-                  stroke="#2D5016"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                />
-              </svg>
+              <TennisBallIcon className="w-5 h-5" strokeWidth={2} />
             </div>
             <span className="text-white text-2xl font-bold tracking-tight">
               Coach<span className="text-tennis-lime">OS</span>
@@ -301,26 +156,7 @@ export default function LoginPage() {
           {/* Mobile logo */}
           <div className="flex items-center gap-2 mb-10 lg:hidden">
             <div className="w-7 h-7 rounded-full bg-tennis-green flex items-center justify-center">
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                className="w-4 h-4"
-                aria-hidden="true"
-              >
-                <circle
-                  cx="12"
-                  cy="12"
-                  r="9"
-                  stroke="#D0FF14"
-                  strokeWidth="2"
-                />
-                <path
-                  d="M3.5 8.5Q12 6 20.5 8.5"
-                  stroke="#D0FF14"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                />
-              </svg>
+              <TennisBallIcon className="w-4 h-4" strokeColor="#D0FF14" strokeWidth={2} />
             </div>
             <span className="text-tennis-green text-xl font-bold">
               Coach<span className="text-tennis-lime">OS</span>

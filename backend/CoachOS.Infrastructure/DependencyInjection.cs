@@ -1,4 +1,5 @@
 using CoachOS.Application.Auth;
+using CoachOS.Application.Common.Interfaces;
 using CoachOS.Infrastructure.Identity;
 using CoachOS.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
@@ -35,6 +36,8 @@ public static class DependencyInjection
             .AddDefaultTokenProviders();
 
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<ApplicationDbContext>());
+        services.AddScoped<IUserLookupService, UserLookupService>();
 
         return services;
     }

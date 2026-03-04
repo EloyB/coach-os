@@ -10,6 +10,10 @@ public class LessonConfiguration : IEntityTypeConfiguration<Lesson>
     {
         builder.HasKey(l => l.Id);
 
+        builder.Property(l => l.CourtName)
+            .IsRequired()
+            .HasMaxLength(100);
+
         builder.Property(l => l.Notes)
             .HasMaxLength(1000);
 
@@ -30,14 +34,8 @@ public class LessonConfiguration : IEntityTypeConfiguration<Lesson>
             .OnDelete(DeleteBehavior.Restrict)
             .IsRequired(false);
 
-        builder.HasOne(l => l.Court)
-            .WithMany(c => c.Lessons)
-            .HasForeignKey(l => l.CourtId)
-            .OnDelete(DeleteBehavior.Restrict);
-
         builder.HasIndex(l => l.OrganizationId);
         builder.HasIndex(l => l.TrainerId);
-        builder.HasIndex(l => l.CourtId);
         builder.HasIndex(l => l.Date);
         builder.HasIndex(l => new { l.OrganizationId, l.Date });
     }

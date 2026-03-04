@@ -1,6 +1,25 @@
+# Node / frontend
 node_modules/
-bin/
-bin\Debug/
-obj/
+.next/
 .env
 .env.local
+
+# .NET build output (normal paths)
+[Bb]in/
+[Oo]bj/
+
+# .NET build output with literal backslash in name (created by dotnet-ef on macOS)
+bin\\Debug/
+bin\\Release/
+
+# Build artifacts
+*.dll
+*.pdb
+*.exe
+*.nupkg
+*.snupkg
+
+# IDE
+.vs/
+*.user
+.idea/

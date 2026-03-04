@@ -4,7 +4,7 @@ using CoachOS.Domain.Enums;
 namespace CoachOS.Domain.Entities;
 
 /// <summary>
-/// Enkelvoudige les, al dan niet onderdeel van een LessonSeries.
+/// Enkelvoudig lesmoment, al dan niet onderdeel van een LessonSeries.
 /// </summary>
 public class Lesson : BaseEntity
 {
@@ -14,7 +14,7 @@ public class Lesson : BaseEntity
     public Guid? LessonSeriesId { get; set; }
 
     public Guid TrainerId { get; set; }
-    public Guid CourtId { get; set; }
+    public string CourtName { get; set; } = string.Empty;
     public DateOnly Date { get; set; }
     public TimeOnly StartTime { get; set; }
     public TimeOnly EndTime { get; set; }
@@ -27,6 +27,5 @@ public class Lesson : BaseEntity
     // Navigation properties
     public Organization Organization { get; set; } = null!;
     public LessonSeries? LessonSeries { get; set; }
-    public Court Court { get; set; } = null!;
     public ICollection<Enrollment> Enrollments { get; set; } = new List<Enrollment>();
 }

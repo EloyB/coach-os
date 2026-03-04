@@ -1,3 +1,4 @@
+using CoachOS.Application.Common.Interfaces;
 using CoachOS.Domain.Entities;
 using CoachOS.Infrastructure.Identity;
 using CoachOS.Infrastructure.Persistence.Configurations;
@@ -10,12 +11,12 @@ namespace CoachOS.Infrastructure.Persistence;
 /// <summary>
 /// Centrale DbContext voor CoachOS. Uitbreidt IdentityDbContext voor ASP.NET Identity.
 /// </summary>
-public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>
+public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>, IApplicationDbContext
 {
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options) { }
 
     public DbSet<Organization> Organizations { get; set; } = null!;
-    public DbSet<Court> Courts { get; set; } = null!;
+    public DbSet<TennisClub> TennisClubs { get; set; } = null!;
     public DbSet<LessonSeries> LessonSeries { get; set; } = null!;
     public DbSet<Lesson> Lessons { get; set; } = null!;
     public DbSet<Enrollment> Enrollments { get; set; } = null!;
@@ -27,8 +28,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
         base.OnModelCreating(builder);
 
         builder.ApplyConfiguration(new OrganizationConfiguration());
+        builder.ApplyConfiguration(new TennisClubConfiguration());
         builder.ApplyConfiguration(new ApplicationUserConfiguration());
-        builder.ApplyConfiguration(new CourtConfiguration());
         builder.ApplyConfiguration(new LessonSeriesConfiguration());
         builder.ApplyConfiguration(new LessonConfiguration());
         builder.ApplyConfiguration(new EnrollmentConfiguration());
