@@ -6,16 +6,16 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace CoachOS.Infrastructure.Identity;
 
-internal sealed class TokenService
+public sealed class TokenService
 {
     private readonly IConfiguration _configuration;
 
-    internal TokenService(IConfiguration configuration)
+    public TokenService(IConfiguration configuration)
     {
         _configuration = configuration;
     }
 
-    internal (string Token, DateTime ExpiresAt) GenerateToken(ApplicationUser user)
+    public (string Token, DateTime ExpiresAt) GenerateToken(ApplicationUser user)
     {
         string key = _configuration["Jwt:Key"]!;
         string issuer = _configuration["Jwt:Issuer"]!;

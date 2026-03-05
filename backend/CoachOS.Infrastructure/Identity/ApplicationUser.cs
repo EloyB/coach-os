@@ -18,6 +18,9 @@ public class ApplicationUser : IdentityUser<Guid>
     /// <summary>Geboortedatum - verplicht voor GDPR bij minderjarigen.</summary>
     public DateOnly? DateOfBirth { get; set; }
 
+    public string? InviteToken { get; set; }
+    public DateTime? InviteTokenExpiry { get; set; }
+
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 

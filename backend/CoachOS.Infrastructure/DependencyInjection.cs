@@ -1,5 +1,7 @@
 using CoachOS.Application.Auth;
 using CoachOS.Application.Common.Interfaces;
+using CoachOS.Application.Trainers;
+using CoachOS.Infrastructure.Email;
 using CoachOS.Infrastructure.Identity;
 using CoachOS.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
@@ -35,9 +37,12 @@ public static class DependencyInjection
             .AddEntityFrameworkStores<ApplicationDbContext>()
             .AddDefaultTokenProviders();
 
+        services.AddScoped<TokenService>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<ITrainerService, TrainerService>();
         services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<ApplicationDbContext>());
         services.AddScoped<IUserLookupService, UserLookupService>();
+        services.AddScoped<IEmailService, EmailService>();
 
         return services;
     }

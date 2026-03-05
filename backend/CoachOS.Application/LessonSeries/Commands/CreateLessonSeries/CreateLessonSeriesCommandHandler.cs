@@ -9,10 +9,12 @@ namespace CoachOS.Application.LessonSeries.Commands.CreateLessonSeries;
 public class CreateLessonSeriesCommandHandler : IRequestHandler<CreateLessonSeriesCommand, Result<Guid>>
 {
     private readonly IApplicationDbContext _context;
+    private readonly IUserLookupService _userLookupService;
 
-    public CreateLessonSeriesCommandHandler(IApplicationDbContext context)
+    public CreateLessonSeriesCommandHandler(IApplicationDbContext context, IUserLookupService userLookupService)
     {
         _context = context;
+        _userLookupService = userLookupService;
     }
 
     public async Task<Result<Guid>> Handle(CreateLessonSeriesCommand request, CancellationToken ct)
@@ -23,6 +25,10 @@ public class CreateLessonSeriesCommandHandler : IRequestHandler<CreateLessonSeri
 
         if (!clubExists)
             return Result<Guid>.Failure("Tennisclub niet gevonden.");
+
+        bool trainerValid = await _userLookupService.IsActiveTrainerAsync(request.TrainerId, request.OrganizationId, ct);
+        if (!trainerValid)
+            return Result<Guid>.Failure("Trainer niet gevonden of niet actief in deze organisatie.");
 
         DateOnly startDate = DateOnly.ParseExact(request.StartDate, "yyyy-MM-dd");
         DateOnly endDate = DateOnly.ParseExact(request.EndDate, "yyyy-MM-dd");

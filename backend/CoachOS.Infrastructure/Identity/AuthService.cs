@@ -6,7 +6,6 @@ using CoachOS.Domain.Enums;
 using CoachOS.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 
 namespace CoachOS.Infrastructure.Identity;
 
@@ -19,11 +18,11 @@ public class AuthService : IAuthService
     public AuthService(
         UserManager<ApplicationUser> userManager,
         ApplicationDbContext context,
-        IConfiguration configuration)
+        TokenService tokenService)
     {
         _userManager = userManager;
         _context = context;
-        _tokenService = new TokenService(configuration);
+        _tokenService = tokenService;
     }
 
     public async Task<Result<AuthResponseDto>> RegisterAsync(

@@ -1,4 +1,5 @@
 using CoachOS.Application.Common.Interfaces;
+using CoachOS.Domain.Enums;
 using CoachOS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -37,11 +38,21 @@ public class UserLookupService : IUserLookupService
     {
         List<ApplicationUser> users = await _context.Users
             .AsNoTracking()
-            .Where(u => u.OrganizationId == organizationId && u.IsActive)
+            .Where(u => u.OrganizationId == organizationId && u.IsActive && u.Role == UserRole.Trainer)
             .OrderBy(u => u.FirstName)
             .ThenBy(u => u.LastName)
             .ToListAsync(ct);
 
         return users.Select(u => (u.Id, (u.FirstName + " " + u.LastName).Trim())).ToList();
+    }
+
+    public async Task<bool> IsActiveTrainerAsync(Guid trainerId, Guid organizationId, CancellationToken ct = default)
+    {
+        return await _context.Users
+            .AsNoTracking()
+            .AnyAsync(u => u.Id == trainerId
+                && u.OrganizationId == organizationId
+                && u.Role == UserRole.Trainer
+                && u.IsActive, ct);
     }
 }
