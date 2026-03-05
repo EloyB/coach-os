@@ -7,6 +7,8 @@ export interface TrainerDto {
   lastName: string;
   email: string;
   isActive: boolean;
+  invitePending: boolean;
+  lessonSeriesCount: number;
   createdAt: string;
 }
 
@@ -38,4 +40,12 @@ export async function acceptInvite(req: AcceptInviteRequest): Promise<AuthRespon
 
 export async function deactivateTrainer(id: string): Promise<void> {
   await apiClient.delete(`/trainers/${id}`);
+}
+
+export async function reassignTrainerSeries(fromId: string, toId: string): Promise<void> {
+  await apiClient.post(`/trainers/${fromId}/reassign-series`, { toTrainerId: toId });
+}
+
+export async function removeTrainer(id: string): Promise<void> {
+  await apiClient.delete(`/trainers/${id}/remove`);
 }

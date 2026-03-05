@@ -3,6 +3,8 @@ using CoachOS.Application.Common.Models;
 using CoachOS.Application.Trainers.Commands.AcceptInvite;
 using CoachOS.Application.Trainers.Commands.DeactivateTrainer;
 using CoachOS.Application.Trainers.Commands.InviteTrainer;
+using CoachOS.Application.Trainers.Commands.ReassignTrainerSeries;
+using CoachOS.Application.Trainers.Commands.RemoveTrainer;
 using CoachOS.Application.Trainers.Queries.GetTrainers;
 using FluentValidation;
 using MediatR;
@@ -77,4 +79,37 @@ public class TrainersController : ControllerBase
 
         return result.Succeeded ? NoContent() : BadRequest(result.Errors);
     }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPost("{id:guid}/reassign-series")]
+    public async Task<ActionResult> ReassignSeries(Guid id, [FromBody] ReassignSeriesRequest request, CancellationToken ct)
+    {
+        try
+        {
+            Result result = await _mediator.Send(new ReassignTrainerSeriesCommand
+            {
+                OrganizationId = GetOrganizationId(),
+                FromTrainerId = id,
+                ToTrainerId = request.ToTrainerId
+            }, ct);
+
+            return result.Succeeded ? NoContent() : BadRequest(result.Errors);
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(ex.Errors.Select(e => e.ErrorMessage));
+        }
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpDelete("{id:guid}/remove")]
+    public async Task<ActionResult> RemoveTrainer(Guid id, CancellationToken ct)
+    {
+        Result result = await _mediator.Send(
+            new RemoveTrainerCommand { TrainerId = id, OrganizationId = GetOrganizationId() }, ct);
+
+        return result.Succeeded ? NoContent() : BadRequest(result.Errors);
+    }
 }
+
+public record ReassignSeriesRequest(Guid ToTrainerId);

@@ -27,4 +27,15 @@ public interface ITrainerService
         Guid trainerId,
         Guid organizationId,
         CancellationToken ct = default);
+
+    Task<Result> RemoveAsync(
+        Guid trainerId,
+        Guid organizationId,
+        CancellationToken ct = default);
+
+    Task<Result> ReassignSeriesAsync(
+        Guid fromTrainerId,
+        Guid toTrainerId,
+        Guid organizationId,
+        CancellationToken ct = default);
 }

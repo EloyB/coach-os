@@ -10,6 +10,7 @@ import {
   GraduationCap,
   Plus,
   UserX,
+  Trash2,
   Mail,
   CheckCircle2,
   Clock,
@@ -19,8 +20,27 @@ import {
   getTrainers,
   inviteTrainer,
   deactivateTrainer,
+  reassignTrainerSeries,
+  removeTrainer,
   TrainerDto,
 } from "@/lib/api/trainers";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { FieldError } from "@/components/forms/field-error";
 import { inputClass } from "@/lib/styles";
 
@@ -33,6 +53,33 @@ const inviteSchema = z.object({
 });
 
 type InviteFormValues = z.infer<typeof inviteSchema>;
+
+// ─── Status badge ──────────────────────────────────────────────────────────────
+
+function StatusBadge({ trainer }: { trainer: TrainerDto }) {
+  if (trainer.isActive) {
+    return (
+      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700">
+        <CheckCircle2 size={11} />
+        Actief
+      </span>
+    );
+  }
+  if (trainer.invitePending) {
+    return (
+      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700">
+        <Clock size={11} />
+        Uitgenodigd
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-red-50 text-red-700">
+      <UserX size={11} />
+      Gedeactiveerd
+    </span>
+  );
+}
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 
@@ -57,17 +104,21 @@ function TrainerRow({
   trainer,
   onDeactivate,
   isDeactivating,
+  onRemoveClick,
 }: {
   trainer: TrainerDto;
   onDeactivate: (id: string) => void;
   isDeactivating: boolean;
+  onRemoveClick: (trainer: TrainerDto) => void;
 }) {
   const initials = `${trainer.firstName[0] ?? ""}${trainer.lastName[0] ?? ""}`.toUpperCase();
+
+  // Show remove button: always for inactive, for active only if no series
+  const showRemove = !trainer.isActive || trainer.lessonSeriesCount === 0;
 
   return (
     <div className="flex items-center justify-between py-4 border-b border-gray-100 last:border-0 group">
       <div className="flex items-center gap-3 min-w-0">
-        {/* Avatar */}
         <div className="w-9 h-9 rounded-full bg-tennis-green/10 flex items-center justify-center shrink-0">
           <span className="text-tennis-green text-sm font-semibold">{initials}</span>
         </div>
@@ -80,32 +131,148 @@ function TrainerRow({
       </div>
 
       <div className="flex items-center gap-3 shrink-0 ml-4">
-        {/* Status badge */}
-        {trainer.isActive ? (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700">
-            <CheckCircle2 size={11} />
-            Actief
-          </span>
-        ) : (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700">
-            <Clock size={11} />
-            Uitgenodigd
-          </span>
-        )}
+        <StatusBadge trainer={trainer} />
 
-        {/* Deactivate */}
+        {/* Deactivate (active trainers only) */}
         {trainer.isActive && (
           <button
             onClick={() => onDeactivate(trainer.id)}
             disabled={isDeactivating}
             title="Deactiveer trainer"
-            className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all disabled:opacity-40"
+            className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-gray-400 hover:text-amber-500 hover:bg-amber-50 transition-all disabled:opacity-40"
           >
             <UserX size={15} />
           </button>
         )}
+
+        {/* Remove */}
+        {showRemove && (
+          <button
+            onClick={() => onRemoveClick(trainer)}
+            title="Verwijder trainer"
+            className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all"
+          >
+            <Trash2 size={15} />
+          </button>
+        )}
       </div>
     </div>
+  );
+}
+
+// ─── Remove dialogs ────────────────────────────────────────────────────────────
+
+function RemoveConfirmDialog({
+  trainer,
+  onClose,
+  onConfirm,
+  isRemoving,
+}: {
+  trainer: TrainerDto;
+  onClose: () => void;
+  onConfirm: () => void;
+  isRemoving: boolean;
+}) {
+  return (
+    <AlertDialog open onOpenChange={(open) => !open && onClose()}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Trainer verwijderen</AlertDialogTitle>
+          <AlertDialogDescription>
+            Weet je zeker dat je{" "}
+            <span className="font-semibold text-gray-900">
+              {trainer.firstName} {trainer.lastName}
+            </span>{" "}
+            wilt verwijderen? Dit kan niet ongedaan worden gemaakt.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={onClose}>Annuleren</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={onConfirm}
+            disabled={isRemoving}
+            className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+          >
+            {isRemoving ? "Verwijderen..." : "Verwijderen"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+function ReassignAndRemoveDialog({
+  trainer,
+  activeTrainers,
+  onClose,
+  onConfirm,
+  isProcessing,
+}: {
+  trainer: TrainerDto;
+  activeTrainers: TrainerDto[];
+  onClose: () => void;
+  onConfirm: (toTrainerId: string) => void;
+  isProcessing: boolean;
+}) {
+  const [selectedId, setSelectedId] = useState("");
+
+  const candidates = activeTrainers.filter((t) => t.id !== trainer.id);
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Trainer verwijderen</DialogTitle>
+        </DialogHeader>
+
+        <p className="text-sm text-gray-600">
+          <span className="font-semibold text-gray-900">
+            {trainer.firstName} {trainer.lastName}
+          </span>{" "}
+          heeft {trainer.lessonSeriesCount} lesreeks(en). Wijs deze toe aan een
+          andere trainer voor je verwijdert.
+        </p>
+
+        <div className="mt-2">
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            Toewijzen aan
+          </label>
+          <select
+            value={selectedId}
+            onChange={(e) => setSelectedId(e.target.value)}
+            className={inputClass}
+          >
+            <option value="">Selecteer trainer...</option>
+            {candidates.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.firstName} {t.lastName}
+              </option>
+            ))}
+          </select>
+          {candidates.length === 0 && (
+            <p className="text-xs text-red-500 mt-1">
+              Er zijn geen andere actieve trainers beschikbaar.
+            </p>
+          )}
+        </div>
+
+        <DialogFooter>
+          <button
+            onClick={onClose}
+            className="px-4 py-2 border border-gray-200 text-sm font-medium text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            Annuleren
+          </button>
+          <button
+            onClick={() => onConfirm(selectedId)}
+            disabled={!selectedId || isProcessing || candidates.length === 0}
+            className="px-4 py-2 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isProcessing ? "Bezig..." : "Toewijzen & verwijderen"}
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -236,8 +403,14 @@ function InviteForm({ onClose }: { onClose: () => void }) {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
+type RemoveDialogState =
+  | { type: "none" }
+  | { type: "confirm"; trainer: TrainerDto }
+  | { type: "reassign"; trainer: TrainerDto };
+
 export default function TrainersPage() {
   const [showInviteForm, setShowInviteForm] = useState(false);
+  const [removeDialog, setRemoveDialog] = useState<RemoveDialogState>({ type: "none" });
   const queryClient = useQueryClient();
 
   const { data: trainers, isLoading } = useQuery({
@@ -250,8 +423,36 @@ export default function TrainersPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["trainers"] }),
   });
 
+  const removeMutation = useMutation({
+    mutationFn: removeTrainer,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["trainers"] });
+      setRemoveDialog({ type: "none" });
+    },
+  });
+
+  const reassignAndRemoveMutation = useMutation({
+    mutationFn: async ({ fromId, toId }: { fromId: string; toId: string }) => {
+      await reassignTrainerSeries(fromId, toId);
+      await removeTrainer(fromId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["trainers"] });
+      setRemoveDialog({ type: "none" });
+    },
+  });
+
+  function handleRemoveClick(trainer: TrainerDto) {
+    if (trainer.lessonSeriesCount > 0) {
+      setRemoveDialog({ type: "reassign", trainer });
+    } else {
+      setRemoveDialog({ type: "confirm", trainer });
+    }
+  }
+
   const active = trainers?.filter((t) => t.isActive) ?? [];
-  const invited = trainers?.filter((t) => !t.isActive) ?? [];
+  const invited = trainers?.filter((t) => !t.isActive && t.invitePending) ?? [];
+  const deactivated = trainers?.filter((t) => !t.isActive && !t.invitePending) ?? [];
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -322,6 +523,7 @@ export default function TrainersPage() {
                     trainer={t}
                     onDeactivate={(id) => deactivateMutation.mutate(id)}
                     isDeactivating={deactivateMutation.isPending}
+                    onRemoveClick={handleRemoveClick}
                   />
                 ))}
               </div>
@@ -337,6 +539,23 @@ export default function TrainersPage() {
                     trainer={t}
                     onDeactivate={(id) => deactivateMutation.mutate(id)}
                     isDeactivating={deactivateMutation.isPending}
+                    onRemoveClick={handleRemoveClick}
+                  />
+                ))}
+              </div>
+            )}
+            {deactivated.length > 0 && (
+              <div className={active.length > 0 || invited.length > 0 ? "mt-6" : ""}>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                  Gedeactiveerd ({deactivated.length})
+                </p>
+                {deactivated.map((t) => (
+                  <TrainerRow
+                    key={t.id}
+                    trainer={t}
+                    onDeactivate={(id) => deactivateMutation.mutate(id)}
+                    isDeactivating={deactivateMutation.isPending}
+                    onRemoveClick={handleRemoveClick}
                   />
                 ))}
               </div>
@@ -344,6 +563,30 @@ export default function TrainersPage() {
           </>
         )}
       </div>
+
+      {/* Remove dialogs */}
+      {removeDialog.type === "confirm" && (
+        <RemoveConfirmDialog
+          trainer={removeDialog.trainer}
+          onClose={() => setRemoveDialog({ type: "none" })}
+          onConfirm={() => removeMutation.mutate(removeDialog.trainer.id)}
+          isRemoving={removeMutation.isPending}
+        />
+      )}
+      {removeDialog.type === "reassign" && (
+        <ReassignAndRemoveDialog
+          trainer={removeDialog.trainer}
+          activeTrainers={active}
+          onClose={() => setRemoveDialog({ type: "none" })}
+          onConfirm={(toId) =>
+            reassignAndRemoveMutation.mutate({
+              fromId: removeDialog.trainer.id,
+              toId,
+            })
+          }
+          isProcessing={reassignAndRemoveMutation.isPending}
+        />
+      )}
     </div>
   );
 }
