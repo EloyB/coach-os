@@ -1,8 +1,10 @@
 using System.Text;
 using CoachOS.Application;
 using CoachOS.Infrastructure;
+using CoachOS.Infrastructure.Configuration;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using Serilog;
 
 Log.Logger = new LoggerConfiguration()
@@ -12,6 +14,20 @@ Log.Logger = new LoggerConfiguration()
 try
 {
     WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+
+    // Scaleway Secret Manager — pulls secrets and merges them into configuration.
+    // ApiKey is read from user secrets (dev) or environment variable (prod).
+    string scwApiKey = builder.Configuration["Scaleway:ApiKey"]
+        ?? throw new InvalidOperationException("Scaleway:ApiKey is niet geconfigureerd.");
+
+    builder.Configuration.AddScalewaySecretManager(
+        apiKey: scwApiKey,
+        region: "nl-ams",
+        secrets: new Dictionary<string, string>
+        {
+            ["coachos-email-username"] = "Email:Username",
+            ["coachos-email-password"] = "Email:Password",
+        });
 
     builder.Host.UseSerilog((context, services, config) =>
         config.ReadFrom.Configuration(context.Configuration)
@@ -24,9 +40,33 @@ try
     // Controllers + OpenAPI
     builder.Services.AddControllers();
     builder.Services.AddEndpointsApiExplorer();
-    builder.Services.AddSwaggerGen();
-    builder.Services.AddOpenApi();
+    builder.Services.AddSwaggerGen(options =>
+    {
+        options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+        {
+            Name = "Authorization",
+            Type = SecuritySchemeType.Http,
+            Scheme = "Bearer",
+            BearerFormat = "JWT",
+            In = ParameterLocation.Header,
+            Description = "Voer je JWT token in. Voorbeeld: eyJhbGci..."
+        });
 
+        options.AddSecurityRequirement(new OpenApiSecurityRequirement
+        {
+            {
+                new OpenApiSecurityScheme
+                {
+                    Reference = new OpenApiReference
+                    {
+                        Type = ReferenceType.SecurityScheme,
+                        Id = "Bearer"
+                    }
+                },
+                Array.Empty<string>()
+            }
+        });
+    });
     // JWT Authentication
     string jwtKey = builder.Configuration["Jwt:Key"]
         ?? throw new InvalidOperationException("Jwt:Key is niet geconfigureerd.");
@@ -58,7 +98,6 @@ try
 
     if (app.Environment.IsDevelopment())
     {
-        app.MapOpenApi();
         app.UseSwagger();
         app.UseSwaggerUI(options =>
             options.SwaggerEndpoint("/swagger/v1/swagger.json", "CoachOS API v1"));
