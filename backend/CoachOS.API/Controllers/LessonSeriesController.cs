@@ -30,10 +30,21 @@ public class LessonSeriesController : ControllerBase
     private Guid GetOrganizationId() =>
         Guid.Parse(User.FindFirst("organizationId")!.Value);
 
+    private Guid GetUserId() =>
+        Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
+
+    private bool IsTrainer() =>
+        User.IsInRole("Trainer");
+
     [HttpGet]
     public async Task<ActionResult<List<LessonSeriesDto>>> GetAll(CancellationToken ct)
     {
-        var result = await _mediator.Send(new GetLessonSeriesQuery { OrganizationId = GetOrganizationId() }, ct);
+        GetLessonSeriesQuery query = new()
+        {
+            OrganizationId = GetOrganizationId(),
+            TrainerId = IsTrainer() ? GetUserId() : null
+        };
+        var result = await _mediator.Send(query, ct);
         return result.Succeeded ? Ok(result.Data) : BadRequest(result.Errors);
     }
 

@@ -1,14 +1,25 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { CourtLines } from "@/components/ui/court-lines";
 import { TennisBallIcon } from "@/components/ui/tennis-ball-icon";
 import { navItems } from "@/lib/nav-items";
+import { getAuthUser } from "@/lib/auth";
 
 export function DashboardSidebar() {
   const pathname = usePathname();
+  const [role, setRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    setRole(getAuthUser()?.role ?? null);
+  }, []);
+
+  const visibleItems = navItems.filter(
+    (item) => !("adminOnly" in item && item.adminOnly) || role === "Admin"
+  );
 
   return (
     <aside className="hidden lg:flex flex-col w-55 bg-tennis-green relative overflow-hidden shrink-0">
@@ -28,7 +39,7 @@ export function DashboardSidebar() {
 
       {/* Nav */}
       <nav className="relative z-10 flex-1 px-3 py-5 space-y-0.5">
-        {navItems.map(({ label, href, icon: Icon, exact }) => {
+        {visibleItems.map(({ label, href, icon: Icon, exact }) => {
           const active = exact ? pathname === href : pathname.startsWith(href);
           return (
             <Link

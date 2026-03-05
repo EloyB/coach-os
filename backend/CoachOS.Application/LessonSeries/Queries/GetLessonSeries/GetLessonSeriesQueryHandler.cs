@@ -19,10 +19,15 @@ public class GetLessonSeriesQueryHandler : IRequestHandler<GetLessonSeriesQuery,
 
     public async Task<Result<List<LessonSeriesDto>>> Handle(GetLessonSeriesQuery request, CancellationToken ct)
     {
-        List<Domain.Entities.LessonSeries> series = await _context.LessonSeries
+        IQueryable<Domain.Entities.LessonSeries> query = _context.LessonSeries
             .AsNoTracking()
             .Include(ls => ls.TennisClub)
-            .Where(ls => ls.OrganizationId == request.OrganizationId)
+            .Where(ls => ls.OrganizationId == request.OrganizationId);
+
+        if (request.TrainerId.HasValue)
+            query = query.Where(ls => ls.TrainerId == request.TrainerId.Value);
+
+        List<Domain.Entities.LessonSeries> series = await query
             .OrderBy(ls => ls.StartDate)
             .ToListAsync(ct);
 

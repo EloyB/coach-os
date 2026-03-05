@@ -9,6 +9,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { TennisBallEmptyIcon } from "@/components/ui/tennis-ball-icon";
+import { WelcomeHeader } from "@/components/dashboard/welcome-header";
 
 const stats = [
   {
@@ -51,14 +52,7 @@ export default function DashboardPage() {
   return (
     <>
       {/* Welcome */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
-          Goedemorgen, Coach 👋
-        </h1>
-        <p className="text-gray-400 text-sm mt-1">
-          Hier is een overzicht van vandaag.
-        </p>
-      </div>
+      <WelcomeHeader />
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
