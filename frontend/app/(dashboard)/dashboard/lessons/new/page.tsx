@@ -16,10 +16,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  getOrganizationMembers,
   createLessonSeries,
   LESSON_LEVELS,
 } from "@/lib/api/lessonSeries";
+import { getTrainers } from "@/lib/api/trainers";
 import { getTennisClubs } from "@/lib/api/tennisClubs";
 import { FieldError } from "@/components/forms/field-error";
 import { inputClass } from "@/lib/styles";
@@ -56,8 +56,8 @@ export default function NewLessonSeriesPage() {
   const router = useRouter();
 
   const { data: members, isLoading: membersLoading } = useQuery({
-    queryKey: ["orgMembers"],
-    queryFn: getOrganizationMembers,
+    queryKey: ["trainers"],
+    queryFn: getTrainers,
   });
 
   const { data: tennisClubs, isLoading: clubsLoading } = useQuery({
@@ -172,7 +172,7 @@ export default function NewLessonSeriesPage() {
                   <SelectContent>
                     {members?.map((m) => (
                       <SelectItem key={m.id} value={m.id}>
-                        {m.fullName}
+                        {m.firstName} {m.lastName}
                       </SelectItem>
                     ))}
                     {!membersLoading && !members?.length && (

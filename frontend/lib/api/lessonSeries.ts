@@ -33,11 +33,6 @@ export interface LessonSeriesDto {
   lessons: LessonDto[];
 }
 
-export interface OrgMemberDto {
-  id: string;
-  fullName: string;
-}
-
 export interface CreateLessonSeriesRequest {
   trainerId: string;
   name: string;
@@ -82,11 +77,6 @@ export async function getLessonSeries(): Promise<LessonSeriesDto[]> {
 
 export async function getLessonSeriesById(id: string): Promise<LessonSeriesDto> {
   const { data } = await apiClient.get<LessonSeriesDto>(`/lessonseries/${id}`);
-  return data;
-}
-
-export async function getOrganizationMembers(): Promise<OrgMemberDto[]> {
-  const { data } = await apiClient.get<OrgMemberDto[]>("/lessonseries/members");
   return data;
 }
 

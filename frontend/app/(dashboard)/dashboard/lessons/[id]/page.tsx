@@ -46,10 +46,10 @@ import {
   deleteLessonSeries,
   createLesson,
   deleteLesson,
-  getOrganizationMembers,
   LESSON_LEVELS,
   LessonDto,
 } from "@/lib/api/lessonSeries";
+import { getTrainers } from "@/lib/api/trainers";
 import { getTennisClubs } from "@/lib/api/tennisClubs";
 import { FieldError } from "@/components/forms/field-error";
 import { inputClass } from "@/lib/styles";
@@ -81,8 +81,8 @@ function EditSeriesForm({
 }) {
   const queryClient = useQueryClient();
   const { data: members } = useQuery({
-    queryKey: ["orgMembers"],
-    queryFn: getOrganizationMembers,
+    queryKey: ["trainers"],
+    queryFn: getTrainers,
   });
   const { data: tennisClubs } = useQuery({
     queryKey: ["tennisClubs"],
@@ -156,7 +156,7 @@ function EditSeriesForm({
                   <SelectContent>
                     {members?.map((m) => (
                       <SelectItem key={m.id} value={m.id}>
-                        {m.fullName}
+                        {m.firstName} {m.lastName}
                       </SelectItem>
                     ))}
                   </SelectContent>
