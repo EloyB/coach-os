@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace CoachOS.Infrastructure;
 
@@ -36,6 +37,8 @@ public static class DependencyInjection
             .AddRoles<IdentityRole<Guid>>()
             .AddEntityFrameworkStores<ApplicationDbContext>()
             .AddDefaultTokenProviders();
+
+        services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.Section));
 
         services.AddScoped<TokenService>();
         services.AddScoped<IAuthService, AuthService>();
