@@ -1,0 +1,12 @@
+using CoachOS.Domain.Entities;
+
+namespace CoachOS.Domain.Interfaces;
+
+public interface ITennisClubRepository
+{
+    Task<TennisClub?> GetByIdAsync(Guid id, Guid organizationId, CancellationToken ct = default);
+    Task<IReadOnlyList<TennisClub>> GetByOrganizationAsync(Guid organizationId, CancellationToken ct = default);
+    Task AddAsync(TennisClub club, CancellationToken ct = default);
+    Task DeleteAsync(TennisClub club, CancellationToken ct = default);
+    Task<bool> ExistsAsync(Guid id, Guid organizationId, CancellationToken ct = default);
+}
