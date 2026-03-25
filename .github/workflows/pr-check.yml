@@ -39,7 +39,35 @@ jobs:
       - name: Build
         run: dotnet build backend/CoachOS.slnx --no-restore --configuration Release
 
-      - name: Test
-        run: dotnet test backend/CoachOS.slnx --no-build --configuration Release --verbosity normal
+      - name: Test with coverage
+        run: >
+          dotnet test backend/CoachOS.slnx
+          --no-build
+          --configuration Release
+          --verbosity normal
+          --collect:"XPlat Code Coverage"
+          --results-directory ./coverage
         env:
           ConnectionStrings__DefaultConnection: "Host=localhost;Database=coachos_test;Username=postgres;Password=postgres"
+
+      - name: Generate coverage report
+        uses: danielpalme/ReportGenerator-GitHub-Action@5
+        with:
+          reports: coverage/**/coverage.cobertura.xml
+          targetdir: coverage/report
+          reporttypes: MarkdownSummaryGithub;Cobertura
+
+      - name: Post coverage comment on PR
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          path: coverage/report/SummaryGithub.md
+
+      - name: Check coverage threshold
+        run: |
+          COVERAGE=$(grep -oP 'line-rate="\K[^"]+' coverage/report/Cobertura.xml | head -1)
+          PERCENT=$(echo "$COVERAGE * 100" | bc)
+          echo "Coverage: ${PERCENT}%"
+          if (( $(echo "$PERCENT < 50" | bc -l) )); then
+            echo "::error::Coverage ${PERCENT}% is below 50% threshold"
+            exit 1
+          fi
