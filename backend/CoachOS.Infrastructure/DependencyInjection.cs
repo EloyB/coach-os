@@ -4,6 +4,7 @@ using CoachOS.Application.Trainers;
 using CoachOS.Infrastructure.Email;
 using CoachOS.Infrastructure.Identity;
 using CoachOS.Infrastructure.Persistence;
+using CoachOS.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -46,6 +47,9 @@ public static class DependencyInjection
         services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<ApplicationDbContext>());
         services.AddScoped<IUserLookupService, UserLookupService>();
         services.AddScoped<IEmailService, EmailService>();
+        services.AddScoped<CoachOS.Domain.Interfaces.ILessonSeriesRepository, LessonSeriesRepository>();
+        services.AddScoped<CoachOS.Domain.Interfaces.ILessonRepository, LessonRepository>();
+        services.AddScoped<CoachOS.Domain.Interfaces.ITennisClubRepository, TennisClubRepository>();
 
         return services;
     }
