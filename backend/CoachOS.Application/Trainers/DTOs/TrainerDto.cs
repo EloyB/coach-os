@@ -1,4 +1,4 @@
-namespace CoachOS.Application.Trainers.Queries.GetTrainers;
+namespace CoachOS.Application.Trainers.DTOs;
 
 public class TrainerDto
 {

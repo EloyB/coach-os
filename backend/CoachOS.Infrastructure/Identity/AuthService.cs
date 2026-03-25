@@ -1,8 +1,8 @@
 using CoachOS.Application.Auth;
 using CoachOS.Application.Auth.DTOs;
-using CoachOS.Application.Common.Models;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
+using CoachOS.Domain.Models;
 using CoachOS.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -35,7 +35,7 @@ public class AuthService : IAuthService
     {
         ApplicationUser? existingUser = await _userManager.FindByEmailAsync(email);
         if (existingUser is not null)
-            return Result<AuthResponseDto>.Failure("E-mailadres is al in gebruik");
+            return Result<AuthResponseDto>.Fail("E-mailadres is al in gebruik");
 
         await using Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction transaction =
             await _context.Database.BeginTransactionAsync(cancellationToken);
@@ -70,14 +70,14 @@ public class AuthService : IAuthService
             if (!result.Succeeded)
             {
                 await transaction.RollbackAsync(cancellationToken);
-                return Result<AuthResponseDto>.Failure(result.Errors.Select(e => e.Description));
+                return Result<AuthResponseDto>.Fail(result.Errors.Select(e => e.Description));
             }
 
             await transaction.CommitAsync(cancellationToken);
 
             (string token, DateTime expiresAt) = _tokenService.GenerateToken(user);
 
-            return Result<AuthResponseDto>.Success(new AuthResponseDto
+            return Result<AuthResponseDto>.Ok(new AuthResponseDto
             {
                 Token = token,
                 ExpiresAt = expiresAt,
@@ -92,7 +92,7 @@ public class AuthService : IAuthService
         catch (DbUpdateException)
         {
             await transaction.RollbackAsync(cancellationToken);
-            return Result<AuthResponseDto>.Failure("Registratie mislukt. Probeer het opnieuw.");
+            return Result<AuthResponseDto>.Fail("Registratie mislukt. Probeer het opnieuw.");
         }
     }
 
@@ -103,18 +103,18 @@ public class AuthService : IAuthService
     {
         ApplicationUser? user = await _userManager.FindByEmailAsync(email);
         if (user is null)
-            return Result<AuthResponseDto>.Failure("Ongeldige inloggegevens");
+            return Result<AuthResponseDto>.Fail("Ongeldige inloggegevens");
 
         bool validPassword = await _userManager.CheckPasswordAsync(user, password);
         if (!validPassword)
-            return Result<AuthResponseDto>.Failure("Ongeldige inloggegevens");
+            return Result<AuthResponseDto>.Fail("Ongeldige inloggegevens");
 
         if (!user.IsActive)
-            return Result<AuthResponseDto>.Failure("Account is gedeactiveerd");
+            return Result<AuthResponseDto>.Fail("Account is gedeactiveerd");
 
         (string token, DateTime expiresAt) = _tokenService.GenerateToken(user);
 
-        return Result<AuthResponseDto>.Success(new AuthResponseDto
+        return Result<AuthResponseDto>.Ok(new AuthResponseDto
         {
             Token = token,
             ExpiresAt = expiresAt,

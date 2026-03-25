@@ -2,10 +2,12 @@ using CoachOS.Application.LessonSeries.DTOs;
 using CoachOS.Application.TennisClubs.DTOs;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
+using Riok.Mapperly.Abstractions;
 
 namespace CoachOS.Application.Mappings;
 
-public class ApplicationMapper
+[Mapper]
+public partial class ApplicationMapper
 {
     public Domain.Entities.LessonSeries ToLessonSeries(CreateLessonSeriesRequest request, Guid organizationId)
     {

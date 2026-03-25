@@ -15,6 +15,7 @@ public class Result
     public static Result Fail(Error error) => new(false, [error]);
     public static Result Fail(IEnumerable<Error> errors) => new(false, errors.ToList());
     public static Result Fail(string message) => new(false, [new Error(ErrorCodes.Unexpected, message)]);
+    public static Result Fail(IEnumerable<string> messages) => new(false, messages.Select(m => new Error(ErrorCodes.Validation, m)).ToList());
 }
 
 public class Result<T> : Result
@@ -31,4 +32,5 @@ public class Result<T> : Result
     public static new Result<T> Fail(Error error) => new(false, default, [error]);
     public static new Result<T> Fail(IEnumerable<Error> errors) => new(false, default, errors.ToList());
     public static new Result<T> Fail(string message) => new(false, default, [new Error(ErrorCodes.Unexpected, message)]);
+    public static new Result<T> Fail(IEnumerable<string> messages) => new(false, default, messages.Select(m => new Error(ErrorCodes.Validation, m)).ToList());
 }

@@ -1,4 +1,5 @@
 using System.Text;
+using CoachOS.API.Endpoints;
 using CoachOS.Application;
 using CoachOS.Infrastructure;
 using CoachOS.Infrastructure.Configuration;
@@ -37,8 +38,7 @@ try
     builder.Services.AddApplication();
     builder.Services.AddInfrastructure(builder.Configuration);
 
-    // Controllers + OpenAPI
-    builder.Services.AddControllers();
+    // OpenAPI
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen(options =>
     {
@@ -107,7 +107,7 @@ try
     app.UseCors("Frontend");
     app.UseAuthentication();
     app.UseAuthorization();
-    app.MapControllers();
+    app.MapAllEndpoints();
 
     app.Run();
 }

@@ -1,6 +1,6 @@
 using CoachOS.Application.Auth.DTOs;
-using CoachOS.Application.Common.Models;
-using CoachOS.Application.Trainers.Queries.GetTrainers;
+using CoachOS.Application.Trainers.DTOs;
+using CoachOS.Domain.Models;
 
 namespace CoachOS.Application.Trainers;
 

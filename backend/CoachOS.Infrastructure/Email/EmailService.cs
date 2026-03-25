@@ -1,6 +1,6 @@
 using System.Net;
 using System.Net.Mail;
-using CoachOS.Application.Common.Interfaces;
+using CoachOS.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 

@@ -1,5 +1,5 @@
 using CoachOS.Application.Auth.DTOs;
-using CoachOS.Application.Common.Models;
+using CoachOS.Domain.Models;
 
 namespace CoachOS.Application.Auth;
 

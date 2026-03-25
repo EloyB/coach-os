@@ -1,4 +1,4 @@
-using CoachOS.Application.Common.Interfaces;
+using CoachOS.Domain.Interfaces;
 using CoachOS.Domain.Enums;
 using CoachOS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
