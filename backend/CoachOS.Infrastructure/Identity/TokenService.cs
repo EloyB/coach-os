@@ -6,21 +6,14 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace CoachOS.Infrastructure.Identity;
 
-public sealed class TokenService
+public sealed class TokenService(IConfiguration configuration)
 {
-    private readonly IConfiguration _configuration;
-
-    public TokenService(IConfiguration configuration)
-    {
-        _configuration = configuration;
-    }
-
     public (string Token, DateTime ExpiresAt) GenerateToken(ApplicationUser user)
     {
-        string key = _configuration["Jwt:Key"]!;
-        string issuer = _configuration["Jwt:Issuer"]!;
-        string audience = _configuration["Jwt:Audience"]!;
-        int expiryMinutes = int.Parse(_configuration["Jwt:ExpiryMinutes"]!);
+        string key = configuration["Jwt:Key"]!;
+        string issuer = configuration["Jwt:Issuer"]!;
+        string audience = configuration["Jwt:Audience"]!;
+        int expiryMinutes = int.Parse(configuration["Jwt:ExpiryMinutes"]!);
 
         SymmetricSecurityKey securityKey = new(Encoding.UTF8.GetBytes(key));
         SigningCredentials credentials = new(securityKey, SecurityAlgorithms.HmacSha256);

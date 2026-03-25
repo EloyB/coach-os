@@ -6,16 +6,10 @@ using Microsoft.Extensions.Options;
 
 namespace CoachOS.Infrastructure.Email;
 
-public class EmailService : IEmailService
+public class EmailService(IOptions<EmailOptions> options, ILogger<EmailService> logger)
+    : IEmailService
 {
-    private readonly EmailOptions _options;
-    private readonly ILogger<EmailService> _logger;
-
-    public EmailService(IOptions<EmailOptions> options, ILogger<EmailService> logger)
-    {
-        _options = options.Value;
-        _logger = logger;
-    }
+    private readonly EmailOptions _options = options.Value;
 
     public async Task SendTrainerInviteAsync(
         string toEmail,
@@ -57,11 +51,11 @@ public class EmailService : IEmailService
         try
         {
             await smtp.SendMailAsync(message, ct);
-            _logger.LogInformation("E-mail verstuurd naar {Email} — onderwerp: {Subject}", toEmail, subject);
+            logger.LogInformation("E-mail verstuurd naar {Email} — onderwerp: {Subject}", toEmail, subject);
         }
         catch (SmtpException ex)
         {
-            _logger.LogError(ex, "Versturen mislukt naar {Email} — {Message}", toEmail, ex.Message);
+            logger.LogError(ex, "Versturen mislukt naar {Email} — {Message}", toEmail, ex.Message);
             throw;
         }
     }

@@ -10,25 +10,13 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CoachOS.Infrastructure.Identity;
 
-public class TrainerService : ITrainerService
+public class TrainerService(
+    UserManager<ApplicationUser> userManager,
+    TokenService tokenService,
+    IEmailService emailService,
+    ApplicationDbContext context)
+    : ITrainerService
 {
-    private readonly UserManager<ApplicationUser> _userManager;
-    private readonly TokenService _tokenService;
-    private readonly IEmailService _emailService;
-    private readonly ApplicationDbContext _context;
-
-    public TrainerService(
-        UserManager<ApplicationUser> userManager,
-        TokenService tokenService,
-        IEmailService emailService,
-        ApplicationDbContext context)
-    {
-        _userManager = userManager;
-        _tokenService = tokenService;
-        _emailService = emailService;
-        _context = context;
-    }
-
     public async Task<Result<Guid>> InviteAsync(
         Guid organizationId,
         string firstName,
@@ -37,7 +25,7 @@ public class TrainerService : ITrainerService
         string inviteBaseUrl,
         CancellationToken ct = default)
     {
-        ApplicationUser? existing = await _userManager.FindByEmailAsync(email);
+        ApplicationUser? existing = await userManager.FindByEmailAsync(email);
         if (existing is not null)
             return Result<Guid>.Fail("E-mailadres is al in gebruik");
 
@@ -60,12 +48,12 @@ public class TrainerService : ITrainerService
         };
 
         // Use a placeholder password — will be replaced on invite acceptance
-        IdentityResult result = await _userManager.CreateAsync(user, "Placeholder@1!");
+        IdentityResult result = await userManager.CreateAsync(user, "Placeholder@1!");
         if (!result.Succeeded)
             return Result<Guid>.Fail(result.Errors.Select(e => e.Description));
 
         string inviteUrl = $"{inviteBaseUrl.TrimEnd('/')}/invite/{inviteToken}";
-        await _emailService.SendTrainerInviteAsync(email, firstName, inviteUrl, ct);
+        await emailService.SendTrainerInviteAsync(email, firstName, inviteUrl, ct);
 
         return Result<Guid>.Ok(user.Id);
     }
@@ -75,7 +63,7 @@ public class TrainerService : ITrainerService
         string password,
         CancellationToken ct = default)
     {
-        ApplicationUser? user = await _userManager.Users
+        ApplicationUser? user = await userManager.Users
             .FirstOrDefaultAsync(u => u.InviteToken == token, ct);
 
         if (user is null)
@@ -84,8 +72,8 @@ public class TrainerService : ITrainerService
         if (user.InviteTokenExpiry is null || user.InviteTokenExpiry < DateTime.UtcNow)
             return Result<AuthResponseDto>.Fail("Uitnodigingslink is verlopen");
 
-        string resetToken = await _userManager.GeneratePasswordResetTokenAsync(user);
-        IdentityResult result = await _userManager.ResetPasswordAsync(user, resetToken, password);
+        string resetToken = await userManager.GeneratePasswordResetTokenAsync(user);
+        IdentityResult result = await userManager.ResetPasswordAsync(user, resetToken, password);
         if (!result.Succeeded)
             return Result<AuthResponseDto>.Fail(result.Errors.Select(e => e.Description));
 
@@ -93,9 +81,9 @@ public class TrainerService : ITrainerService
         user.InviteToken = null;
         user.InviteTokenExpiry = null;
         user.UpdatedAt = DateTime.UtcNow;
-        await _userManager.UpdateAsync(user);
+        await userManager.UpdateAsync(user);
 
-        (string jwtToken, DateTime expiresAt) = _tokenService.GenerateToken(user);
+        (string jwtToken, DateTime expiresAt) = tokenService.GenerateToken(user);
 
         return Result<AuthResponseDto>.Ok(new AuthResponseDto
         {
@@ -114,13 +102,13 @@ public class TrainerService : ITrainerService
         Guid organizationId,
         CancellationToken ct = default)
     {
-        Dictionary<Guid, int> counts = await _context.LessonSeries
+        Dictionary<Guid, int> counts = await context.LessonSeries
             .Where(ls => ls.OrganizationId == organizationId)
             .GroupBy(ls => ls.TrainerId)
             .Select(g => new { g.Key, Count = g.Count() })
             .ToDictionaryAsync(x => x.Key, x => x.Count, ct);
 
-        List<TrainerDto> trainers = await _userManager.Users
+        List<TrainerDto> trainers = await userManager.Users
             .AsNoTracking()
             .Where(u => u.OrganizationId == organizationId && u.Role == UserRole.Trainer)
             .OrderBy(u => u.FirstName)
@@ -150,7 +138,7 @@ public class TrainerService : ITrainerService
         Guid organizationId,
         CancellationToken ct = default)
     {
-        ApplicationUser? trainer = await _userManager.Users
+        ApplicationUser? trainer = await userManager.Users
             .FirstOrDefaultAsync(u => u.Id == trainerId && u.OrganizationId == organizationId, ct);
 
         if (trainer is null)
@@ -161,7 +149,7 @@ public class TrainerService : ITrainerService
 
         trainer.IsActive = false;
         trainer.UpdatedAt = DateTime.UtcNow;
-        await _userManager.UpdateAsync(trainer);
+        await userManager.UpdateAsync(trainer);
 
         return Result.Ok();
     }
@@ -171,7 +159,7 @@ public class TrainerService : ITrainerService
         Guid organizationId,
         CancellationToken ct = default)
     {
-        ApplicationUser? trainer = await _userManager.Users
+        ApplicationUser? trainer = await userManager.Users
             .FirstOrDefaultAsync(u => u.Id == trainerId && u.OrganizationId == organizationId, ct);
 
         if (trainer is null)
@@ -180,13 +168,13 @@ public class TrainerService : ITrainerService
         if (trainer.Role != UserRole.Trainer)
             return Result.Fail("Gebruiker is geen trainer");
 
-        int count = await _context.LessonSeries
+        int count = await context.LessonSeries
             .CountAsync(ls => ls.TrainerId == trainerId && ls.OrganizationId == organizationId, ct);
 
         if (count > 0)
             return Result.Fail($"Trainer heeft {count} lesreeks(en). Wijs deze eerst toe aan een andere trainer.");
 
-        IdentityResult result = await _userManager.DeleteAsync(trainer);
+        IdentityResult result = await userManager.DeleteAsync(trainer);
         return result.Succeeded
             ? Result.Ok()
             : Result.Fail(result.Errors.Select(e => e.Description));
@@ -198,7 +186,7 @@ public class TrainerService : ITrainerService
         Guid organizationId,
         CancellationToken ct = default)
     {
-        ApplicationUser? toTrainer = await _userManager.Users
+        ApplicationUser? toTrainer = await userManager.Users
             .FirstOrDefaultAsync(u => u.Id == toTrainerId && u.OrganizationId == organizationId, ct);
 
         if (toTrainer is null)
@@ -210,7 +198,7 @@ public class TrainerService : ITrainerService
         if (!toTrainer.IsActive)
             return Result.Fail("Doeltrainer is niet actief");
 
-        await _context.LessonSeries
+        await context.LessonSeries
             .Where(ls => ls.TrainerId == fromTrainerId && ls.OrganizationId == organizationId)
             .ExecuteUpdateAsync(s => s.SetProperty(ls => ls.TrainerId, toTrainerId), ct);
 

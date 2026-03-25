@@ -9,22 +9,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CoachOS.Infrastructure.Identity;
 
-public class AuthService : IAuthService
+public class AuthService(
+    UserManager<ApplicationUser> userManager,
+    ApplicationDbContext context,
+    TokenService tokenService)
+    : IAuthService
 {
-    private readonly UserManager<ApplicationUser> _userManager;
-    private readonly ApplicationDbContext _context;
-    private readonly TokenService _tokenService;
-
-    public AuthService(
-        UserManager<ApplicationUser> userManager,
-        ApplicationDbContext context,
-        TokenService tokenService)
-    {
-        _userManager = userManager;
-        _context = context;
-        _tokenService = tokenService;
-    }
-
     public async Task<Result<AuthResponseDto>> RegisterAsync(
         string organizationName,
         string firstName,
@@ -33,12 +23,12 @@ public class AuthService : IAuthService
         string password,
         CancellationToken cancellationToken = default)
     {
-        ApplicationUser? existingUser = await _userManager.FindByEmailAsync(email);
+        ApplicationUser? existingUser = await userManager.FindByEmailAsync(email);
         if (existingUser is not null)
             return Result<AuthResponseDto>.Fail("E-mailadres is al in gebruik");
 
         await using Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction transaction =
-            await _context.Database.BeginTransactionAsync(cancellationToken);
+            await context.Database.BeginTransactionAsync(cancellationToken);
 
         try
         {
@@ -51,8 +41,8 @@ public class AuthService : IAuthService
                 Country = "BE"
             };
 
-            _context.Organizations.Add(organization);
-            await _context.SaveChangesAsync(cancellationToken);
+            context.Organizations.Add(organization);
+            await context.SaveChangesAsync(cancellationToken);
 
             ApplicationUser user = new()
             {
@@ -66,7 +56,7 @@ public class AuthService : IAuthService
                 IsActive = true
             };
 
-            IdentityResult result = await _userManager.CreateAsync(user, password);
+            IdentityResult result = await userManager.CreateAsync(user, password);
             if (!result.Succeeded)
             {
                 await transaction.RollbackAsync(cancellationToken);
@@ -75,7 +65,7 @@ public class AuthService : IAuthService
 
             await transaction.CommitAsync(cancellationToken);
 
-            (string token, DateTime expiresAt) = _tokenService.GenerateToken(user);
+            (string token, DateTime expiresAt) = tokenService.GenerateToken(user);
 
             return Result<AuthResponseDto>.Ok(new AuthResponseDto
             {
@@ -101,18 +91,18 @@ public class AuthService : IAuthService
         string password,
         CancellationToken cancellationToken = default)
     {
-        ApplicationUser? user = await _userManager.FindByEmailAsync(email);
+        ApplicationUser? user = await userManager.FindByEmailAsync(email);
         if (user is null)
             return Result<AuthResponseDto>.Fail("Ongeldige inloggegevens");
 
-        bool validPassword = await _userManager.CheckPasswordAsync(user, password);
+        bool validPassword = await userManager.CheckPasswordAsync(user, password);
         if (!validPassword)
             return Result<AuthResponseDto>.Fail("Ongeldige inloggegevens");
 
         if (!user.IsActive)
             return Result<AuthResponseDto>.Fail("Account is gedeactiveerd");
 
-        (string token, DateTime expiresAt) = _tokenService.GenerateToken(user);
+        (string token, DateTime expiresAt) = tokenService.GenerateToken(user);
 
         return Result<AuthResponseDto>.Ok(new AuthResponseDto
         {
