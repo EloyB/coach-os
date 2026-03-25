@@ -59,7 +59,7 @@ jobs:
         with:
           reports: coverage/**/coverage.cobertura.xml
           targetdir: coverage/report
-          reporttypes: MarkdownSummaryGithub
+          reporttypes: MarkdownSummaryGithub;Cobertura
 
       - name: Post coverage comment on PR
         uses: marocchino/sticky-pull-request-comment@v2
