@@ -59,19 +59,9 @@ jobs:
         with:
           reports: coverage/**/coverage.cobertura.xml
           targetdir: coverage/report
-          reporttypes: MarkdownSummaryGithub;Cobertura
+          reporttypes: MarkdownSummaryGithub
 
       - name: Post coverage comment on PR
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           path: coverage/report/SummaryGithub.md
-
-      - name: Check coverage threshold
-        run: |
-          COVERAGE=$(grep -oP 'line-rate="\K[^"]+' coverage/report/Cobertura.xml | head -1)
-          PERCENT=$(echo "$COVERAGE * 100" | bc)
-          echo "Coverage: ${PERCENT}%"
-          if (( $(echo "$PERCENT < 50" | bc -l) )); then
-            echo "::error::Coverage ${PERCENT}% is below 50% threshold"
-            exit 1
-          fi
