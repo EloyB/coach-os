@@ -6,7 +6,7 @@ export interface AuthUser {
   email: string;
   firstName: string;
   lastName: string;
-  organizationId: string;
+  organizationId: string | null;
   role: string;
 }
 

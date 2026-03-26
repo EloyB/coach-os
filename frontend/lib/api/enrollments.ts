@@ -1,0 +1,87 @@
+import apiClient from '@/lib/api-client';
+import type { LessonDto } from './lessonSeries';
+
+export interface PublicLessonSeriesDto {
+  id: string;
+  name: string;
+  description: string | null;
+  trainerName: string;
+  level: number;
+  price: number;
+  startDate: string;
+  endDate: string;
+  durationMinutes: number;
+  tennisClubName: string;
+  enrollmentCount: number;
+  lessons: LessonDto[];
+}
+
+export interface FormFieldDto {
+  id: string;
+  label: string;
+  type: number;
+  isRequired: boolean;
+  order: number;
+  options: string[] | null;
+}
+
+export interface EnrollmentFormDto {
+  id: string;
+  lessonSeriesId: string;
+  fields: FormFieldDto[];
+}
+
+export interface EnrollmentResponseItem {
+  fieldLabel: string;
+  value: string;
+}
+
+export interface LessonSeriesEnrollmentDto {
+  id: string;
+  studentName: string;
+  studentEmail: string;
+  status: string;
+  enrolledAt: string;
+  notes: string | null;
+  formResponses: EnrollmentResponseItem[];
+}
+
+export interface SaveFormFieldRequest {
+  id?: string;
+  label: string;
+  type: number;
+  isRequired: boolean;
+  order: number;
+  options?: string[];
+}
+
+export interface SubmitEnrollmentRequest {
+  studentName: string;
+  studentEmail: string;
+  responses: { formFieldId: string; value: string }[];
+}
+
+export async function getPublicLessonSeries(id: string): Promise<PublicLessonSeriesDto> {
+  const { data } = await apiClient.get<PublicLessonSeriesDto>(`/public/lessonseries/${id}`);
+  return data;
+}
+
+export async function getEnrollmentForm(seriesId: string): Promise<EnrollmentFormDto | null> {
+  const { data } = await apiClient.get<EnrollmentFormDto | null>(`/public/lessonseries/${seriesId}/form`);
+  return data;
+}
+
+export async function saveEnrollmentForm(seriesId: string, fields: SaveFormFieldRequest[]): Promise<string> {
+  const { data } = await apiClient.put<string>(`/lessonseries/${seriesId}/form`, { fields });
+  return data;
+}
+
+export async function submitEnrollment(seriesId: string, request: SubmitEnrollmentRequest): Promise<string> {
+  const { data } = await apiClient.post<string>(`/public/lessonseries/${seriesId}/enroll`, request);
+  return data;
+}
+
+export async function getLessonSeriesEnrollments(seriesId: string): Promise<LessonSeriesEnrollmentDto[]> {
+  const { data } = await apiClient.get<LessonSeriesEnrollmentDto[]>(`/lessonseries/${seriesId}/enrollments`);
+  return data;
+}

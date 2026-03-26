@@ -68,6 +68,42 @@
     "inUse": "Deze tennisclub kan niet worden verwijderd omdat er lesreeksen aan gekoppeld zijn.",
     "club": "Tennisclub"
   },
+  "enrollments": {
+    "title": "Inschrijvingen",
+    "enrolled": "Ingeschreven",
+    "status_confirmed": "Bevestigd",
+    "status_cancelled": "Geannuleerd",
+    "enroll_success_title": "Ingeschreven!",
+    "enroll_success_body": "Je ontvangt een bevestiging per e-mail.",
+    "enrollments_count": "{count} inschrijvingen",
+    "student": "Student",
+    "enrolled_on": "Ingeschreven op",
+    "share_link": "Inschrijflink kopiëren",
+    "enroll_link_copied": "Link gekopieerd!",
+    "form_first_name": "Voornaam",
+    "form_last_name": "Achternaam",
+    "form_email": "E-mailadres",
+    "form_submit": "Inschrijven",
+    "form_error": "Inschrijven mislukt. Controleer je gegevens en probeer opnieuw."
+  },
+  "formBuilder": {
+    "title": "Inschrijfformulier",
+    "predefined_fields": "Vaste velden",
+    "custom_fields": "Aangepaste velden",
+    "add_field": "Veld toevoegen",
+    "save_form": "Formulier opslaan",
+    "field_label": "Label",
+    "field_type": "Type",
+    "field_required": "Verplicht",
+    "type_text": "Vrije tekst",
+    "type_multiple_choice": "Meerkeuze",
+    "type_yes_no": "Ja/Nee",
+    "options": "Opties",
+    "add_option": "Optie toevoegen",
+    "no_fields": "Nog geen aangepaste velden. Voeg een veld toe.",
+    "saving": "Opslaan...",
+    "saved": "Formulier opgeslagen"
+  },
   "auth": {
     "login": "Inloggen",
     "register": "Registreren",
@@ -92,6 +128,10 @@
     "feature1": "Lessen plannen in seconden",
     "feature2": "Leerlingen bijhouden",
     "feature3": "Baanreservering geïntegreerd",
-    "emailPlaceholder": "naam@club.be"
+    "emailPlaceholder": "naam@club.be",
+    "confirmPassword": "Wachtwoord bevestigen",
+    "passwordMismatch": "Wachtwoorden komen niet overeen",
+    "createAccount": "Account aanmaken",
+    "registerTagline": "Maak je account aan en begin vandaag nog met plannen."
   }
 }

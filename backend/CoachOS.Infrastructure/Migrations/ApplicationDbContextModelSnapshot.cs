@@ -50,8 +50,15 @@ namespace CoachOS.Infrastructure.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("integer");
 
-                    b.Property<Guid>("StudentId")
-                        .HasColumnType("uuid");
+                    b.Property<string>("StudentEmail")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("StudentName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -64,9 +71,109 @@ namespace CoachOS.Infrastructure.Migrations
 
                     b.HasIndex("OrganizationId");
 
-                    b.HasIndex("StudentId");
+                    b.HasIndex("StudentEmail");
 
                     b.ToTable("Enrollments");
+                });
+
+            modelBuilder.Entity("CoachOS.Domain.Entities.EnrollmentForm", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("LessonSeriesId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LessonSeriesId")
+                        .IsUnique();
+
+                    b.HasIndex("OrganizationId");
+
+                    b.ToTable("EnrollmentForms");
+                });
+
+            modelBuilder.Entity("CoachOS.Domain.Entities.FormField", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("EnrollmentFormId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsRequired")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Options")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EnrollmentFormId");
+
+                    b.ToTable("FormFields");
+                });
+
+            modelBuilder.Entity("CoachOS.Domain.Entities.FormResponse", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("EnrollmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("FormFieldId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EnrollmentId");
+
+                    b.HasIndex("FormFieldId");
+
+                    b.ToTable("FormResponses");
                 });
 
             modelBuilder.Entity("CoachOS.Domain.Entities.Lesson", b =>
@@ -445,7 +552,7 @@ namespace CoachOS.Infrastructure.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
-                    b.Property<Guid>("OrganizationId")
+                    b.Property<Guid?>("OrganizationId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("PasswordHash")
@@ -642,6 +749,47 @@ namespace CoachOS.Infrastructure.Migrations
                     b.Navigation("Organization");
                 });
 
+            modelBuilder.Entity("CoachOS.Domain.Entities.EnrollmentForm", b =>
+                {
+                    b.HasOne("CoachOS.Domain.Entities.LessonSeries", "LessonSeries")
+                        .WithOne("EnrollmentForm")
+                        .HasForeignKey("CoachOS.Domain.Entities.EnrollmentForm", "LessonSeriesId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("LessonSeries");
+                });
+
+            modelBuilder.Entity("CoachOS.Domain.Entities.FormField", b =>
+                {
+                    b.HasOne("CoachOS.Domain.Entities.EnrollmentForm", "EnrollmentForm")
+                        .WithMany("Fields")
+                        .HasForeignKey("EnrollmentFormId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("EnrollmentForm");
+                });
+
+            modelBuilder.Entity("CoachOS.Domain.Entities.FormResponse", b =>
+                {
+                    b.HasOne("CoachOS.Domain.Entities.Enrollment", "Enrollment")
+                        .WithMany("FormResponses")
+                        .HasForeignKey("EnrollmentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CoachOS.Domain.Entities.FormField", "FormField")
+                        .WithMany("Responses")
+                        .HasForeignKey("FormFieldId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Enrollment");
+
+                    b.Navigation("FormField");
+                });
+
             modelBuilder.Entity("CoachOS.Domain.Entities.Lesson", b =>
                 {
                     b.HasOne("CoachOS.Domain.Entities.LessonSeries", "LessonSeries")
@@ -725,8 +873,7 @@ namespace CoachOS.Infrastructure.Migrations
                     b.HasOne("CoachOS.Domain.Entities.Organization", null)
                         .WithMany()
                         .HasForeignKey("OrganizationId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
@@ -782,7 +929,19 @@ namespace CoachOS.Infrastructure.Migrations
 
             modelBuilder.Entity("CoachOS.Domain.Entities.Enrollment", b =>
                 {
+                    b.Navigation("FormResponses");
+
                     b.Navigation("Payments");
+                });
+
+            modelBuilder.Entity("CoachOS.Domain.Entities.EnrollmentForm", b =>
+                {
+                    b.Navigation("Fields");
+                });
+
+            modelBuilder.Entity("CoachOS.Domain.Entities.FormField", b =>
+                {
+                    b.Navigation("Responses");
                 });
 
             modelBuilder.Entity("CoachOS.Domain.Entities.Lesson", b =>
@@ -792,6 +951,8 @@ namespace CoachOS.Infrastructure.Migrations
 
             modelBuilder.Entity("CoachOS.Domain.Entities.LessonSeries", b =>
                 {
+                    b.Navigation("EnrollmentForm");
+
                     b.Navigation("Enrollments");
 
                     b.Navigation("Lessons");

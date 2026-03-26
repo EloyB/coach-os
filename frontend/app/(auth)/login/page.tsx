@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import * as z from "zod";
@@ -56,9 +56,11 @@ function Spinner() {
   );
 }
 
-export default function LoginPage() {
+function LoginForm() {
   const t = useTranslations("auth");
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get("redirect");
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
 
@@ -81,7 +83,13 @@ export default function LoginPage() {
         organizationId: response.organizationId,
         role: response.role,
       });
-      router.push("/dashboard");
+      if (redirectTo) {
+        router.push(redirectTo);
+      } else if (response.role === "Student") {
+        router.push("/my-lessons");
+      } else {
+        router.push("/dashboard");
+      }
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.data) {
         const data = error.response.data;
@@ -264,5 +272,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   );
 }

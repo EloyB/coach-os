@@ -97,7 +97,7 @@ coachos/
 
 - Authentication (JWT)
 - Organization setup
-- Court management
+- Court name as text field on lesson (full court management post-MVP)
 
 **Month 3-4: Core Planning**
 

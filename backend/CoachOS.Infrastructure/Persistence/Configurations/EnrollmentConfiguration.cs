@@ -13,6 +13,14 @@ public class EnrollmentConfiguration : IEntityTypeConfiguration<Enrollment>
         builder.Property(e => e.Status)
             .IsRequired();
 
+        builder.Property(e => e.StudentName)
+            .IsRequired()
+            .HasMaxLength(200);
+
+        builder.Property(e => e.StudentEmail)
+            .IsRequired()
+            .HasMaxLength(200);
+
         builder.Property(e => e.Notes)
             .HasMaxLength(500);
 
@@ -33,9 +41,8 @@ public class EnrollmentConfiguration : IEntityTypeConfiguration<Enrollment>
             .OnDelete(DeleteBehavior.Restrict)
             .IsRequired(false);
 
-        // StudentId verwijst naar ApplicationUser (geen nav property in Domain)
         builder.HasIndex(e => e.OrganizationId);
-        builder.HasIndex(e => e.StudentId);
+        builder.HasIndex(e => e.StudentEmail);
         builder.HasIndex(e => e.LessonId);
         builder.HasIndex(e => e.LessonSeriesId);
     }
