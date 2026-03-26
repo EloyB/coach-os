@@ -23,9 +23,33 @@ public class EmailService : IEmailService
         string inviteUrl,
         CancellationToken ct = default)
     {
-        // Derive org name from the invite URL host for now (will be passed explicitly later)
         (string subject, string html) = EmailTemplates.TrainerInvite(firstName, "CoachOS", inviteUrl);
         await SendAsync(toEmail, $"{firstName}", subject, html, ct);
+    }
+
+    public async Task SendEnrollmentConfirmationAsync(
+        string studentEmail,
+        string studentName,
+        string seriesName,
+        string trainerName,
+        CancellationToken ct = default)
+    {
+        (string subject, string html) = EmailTemplates.EnrollmentConfirmation(studentName, seriesName, trainerName);
+        await SendAsync(studentEmail, studentName, subject, html, ct);
+    }
+
+    public async Task SendEnrollmentNotificationToTrainerAsync(
+        string trainerEmail,
+        string trainerName,
+        string studentName,
+        string studentEmail,
+        string seriesName,
+        List<(string FieldLabel, string Value)> responses,
+        CancellationToken ct = default)
+    {
+        (string subject, string html) = EmailTemplates.EnrollmentNotificationToTrainer(
+            trainerName, studentName, studentEmail, seriesName, responses);
+        await SendAsync(trainerEmail, trainerName, subject, html, ct);
     }
 
     // ── Core send method (reused by all future email types) ───────────────────

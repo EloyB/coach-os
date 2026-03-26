@@ -7,8 +7,15 @@ export interface AuthResponse {
   email: string;
   firstName: string;
   lastName: string;
-  organizationId: string;
+  organizationId: string | null;
   role: string;
+}
+
+export interface RegisterStudentRequest {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
 }
 
 export interface LoginRequest {
@@ -31,5 +38,10 @@ export async function login(request: LoginRequest): Promise<AuthResponse> {
 
 export async function register(request: RegisterRequest): Promise<AuthResponse> {
   const { data } = await apiClient.post<AuthResponse>('/auth/register', request);
+  return data;
+}
+
+export async function registerStudent(request: RegisterStudentRequest): Promise<AuthResponse> {
+  const { data } = await apiClient.post<AuthResponse>('/auth/register-student', request);
   return data;
 }

@@ -139,4 +139,89 @@ public static class EmailTemplates
 
         return (subject, Base($"Je bent uitgenodigd als trainer bij {organizationName}", body));
     }
+
+    /// <summary>Confirmation email sent to the student after anonymous enrollment.</summary>
+    public static (string Subject, string Html) EnrollmentConfirmation(
+        string studentName,
+        string seriesName,
+        string trainerName)
+    {
+        string subject = $"Inschrijving bevestigd: {seriesName}";
+
+        string body = $"""
+            <h1 style="margin:0 0 8px;font-size:26px;font-weight:700;color:#111827;letter-spacing:-0.5px;">
+              Je bent ingeschreven!
+            </h1>
+            <p style="margin:0 0 24px;font-size:15px;color:#6b7280;line-height:1.6;">
+              Hoi {studentName}, je inschrijving voor <strong style="color:#111827;">{seriesName}</strong>
+              is bevestigd. Trainer <strong style="color:#111827;">{trainerName}</strong> neemt indien
+              nodig contact met je op.
+            </p>
+
+            <table width="100%" cellpadding="0" cellspacing="0" border="0"
+                   style="background-color:{OffWhite};border-radius:8px;border-left:4px solid {Lime};">
+              <tr>
+                <td style="padding:16px 20px;">
+                  <p style="margin:0;font-size:14px;font-weight:600;color:#111827;">{seriesName}</p>
+                  <p style="margin:4px 0 0;font-size:13px;color:#6b7280;">Trainer: {trainerName}</p>
+                </td>
+              </tr>
+            </table>
+
+            <p style="margin:28px 0 0;font-size:13px;color:#9ca3af;line-height:1.6;">
+              Heb je vragen? Neem dan contact op met je trainer of club.
+            </p>
+            """;
+
+        return (subject, Base($"Je inschrijving voor {seriesName} is bevestigd", body));
+    }
+
+    /// <summary>Notification email sent to the trainer when a student enrolls.</summary>
+    public static (string Subject, string Html) EnrollmentNotificationToTrainer(
+        string trainerName,
+        string studentName,
+        string studentEmail,
+        string seriesName,
+        List<(string FieldLabel, string Value)> responses)
+    {
+        string subject = $"Nieuwe inschrijving: {studentName} voor {seriesName}";
+
+        string responsesHtml = responses.Count > 0
+            ? $"""
+                <p style="margin:24px 0 8px;font-size:14px;font-weight:600;color:#111827;">Antwoorden formulier</p>
+                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
+                  {string.Join("\n", responses.Select(r => $"""
+                    <tr>
+                      <td style="padding:8px 0;font-size:13px;color:#6b7280;border-bottom:1px solid #f3f4f6;width:40%;">{r.FieldLabel}</td>
+                      <td style="padding:8px 0;font-size:13px;color:#111827;border-bottom:1px solid #f3f4f6;">{r.Value}</td>
+                    </tr>
+                  """))}
+                </table>
+              """
+            : string.Empty;
+
+        string body = $"""
+            <h1 style="margin:0 0 8px;font-size:26px;font-weight:700;color:#111827;letter-spacing:-0.5px;">
+              Nieuwe inschrijving
+            </h1>
+            <p style="margin:0 0 24px;font-size:15px;color:#6b7280;line-height:1.6;">
+              Hoi {trainerName}, er is een nieuwe inschrijving voor
+              <strong style="color:#111827;">{seriesName}</strong>.
+            </p>
+
+            <table width="100%" cellpadding="0" cellspacing="0" border="0"
+                   style="background-color:{OffWhite};border-radius:8px;border-left:4px solid {Green};">
+              <tr>
+                <td style="padding:16px 20px;">
+                  <p style="margin:0;font-size:14px;font-weight:600;color:#111827;">{studentName}</p>
+                  <p style="margin:4px 0 0;font-size:13px;color:#6b7280;">{studentEmail}</p>
+                </td>
+              </tr>
+            </table>
+
+            {responsesHtml}
+            """;
+
+        return (subject, Base($"Nieuwe inschrijving: {studentName} voor {seriesName}", body));
+    }
 }

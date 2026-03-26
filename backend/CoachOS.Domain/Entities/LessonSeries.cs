@@ -30,4 +30,5 @@ public class LessonSeries : BaseEntity
     public TennisClub TennisClub { get; set; } = null!;
     public ICollection<Lesson> Lessons { get; set; } = new List<Lesson>();
     public ICollection<Enrollment> Enrollments { get; set; } = new List<Enrollment>();
+    public EnrollmentForm? EnrollmentForm { get; set; }
 }

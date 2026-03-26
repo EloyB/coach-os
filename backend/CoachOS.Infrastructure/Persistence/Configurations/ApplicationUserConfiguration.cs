@@ -25,6 +25,7 @@ public class ApplicationUserConfiguration : IEntityTypeConfiguration<Application
         builder.HasOne<Domain.Entities.Organization>()
             .WithMany()
             .HasForeignKey(u => u.OrganizationId)
+            .IsRequired(false)
             .OnDelete(DeleteBehavior.Restrict);
 
         // Computed column wordt niet opgeslagen

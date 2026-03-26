@@ -25,14 +25,18 @@ public sealed class TokenService
         SymmetricSecurityKey securityKey = new(Encoding.UTF8.GetBytes(key));
         SigningCredentials credentials = new(securityKey, SecurityAlgorithms.HmacSha256);
 
-        Claim[] claims =
+        List<Claim> claimsList =
         [
             new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new(JwtRegisteredClaimNames.Email, user.Email!),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-            new("organizationId", user.OrganizationId.ToString()),
             new(ClaimTypes.Role, user.Role.ToString())
         ];
+
+        if (user.OrganizationId.HasValue)
+            claimsList.Add(new Claim("organizationId", user.OrganizationId.Value.ToString()));
+
+        Claim[] claims = claimsList.ToArray();
 
         DateTime expiresAt = DateTime.UtcNow.AddMinutes(expiryMinutes);
 

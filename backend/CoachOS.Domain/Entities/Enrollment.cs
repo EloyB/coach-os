@@ -4,13 +4,14 @@ using CoachOS.Domain.Enums;
 namespace CoachOS.Domain.Entities;
 
 /// <summary>
-/// Inschrijving van een student voor een les of lessenreeks.
+/// Anonieme inschrijving voor een lessenreeks.
 /// Ofwel LessonId ofwel LessonSeriesId is ingevuld.
 /// </summary>
 public class Enrollment : BaseEntity
 {
     public Guid OrganizationId { get; set; }
-    public Guid StudentId { get; set; }
+    public string StudentName { get; set; } = string.Empty;
+    public string StudentEmail { get; set; } = string.Empty;
 
     /// <summary>Inschrijving voor een enkele les.</summary>
     public Guid? LessonId { get; set; }
@@ -27,4 +28,5 @@ public class Enrollment : BaseEntity
     public Lesson? Lesson { get; set; }
     public LessonSeries? LessonSeries { get; set; }
     public ICollection<Payment> Payments { get; set; } = new List<Payment>();
+    public ICollection<FormResponse> FormResponses { get; set; } = new List<FormResponse>();
 }

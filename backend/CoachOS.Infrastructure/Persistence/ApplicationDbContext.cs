@@ -22,6 +22,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
     public DbSet<Enrollment> Enrollments { get; set; } = null!;
     public DbSet<Payment> Payments { get; set; } = null!;
     public DbSet<Subscription> Subscriptions { get; set; } = null!;
+    public DbSet<EnrollmentForm> EnrollmentForms { get; set; } = null!;
+    public DbSet<FormField> FormFields { get; set; } = null!;
+    public DbSet<FormResponse> FormResponses { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -35,6 +38,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
         builder.ApplyConfiguration(new EnrollmentConfiguration());
         builder.ApplyConfiguration(new PaymentConfiguration());
         builder.ApplyConfiguration(new SubscriptionConfiguration());
+        builder.ApplyConfiguration(new EnrollmentFormConfiguration());
+        builder.ApplyConfiguration(new FormFieldConfiguration());
+        builder.ApplyConfiguration(new FormResponseConfiguration());
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

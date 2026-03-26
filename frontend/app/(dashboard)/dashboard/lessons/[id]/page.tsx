@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -9,6 +9,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import {
   ChevronLeft,
+  ChevronDown,
+  ChevronUp,
   Pencil,
   X,
   Trash2,
@@ -21,6 +23,10 @@ import {
   BarChart2,
   AlertTriangle,
   Building2,
+  Users,
+  Copy,
+  CheckCircle2,
+  ClipboardList,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -49,10 +55,21 @@ import {
   LESSON_LEVELS,
   LessonDto,
 } from "@/lib/api/lessonSeries";
+import {
+  getLessonSeriesEnrollments,
+  getEnrollmentForm,
+  saveEnrollmentForm,
+} from "@/lib/api/enrollments";
+import type {
+  LessonSeriesEnrollmentDto,
+  FormFieldDto,
+  SaveFormFieldRequest,
+} from "@/lib/api/enrollments";
 import { getTrainers } from "@/lib/api/trainers";
 import { getTennisClubs } from "@/lib/api/tennisClubs";
 import { FieldError } from "@/components/forms/field-error";
 import { inputClass } from "@/lib/styles";
+import { Badge } from "@/components/ui/badge";
 
 // ─── Edit Series Form ─────────────────────────────────────────────────────────
 
@@ -500,6 +517,384 @@ function AddLessonForm({
   );
 }
 
+// ─── Form Builder Section ─────────────────────────────────────────────────────
+
+const FIELD_TYPES = [
+  { value: 1, label: "Vrije tekst" },
+  { value: 2, label: "Meerkeuze" },
+  { value: 3, label: "Ja/Nee" },
+];
+
+interface DraftField extends SaveFormFieldRequest {
+  _key: string;
+}
+
+function FormBuilderSection({ seriesId }: { seriesId: string }) {
+  const queryClient = useQueryClient();
+  const [fields, setFields] = useState<DraftField[]>([]);
+  const [loaded, setLoaded] = useState(false);
+
+  const { data: existingForm } = useQuery({
+    queryKey: ["enrollmentForm", seriesId],
+    queryFn: () => getEnrollmentForm(seriesId),
+  });
+
+  // Initialise draft fields from loaded form
+  useEffect(() => {
+    if (!loaded && existingForm !== undefined) {
+      if (existingForm) {
+        setFields(existingForm.fields.map((f) => ({
+          _key: f.id,
+          id: f.id,
+          label: f.label,
+          type: f.type,
+          isRequired: f.isRequired,
+          order: f.order,
+          options: f.options ?? undefined,
+        })));
+      }
+      setLoaded(true);
+    }
+  }, [existingForm, loaded]);
+
+  const saveMutation = useMutation({
+    mutationFn: () => {
+      const payload: SaveFormFieldRequest[] = fields.map((f, i) => ({
+        id: f.id,
+        label: f.label,
+        type: f.type,
+        isRequired: f.isRequired,
+        order: i,
+        options: f.type === 2 ? f.options : undefined,
+      }));
+      return saveEnrollmentForm(seriesId, payload);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["enrollmentForm", seriesId] });
+    },
+  });
+
+  function addField() {
+    setFields((prev) => [
+      ...prev,
+      {
+        _key: Math.random().toString(36).slice(2),
+        label: "",
+        type: 1,
+        isRequired: false,
+        order: prev.length,
+      },
+    ]);
+  }
+
+  function updateField(key: string, updates: Partial<DraftField>) {
+    setFields((prev) =>
+      prev.map((f) => (f._key === key ? { ...f, ...updates } : f))
+    );
+  }
+
+  function removeField(key: string) {
+    setFields((prev) => prev.filter((f) => f._key !== key));
+  }
+
+  function moveField(key: string, direction: -1 | 1) {
+    setFields((prev) => {
+      const idx = prev.findIndex((f) => f._key === key);
+      if (idx < 0) return prev;
+      const newIdx = idx + direction;
+      if (newIdx < 0 || newIdx >= prev.length) return prev;
+      const next = [...prev];
+      [next[idx], next[newIdx]] = [next[newIdx], next[idx]];
+      return next;
+    });
+  }
+
+  function addOption(key: string) {
+    setFields((prev) =>
+      prev.map((f) =>
+        f._key === key ? { ...f, options: [...(f.options ?? []), ""] } : f
+      )
+    );
+  }
+
+  function updateOption(key: string, optIdx: number, value: string) {
+    setFields((prev) =>
+      prev.map((f) => {
+        if (f._key !== key) return f;
+        const opts = [...(f.options ?? [])];
+        opts[optIdx] = value;
+        return { ...f, options: opts };
+      })
+    );
+  }
+
+  function removeOption(key: string, optIdx: number) {
+    setFields((prev) =>
+      prev.map((f) => {
+        if (f._key !== key) return f;
+        const opts = (f.options ?? []).filter((_, i) => i !== optIdx);
+        return { ...f, options: opts };
+      })
+    );
+  }
+
+  const inputCls = "w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-tennis-green bg-white";
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm shadow-gray-100 overflow-hidden">
+      <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2.5">
+        <div className="w-6 h-6 rounded-md bg-tennis-green/10 flex items-center justify-center">
+          <ClipboardList size={13} className="text-tennis-green" />
+        </div>
+        <h2 className="text-sm font-semibold text-gray-800">Inschrijfformulier</h2>
+      </div>
+
+      <div className="p-5 space-y-4">
+        {/* Predefined fields badge list */}
+        <div>
+          <p className="text-xs text-gray-400 mb-2">Vaste velden (altijd zichtbaar)</p>
+          <div className="flex flex-wrap gap-2">
+            {["Voornaam", "Achternaam", "E-mailadres"].map((f) => (
+              <span key={f} className="inline-flex items-center px-2.5 py-1 rounded-full text-xs bg-tennis-green/10 text-tennis-green font-medium">
+                {f}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Custom fields */}
+        {fields.length === 0 && (
+          <p className="text-xs text-gray-400 py-2">Nog geen aangepaste velden. Klik &apos;Veld toevoegen&apos; om te beginnen.</p>
+        )}
+
+        <div className="space-y-3">
+          {fields.map((field, idx) => (
+            <div key={field._key} className="border border-gray-100 rounded-xl p-4 space-y-3 bg-[#FAFAF8]">
+              {/* Row 1: label (full width) */}
+              <input
+                type="text"
+                placeholder="Veldlabel, bijv. 'Telefoonnummer'"
+                value={field.label}
+                onChange={(e) => updateField(field._key, { label: e.target.value })}
+                className={inputCls}
+              />
+
+              {/* Row 2: type + required + reorder + delete */}
+              <div className="flex items-center gap-2">
+                <select
+                  value={field.type}
+                  onChange={(e) => updateField(field._key, { type: parseInt(e.target.value), options: undefined })}
+                  className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:border-tennis-green bg-white cursor-pointer"
+                >
+                  {FIELD_TYPES.map((t) => (
+                    <option key={t.value} value={t.value}>{t.label}</option>
+                  ))}
+                </select>
+
+                <label className="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={field.isRequired}
+                    onChange={(e) => updateField(field._key, { isRequired: e.target.checked })}
+                    className="accent-tennis-green"
+                  />
+                  Verplicht
+                </label>
+
+                <div className="flex items-center gap-1 ml-auto">
+                  <button
+                    type="button"
+                    onClick={() => moveField(field._key, -1)}
+                    disabled={idx === 0}
+                    className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 disabled:opacity-30 transition-colors"
+                  >
+                    <ChevronUp size={13} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => moveField(field._key, 1)}
+                    disabled={idx === fields.length - 1}
+                    className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 disabled:opacity-30 transition-colors"
+                  >
+                    <ChevronDown size={13} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => removeField(field._key)}
+                    className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Options for MultipleChoice */}
+              {field.type === 2 && (
+                <div className="space-y-2 pt-1 border-t border-gray-100">
+                  {(field.options ?? []).map((opt, optIdx) => (
+                    <div key={optIdx} className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        placeholder={`Optie ${optIdx + 1}`}
+                        value={opt}
+                        onChange={(e) => updateOption(field._key, optIdx, e.target.value)}
+                        className={inputCls + " flex-1"}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeOption(field._key, optIdx)}
+                        className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                      >
+                        <X size={13} />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => addOption(field._key)}
+                    className="flex items-center gap-1 text-xs text-tennis-green hover:underline"
+                  >
+                    <Plus size={11} />Optie toevoegen
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-3 pt-1">
+          <button
+            type="button"
+            onClick={addField}
+            className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 text-xs font-medium text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <Plus size={12} />Veld toevoegen
+          </button>
+          <button
+            type="button"
+            onClick={() => saveMutation.mutate()}
+            disabled={saveMutation.isPending}
+            className="flex items-center gap-1.5 px-4 py-2 bg-tennis-green text-white text-xs font-semibold rounded-lg hover:bg-tennis-green/90 transition-colors disabled:opacity-60"
+          >
+            {saveMutation.isPending ? "Opslaan..." : saveMutation.isSuccess ? "Opgeslagen ✓" : "Formulier opslaan"}
+          </button>
+        </div>
+
+        {saveMutation.isError && (
+          <p className="text-xs text-red-500">Opslaan mislukt. Probeer opnieuw.</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Enrollments Section ──────────────────────────────────────────────────────
+
+function EnrollmentRow({ enrollment }: { enrollment: LessonSeriesEnrollmentDto }) {
+  const [expanded, setExpanded] = useState(false);
+  const hasResponses = enrollment.formResponses.length > 0;
+
+  return (
+    <div className="border-b border-gray-50 last:border-b-0">
+      <div
+        className={`flex items-center justify-between px-5 py-3 ${hasResponses ? "cursor-pointer hover:bg-gray-50/50" : ""}`}
+        onClick={() => hasResponses && setExpanded((v) => !v)}
+      >
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-gray-800 truncate">{enrollment.studentName}</p>
+          <p className="text-xs text-gray-400 truncate">{enrollment.studentEmail}</p>
+        </div>
+        <div className="flex items-center gap-3 ml-4">
+          <span className="text-xs text-gray-400">
+            {new Date(enrollment.enrolledAt).toLocaleDateString("nl-BE")}
+          </span>
+          {enrollment.status === "Confirmed" ? (
+            <Badge className="bg-green-100 text-green-700 border-0 text-xs">Bevestigd</Badge>
+          ) : (
+            <Badge className="bg-gray-100 text-gray-500 border-0 text-xs">Geannuleerd</Badge>
+          )}
+          {hasResponses && (
+            expanded ? <ChevronUp size={13} className="text-gray-400" /> : <ChevronDown size={13} className="text-gray-400" />
+          )}
+        </div>
+      </div>
+
+      {expanded && hasResponses && (
+        <div className="px-5 pb-3">
+          <dl className="space-y-1.5 bg-[#FAFAF8] rounded-lg p-3">
+            {enrollment.formResponses.map((r, i) => (
+              <div key={i} className="flex gap-3 text-xs">
+                <dt className="text-gray-500 shrink-0 min-w-[120px]">{r.fieldLabel}</dt>
+                <dd className="text-gray-800 font-medium">{r.value}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EnrollmentsSection({ seriesId }: { seriesId: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const { data: enrollments = [], isLoading } = useQuery({
+    queryKey: ["enrollments", seriesId],
+    queryFn: () => getLessonSeriesEnrollments(seriesId),
+  });
+
+  function handleCopyLink() {
+    const url = `${window.location.origin}/enroll/${seriesId}`;
+    navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  const active = enrollments.filter((e) => e.status === "Confirmed");
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm shadow-gray-100 overflow-hidden">
+      <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <h2 className="text-sm font-semibold text-gray-800">Inschrijvingen</h2>
+          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-tennis-green/10 text-tennis-green text-xs font-bold">
+            {active.length}
+          </span>
+        </div>
+        <button
+          onClick={handleCopyLink}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+        >
+          {copied ? (
+            <><CheckCircle2 size={12} className="text-green-500" />Link gekopieerd</>
+          ) : (
+            <><Copy size={12} />Inschrijflink</>
+          )}
+        </button>
+      </div>
+
+      {isLoading ? (
+        <div className="p-8 text-center">
+          <div className="w-4 h-4 border-2 border-tennis-green/30 border-t-tennis-green rounded-full animate-spin mx-auto" />
+        </div>
+      ) : enrollments.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-10 text-center">
+          <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center mb-2">
+            <Users size={15} className="text-gray-400" />
+          </div>
+          <p className="text-sm text-gray-400">Nog geen inschrijvingen</p>
+        </div>
+      ) : (
+        <div>
+          {enrollments.map((enrollment) => (
+            <EnrollmentRow key={enrollment.id} enrollment={enrollment} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Page Skeleton ────────────────────────────────────────────────────────────
 
 function PageSkeleton() {
@@ -710,7 +1105,13 @@ export default function LessonSeriesDetailPage({
             maxDate={series.endDate}
           />
 
-          {/* ── Section 4: Danger zone ── */}
+          {/* ── Section 4: Form builder ── */}
+          <FormBuilderSection seriesId={id} />
+
+          {/* ── Section 5: Enrollments ── */}
+          <EnrollmentsSection seriesId={id} />
+
+          {/* ── Section 6: Danger zone ── */}
           <div className="border border-red-200 rounded-xl bg-red-50/30 p-5">
             <div className="flex items-start gap-3">
               <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center shrink-0 mt-0.5">

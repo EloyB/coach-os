@@ -1,3 +1,7 @@
+using CoachOS.Application.Common.Models;
+using CoachOS.Application.Enrollments.Commands.SaveEnrollmentForm;
+using CoachOS.Application.Enrollments.DTOs;
+using CoachOS.Application.Enrollments.Queries.GetLessonSeriesEnrollments;
 using CoachOS.Application.LessonSeries.Commands.CreateLesson;
 using CoachOS.Application.LessonSeries.Commands.CreateLessonSeries;
 using CoachOS.Application.LessonSeries.Commands.DeleteLesson;
@@ -121,5 +125,33 @@ public class LessonSeriesController : ControllerBase
             OrganizationId = GetOrganizationId(),
         }, ct);
         return result.Succeeded ? NoContent() : BadRequest(result.Errors);
+    }
+
+    [HttpGet("{id:guid}/enrollments")]
+    [Authorize(Roles = "Admin,Trainer")]
+    public async Task<ActionResult<List<LessonSeriesEnrollmentDto>>> GetEnrollments(Guid id, CancellationToken ct)
+    {
+        Result<List<LessonSeriesEnrollmentDto>> result = await _mediator.Send(new GetLessonSeriesEnrollmentsQuery
+        {
+            LessonSeriesId = id,
+            OrganizationId = GetOrganizationId(),
+        }, ct);
+        return result.Succeeded ? Ok(result.Data) : BadRequest(result.Errors);
+    }
+
+    [HttpPut("{id:guid}/form")]
+    [Authorize(Roles = "Admin,Trainer")]
+    public async Task<ActionResult<Guid>> SaveForm(Guid id, [FromBody] SaveEnrollmentFormCommand command, CancellationToken ct)
+    {
+        try
+        {
+            Result<Guid> result = await _mediator.Send(
+                command with { LessonSeriesId = id, OrganizationId = GetOrganizationId() }, ct);
+            return result.Succeeded ? Ok(result.Data) : BadRequest(result.Errors);
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(ex.Errors.Select(e => e.ErrorMessage));
+        }
     }
 }

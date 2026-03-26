@@ -12,6 +12,9 @@ public interface IApplicationDbContext
     DbSet<Enrollment> Enrollments { get; }
     DbSet<Payment> Payments { get; }
     DbSet<Subscription> Subscriptions { get; }
+    DbSet<EnrollmentForm> EnrollmentForms { get; }
+    DbSet<FormField> FormFields { get; }
+    DbSet<FormResponse> FormResponses { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
