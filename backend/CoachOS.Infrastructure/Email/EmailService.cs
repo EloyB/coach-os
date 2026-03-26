@@ -57,7 +57,7 @@ public class EmailService(IOptions<EmailOptions> options, ILogger<EmailService> 
     {
         using SmtpClient smtp = new(_options.SmtpHost, _options.SmtpPort)
         {
-            EnableSsl = true,
+            EnableSsl = _options.EnableSsl,
             Credentials = new NetworkCredential(_options.Username, _options.Password),
             DeliveryMethod = SmtpDeliveryMethod.Network
         };

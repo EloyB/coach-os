@@ -30,6 +30,14 @@ services:
     volumes:
       - pgadmin_data:/var/lib/pgadmin
 
+  smtp4dev:
+    image: rnwood/smtp4dev:v3
+    container_name: coachos_smtp4dev
+    ports:
+      - "3000:80"    # Web UI
+      - "1025:25"     # SMTP
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   pgadmin_data:
