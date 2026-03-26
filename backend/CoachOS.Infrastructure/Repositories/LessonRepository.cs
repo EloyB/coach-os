@@ -25,6 +25,21 @@ public class LessonRepository(ApplicationDbContext context) : ILessonRepository
             .CountAsync(l => l.LessonSeriesId == seriesId, ct);
     }
 
+    public async Task<Dictionary<Guid, int>> GetLessonCountsBySeriesIdsAsync(
+        IEnumerable<Guid> seriesIds, CancellationToken ct = default)
+    {
+        List<Guid> ids = seriesIds as List<Guid> ?? seriesIds.ToList();
+        if (ids.Count == 0)
+            return [];
+
+        return await context.Lessons
+            .AsNoTracking()
+            .Where(l => l.LessonSeriesId.HasValue && ids.Contains(l.LessonSeriesId.Value))
+            .GroupBy(l => l.LessonSeriesId!.Value)
+            .Select(g => new { SeriesId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.SeriesId, x => x.Count, ct);
+    }
+
     public async Task AddAsync(Lesson lesson, CancellationToken ct = default)
     {
         await context.Lessons.AddAsync(lesson, ct);

@@ -131,8 +131,8 @@ public class LessonSeriesServiceTests
             .ReturnsAsync(new Dictionary<Guid, string> { { TrainerId, "Jan Jansen" } });
 
         _lessonRepo
-            .Setup(r => r.CountBySeriesIdAsync(series.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(3);
+            .Setup(r => r.GetLessonCountsBySeriesIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<Guid, int> { { series.Id, 3 } });
 
         Result<List<LessonSeriesDto>> result = await _service.GetAllAsync(OrgId);
 
@@ -157,8 +157,8 @@ public class LessonSeriesServiceTests
             .ReturnsAsync(new Dictionary<Guid, string> { { TrainerId, "Jan Jansen" } });
 
         _lessonRepo
-            .Setup(r => r.CountBySeriesIdAsync(series.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(1);
+            .Setup(r => r.GetLessonCountsBySeriesIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<Guid, int> { { series.Id, 1 } });
 
         Result<List<LessonSeriesDto>> result = await _service.GetAllAsync(OrgId, TrainerId);
 

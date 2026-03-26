@@ -25,11 +25,8 @@ public class LessonSeriesService(
         List<Guid> trainerIds = seriesList.Select(ls => ls.TrainerId).Distinct().ToList();
         Dictionary<Guid, string> trainerNames = await userLookup.GetUserNamesByIdsAsync(trainerIds, ct);
 
-        Dictionary<Guid, int> lessonCounts = new();
-        foreach (Guid seriesId in seriesList.Select(s => s.Id))
-        {
-            lessonCounts[seriesId] = await lessonRepo.CountBySeriesIdAsync(seriesId, ct);
-        }
+        Dictionary<Guid, int> lessonCounts =
+            await lessonRepo.GetLessonCountsBySeriesIdsAsync(seriesList.Select(s => s.Id), ct);
 
         List<LessonSeriesDto> dtos = seriesList.Select(ls =>
             mapper.ToLessonSeriesDto(ls,
