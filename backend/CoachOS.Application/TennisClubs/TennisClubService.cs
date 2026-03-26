@@ -35,6 +35,7 @@ public class TennisClubService(
         };
 
         await tennisClubRepo.AddAsync(club, ct);
+        await tennisClubRepo.SaveChangesAsync(ct);
 
         return Result<Guid>.Ok(club.Id);
     }
@@ -52,6 +53,7 @@ public class TennisClubService(
             return Result.Fail(new Error(ErrorCodes.Conflict, "Deze tennisclub kan niet worden verwijderd omdat er lesreeksen aan gekoppeld zijn."));
 
         await tennisClubRepo.DeleteAsync(club, ct);
+        await tennisClubRepo.SaveChangesAsync(ct);
 
         return Result.Ok();
     }

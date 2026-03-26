@@ -86,6 +86,7 @@ public class LessonSeriesService(
 
         Domain.Entities.LessonSeries series = mapper.ToLessonSeries(request, organizationId);
         await lessonSeriesRepo.AddAsync(series, ct);
+        await lessonSeriesRepo.SaveChangesAsync(ct);
 
         return Result<Guid>.Ok(series.Id);
     }
@@ -112,6 +113,7 @@ public class LessonSeriesService(
         series.TennisClubId = request.TennisClubId;
 
         await lessonSeriesRepo.UpdateAsync(series, ct);
+        await lessonSeriesRepo.SaveChangesAsync(ct);
 
         string trainerName = await userLookup.GetUserNameByIdAsync(series.TrainerId, ct) ?? string.Empty;
         int lessonCount = await lessonRepo.CountBySeriesIdAsync(series.Id, ct);
@@ -139,6 +141,7 @@ public class LessonSeriesService(
 
         await lessonRepo.DeleteRangeAsync(series.Lessons, ct);
         await lessonSeriesRepo.DeleteAsync(series, ct);
+        await lessonSeriesRepo.SaveChangesAsync(ct);
 
         return Result.Ok();
     }
@@ -154,6 +157,7 @@ public class LessonSeriesService(
 
         Domain.Entities.Lesson lesson = mapper.ToLesson(request, series);
         await lessonRepo.AddAsync(lesson, ct);
+        await lessonRepo.SaveChangesAsync(ct);
 
         return Result<Guid>.Ok(lesson.Id);
     }
@@ -171,6 +175,7 @@ public class LessonSeriesService(
             return Result.Fail(new Error(ErrorCodes.Conflict, "Verwijderen niet mogelijk: er zijn nog inschrijvingen op dit lesmoment."));
 
         await lessonRepo.DeleteAsync(lesson, ct);
+        await lessonRepo.SaveChangesAsync(ct);
 
         return Result.Ok();
     }

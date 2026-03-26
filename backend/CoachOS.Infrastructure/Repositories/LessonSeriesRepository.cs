@@ -40,18 +40,22 @@ public class LessonSeriesRepository(ApplicationDbContext context) : ILessonSerie
     public async Task AddAsync(LessonSeries series, CancellationToken ct = default)
     {
         await context.LessonSeries.AddAsync(series, ct);
-        await context.SaveChangesAsync(ct);
     }
 
-    public async Task UpdateAsync(LessonSeries series, CancellationToken ct = default)
+    public Task UpdateAsync(LessonSeries series, CancellationToken ct = default)
     {
         context.LessonSeries.Update(series);
-        await context.SaveChangesAsync(ct);
+        return Task.CompletedTask;
     }
 
-    public async Task DeleteAsync(LessonSeries series, CancellationToken ct = default)
+    public Task DeleteAsync(LessonSeries series, CancellationToken ct = default)
     {
         context.LessonSeries.Remove(series);
+        return Task.CompletedTask;
+    }
+
+    public async Task SaveChangesAsync(CancellationToken ct = default)
+    {
         await context.SaveChangesAsync(ct);
     }
 

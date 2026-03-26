@@ -9,4 +9,5 @@ public interface ITennisClubRepository
     Task AddAsync(TennisClub club, CancellationToken ct = default);
     Task DeleteAsync(TennisClub club, CancellationToken ct = default);
     Task<bool> ExistsAsync(Guid id, Guid organizationId, CancellationToken ct = default);
+    Task SaveChangesAsync(CancellationToken ct = default);
 }

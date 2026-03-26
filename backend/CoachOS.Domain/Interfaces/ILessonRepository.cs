@@ -10,4 +10,5 @@ public interface ILessonRepository
     Task AddAsync(Lesson lesson, CancellationToken ct = default);
     Task DeleteAsync(Lesson lesson, CancellationToken ct = default);
     Task DeleteRangeAsync(IEnumerable<Lesson> lessons, CancellationToken ct = default);
+    Task SaveChangesAsync(CancellationToken ct = default);
 }

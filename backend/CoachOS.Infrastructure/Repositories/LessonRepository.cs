@@ -43,18 +43,22 @@ public class LessonRepository(ApplicationDbContext context) : ILessonRepository
     public async Task AddAsync(Lesson lesson, CancellationToken ct = default)
     {
         await context.Lessons.AddAsync(lesson, ct);
-        await context.SaveChangesAsync(ct);
     }
 
-    public async Task DeleteAsync(Lesson lesson, CancellationToken ct = default)
+    public Task DeleteAsync(Lesson lesson, CancellationToken ct = default)
     {
         context.Lessons.Remove(lesson);
-        await context.SaveChangesAsync(ct);
+        return Task.CompletedTask;
     }
 
-    public async Task DeleteRangeAsync(IEnumerable<Lesson> lessons, CancellationToken ct = default)
+    public Task DeleteRangeAsync(IEnumerable<Lesson> lessons, CancellationToken ct = default)
     {
         context.Lessons.RemoveRange(lessons);
+        return Task.CompletedTask;
+    }
+
+    public async Task SaveChangesAsync(CancellationToken ct = default)
+    {
         await context.SaveChangesAsync(ct);
     }
 }
