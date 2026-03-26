@@ -16,7 +16,8 @@ public class ValidationFilter<T> : IEndpointFilter where T : class
         if (argument is null)
             return await next(context);
 
-        FluentValidation.Results.ValidationResult result = await validator.ValidateAsync(argument);
+        FluentValidation.Results.ValidationResult result =
+            await validator.ValidateAsync(argument, context.HttpContext.RequestAborted);
         if (result.IsValid)
             return await next(context);
 
