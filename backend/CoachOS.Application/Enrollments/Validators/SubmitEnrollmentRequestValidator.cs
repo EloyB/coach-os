@@ -1,14 +1,12 @@
+using CoachOS.Application.Enrollments.DTOs;
 using FluentValidation;
 
-namespace CoachOS.Application.Enrollments.Commands.SubmitEnrollment;
+namespace CoachOS.Application.Enrollments.Validators;
 
-public class SubmitEnrollmentCommandValidator : AbstractValidator<SubmitEnrollmentCommand>
+public class SubmitEnrollmentRequestValidator : AbstractValidator<SubmitEnrollmentRequest>
 {
-    public SubmitEnrollmentCommandValidator()
+    public SubmitEnrollmentRequestValidator()
     {
-        RuleFor(x => x.LessonSeriesId)
-            .NotEmpty().WithMessage("LessonSeriesId is verplicht");
-
         RuleFor(x => x.StudentName)
             .NotEmpty().WithMessage("Naam is verplicht")
             .MaximumLength(200).WithMessage("Naam mag maximaal 200 karakters zijn");

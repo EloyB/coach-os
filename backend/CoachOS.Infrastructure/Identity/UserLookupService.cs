@@ -52,7 +52,7 @@ public class UserLookupService(ApplicationDbContext context) : IUserLookupServic
     public async Task<Dictionary<Guid, (string FullName, string Email)>> GetUserNamesAndEmailsByIdsAsync(IEnumerable<Guid> ids, CancellationToken ct = default)
     {
         List<Guid> idList = ids.ToList();
-        List<ApplicationUser> users = await _context.Users
+        List<ApplicationUser> users = await context.Users
             .AsNoTracking()
             .Where(u => idList.Contains(u.Id))
             .ToListAsync(ct);
@@ -64,7 +64,7 @@ public class UserLookupService(ApplicationDbContext context) : IUserLookupServic
 
     public async Task<(string FullName, string Email)?> GetUserInfoByIdAsync(Guid id, CancellationToken ct = default)
     {
-        ApplicationUser? user = await _context.Users
+        ApplicationUser? user = await context.Users
             .AsNoTracking()
             .FirstOrDefaultAsync(u => u.Id == id, ct);
 

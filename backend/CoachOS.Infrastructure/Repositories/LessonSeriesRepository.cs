@@ -59,6 +59,15 @@ public class LessonSeriesRepository(ApplicationDbContext context) : ILessonSerie
         await context.SaveChangesAsync(ct);
     }
 
+    public async Task<LessonSeries?> GetByIdPublicAsync(Guid id, CancellationToken ct = default)
+    {
+        return await context.LessonSeries
+            .AsNoTracking()
+            .Include(ls => ls.Lessons)
+            .Include(ls => ls.TennisClub)
+            .FirstOrDefaultAsync(ls => ls.Id == id && ls.IsActive, ct);
+    }
+
     public async Task<bool> ExistsAsync(Guid id, Guid organizationId, CancellationToken ct = default)
     {
         return await context.LessonSeries

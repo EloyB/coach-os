@@ -1,4 +1,5 @@
 using System.Reflection;
+using CoachOS.Application.Enrollments;
 using CoachOS.Application.LessonSeries;
 using CoachOS.Application.Mappings;
 using CoachOS.Application.TennisClubs;
@@ -16,6 +17,7 @@ public static class DependencyInjection
 
         services.AddScoped<ILessonSeriesService, LessonSeriesService>();
         services.AddScoped<ITennisClubService, TennisClubService>();
+        services.AddScoped<IEnrollmentService, EnrollmentService>();
 
         return services;
     }

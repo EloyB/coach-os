@@ -1,18 +1,13 @@
+using CoachOS.Application.Enrollments.DTOs;
 using CoachOS.Domain.Enums;
 using FluentValidation;
 
-namespace CoachOS.Application.Enrollments.Commands.SaveEnrollmentForm;
+namespace CoachOS.Application.Enrollments.Validators;
 
-public class SaveEnrollmentFormCommandValidator : AbstractValidator<SaveEnrollmentFormCommand>
+public class SaveEnrollmentFormRequestValidator : AbstractValidator<SaveEnrollmentFormRequest>
 {
-    public SaveEnrollmentFormCommandValidator()
+    public SaveEnrollmentFormRequestValidator()
     {
-        RuleFor(x => x.LessonSeriesId)
-            .NotEmpty().WithMessage("LessonSeriesId is verplicht");
-
-        RuleFor(x => x.OrganizationId)
-            .NotEmpty().WithMessage("OrganizationId is verplicht");
-
         RuleForEach(x => x.Fields).ChildRules(field =>
         {
             field.RuleFor(f => f.Label)

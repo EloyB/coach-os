@@ -1,6 +1,6 @@
 using CoachOS.Application.LessonSeries.DTOs;
 
-namespace CoachOS.Application.LessonSeries.Queries.GetPublicLessonSeries;
+namespace CoachOS.Application.Enrollments.DTOs;
 
 public class PublicLessonSeriesDto
 {
