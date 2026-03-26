@@ -1,4 +1,3 @@
-using CoachOS.Application.Common.Interfaces;
 using CoachOS.Domain.Entities;
 using CoachOS.Infrastructure.Identity;
 using CoachOS.Infrastructure.Persistence.Configurations;
@@ -11,10 +10,9 @@ namespace CoachOS.Infrastructure.Persistence;
 /// <summary>
 /// Centrale DbContext voor CoachOS. Uitbreidt IdentityDbContext voor ASP.NET Identity.
 /// </summary>
-public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>, IApplicationDbContext
+public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+    : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>(options)
 {
-    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options) { }
-
     public DbSet<Organization> Organizations { get; set; } = null!;
     public DbSet<TennisClub> TennisClubs { get; set; } = null!;
     public DbSet<LessonSeries> LessonSeries { get; set; } = null!;

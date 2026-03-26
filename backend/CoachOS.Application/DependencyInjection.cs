@@ -1,28 +1,23 @@
 using System.Reflection;
-using CoachOS.Application.Common.Behaviours;
+using CoachOS.Application.Enrollments;
+using CoachOS.Application.LessonSeries;
+using CoachOS.Application.Mappings;
+using CoachOS.Application.TennisClubs;
 using FluentValidation;
-using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace CoachOS.Application;
 
-/// <summary>
-/// DI registratie voor de Application laag.
-/// </summary>
 public static class DependencyInjection
 {
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
-        services.AddMediatR(cfg =>
-            cfg.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly()));
-
-        services.AddAutoMapper(cfg => cfg.AddMaps(Assembly.GetExecutingAssembly()));
-
         services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
+        services.AddSingleton<ApplicationMapper>();
 
-        services.AddTransient(
-            typeof(IPipelineBehavior<,>),
-            typeof(ValidationBehaviour<,>));
+        services.AddScoped<ILessonSeriesService, LessonSeriesService>();
+        services.AddScoped<ITennisClubService, TennisClubService>();
+        services.AddScoped<IEnrollmentService, EnrollmentService>();
 
         return services;
     }

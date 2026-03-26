@@ -1,4 +1,5 @@
 using System.Text;
+using CoachOS.API.Endpoints;
 using CoachOS.Application;
 using CoachOS.Infrastructure;
 using CoachOS.Infrastructure.Configuration;
@@ -15,19 +16,21 @@ try
 {
     WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
-    // Scaleway Secret Manager — pulls secrets and merges them into configuration.
-    // ApiKey is read from user secrets (dev) or environment variable (prod).
-    string scwApiKey = builder.Configuration["Scaleway:ApiKey"]
-        ?? throw new InvalidOperationException("Scaleway:ApiKey is niet geconfigureerd.");
+    // Scaleway Secret Manager — only in production. Dev uses appsettings.Development.json + smtp4dev.
+    if (!builder.Environment.IsDevelopment())
+    {
+        string scwApiKey = builder.Configuration["Scaleway:ApiKey"]
+            ?? throw new InvalidOperationException("Scaleway:ApiKey is niet geconfigureerd.");
 
-    builder.Configuration.AddScalewaySecretManager(
-        apiKey: scwApiKey,
-        region: "nl-ams",
-        secrets: new Dictionary<string, string>
-        {
-            ["coachos-email-username"] = "Email:Username",
-            ["coachos-email-password"] = "Email:Password",
-        });
+        builder.Configuration.AddScalewaySecretManager(
+            apiKey: scwApiKey,
+            region: "nl-ams",
+            secrets: new Dictionary<string, string>
+            {
+                ["coachos-email-username"] = "Email:Username",
+                ["coachos-email-password"] = "Email:Password",
+            });
+    }
 
     builder.Host.UseSerilog((context, services, config) =>
         config.ReadFrom.Configuration(context.Configuration)
@@ -37,8 +40,7 @@ try
     builder.Services.AddApplication();
     builder.Services.AddInfrastructure(builder.Configuration);
 
-    // Controllers + OpenAPI
-    builder.Services.AddControllers();
+    // OpenAPI
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen(options =>
     {
@@ -107,7 +109,7 @@ try
     app.UseCors("Frontend");
     app.UseAuthentication();
     app.UseAuthorization();
-    app.MapControllers();
+    app.MapAllEndpoints();
 
     app.Run();
 }

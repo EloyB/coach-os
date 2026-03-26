@@ -6,13 +6,13 @@ This is the backend API for CoachOS, a tennis/padel lesson planning SaaS for the
 
 ## Architecture Overview
 
-**Clean Architecture with CQRS:**
+**Clean Architecture with Service Pattern:**
 
 ```
-CoachOS.API/            → Controllers, Startup, Middleware
-CoachOS.Infrastructure/ → Database, External Services, Implementations
-CoachOS.Application/    → Business Logic, CQRS Handlers, DTOs, Validators
-CoachOS.Domain/         → Entities, Interfaces, Value Objects (NO dependencies)
+CoachOS.API/            → Minimal API Endpoints, Filters, Middleware
+CoachOS.Infrastructure/ → Database, External Services, Repository Implementations
+CoachOS.Application/    → Business Logic, Service Interfaces + Implementations, DTOs, Validators, Mapperly Mapper
+CoachOS.Domain/         → Entities, Repository Interfaces, Service Interfaces, Value Objects, Enums (NO dependencies)
 CoachOS.Tests/          → Unit & Integration Tests
 ```
 
@@ -20,47 +20,53 @@ CoachOS.Tests/          → Unit & Integration Tests
 
 ## Core Principles
 
-### 1. CQRS Pattern (ALWAYS)
+### 1. Service Pattern (ALWAYS)
 
-- **Commands** (write operations) in `Application/{Feature}/Commands/`
-- **Queries** (read operations) in `Application/{Feature}/Queries/`
-- **ALL business logic** goes through MediatR handlers
-- Controllers are THIN - just route to MediatR
+- **Business logic** lives in service classes in `Application/{Feature}/`
+- Each feature has an **interface** in `Domain/Interfaces/` or `Application/{Feature}/I{Feature}Service.cs`
+- Each feature has a **service implementation** in `Application/{Feature}/{Feature}Service.cs`
+- **Request DTOs** in `Application/{Feature}/DTOs/`
+- **Validators** in `Application/{Feature}/Validators/`
+- Endpoints are THIN - just route to services
 
 ### 2. Multi-Tenancy (CRITICAL)
 
 - EVERY entity (except Organization, User) has `OrganizationId`
 - ALWAYS filter by OrganizationId in queries
 - ALWAYS validate OrganizationId matches authenticated user
-- Global query filter in DbContext for automatic scoping
+- Extract OrganizationId from JWT via `ctx.GetOrganizationId()`
 
 ### 3. Clean Architecture Layers
 
 **Domain (NO external dependencies):**
 
-- Pure entities, value objects, domain events
+- Pure entities, value objects, enums
+- Repository interfaces (`Domain/Interfaces/I{Entity}Repository.cs`)
+- Service interfaces for cross-cutting concerns (e.g. `IEmailService`, `IUserLookupService`)
+- `Result<T>`, `Error`, `ErrorCodes` models
 - Only System.\* namespaces allowed
 - NO EF Core, NO ASP.NET, NO third-party libs
 
 **Application (depends only on Domain):**
 
-- CQRS handlers (Commands/Queries)
-- DTOs for data transfer
-- FluentValidation validators
-- Interfaces for external services
+- Service interfaces (`I{Feature}Service.cs`) and implementations (`{Feature}Service.cs`)
+- DTOs for data transfer (`{Feature}/DTOs/`)
+- FluentValidation validators (`{Feature}/Validators/`)
+- Mapperly mapper (`Mappings/ApplicationMapper.cs`)
 
-**Infrastructure (depends on Application):**
+**Infrastructure (depends on Application + Domain):**
 
 - DbContext and EF Core configurations
-- External service implementations (email, payments)
-- Repository implementations (if needed beyond DbContext)
+- Repository implementations
+- External service implementations (email, etc.)
 
 **API (depends on Infrastructure):**
 
-- Controllers (thin, route to MediatR)
-- Middleware, filters, exception handlers
-- Swagger/OpenAPI configuration
-- Startup/Program.cs
+- Minimal API endpoints implementing `IEndpoint` (`Endpoints/{Feature}/`)
+- `ValidationFilter<T>` for automatic request validation
+- `HttpContextExtensions` for extracting claims (OrganizationId, UserId)
+- `ResultExtensions` for mapping `Result<T>` to HTTP responses
+- Program.cs / startup
 
 ## Key Patterns
 
@@ -87,7 +93,19 @@ public enum CourtType
 }
 ```
 
-**2. EF Core Configuration** (`CoachOS.Infrastructure/Persistence/Configurations/`)
+**2. Repository Interface** (`CoachOS.Domain/Interfaces/ICourtRepository.cs`)
+
+```csharp
+public interface ICourtRepository
+{
+    Task<IReadOnlyList<Court>> GetByOrganizationAsync(Guid organizationId, CancellationToken ct = default);
+    Task<Court?> GetByIdAsync(Guid id, Guid organizationId, CancellationToken ct = default);
+    Task AddAsync(Court court, CancellationToken ct = default);
+    Task SaveChangesAsync(CancellationToken ct = default);
+}
+```
+
+**3. EF Core Configuration** (`CoachOS.Infrastructure/Persistence/Configurations/`)
 
 ```csharp
 public class CourtConfiguration : IEntityTypeConfiguration<Court>
@@ -110,85 +128,59 @@ public class CourtConfiguration : IEntityTypeConfiguration<Court>
 }
 ```
 
-**3. Add to DbContext** (`CoachOS.Infrastructure/Persistence/ApplicationDbContext.cs`)
+**4. Add to DbContext** (`CoachOS.Infrastructure/Persistence/ApplicationDbContext.cs`)
 
 ```csharp
 public DbSet<Court> Courts { get; set; } = null!;
-
-protected override void OnModelCreating(ModelBuilder modelBuilder)
-{
-    modelBuilder.ApplyConfiguration(new CourtConfiguration());
-    // ...
-}
 ```
 
-**4. Create Migration**
+**5. Create Migration**
 
 ```bash
 dotnet ef migrations add AddCourtEntity --project CoachOS.Infrastructure --startup-project CoachOS.API
 dotnet ef database update --project CoachOS.Infrastructure --startup-project CoachOS.API
 ```
 
-**5. DTO** (`CoachOS.Application/Courts/Queries/GetCourts/CourtDto.cs`)
+**6. Repository Implementation** (`CoachOS.Infrastructure/Repositories/CourtRepository.cs`)
 
 ```csharp
-public class CourtDto
+public class CourtRepository(ApplicationDbContext db) : ICourtRepository
 {
-    public Guid Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public string Type { get; set; } = string.Empty; // "Tennis" or "Padel"
+    public async Task<IReadOnlyList<Court>> GetByOrganizationAsync(Guid organizationId, CancellationToken ct = default)
+        => await db.Courts
+            .AsNoTracking()
+            .Where(c => c.OrganizationId == organizationId)
+            .OrderBy(c => c.Name)
+            .ToListAsync(ct);
+
+    public async Task<Court?> GetByIdAsync(Guid id, Guid organizationId, CancellationToken ct = default)
+        => await db.Courts.FirstOrDefaultAsync(c => c.Id == id && c.OrganizationId == organizationId, ct);
+
+    public async Task AddAsync(Court court, CancellationToken ct = default)
+        => await db.Courts.AddAsync(court, ct);
+
+    public async Task SaveChangesAsync(CancellationToken ct = default)
+        => await db.SaveChangesAsync(ct);
 }
 ```
 
-**6. Command** (`CoachOS.Application/Courts/Commands/CreateCourt/`)
+**7. Request DTOs + Validator** (`CoachOS.Application/Courts/DTOs/` and `Validators/`)
 
 ```csharp
-// CreateCourtCommand.cs
-public record CreateCourtCommand : IRequest<Result<Guid>>
+// DTOs/CreateCourtRequest.cs
+public record CreateCourtRequest(string Name, int Type);
+
+// DTOs/CourtDto.cs
+public record CourtDto(Guid Id, string Name, string Type);
+
+// Validators/CreateCourtRequestValidator.cs
+public class CreateCourtRequestValidator : AbstractValidator<CreateCourtRequest>
 {
-    public Guid OrganizationId { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public CourtType Type { get; set; }
-}
-
-// CreateCourtCommandHandler.cs
-public class CreateCourtCommandHandler : IRequestHandler<CreateCourtCommand, Result<Guid>>
-{
-    private readonly ApplicationDbContext _context;
-
-    public CreateCourtCommandHandler(ApplicationDbContext context)
-    {
-        _context = context;
-    }
-
-    public async Task<Result<Guid>> Handle(CreateCourtCommand request, CancellationToken ct)
-    {
-        var court = new Court
-        {
-            Id = Guid.NewGuid(),
-            OrganizationId = request.OrganizationId,
-            Name = request.Name,
-            Type = request.Type
-        };
-
-        _context.Courts.Add(court);
-        await _context.SaveChangesAsync(ct);
-
-        return Result<Guid>.Success(court.Id);
-    }
-}
-
-// CreateCourtCommandValidator.cs
-public class CreateCourtCommandValidator : AbstractValidator<CreateCourtCommand>
-{
-    public CreateCourtCommandValidator()
+    public CreateCourtRequestValidator()
     {
         RuleFor(x => x.Name)
             .NotEmpty().WithMessage("Naam is verplicht")
             .MaximumLength(100).WithMessage("Naam mag maximaal 100 karakters zijn");
-
-        RuleFor(x => x.OrganizationId)
-            .NotEmpty().WithMessage("OrganizationId is verplicht");
 
         RuleFor(x => x.Type)
             .IsInEnum().WithMessage("Ongeldig type");
@@ -196,77 +188,78 @@ public class CreateCourtCommandValidator : AbstractValidator<CreateCourtCommand>
 }
 ```
 
-**7. Query** (`CoachOS.Application/Courts/Queries/GetCourts/`)
+**8. Mapperly Mapper** (add to `CoachOS.Application/Mappings/ApplicationMapper.cs`)
 
 ```csharp
-// GetCourtsQuery.cs
-public record GetCourtsQuery : IRequest<Result<List<CourtDto>>>
+public Court ToCourt(CreateCourtRequest request, Guid organizationId)
+    => new() { Id = Guid.NewGuid(), OrganizationId = organizationId, Name = request.Name, Type = (CourtType)request.Type };
+
+public CourtDto ToCourtDto(Court court)
+    => new(court.Id, court.Name, court.Type.ToString());
+```
+
+**9. Service Interface + Implementation** (`CoachOS.Application/Courts/`)
+
+```csharp
+// ICourtService.cs
+public interface ICourtService
 {
-    public Guid OrganizationId { get; set; }
+    Task<Result<List<CourtDto>>> GetAllAsync(Guid organizationId, CancellationToken ct = default);
+    Task<Result<Guid>> CreateAsync(Guid organizationId, CreateCourtRequest request, CancellationToken ct = default);
 }
 
-// GetCourtsQueryHandler.cs
-public class GetCourtsQueryHandler : IRequestHandler<GetCourtsQuery, Result<List<CourtDto>>>
+// CourtService.cs
+public class CourtService(ICourtRepository repo, ApplicationMapper mapper) : ICourtService
 {
-    private readonly ApplicationDbContext _context;
-    private readonly IMapper _mapper;
-
-    public GetCourtsQueryHandler(ApplicationDbContext context, IMapper mapper)
+    public async Task<Result<List<CourtDto>>> GetAllAsync(Guid organizationId, CancellationToken ct = default)
     {
-        _context = context;
-        _mapper = mapper;
+        IReadOnlyList<Court> courts = await repo.GetByOrganizationAsync(organizationId, ct);
+        return Result<List<CourtDto>>.Ok(courts.Select(mapper.ToCourtDto).ToList());
     }
 
-    public async Task<Result<List<CourtDto>>> Handle(GetCourtsQuery request, CancellationToken ct)
+    public async Task<Result<Guid>> CreateAsync(Guid organizationId, CreateCourtRequest request, CancellationToken ct = default)
     {
-        var courts = await _context.Courts
-            .AsNoTracking() // Read-only
-            .Where(c => c.OrganizationId == request.OrganizationId)
-            .OrderBy(c => c.Name)
-            .ToListAsync(ct);
-
-        var dtos = _mapper.Map<List<CourtDto>>(courts);
-        return Result<List<CourtDto>>.Success(dtos);
+        Court court = mapper.ToCourt(request, organizationId);
+        await repo.AddAsync(court, ct);
+        await repo.SaveChangesAsync(ct);
+        return Result<Guid>.Ok(court.Id);
     }
 }
 ```
 
-**8. Controller** (`CoachOS.API/Controllers/CourtsController.cs`)
+**10. IEndpoint** (`CoachOS.API/Endpoints/Courts/`)
 
 ```csharp
-[Authorize]
-[ApiController]
-[Route("api/[controller]")]
-public class CourtsController : ControllerBase
+// GetCourtsEndpoint.cs
+public class GetCourtsEndpoint : IEndpoint
 {
-    private readonly IMediator _mediator;
-
-    public CourtsController(IMediator mediator)
+    public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        _mediator = mediator;
-    }
-
-    [HttpGet]
-    public async Task<ActionResult<List<CourtDto>>> GetCourts([FromQuery] Guid organizationId)
-    {
-        var result = await _mediator.Send(new GetCourtsQuery
+        app.MapGet("/courts", async (ICourtService service, HttpContext ctx, CancellationToken ct) =>
         {
-            OrganizationId = organizationId
-        });
-
-        return result.Succeeded
-            ? Ok(result.Data)
-            : BadRequest(result.Errors);
+            var result = await service.GetAllAsync(ctx.GetOrganizationId(), ct);
+            return result.IsSuccess ? Results.Ok(result.Value) : result.ToErrorResult();
+        })
+        .RequireAuthorization()
+        .WithTags("Courts");
     }
+}
 
-    [HttpPost]
-    public async Task<ActionResult<Guid>> CreateCourt([FromBody] CreateCourtCommand command)
+// CreateCourtEndpoint.cs
+public class CreateCourtEndpoint : IEndpoint
+{
+    public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        var result = await _mediator.Send(command);
-
-        return result.Succeeded
-            ? Ok(result.Data)
-            : BadRequest(result.Errors);
+        app.MapPost("/courts", async (CreateCourtRequest request, ICourtService service, HttpContext ctx, CancellationToken ct) =>
+        {
+            var result = await service.CreateAsync(ctx.GetOrganizationId(), request, ct);
+            return result.IsSuccess
+                ? Results.Created($"/api/courts/{result.Value}", result.Value)
+                : result.ToErrorResult();
+        })
+        .RequireAuthorization()
+        .AddEndpointFilter<ValidationFilter<CreateCourtRequest>>()
+        .WithTags("Courts");
     }
 }
 ```
@@ -276,75 +269,71 @@ public class CourtsController : ControllerBase
 Before committing ANY code, verify:
 
 - [ ] Entity has OrganizationId (except Organization, User)
-- [ ] Query filters by OrganizationId
-- [ ] Command has FluentValidation validator
-- [ ] Handler returns Result<T> (not throws exceptions)
+- [ ] Service filters by OrganizationId
+- [ ] Request DTO has FluentValidation validator
+- [ ] Service returns Result<T> (no thrown exceptions for business errors)
 - [ ] EF configuration exists (not fluent API in DbContext)
 - [ ] Migration created and applied
-- [ ] Controller uses [Authorize] attribute
+- [ ] Endpoint uses `.RequireAuthorization()`
+- [ ] Endpoint uses `ValidationFilter<T>` for requests with a body
 - [ ] All async methods use CancellationToken
-- [ ] Read-only queries use .AsNoTracking()
-- [ ] No business logic in Controllers (only in handlers)
+- [ ] Read-only queries use `.AsNoTracking()`
+- [ ] No business logic in Endpoints (only in services)
 
 ## Common Mistakes to Avoid
 
 ❌ **DON'T:**
 
-- Put business logic in Controllers
+- Put business logic in Endpoints
 - Forget OrganizationId in entities/queries
 - Use exceptions for business logic (use Result<T>)
 - Use fluent configuration in DbContext (use IEntityTypeConfiguration)
-- Forget validators for Commands
+- Forget validators for request DTOs
 - Use CASCADE delete (use RESTRICT)
-- Access DbContext directly from Controllers (use MediatR)
+- Access DbContext directly from Endpoints (use service via interface)
 - Use var everywhere (be explicit with types)
 
 ✅ **DO:**
 
-- All business logic in CQRS handlers
+- All business logic in service classes
 - Filter by OrganizationId ALWAYS
-- Return Result<T> from handlers
+- Return Result<T> from service methods
 - Use IEntityTypeConfiguration classes
-- Create validators for ALL Commands
+- Create validators for ALL request DTOs
 - Use async/await everywhere
 - Use CancellationToken in async methods
-- Keep Controllers thin (route to MediatR only)
+- Keep Endpoints thin (route to service only)
 
 ## Testing Pattern
 
 ```csharp
-public class CreateCourtCommandTests
+public class CourtServiceTests
 {
-    private readonly ApplicationDbContext _context;
+    private readonly ICourtRepository _repo;
+    private readonly ApplicationMapper _mapper;
+    private readonly CourtService _service;
 
-    public CreateCourtCommandTests()
+    public CourtServiceTests()
     {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-            .Options;
-        _context = new ApplicationDbContext(options);
+        _repo = Substitute.For<ICourtRepository>();
+        _mapper = new ApplicationMapper();
+        _service = new CourtService(_repo, _mapper);
     }
 
     [Fact]
-    public async Task Handle_ValidCommand_CreatesCourt()
+    public async Task CreateAsync_ValidRequest_ReturnsNewId()
     {
         // Arrange
-        var handler = new CreateCourtCommandHandler(_context);
-        var command = new CreateCourtCommand
-        {
-            OrganizationId = Guid.NewGuid(),
-            Name = "Baan 1",
-            Type = CourtType.Tennis
-        };
+        var orgId = Guid.NewGuid();
+        var request = new CreateCourtRequest("Baan 1", (int)CourtType.Tennis);
 
         // Act
-        var result = await handler.Handle(command, CancellationToken.None);
+        Result<Guid> result = await _service.CreateAsync(orgId, request, CancellationToken.None);
 
         // Assert
-        result.Succeeded.Should().BeTrue();
-        var court = await _context.Courts.FindAsync(result.Data);
-        court.Should().NotBeNull();
-        court!.Name.Should().Be("Baan 1");
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().NotBeEmpty();
+        await _repo.Received(1).AddAsync(Arg.Is<Court>(c => c.Name == "Baan 1" && c.OrganizationId == orgId), Arg.Any<CancellationToken>());
     }
 }
 ```
@@ -376,25 +365,53 @@ Resource files in `/Resources/SharedResources.nl.resx`
 
 ```
 CoachOS.Application/
-├── Common/
-│   ├── Models/
-│   │   └── Result.cs
-│   ├── Behaviours/
-│   │   └── ValidationBehaviour.cs
-│   └── Mappings/
-│       └── MappingProfile.cs
-├── Courts/
-│   ├── Commands/
-│   │   └── CreateCourt/
-│   │       ├── CreateCourtCommand.cs
-│   │       ├── CreateCourtCommandHandler.cs
-│   │       └── CreateCourtCommandValidator.cs
-│   └── Queries/
-│       └── GetCourts/
-│           ├── GetCourtsQuery.cs
-│           ├── GetCourtsQueryHandler.cs
-│           └── CourtDto.cs
+├── Auth/
+│   ├── DTOs/
+│   │   ├── LoginRequest.cs
+│   │   ├── RegisterRequest.cs
+│   │   └── AuthResponseDto.cs
+│   ├── Validators/
+│   │   ├── LoginRequestValidator.cs
+│   │   └── RegisterRequestValidator.cs
+│   └── IAuthService.cs
+├── Courts/                         ← example feature
+│   ├── DTOs/
+│   │   ├── CreateCourtRequest.cs
+│   │   └── CourtDto.cs
+│   ├── Validators/
+│   │   └── CreateCourtRequestValidator.cs
+│   ├── ICourtService.cs
+│   └── CourtService.cs
+├── Mappings/
+│   └── ApplicationMapper.cs        ← Mapperly [Mapper] partial class
 └── DependencyInjection.cs
+
+CoachOS.Domain/
+├── Entities/
+├── Enums/
+├── Interfaces/
+│   ├── ICourtRepository.cs         ← Repository interfaces live here
+│   └── IEmailService.cs            ← External service interfaces live here
+├── Models/
+│   ├── Result.cs
+│   ├── Error.cs
+│   └── ErrorCodes.cs
+└── Common/
+    └── BaseEntity.cs
+
+CoachOS.API/
+├── Endpoints/
+│   ├── IEndpoint.cs
+│   ├── EndpointMappingExtensions.cs
+│   └── Courts/
+│       ├── GetCourtsEndpoint.cs
+│       └── CreateCourtEndpoint.cs
+├── Filters/
+│   └── ValidationFilter.cs
+├── Extensions/
+│   ├── HttpContextExtensions.cs    ← GetOrganizationId(), GetUserId()
+│   └── ResultExtensions.cs         ← Result<T>.ToErrorResult()
+└── Program.cs
 ```
 
 ## References

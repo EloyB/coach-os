@@ -8,33 +8,24 @@ namespace CoachOS.Infrastructure.Configuration;
 /// Pulls secrets from Scaleway Secret Manager at startup and injects them
 /// into the .NET configuration system as regular key/value pairs.
 /// </summary>
-public class ScalewaySecretManagerConfigurationProvider : ConfigurationProvider
+public class ScalewaySecretManagerConfigurationProvider(
+    string apiKey,
+    string region,
+    Dictionary<string, string> secretMappings)
+    : ConfigurationProvider
 {
-    private readonly string _apiKey;
-    private readonly string _region;
-
     /// <summary>Maps Scaleway secret name → .NET config key (e.g. "coachos-email-username" → "Email:Username").</summary>
-    private readonly Dictionary<string, string> _secretMappings;
-
-    public ScalewaySecretManagerConfigurationProvider(
-        string apiKey,
-        string region,
-        Dictionary<string, string> secretMappings)
-    {
-        _apiKey = apiKey;
-        _region = region;
-        _secretMappings = secretMappings;
-    }
+    private readonly Dictionary<string, string> _secretMappings = secretMappings;
 
     public override void Load() => LoadAsync().GetAwaiter().GetResult();
 
     private async Task LoadAsync()
     {
         using HttpClient http = new();
-        http.DefaultRequestHeaders.Add("X-Auth-Token", _apiKey);
+        http.DefaultRequestHeaders.Add("X-Auth-Token", apiKey);
 
         // Step 1: list all secrets to build name → id map
-        string listUrl = $"https://api.scaleway.com/secret-manager/v1beta1/regions/{_region}/secrets?page_size=100";
+        string listUrl = $"https://api.scaleway.com/secret-manager/v1beta1/regions/{region}/secrets?page_size=100";
         string listJson = await http.GetStringAsync(listUrl);
         using JsonDocument listDoc = JsonDocument.Parse(listJson);
 
@@ -55,9 +46,9 @@ public class ScalewaySecretManagerConfigurationProvider : ConfigurationProvider
 
             if (!nameToId.TryGetValue(secretName, out string? secretId))
                 throw new InvalidOperationException(
-                    $"Scaleway secret '{secretName}' niet gevonden in regio '{_region}'.");
+                    $"Scaleway secret '{secretName}' niet gevonden in regio '{region}'.");
 
-            string url = $"https://api.scaleway.com/secret-manager/v1beta1/regions/{_region}" +
+            string url = $"https://api.scaleway.com/secret-manager/v1beta1/regions/{region}" +
                          $"/secrets/{secretId}/versions/latest/access";
 
             try

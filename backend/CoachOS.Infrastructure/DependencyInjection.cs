@@ -1,14 +1,14 @@
 using CoachOS.Application.Auth;
-using CoachOS.Application.Common.Interfaces;
 using CoachOS.Application.Trainers;
+using CoachOS.Domain.Interfaces;
 using CoachOS.Infrastructure.Email;
 using CoachOS.Infrastructure.Identity;
 using CoachOS.Infrastructure.Persistence;
+using CoachOS.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 
 namespace CoachOS.Infrastructure;
 
@@ -43,9 +43,13 @@ public static class DependencyInjection
         services.AddScoped<TokenService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<ITrainerService, TrainerService>();
-        services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<ApplicationDbContext>());
         services.AddScoped<IUserLookupService, UserLookupService>();
         services.AddScoped<IEmailService, EmailService>();
+        services.AddScoped<ILessonSeriesRepository, LessonSeriesRepository>();
+        services.AddScoped<ILessonRepository, LessonRepository>();
+        services.AddScoped<ITennisClubRepository, TennisClubRepository>();
+        services.AddScoped<IEnrollmentRepository, EnrollmentRepository>();
+        services.AddScoped<IEnrollmentFormRepository, EnrollmentFormRepository>();
 
         return services;
     }

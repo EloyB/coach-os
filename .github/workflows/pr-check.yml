@@ -1,0 +1,67 @@
+name: PR Check
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'backend/**'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: coachos_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore backend/CoachOS.slnx
+
+      - name: Build
+        run: dotnet build backend/CoachOS.slnx --no-restore --configuration Release
+
+      - name: Test with coverage
+        run: >
+          dotnet test backend/CoachOS.slnx
+          --no-build
+          --configuration Release
+          --verbosity normal
+          --collect:"XPlat Code Coverage"
+          --results-directory ./coverage
+        env:
+          ConnectionStrings__DefaultConnection: "Host=localhost;Database=coachos_test;Username=postgres;Password=postgres"
+
+      - name: Generate coverage report
+        uses: danielpalme/ReportGenerator-GitHub-Action@5
+        with:
+          reports: coverage/**/coverage.cobertura.xml
+          targetdir: coverage/report
+          reporttypes: MarkdownSummaryGithub;Cobertura
+
+      - name: Post coverage comment on PR
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          path: coverage/report/SummaryGithub.md
