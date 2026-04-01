@@ -1,11 +1,37 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { DashboardSidebar } from "@/components/layouts/dashboard-sidebar";
 import { MobileBottomNav } from "@/components/layouts/dashboard-bottom-nav";
+import { getAuthUser } from "@/lib/auth";
+
+const ROLE_LABELS: Record<string, string> = {
+  Admin: "Beheerder",
+  Trainer: "Trainer",
+  Student: "Leerling",
+};
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const [name, setName] = useState("Coach");
+  const [roleLabel, setRoleLabel] = useState("Beheerder");
+  const [initials, setInitials] = useState("C");
+
+  useEffect(() => {
+    const user = getAuthUser();
+    if (user) {
+      const fullName = `${user.firstName} ${user.lastName}`.trim();
+      setName(fullName || "Coach");
+      setRoleLabel(ROLE_LABELS[user.role] ?? user.role);
+      setInitials(
+        `${user.firstName?.[0] ?? ""}${user.lastName?.[0] ?? ""}`.toUpperCase() || "C"
+      );
+    }
+  }, []);
+
   return (
     <div className="flex h-screen bg-[#F5F4F1] overflow-hidden">
       <DashboardSidebar />
@@ -18,11 +44,11 @@ export default function DashboardLayout({
           </p>
           <div className="flex items-center gap-3">
             <div className="text-right">
-              <p className="text-sm font-semibold text-gray-800 leading-none">Coach</p>
-              <p className="text-xs text-gray-400 mt-0.5">Beheerder</p>
+              <p className="text-sm font-semibold text-gray-800 leading-none">{name}</p>
+              <p className="text-xs text-gray-400 mt-0.5">{roleLabel}</p>
             </div>
             <div className="w-9 h-9 rounded-full bg-tennis-green flex items-center justify-center shrink-0">
-              <span className="text-tennis-lime text-sm font-bold">C</span>
+              <span className="text-tennis-lime text-sm font-bold">{initials}</span>
             </div>
           </div>
         </header>
