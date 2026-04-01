@@ -143,7 +143,7 @@ export async function loginViaStorage(page: Page): Promise<void> {
 
 // ─── API mock helpers ───────────────────────────────────────────────────────
 
-export function mockApi(
+export async function mockApi(
   page: Page,
   method: string,
   path: string,
@@ -151,7 +151,7 @@ export function mockApi(
   status = 200
 ): Promise<void> {
   const url = `${API_URL}${path}`;
-  return page.route(`**${path}*`, (route: Route) => {
+  await page.route(`**${path}*`, (route: Route) => {
     if (
       route.request().method() === method.toUpperCase() &&
       route.request().url().includes(url)
@@ -166,7 +166,27 @@ export function mockApi(
   });
 }
 
+export const TEST_DASHBOARD_SUMMARY = {
+  activeSeriesCount: 1,
+  lessonsThisWeekCount: 2,
+  totalEnrollmentCount: 5,
+  activeTrainerCount: 2,
+  tennisClubCount: 1,
+  upcomingLessons: [
+    {
+      id: "77777777-7777-7777-7777-777777777777",
+      seriesName: "Voorjaarslessen Beginners",
+      date: "2026-04-07",
+      startTime: "10:00",
+      endTime: "11:00",
+      courtName: "Baan 1",
+      trainerName: "Jan Janssen",
+    },
+  ],
+};
+
 export async function mockAllDashboardApis(page: Page): Promise<void> {
+  await mockApi(page, "GET", "/dashboard", TEST_DASHBOARD_SUMMARY);
   await mockApi(page, "GET", "/lessonseries", TEST_SERIES);
   await mockApi(page, "GET", "/trainers", TEST_TRAINERS);
   await mockApi(page, "GET", "/tennisclubs", TEST_CLUBS);

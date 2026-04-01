@@ -27,7 +27,7 @@ test.describe("Navigation", () => {
   test("sidebar navigates to settings page", async ({ page }) => {
     await page.goto("/dashboard");
 
-    await page.getByRole("link", { name: /Instellingen/ }).click();
+    await page.getByRole("link", { name: "Instellingen", exact: true }).click();
 
     await expect(page).toHaveURL(/\/dashboard\/settings/);
   });
