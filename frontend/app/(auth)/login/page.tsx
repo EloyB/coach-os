@@ -85,8 +85,6 @@ function LoginForm() {
       });
       if (redirectTo) {
         router.push(redirectTo);
-      } else if (response.role === "Student") {
-        router.push("/my-lessons");
       } else {
         router.push("/dashboard");
       }

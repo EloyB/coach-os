@@ -40,6 +40,15 @@ public class EnrollmentRepository(ApplicationDbContext context) : IEnrollmentRep
                 (e.Status == EnrollmentStatus.Confirmed || e.Status == EnrollmentStatus.Pending), ct);
     }
 
+    public async Task<int> CountActiveByOrganizationAsync(Guid organizationId, CancellationToken ct = default)
+    {
+        return await context.Enrollments
+            .AsNoTracking()
+            .CountAsync(e =>
+                e.OrganizationId == organizationId &&
+                (e.Status == EnrollmentStatus.Confirmed || e.Status == EnrollmentStatus.Pending), ct);
+    }
+
     public async Task AddAsync(Enrollment enrollment, CancellationToken ct = default)
     {
         await context.Enrollments.AddAsync(enrollment, ct);

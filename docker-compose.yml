@@ -16,6 +16,53 @@ services:
       timeout: 5s
       retries: 5
 
+  smtp4dev:
+    image: rnwood/smtp4dev:v3
+    container_name: coachos_smtp4dev
+    ports:
+      - "3001:80"    # Web UI
+      - "1025:25"    # SMTP
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: coachos_backend
+    ports:
+      - "5142:5142"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=coachos_dev;Username=coachos;Password=coachos"
+      Jwt__Key: "dev-secret-key-change-in-production-min-32-chars"
+      Jwt__Issuer: "CoachOS-Dev"
+      Jwt__Audience: "CoachOS-Dev"
+      Jwt__ExpiryMinutes: "480"
+      Email__SmtpHost: "smtp4dev"
+      Email__SmtpPort: "25"
+      Email__EnableSsl: "false"
+      Email__FromAddress: "noreply@coach-hq.com"
+      Email__FromName: "CoachOS"
+      Email__Username: ""
+      Email__Password: ""
+    depends_on:
+      postgres:
+        condition: service_healthy
+      smtp4dev:
+        condition: service_started
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: coachos_frontend
+    ports:
+      - "5317:5317"
+    environment:
+      NEXT_PUBLIC_API_URL: "http://localhost:5142/api"
+    depends_on:
+      - backend
+
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: coachos_pgadmin
@@ -29,14 +76,8 @@ services:
         condition: service_healthy
     volumes:
       - pgadmin_data:/var/lib/pgadmin
-
-  smtp4dev:
-    image: rnwood/smtp4dev:v3
-    container_name: coachos_smtp4dev
-    ports:
-      - "3000:80"    # Web UI
-      - "1025:25"     # SMTP
-    restart: unless-stopped
+    profiles:
+      - tools
 
 volumes:
   postgres_data:

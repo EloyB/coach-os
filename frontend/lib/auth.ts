@@ -1,5 +1,6 @@
 const TOKEN_KEY = 'token';
 const USER_KEY = 'auth_user';
+const AUTH_COOKIE = 'has_token';
 
 export interface AuthUser {
   userId: string;
@@ -18,6 +19,7 @@ export function getToken(): string | null {
 export function setToken(token: string): void {
   if (typeof window === 'undefined') return;
   localStorage.setItem(TOKEN_KEY, token);
+  document.cookie = `${AUTH_COOKIE}=1; path=/; SameSite=Lax`;
 }
 
 export function removeToken(): void {
@@ -49,6 +51,7 @@ export function removeAuthUser(): void {
 export function clearAuth(): void {
   removeToken();
   removeAuthUser();
+  document.cookie = `${AUTH_COOKIE}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
 }
 
 export function isAuthenticated(): boolean {

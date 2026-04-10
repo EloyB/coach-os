@@ -31,7 +31,7 @@ public class UserLookupService(ApplicationDbContext context) : IUserLookupServic
     {
         List<ApplicationUser> users = await context.Users
             .AsNoTracking()
-            .Where(u => u.OrganizationId == organizationId && u.IsActive && u.Role == UserRole.Trainer)
+            .Where(u => u.OrganizationId == organizationId && u.IsActive && (u.Role == UserRole.Trainer || u.Role == UserRole.Admin))
             .OrderBy(u => u.FirstName)
             .ThenBy(u => u.LastName)
             .ToListAsync(ct);
@@ -45,7 +45,7 @@ public class UserLookupService(ApplicationDbContext context) : IUserLookupServic
             .AsNoTracking()
             .AnyAsync(u => u.Id == trainerId
                 && u.OrganizationId == organizationId
-                && u.Role == UserRole.Trainer
+                && (u.Role == UserRole.Trainer || u.Role == UserRole.Admin)
                 && u.IsActive, ct);
     }
 

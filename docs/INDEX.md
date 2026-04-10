@@ -3,6 +3,7 @@
 ## Core Documents
 
 - [README.md](../README.md) - Project overview
+- [demo-readiness.md](demo-readiness.md) - Demo readiness report & E2E test coverage
 - [project-analysis.md](project-analysis.md) - Full technical & business analysis
 - [market-analysis.md](market-analysis.md) - Market size & opportunity
 - [competition-analysis.md](competition-analysis.md) - Competitive landscape

@@ -40,6 +40,29 @@ public class LessonRepository(ApplicationDbContext context) : ILessonRepository
             .ToDictionaryAsync(x => x.SeriesId, x => x.Count, ct);
     }
 
+    public async Task<List<Lesson>> GetUpcomingByOrganizationAsync(
+        Guid organizationId, DateOnly fromDate, int limit, CancellationToken ct = default)
+    {
+        return await context.Lessons
+            .AsNoTracking()
+            .Include(l => l.LessonSeries)
+            .Where(l => l.OrganizationId == organizationId && l.Date >= fromDate && !l.IsCancelled)
+            .OrderBy(l => l.Date)
+            .ThenBy(l => l.StartTime)
+            .Take(limit)
+            .ToListAsync(ct);
+    }
+
+    public async Task<int> CountByOrganizationAndDateRangeAsync(
+        Guid organizationId, DateOnly from, DateOnly to, CancellationToken ct = default)
+    {
+        return await context.Lessons
+            .AsNoTracking()
+            .CountAsync(l => l.OrganizationId == organizationId
+                && l.Date >= from && l.Date <= to
+                && !l.IsCancelled, ct);
+    }
+
     public async Task AddAsync(Lesson lesson, CancellationToken ct = default)
     {
         await context.Lessons.AddAsync(lesson, ct);
