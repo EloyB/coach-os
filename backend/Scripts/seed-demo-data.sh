@@ -137,13 +137,16 @@ today=$(date +%Y-%m-%d)
 endDate=$(date -v+3m +%Y-%m-%d 2>/dev/null || date -d "+3 months" +%Y-%m-%d)
 startDate2=$(date -v+7d +%Y-%m-%d 2>/dev/null || date -d "+7 days" +%Y-%m-%d)
 endDate2=$(date -v+2m +%Y-%m-%d 2>/dev/null || date -d "+2 months" +%Y-%m-%d)
+deadline=$(date -v+3m -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -d "+3 months" +%Y-%m-%dT%H:%M:%SZ)
 
 seriesIds=()
 
 id=$(invoke_api POST "/lessonseries" "{
     \"trainerId\": \"$trainerId\", \"tennisClubId\": \"$clubId\",
     \"name\": \"Voorjaarslessen Beginners\", \"description\": \"Tennistraining voor beginners. Leer de basisvaardigheden.\",
-    \"level\": 1, \"price\": 120.00, \"durationMinutes\": 60, \"startDate\": \"$today\", \"endDate\": \"$endDate\"
+    \"level\": 1, \"price\": 120.00, \"startDate\": \"$today\", \"endDate\": \"$endDate\",
+    \"registrationDeadline\": \"$deadline\",
+    \"lessons\": [{\"trainerId\": \"$trainerId\", \"date\": \"$today\", \"startTime\": \"09:00\", \"endTime\": \"10:00\", \"courtName\": \"Baan 1\"}]
 }" "$token")
 id=$(echo "$id" | tr -d '"')
 if [ -n "$id" ] && [ "$id" != "null" ]; then
@@ -154,7 +157,9 @@ fi
 id=$(invoke_api POST "/lessonseries" "{
     \"trainerId\": \"$trainerId\", \"tennisClubId\": \"$clubId\",
     \"name\": \"Competitietraining Gevorderd\", \"description\": \"Intensieve training voor competitiespelers.\",
-    \"level\": 4, \"price\": 180.00, \"durationMinutes\": 90, \"startDate\": \"$today\", \"endDate\": \"$endDate\"
+    \"level\": 4, \"price\": 180.00, \"startDate\": \"$today\", \"endDate\": \"$endDate\",
+    \"registrationDeadline\": \"$deadline\",
+    \"lessons\": [{\"trainerId\": \"$trainerId\", \"date\": \"$today\", \"startTime\": \"10:30\", \"endTime\": \"12:00\", \"courtName\": \"Baan 2\"}]
 }" "$token")
 id=$(echo "$id" | tr -d '"')
 if [ -n "$id" ] && [ "$id" != "null" ]; then
@@ -165,7 +170,9 @@ fi
 id=$(invoke_api POST "/lessonseries" "{
     \"trainerId\": \"$trainerId\", \"tennisClubId\": \"$clubId2\",
     \"name\": \"Padel Introductie\", \"description\": \"Kennismaken met padel. Regels en basistechnieken.\",
-    \"level\": 1, \"price\": 95.00, \"durationMinutes\": 60, \"startDate\": \"$startDate2\", \"endDate\": \"$endDate2\"
+    \"level\": 1, \"price\": 95.00, \"startDate\": \"$startDate2\", \"endDate\": \"$endDate2\",
+    \"registrationDeadline\": \"$deadline\",
+    \"lessons\": [{\"trainerId\": \"$trainerId\", \"date\": \"$startDate2\", \"startTime\": \"14:00\", \"endTime\": \"15:00\", \"courtName\": \"Padel 1\"}]
 }" "$token")
 id=$(echo "$id" | tr -d '"')
 if [ -n "$id" ] && [ "$id" != "null" ]; then
@@ -178,19 +185,25 @@ echo ""
 echo "5. Adding lessons to series..."
 
 courts=("Baan 1" "Baan 2" "Baan 3" "Padel 1")
-times=("09:00" "10:30" "14:00" "16:00")
+startTimes=("09:00" "10:30" "14:00" "16:00")
+endTimes=("10:00" "12:00" "15:00" "17:00")
 
 for sid in "${seriesIds[@]}"; do
     for week in $(seq 0 7); do
         days=$(( (week * 7) + 1 ))
         lessonDate=$(date -v+"${days}d" +%Y-%m-%d 2>/dev/null || date -d "+${days} days" +%Y-%m-%d)
         courtIdx=$(( week % ${#courts[@]} ))
-        timeIdx=$(( week % ${#times[@]} ))
+        timeIdx=$(( week % ${#startTimes[@]} ))
         court="${courts[$courtIdx]}"
-        time="${times[$timeIdx]}"
+        startTime="${startTimes[$timeIdx]}"
+        endTime="${endTimes[$timeIdx]}"
 
         invoke_api POST "/lessonseries/$sid/lessons" "{
-            \"date\": \"$lessonDate\", \"startTime\": \"$time\", \"courtName\": \"$court\"
+            \"trainerId\": \"$trainerId\",
+            \"date\": \"$lessonDate\",
+            \"startTime\": \"$startTime\",
+            \"endTime\": \"$endTime\",
+            \"courtName\": \"$court\"
         }" "$token" > /dev/null
     done
     echo "   Added 8 lessons to series"

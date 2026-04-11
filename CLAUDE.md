@@ -90,6 +90,10 @@ PostgreSQL via EF Core. All entities use `Guid` PKs. `ApplicationUser` configura
 
 **Payments:** Mollie only (not Stripe). Support Bancontact + iDEAL. Dates dd/MM/yyyy, currency EUR, timezone CET/CEST.
 
+## Seed Scripts
+
+When modifying the database schema (entities, migrations), API request/response DTOs, validation rules, or business logic that affects public endpoints — **always check and update the seed scripts** in `backend/Scripts/` (`seed-demo-data.sh`, `setup.sh`) to match. The seed scripts call the API to create demo data, so any contract change will silently break seeding.
+
 ## Working Style
 
 - Ask clarifying questions one at a time — never list multiple questions at once.

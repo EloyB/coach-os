@@ -4,7 +4,7 @@
 # Applies database migrations and seeds demo data if needed.
 #
 # Usage:
-#   docker compose up -d && ./setup.sh
+#   docker compose up -d && ./backend/Scripts/setup.sh
 #
 
 set -e
@@ -49,14 +49,16 @@ fi
 # 2. Apply database migrations
 echo ""
 echo "Applying database migrations..."
-cd backend
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+BACKEND_DIR="$(dirname "$SCRIPT_DIR")"
+
+cd "$BACKEND_DIR"
 dotnet ef database update \
     --project CoachOS.Infrastructure \
     --startup-project CoachOS.API \
     --connection "$CONNECTION_STRING" \
     2>&1 | tail -5
 echo "  Migrations applied."
-cd ..
 
 # 3. Check if seed data already exists
 echo ""
@@ -72,7 +74,7 @@ if [ -n "$token" ] && [ "$token" != "" ]; then
 else
     echo "  No demo data found. Running seed script..."
     echo ""
-    bash backend/Scripts/seed-demo-data.sh "$API_BASE"
+    bash "$SCRIPT_DIR/seed-demo-data.sh" "$API_BASE"
 fi
 
 echo ""
