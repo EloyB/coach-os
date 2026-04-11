@@ -55,10 +55,25 @@ export interface SaveFormFieldRequest {
   options?: string[];
 }
 
+export interface TimeSlotPreferenceRequest {
+  weeklyTemplateEntryId: string;
+  preference: number; // 1=Available, 2=Preferred, 3=Unavailable
+}
+
+export interface GroupMemberRequest {
+  studentName: string;
+  studentEmail: string;
+  responses: { formFieldId: string; value: string }[];
+}
+
 export interface SubmitEnrollmentRequest {
   studentName: string;
   studentEmail: string;
   responses: { formFieldId: string; value: string }[];
+  timeSlotPreferences?: TimeSlotPreferenceRequest[];
+  enrollmentType?: string; // "solo" | "group"
+  isOpenToGrouping?: boolean;
+  groupMembers?: GroupMemberRequest[];
 }
 
 export async function getPublicLessonSeries(id: string): Promise<PublicLessonSeriesDto> {
