@@ -22,6 +22,7 @@ public class RegisterEndpoint : IEndpoint
         })
         .AllowAnonymous()
         .AddEndpointFilter<ValidationFilter<RegisterRequest>>()
+        .RequireRateLimiting("auth")
         .WithTags("Auth");
     }
 }

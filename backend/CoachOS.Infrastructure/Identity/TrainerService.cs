@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using CoachOS.Application.Auth.DTOs;
 using CoachOS.Application.Trainers;
 using CoachOS.Application.Trainers.DTOs;
@@ -30,6 +31,7 @@ public class TrainerService(
             return Result<Guid>.Fail("E-mailadres is al in gebruik");
 
         var inviteToken = Guid.NewGuid().ToString("N");
+        var hashedToken = HashToken(inviteToken);
 
         ApplicationUser user = new()
         {
@@ -41,14 +43,15 @@ public class TrainerService(
             OrganizationId = organizationId,
             Role = UserRole.Trainer,
             IsActive = false,
-            InviteToken = inviteToken,
+            InviteToken = hashedToken,
             InviteTokenExpiry = DateTime.UtcNow.AddHours(72),
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
 
-        // Use a placeholder password — will be replaced on invite acceptance
-        var result = await userManager.CreateAsync(user, "Placeholder@1!");
+        // Random password — will be replaced on invite acceptance
+        var randomPassword = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)) + "!A1";
+        var result = await userManager.CreateAsync(user, randomPassword);
         if (!result.Succeeded)
             return Result<Guid>.Fail(result.Errors.Select(e => e.Description));
 
@@ -63,8 +66,9 @@ public class TrainerService(
         string password,
         CancellationToken ct = default)
     {
+        var hashedToken = HashToken(token);
         var user = await userManager.Users
-            .FirstOrDefaultAsync(u => u.InviteToken == token, ct);
+            .FirstOrDefaultAsync(u => u.InviteToken == hashedToken, ct);
 
         if (user is null)
             return Result<AuthResponseDto>.Fail("Ongeldige uitnodigingslink");
@@ -102,12 +106,6 @@ public class TrainerService(
         Guid organizationId,
         CancellationToken ct = default)
     {
-        var counts = await context.Lessons
-            .Where(l => l.OrganizationId == organizationId && l.TrainerId.HasValue)
-            .GroupBy(l => l.TrainerId!.Value)
-            .Select(g => new { g.Key, Count = g.Count() })
-            .ToDictionaryAsync(x => x.Key, x => x.Count, ct);
-
         var trainers = await userManager.Users
             .AsNoTracking()
             .Where(u => u.OrganizationId == organizationId && u.Role == UserRole.Trainer)
@@ -121,14 +119,11 @@ public class TrainerService(
                 Email = u.Email!,
                 IsActive = u.IsActive,
                 InvitePending = u.InviteToken != null,
-                CreatedAt = u.CreatedAt
+                CreatedAt = u.CreatedAt,
+                LessonCount = context.Lessons
+                    .Count(l => l.TrainerId == u.Id && l.OrganizationId == organizationId)
             })
             .ToListAsync(ct);
-
-        foreach (var trainer in trainers)
-        {
-            trainer.LessonCount = counts.GetValueOrDefault(trainer.Id, 0);
-        }
 
         return Result<List<TrainerDto>>.Ok(trainers);
     }
@@ -203,5 +198,11 @@ public class TrainerService(
             .ExecuteUpdateAsync(s => s.SetProperty(l => l.TrainerId, toTrainerId), ct);
 
         return Result.Ok();
+    }
+
+    private static string HashToken(string token)
+    {
+        var bytes = SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(token));
+        return Convert.ToHexStringLower(bytes);
     }
 }

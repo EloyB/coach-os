@@ -20,6 +20,7 @@ public class LoginEndpoint : IEndpoint
         })
         .AllowAnonymous()
         .AddEndpointFilter<ValidationFilter<LoginRequest>>()
+        .RequireRateLimiting("auth")
         .WithTags("Auth");
     }
 }

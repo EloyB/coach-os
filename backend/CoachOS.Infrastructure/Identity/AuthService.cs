@@ -6,13 +6,15 @@ using CoachOS.Domain.Models;
 using CoachOS.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace CoachOS.Infrastructure.Identity;
 
 public class AuthService(
     UserManager<ApplicationUser> userManager,
     ApplicationDbContext context,
-    TokenService tokenService)
+    TokenService tokenService,
+    ILogger<AuthService> logger)
     : IAuthService
 {
     public async Task<Result<AuthResponseDto>> RegisterAsync(
@@ -25,7 +27,10 @@ public class AuthService(
     {
         var existingUser = await userManager.FindByEmailAsync(email);
         if (existingUser is not null)
+        {
+            logger.LogWarning("Registratie geweigerd: e-mail {Email} is al in gebruik", email);
             return Result<AuthResponseDto>.Fail("E-mailadres is al in gebruik");
+        }
 
         await using var transaction =
             await context.Database.BeginTransactionAsync(cancellationToken);
@@ -65,6 +70,9 @@ public class AuthService(
 
             await transaction.CommitAsync(cancellationToken);
 
+            logger.LogInformation("Nieuwe registratie: {Email}, organisatie {OrgName} ({OrgId})",
+                email, organizationName, organization.Id);
+
             (var token, var expiresAt) = tokenService.GenerateToken(user);
 
             return Result<AuthResponseDto>.Ok(new AuthResponseDto
@@ -79,9 +87,10 @@ public class AuthService(
                 Role = user.Role.ToString()
             });
         }
-        catch (DbUpdateException)
+        catch (DbUpdateException ex)
         {
             await transaction.RollbackAsync(cancellationToken);
+            logger.LogError(ex, "Registratie mislukt voor {Email}", email);
             return Result<AuthResponseDto>.Fail("Registratie mislukt. Probeer het opnieuw.");
         }
     }
@@ -93,14 +102,25 @@ public class AuthService(
     {
         var user = await userManager.FindByEmailAsync(email);
         if (user is null)
+        {
+            logger.LogWarning("Mislukte inlogpoging: onbekend e-mailadres {Email}", email);
             return Result<AuthResponseDto>.Fail("Ongeldige inloggegevens");
+        }
 
         var validPassword = await userManager.CheckPasswordAsync(user, password);
         if (!validPassword)
+        {
+            logger.LogWarning("Mislukte inlogpoging: fout wachtwoord voor {Email} (UserId: {UserId})", email, user.Id);
             return Result<AuthResponseDto>.Fail("Ongeldige inloggegevens");
+        }
 
         if (!user.IsActive)
+        {
+            logger.LogWarning("Inlogpoging op gedeactiveerd account: {Email} (UserId: {UserId})", email, user.Id);
             return Result<AuthResponseDto>.Fail("Account is gedeactiveerd");
+        }
+
+        logger.LogInformation("Succesvolle login: {Email} (UserId: {UserId})", email, user.Id);
 
         (var token, var expiresAt) = tokenService.GenerateToken(user);
 

@@ -9,39 +9,6 @@ namespace CoachOS.Application.Planning;
 /// </summary>
 public static class SchedulingAlgorithm
 {
-    public record SchedulingInput(
-        List<EnrollmentUnit> Units,
-        List<SlotInfo> Slots);
-
-    public record EnrollmentUnit(
-        Guid Id,
-        bool IsGroup,
-        Guid? GroupId,
-        List<Guid> EnrollmentIds,
-        List<string> StudentNames,
-        int Size,
-        bool IsOpenToGrouping,
-        Dictionary<Guid, SlotPreference> Preferences);
-
-    public record SlotInfo(
-        Guid WeeklyTemplateEntryId,
-        int MaxCapacity);
-
-    public record SchedulingResult(
-        List<ProposedAssignment> Assignments,
-        List<ConflictItem> Conflicts);
-
-    public record ProposedAssignment(
-        Guid WeeklyTemplateEntryId,
-        Guid? GroupId,
-        Guid? EnrollmentId,
-        int Size);
-
-    public record ConflictItem(
-        Guid EnrollmentId,
-        string StudentName,
-        string Reason);
-
     public static SchedulingResult Generate(SchedulingInput input)
     {
         var assignments = new List<ProposedAssignment>();
@@ -149,7 +116,7 @@ public static class SchedulingAlgorithm
             .Where(p => p.Value != SlotPreference.Unavailable
                 && slotCapacity.ContainsKey(p.Key)
                 && slotCapacity[p.Key] - slotUsed[p.Key] >= unit.Size)
-            .OrderBy(p => p.Value) // Preferred (2) before Available (1) — lower enum wins
+            .OrderByDescending(p => p.Value) // Preferred (2) before Available (1)
             .ThenBy(p => slotUsed[p.Key]) // prefer emptier slots
             .Select(p => (Guid?)p.Key)
             .FirstOrDefault();

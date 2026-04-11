@@ -15,7 +15,7 @@ public static class DependencyInjection
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
         services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
-        services.AddSingleton<ApplicationMapper>();
+        services.AddScoped<ApplicationMapper>();
 
         services.AddScoped<IDashboardService, DashboardService>();
         services.AddScoped<ILessonSerieService, LessonSerieService>();

@@ -20,7 +20,8 @@ public class WeeklyTemplateEntryConfiguration : IEntityTypeConfiguration<WeeklyT
 
         builder.HasIndex(w => w.LessonSerieId);
 
-        builder.HasIndex(w => new { w.LessonSerieId, w.DayOfWeek, w.StartTime })
-            .IsUnique();
+        builder.HasIndex(w => new { w.LessonSerieId, w.DayOfWeek, w.StartTime, w.CourtName })
+            .IsUnique()
+            .HasFilter("\"CourtName\" IS NOT NULL");
     }
 }

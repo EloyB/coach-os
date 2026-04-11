@@ -17,6 +17,7 @@ public class SubmitEnrollmentEndpoint : IEndpoint
             })
         .AllowAnonymous()
         .AddEndpointFilter<ValidationFilter<SubmitEnrollmentRequest>>()
+        .RequireRateLimiting("public")
         .WithTags("Public");
     }
 }

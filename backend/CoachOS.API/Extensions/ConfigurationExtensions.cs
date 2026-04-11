@@ -1,7 +1,9 @@
 using System.Text;
+using System.Threading.RateLimiting;
 using CoachOS.Infrastructure.Persistence;
 using LodeKennes.Extensions.Scaleway.SecretManager;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -34,83 +36,123 @@ public static class ConfigurationExtensions
         return builder.Configuration;
     }
 
-    public static IServiceCollection AddJwtAuthentication(
-        this IServiceCollection services,
-        IConfiguration configuration)
+    extension(IServiceCollection services)
     {
-        var jwtKey = configuration["Jwt:Key"]
-                     ?? throw new InvalidOperationException("Jwt:Key is niet geconfigureerd.");
-
-        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-            .AddJwtBearer(options =>
-            {
-                options.TokenValidationParameters = new TokenValidationParameters
-                {
-                    ValidateIssuer = true,
-                    ValidateAudience = true,
-                    ValidateLifetime = true,
-                    ValidateIssuerSigningKey = true,
-                    ValidIssuer = configuration["Jwt:Issuer"],
-                    ValidAudience = configuration["Jwt:Audience"],
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
-                };
-            });
-
-        services.AddAuthorization();
-
-        return services;
-    }
-
-    public static IServiceCollection AddCorsPolicy(
-        this IServiceCollection services,
-        IConfiguration configuration,
-        bool isDevelopment)
-    {
-        var frontendOrigin = isDevelopment
-            ? "http://localhost:5317"
-            : configuration["Frontend:Origin"] ?? "http://localhost:5317";
-
-        services.AddCors(options =>
-            options.AddPolicy("Frontend", policy =>
-                policy.WithOrigins(frontendOrigin)
-                    .AllowAnyHeader()
-                    .AllowAnyMethod()));
-
-        return services;
-    }
-
-    public static IServiceCollection AddSwagger(this IServiceCollection services)
-    {
-        services.AddEndpointsApiExplorer();
-        services.AddSwaggerGen(options =>
+        public IServiceCollection AddJwtAuthentication(IConfiguration configuration)
         {
-            options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-            {
-                Name = "Authorization",
-                Type = SecuritySchemeType.Http,
-                Scheme = "Bearer",
-                BearerFormat = "JWT",
-                In = ParameterLocation.Header,
-                Description = "Voer je JWT token in. Voorbeeld: eyJhbGci..."
-            });
+            var jwtKey = configuration["Jwt:Key"]
+                         ?? throw new InvalidOperationException("Jwt:Key is niet geconfigureerd.");
 
-            options.AddSecurityRequirement(new OpenApiSecurityRequirement
-            {
+            services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+                .AddJwtBearer(options =>
                 {
-                    new OpenApiSecurityScheme
+                    options.TokenValidationParameters = new TokenValidationParameters
                     {
-                        Reference = new OpenApiReference
-                        {
-                            Type = ReferenceType.SecurityScheme,
-                            Id = "Bearer"
-                        }
-                    },
-                    Array.Empty<string>()
-                }
-            });
-        });
+                        ValidateIssuer = true,
+                        ValidateAudience = true,
+                        ValidateLifetime = true,
+                        ValidateIssuerSigningKey = true,
+                        ValidIssuer = configuration["Jwt:Issuer"],
+                        ValidAudience = configuration["Jwt:Audience"],
+                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+                    };
+                });
 
-        return services;
+            services.AddAuthorization();
+
+            return services;
+        }
+
+        public IServiceCollection AddCorsPolicy(IConfiguration configuration,
+            bool isDevelopment)
+        {
+            var frontendOrigin = isDevelopment
+                ? "http://localhost:5317"
+                : configuration["Frontend:Origin"] ?? "http://localhost:5317";
+
+            services.AddCors(options =>
+                options.AddPolicy("Frontend", policy =>
+                    policy.WithOrigins(frontendOrigin)
+                        .WithHeaders("Content-Type", "Authorization", "Accept")
+                        .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                        .AllowCredentials()));
+
+            return services;
+        }
+
+        public IServiceCollection AddRateLimiting()
+        {
+            services.AddRateLimiter(options =>
+            {
+                options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+                options.AddFixedWindowLimiter("auth", limiter =>
+                {
+                    limiter.PermitLimit = 5;
+                    limiter.Window = TimeSpan.FromMinutes(1);
+                    limiter.QueueLimit = 0;
+                });
+
+                options.AddFixedWindowLimiter("public", limiter =>
+                {
+                    limiter.PermitLimit = 30;
+                    limiter.Window = TimeSpan.FromMinutes(1);
+                    limiter.QueueLimit = 0;
+                });
+
+                options.AddFixedWindowLimiter("authenticated", limiter =>
+                {
+                    limiter.PermitLimit = 60;
+                    limiter.Window = TimeSpan.FromMinutes(1);
+                    limiter.QueueLimit = 0;
+                });
+
+                options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+                    RateLimitPartition.GetFixedWindowLimiter(
+                        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                        _ => new FixedWindowRateLimiterOptions
+                        {
+                            PermitLimit = 300,
+                            Window = TimeSpan.FromMinutes(1),
+                        }));
+            });
+
+            return services;
+        }
+
+        public IServiceCollection AddSwagger()
+        {
+            services.AddEndpointsApiExplorer();
+            services.AddSwaggerGen(options =>
+            {
+                options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+                {
+                    Name = "Authorization",
+                    Type = SecuritySchemeType.Http,
+                    Scheme = "Bearer",
+                    BearerFormat = "JWT",
+                    In = ParameterLocation.Header,
+                    Description = "Voer je JWT token in. Voorbeeld: eyJhbGci..."
+                });
+
+                options.AddSecurityRequirement(new OpenApiSecurityRequirement
+                {
+                    {
+                        new OpenApiSecurityScheme
+                        {
+                            Reference = new OpenApiReference
+                            {
+                                Type = ReferenceType.SecurityScheme,
+                                Id = "Bearer"
+                            }
+                        },
+                        Array.Empty<string>()
+                    }
+                });
+            });
+
+            return services;
+        }
     }
 
     public static async Task ApplyMigrationsAsync(this WebApplication app)

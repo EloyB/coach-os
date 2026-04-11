@@ -14,6 +14,7 @@ public class GetPublicTimeSlotsEndpoint : IEndpoint
                 return result.IsSuccess ? Results.Ok(result.Value) : result.ToErrorResult();
             })
         .AllowAnonymous()
+        .RequireRateLimiting("public")
         .WithTags("Public");
     }
 }

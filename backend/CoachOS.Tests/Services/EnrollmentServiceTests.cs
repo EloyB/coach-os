@@ -388,4 +388,234 @@ public class EnrollmentServiceTests
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.Validation);
     }
+
+    // ── Group enrollment tests ───────────────────────────────────────────────
+
+    [Test]
+    public async Task SubmitEnrollment_GroupEnrollment_CreatesGroupAndMembers()
+    {
+        var series = BuildActiveSeries(templateEntries: 1);
+        SetupSuccessfulEnrollment(series, "leader@test.be");
+
+        var slotId = series.WeeklyTemplate.First().Id;
+
+        SubmitEnrollmentRequest request = new()
+        {
+            StudentName = "Leader",
+            StudentEmail = "leader@test.be",
+            EnrollmentType = "group",
+            GroupMembers = new()
+            {
+                new() { StudentName = "Member A", StudentEmail = "a@test.be" },
+                new() { StudentName = "Member B", StudentEmail = "b@test.be" },
+            },
+            TimeSlotPreferences = new()
+            {
+                new() { WeeklyTemplateEntryId = slotId, Preference = 2 },
+            },
+        };
+
+        var result = await _service.SubmitEnrollmentAsync(SeriesId, request);
+
+        result.IsSuccess.Should().BeTrue();
+        // Leader enrollment
+        _enrollmentRepo.Verify(
+            r => r.AddAsync(It.Is<Enrollment>(e => e.StudentName == "Leader"), It.IsAny<CancellationToken>()),
+            Times.Once);
+        // Group created
+        _enrollmentGroupRepo.Verify(
+            r => r.AddAsync(It.IsAny<EnrollmentGroup>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+        // 2 member enrollments
+        _enrollmentRepo.Verify(
+            r => r.AddAsync(It.Is<Enrollment>(e => e.StudentName == "Member A" || e.StudentName == "Member B"), It.IsAny<CancellationToken>()),
+            Times.Exactly(2));
+        // Preferences saved
+        _timeSlotPreferenceRepo.Verify(
+            r => r.AddRangeAsync(It.IsAny<IEnumerable<TimeSlotPreference>>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Test]
+    public async Task SubmitEnrollment_GroupEnrollment_CapacityAccountsForGroupSize()
+    {
+        var series = BuildActiveSeries();
+        series.MaxRegistrations = 5;
+
+        _lessonSeriesRepo
+            .Setup(r => r.GetByIdPublicAsync(SeriesId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+        _enrollmentRepo
+            .Setup(r => r.CountActiveBySeriesAsync(SeriesId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(3); // 3 existing + group of 3 (leader + 2) = 6 > 5
+
+        SubmitEnrollmentRequest request = new()
+        {
+            StudentName = "Leader",
+            StudentEmail = "leader@test.be",
+            EnrollmentType = "group",
+            GroupMembers = new()
+            {
+                new() { StudentName = "Member A", StudentEmail = "a@test.be" },
+                new() { StudentName = "Member B", StudentEmail = "b@test.be" },
+            },
+        };
+
+        var result = await _service.SubmitEnrollmentAsync(SeriesId, request);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.Conflict);
+    }
+
+    [Test]
+    public async Task SubmitEnrollment_SoloWithPreferences_SavesPreferences()
+    {
+        var series = BuildActiveSeries(templateEntries: 2);
+        SetupSuccessfulEnrollment(series, "alice@test.be");
+
+        var slot1 = series.WeeklyTemplate.First().Id;
+        var slot2 = series.WeeklyTemplate.Last().Id;
+
+        SubmitEnrollmentRequest request = new()
+        {
+            StudentName = "Alice",
+            StudentEmail = "alice@test.be",
+            EnrollmentType = "solo",
+            IsOpenToGrouping = true,
+            TimeSlotPreferences = new()
+            {
+                new() { WeeklyTemplateEntryId = slot1, Preference = 2 },
+                new() { WeeklyTemplateEntryId = slot2, Preference = 3 },
+            },
+        };
+
+        var result = await _service.SubmitEnrollmentAsync(SeriesId, request);
+
+        result.IsSuccess.Should().BeTrue();
+        _timeSlotPreferenceRepo.Verify(
+            r => r.AddRangeAsync(
+                It.Is<IEnumerable<TimeSlotPreference>>(prefs => prefs.Count() == 2),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Test]
+    public async Task SubmitEnrollment_SoloWithoutPreferences_NoPreferencesSaved()
+    {
+        var series = BuildActiveSeries();
+        SetupSuccessfulEnrollment(series, "bob@test.be");
+
+        SubmitEnrollmentRequest request = new()
+        {
+            StudentName = "Bob",
+            StudentEmail = "bob@test.be",
+            EnrollmentType = "solo",
+        };
+
+        var result = await _service.SubmitEnrollmentAsync(SeriesId, request);
+
+        result.IsSuccess.Should().BeTrue();
+        _timeSlotPreferenceRepo.Verify(
+            r => r.AddRangeAsync(It.IsAny<IEnumerable<TimeSlotPreference>>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    // ── GetSeriesEnrollmentsWithPreferencesAsync ─────────────────────────────
+
+    [Test]
+    public async Task GetEnrollmentsWithPreferences_SeriesNotFound_ReturnsNotFound()
+    {
+        _lessonSeriesRepo
+            .Setup(r => r.ExistsAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        var result = await _service.GetSeriesEnrollmentsWithPreferencesAsync(SeriesId, OrgId);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.NotFound);
+    }
+
+    [Test]
+    public async Task GetEnrollmentsWithPreferences_ReturnsEnrichedDtos()
+    {
+        _lessonSeriesRepo
+            .Setup(r => r.ExistsAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var groupId = Guid.NewGuid();
+        var leaderId = Guid.NewGuid();
+        var enrollment = new Enrollment
+        {
+            Id = leaderId,
+            OrganizationId = OrgId,
+            LessonSerieId = SeriesId,
+            StudentName = "Leader",
+            StudentEmail = "leader@test.be",
+            Status = EnrollmentStatus.Confirmed,
+            EnrolledAt = DateTime.UtcNow,
+            EnrollmentGroupId = groupId,
+            IsOpenToGrouping = false,
+        };
+
+        var slotId = Guid.NewGuid();
+        var preference = new TimeSlotPreference
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = OrgId,
+            EnrollmentId = leaderId,
+            WeeklyTemplateEntryId = slotId,
+            Preference = SlotPreference.Preferred,
+        };
+
+        var group = new EnrollmentGroup
+        {
+            Id = groupId,
+            OrganizationId = OrgId,
+            LessonSerieId = SeriesId,
+            Name = "Groep A",
+            LeaderEnrollmentId = leaderId,
+            Members = new List<Enrollment> { enrollment },
+        };
+
+        _enrollmentRepo.Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Enrollment> { enrollment });
+        _timeSlotPreferenceRepo.Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<TimeSlotPreference> { preference });
+        _enrollmentGroupRepo.Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<EnrollmentGroup> { group });
+
+        var result = await _service.GetSeriesEnrollmentsWithPreferencesAsync(SeriesId, OrgId);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().HaveCount(1);
+
+        var dto = result.Value![0];
+        dto.StudentName.Should().Be("Leader");
+        dto.GroupName.Should().Be("Groep A");
+        dto.IsGroupLeader.Should().BeTrue();
+        dto.Preferences.Should().HaveCount(1);
+        dto.Preferences[0].WeeklyTemplateEntryId.Should().Be(slotId);
+        dto.Preferences[0].Preference.Should().Be(2);
+    }
+
+    // ── Setup helpers ────────────────────────────────────────────────────────
+
+    private void SetupSuccessfulEnrollment(LessonSerie series, string email)
+    {
+        _lessonSeriesRepo
+            .Setup(r => r.GetByIdPublicAsync(SeriesId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+        _enrollmentFormRepo
+            .Setup(r => r.GetBySeriesIdReadOnlyAsync(SeriesId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((EnrollmentForm?)null);
+        _enrollmentRepo
+            .Setup(r => r.IsDuplicateAsync(SeriesId, email, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+        _enrollmentGroupRepo
+            .Setup(r => r.CountBySeriesAsync(SeriesId, It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(0);
+        _userLookup
+            .Setup(u => u.GetUserInfoByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(("Trainer Name", "trainer@test.be"));
+    }
 }

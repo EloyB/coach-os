@@ -81,9 +81,7 @@ public class EnrollmentService(
                 Type = (int)f.Type,
                 IsRequired = f.IsRequired,
                 Order = f.Order,
-                Options = f.Options is not null
-                    ? JsonSerializer.Deserialize<List<string>>(f.Options)
-                    : null,
+                Options = DeserializeOptions(f.Options),
             }).ToList(),
         };
 
@@ -108,8 +106,8 @@ public class EnrollmentService(
                 .OrderBy(r => r.FormField.Order)
                 .Select(r => new EnrollmentResponseItemDto
                 {
-                    FieldLabel = r.FormField.Label,
-                    Value = r.Value,
+                    FieldLabel = System.Net.WebUtility.HtmlEncode(r.FormField.Label),
+                    Value = System.Net.WebUtility.HtmlEncode(r.Value),
                 }).ToList(),
         }).ToList();
 
@@ -252,8 +250,14 @@ public class EnrollmentService(
             return Result<Guid>.Fail(
                 new Error(ErrorCodes.Conflict, "Je bent al ingeschreven voor deze lessenreeks."));
 
-        // 7. Create enrollment
-        Enrollment enrollment = new()
+        // 7. Begin transaction for multi-step enrollment
+        Enrollment enrollment;
+        await enrollmentRepo.BeginTransactionAsync(ct);
+        try
+        {
+
+        // 8. Create enrollment
+        enrollment = new()
         {
             OrganizationId = series.OrganizationId,
             LessonSerieId = series.Id,
@@ -334,7 +338,7 @@ public class EnrollmentService(
             await enrollmentRepo.SaveChangesAsync(ct);
         }
 
-        // 11. Save time slot preferences
+        // 12. Save time slot preferences
         if (request.TimeSlotPreferences is { Count: > 0 })
         {
             var preferences = request.TimeSlotPreferences.Select(p => new TimeSlotPreference
@@ -349,7 +353,17 @@ public class EnrollmentService(
             await timeSlotPreferenceRepo.SaveChangesAsync(ct);
         }
 
-        // 11. Send notification emails (fire-and-forget in try/catch)
+        await enrollmentRepo.CommitTransactionAsync(ct);
+
+        }
+        catch (Exception ex)
+        {
+            await enrollmentRepo.RollbackTransactionAsync(ct);
+            logger.LogError(ex, "Inschrijving mislukt voor reeks {SeriesId}", lessonSeriesId);
+            return Result<Guid>.Fail(new Error(ErrorCodes.Unexpected, "Inschrijving mislukt. Probeer het opnieuw."));
+        }
+
+        // 13. Send notification emails (fire-and-forget in try/catch)
         try
         {
             var firstTrainerId = series.Lessons
@@ -464,5 +478,19 @@ public class EnrollmentService(
             .ToList();
 
         return Result<List<EnrollmentWithPreferencesDto>>.Ok(dtos);
+    }
+
+    private List<string>? DeserializeOptions(string? json)
+    {
+        if (string.IsNullOrEmpty(json)) return null;
+        try
+        {
+            return JsonSerializer.Deserialize<List<string>>(json);
+        }
+        catch (JsonException ex)
+        {
+            logger.LogWarning(ex, "Ongeldige JSON in formulierveld opties: {Json}", json);
+            return null;
+        }
     }
 }

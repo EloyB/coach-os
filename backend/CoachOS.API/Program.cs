@@ -1,5 +1,6 @@
 using CoachOS.API.Endpoints;
 using CoachOS.API.Extensions;
+using CoachOS.API.Middleware;
 using CoachOS.Application;
 using CoachOS.Infrastructure;
 using Serilog;
@@ -21,8 +22,10 @@ try
 
     builder.Services.AddJwtAuthentication(configuration);
     builder.Services.AddCorsPolicy(configuration, isDevelopment);
+    builder.Services.AddRateLimiting();
     builder.Services.AddSwagger();
 
+    builder.Services.AddMemoryCache();
     builder.Services.AddApplication();
     builder.Services.AddInfrastructure(configuration);
 
@@ -37,10 +40,34 @@ try
             options.SwaggerEndpoint("/swagger/v1/swagger.json", "CoachOS API v1"));
     }
 
+    app.UseExceptionHandler(errorApp =>
+    {
+        errorApp.Run(async context =>
+        {
+            context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+            context.Response.ContentType = "application/json";
+
+            var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+            var exceptionFeature = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>();
+
+            if (exceptionFeature?.Error is UnauthorizedAccessException)
+            {
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                await context.Response.WriteAsJsonAsync(new { message = "Niet geautoriseerd." });
+                return;
+            }
+
+            logger.LogError(exceptionFeature?.Error, "Onverwerkte fout bij {Path}", context.Request.Path);
+            await context.Response.WriteAsJsonAsync(new { message = "Er is een fout opgetreden. Probeer het later opnieuw." });
+        });
+    });
+
     app.UseHttpsRedirection();
     app.UseCors("Frontend");
+    app.UseRateLimiter();
     app.UseAuthentication();
     app.UseAuthorization();
+    app.UseMiddleware<OrganizationValidationMiddleware>();
     app.MapAllEndpoints();
 
     app.Run();

@@ -63,4 +63,21 @@ public class EnrollmentRepository(ApplicationDbContext context) : IEnrollmentRep
     {
         await context.SaveChangesAsync(ct);
     }
+
+    public async Task BeginTransactionAsync(CancellationToken ct = default)
+    {
+        await context.Database.BeginTransactionAsync(ct);
+    }
+
+    public async Task CommitTransactionAsync(CancellationToken ct = default)
+    {
+        if (context.Database.CurrentTransaction is not null)
+            await context.Database.CommitTransactionAsync(ct);
+    }
+
+    public async Task RollbackTransactionAsync(CancellationToken ct = default)
+    {
+        if (context.Database.CurrentTransaction is not null)
+            await context.Database.RollbackTransactionAsync(ct);
+    }
 }

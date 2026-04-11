@@ -45,7 +45,7 @@ public class PlanningService(
                 g => g.ToDictionary(p => p.WeeklyTemplateEntryId, p => p.Preference));
 
         // Build enrollment units
-        var units = new List<SchedulingAlgorithm.EnrollmentUnit>();
+        var units = new List<EnrollmentUnit>();
         var groupedEnrollmentIds = new HashSet<Guid>();
 
         foreach (var group in groups)
@@ -56,12 +56,22 @@ public class PlanningService(
 
             if (memberEnrollments.Count == 0) continue;
 
-            // Intersection of member preferences
-            var groupPrefs = IntersectPreferences(
-                memberEnrollments.Select(e => prefsByEnrollment.GetValueOrDefault(e.Id, new()))
-                    .ToList());
+            // Use leader's preferences for the group (members don't submit individual preferences).
+            // Fall back to intersection if multiple members have preferences.
+            var membersWithPrefs = memberEnrollments
+                .Where(e => prefsByEnrollment.ContainsKey(e.Id))
+                .ToList();
 
-            units.Add(new SchedulingAlgorithm.EnrollmentUnit(
+            Dictionary<Guid, SlotPreference> groupPrefs;
+            if (membersWithPrefs.Count == 0)
+                groupPrefs = new();
+            else if (membersWithPrefs.Count == 1)
+                groupPrefs = prefsByEnrollment[membersWithPrefs[0].Id];
+            else
+                groupPrefs = IntersectPreferences(
+                    membersWithPrefs.Select(e => prefsByEnrollment[e.Id]).ToList());
+
+            units.Add(new EnrollmentUnit(
                 Id: group.Id,
                 IsGroup: true,
                 GroupId: group.Id,
@@ -78,7 +88,7 @@ public class PlanningService(
         foreach (var enrollment in activeEnrollments.Where(e => !groupedEnrollmentIds.Contains(e.Id)))
         {
             var prefs = prefsByEnrollment.GetValueOrDefault(enrollment.Id, new());
-            units.Add(new SchedulingAlgorithm.EnrollmentUnit(
+            units.Add(new EnrollmentUnit(
                 Id: enrollment.Id,
                 IsGroup: false,
                 GroupId: null,
@@ -89,8 +99,8 @@ public class PlanningService(
                 Preferences: prefs));
         }
 
-        var slotInfos = slots.Select(s => new SchedulingAlgorithm.SlotInfo(s.Id, s.MaxStudents)).ToList();
-        var input = new SchedulingAlgorithm.SchedulingInput(units, slotInfos);
+        var slotInfos = slots.Select(s => new SlotInfo(s.Id, s.MaxStudents)).ToList();
+        var input = new SchedulingInput(units, slotInfos);
 
         // Run algorithm
         var result = SchedulingAlgorithm.Generate(input);
