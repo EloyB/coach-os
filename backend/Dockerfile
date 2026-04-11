@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/sdk:10.0-preview AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # Copy solution and project files first for layer caching
@@ -12,9 +12,9 @@ RUN dotnet restore CoachOS.slnx
 
 # Copy everything and build
 COPY . .
-RUN dotnet publish CoachOS.API/CoachOS.API.csproj -c Release -o /app --no-restore
+RUN dotnet publish CoachOS.API/CoachOS.API.csproj -c Release -o /app
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-preview AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 COPY --from=build /app .
 

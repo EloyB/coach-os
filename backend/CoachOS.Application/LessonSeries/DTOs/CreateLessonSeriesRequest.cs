@@ -11,4 +11,5 @@ public record CreateLessonSeriesRequest
     public string EndDate { get; init; } = string.Empty;
     public int DurationMinutes { get; init; }
     public Guid TennisClubId { get; init; }
+    public List<CreateLessonRequest> Lessons { get; init; } = [];
 }

@@ -85,6 +85,13 @@ public class LessonSeriesService(
             return Result<Guid>.Fail(new Error(ErrorCodes.NotFound, "Trainer niet gevonden of niet actief in deze organisatie."));
 
         Domain.Entities.LessonSeries series = mapper.ToLessonSeries(request, organizationId);
+
+        foreach (CreateLessonRequest lessonRequest in request.Lessons)
+        {
+            Domain.Entities.Lesson lesson = mapper.ToLesson(lessonRequest, series);
+            series.Lessons.Add(lesson);
+        }
+
         await lessonSeriesRepo.AddAsync(series, ct);
         await lessonSeriesRepo.SaveChangesAsync(ct);
 

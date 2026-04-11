@@ -2,3 +2,5 @@
 **/obj/
 **/.vs/
 **/node_modules/
+**/*.user
+**/.DS_Store

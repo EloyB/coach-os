@@ -43,5 +43,11 @@ public class CreateLessonSeriesRequestValidator : AbstractValidator<CreateLesson
             })
             .WithMessage("Einddatum moet op of na de startdatum liggen.")
             .WithName("EndDate");
+
+        RuleFor(x => x.Lessons)
+            .NotEmpty().WithMessage("Minstens één les is verplicht.");
+
+        RuleForEach(x => x.Lessons)
+            .SetValidator(new CreateLessonRequestValidator());
     }
 }
