@@ -1,13 +1,11 @@
 namespace CoachOS.Application.LessonSerie.DTOs;
 
-public record CreateLessonRequest
+public record WeeklyTemplateEntryRequest
 {
-    public Guid? TrainerId { get; init; }
-    public string Date { get; init; } = string.Empty;
+    public int DayOfWeek { get; init; }
     public string StartTime { get; init; } = string.Empty;
     public string EndTime { get; init; } = string.Empty;
+    public Guid? TrainerId { get; init; }
     public string? CourtName { get; init; }
     public int MaxStudents { get; init; }
-    public int? Level { get; init; }
-    public string? Notes { get; init; }
 }

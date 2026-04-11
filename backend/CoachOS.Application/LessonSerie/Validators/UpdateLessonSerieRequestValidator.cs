@@ -18,9 +18,9 @@ public class UpdateLessonSerieRequestValidator : AbstractValidator<UpdateLessonS
         RuleFor(x => x.Price)
             .GreaterThanOrEqualTo(0).WithMessage("Prijs mag niet negatief zijn.");
 
-        RuleFor(x => x.MaxParticipants)
-            .GreaterThan(0).WithMessage("Maximum aantal deelnemers moet groter dan 0 zijn.")
-            .When(x => x.MaxParticipants.HasValue);
+        RuleFor(x => x.MaxRegistrations)
+            .GreaterThan(0).WithMessage("Maximum aantal inschrijvingen moet groter dan 0 zijn.")
+            .When(x => x.MaxRegistrations.HasValue);
 
         RuleFor(x => x.RegistrationDeadline)
             .NotEmpty().WithMessage("Inschrijvingsdeadline is verplicht.");

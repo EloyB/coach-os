@@ -21,7 +21,7 @@ public class LessonSerie : BaseEntity
     public DateOnly EndDate { get; set; }
     public DateTime RegistrationDeadline { get; set; }
     public bool IsActive { get; set; } = true;
-    public int? MaxParticipants { get; set; }
+    public int? MaxRegistrations { get; set; }
 
     public Guid TennisClubId { get; set; }
 
@@ -30,5 +30,6 @@ public class LessonSerie : BaseEntity
     public TennisClub TennisClub { get; set; } = null!;
     public ICollection<Lesson> Lessons { get; set; } = new List<Lesson>();
     public ICollection<Enrollment> Enrollments { get; set; } = new List<Enrollment>();
+    public ICollection<WeeklyTemplateEntry> WeeklyTemplate { get; set; } = new List<WeeklyTemplateEntry>();
     public EnrollmentForm? EnrollmentForm { get; set; }
 }

@@ -12,6 +12,7 @@ public class LessonSerieRepository(ApplicationDbContext context) : ILessonSerieR
         return await context.LessonSeries
             .Include(ls => ls.TennisClub)
             .Include(ls => ls.Lessons)
+            .Include(ls => ls.WeeklyTemplate)
             .FirstOrDefaultAsync(ls => ls.Id == id && ls.OrganizationId == organizationId, ct);
     }
 
@@ -65,6 +66,7 @@ public class LessonSerieRepository(ApplicationDbContext context) : ILessonSerieR
             .AsNoTracking()
             .Include(ls => ls.Lessons)
             .Include(ls => ls.TennisClub)
+            .Include(ls => ls.WeeklyTemplate)
             .FirstOrDefaultAsync(ls => ls.Id == id && ls.IsActive, ct);
     }
 

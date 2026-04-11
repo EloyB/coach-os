@@ -47,8 +47,13 @@ public class EnrollmentService(
             EndDate = series.EndDate.ToString("yyyy-MM-dd"),
             RegistrationDeadline = series.RegistrationDeadline,
             TennisClubName = series.TennisClub?.Name ?? string.Empty,
-            MaxParticipants = series.MaxParticipants,
+            MaxRegistrations = series.MaxRegistrations,
             EnrollmentCount = enrollmentCount,
+            WeeklyTemplate = series.WeeklyTemplate
+                .OrderBy(w => w.DayOfWeek)
+                .ThenBy(w => w.StartTime)
+                .Select(mapper.ToWeeklyTemplateEntryDto)
+                .ToList(),
             Lessons = lessons,
         };
 
@@ -196,10 +201,10 @@ public class EnrollmentService(
                 new Error(ErrorCodes.Validation, "De inschrijvingsdeadline is verstreken."));
 
         // 3. Capacity check
-        if (series.MaxParticipants.HasValue)
+        if (series.MaxRegistrations.HasValue)
         {
             var activeCount = await enrollmentRepo.CountActiveBySeriesAsync(lessonSeriesId, ct);
-            if (activeCount >= series.MaxParticipants.Value)
+            if (activeCount >= series.MaxRegistrations.Value)
                 return Result<Guid>.Fail(
                     new Error(ErrorCodes.Conflict, "Deze lessenreeks is volzet."));
         }
@@ -274,8 +279,8 @@ public class EnrollmentService(
         {
             var firstTrainerId = series.Lessons
                 .OrderBy(l => l.Date).ThenBy(l => l.StartTime)
-                .Select(l => (Guid?)l.TrainerId)
-                .FirstOrDefault();
+                .Select(l => l.TrainerId)
+                .FirstOrDefault(id => id.HasValue);
 
             var trainerInfo = firstTrainerId.HasValue
                 ? await userLookup.GetUserInfoByIdAsync(firstTrainerId.Value, ct)

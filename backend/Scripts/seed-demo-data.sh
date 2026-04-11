@@ -145,8 +145,9 @@ id=$(invoke_api POST "/lessonseries" "{
     \"trainerId\": \"$trainerId\", \"tennisClubId\": \"$clubId\",
     \"name\": \"Voorjaarslessen Beginners\", \"description\": \"Tennistraining voor beginners. Leer de basisvaardigheden.\",
     \"level\": 1, \"price\": 120.00, \"startDate\": \"$today\", \"endDate\": \"$endDate\",
-    \"registrationDeadline\": \"$deadline\",
-    \"lessons\": [{\"trainerId\": \"$trainerId\", \"date\": \"$today\", \"startTime\": \"09:00\", \"endTime\": \"10:00\", \"courtName\": \"Baan 1\"}]
+    \"registrationDeadline\": \"$deadline\", \"maxRegistrations\": 12,
+    \"weeklyTemplate\": [{\"dayOfWeek\": 0, \"startTime\": \"09:00\", \"endTime\": \"10:00\", \"trainerId\": \"$trainerId\", \"courtName\": \"Baan 1\", \"maxStudents\": 4}],
+    \"lessons\": [{\"trainerId\": \"$trainerId\", \"date\": \"$today\", \"startTime\": \"09:00\", \"endTime\": \"10:00\", \"courtName\": \"Baan 1\", \"maxStudents\": 4}]
 }" "$token")
 id=$(echo "$id" | tr -d '"')
 if [ -n "$id" ] && [ "$id" != "null" ]; then
@@ -158,8 +159,9 @@ id=$(invoke_api POST "/lessonseries" "{
     \"trainerId\": \"$trainerId\", \"tennisClubId\": \"$clubId\",
     \"name\": \"Competitietraining Gevorderd\", \"description\": \"Intensieve training voor competitiespelers.\",
     \"level\": 4, \"price\": 180.00, \"startDate\": \"$today\", \"endDate\": \"$endDate\",
-    \"registrationDeadline\": \"$deadline\",
-    \"lessons\": [{\"trainerId\": \"$trainerId\", \"date\": \"$today\", \"startTime\": \"10:30\", \"endTime\": \"12:00\", \"courtName\": \"Baan 2\"}]
+    \"registrationDeadline\": \"$deadline\", \"maxRegistrations\": 8,
+    \"weeklyTemplate\": [{\"dayOfWeek\": 2, \"startTime\": \"10:30\", \"endTime\": \"12:00\", \"trainerId\": \"$trainerId\", \"courtName\": \"Baan 2\", \"maxStudents\": 4}],
+    \"lessons\": [{\"trainerId\": \"$trainerId\", \"date\": \"$today\", \"startTime\": \"10:30\", \"endTime\": \"12:00\", \"courtName\": \"Baan 2\", \"maxStudents\": 4}]
 }" "$token")
 id=$(echo "$id" | tr -d '"')
 if [ -n "$id" ] && [ "$id" != "null" ]; then
@@ -171,8 +173,9 @@ id=$(invoke_api POST "/lessonseries" "{
     \"trainerId\": \"$trainerId\", \"tennisClubId\": \"$clubId2\",
     \"name\": \"Padel Introductie\", \"description\": \"Kennismaken met padel. Regels en basistechnieken.\",
     \"level\": 1, \"price\": 95.00, \"startDate\": \"$startDate2\", \"endDate\": \"$endDate2\",
-    \"registrationDeadline\": \"$deadline\",
-    \"lessons\": [{\"trainerId\": \"$trainerId\", \"date\": \"$startDate2\", \"startTime\": \"14:00\", \"endTime\": \"15:00\", \"courtName\": \"Padel 1\"}]
+    \"registrationDeadline\": \"$deadline\", \"maxRegistrations\": 16,
+    \"weeklyTemplate\": [{\"dayOfWeek\": 4, \"startTime\": \"14:00\", \"endTime\": \"15:00\", \"trainerId\": \"$trainerId\", \"courtName\": \"Padel 1\", \"maxStudents\": 4}],
+    \"lessons\": [{\"trainerId\": \"$trainerId\", \"date\": \"$startDate2\", \"startTime\": \"14:00\", \"endTime\": \"15:00\", \"courtName\": \"Padel 1\", \"maxStudents\": 4}]
 }" "$token")
 id=$(echo "$id" | tr -d '"')
 if [ -n "$id" ] && [ "$id" != "null" ]; then
@@ -203,7 +206,8 @@ for sid in "${seriesIds[@]}"; do
             \"date\": \"$lessonDate\",
             \"startTime\": \"$startTime\",
             \"endTime\": \"$endTime\",
-            \"courtName\": \"$court\"
+            \"courtName\": \"$court\",
+            \"maxStudents\": 4
         }" "$token" > /dev/null
     done
     echo "   Added 8 lessons to series"

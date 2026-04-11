@@ -43,7 +43,7 @@ public class LessonSerieServiceTests
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
-    private static LessonSerie BuildSeries(Guid? id = null, int enrollments = 0, int lessons = 0)
+    private static LessonSerie BuildSeries(Guid? id = null, int enrollments = 0, int lessons = 0, int templateEntries = 0)
     {
         var seriesId = id ?? Guid.NewGuid();
         var enrollmentList = Enumerable
@@ -64,6 +64,21 @@ public class LessonSerieServiceTests
             })
             .ToList();
 
+        var templateList = Enumerable
+            .Range(0, templateEntries)
+            .Select(i => new WeeklyTemplateEntry
+            {
+                Id = Guid.NewGuid(),
+                LessonSerieId = seriesId,
+                DayOfWeek = i,
+                StartTime = new TimeOnly(17, 0),
+                EndTime = new TimeOnly(18, 0),
+                TrainerId = TrainerId,
+                CourtName = $"Baan {i + 1}",
+                MaxStudents = 4,
+            })
+            .ToList();
+
         return new LessonSerie
         {
             Id = seriesId,
@@ -77,6 +92,7 @@ public class LessonSerieServiceTests
             IsActive = true,
             Enrollments = enrollmentList,
             Lessons = lessonList,
+            WeeklyTemplate = templateList,
         };
     }
 
@@ -164,7 +180,7 @@ public class LessonSerieServiceTests
     [Test]
     public async Task GetByIdAsync_ReturnsDto_WhenFound()
     {
-        var series = BuildSeries(lessons: 2);
+        var series = BuildSeries(lessons: 2, templateEntries: 3);
         _lessonSeriesRepo
             .Setup(r => r.GetByIdAsync(series.Id, OrgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(series);
@@ -174,6 +190,10 @@ public class LessonSerieServiceTests
         result.IsSuccess.Should().BeTrue();
         result.Value!.Id.Should().Be(series.Id);
         result.Value.Lessons.Should().HaveCount(2);
+        result.Value.WeeklyTemplate.Should().HaveCount(3);
+        result.Value.WeeklyTemplate[0].DayOfWeek.Should().Be(0);
+        result.Value.WeeklyTemplate[0].CourtName.Should().Be("Baan 1");
+        result.Value.WeeklyTemplate[0].MaxStudents.Should().Be(4);
     }
 
     [Test]
@@ -226,6 +246,28 @@ public class LessonSerieServiceTests
             StartDate = "2026-06-01",
             EndDate = "2026-08-31",
             TennisClubId = ClubId,
+            MaxRegistrations = 20,
+            WeeklyTemplate =
+            [
+                new WeeklyTemplateEntryRequest
+                {
+                    DayOfWeek = 0,
+                    StartTime = "17:00",
+                    EndTime = "18:00",
+                    TrainerId = TrainerId,
+                    CourtName = "Baan 2",
+                    MaxStudents = 4,
+                },
+                new WeeklyTemplateEntryRequest
+                {
+                    DayOfWeek = 2,
+                    StartTime = "17:00",
+                    EndTime = "18:00",
+                    TrainerId = TrainerId,
+                    CourtName = "Baan 1",
+                    MaxStudents = 4,
+                },
+            ],
             Lessons =
             [
                 new CreateLessonRequest
@@ -235,6 +277,7 @@ public class LessonSerieServiceTests
                     StartTime = "10:00",
                     EndTime = "11:00",
                     CourtName = "Baan 1",
+                    MaxStudents = 4,
                 }
             ],
         };
@@ -253,7 +296,12 @@ public class LessonSerieServiceTests
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().NotBeEmpty();
         _lessonSeriesRepo.Verify(
-            r => r.AddAsync(It.Is<LessonSerie>(s => s.Name == "Zomerlessen 2026" && s.OrganizationId == OrgId && s.Lessons.Count == 1),
+            r => r.AddAsync(It.Is<LessonSerie>(s =>
+                s.Name == "Zomerlessen 2026"
+                && s.OrganizationId == OrgId
+                && s.Lessons.Count == 1
+                && s.WeeklyTemplate.Count == 2
+                && s.MaxRegistrations == 20),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }
@@ -571,5 +619,135 @@ public class LessonSerieServiceTests
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.Conflict);
         _lessonRepo.Verify(r => r.DeleteAsync(It.IsAny<Lesson>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    // ── CreateAsync — WeeklyTemplate ─────────────────────────────────────────
+
+    [Test]
+    public async Task CreateAsync_PersistsWeeklyTemplateEntries()
+    {
+        LessonSerie? captured = null;
+        CreateLessonSerieRequest request = new()
+        {
+            Name = "Met template",
+            Price = 100m,
+            StartDate = "2026-06-01",
+            EndDate = "2026-08-31",
+            TennisClubId = ClubId,
+            WeeklyTemplate =
+            [
+                new WeeklyTemplateEntryRequest
+                {
+                    DayOfWeek = 0,
+                    StartTime = "17:00",
+                    EndTime = "18:00",
+                    TrainerId = TrainerId,
+                    CourtName = "Baan 2",
+                    MaxStudents = 4,
+                },
+            ],
+            Lessons =
+            [
+                new CreateLessonRequest
+                {
+                    TrainerId = TrainerId,
+                    Date = "2026-06-01",
+                    StartTime = "17:00",
+                    EndTime = "18:00",
+                    CourtName = "Baan 2",
+                    MaxStudents = 4,
+                },
+            ],
+        };
+
+        _tennisClubRepo
+            .Setup(r => r.ExistsAsync(ClubId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        _lessonSeriesRepo
+            .Setup(r => r.AddAsync(It.IsAny<LessonSerie>(), It.IsAny<CancellationToken>()))
+            .Callback<LessonSerie, CancellationToken>((s, _) => captured = s)
+            .Returns(Task.CompletedTask);
+
+        var result = await _service.CreateAsync(OrgId, request);
+
+        result.IsSuccess.Should().BeTrue();
+        captured.Should().NotBeNull();
+        captured!.WeeklyTemplate.Should().HaveCount(1);
+        var entry = captured.WeeklyTemplate.First();
+        entry.DayOfWeek.Should().Be(0);
+        entry.StartTime.Should().Be(new TimeOnly(17, 0));
+        entry.EndTime.Should().Be(new TimeOnly(18, 0));
+        entry.TrainerId.Should().Be(TrainerId);
+        entry.CourtName.Should().Be("Baan 2");
+        entry.MaxStudents.Should().Be(4);
+    }
+
+    [Test]
+    public async Task CreateAsync_PersistsMaxStudentsOnLesson()
+    {
+        LessonSerie? captured = null;
+        CreateLessonSerieRequest request = new()
+        {
+            Name = "Met maxStudents",
+            Price = 100m,
+            StartDate = "2026-06-01",
+            EndDate = "2026-08-31",
+            TennisClubId = ClubId,
+            Lessons =
+            [
+                new CreateLessonRequest
+                {
+                    TrainerId = TrainerId,
+                    Date = "2026-06-01",
+                    StartTime = "10:00",
+                    EndTime = "11:00",
+                    CourtName = "Baan 1",
+                    MaxStudents = 6,
+                },
+            ],
+        };
+
+        _tennisClubRepo
+            .Setup(r => r.ExistsAsync(ClubId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        _lessonSeriesRepo
+            .Setup(r => r.AddAsync(It.IsAny<LessonSerie>(), It.IsAny<CancellationToken>()))
+            .Callback<LessonSerie, CancellationToken>((s, _) => captured = s)
+            .Returns(Task.CompletedTask);
+
+        var result = await _service.CreateAsync(OrgId, request);
+
+        result.IsSuccess.Should().BeTrue();
+        captured!.Lessons.Should().HaveCount(1);
+        captured.Lessons.First().MaxStudents.Should().Be(6);
+    }
+
+    // ── GetByIdAsync — WeeklyTemplate sorting ────────────────────────────────
+
+    [Test]
+    public async Task GetByIdAsync_ReturnsWeeklyTemplateSortedByDayAndTime()
+    {
+        var series = BuildSeries(lessons: 1);
+        series.WeeklyTemplate = new List<WeeklyTemplateEntry>
+        {
+            new() { Id = Guid.NewGuid(), DayOfWeek = 2, StartTime = new TimeOnly(10, 0), EndTime = new TimeOnly(11, 0), TrainerId = TrainerId, CourtName = "Baan 1", MaxStudents = 4 },
+            new() { Id = Guid.NewGuid(), DayOfWeek = 0, StartTime = new TimeOnly(17, 0), EndTime = new TimeOnly(18, 0), TrainerId = TrainerId, CourtName = "Baan 2", MaxStudents = 4 },
+            new() { Id = Guid.NewGuid(), DayOfWeek = 0, StartTime = new TimeOnly(9, 0), EndTime = new TimeOnly(10, 0), TrainerId = TrainerId, CourtName = "Baan 1", MaxStudents = 4 },
+        };
+
+        _lessonSeriesRepo
+            .Setup(r => r.GetByIdAsync(series.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+
+        var result = await _service.GetByIdAsync(series.Id, OrgId);
+
+        result.IsSuccess.Should().BeTrue();
+        var template = result.Value!.WeeklyTemplate;
+        template.Should().HaveCount(3);
+        template[0].DayOfWeek.Should().Be(0);
+        template[0].StartTime.Should().Be("09:00");
+        template[1].DayOfWeek.Should().Be(0);
+        template[1].StartTime.Should().Be("17:00");
+        template[2].DayOfWeek.Should().Be(2);
     }
 }

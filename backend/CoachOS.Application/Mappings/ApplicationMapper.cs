@@ -22,7 +22,7 @@ public partial class ApplicationMapper
             EndDate = DateOnly.ParseExact(request.EndDate, "yyyy-MM-dd"),
             RegistrationDeadline = request.RegistrationDeadline,
             TennisClubId = request.TennisClubId,
-            MaxParticipants = request.MaxParticipants,
+            MaxRegistrations = request.MaxRegistrations,
             IsActive = true,
         };
     }
@@ -41,7 +41,7 @@ public partial class ApplicationMapper
             EndDate = ls.EndDate.ToString("yyyy-MM-dd"),
             RegistrationDeadline = ls.RegistrationDeadline,
             IsActive = ls.IsActive,
-            MaxParticipants = ls.MaxParticipants,
+            MaxRegistrations = ls.MaxRegistrations,
             LessonCount = lessonCount,
             CreatedAt = ls.CreatedAt,
             TennisClubId = ls.TennisClubId,
@@ -84,9 +84,37 @@ public partial class ApplicationMapper
             StartTime = startTime,
             EndTime = endTime,
             Level = request.Level.HasValue ? (LessonLevel)request.Level.Value : null,
-            MaxStudents = 0,
+            MaxStudents = request.MaxStudents,
             Notes = request.Notes,
             IsCancelled = false,
+        };
+    }
+
+    public WeeklyTemplateEntry ToWeeklyTemplateEntry(WeeklyTemplateEntryRequest request, Domain.Entities.LessonSerie series)
+    {
+        return new WeeklyTemplateEntry
+        {
+            LessonSerieId = series.Id,
+            DayOfWeek = request.DayOfWeek,
+            StartTime = TimeOnly.ParseExact(request.StartTime, "HH:mm"),
+            EndTime = TimeOnly.ParseExact(request.EndTime, "HH:mm"),
+            TrainerId = request.TrainerId,
+            CourtName = request.CourtName,
+            MaxStudents = request.MaxStudents,
+        };
+    }
+
+    public WeeklyTemplateEntryDto ToWeeklyTemplateEntryDto(WeeklyTemplateEntry entry)
+    {
+        return new WeeklyTemplateEntryDto
+        {
+            Id = entry.Id,
+            DayOfWeek = entry.DayOfWeek,
+            StartTime = entry.StartTime.ToString("HH:mm"),
+            EndTime = entry.EndTime.ToString("HH:mm"),
+            TrainerId = entry.TrainerId,
+            CourtName = entry.CourtName,
+            MaxStudents = entry.MaxStudents,
         };
     }
 

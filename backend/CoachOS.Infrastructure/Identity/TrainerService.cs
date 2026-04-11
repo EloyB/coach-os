@@ -103,8 +103,8 @@ public class TrainerService(
         CancellationToken ct = default)
     {
         var counts = await context.Lessons
-            .Where(l => l.OrganizationId == organizationId)
-            .GroupBy(l => l.TrainerId)
+            .Where(l => l.OrganizationId == organizationId && l.TrainerId.HasValue)
+            .GroupBy(l => l.TrainerId!.Value)
             .Select(g => new { g.Key, Count = g.Count() })
             .ToDictionaryAsync(x => x.Key, x => x.Count, ct);
 

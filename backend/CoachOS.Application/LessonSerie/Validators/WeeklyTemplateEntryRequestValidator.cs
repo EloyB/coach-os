@@ -3,13 +3,12 @@ using FluentValidation;
 
 namespace CoachOS.Application.LessonSerie.Validators;
 
-public class CreateLessonRequestValidator : AbstractValidator<CreateLessonRequest>
+public class WeeklyTemplateEntryRequestValidator : AbstractValidator<WeeklyTemplateEntryRequest>
 {
-    public CreateLessonRequestValidator()
+    public WeeklyTemplateEntryRequestValidator()
     {
-        RuleFor(x => x.Date)
-            .NotEmpty().WithMessage("Datum is verplicht.")
-            .Matches(@"^\d{4}-\d{2}-\d{2}$").WithMessage("Datum moet het formaat yyyy-MM-dd hebben.");
+        RuleFor(x => x.DayOfWeek)
+            .InclusiveBetween(0, 6).WithMessage("Dag van de week moet tussen 0 (maandag) en 6 (zondag) liggen.");
 
         RuleFor(x => x.StartTime)
             .NotEmpty().WithMessage("Starttijd is verplicht.")
@@ -24,10 +23,6 @@ public class CreateLessonRequestValidator : AbstractValidator<CreateLessonReques
             .When(x => x.CourtName is not null);
 
         RuleFor(x => x.MaxStudents)
-            .GreaterThanOrEqualTo(0).WithMessage("Maximum aantal leerlingen mag niet negatief zijn.");
-
-        RuleFor(x => x.Level)
-            .InclusiveBetween(1, 5).WithMessage("Niveau moet tussen 1 en 5 liggen.")
-            .When(x => x.Level.HasValue);
+            .GreaterThan(0).WithMessage("Maximum aantal leerlingen moet groter dan 0 zijn.");
     }
 }

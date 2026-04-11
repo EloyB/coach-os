@@ -23,6 +23,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<EnrollmentForm> EnrollmentForms { get; set; } = null!;
     public DbSet<FormField> FormFields { get; set; } = null!;
     public DbSet<FormResponse> FormResponses { get; set; } = null!;
+    public DbSet<WeeklyTemplateEntry> WeeklyTemplateEntries { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -39,6 +40,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         builder.ApplyConfiguration(new EnrollmentFormConfiguration());
         builder.ApplyConfiguration(new FormFieldConfiguration());
         builder.ApplyConfiguration(new FormResponseConfiguration());
+        builder.ApplyConfiguration(new WeeklyTemplateEntryConfiguration());
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

@@ -44,7 +44,11 @@ public class DashboardService(
             await tennisClubRepo.GetByOrganizationAsync(organizationId, ct);
 
         // Build upcoming lesson DTOs
-        var trainerIds = upcomingLessons.Select(l => l.TrainerId).Distinct().ToList();
+        var trainerIds = upcomingLessons
+            .Where(l => l.TrainerId.HasValue)
+            .Select(l => l.TrainerId!.Value)
+            .Distinct()
+            .ToList();
         var trainerNames =
             await userLookup.GetUserNamesByIdsAsync(trainerIds, ct);
 
@@ -56,7 +60,9 @@ public class DashboardService(
             StartTime = l.StartTime.ToString("HH:mm"),
             EndTime = l.EndTime.ToString("HH:mm"),
             CourtName = l.CourtName,
-            TrainerName = trainerNames.GetValueOrDefault(l.TrainerId, string.Empty),
+            TrainerName = l.TrainerId.HasValue
+                ? trainerNames.GetValueOrDefault(l.TrainerId.Value, string.Empty)
+                : string.Empty,
         }).ToList();
 
         DashboardSummaryDto summary = new()

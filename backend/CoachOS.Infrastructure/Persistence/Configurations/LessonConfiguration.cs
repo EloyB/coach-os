@@ -11,7 +11,6 @@ public class LessonConfiguration : IEntityTypeConfiguration<Lesson>
         builder.HasKey(l => l.Id);
 
         builder.Property(l => l.CourtName)
-            .IsRequired()
             .HasMaxLength(100);
 
         builder.Property(l => l.Notes)

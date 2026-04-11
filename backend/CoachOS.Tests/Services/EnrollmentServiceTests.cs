@@ -51,7 +51,7 @@ public class EnrollmentServiceTests
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private static LessonSerie BuildActiveSeries() => new()
+    private static LessonSerie BuildActiveSeries(int templateEntries = 0) => new()
     {
         Id = SeriesId,
         OrganizationId = OrgId,
@@ -61,6 +61,7 @@ public class EnrollmentServiceTests
         StartDate = DateOnly.FromDateTime(DateTime.Today),
         EndDate = DateOnly.FromDateTime(DateTime.Today.AddMonths(3)),
         RegistrationDeadline = DateTime.UtcNow.AddMonths(1),
+        MaxRegistrations = 20,
         IsActive = true,
         Lessons = new List<Lesson>
         {
@@ -75,6 +76,20 @@ public class EnrollmentServiceTests
                 CourtName = "Baan 1",
             }
         },
+        WeeklyTemplate = Enumerable
+            .Range(0, templateEntries)
+            .Select(i => new WeeklyTemplateEntry
+            {
+                Id = Guid.NewGuid(),
+                LessonSerieId = SeriesId,
+                DayOfWeek = i,
+                StartTime = new TimeOnly(17, 0),
+                EndTime = new TimeOnly(18, 0),
+                TrainerId = TrainerId,
+                CourtName = $"Baan {i + 1}",
+                MaxStudents = 4,
+            })
+            .ToList(),
     };
 
     private static EnrollmentForm BuildFormWithFields() => new()
@@ -100,7 +115,7 @@ public class EnrollmentServiceTests
     [Test]
     public async Task GetPublicLessonSerie_ReturnsDto_WhenFound()
     {
-        var series = BuildActiveSeries();
+        var series = BuildActiveSeries(templateEntries: 2);
         _lessonSeriesRepo
             .Setup(r => r.GetByIdPublicAsync(SeriesId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(series);
@@ -113,6 +128,10 @@ public class EnrollmentServiceTests
         result.IsSuccess.Should().BeTrue();
         result.Value!.Name.Should().Be("Beginners A");
         result.Value.EnrollmentCount.Should().Be(5);
+        result.Value.MaxRegistrations.Should().Be(20);
+        result.Value.WeeklyTemplate.Should().HaveCount(2);
+        result.Value.WeeklyTemplate[0].DayOfWeek.Should().Be(0);
+        result.Value.WeeklyTemplate[0].MaxStudents.Should().Be(4);
     }
 
     [Test]
@@ -311,6 +330,31 @@ public class EnrollmentServiceTests
             r => r.AddAsync(It.Is<Enrollment>(e => e.StudentName == "Anna"), It.IsAny<CancellationToken>()),
             Times.Once);
         _enrollmentRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task SubmitEnrollment_ReturnsConflict_WhenMaxRegistrationsReached()
+    {
+        var series = BuildActiveSeries();
+        series.MaxRegistrations = 10;
+
+        _lessonSeriesRepo
+            .Setup(r => r.GetByIdPublicAsync(SeriesId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+        _enrollmentRepo
+            .Setup(r => r.CountActiveBySeriesAsync(SeriesId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(10);
+
+        SubmitEnrollmentRequest request = new()
+        {
+            StudentName = "Anna",
+            StudentEmail = "anna@test.be",
+        };
+
+        var result = await _service.SubmitEnrollmentAsync(SeriesId, request);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.Conflict);
     }
 
     [Test]

@@ -17,6 +17,6 @@ public class UpcomingLessonDto
     public string Date { get; set; } = string.Empty;
     public string StartTime { get; set; } = string.Empty;
     public string EndTime { get; set; } = string.Empty;
-    public string CourtName { get; set; } = string.Empty;
+    public string? CourtName { get; set; }
     public string TrainerName { get; set; } = string.Empty;
 }

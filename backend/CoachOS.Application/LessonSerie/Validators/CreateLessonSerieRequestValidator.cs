@@ -21,9 +21,9 @@ public class CreateLessonSerieRequestValidator : AbstractValidator<CreateLessonS
         RuleFor(x => x.Price)
             .GreaterThanOrEqualTo(0).WithMessage("Prijs mag niet negatief zijn.");
 
-        RuleFor(x => x.MaxParticipants)
-            .GreaterThan(0).WithMessage("Maximum aantal deelnemers moet groter dan 0 zijn.")
-            .When(x => x.MaxParticipants.HasValue);
+        RuleFor(x => x.MaxRegistrations)
+            .GreaterThan(0).WithMessage("Maximum aantal inschrijvingen moet groter dan 0 zijn.")
+            .When(x => x.MaxRegistrations.HasValue);
 
         RuleFor(x => x.StartDate)
             .NotEmpty().WithMessage("Startdatum is verplicht.")
@@ -48,6 +48,9 @@ public class CreateLessonSerieRequestValidator : AbstractValidator<CreateLessonS
 
         RuleFor(x => x.Lessons)
             .NotEmpty().WithMessage("Minstens één les is verplicht.");
+
+        RuleForEach(x => x.WeeklyTemplate)
+            .SetValidator(new WeeklyTemplateEntryRequestValidator());
 
         RuleForEach(x => x.Lessons)
             .SetValidator(new CreateLessonRequestValidator());

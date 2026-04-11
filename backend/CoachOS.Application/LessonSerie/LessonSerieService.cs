@@ -50,6 +50,11 @@ public class LessonSerieService(
 
         var dto = mapper.ToLessonSerieDto(series, lessons.Count);
         dto.Lessons = lessons;
+        dto.WeeklyTemplate = series.WeeklyTemplate
+            .OrderBy(w => w.DayOfWeek)
+            .ThenBy(w => w.StartTime)
+            .Select(mapper.ToWeeklyTemplateEntryDto)
+            .ToList();
 
         return Result<LessonSerieDto>.Ok(dto);
     }
@@ -75,6 +80,12 @@ public class LessonSerieService(
             return Result<Guid>.Fail(new Error(ErrorCodes.NotFound, "Tennisclub niet gevonden."));
 
         var series = mapper.ToLessonSerie(request, organizationId);
+
+        foreach (var templateRequest in request.WeeklyTemplate)
+        {
+            var entry = mapper.ToWeeklyTemplateEntry(templateRequest, series);
+            series.WeeklyTemplate.Add(entry);
+        }
 
         foreach (var lessonRequest in request.Lessons)
         {
@@ -107,7 +118,7 @@ public class LessonSerieService(
         series.Price = request.Price;
         series.RegistrationDeadline = request.RegistrationDeadline;
         series.IsActive = request.IsActive;
-        series.MaxParticipants = request.MaxParticipants;
+        series.MaxRegistrations = request.MaxRegistrations;
         series.TennisClubId = request.TennisClubId;
 
         await lessonSeriesRepo.UpdateAsync(series, ct);
