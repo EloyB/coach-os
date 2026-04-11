@@ -50,6 +50,9 @@ public static class DependencyInjection
         services.AddScoped<ITennisClubRepository, TennisClubRepository>();
         services.AddScoped<IEnrollmentRepository, EnrollmentRepository>();
         services.AddScoped<IEnrollmentFormRepository, EnrollmentFormRepository>();
+        services.AddScoped<IEnrollmentGroupRepository, EnrollmentGroupRepository>();
+        services.AddScoped<ITimeSlotPreferenceRepository, TimeSlotPreferenceRepository>();
+        services.AddScoped<IScheduleAssignmentRepository, ScheduleAssignmentRepository>();
 
         return services;
     }

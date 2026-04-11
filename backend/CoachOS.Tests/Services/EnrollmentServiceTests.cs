@@ -18,6 +18,8 @@ public class EnrollmentServiceTests
     private Mock<IEnrollmentRepository> _enrollmentRepo = null!;
     private Mock<IEnrollmentFormRepository> _enrollmentFormRepo = null!;
     private Mock<ILessonSerieRepository> _lessonSeriesRepo = null!;
+    private Mock<IEnrollmentGroupRepository> _enrollmentGroupRepo = null!;
+    private Mock<ITimeSlotPreferenceRepository> _timeSlotPreferenceRepo = null!;
     private Mock<IUserLookupService> _userLookup = null!;
     private Mock<IEmailService> _emailService = null!;
     private ApplicationMapper _mapper = null!;
@@ -34,6 +36,8 @@ public class EnrollmentServiceTests
         _enrollmentRepo = new Mock<IEnrollmentRepository>();
         _enrollmentFormRepo = new Mock<IEnrollmentFormRepository>();
         _lessonSeriesRepo = new Mock<ILessonSerieRepository>();
+        _enrollmentGroupRepo = new Mock<IEnrollmentGroupRepository>();
+        _timeSlotPreferenceRepo = new Mock<ITimeSlotPreferenceRepository>();
         _userLookup = new Mock<IUserLookupService>();
         _emailService = new Mock<IEmailService>();
         _mapper = new ApplicationMapper();
@@ -43,6 +47,8 @@ public class EnrollmentServiceTests
             _enrollmentRepo.Object,
             _enrollmentFormRepo.Object,
             _lessonSeriesRepo.Object,
+            _enrollmentGroupRepo.Object,
+            _timeSlotPreferenceRepo.Object,
             _userLookup.Object,
             _emailService.Object,
             _mapper,

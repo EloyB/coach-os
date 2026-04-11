@@ -19,5 +19,8 @@ public class WeeklyTemplateEntryConfiguration : IEntityTypeConfiguration<WeeklyT
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(w => w.LessonSerieId);
+
+        builder.HasIndex(w => new { w.LessonSerieId, w.DayOfWeek, w.StartTime })
+            .IsUnique();
     }
 }

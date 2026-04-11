@@ -1,3 +1,4 @@
+using CoachOS.Application.Enrollments.DTOs;
 using CoachOS.Application.LessonSerie.DTOs;
 using CoachOS.Application.TennisClubs.DTOs;
 using CoachOS.Domain.Entities;
@@ -113,6 +114,19 @@ public partial class ApplicationMapper
             StartTime = entry.StartTime.ToString("HH:mm"),
             EndTime = entry.EndTime.ToString("HH:mm"),
             TrainerId = entry.TrainerId,
+            CourtName = entry.CourtName,
+            MaxStudents = entry.MaxStudents,
+        };
+    }
+
+    public PublicTimeSlotDto ToPublicTimeSlotDto(WeeklyTemplateEntry entry)
+    {
+        return new PublicTimeSlotDto
+        {
+            Id = entry.Id,
+            DayOfWeek = entry.DayOfWeek,
+            StartTime = entry.StartTime.ToString("HH:mm"),
+            EndTime = entry.EndTime.ToString("HH:mm"),
             CourtName = entry.CourtName,
             MaxStudents = entry.MaxStudents,
         };

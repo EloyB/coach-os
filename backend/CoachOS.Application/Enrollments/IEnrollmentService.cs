@@ -19,4 +19,10 @@ public interface IEnrollmentService
 
     Task<Result<Guid>> SubmitEnrollmentAsync(
         Guid lessonSeriesId, SubmitEnrollmentRequest request, CancellationToken ct = default);
+
+    Task<Result<List<PublicTimeSlotDto>>> GetPublicTimeSlotsAsync(
+        Guid lessonSeriesId, CancellationToken ct = default);
+
+    Task<Result<List<EnrollmentWithPreferencesDto>>> GetSeriesEnrollmentsWithPreferencesAsync(
+        Guid lessonSeriesId, Guid organizationId, CancellationToken ct = default);
 }

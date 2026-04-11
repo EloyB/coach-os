@@ -24,6 +24,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<FormField> FormFields { get; set; } = null!;
     public DbSet<FormResponse> FormResponses { get; set; } = null!;
     public DbSet<WeeklyTemplateEntry> WeeklyTemplateEntries { get; set; } = null!;
+    public DbSet<EnrollmentGroup> EnrollmentGroups { get; set; } = null!;
+    public DbSet<TimeSlotPreference> TimeSlotPreferences { get; set; } = null!;
+    public DbSet<ScheduleAssignment> ScheduleAssignments { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -41,6 +44,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         builder.ApplyConfiguration(new FormFieldConfiguration());
         builder.ApplyConfiguration(new FormResponseConfiguration());
         builder.ApplyConfiguration(new WeeklyTemplateEntryConfiguration());
+        builder.ApplyConfiguration(new EnrollmentGroupConfiguration());
+        builder.ApplyConfiguration(new TimeSlotPreferenceConfiguration());
+        builder.ApplyConfiguration(new ScheduleAssignmentConfiguration());
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

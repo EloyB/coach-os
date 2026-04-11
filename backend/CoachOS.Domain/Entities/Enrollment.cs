@@ -22,11 +22,15 @@ public class Enrollment : BaseEntity
     public EnrollmentStatus Status { get; set; }
     public DateTime EnrolledAt { get; set; }
     public string? Notes { get; set; }
+    public Guid? EnrollmentGroupId { get; set; }
+    public bool IsOpenToGrouping { get; set; }
 
     // Navigation properties
     public Organization Organization { get; set; } = null!;
     public Lesson? Lesson { get; set; }
     public LessonSerie? LessonSerie { get; set; }
+    public EnrollmentGroup? EnrollmentGroup { get; set; }
+    public ICollection<TimeSlotPreference> TimeSlotPreferences { get; set; } = new List<TimeSlotPreference>();
     public ICollection<Payment> Payments { get; set; } = new List<Payment>();
     public ICollection<FormResponse> FormResponses { get; set; } = new List<FormResponse>();
 }

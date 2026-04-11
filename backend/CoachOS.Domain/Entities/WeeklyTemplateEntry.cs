@@ -9,4 +9,6 @@ public class WeeklyTemplateEntry : LessonSlotBase
 
     // Navigation properties
     public LessonSerie LessonSerie { get; set; } = null!;
+    public ICollection<TimeSlotPreference> Preferences { get; set; } = new List<TimeSlotPreference>();
+    public ICollection<ScheduleAssignment> Assignments { get; set; } = new List<ScheduleAssignment>();
 }

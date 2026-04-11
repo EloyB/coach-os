@@ -14,6 +14,8 @@ public class EnrollmentService(
     IEnrollmentRepository enrollmentRepo,
     IEnrollmentFormRepository enrollmentFormRepo,
     ILessonSerieRepository lessonSeriesRepo,
+    IEnrollmentGroupRepository enrollmentGroupRepo,
+    ITimeSlotPreferenceRepository timeSlotPreferenceRepo,
     IUserLookupService userLookup,
     IEmailService emailService,
     ApplicationMapper mapper,
@@ -200,11 +202,14 @@ public class EnrollmentService(
             return Result<Guid>.Fail(
                 new Error(ErrorCodes.Validation, "De inschrijvingsdeadline is verstreken."));
 
-        // 3. Capacity check
+        // 3. Capacity check (accounts for group size)
         if (series.MaxRegistrations.HasValue)
         {
             var activeCount = await enrollmentRepo.CountActiveBySeriesAsync(lessonSeriesId, ct);
-            if (activeCount >= series.MaxRegistrations.Value)
+            var groupSize = request.EnrollmentType == "group" && request.GroupMembers is not null
+                ? request.GroupMembers.Count + 1
+                : 1;
+            if (activeCount + groupSize > series.MaxRegistrations.Value)
                 return Result<Guid>.Fail(
                     new Error(ErrorCodes.Conflict, "Deze lessenreeks is volzet."));
         }
@@ -256,6 +261,7 @@ public class EnrollmentService(
             StudentEmail = request.StudentEmail,
             Status = EnrollmentStatus.Confirmed,
             EnrolledAt = DateTime.UtcNow,
+            IsOpenToGrouping = request.IsOpenToGrouping,
         };
 
         await enrollmentRepo.AddAsync(enrollment, ct);
@@ -272,9 +278,78 @@ public class EnrollmentService(
             await enrollmentRepo.AddFormResponseAsync(response, ct);
         }
 
+        // 9. Save enrollment + form responses first (needed before group creation to avoid circular FK)
         await enrollmentRepo.SaveChangesAsync(ct);
 
-        // 9. Send notification emails (fire-and-forget in try/catch)
+        // 10. Group enrollment: create group + member enrollments
+        if (request.EnrollmentType == "group" && request.GroupMembers is { Count: > 0 })
+        {
+            var existingGroupCount = await enrollmentGroupRepo.CountBySeriesAsync(
+                lessonSeriesId, series.OrganizationId, ct);
+            var groupLetter = (char)('A' + existingGroupCount);
+
+            EnrollmentGroup group = new()
+            {
+                OrganizationId = series.OrganizationId,
+                LessonSerieId = series.Id,
+                Name = $"Groep {groupLetter}",
+                LeaderEnrollmentId = enrollment.Id,
+            };
+
+            await enrollmentGroupRepo.AddAsync(group, ct);
+            await enrollmentGroupRepo.SaveChangesAsync(ct);
+
+            enrollment.EnrollmentGroupId = group.Id;
+
+            foreach (var member in request.GroupMembers)
+            {
+                Enrollment memberEnrollment = new()
+                {
+                    OrganizationId = series.OrganizationId,
+                    LessonSerieId = series.Id,
+                    StudentName = member.StudentName,
+                    StudentEmail = member.StudentEmail,
+                    Status = EnrollmentStatus.Confirmed,
+                    EnrolledAt = DateTime.UtcNow,
+                    EnrollmentGroupId = group.Id,
+                };
+
+                await enrollmentRepo.AddAsync(memberEnrollment, ct);
+
+                if (member.Responses is { Count: > 0 })
+                {
+                    foreach (var responseDto in member.Responses)
+                    {
+                        FormResponse response = new()
+                        {
+                            EnrollmentId = memberEnrollment.Id,
+                            FormFieldId = responseDto.FormFieldId,
+                            Value = responseDto.Value,
+                        };
+                        await enrollmentRepo.AddFormResponseAsync(response, ct);
+                    }
+                }
+            }
+
+            await enrollmentRepo.SaveChangesAsync(ct);
+        }
+
+        // 11. Save time slot preferences
+        if (request.TimeSlotPreferences is { Count: > 0 })
+        {
+            var preferences = request.TimeSlotPreferences.Select(p => new TimeSlotPreference
+            {
+                OrganizationId = series.OrganizationId,
+                EnrollmentId = enrollment.Id,
+                WeeklyTemplateEntryId = p.WeeklyTemplateEntryId,
+                Preference = (SlotPreference)p.Preference,
+            });
+
+            await timeSlotPreferenceRepo.AddRangeAsync(preferences, ct);
+            await timeSlotPreferenceRepo.SaveChangesAsync(ct);
+        }
+
+        // 11. Send notification emails (fire-and-forget in try/catch)
         try
         {
             var firstTrainerId = series.Lessons
@@ -322,5 +397,72 @@ public class EnrollmentService(
         }
 
         return Result<Guid>.Ok(enrollment.Id);
+    }
+
+    public async Task<Result<List<PublicTimeSlotDto>>> GetPublicTimeSlotsAsync(
+        Guid lessonSeriesId, CancellationToken ct = default)
+    {
+        var series = await lessonSeriesRepo.GetByIdPublicAsync(lessonSeriesId, ct);
+
+        if (series is null)
+            return Result<List<PublicTimeSlotDto>>.Fail(
+                new Error(ErrorCodes.NotFound, "Lessenreeks niet gevonden."));
+
+        var slots = series.WeeklyTemplate
+            .OrderBy(w => w.DayOfWeek)
+            .ThenBy(w => w.StartTime)
+            .Select(mapper.ToPublicTimeSlotDto)
+            .ToList();
+
+        return Result<List<PublicTimeSlotDto>>.Ok(slots);
+    }
+
+    public async Task<Result<List<EnrollmentWithPreferencesDto>>> GetSeriesEnrollmentsWithPreferencesAsync(
+        Guid lessonSeriesId, Guid organizationId, CancellationToken ct = default)
+    {
+        var exists = await lessonSeriesRepo.ExistsAsync(lessonSeriesId, organizationId, ct);
+        if (!exists)
+            return Result<List<EnrollmentWithPreferencesDto>>.Fail(
+                new Error(ErrorCodes.NotFound, "Lessenreeks niet gevonden."));
+
+        var enrollments = await enrollmentRepo.GetBySeriesAsync(lessonSeriesId, organizationId, ct);
+        var preferences = await timeSlotPreferenceRepo.GetBySeriesAsync(lessonSeriesId, organizationId, ct);
+        var groups = await enrollmentGroupRepo.GetBySeriesAsync(lessonSeriesId, organizationId, ct);
+
+        var prefsByEnrollment = preferences
+            .GroupBy(p => p.EnrollmentId)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        var groupsById = groups.ToDictionary(g => g.Id);
+
+        var dtos = enrollments
+            .Where(e => e.Status == EnrollmentStatus.Confirmed || e.Status == EnrollmentStatus.Pending)
+            .Select(e =>
+            {
+                var enrollmentPrefs = prefsByEnrollment.GetValueOrDefault(e.Id, []);
+                EnrollmentGroup? group = e.EnrollmentGroupId.HasValue
+                    ? groupsById.GetValueOrDefault(e.EnrollmentGroupId.Value)
+                    : null;
+
+                return new EnrollmentWithPreferencesDto
+                {
+                    Id = e.Id,
+                    StudentName = e.StudentName,
+                    StudentEmail = e.StudentEmail,
+                    Status = e.Status.ToString(),
+                    IsOpenToGrouping = e.IsOpenToGrouping,
+                    EnrollmentGroupId = e.EnrollmentGroupId,
+                    GroupName = group?.Name,
+                    IsGroupLeader = group?.LeaderEnrollmentId == e.Id,
+                    Preferences = enrollmentPrefs.Select(p => new TimeSlotPreferenceDto
+                    {
+                        WeeklyTemplateEntryId = p.WeeklyTemplateEntryId,
+                        Preference = (int)p.Preference,
+                    }).ToList(),
+                };
+            })
+            .ToList();
+
+        return Result<List<EnrollmentWithPreferencesDto>>.Ok(dtos);
     }
 }

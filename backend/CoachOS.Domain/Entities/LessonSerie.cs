@@ -22,6 +22,7 @@ public class LessonSerie : BaseEntity
     public DateTime RegistrationDeadline { get; set; }
     public bool IsActive { get; set; } = true;
     public int? MaxRegistrations { get; set; }
+    public PlanningStatus PlanningStatus { get; set; } = PlanningStatus.Enrollment;
 
     public Guid TennisClubId { get; set; }
 
@@ -31,5 +32,7 @@ public class LessonSerie : BaseEntity
     public ICollection<Lesson> Lessons { get; set; } = new List<Lesson>();
     public ICollection<Enrollment> Enrollments { get; set; } = new List<Enrollment>();
     public ICollection<WeeklyTemplateEntry> WeeklyTemplate { get; set; } = new List<WeeklyTemplateEntry>();
+    public ICollection<EnrollmentGroup> EnrollmentGroups { get; set; } = new List<EnrollmentGroup>();
+    public ICollection<ScheduleAssignment> ScheduleAssignments { get; set; } = new List<ScheduleAssignment>();
     public EnrollmentForm? EnrollmentForm { get; set; }
 }

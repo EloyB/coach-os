@@ -41,6 +41,12 @@ public class EnrollmentConfiguration : IEntityTypeConfiguration<Enrollment>
             .OnDelete(DeleteBehavior.Restrict)
             .IsRequired(false);
 
+        builder.HasOne(e => e.EnrollmentGroup)
+            .WithMany(g => g.Members)
+            .HasForeignKey(e => e.EnrollmentGroupId)
+            .OnDelete(DeleteBehavior.Restrict)
+            .IsRequired(false);
+
         builder.HasIndex(e => e.OrganizationId);
         builder.HasIndex(e => e.StudentEmail);
         builder.HasIndex(e => e.LessonId);
