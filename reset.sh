@@ -31,7 +31,7 @@ echo "   Done."
 echo ""
 echo "3. Waiting for API to be ready..."
 elapsed=0
-until curl -sf "${API_BASE}/auth/login" -X POST -H "Content-Type: application/json" -d '{}' > /dev/null 2>&1 || [ $elapsed -ge $MAX_WAIT ]; do
+until curl -s -o /dev/null -w "%{http_code}" "${API_BASE}/auth/login" -X POST -H "Content-Type: application/json" -d '{}' 2>/dev/null | grep -qE "^[2-4]" || [ $elapsed -ge $MAX_WAIT ]; do
     sleep 2
     elapsed=$((elapsed + 2))
     printf "   %ds...\r" "$elapsed"
