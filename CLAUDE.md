@@ -72,12 +72,14 @@ PostgreSQL via EF Core. All entities use `Guid` PKs. `ApplicationUser` configura
 ## Critical Patterns
 
 **New backend feature checklist:**
+
 1. Domain entity → EF configuration → `DbSet` in `ApplicationDbContext` + `IApplicationDbContext` → migration
 2. DTOs in `Application/{Feature}/`
 3. Commands/Queries each get their own folder with Command/Handler/Validator files
 4. Thin controller, reads `OrganizationId` from claims
 
 **Never:**
+
 - Business logic in controllers
 - `var` in C# (use explicit types)
 - `any` in TypeScript
@@ -93,3 +95,13 @@ PostgreSQL via EF Core. All entities use `Guid` PKs. `ApplicationUser` configura
 
 - Ask clarifying questions one at a time — never list multiple questions at once.
 - Never run `git commit`, `git push`, or create PRs. The user handles all version control.
+
+## graphify
+
+This project has a graphify knowledge graph at graphify-out/.
+
+Rules:
+
+- Before answering architecture or codebase questions, read graphify-out/GRAPH_REPORT.md for god nodes and community structure
+- If graphify-out/wiki/index.md exists, navigate it instead of reading raw files
+- After modifying code files in this session, run `python3 -c "from graphify.watch import _rebuild_code; from pathlib import Path; _rebuild_code(Path('.'))"` to keep the graph current
