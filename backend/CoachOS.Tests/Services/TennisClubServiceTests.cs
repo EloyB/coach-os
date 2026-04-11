@@ -45,14 +45,14 @@ public class TennisClubServiceTests
     [Test]
     public async Task GetAllAsync_ReturnsDtos()
     {
-        TennisClub club1 = BuildClub("TC Ons Dorp", "Sportlaan 1");
-        TennisClub club2 = BuildClub("TC De Smasher", "Blauwstraat 12");
+        var club1 = BuildClub("TC Ons Dorp", "Sportlaan 1");
+        var club2 = BuildClub("TC De Smasher", "Blauwstraat 12");
 
         _tennisClubRepo
             .Setup(r => r.GetByOrganizationAsync(OrgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<TennisClub> { club1, club2 });
 
-        Result<List<TennisClubDto>> result = await _service.GetAllAsync(OrgId);
+        var result = await _service.GetAllAsync(OrgId);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().HaveCount(2);
@@ -68,7 +68,7 @@ public class TennisClubServiceTests
             .Setup(r => r.GetByOrganizationAsync(OrgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<TennisClub>());
 
-        Result<List<TennisClubDto>> result = await _service.GetAllAsync(OrgId);
+        var result = await _service.GetAllAsync(OrgId);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().BeEmpty();
@@ -90,7 +90,7 @@ public class TennisClubServiceTests
             .Callback<TennisClub, CancellationToken>((c, _) => c.Id = Guid.NewGuid())
             .Returns(Task.CompletedTask);
 
-        Result<Guid> result = await _service.CreateAsync(OrgId, request);
+        var result = await _service.CreateAsync(OrgId, request);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().NotBeEmpty();
@@ -106,7 +106,7 @@ public class TennisClubServiceTests
     [Test]
     public async Task DeleteAsync_Succeeds_WhenNotInUse()
     {
-        TennisClub club = BuildClub();
+        var club = BuildClub();
 
         _tennisClubRepo
             .Setup(r => r.GetByIdAsync(club.Id, OrgId, It.IsAny<CancellationToken>()))
@@ -116,7 +116,7 @@ public class TennisClubServiceTests
             .Setup(r => r.AnyByTennisClubAsync(club.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
-        Result result = await _service.DeleteAsync(club.Id, OrgId);
+        var result = await _service.DeleteAsync(club.Id, OrgId);
 
         result.IsSuccess.Should().BeTrue();
         _tennisClubRepo.Verify(r => r.DeleteAsync(club, It.IsAny<CancellationToken>()), Times.Once);
@@ -125,13 +125,13 @@ public class TennisClubServiceTests
     [Test]
     public async Task DeleteAsync_ReturnsNotFound_WhenMissing()
     {
-        Guid missingId = Guid.NewGuid();
+        var missingId = Guid.NewGuid();
 
         _tennisClubRepo
             .Setup(r => r.GetByIdAsync(missingId, OrgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((TennisClub?)null);
 
-        Result result = await _service.DeleteAsync(missingId, OrgId);
+        var result = await _service.DeleteAsync(missingId, OrgId);
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.NotFound);
@@ -141,7 +141,7 @@ public class TennisClubServiceTests
     [Test]
     public async Task DeleteAsync_ReturnsConflict_WhenInUse()
     {
-        TennisClub club = BuildClub();
+        var club = BuildClub();
 
         _tennisClubRepo
             .Setup(r => r.GetByIdAsync(club.Id, OrgId, It.IsAny<CancellationToken>()))
@@ -151,7 +151,7 @@ public class TennisClubServiceTests
             .Setup(r => r.AnyByTennisClubAsync(club.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
-        Result result = await _service.DeleteAsync(club.Id, OrgId);
+        var result = await _service.DeleteAsync(club.Id, OrgId);
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.Conflict);

@@ -14,10 +14,10 @@ public class TennisClubService(
     public async Task<Result<List<TennisClubDto>>> GetAllAsync(
         Guid organizationId, CancellationToken ct = default)
     {
-        IReadOnlyList<TennisClub> clubs =
+        var clubs =
             await tennisClubRepo.GetByOrganizationAsync(organizationId, ct);
 
-        List<TennisClubDto> dtos = clubs
+        var dtos = clubs
             .Select(mapper.ToTennisClubDto)
             .ToList();
 
@@ -43,12 +43,12 @@ public class TennisClubService(
     public async Task<Result> DeleteAsync(
         Guid id, Guid organizationId, CancellationToken ct = default)
     {
-        TennisClub? club = await tennisClubRepo.GetByIdAsync(id, organizationId, ct);
+        var club = await tennisClubRepo.GetByIdAsync(id, organizationId, ct);
 
         if (club is null)
             return Result.Fail(new Error(ErrorCodes.NotFound, "Tennisclub niet gevonden."));
 
-        bool inUse = await lessonSeriesRepo.AnyByTennisClubAsync(id, ct);
+        var inUse = await lessonSeriesRepo.AnyByTennisClubAsync(id, ct);
         if (inUse)
             return Result.Fail(new Error(ErrorCodes.Conflict, "Deze tennisclub kan niet worden verwijderd omdat er lesreeksen aan gekoppeld zijn."));
 

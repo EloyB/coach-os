@@ -23,11 +23,11 @@ public class AuthService(
         string password,
         CancellationToken cancellationToken = default)
     {
-        ApplicationUser? existingUser = await userManager.FindByEmailAsync(email);
+        var existingUser = await userManager.FindByEmailAsync(email);
         if (existingUser is not null)
             return Result<AuthResponseDto>.Fail("E-mailadres is al in gebruik");
 
-        await using Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction transaction =
+        await using var transaction =
             await context.Database.BeginTransactionAsync(cancellationToken);
 
         try
@@ -56,7 +56,7 @@ public class AuthService(
                 IsActive = true
             };
 
-            IdentityResult result = await userManager.CreateAsync(user, password);
+            var result = await userManager.CreateAsync(user, password);
             if (!result.Succeeded)
             {
                 await transaction.RollbackAsync(cancellationToken);
@@ -65,7 +65,7 @@ public class AuthService(
 
             await transaction.CommitAsync(cancellationToken);
 
-            (string token, DateTime expiresAt) = tokenService.GenerateToken(user);
+            (var token, var expiresAt) = tokenService.GenerateToken(user);
 
             return Result<AuthResponseDto>.Ok(new AuthResponseDto
             {
@@ -91,18 +91,18 @@ public class AuthService(
         string password,
         CancellationToken cancellationToken = default)
     {
-        ApplicationUser? user = await userManager.FindByEmailAsync(email);
+        var user = await userManager.FindByEmailAsync(email);
         if (user is null)
             return Result<AuthResponseDto>.Fail("Ongeldige inloggegevens");
 
-        bool validPassword = await userManager.CheckPasswordAsync(user, password);
+        var validPassword = await userManager.CheckPasswordAsync(user, password);
         if (!validPassword)
             return Result<AuthResponseDto>.Fail("Ongeldige inloggegevens");
 
         if (!user.IsActive)
             return Result<AuthResponseDto>.Fail("Account is gedeactiveerd");
 
-        (string token, DateTime expiresAt) = tokenService.GenerateToken(user);
+        (var token, var expiresAt) = tokenService.GenerateToken(user);
 
         return Result<AuthResponseDto>.Ok(new AuthResponseDto
         {

@@ -9,7 +9,7 @@ public class UserLookupService(ApplicationDbContext context) : IUserLookupServic
 {
     public async Task<Dictionary<Guid, string>> GetUserNamesByIdsAsync(IEnumerable<Guid> ids, CancellationToken ct = default)
     {
-        List<Guid> idList = ids.ToList();
+        var idList = ids.ToList();
         return await context.Users
             .AsNoTracking()
             .Where(u => idList.Contains(u.Id))
@@ -18,7 +18,7 @@ public class UserLookupService(ApplicationDbContext context) : IUserLookupServic
 
     public async Task<string?> GetUserNameByIdAsync(Guid id, CancellationToken ct = default)
     {
-        string? result = await context.Users
+        var result = await context.Users
             .AsNoTracking()
             .Where(u => u.Id == id)
             .Select(u => u.FirstName + " " + u.LastName)
@@ -29,7 +29,7 @@ public class UserLookupService(ApplicationDbContext context) : IUserLookupServic
 
     public async Task<List<(Guid Id, string FullName)>> GetOrganizationMembersAsync(Guid organizationId, CancellationToken ct = default)
     {
-        List<ApplicationUser> users = await context.Users
+        var users = await context.Users
             .AsNoTracking()
             .Where(u => u.OrganizationId == organizationId && u.IsActive && (u.Role == UserRole.Trainer || u.Role == UserRole.Admin))
             .OrderBy(u => u.FirstName)
@@ -51,8 +51,8 @@ public class UserLookupService(ApplicationDbContext context) : IUserLookupServic
 
     public async Task<Dictionary<Guid, (string FullName, string Email)>> GetUserNamesAndEmailsByIdsAsync(IEnumerable<Guid> ids, CancellationToken ct = default)
     {
-        List<Guid> idList = ids.ToList();
-        List<ApplicationUser> users = await context.Users
+        var idList = ids.ToList();
+        var users = await context.Users
             .AsNoTracking()
             .Where(u => idList.Contains(u.Id))
             .ToListAsync(ct);
@@ -64,7 +64,7 @@ public class UserLookupService(ApplicationDbContext context) : IUserLookupServic
 
     public async Task<(string FullName, string Email)?> GetUserInfoByIdAsync(Guid id, CancellationToken ct = default)
     {
-        ApplicationUser? user = await context.Users
+        var user = await context.Users
             .AsNoTracking()
             .FirstOrDefaultAsync(u => u.Id == id, ct);
 

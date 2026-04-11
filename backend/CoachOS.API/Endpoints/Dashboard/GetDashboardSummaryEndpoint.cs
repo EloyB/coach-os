@@ -9,7 +9,7 @@ public class GetDashboardSummaryEndpoint : IEndpoint
     {
         app.MapGet("/dashboard", async (IDashboardService service, HttpContext ctx, CancellationToken ct) =>
         {
-            Guid orgId = ctx.GetOrganizationId();
+            var orgId = ctx.GetOrganizationId();
             var result = await service.GetSummaryAsync(orgId, ct);
             return result.IsSuccess ? Results.Ok(result.Value) : result.ToErrorResult();
         })

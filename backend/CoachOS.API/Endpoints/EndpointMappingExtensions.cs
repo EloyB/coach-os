@@ -11,9 +11,9 @@ public static class EndpointMappingExtensions
             .Where(t => t is { IsAbstract: false, IsInterface: false }
                         && typeof(IEndpoint).IsAssignableFrom(t));
 
-        foreach (Type type in endpointTypes)
+        foreach (var type in endpointTypes)
         {
-            IEndpoint endpoint = (IEndpoint)Activator.CreateInstance(type)!;
+            var endpoint = (IEndpoint)Activator.CreateInstance(type)!;
             endpoint.MapEndpoint(builder);
         }
     }

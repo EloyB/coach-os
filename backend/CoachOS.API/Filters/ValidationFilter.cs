@@ -8,15 +8,15 @@ public class ValidationFilter<T> : IEndpointFilter where T : class
         EndpointFilterInvocationContext context,
         EndpointFilterDelegate next)
     {
-        IValidator<T>? validator = context.HttpContext.RequestServices.GetService<IValidator<T>>();
+        var validator = context.HttpContext.RequestServices.GetService<IValidator<T>>();
         if (validator is null)
             return await next(context);
 
-        T? argument = context.Arguments.OfType<T>().FirstOrDefault();
+        var argument = context.Arguments.OfType<T>().FirstOrDefault();
         if (argument is null)
             return await next(context);
 
-        FluentValidation.Results.ValidationResult result =
+        var result =
             await validator.ValidateAsync(argument, context.HttpContext.RequestAborted);
         if (result.IsValid)
             return await next(context);

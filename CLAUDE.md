@@ -81,7 +81,6 @@ PostgreSQL via EF Core. All entities use `Guid` PKs. `ApplicationUser` configura
 **Never:**
 
 - Business logic in controllers
-- `var` in C# (use explicit types)
 - `any` in TypeScript
 - Hardcoded Dutch strings (always `messages/nl.json`)
 - Cascade deletes (use `DeleteBehavior.Restrict`)

@@ -291,7 +291,7 @@ Before committing ANY code, verify:
 - Forget validators for request DTOs
 - Use CASCADE delete (use RESTRICT)
 - Access DbContext directly from Endpoints (use service via interface)
-- Use var everywhere (be explicit with types)
+- Use `var` for local variable declarations
 
 ✅ **DO:**
 

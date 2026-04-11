@@ -68,9 +68,9 @@ public partial class ApplicationMapper
 
     public Lesson ToLesson(CreateLessonRequest request, Domain.Entities.LessonSerie series)
     {
-        DateOnly date = DateOnly.ParseExact(request.Date, "yyyy-MM-dd");
-        TimeOnly startTime = TimeOnly.ParseExact(request.StartTime, "HH:mm");
-        TimeOnly endTime = TimeOnly.ParseExact(request.EndTime, "HH:mm");
+        var date = DateOnly.ParseExact(request.Date, "yyyy-MM-dd");
+        var startTime = TimeOnly.ParseExact(request.StartTime, "HH:mm");
+        var endTime = TimeOnly.ParseExact(request.EndTime, "HH:mm");
 
         return new Lesson
         {

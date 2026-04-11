@@ -35,8 +35,8 @@ public class CreateLessonSerieRequestValidator : AbstractValidator<CreateLessonS
         RuleFor(x => x)
             .Must(x =>
             {
-                if (!DateOnly.TryParseExact(x.StartDate, "yyyy-MM-dd", out DateOnly start)) return true;
-                if (!DateOnly.TryParseExact(x.EndDate, "yyyy-MM-dd", out DateOnly end)) return true;
+                if (!DateOnly.TryParseExact(x.StartDate, "yyyy-MM-dd", out var start)) return true;
+                if (!DateOnly.TryParseExact(x.EndDate, "yyyy-MM-dd", out var end)) return true;
                 return end >= start;
             })
             .WithMessage("Einddatum moet op of na de startdatum liggen.")

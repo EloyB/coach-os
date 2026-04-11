@@ -14,41 +14,41 @@ public class DashboardService(
     public async Task<Result<DashboardSummaryDto>> GetSummaryAsync(
         Guid organizationId, CancellationToken ct = default)
     {
-        IReadOnlyList<Domain.Entities.LessonSerie> allSeries =
+        var allSeries =
             await lessonSeriesRepo.GetByOrganizationAsync(organizationId, ct: ct);
 
-        int activeSeriesCount = allSeries.Count(s => s.IsActive);
+        var activeSeriesCount = allSeries.Count(s => s.IsActive);
 
         // Lessons this week
-        DateOnly today = DateOnly.FromDateTime(DateTime.UtcNow);
-        int dayOfWeek = ((int)today.DayOfWeek + 6) % 7; // Monday=0
-        DateOnly weekStart = today.AddDays(-dayOfWeek);
-        DateOnly weekEnd = weekStart.AddDays(6);
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var dayOfWeek = ((int)today.DayOfWeek + 6) % 7; // Monday=0
+        var weekStart = today.AddDays(-dayOfWeek);
+        var weekEnd = weekStart.AddDays(6);
 
-        List<Domain.Entities.Lesson> upcomingLessons = await lessonRepo.GetUpcomingByOrganizationAsync(
+        var upcomingLessons = await lessonRepo.GetUpcomingByOrganizationAsync(
             organizationId, today, 5, ct);
 
-        int lessonsThisWeek = await lessonRepo.CountByOrganizationAndDateRangeAsync(
+        var lessonsThisWeek = await lessonRepo.CountByOrganizationAndDateRangeAsync(
             organizationId, weekStart, weekEnd, ct);
 
         // Enrollment count
-        int totalEnrollments = await enrollmentRepo.CountActiveByOrganizationAsync(organizationId, ct);
+        var totalEnrollments = await enrollmentRepo.CountActiveByOrganizationAsync(organizationId, ct);
 
         // Trainer count
-        List<(Guid Id, string FullName)> trainers =
+        var trainers =
             await userLookup.GetOrganizationMembersAsync(organizationId, ct);
-        int activeTrainerCount = trainers.Count;
+        var activeTrainerCount = trainers.Count;
 
         // Tennis club count
-        IReadOnlyList<Domain.Entities.TennisClub> clubs =
+        var clubs =
             await tennisClubRepo.GetByOrganizationAsync(organizationId, ct);
 
         // Build upcoming lesson DTOs
-        List<Guid> trainerIds = upcomingLessons.Select(l => l.TrainerId).Distinct().ToList();
-        Dictionary<Guid, string> trainerNames =
+        var trainerIds = upcomingLessons.Select(l => l.TrainerId).Distinct().ToList();
+        var trainerNames =
             await userLookup.GetUserNamesByIdsAsync(trainerIds, ct);
 
-        List<UpcomingLessonDto> upcomingDtos = upcomingLessons.Select(l => new UpcomingLessonDto
+        var upcomingDtos = upcomingLessons.Select(l => new UpcomingLessonDto
         {
             Id = l.Id,
             SeriesName = l.LessonSerie?.Name ?? string.Empty,

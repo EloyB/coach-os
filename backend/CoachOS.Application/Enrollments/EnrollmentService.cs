@@ -22,15 +22,15 @@ public class EnrollmentService(
     public async Task<Result<PublicLessonSerieDto>> GetPublicLessonSerieAsync(
         Guid lessonSeriesId, CancellationToken ct = default)
     {
-        Domain.Entities.LessonSerie? series = await lessonSeriesRepo.GetByIdPublicAsync(lessonSeriesId, ct);
+        var series = await lessonSeriesRepo.GetByIdPublicAsync(lessonSeriesId, ct);
 
         if (series is null)
             return Result<PublicLessonSerieDto>.Fail(
                 new Error(ErrorCodes.NotFound, "Lessenreeks niet gevonden."));
 
-        int enrollmentCount = await enrollmentRepo.CountActiveBySeriesAsync(series.Id, ct);
+        var enrollmentCount = await enrollmentRepo.CountActiveBySeriesAsync(series.Id, ct);
 
-        List<LessonDto> lessons = series.Lessons
+        var lessons = series.Lessons
             .OrderBy(l => l.Date)
             .ThenBy(l => l.StartTime)
             .Select(l => mapper.ToLessonDto(l, series.Id))
@@ -57,7 +57,7 @@ public class EnrollmentService(
     public async Task<Result<EnrollmentFormDto?>> GetEnrollmentFormAsync(
         Guid lessonSeriesId, CancellationToken ct = default)
     {
-        EnrollmentForm? form = await enrollmentFormRepo.GetBySeriesIdReadOnlyAsync(lessonSeriesId, ct);
+        var form = await enrollmentFormRepo.GetBySeriesIdReadOnlyAsync(lessonSeriesId, ct);
 
         if (form is null)
             return Result<EnrollmentFormDto?>.Ok(null);
@@ -85,10 +85,10 @@ public class EnrollmentService(
     public async Task<Result<List<LessonSerieEnrollmentDto>>> GetSeriesEnrollmentsAsync(
         Guid lessonSeriesId, Guid organizationId, CancellationToken ct = default)
     {
-        List<Enrollment> enrollments =
+        var enrollments =
             await enrollmentRepo.GetBySeriesAsync(lessonSeriesId, organizationId, ct);
 
-        List<LessonSerieEnrollmentDto> dtos = enrollments.Select(e => new LessonSerieEnrollmentDto
+        var dtos = enrollments.Select(e => new LessonSerieEnrollmentDto
         {
             Id = e.Id,
             StudentName = e.StudentName,
@@ -111,11 +111,11 @@ public class EnrollmentService(
     public async Task<Result<Guid>> SaveFormAsync(
         Guid lessonSeriesId, Guid organizationId, SaveEnrollmentFormRequest request, CancellationToken ct = default)
     {
-        bool seriesExists = await lessonSeriesRepo.ExistsAsync(lessonSeriesId, organizationId, ct);
+        var seriesExists = await lessonSeriesRepo.ExistsAsync(lessonSeriesId, organizationId, ct);
         if (!seriesExists)
             return Result<Guid>.Fail(new Error(ErrorCodes.NotFound, "Lessenreeks niet gevonden."));
 
-        EnrollmentForm? form = await enrollmentFormRepo.GetBySeriesIdWithFieldsAsync(lessonSeriesId, ct);
+        var form = await enrollmentFormRepo.GetBySeriesIdWithFieldsAsync(lessonSeriesId, ct);
 
         if (form is null)
         {
@@ -128,29 +128,29 @@ public class EnrollmentService(
         }
 
         // Determine which existing fields to delete
-        List<Guid> incomingIds = request.Fields
+        var incomingIds = request.Fields
             .Where(f => f.Id.HasValue)
             .Select(f => f.Id!.Value)
             .ToList();
 
-        List<FormField> toDelete = form.Fields
+        var toDelete = form.Fields
             .Where(f => !incomingIds.Contains(f.Id))
             .ToList();
 
-        foreach (FormField field in toDelete)
+        foreach (var field in toDelete)
             enrollmentFormRepo.RemoveField(field);
 
         // Update existing + insert new
-        int order = 0;
-        foreach (SaveFormFieldRequest dto in request.Fields)
+        var order = 0;
+        foreach (var dto in request.Fields)
         {
-            string? optionsJson = dto.Type == (int)FormFieldType.MultipleChoice && dto.Options?.Count > 0
+            var optionsJson = dto.Type == (int)FormFieldType.MultipleChoice && dto.Options?.Count > 0
                 ? JsonSerializer.Serialize(dto.Options)
                 : null;
 
             if (dto.Id.HasValue)
             {
-                FormField? existing = form.Fields.FirstOrDefault(f => f.Id == dto.Id.Value);
+                var existing = form.Fields.FirstOrDefault(f => f.Id == dto.Id.Value);
                 if (existing is not null)
                 {
                     existing.Label = dto.Label;
@@ -185,23 +185,23 @@ public class EnrollmentService(
         Guid lessonSeriesId, SubmitEnrollmentRequest request, CancellationToken ct = default)
     {
         // 1. Load active lesson series
-        Domain.Entities.LessonSerie? series = await lessonSeriesRepo.GetByIdPublicAsync(lessonSeriesId, ct);
+        var series = await lessonSeriesRepo.GetByIdPublicAsync(lessonSeriesId, ct);
         if (series is null)
             return Result<Guid>.Fail(new Error(ErrorCodes.NotFound, "Lessenreeks niet gevonden."));
 
         // 2. Load enrollment form with fields (may be null)
-        EnrollmentForm? form = await enrollmentFormRepo.GetBySeriesIdReadOnlyAsync(lessonSeriesId, ct);
+        var form = await enrollmentFormRepo.GetBySeriesIdReadOnlyAsync(lessonSeriesId, ct);
 
         // 3. Validate required custom fields
         if (form is not null)
         {
-            List<FormField> requiredFields = form.Fields
+            var requiredFields = form.Fields
                 .Where(f => f.IsRequired)
                 .ToList();
 
-            foreach (FormField requiredField in requiredFields)
+            foreach (var requiredField in requiredFields)
             {
-                bool hasResponse = request.Responses.Any(r =>
+                var hasResponse = request.Responses.Any(r =>
                     r.FormFieldId == requiredField.Id && !string.IsNullOrWhiteSpace(r.Value));
 
                 if (!hasResponse)
@@ -211,7 +211,7 @@ public class EnrollmentService(
         }
 
         // 4. Duplicate check
-        bool isDuplicate = await enrollmentRepo.IsDuplicateAsync(lessonSeriesId, request.StudentEmail, ct);
+        var isDuplicate = await enrollmentRepo.IsDuplicateAsync(lessonSeriesId, request.StudentEmail, ct);
         if (isDuplicate)
             return Result<Guid>.Fail(
                 new Error(ErrorCodes.Conflict, "Je bent al ingeschreven voor deze lessenreeks"));
@@ -230,7 +230,7 @@ public class EnrollmentService(
         await enrollmentRepo.AddAsync(enrollment, ct);
 
         // 6. Create form responses
-        foreach (FormResponseValueDto responseDto in request.Responses)
+        foreach (var responseDto in request.Responses)
         {
             FormResponse response = new()
             {
@@ -246,21 +246,21 @@ public class EnrollmentService(
         // 7. Send notification emails (fire-and-forget in try/catch)
         try
         {
-            Guid? firstTrainerId = series.Lessons
+            var firstTrainerId = series.Lessons
                 .OrderBy(l => l.Date).ThenBy(l => l.StartTime)
                 .Select(l => (Guid?)l.TrainerId)
                 .FirstOrDefault();
 
-            (string FullName, string Email)? trainerInfo = firstTrainerId.HasValue
+            var trainerInfo = firstTrainerId.HasValue
                 ? await userLookup.GetUserInfoByIdAsync(firstTrainerId.Value, ct)
                 : null;
 
             List<(string FieldLabel, string Value)> responseItems = new();
             if (form is not null)
             {
-                foreach (FormResponseValueDto r in request.Responses)
+                foreach (var r in request.Responses)
                 {
-                    FormField? field = form.Fields.FirstOrDefault(f => f.Id == r.FormFieldId);
+                    var field = form.Fields.FirstOrDefault(f => f.Id == r.FormFieldId);
                     if (field is not null)
                         responseItems.Add((field.Label, r.Value));
                 }

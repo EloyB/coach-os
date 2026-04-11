@@ -25,11 +25,11 @@ public class TrainerService(
         string inviteBaseUrl,
         CancellationToken ct = default)
     {
-        ApplicationUser? existing = await userManager.FindByEmailAsync(email);
+        var existing = await userManager.FindByEmailAsync(email);
         if (existing is not null)
             return Result<Guid>.Fail("E-mailadres is al in gebruik");
 
-        string inviteToken = Guid.NewGuid().ToString("N");
+        var inviteToken = Guid.NewGuid().ToString("N");
 
         ApplicationUser user = new()
         {
@@ -48,11 +48,11 @@ public class TrainerService(
         };
 
         // Use a placeholder password — will be replaced on invite acceptance
-        IdentityResult result = await userManager.CreateAsync(user, "Placeholder@1!");
+        var result = await userManager.CreateAsync(user, "Placeholder@1!");
         if (!result.Succeeded)
             return Result<Guid>.Fail(result.Errors.Select(e => e.Description));
 
-        string inviteUrl = $"{inviteBaseUrl.TrimEnd('/')}/invite/{inviteToken}";
+        var inviteUrl = $"{inviteBaseUrl.TrimEnd('/')}/invite/{inviteToken}";
         await emailService.SendTrainerInviteAsync(email, firstName, inviteUrl, ct);
 
         return Result<Guid>.Ok(user.Id);
@@ -63,7 +63,7 @@ public class TrainerService(
         string password,
         CancellationToken ct = default)
     {
-        ApplicationUser? user = await userManager.Users
+        var user = await userManager.Users
             .FirstOrDefaultAsync(u => u.InviteToken == token, ct);
 
         if (user is null)
@@ -72,8 +72,8 @@ public class TrainerService(
         if (user.InviteTokenExpiry is null || user.InviteTokenExpiry < DateTime.UtcNow)
             return Result<AuthResponseDto>.Fail("Uitnodigingslink is verlopen");
 
-        string resetToken = await userManager.GeneratePasswordResetTokenAsync(user);
-        IdentityResult result = await userManager.ResetPasswordAsync(user, resetToken, password);
+        var resetToken = await userManager.GeneratePasswordResetTokenAsync(user);
+        var result = await userManager.ResetPasswordAsync(user, resetToken, password);
         if (!result.Succeeded)
             return Result<AuthResponseDto>.Fail(result.Errors.Select(e => e.Description));
 
@@ -83,7 +83,7 @@ public class TrainerService(
         user.UpdatedAt = DateTime.UtcNow;
         await userManager.UpdateAsync(user);
 
-        (string jwtToken, DateTime expiresAt) = tokenService.GenerateToken(user);
+        (var jwtToken, var expiresAt) = tokenService.GenerateToken(user);
 
         return Result<AuthResponseDto>.Ok(new AuthResponseDto
         {
@@ -102,13 +102,13 @@ public class TrainerService(
         Guid organizationId,
         CancellationToken ct = default)
     {
-        Dictionary<Guid, int> counts = await context.Lessons
+        var counts = await context.Lessons
             .Where(l => l.OrganizationId == organizationId)
             .GroupBy(l => l.TrainerId)
             .Select(g => new { g.Key, Count = g.Count() })
             .ToDictionaryAsync(x => x.Key, x => x.Count, ct);
 
-        List<TrainerDto> trainers = await userManager.Users
+        var trainers = await userManager.Users
             .AsNoTracking()
             .Where(u => u.OrganizationId == organizationId && u.Role == UserRole.Trainer)
             .OrderBy(u => u.FirstName)
@@ -125,7 +125,7 @@ public class TrainerService(
             })
             .ToListAsync(ct);
 
-        foreach (TrainerDto trainer in trainers)
+        foreach (var trainer in trainers)
         {
             trainer.LessonCount = counts.GetValueOrDefault(trainer.Id, 0);
         }
@@ -138,7 +138,7 @@ public class TrainerService(
         Guid organizationId,
         CancellationToken ct = default)
     {
-        ApplicationUser? trainer = await userManager.Users
+        var trainer = await userManager.Users
             .FirstOrDefaultAsync(u => u.Id == trainerId && u.OrganizationId == organizationId, ct);
 
         if (trainer is null)
@@ -159,7 +159,7 @@ public class TrainerService(
         Guid organizationId,
         CancellationToken ct = default)
     {
-        ApplicationUser? trainer = await userManager.Users
+        var trainer = await userManager.Users
             .FirstOrDefaultAsync(u => u.Id == trainerId && u.OrganizationId == organizationId, ct);
 
         if (trainer is null)
@@ -168,13 +168,13 @@ public class TrainerService(
         if (trainer.Role != UserRole.Trainer)
             return Result.Fail("Gebruiker is geen trainer");
 
-        int count = await context.Lessons
+        var count = await context.Lessons
             .CountAsync(l => l.TrainerId == trainerId && l.OrganizationId == organizationId, ct);
 
         if (count > 0)
             return Result.Fail($"Trainer heeft {count} les(sen). Wijs deze eerst toe aan een andere trainer.");
 
-        IdentityResult result = await userManager.DeleteAsync(trainer);
+        var result = await userManager.DeleteAsync(trainer);
         return result.Succeeded
             ? Result.Ok()
             : Result.Fail(result.Errors.Select(e => e.Description));
@@ -186,7 +186,7 @@ public class TrainerService(
         Guid organizationId,
         CancellationToken ct = default)
     {
-        ApplicationUser? toTrainer = await userManager.Users
+        var toTrainer = await userManager.Users
             .FirstOrDefaultAsync(u => u.Id == toTrainerId && u.OrganizationId == organizationId, ct);
 
         if (toTrainer is null)

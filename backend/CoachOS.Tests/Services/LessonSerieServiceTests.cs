@@ -45,13 +45,13 @@ public class LessonSerieServiceTests
 
     private static LessonSerie BuildSeries(Guid? id = null, int enrollments = 0, int lessons = 0)
     {
-        Guid seriesId = id ?? Guid.NewGuid();
-        List<Enrollment> enrollmentList = Enumerable
+        var seriesId = id ?? Guid.NewGuid();
+        var enrollmentList = Enumerable
             .Range(0, enrollments)
             .Select(_ => new Enrollment { Id = Guid.NewGuid(), OrganizationId = OrgId })
             .ToList();
 
-        List<Lesson> lessonList = Enumerable
+        var lessonList = Enumerable
             .Range(0, lessons)
             .Select(_ => new Lesson
             {
@@ -82,7 +82,7 @@ public class LessonSerieServiceTests
 
     private static Lesson BuildLesson(Guid seriesId, int enrollments = 0)
     {
-        List<Enrollment> enrollmentList = Enumerable
+        var enrollmentList = Enumerable
             .Range(0, enrollments)
             .Select(_ => new Enrollment { Id = Guid.NewGuid(), OrganizationId = OrgId })
             .ToList();
@@ -111,7 +111,7 @@ public class LessonSerieServiceTests
             .Setup(r => r.GetByOrganizationAsync(OrgId, null, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<LessonSerie>());
 
-        Result<List<LessonSerieDto>> result = await _service.GetAllAsync(OrgId);
+        var result = await _service.GetAllAsync(OrgId);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().BeEmpty();
@@ -120,7 +120,7 @@ public class LessonSerieServiceTests
     [Test]
     public async Task GetAllAsync_ReturnsDtos_WithLessonCounts()
     {
-        LessonSerie series = BuildSeries();
+        var series = BuildSeries();
         _lessonSeriesRepo
             .Setup(r => r.GetByOrganizationAsync(OrgId, null, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<LessonSerie> { series });
@@ -129,11 +129,11 @@ public class LessonSerieServiceTests
             .Setup(r => r.GetLessonCountsBySeriesIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Dictionary<Guid, int> { { series.Id, 3 } });
 
-        Result<List<LessonSerieDto>> result = await _service.GetAllAsync(OrgId);
+        var result = await _service.GetAllAsync(OrgId);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().HaveCount(1);
-        LessonSerieDto dto = result.Value![0];
+        var dto = result.Value![0];
         dto.LessonCount.Should().Be(3);
         dto.Name.Should().Be(series.Name);
     }
@@ -141,7 +141,7 @@ public class LessonSerieServiceTests
     [Test]
     public async Task GetAllAsync_FiltersByTrainerId_WhenProvided()
     {
-        LessonSerie series = BuildSeries();
+        var series = BuildSeries();
         _lessonSeriesRepo
             .Setup(r => r.GetByOrganizationAsync(OrgId, TrainerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<LessonSerie> { series });
@@ -150,7 +150,7 @@ public class LessonSerieServiceTests
             .Setup(r => r.GetLessonCountsBySeriesIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Dictionary<Guid, int> { { series.Id, 1 } });
 
-        Result<List<LessonSerieDto>> result = await _service.GetAllAsync(OrgId, TrainerId);
+        var result = await _service.GetAllAsync(OrgId, TrainerId);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().HaveCount(1);
@@ -164,12 +164,12 @@ public class LessonSerieServiceTests
     [Test]
     public async Task GetByIdAsync_ReturnsDto_WhenFound()
     {
-        LessonSerie series = BuildSeries(lessons: 2);
+        var series = BuildSeries(lessons: 2);
         _lessonSeriesRepo
             .Setup(r => r.GetByIdAsync(series.Id, OrgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(series);
 
-        Result<LessonSerieDto> result = await _service.GetByIdAsync(series.Id, OrgId);
+        var result = await _service.GetByIdAsync(series.Id, OrgId);
 
         result.IsSuccess.Should().BeTrue();
         result.Value!.Id.Should().Be(series.Id);
@@ -179,12 +179,12 @@ public class LessonSerieServiceTests
     [Test]
     public async Task GetByIdAsync_ReturnsNotFound_WhenMissing()
     {
-        Guid missingId = Guid.NewGuid();
+        var missingId = Guid.NewGuid();
         _lessonSeriesRepo
             .Setup(r => r.GetByIdAsync(missingId, OrgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((LessonSerie?)null);
 
-        Result<LessonSerieDto> result = await _service.GetByIdAsync(missingId, OrgId);
+        var result = await _service.GetByIdAsync(missingId, OrgId);
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.NotFound);
@@ -205,7 +205,7 @@ public class LessonSerieServiceTests
             .Setup(u => u.GetOrganizationMembersAsync(OrgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(members);
 
-        Result<List<LessonSerieMemberDto>> result = await _service.GetMembersAsync(OrgId);
+        var result = await _service.GetMembersAsync(OrgId);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().HaveCount(2);
@@ -248,7 +248,7 @@ public class LessonSerieServiceTests
             .Callback<LessonSerie, CancellationToken>((s, _) => s.Id = Guid.NewGuid())
             .Returns(Task.CompletedTask);
 
-        Result<Guid> result = await _service.CreateAsync(OrgId, request);
+        var result = await _service.CreateAsync(OrgId, request);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().NotBeEmpty();
@@ -285,7 +285,7 @@ public class LessonSerieServiceTests
             .Setup(r => r.ExistsAsync(ClubId, OrgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
-        Result<Guid> result = await _service.CreateAsync(OrgId, request);
+        var result = await _service.CreateAsync(OrgId, request);
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.NotFound);
@@ -323,7 +323,7 @@ public class LessonSerieServiceTests
             .Setup(r => r.AddAsync(It.IsAny<LessonSerie>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
-        Result<Guid> result = await _service.CreateAsync(OrgId, request);
+        var result = await _service.CreateAsync(OrgId, request);
 
         // Trainer validation no longer happens at series level — series creates successfully
         result.IsSuccess.Should().BeTrue();
@@ -334,8 +334,8 @@ public class LessonSerieServiceTests
     [Test]
     public async Task UpdateAsync_ReturnsUpdatedDto_WhenValid()
     {
-        LessonSerie series = BuildSeries();
-        Guid newClubId = Guid.NewGuid();
+        var series = BuildSeries();
+        var newClubId = Guid.NewGuid();
         UpdateLessonSerieRequest request = new()
         {
             Name = "Bijgewerkte naam",
@@ -362,7 +362,7 @@ public class LessonSerieServiceTests
             .Setup(r => r.GetByIdAsync(newClubId, OrgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(updatedClub);
 
-        Result<LessonSerieDto> result = await _service.UpdateAsync(series.Id, OrgId, request);
+        var result = await _service.UpdateAsync(series.Id, OrgId, request);
 
         result.IsSuccess.Should().BeTrue();
         result.Value!.Name.Should().Be("Bijgewerkte naam");
@@ -373,7 +373,7 @@ public class LessonSerieServiceTests
     [Test]
     public async Task UpdateAsync_ReturnsNotFound_WhenSeriesMissing()
     {
-        Guid missingId = Guid.NewGuid();
+        var missingId = Guid.NewGuid();
         UpdateLessonSerieRequest request = new()
         {
             Name = "Test",
@@ -385,7 +385,7 @@ public class LessonSerieServiceTests
             .Setup(r => r.GetByIdAsync(missingId, OrgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((LessonSerie?)null);
 
-        Result<LessonSerieDto> result = await _service.UpdateAsync(missingId, OrgId, request);
+        var result = await _service.UpdateAsync(missingId, OrgId, request);
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.NotFound);
@@ -394,8 +394,8 @@ public class LessonSerieServiceTests
     [Test]
     public async Task UpdateAsync_ReturnsNotFound_WhenClubMissing()
     {
-        LessonSerie series = BuildSeries();
-        Guid missingClubId = Guid.NewGuid();
+        var series = BuildSeries();
+        var missingClubId = Guid.NewGuid();
         UpdateLessonSerieRequest request = new()
         {
             Name = "Test",
@@ -411,7 +411,7 @@ public class LessonSerieServiceTests
             .Setup(r => r.ExistsAsync(missingClubId, OrgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
-        Result<LessonSerieDto> result = await _service.UpdateAsync(series.Id, OrgId, request);
+        var result = await _service.UpdateAsync(series.Id, OrgId, request);
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.NotFound);
@@ -422,12 +422,12 @@ public class LessonSerieServiceTests
     [Test]
     public async Task DeleteAsync_Succeeds_WhenNoEnrollments()
     {
-        LessonSerie series = BuildSeries(enrollments: 0, lessons: 2);
+        var series = BuildSeries(enrollments: 0, lessons: 2);
         _lessonSeriesRepo
             .Setup(r => r.GetByIdWithEnrollmentsAsync(series.Id, OrgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(series);
 
-        Result result = await _service.DeleteAsync(series.Id, OrgId);
+        var result = await _service.DeleteAsync(series.Id, OrgId);
 
         result.IsSuccess.Should().BeTrue();
         _lessonRepo.Verify(r => r.DeleteRangeAsync(series.Lessons, It.IsAny<CancellationToken>()), Times.Once);
@@ -437,12 +437,12 @@ public class LessonSerieServiceTests
     [Test]
     public async Task DeleteAsync_ReturnsNotFound_WhenMissing()
     {
-        Guid missingId = Guid.NewGuid();
+        var missingId = Guid.NewGuid();
         _lessonSeriesRepo
             .Setup(r => r.GetByIdWithEnrollmentsAsync(missingId, OrgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((LessonSerie?)null);
 
-        Result result = await _service.DeleteAsync(missingId, OrgId);
+        var result = await _service.DeleteAsync(missingId, OrgId);
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.NotFound);
@@ -451,12 +451,12 @@ public class LessonSerieServiceTests
     [Test]
     public async Task DeleteAsync_ReturnsConflict_WhenHasEnrollments()
     {
-        LessonSerie series = BuildSeries(enrollments: 3);
+        var series = BuildSeries(enrollments: 3);
         _lessonSeriesRepo
             .Setup(r => r.GetByIdWithEnrollmentsAsync(series.Id, OrgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(series);
 
-        Result result = await _service.DeleteAsync(series.Id, OrgId);
+        var result = await _service.DeleteAsync(series.Id, OrgId);
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.Conflict);
@@ -468,7 +468,7 @@ public class LessonSerieServiceTests
     [Test]
     public async Task AddLessonAsync_ReturnsId_WhenValid()
     {
-        LessonSerie series = BuildSeries();
+        var series = BuildSeries();
         CreateLessonRequest request = new()
         {
             TrainerId = TrainerId,
@@ -488,7 +488,7 @@ public class LessonSerieServiceTests
             .Callback<Lesson, CancellationToken>((l, _) => l.Id = Guid.NewGuid())
             .Returns(Task.CompletedTask);
 
-        Result<Guid> result = await _service.AddLessonAsync(series.Id, OrgId, request);
+        var result = await _service.AddLessonAsync(series.Id, OrgId, request);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().NotBeEmpty();
@@ -501,7 +501,7 @@ public class LessonSerieServiceTests
     [Test]
     public async Task AddLessonAsync_ReturnsNotFound_WhenSeriesMissing()
     {
-        Guid missingId = Guid.NewGuid();
+        var missingId = Guid.NewGuid();
         CreateLessonRequest request = new()
         {
             TrainerId = TrainerId,
@@ -515,7 +515,7 @@ public class LessonSerieServiceTests
             .Setup(r => r.GetByIdAsync(missingId, OrgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((LessonSerie?)null);
 
-        Result<Guid> result = await _service.AddLessonAsync(missingId, OrgId, request);
+        var result = await _service.AddLessonAsync(missingId, OrgId, request);
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.NotFound);
@@ -527,14 +527,14 @@ public class LessonSerieServiceTests
     [Test]
     public async Task DeleteLessonAsync_Succeeds_WhenNoEnrollments()
     {
-        LessonSerie series = BuildSeries();
-        Lesson lesson = BuildLesson(series.Id, enrollments: 0);
+        var series = BuildSeries();
+        var lesson = BuildLesson(series.Id, enrollments: 0);
 
         _lessonRepo
             .Setup(r => r.GetByIdWithEnrollmentsAsync(lesson.Id, series.Id, OrgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(lesson);
 
-        Result result = await _service.DeleteLessonAsync(series.Id, lesson.Id, OrgId);
+        var result = await _service.DeleteLessonAsync(series.Id, lesson.Id, OrgId);
 
         result.IsSuccess.Should().BeTrue();
         _lessonRepo.Verify(r => r.DeleteAsync(lesson, It.IsAny<CancellationToken>()), Times.Once);
@@ -543,14 +543,14 @@ public class LessonSerieServiceTests
     [Test]
     public async Task DeleteLessonAsync_ReturnsNotFound_WhenMissing()
     {
-        Guid seriesId = Guid.NewGuid();
-        Guid missingLessonId = Guid.NewGuid();
+        var seriesId = Guid.NewGuid();
+        var missingLessonId = Guid.NewGuid();
 
         _lessonRepo
             .Setup(r => r.GetByIdWithEnrollmentsAsync(missingLessonId, seriesId, OrgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Lesson?)null);
 
-        Result result = await _service.DeleteLessonAsync(seriesId, missingLessonId, OrgId);
+        var result = await _service.DeleteLessonAsync(seriesId, missingLessonId, OrgId);
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.NotFound);
@@ -559,14 +559,14 @@ public class LessonSerieServiceTests
     [Test]
     public async Task DeleteLessonAsync_ReturnsConflict_WhenHasEnrollments()
     {
-        LessonSerie series = BuildSeries();
-        Lesson lesson = BuildLesson(series.Id, enrollments: 2);
+        var series = BuildSeries();
+        var lesson = BuildLesson(series.Id, enrollments: 2);
 
         _lessonRepo
             .Setup(r => r.GetByIdWithEnrollmentsAsync(lesson.Id, series.Id, OrgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(lesson);
 
-        Result result = await _service.DeleteLessonAsync(series.Id, lesson.Id, OrgId);
+        var result = await _service.DeleteLessonAsync(series.Id, lesson.Id, OrgId);
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.Conflict);

@@ -1,13 +1,7 @@
-using System.Text;
 using CoachOS.API.Endpoints;
+using CoachOS.API.Extensions;
 using CoachOS.Application;
 using CoachOS.Infrastructure;
-using CoachOS.Infrastructure.Configuration;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
-using CoachOS.Infrastructure.Persistence;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.OpenApi.Models;
 using Serilog;
 
 Log.Logger = new LoggerConfiguration()
@@ -16,97 +10,27 @@ Log.Logger = new LoggerConfiguration()
 
 try
 {
-    WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+    var builder = WebApplication.CreateBuilder(args);
 
-    // Scaleway Secret Manager — only in production. Dev uses appsettings.Development.json + smtp4dev.
-    if (!builder.Environment.IsDevelopment())
-    {
-        string scwApiKey = builder.Configuration["Scaleway:ApiKey"]
-            ?? throw new InvalidOperationException("Scaleway:ApiKey is niet geconfigureerd.");
-
-        builder.Configuration.AddScalewaySecretManager(
-            apiKey: scwApiKey,
-            region: "nl-ams",
-            secrets: new Dictionary<string, string>
-            {
-                ["coachos-email-username"] = "Email:Username",
-                ["coachos-email-password"] = "Email:Password",
-            });
-    }
+    var isDevelopment = builder.Environment.IsDevelopment();
+    var configuration = builder.ConfigureAppConfiguration();
 
     builder.Host.UseSerilog((context, services, config) =>
         config.ReadFrom.Configuration(context.Configuration)
               .WriteTo.Console());
 
-    // Application layers
+    builder.Services.AddJwtAuthentication(configuration);
+    builder.Services.AddCorsPolicy(configuration, isDevelopment);
+    builder.Services.AddSwagger();
+
     builder.Services.AddApplication();
-    builder.Services.AddInfrastructure(builder.Configuration);
+    builder.Services.AddInfrastructure(configuration);
 
-    // OpenAPI
-    builder.Services.AddEndpointsApiExplorer();
-    builder.Services.AddSwaggerGen(options =>
-    {
-        options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-        {
-            Name = "Authorization",
-            Type = SecuritySchemeType.Http,
-            Scheme = "Bearer",
-            BearerFormat = "JWT",
-            In = ParameterLocation.Header,
-            Description = "Voer je JWT token in. Voorbeeld: eyJhbGci..."
-        });
+    var app = builder.Build();
 
-        options.AddSecurityRequirement(new OpenApiSecurityRequirement
-        {
-            {
-                new OpenApiSecurityScheme
-                {
-                    Reference = new OpenApiReference
-                    {
-                        Type = ReferenceType.SecurityScheme,
-                        Id = "Bearer"
-                    }
-                },
-                Array.Empty<string>()
-            }
-        });
-    });
-    // JWT Authentication
-    string jwtKey = builder.Configuration["Jwt:Key"]
-        ?? throw new InvalidOperationException("Jwt:Key is niet geconfigureerd.");
+    await app.ApplyMigrationsAsync();
 
-    builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-        .AddJwtBearer(options =>
-        {
-            options.TokenValidationParameters = new TokenValidationParameters
-            {
-                ValidateIssuer = true,
-                ValidateAudience = true,
-                ValidateLifetime = true,
-                ValidateIssuerSigningKey = true,
-                ValidIssuer = builder.Configuration["Jwt:Issuer"],
-                ValidAudience = builder.Configuration["Jwt:Audience"],
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
-            };
-        });
-
-    builder.Services.AddAuthorization();
-
-    builder.Services.AddCors(options =>
-        options.AddPolicy("Frontend", policy =>
-            policy.WithOrigins("http://localhost:5317")
-                  .AllowAnyHeader()
-                  .AllowAnyMethod()));
-
-    WebApplication app = builder.Build();
-
-    using (IServiceScope scope = app.Services.CreateScope())
-    {
-        ApplicationDbContext db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        await db.Database.MigrateAsync();
-    }
-
-    if (app.Environment.IsDevelopment())
+    if (isDevelopment)
     {
         app.UseSwagger();
         app.UseSwaggerUI(options =>

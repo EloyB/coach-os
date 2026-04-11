@@ -17,7 +17,7 @@ public class EmailService(IOptions<EmailOptions> options, ILogger<EmailService> 
         string inviteUrl,
         CancellationToken ct = default)
     {
-        (string subject, string html) = EmailTemplates.TrainerInvite(firstName, "CoachOS", inviteUrl);
+        (var subject, var html) = EmailTemplates.TrainerInvite(firstName, "CoachOS", inviteUrl);
         await SendAsync(toEmail, $"{firstName}", subject, html, ct);
     }
 
@@ -28,7 +28,7 @@ public class EmailService(IOptions<EmailOptions> options, ILogger<EmailService> 
         string trainerName,
         CancellationToken ct = default)
     {
-        (string subject, string html) = EmailTemplates.EnrollmentConfirmation(studentName, seriesName, trainerName);
+        (var subject, var html) = EmailTemplates.EnrollmentConfirmation(studentName, seriesName, trainerName);
         await SendAsync(studentEmail, studentName, subject, html, ct);
     }
 
@@ -41,7 +41,7 @@ public class EmailService(IOptions<EmailOptions> options, ILogger<EmailService> 
         List<(string FieldLabel, string Value)> responses,
         CancellationToken ct = default)
     {
-        (string subject, string html) = EmailTemplates.EnrollmentNotificationToTrainer(
+        (var subject, var html) = EmailTemplates.EnrollmentNotificationToTrainer(
             trainerName, studentName, studentEmail, seriesName, responses);
         await SendAsync(trainerEmail, trainerName, subject, html, ct);
     }

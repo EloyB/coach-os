@@ -10,10 +10,10 @@ public sealed class TokenService(IConfiguration configuration)
 {
     public (string Token, DateTime ExpiresAt) GenerateToken(ApplicationUser user)
     {
-        string key = configuration["Jwt:Key"]!;
-        string issuer = configuration["Jwt:Issuer"]!;
-        string audience = configuration["Jwt:Audience"]!;
-        int expiryMinutes = int.Parse(configuration["Jwt:ExpiryMinutes"]!);
+        var key = configuration["Jwt:Key"]!;
+        var issuer = configuration["Jwt:Issuer"]!;
+        var audience = configuration["Jwt:Audience"]!;
+        var expiryMinutes = int.Parse(configuration["Jwt:ExpiryMinutes"]!);
 
         SymmetricSecurityKey securityKey = new(Encoding.UTF8.GetBytes(key));
         SigningCredentials credentials = new(securityKey, SecurityAlgorithms.HmacSha256);
@@ -29,9 +29,9 @@ public sealed class TokenService(IConfiguration configuration)
         if (user.OrganizationId.HasValue)
             claimsList.Add(new Claim("organizationId", user.OrganizationId.Value.ToString()));
 
-        Claim[] claims = claimsList.ToArray();
+        var claims = claimsList.ToArray();
 
-        DateTime expiresAt = DateTime.UtcNow.AddMinutes(expiryMinutes);
+        var expiresAt = DateTime.UtcNow.AddMinutes(expiryMinutes);
 
         JwtSecurityToken token = new(
             issuer: issuer,

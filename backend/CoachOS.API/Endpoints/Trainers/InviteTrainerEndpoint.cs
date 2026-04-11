@@ -11,7 +11,7 @@ public class InviteTrainerEndpoint : IEndpoint
     {
         app.MapPost("/trainers/invite", async (InviteTrainerRequest request, ITrainerService service, HttpContext ctx, CancellationToken ct) =>
         {
-            string inviteBaseUrl = $"{ctx.Request.Scheme}://{ctx.Request.Host}";
+            var inviteBaseUrl = $"{ctx.Request.Scheme}://{ctx.Request.Host}";
             var result = await service.InviteAsync(ctx.GetOrganizationId(), request.FirstName, request.LastName, request.Email, inviteBaseUrl, ct);
             return result.IsSuccess ? Results.Ok(result.Value) : result.ToErrorResult();
         })

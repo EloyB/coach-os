@@ -9,7 +9,7 @@ public class GetLessonSerieEndpoint : IEndpoint
     {
         app.MapGet("/lessonseries", async (ILessonSerieService service, HttpContext ctx, CancellationToken ct) =>
         {
-            Guid orgId = ctx.GetOrganizationId();
+            var orgId = ctx.GetOrganizationId();
             Guid? trainerId = ctx.IsTrainer() ? ctx.GetUserId() : null;
             var result = await service.GetAllAsync(orgId, trainerId, ct);
             return result.IsSuccess ? Results.Ok(result.Value) : result.ToErrorResult();

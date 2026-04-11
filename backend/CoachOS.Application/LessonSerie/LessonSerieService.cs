@@ -16,16 +16,16 @@ public class LessonSerieService(
     public async Task<Result<List<LessonSerieDto>>> GetAllAsync(
         Guid organizationId, Guid? trainerId = null, CancellationToken ct = default)
     {
-        IReadOnlyList<Domain.Entities.LessonSerie> seriesList =
+        var seriesList =
             await lessonSeriesRepo.GetByOrganizationAsync(organizationId, trainerId, ct);
 
         if (seriesList.Count == 0)
             return Result<List<LessonSerieDto>>.Ok([]);
 
-        Dictionary<Guid, int> lessonCounts =
+        var lessonCounts =
             await lessonRepo.GetLessonCountsBySeriesIdsAsync(seriesList.Select(s => s.Id), ct);
 
-        List<LessonSerieDto> dtos = seriesList.Select(ls =>
+        var dtos = seriesList.Select(ls =>
             mapper.ToLessonSerieDto(ls,
                 lessonCounts.GetValueOrDefault(ls.Id, 0))
         ).ToList();
@@ -36,19 +36,19 @@ public class LessonSerieService(
     public async Task<Result<LessonSerieDto>> GetByIdAsync(
         Guid id, Guid organizationId, CancellationToken ct = default)
     {
-        Domain.Entities.LessonSerie? series =
+        var series =
             await lessonSeriesRepo.GetByIdAsync(id, organizationId, ct);
 
         if (series is null)
             return Result<LessonSerieDto>.Fail(new Error(ErrorCodes.NotFound, "LessonSerie niet gevonden."));
 
-        List<LessonDto> lessons = series.Lessons
+        var lessons = series.Lessons
             .OrderBy(l => l.Date)
             .ThenBy(l => l.StartTime)
             .Select(l => mapper.ToLessonDto(l, series.Id))
             .ToList();
 
-        LessonSerieDto dto = mapper.ToLessonSerieDto(series, lessons.Count);
+        var dto = mapper.ToLessonSerieDto(series, lessons.Count);
         dto.Lessons = lessons;
 
         return Result<LessonSerieDto>.Ok(dto);
@@ -57,10 +57,10 @@ public class LessonSerieService(
     public async Task<Result<List<LessonSerieMemberDto>>> GetMembersAsync(
         Guid organizationId, CancellationToken ct = default)
     {
-        List<(Guid Id, string FullName)> members =
+        var members =
             await userLookup.GetOrganizationMembersAsync(organizationId, ct);
 
-        List<LessonSerieMemberDto> dtos = members
+        var dtos = members
             .Select(m => new LessonSerieMemberDto { Id = m.Id, FullName = m.FullName })
             .ToList();
 
@@ -70,15 +70,15 @@ public class LessonSerieService(
     public async Task<Result<Guid>> CreateAsync(
         Guid organizationId, CreateLessonSerieRequest request, CancellationToken ct = default)
     {
-        bool clubExists = await tennisClubRepo.ExistsAsync(request.TennisClubId, organizationId, ct);
+        var clubExists = await tennisClubRepo.ExistsAsync(request.TennisClubId, organizationId, ct);
         if (!clubExists)
             return Result<Guid>.Fail(new Error(ErrorCodes.NotFound, "Tennisclub niet gevonden."));
 
-        Domain.Entities.LessonSerie series = mapper.ToLessonSerie(request, organizationId);
+        var series = mapper.ToLessonSerie(request, organizationId);
 
-        foreach (CreateLessonRequest lessonRequest in request.Lessons)
+        foreach (var lessonRequest in request.Lessons)
         {
-            Domain.Entities.Lesson lesson = mapper.ToLesson(lessonRequest, series);
+            var lesson = mapper.ToLesson(lessonRequest, series);
             series.Lessons.Add(lesson);
         }
 
@@ -91,13 +91,13 @@ public class LessonSerieService(
     public async Task<Result<LessonSerieDto>> UpdateAsync(
         Guid id, Guid organizationId, UpdateLessonSerieRequest request, CancellationToken ct = default)
     {
-        Domain.Entities.LessonSerie? series =
+        var series =
             await lessonSeriesRepo.GetByIdAsync(id, organizationId, ct);
 
         if (series is null)
             return Result<LessonSerieDto>.Fail(new Error(ErrorCodes.NotFound, "LessonSerie niet gevonden."));
 
-        bool clubExists = await tennisClubRepo.ExistsAsync(request.TennisClubId, organizationId, ct);
+        var clubExists = await tennisClubRepo.ExistsAsync(request.TennisClubId, organizationId, ct);
         if (!clubExists)
             return Result<LessonSerieDto>.Fail(new Error(ErrorCodes.NotFound, "Tennisclub niet gevonden."));
 
@@ -112,11 +112,11 @@ public class LessonSerieService(
         await lessonSeriesRepo.UpdateAsync(series, ct);
         await lessonSeriesRepo.SaveChangesAsync(ct);
 
-        int lessonCount = await lessonRepo.CountBySeriesIdAsync(series.Id, ct);
+        var lessonCount = await lessonRepo.CountBySeriesIdAsync(series.Id, ct);
 
-        Domain.Entities.TennisClub? club = await tennisClubRepo.GetByIdAsync(series.TennisClubId, organizationId, ct);
+        var club = await tennisClubRepo.GetByIdAsync(series.TennisClubId, organizationId, ct);
 
-        LessonSerieDto dto = mapper.ToLessonSerieDto(series, lessonCount);
+        var dto = mapper.ToLessonSerieDto(series, lessonCount);
         dto.TennisClubName = club?.Name ?? string.Empty;
         dto.TennisClubAddress = club?.Address ?? string.Empty;
 
@@ -126,7 +126,7 @@ public class LessonSerieService(
     public async Task<Result> DeleteAsync(
         Guid id, Guid organizationId, CancellationToken ct = default)
     {
-        Domain.Entities.LessonSerie? series =
+        var series =
             await lessonSeriesRepo.GetByIdWithEnrollmentsAsync(id, organizationId, ct);
 
         if (series is null)
@@ -145,13 +145,13 @@ public class LessonSerieService(
     public async Task<Result<Guid>> AddLessonAsync(
         Guid seriesId, Guid organizationId, CreateLessonRequest request, CancellationToken ct = default)
     {
-        Domain.Entities.LessonSerie? series =
+        var series =
             await lessonSeriesRepo.GetByIdAsync(seriesId, organizationId, ct);
 
         if (series is null)
             return Result<Guid>.Fail(new Error(ErrorCodes.NotFound, "LessonSerie niet gevonden."));
 
-        Domain.Entities.Lesson lesson = mapper.ToLesson(request, series);
+        var lesson = mapper.ToLesson(request, series);
         await lessonRepo.AddAsync(lesson, ct);
         await lessonRepo.SaveChangesAsync(ct);
 
@@ -161,7 +161,7 @@ public class LessonSerieService(
     public async Task<Result> DeleteLessonAsync(
         Guid seriesId, Guid lessonId, Guid organizationId, CancellationToken ct = default)
     {
-        Domain.Entities.Lesson? lesson =
+        var lesson =
             await lessonRepo.GetByIdWithEnrollmentsAsync(lessonId, seriesId, organizationId, ct);
 
         if (lesson is null)

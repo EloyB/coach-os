@@ -28,7 +28,7 @@ public class LessonRepository(ApplicationDbContext context) : ILessonRepository
     public async Task<Dictionary<Guid, int>> GetLessonCountsBySeriesIdsAsync(
         IEnumerable<Guid> seriesIds, CancellationToken ct = default)
     {
-        List<Guid> ids = seriesIds as List<Guid> ?? seriesIds.ToList();
+        var ids = seriesIds as List<Guid> ?? seriesIds.ToList();
         if (ids.Count == 0)
             return [];
 

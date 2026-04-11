@@ -26,7 +26,7 @@ public class LessonSerieRepository(ApplicationDbContext context) : ILessonSerieR
     public async Task<IReadOnlyList<LessonSerie>> GetByOrganizationAsync(
         Guid organizationId, Guid? trainerId = null, CancellationToken ct = default)
     {
-        IQueryable<LessonSerie> query = context.LessonSeries
+        var query = context.LessonSeries
             .AsNoTracking()
             .Include(ls => ls.TennisClub)
             .Where(ls => ls.OrganizationId == organizationId);

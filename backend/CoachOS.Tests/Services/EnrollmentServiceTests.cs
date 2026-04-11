@@ -99,7 +99,7 @@ public class EnrollmentServiceTests
     [Test]
     public async Task GetPublicLessonSerie_ReturnsDto_WhenFound()
     {
-        LessonSerie series = BuildActiveSeries();
+        var series = BuildActiveSeries();
         _lessonSeriesRepo
             .Setup(r => r.GetByIdPublicAsync(SeriesId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(series);
@@ -107,7 +107,7 @@ public class EnrollmentServiceTests
             .Setup(r => r.CountActiveBySeriesAsync(SeriesId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(5);
 
-        Result<PublicLessonSerieDto> result = await _service.GetPublicLessonSerieAsync(SeriesId);
+        var result = await _service.GetPublicLessonSerieAsync(SeriesId);
 
         result.IsSuccess.Should().BeTrue();
         result.Value!.Name.Should().Be("Beginners A");
@@ -121,7 +121,7 @@ public class EnrollmentServiceTests
             .Setup(r => r.GetByIdPublicAsync(SeriesId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((LessonSerie?)null);
 
-        Result<PublicLessonSerieDto> result = await _service.GetPublicLessonSerieAsync(SeriesId);
+        var result = await _service.GetPublicLessonSerieAsync(SeriesId);
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.NotFound);
@@ -136,7 +136,7 @@ public class EnrollmentServiceTests
             .Setup(r => r.GetBySeriesIdReadOnlyAsync(SeriesId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((EnrollmentForm?)null);
 
-        Result<EnrollmentFormDto?> result = await _service.GetEnrollmentFormAsync(SeriesId);
+        var result = await _service.GetEnrollmentFormAsync(SeriesId);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().BeNull();
@@ -145,12 +145,12 @@ public class EnrollmentServiceTests
     [Test]
     public async Task GetEnrollmentForm_ReturnsDto_WhenExists()
     {
-        EnrollmentForm form = BuildFormWithFields();
+        var form = BuildFormWithFields();
         _enrollmentFormRepo
             .Setup(r => r.GetBySeriesIdReadOnlyAsync(SeriesId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(form);
 
-        Result<EnrollmentFormDto?> result = await _service.GetEnrollmentFormAsync(SeriesId);
+        var result = await _service.GetEnrollmentFormAsync(SeriesId);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().NotBeNull();
@@ -182,7 +182,7 @@ public class EnrollmentServiceTests
             .Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(enrollments);
 
-        Result<List<LessonSerieEnrollmentDto>> result =
+        var result =
             await _service.GetSeriesEnrollmentsAsync(SeriesId, OrgId);
 
         result.IsSuccess.Should().BeTrue();
@@ -201,7 +201,7 @@ public class EnrollmentServiceTests
 
         SaveEnrollmentFormRequest request = new() { Fields = new() };
 
-        Result<Guid> result = await _service.SaveFormAsync(SeriesId, OrgId, request);
+        var result = await _service.SaveFormAsync(SeriesId, OrgId, request);
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.NotFound);
@@ -225,7 +225,7 @@ public class EnrollmentServiceTests
             },
         };
 
-        Result<Guid> result = await _service.SaveFormAsync(SeriesId, OrgId, request);
+        var result = await _service.SaveFormAsync(SeriesId, OrgId, request);
 
         result.IsSuccess.Should().BeTrue();
         _enrollmentFormRepo.Verify(
@@ -248,7 +248,7 @@ public class EnrollmentServiceTests
             StudentEmail = "test@test.be",
         };
 
-        Result<Guid> result = await _service.SubmitEnrollmentAsync(SeriesId, request);
+        var result = await _service.SubmitEnrollmentAsync(SeriesId, request);
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.NotFound);
@@ -257,7 +257,7 @@ public class EnrollmentServiceTests
     [Test]
     public async Task SubmitEnrollment_ReturnsDuplicate_WhenAlreadyEnrolled()
     {
-        LessonSerie series = BuildActiveSeries();
+        var series = BuildActiveSeries();
         _lessonSeriesRepo
             .Setup(r => r.GetByIdPublicAsync(SeriesId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(series);
@@ -274,7 +274,7 @@ public class EnrollmentServiceTests
             StudentEmail = "piet@test.be",
         };
 
-        Result<Guid> result = await _service.SubmitEnrollmentAsync(SeriesId, request);
+        var result = await _service.SubmitEnrollmentAsync(SeriesId, request);
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.Conflict);
@@ -283,7 +283,7 @@ public class EnrollmentServiceTests
     [Test]
     public async Task SubmitEnrollment_Succeeds_WhenValid()
     {
-        LessonSerie series = BuildActiveSeries();
+        var series = BuildActiveSeries();
         _lessonSeriesRepo
             .Setup(r => r.GetByIdPublicAsync(SeriesId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(series);
@@ -303,7 +303,7 @@ public class EnrollmentServiceTests
             StudentEmail = "anna@test.be",
         };
 
-        Result<Guid> result = await _service.SubmitEnrollmentAsync(SeriesId, request);
+        var result = await _service.SubmitEnrollmentAsync(SeriesId, request);
 
         result.IsSuccess.Should().BeTrue();
         _enrollmentRepo.Verify(
@@ -315,8 +315,8 @@ public class EnrollmentServiceTests
     [Test]
     public async Task SubmitEnrollment_FailsValidation_WhenRequiredFieldMissing()
     {
-        LessonSerie series = BuildActiveSeries();
-        EnrollmentForm form = BuildFormWithFields();
+        var series = BuildActiveSeries();
+        var form = BuildFormWithFields();
 
         _lessonSeriesRepo
             .Setup(r => r.GetByIdPublicAsync(SeriesId, It.IsAny<CancellationToken>()))
@@ -332,7 +332,7 @@ public class EnrollmentServiceTests
             Responses = new(), // Missing required field response
         };
 
-        Result<Guid> result = await _service.SubmitEnrollmentAsync(SeriesId, request);
+        var result = await _service.SubmitEnrollmentAsync(SeriesId, request);
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.Validation);

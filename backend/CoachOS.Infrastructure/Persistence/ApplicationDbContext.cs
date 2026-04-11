@@ -55,9 +55,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
     private void UpdateAuditFields()
     {
-        DateTime now = DateTime.UtcNow;
+        var now = DateTime.UtcNow;
 
-        foreach (Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry<Domain.Common.BaseEntity> entry in
+        foreach (var entry in
             ChangeTracker.Entries<Domain.Common.BaseEntity>())
         {
             if (entry.State == EntityState.Added)
@@ -72,7 +72,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             }
         }
 
-        foreach (Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry<ApplicationUser> entry in
+        foreach (var entry in
             ChangeTracker.Entries<ApplicationUser>())
         {
             if (entry.State == EntityState.Added)

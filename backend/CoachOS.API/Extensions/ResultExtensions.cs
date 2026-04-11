@@ -6,7 +6,7 @@ public static class ResultExtensions
 {
     public static IResult ToErrorResult(this Result result)
     {
-        int statusCode = MapStatusCode(result.Errors);
+        var statusCode = MapStatusCode(result.Errors);
         return Results.Json(
             result.Errors.Select(e => e.Message),
             statusCode: statusCode);
@@ -14,7 +14,7 @@ public static class ResultExtensions
 
     public static IResult ToErrorResult<T>(this Result<T> result)
     {
-        int statusCode = MapStatusCode(result.Errors);
+        var statusCode = MapStatusCode(result.Errors);
         return Results.Json(
             result.Errors.Select(e => e.Message),
             statusCode: statusCode);
@@ -22,7 +22,7 @@ public static class ResultExtensions
 
     private static int MapStatusCode(IReadOnlyList<Error> errors)
     {
-        string code = errors.Count > 0 ? errors[0].Code : ErrorCodes.Unexpected;
+        var code = errors.Count > 0 ? errors[0].Code : ErrorCodes.Unexpected;
         return code switch
         {
             ErrorCodes.Validation => StatusCodes.Status400BadRequest,
