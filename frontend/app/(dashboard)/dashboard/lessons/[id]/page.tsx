@@ -9,6 +9,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import {
   ChevronLeft,
+  ChevronRight,
   ChevronDown,
   ChevronUp,
   Pencil,
@@ -16,7 +17,6 @@ import {
   Trash2,
   Plus,
   Clock,
-  MapPin,
   CalendarDays,
   Euro,
   UserCheck,
@@ -50,9 +50,6 @@ import {
   getLessonSeriesById,
   updateLessonSeries,
   deleteLessonSeries,
-  createLesson,
-  deleteLesson,
-  LESSON_LEVELS,
   LessonDto,
 } from "@/lib/api/lessonSeries";
 import {
@@ -65,7 +62,7 @@ import type {
   FormFieldDto,
   SaveFormFieldRequest,
 } from "@/lib/api/enrollments";
-import { getTrainers } from "@/lib/api/trainers";
+
 import { getTennisClubs } from "@/lib/api/tennisClubs";
 import { FieldError } from "@/components/forms/field-error";
 import { inputClass } from "@/lib/styles";
@@ -76,10 +73,9 @@ import { Badge } from "@/components/ui/badge";
 const editSchema = z.object({
   name: z.string().min(1, "Naam is verplicht").max(200),
   description: z.string().max(1000).optional(),
-  trainerId: z.string().min(1, "Trainer is verplicht"),
   tennisClubId: z.string().min(1, "Tennisclub is verplicht"),
-  level: z.string().min(1, "Niveau is verplicht"),
   price: z.number().min(0),
+  registrationDeadline: z.string().optional(),
   isActive: z.boolean(),
 });
 
@@ -97,10 +93,6 @@ function EditSeriesForm({
   onSaved: () => void;
 }) {
   const queryClient = useQueryClient();
-  const { data: members } = useQuery({
-    queryKey: ["trainers"],
-    queryFn: getTrainers,
-  });
   const { data: tennisClubs } = useQuery({
     queryKey: ["tennisClubs"],
     queryFn: getTennisClubs,
@@ -109,12 +101,11 @@ function EditSeriesForm({
   const mutation = useMutation({
     mutationFn: (data: EditFormValues) =>
       updateLessonSeries(seriesId, {
-        trainerId: data.trainerId,
         tennisClubId: data.tennisClubId,
         name: data.name,
         description: data.description,
-        level: parseInt(data.level),
         price: data.price,
+        registrationDeadline: data.registrationDeadline || undefined,
         isActive: data.isActive,
       }),
     onSuccess: () => {
@@ -157,55 +148,6 @@ function EditSeriesForm({
             className={inputClass + " resize-none"}
           />
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">
-              Trainer
-            </label>
-            <Controller
-              control={control}
-              name="trainerId"
-              render={({ field }) => (
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <SelectTrigger className="border border-gray-200 rounded-lg h-9 text-sm">
-                    <SelectValue placeholder="Kies trainer" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {members?.map((m) => (
-                      <SelectItem key={m.id} value={m.id}>
-                        {m.firstName} {m.lastName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            />
-            <FieldError message={errors.trainerId?.message} />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">
-              Niveau
-            </label>
-            <Controller
-              control={control}
-              name="level"
-              render={({ field }) => (
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <SelectTrigger className="border border-gray-200 rounded-lg h-9 text-sm">
-                    <SelectValue placeholder="Niveau" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(LESSON_LEVELS).map(([v, l]) => (
-                      <SelectItem key={v} value={v}>
-                        {l}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            />
-          </div>
-        </div>
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">
             Tennisclub
@@ -244,6 +186,16 @@ function EditSeriesForm({
             />
             <FieldError message={errors.price?.message} />
           </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              Inschrijfdeadline
+            </label>
+            <input
+              {...register("registrationDeadline")}
+              type="date"
+              className={inputClass}
+            />
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <input
@@ -259,7 +211,9 @@ function EditSeriesForm({
       </div>
 
       {mutation.isError && (
-        <p className="text-xs text-red-500">Er ging iets mis. Probeer opnieuw.</p>
+        <p className="text-xs text-red-500">
+          Er ging iets mis. Probeer opnieuw.
+        </p>
       )}
 
       <div className="flex items-center gap-2 pt-1">
@@ -282,237 +236,149 @@ function EditSeriesForm({
   );
 }
 
-// ─── Lesson Row ───────────────────────────────────────────────────────────────
+// ─── Lesson Week View (paginated calendar) ───────────────────────────────────
 
-function LessonRow({
-  lesson,
-  seriesId,
-  onDelete,
+import {
+  CalendarGrid,
+  type CalendarSlot,
+} from "@/components/calendar/calendar-grid";
+
+function toLocalISODate(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function formatDateShort(isoDate: string): string {
+  const d = new Date(isoDate + "T00:00:00");
+  return d.toLocaleDateString("nl-BE", { day: "numeric", month: "short" });
+}
+
+interface WeekInfo {
+  index: number;
+  startDate: string;
+  endDate: string;
+  days: string[];
+}
+
+function computeWeeks(startDate: string, endDate: string): WeekInfo[] {
+  const start = new Date(startDate + "T00:00:00");
+  const end = new Date(endDate + "T00:00:00");
+
+  const dow = start.getDay();
+  const daysBack = dow === 0 ? 6 : dow - 1;
+  const firstMonday = new Date(start);
+  firstMonday.setDate(firstMonday.getDate() - daysBack);
+
+  const weeks: WeekInfo[] = [];
+  const current = new Date(firstMonday);
+  let index = 0;
+
+  while (current <= end) {
+    const sunday = new Date(current);
+    sunday.setDate(sunday.getDate() + 6);
+
+    weeks.push({
+      index,
+      startDate: toLocalISODate(current),
+      endDate: toLocalISODate(sunday),
+      days: Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(current);
+        d.setDate(d.getDate() + i);
+        return toLocalISODate(d);
+      }),
+    });
+
+    current.setDate(current.getDate() + 7);
+    index++;
+  }
+
+  return weeks;
+}
+
+function dayOfWeekFromDate(dateStr: string, weekDays: string[]): number {
+  const idx = weekDays.indexOf(dateStr);
+  return idx >= 0 ? idx : new Date(dateStr + "T00:00:00").getDay();
+}
+
+function LessonWeekView({
+  lessons,
+  startDate,
+  endDate,
 }: {
-  lesson: LessonDto;
-  seriesId: string;
-  onDelete: () => void;
+  lessons: LessonDto[];
+  startDate: string;
+  endDate: string;
 }) {
-  const queryClient = useQueryClient();
+  const [weekIndex, setWeekIndex] = useState(0);
+  const weeks = computeWeeks(startDate, endDate);
+  const currentWeek = weeks[weekIndex];
 
-  const deleteMutation = useMutation({
-    mutationFn: () => deleteLesson(seriesId, lesson.id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
-      onDelete();
-    },
-  });
+  if (!currentWeek) return null;
+
+  // Convert lessons for the current week into CalendarSlots
+  const weekSlots: CalendarSlot[] = lessons
+    .filter(
+      (l) => l.date >= currentWeek.startDate && l.date <= currentWeek.endDate,
+    )
+    .map((l) => ({
+      id: l.id,
+      dayOfWeek: dayOfWeekFromDate(l.date, currentWeek.days),
+      startTime: l.startTime,
+      endTime: l.endTime,
+      trainerId: null,
+      trainerName: null,
+      courtName: l.courtName,
+      maxStudents: l.maxStudents,
+    }));
+
+  const dayDates = currentWeek.days.map(formatDateShort);
 
   return (
-    <div
-      className={`flex items-center justify-between gap-4 p-4 rounded-lg border ${
-        lesson.isCancelled
-          ? "bg-red-50/50 border-red-100"
-          : "bg-white border-gray-100"
-      }`}
-    >
-      <div className="flex items-center gap-4 flex-1 min-w-0">
-        <div className="flex items-center gap-1.5 shrink-0">
-          <CalendarDays size={13} className="text-tennis-green" />
-          <span className="text-sm font-semibold text-gray-800">
-            {lesson.date}
+    <div>
+      {/* Header with pagination */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2.5">
+          <h2 className="text-sm font-semibold text-gray-800">Lesmomenten</h2>
+          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-tennis-green/10 text-tennis-green text-xs font-bold">
+            {lessons.length}
           </span>
         </div>
-        <div className="flex items-center gap-1 shrink-0">
-          <Clock size={12} className="text-gray-400" />
+
+        <div className="flex items-center gap-2">
           <span className="text-xs text-gray-500">
-            {lesson.startTime}–{lesson.endTime}
+            Week {weekIndex + 1} van {weeks.length}
           </span>
-        </div>
-        <div className="flex items-center gap-1 min-w-0">
-          <MapPin size={12} className="text-gray-400 shrink-0" />
-          <span className="text-xs text-gray-600 truncate">
-            {lesson.courtName}
+          <span className="text-xs text-gray-400">
+            {formatDateShort(currentWeek.startDate)} –{" "}
+            {formatDateShort(currentWeek.endDate)}
           </span>
-        </div>
-        {lesson.notes && (
-          <span className="text-xs text-gray-400 truncate hidden md:block">
-            {lesson.notes}
-          </span>
-        )}
-        {lesson.isCancelled && (
-          <span className="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-600">
-            Geannuleerd
-          </span>
-        )}
-      </div>
-
-      <AlertDialog>
-        <AlertDialogTrigger asChild>
-          <button className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors">
-            <Trash2 size={13} />
-          </button>
-        </AlertDialogTrigger>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Lesmoment verwijderen?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Het lesmoment op {lesson.date} om {lesson.startTime} wordt
-              permanent verwijderd. Dit kan niet ongedaan worden gemaakt.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Annuleren</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => deleteMutation.mutate()}
-              className="bg-red-600 hover:bg-red-700 text-white"
+          <div className="flex items-center gap-1 ml-1">
+            <button
+              type="button"
+              onClick={() => setWeekIndex((i) => Math.max(0, i - 1))}
+              disabled={weekIndex === 0}
+              className="w-7 h-7 flex items-center justify-center rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
             >
-              {deleteMutation.isPending ? "Verwijderen..." : "Verwijderen"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
-  );
-}
-
-// ─── Add Lesson Form ──────────────────────────────────────────────────────────
-
-function makeLessonSchema(minDate: string, maxDate: string) {
-  return z.object({
-    date: z
-      .string()
-      .min(1, "Datum is verplicht")
-      .refine((d) => d >= minDate && d <= maxDate, {
-        message: `Datum moet tussen ${minDate} en ${maxDate} liggen`,
-      }),
-    startTime: z.string().min(1, "Starttijd is verplicht"),
-    courtName: z.string().min(1, "Baan is verplicht").max(100),
-    notes: z.string().optional(),
-  });
-}
-
-type LessonFormValues = {
-  date: string;
-  startTime: string;
-  courtName: string;
-  notes?: string;
-};
-
-function AddLessonForm({
-  seriesId,
-  minDate,
-  maxDate,
-}: {
-  seriesId: string;
-  minDate: string;
-  maxDate: string;
-}) {
-  const queryClient = useQueryClient();
-
-  const mutation = useMutation({
-    mutationFn: (data: LessonFormValues) =>
-      createLesson(seriesId, {
-        date: data.date,
-        startTime: data.startTime,
-        courtName: data.courtName,
-        notes: data.notes || undefined,
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
-      reset();
-    },
-  });
-
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm<LessonFormValues>({
-    resolver: zodResolver(makeLessonSchema(minDate, maxDate)),
-  });
-
-  return (
-    <div className="bg-white rounded-xl shadow-sm shadow-gray-100 overflow-hidden">
-      <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
-        <div className="w-6 h-6 rounded-md bg-tennis-green/10 flex items-center justify-center">
-          <Plus size={13} className="text-tennis-green" />
+              <ChevronLeft size={14} />
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                setWeekIndex((i) => Math.min(weeks.length - 1, i + 1))
+              }
+              disabled={weekIndex === weeks.length - 1}
+              className="w-7 h-7 flex items-center justify-center rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <ChevronRight size={14} />
+            </button>
+          </div>
         </div>
-        <h3 className="text-sm font-semibold text-gray-800">
-          Lesmoment toevoegen
-        </h3>
       </div>
 
-      <form
-        onSubmit={handleSubmit((d) => mutation.mutate(d))}
-        className="p-5 space-y-4"
-      >
-        <div className="grid grid-cols-3 gap-3">
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">
-              Datum
-            </label>
-            <input
-              {...register("date")}
-              type="date"
-              min={minDate}
-              max={maxDate}
-              className={inputClass}
-            />
-            <FieldError message={errors.date?.message} />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">
-              Starttijd
-            </label>
-            <input
-              {...register("startTime")}
-              type="time"
-              className={inputClass}
-            />
-            <FieldError message={errors.startTime?.message} />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">
-              Baan
-            </label>
-            <input
-              {...register("courtName")}
-              type="text"
-              placeholder="Baan 1"
-              className={inputClass}
-            />
-            <FieldError message={errors.courtName?.message} />
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">
-            Notities (optioneel)
-          </label>
-          <input
-            {...register("notes")}
-            type="text"
-            placeholder="Optionele notitie..."
-            className={inputClass}
-          />
-        </div>
-
-        {mutation.isError && (
-          <p className="text-xs text-red-500">
-            Er ging iets mis. Controleer de gegevens.
-          </p>
-        )}
-
-        <button
-          type="submit"
-          disabled={mutation.isPending}
-          className="flex items-center gap-2 px-4 py-2 bg-tennis-green text-white text-xs font-semibold rounded-lg hover:bg-tennis-green/90 transition-colors disabled:opacity-60"
-        >
-          {mutation.isPending ? (
-            <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-          ) : (
-            <Plus size={13} />
-          )}
-          {mutation.isPending ? "Toevoegen..." : "Toevoegen"}
-        </button>
-      </form>
+      {/* Calendar grid (read-only) */}
+      <CalendarGrid slots={weekSlots} readOnly dayDates={dayDates} />
     </div>
   );
 }
@@ -543,15 +409,17 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
   useEffect(() => {
     if (!loaded && existingForm !== undefined) {
       if (existingForm) {
-        setFields(existingForm.fields.map((f) => ({
-          _key: f.id,
-          id: f.id,
-          label: f.label,
-          type: f.type,
-          isRequired: f.isRequired,
-          order: f.order,
-          options: f.options ?? undefined,
-        })));
+        setFields(
+          existingForm.fields.map((f) => ({
+            _key: f.id,
+            id: f.id,
+            label: f.label,
+            type: f.type,
+            isRequired: f.isRequired,
+            order: f.order,
+            options: f.options ?? undefined,
+          })),
+        );
       }
       setLoaded(true);
     }
@@ -589,7 +457,7 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
 
   function updateField(key: string, updates: Partial<DraftField>) {
     setFields((prev) =>
-      prev.map((f) => (f._key === key ? { ...f, ...updates } : f))
+      prev.map((f) => (f._key === key ? { ...f, ...updates } : f)),
     );
   }
 
@@ -612,8 +480,8 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
   function addOption(key: string) {
     setFields((prev) =>
       prev.map((f) =>
-        f._key === key ? { ...f, options: [...(f.options ?? []), ""] } : f
-      )
+        f._key === key ? { ...f, options: [...(f.options ?? []), ""] } : f,
+      ),
     );
   }
 
@@ -624,7 +492,7 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
         const opts = [...(f.options ?? [])];
         opts[optIdx] = value;
         return { ...f, options: opts };
-      })
+      }),
     );
   }
 
@@ -634,11 +502,12 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
         if (f._key !== key) return f;
         const opts = (f.options ?? []).filter((_, i) => i !== optIdx);
         return { ...f, options: opts };
-      })
+      }),
     );
   }
 
-  const inputCls = "w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-tennis-green bg-white";
+  const inputCls =
+    "w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-tennis-green bg-white";
 
   return (
     <div className="bg-white rounded-xl shadow-sm shadow-gray-100 overflow-hidden">
@@ -646,16 +515,29 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
         <div className="w-6 h-6 rounded-md bg-tennis-green/10 flex items-center justify-center">
           <ClipboardList size={13} className="text-tennis-green" />
         </div>
-        <h2 className="text-sm font-semibold text-gray-800">Inschrijfformulier</h2>
+        <h2 className="text-sm font-semibold text-gray-800">
+          Inschrijfformulier
+        </h2>
       </div>
 
       <div className="p-5 space-y-4">
         {/* Predefined fields badge list */}
         <div>
-          <p className="text-xs text-gray-400 mb-2">Vaste velden (altijd zichtbaar)</p>
+          <p className="text-xs text-gray-400 mb-2">
+            Vaste velden (altijd zichtbaar)
+          </p>
           <div className="flex flex-wrap gap-2">
-            {["Voornaam", "Achternaam", "E-mailadres"].map((f) => (
-              <span key={f} className="inline-flex items-center px-2.5 py-1 rounded-full text-xs bg-tennis-green/10 text-tennis-green font-medium">
+            {[
+              "Voornaam",
+              "Achternaam",
+              "E-mailadres",
+              "Inschrijvingstype",
+              "Beschikbaarheid",
+            ].map((f) => (
+              <span
+                key={f}
+                className="inline-flex items-center px-2.5 py-1 rounded-full text-xs bg-tennis-green/10 text-tennis-green font-medium"
+              >
                 {f}
               </span>
             ))}
@@ -664,18 +546,26 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
 
         {/* Custom fields */}
         {fields.length === 0 && (
-          <p className="text-xs text-gray-400 py-2">Nog geen aangepaste velden. Klik &apos;Veld toevoegen&apos; om te beginnen.</p>
+          <p className="text-xs text-gray-400 py-2">
+            Nog geen aangepaste velden. Klik &apos;Veld toevoegen&apos; om te
+            beginnen.
+          </p>
         )}
 
         <div className="space-y-3">
           {fields.map((field, idx) => (
-            <div key={field._key} className="border border-gray-100 rounded-xl p-4 space-y-3 bg-[#FAFAF8]">
+            <div
+              key={field._key}
+              className="border border-gray-100 rounded-xl p-4 space-y-3 bg-[#FAFAF8]"
+            >
               {/* Row 1: label (full width) */}
               <input
                 type="text"
                 placeholder="Veldlabel, bijv. 'Telefoonnummer'"
                 value={field.label}
-                onChange={(e) => updateField(field._key, { label: e.target.value })}
+                onChange={(e) =>
+                  updateField(field._key, { label: e.target.value })
+                }
                 className={inputCls}
               />
 
@@ -683,11 +573,18 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
               <div className="flex items-center gap-2">
                 <select
                   value={field.type}
-                  onChange={(e) => updateField(field._key, { type: parseInt(e.target.value), options: undefined })}
+                  onChange={(e) =>
+                    updateField(field._key, {
+                      type: parseInt(e.target.value),
+                      options: undefined,
+                    })
+                  }
                   className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:border-tennis-green bg-white cursor-pointer"
                 >
                   {FIELD_TYPES.map((t) => (
-                    <option key={t.value} value={t.value}>{t.label}</option>
+                    <option key={t.value} value={t.value}>
+                      {t.label}
+                    </option>
                   ))}
                 </select>
 
@@ -695,7 +592,9 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
                   <input
                     type="checkbox"
                     checked={field.isRequired}
-                    onChange={(e) => updateField(field._key, { isRequired: e.target.checked })}
+                    onChange={(e) =>
+                      updateField(field._key, { isRequired: e.target.checked })
+                    }
                     className="accent-tennis-green"
                   />
                   Verplicht
@@ -737,7 +636,9 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
                         type="text"
                         placeholder={`Optie ${optIdx + 1}`}
                         value={opt}
-                        onChange={(e) => updateOption(field._key, optIdx, e.target.value)}
+                        onChange={(e) =>
+                          updateOption(field._key, optIdx, e.target.value)
+                        }
                         className={inputCls + " flex-1"}
                       />
                       <button
@@ -754,7 +655,8 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
                     onClick={() => addOption(field._key)}
                     className="flex items-center gap-1 text-xs text-tennis-green hover:underline"
                   >
-                    <Plus size={11} />Optie toevoegen
+                    <Plus size={11} />
+                    Optie toevoegen
                   </button>
                 </div>
               )}
@@ -768,7 +670,8 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
             onClick={addField}
             className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 text-xs font-medium text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"
           >
-            <Plus size={12} />Veld toevoegen
+            <Plus size={12} />
+            Veld toevoegen
           </button>
           <button
             type="button"
@@ -776,12 +679,18 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
             disabled={saveMutation.isPending}
             className="flex items-center gap-1.5 px-4 py-2 bg-tennis-green text-white text-xs font-semibold rounded-lg hover:bg-tennis-green/90 transition-colors disabled:opacity-60"
           >
-            {saveMutation.isPending ? "Opslaan..." : saveMutation.isSuccess ? "Opgeslagen ✓" : "Formulier opslaan"}
+            {saveMutation.isPending
+              ? "Opslaan..."
+              : saveMutation.isSuccess
+                ? "Opgeslagen ✓"
+                : "Formulier opslaan"}
           </button>
         </div>
 
         {saveMutation.isError && (
-          <p className="text-xs text-red-500">Opslaan mislukt. Probeer opnieuw.</p>
+          <p className="text-xs text-red-500">
+            Opslaan mislukt. Probeer opnieuw.
+          </p>
         )}
       </div>
     </div>
@@ -790,7 +699,11 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
 
 // ─── Enrollments Section ──────────────────────────────────────────────────────
 
-function EnrollmentRow({ enrollment }: { enrollment: LessonSeriesEnrollmentDto }) {
+function EnrollmentRow({
+  enrollment,
+}: {
+  enrollment: LessonSeriesEnrollmentDto;
+}) {
   const [expanded, setExpanded] = useState(false);
   const hasResponses = enrollment.formResponses.length > 0;
 
@@ -801,21 +714,32 @@ function EnrollmentRow({ enrollment }: { enrollment: LessonSeriesEnrollmentDto }
         onClick={() => hasResponses && setExpanded((v) => !v)}
       >
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-gray-800 truncate">{enrollment.studentName}</p>
-          <p className="text-xs text-gray-400 truncate">{enrollment.studentEmail}</p>
+          <p className="text-sm font-medium text-gray-800 truncate">
+            {enrollment.studentName}
+          </p>
+          <p className="text-xs text-gray-400 truncate">
+            {enrollment.studentEmail}
+          </p>
         </div>
         <div className="flex items-center gap-3 ml-4">
           <span className="text-xs text-gray-400">
             {new Date(enrollment.enrolledAt).toLocaleDateString("nl-BE")}
           </span>
           {enrollment.status === "Confirmed" ? (
-            <Badge className="bg-green-100 text-green-700 border-0 text-xs">Bevestigd</Badge>
+            <Badge className="bg-green-100 text-green-700 border-0 text-xs">
+              Bevestigd
+            </Badge>
           ) : (
-            <Badge className="bg-gray-100 text-gray-500 border-0 text-xs">Geannuleerd</Badge>
+            <Badge className="bg-gray-100 text-gray-500 border-0 text-xs">
+              Geannuleerd
+            </Badge>
           )}
-          {hasResponses && (
-            expanded ? <ChevronUp size={13} className="text-gray-400" /> : <ChevronDown size={13} className="text-gray-400" />
-          )}
+          {hasResponses &&
+            (expanded ? (
+              <ChevronUp size={13} className="text-gray-400" />
+            ) : (
+              <ChevronDown size={13} className="text-gray-400" />
+            ))}
         </div>
       </div>
 
@@ -824,7 +748,9 @@ function EnrollmentRow({ enrollment }: { enrollment: LessonSeriesEnrollmentDto }
           <dl className="space-y-1.5 bg-[#FAFAF8] rounded-lg p-3">
             {enrollment.formResponses.map((r, i) => (
               <div key={i} className="flex gap-3 text-xs">
-                <dt className="text-gray-500 shrink-0 min-w-[120px]">{r.fieldLabel}</dt>
+                <dt className="text-gray-500 shrink-0 min-w-[120px]">
+                  {r.fieldLabel}
+                </dt>
                 <dd className="text-gray-800 font-medium">{r.value}</dd>
               </div>
             ))}
@@ -856,7 +782,9 @@ function EnrollmentsSection({ seriesId }: { seriesId: string }) {
     <div className="bg-white rounded-xl shadow-sm shadow-gray-100 overflow-hidden">
       <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <h2 className="text-sm font-semibold text-gray-800">Inschrijvingen</h2>
+          <h2 className="text-sm font-semibold text-gray-800">
+            Inschrijvingen
+          </h2>
           <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-tennis-green/10 text-tennis-green text-xs font-bold">
             {active.length}
           </span>
@@ -866,9 +794,15 @@ function EnrollmentsSection({ seriesId }: { seriesId: string }) {
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
         >
           {copied ? (
-            <><CheckCircle2 size={12} className="text-green-500" />Link gekopieerd</>
+            <>
+              <CheckCircle2 size={12} className="text-green-500" />
+              Link gekopieerd
+            </>
           ) : (
-            <><Copy size={12} />Inschrijflink</>
+            <>
+              <Copy size={12} />
+              Inschrijflink
+            </>
           )}
         </button>
       </div>
@@ -990,13 +924,6 @@ export default function LessonSeriesDetailPage({
                     {series.isActive ? "Actief" : "Inactief"}
                   </span>
                 </div>
-                <div className="flex items-center gap-1 text-sm text-gray-500 mb-3">
-                  <UserCheck size={13} />
-                  <span>{series.trainerName || "—"}</span>
-                  <span className="text-gray-300 mx-1">·</span>
-                  <BarChart2 size={13} />
-                  <span>{LESSON_LEVELS[series.level] ?? `N${series.level}`}</span>
-                </div>
                 {series.description && (
                   <p className="text-sm text-gray-500 mb-3">
                     {series.description}
@@ -1052,10 +979,9 @@ export default function LessonSeriesDetailPage({
                 defaultValues={{
                   name: series.name,
                   description: series.description ?? "",
-                  trainerId: series.trainerId,
                   tennisClubId: series.tennisClubId,
-                  level: String(series.level),
                   price: series.price,
+                  registrationDeadline: series.registrationDeadline?.split("T")[0] ?? "",
                   isActive: series.isActive,
                 }}
                 onCancel={() => setEditing(false)}
@@ -1064,45 +990,11 @@ export default function LessonSeriesDetailPage({
             )}
           </div>
 
-          {/* ── Section 2: Lesmomenten ── */}
-          <div className="bg-white rounded-xl shadow-sm shadow-gray-100 overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2.5">
-              <h2 className="text-sm font-semibold text-gray-800">
-                Lesmomenten
-              </h2>
-              <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-tennis-green/10 text-tennis-green text-xs font-bold">
-                {series.lessons.length}
-              </span>
-            </div>
-
-            {series.lessons.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <p className="text-sm text-gray-400 font-medium">
-                  Nog geen lesmomenten
-                </p>
-                <p className="text-xs text-gray-300 mt-1">
-                  Gebruik het formulier hieronder om een lesmoment toe te voegen.
-                </p>
-              </div>
-            ) : (
-              <div className="p-4 space-y-2">
-                {series.lessons.map((lesson) => (
-                  <LessonRow
-                    key={lesson.id}
-                    lesson={lesson}
-                    seriesId={id}
-                    onDelete={() => {}}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* ── Section 3: Add lesson ── */}
-          <AddLessonForm
-            seriesId={id}
-            minDate={series.startDate}
-            maxDate={series.endDate}
+          {/* ── Section 2: Lesmomenten (paginated week view) ── */}
+          <LessonWeekView
+            lessons={series.lessons}
+            startDate={series.startDate}
+            endDate={series.endDate}
           />
 
           {/* ── Section 4: Form builder ── */}

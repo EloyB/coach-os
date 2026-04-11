@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { DashboardSidebar } from "@/components/layouts/dashboard-sidebar";
 import { MobileBottomNav } from "@/components/layouts/dashboard-bottom-nav";
-import { getAuthUser } from "@/lib/auth";
+import { getAuthUser, isAuthenticated, type AuthUser } from "@/lib/auth";
 
 const ROLE_LABELS: Record<string, string> = {
   Admin: "Beheerder",
@@ -16,21 +17,25 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [name, setName] = useState("Coach");
-  const [roleLabel, setRoleLabel] = useState("Beheerder");
-  const [initials, setInitials] = useState("C");
+  const router = useRouter();
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [checked, setChecked] = useState(false);
 
   useEffect(() => {
-    const user = getAuthUser();
-    if (user) {
-      const fullName = `${user.firstName} ${user.lastName}`.trim();
-      setName(fullName || "Coach");
-      setRoleLabel(ROLE_LABELS[user.role] ?? user.role);
-      setInitials(
-        `${user.firstName?.[0] ?? ""}${user.lastName?.[0] ?? ""}`.toUpperCase() || "C"
-      );
+    if (!isAuthenticated()) {
+      router.replace("/login");
+    } else {
+      setUser(getAuthUser());
     }
-  }, []);
+    setChecked(true);
+  }, [router]);
+
+  if (!checked || !user) return null;
+
+  const fullName = `${user.firstName} ${user.lastName}`.trim() || "Coach";
+  const roleLabel = ROLE_LABELS[user.role] ?? user.role;
+  const initials =
+    `${user.firstName?.[0] ?? ""}${user.lastName?.[0] ?? ""}`.toUpperCase() || "C";
 
   return (
     <div className="flex h-screen bg-[#F5F4F1] overflow-hidden">
@@ -44,7 +49,7 @@ export default function DashboardLayout({
           </p>
           <div className="flex items-center gap-3">
             <div className="text-right">
-              <p className="text-sm font-semibold text-gray-800 leading-none">{name}</p>
+              <p className="text-sm font-semibold text-gray-800 leading-none">{fullName}</p>
               <p className="text-xs text-gray-400 mt-0.5">{roleLabel}</p>
             </div>
             <div className="w-9 h-9 rounded-full bg-tennis-green flex items-center justify-center shrink-0">

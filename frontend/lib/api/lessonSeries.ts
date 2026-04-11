@@ -23,6 +23,7 @@ export interface LessonSeriesDto {
   price: number;
   startDate: string;
   endDate: string;
+  registrationDeadline?: string;
   durationMinutes: number;
   isActive: boolean;
   tennisClubId: string;
@@ -46,13 +47,12 @@ export interface CreateLessonSeriesRequest {
 }
 
 export interface UpdateLessonSeriesRequest {
-  trainerId: string;
   name: string;
   description?: string;
-  level: number;
   price: number;
   isActive: boolean;
   tennisClubId: string;
+  registrationDeadline?: string;
 }
 
 export interface CreateLessonRequest {

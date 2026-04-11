@@ -11,7 +11,11 @@ import {
   Euro,
   BarChart2,
 } from "lucide-react";
-import { getLessonSeries, LESSON_LEVELS, LessonSeriesDto } from "@/lib/api/lessonSeries";
+import {
+  getLessonSeries,
+  LESSON_LEVELS,
+  LessonSeriesDto,
+} from "@/lib/api/lessonSeries";
 import { TennisBallEmptyIcon } from "@/components/ui/tennis-ball-icon";
 
 // ─── Skeleton ────────────────────────────────────────────────────────────────
@@ -84,35 +88,16 @@ function SeriesCard({ series }: { series: LessonSeriesDto }) {
         </span>
       </div>
 
-      <p className="text-xs text-gray-400 mb-2 flex items-center gap-1">
-        <UserCheck size={11} className="shrink-0" />
-        {series.trainerName || "—"}
-      </p>
-
       <p className="text-xs text-gray-500 mb-4">
         {series.startDate} &rarr; {series.endDate}
       </p>
 
       <div className="grid grid-cols-4 gap-2 mb-4">
         <div className="bg-[#F5F4F1] rounded-lg px-2 py-2 text-center">
-          <BarChart2 size={11} className="mx-auto text-tennis-green mb-1" />
-          <p className="text-[10px] text-gray-400 leading-none mb-0.5">Niveau</p>
-          <p className="text-xs font-semibold text-gray-700 leading-none truncate">
-            {LESSON_LEVELS[series.level] ?? `N${series.level}`}
-          </p>
-        </div>
-        <div className="bg-[#F5F4F1] rounded-lg px-2 py-2 text-center">
           <Euro size={11} className="mx-auto text-tennis-green mb-1" />
           <p className="text-[10px] text-gray-400 leading-none mb-0.5">Prijs</p>
           <p className="text-xs font-semibold text-gray-700 leading-none">
             €{series.price}
-          </p>
-        </div>
-        <div className="bg-[#F5F4F1] rounded-lg px-2 py-2 text-center">
-          <Clock size={11} className="mx-auto text-tennis-green mb-1" />
-          <p className="text-[10px] text-gray-400 leading-none mb-0.5">Duur</p>
-          <p className="text-xs font-semibold text-gray-700 leading-none">
-            {series.durationMinutes}m
           </p>
         </div>
       </div>

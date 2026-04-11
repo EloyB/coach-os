@@ -1,147 +1,24 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Plus, X } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
+import {
+  CalendarGrid,
+  formatTime,
+  parseTime,
+  getSlotPosition,
+  getTrainerColor,
+  layoutDaySlots,
+  START_HOUR,
+  END_HOUR,
+  ROW_HEIGHT,
+  type CalendarSlot,
+} from "@/components/calendar/calendar-grid";
 import type { WizardSlot } from "../_types";
 import { SlotEditPopover } from "./slot-edit-popover";
 
-const START_HOUR = 7;
-const END_HOUR = 21;
-const ROW_HEIGHT = 48; // px per hour
-const HOURS = Array.from(
-  { length: END_HOUR - START_HOUR },
-  (_, i) => START_HOUR + i,
-);
-const DAY_NAMES_SHORT = ["Ma", "Di", "Wo", "Do", "Vr", "Za", "Zo"];
-const DAY_NAMES_FULL = [
-  "Maandag",
-  "Dinsdag",
-  "Woensdag",
-  "Donderdag",
-  "Vrijdag",
-  "Zaterdag",
-  "Zondag",
-];
-const DRAG_THRESHOLD = 5; // px before drag starts
-
-// No-trainer color (greenish default)
-const NO_TRAINER_COLOR = {
-  bg: "rgba(45,80,22,0.10)",
-  border: "#2D5016",
-  text: "#2D5016",
-};
-
-// Trainer color palette — only non-green colors so they stand out from unassigned slots
-const TRAINER_COLORS = [
-  { bg: "rgba(139,92,246,0.12)", border: "#8B5CF6", text: "#6D28D9" }, // purple
-  { bg: "rgba(59,130,246,0.12)", border: "#3B82F6", text: "#2563EB" }, // blue
-  { bg: "rgba(245,158,11,0.12)", border: "#F59E0B", text: "#B45309" }, // amber
-  { bg: "rgba(236,72,153,0.12)", border: "#EC4899", text: "#BE185D" }, // pink
-  { bg: "rgba(20,184,166,0.12)", border: "#14B8A6", text: "#0D9488" }, // teal
-  { bg: "rgba(239,68,68,0.12)", border: "#EF4444", text: "#DC2626" }, // red
-  { bg: "rgba(249,115,22,0.12)", border: "#F97316", text: "#C2410C" }, // orange
-  { bg: "rgba(168,85,247,0.12)", border: "#A855F7", text: "#7C3AED" }, // violet
-] as const;
-
-function hashString(str: string): number {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
-  }
-  return Math.abs(hash);
-}
-
-function getTrainerColor(trainerId: string | null) {
-  if (!trainerId) return NO_TRAINER_COLOR;
-  return TRAINER_COLORS[hashString(trainerId) % TRAINER_COLORS.length];
-}
-
-function formatTime(minutes: number): string {
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-}
-
-function parseTime(time: string): number {
-  const [h, m] = time.split(":").map(Number);
-  return h * 60 + m;
-}
-
-const SLOT_GAP = 2; // px gap below each slot for visual separation
-
-function getSlotPosition(slot: WizardSlot) {
-  const startMin = parseTime(slot.startTime);
-  const endMin = parseTime(slot.endTime);
-  const gridStartMin = START_HOUR * 60;
-
-  return {
-    top: ((startMin - gridStartMin) / 60) * ROW_HEIGHT,
-    height: Math.max(((endMin - startMin) / 60) * ROW_HEIGHT - SLOT_GAP, 20),
-  };
-}
-
-/** Assign column positions to overlapping slots (side-by-side layout) */
-function layoutDaySlots(
-  daySlots: WizardSlot[]
-): Map<string, { colIndex: number; totalCols: number }> {
-  const sorted = [...daySlots].sort(
-    (a, b) => parseTime(a.startTime) - parseTime(b.startTime)
-  );
-  const result = new Map<string, { colIndex: number; totalCols: number }>();
-  if (sorted.length === 0) return result;
-
-  // Group into clusters of mutually overlapping slots
-  const clusters: WizardSlot[][] = [];
-  let currentCluster: WizardSlot[] = [sorted[0]];
-  let clusterEnd = parseTime(sorted[0].endTime);
-
-  for (let i = 1; i < sorted.length; i++) {
-    const s = sorted[i];
-    const start = parseTime(s.startTime);
-    if (start < clusterEnd) {
-      currentCluster.push(s);
-      clusterEnd = Math.max(clusterEnd, parseTime(s.endTime));
-    } else {
-      clusters.push(currentCluster);
-      currentCluster = [s];
-      clusterEnd = parseTime(s.endTime);
-    }
-  }
-  clusters.push(currentCluster);
-
-  // For each cluster, greedily assign columns
-  for (const cluster of clusters) {
-    const columns: WizardSlot[][] = [];
-
-    for (const slot of cluster) {
-      const slotStart = parseTime(slot.startTime);
-      let placed = false;
-
-      for (let col = 0; col < columns.length; col++) {
-        const lastInCol = columns[col][columns[col].length - 1];
-        if (parseTime(lastInCol.endTime) <= slotStart) {
-          columns[col].push(slot);
-          placed = true;
-          break;
-        }
-      }
-
-      if (!placed) {
-        columns.push([slot]);
-      }
-    }
-
-    const totalCols = columns.length;
-    for (let col = 0; col < columns.length; col++) {
-      for (const slot of columns[col]) {
-        result.set(slot.id, { colIndex: col, totalCols });
-      }
-    }
-  }
-
-  return result;
-}
+const DRAG_THRESHOLD = 5;
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -185,9 +62,10 @@ export function CalendarWeekView({
   const justDraggedRef = useRef(false);
   const [editingSlotId, setEditingSlotId] = useState<string | null>(null);
   const [editAnchor, setEditAnchor] = useState<HTMLElement | null>(null);
-  const [ghostStyle, setGhostStyle] = useState<React.CSSProperties | null>(null);
+  const [ghostStyle, setGhostStyle] = useState<React.CSSProperties | null>(
+    null
+  );
 
-  // Stable refs so the effect doesn't re-register listeners on every change
   const slotsRef = useRef(slots);
   const onChangeRef = useRef(onChange);
   useEffect(() => {
@@ -198,8 +76,7 @@ export function CalendarWeekView({
 
   // ─── Drag handlers ──────────────────────────────────────────────────────
 
-  function handleSlotMouseDown(slot: WizardSlot, e: React.MouseEvent) {
-    // Don't interfere with the X button
+  function handleSlotMouseDown(slot: CalendarSlot, e: React.MouseEvent) {
     if ((e.target as HTMLElement).closest("button")) return;
     e.preventDefault();
 
@@ -219,27 +96,33 @@ export function CalendarWeekView({
     });
   }
 
-  const calcPosition = useCallback((e: MouseEvent, currentDrag: DragState) => {
-    const grid = gridBodyRef.current;
-    if (!grid) return null;
+  const calcPosition = useCallback(
+    (e: MouseEvent, currentDrag: DragState) => {
+      const grid = gridBodyRef.current;
+      if (!grid) return null;
 
-    const gridRect = grid.getBoundingClientRect();
-    const x = e.clientX - gridRect.left;
-    const y = e.clientY - gridRect.top;
+      const gridRect = grid.getBoundingClientRect();
+      const x = e.clientX - gridRect.left;
+      const y = e.clientY - gridRect.top;
 
-    const colWidth = (gridRect.width - 60) / 7;
-    const dayIndex = Math.max(0, Math.min(6, Math.floor((x - 60) / colWidth)));
+      const colWidth = (gridRect.width - 60) / 7;
+      const dayIndex = Math.max(
+        0,
+        Math.min(6, Math.floor((x - 60) / colWidth))
+      );
 
-    const adjustedY = y - currentDrag.offsetY;
-    const totalMin = START_HOUR * 60 + (adjustedY / ROW_HEIGHT) * 60;
-    const snappedMin = Math.floor(totalMin / 30) * 30;
-    const clampedStart = Math.max(
-      START_HOUR * 60,
-      Math.min(snappedMin, END_HOUR * 60 - currentDrag.durationMin),
-    );
+      const adjustedY = y - currentDrag.offsetY;
+      const totalMin = START_HOUR * 60 + (adjustedY / ROW_HEIGHT) * 60;
+      const snappedMin = Math.floor(totalMin / 30) * 30;
+      const clampedStart = Math.max(
+        START_HOUR * 60,
+        Math.min(snappedMin, END_HOUR * 60 - currentDrag.durationMin)
+      );
 
-    return { previewDay: dayIndex, previewStartMin: clampedStart, isValid: true };
-  }, []);
+      return { previewDay: dayIndex, previewStartMin: clampedStart, isValid: true };
+    },
+    []
+  );
 
   useEffect(() => {
     if (!drag) return;
@@ -277,8 +160,8 @@ export function CalendarWeekView({
                   startTime: newStart,
                   endTime: newEnd,
                 }
-              : s,
-          ),
+              : s
+          )
         );
         justDraggedRef.current = true;
         requestAnimationFrame(() => {
@@ -295,15 +178,33 @@ export function CalendarWeekView({
     };
   }, [drag !== null, calcPosition]);
 
+  // ─── Ghost position ─────────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!drag?.moved || !gridBodyRef.current) {
+      setGhostStyle(null);
+      return;
+    }
+
+    const gridRect = gridBodyRef.current.getBoundingClientRect();
+    const colWidth = (gridRect.width - 60) / 7;
+
+    setGhostStyle({
+      left: 60 + drag.previewDay * colWidth + 2,
+      top: ((drag.previewStartMin - START_HOUR * 60) / 60) * ROW_HEIGHT,
+      width: colWidth - 4,
+      height: (drag.durationMin / 60) * ROW_HEIGHT,
+    });
+  }, [drag]);
+
   // ─── Click handlers ─────────────────────────────────────────────────────
 
-  function handleRemoveSlot(id: string, e: React.MouseEvent) {
-    e.stopPropagation();
+  function handleSlotRemove(id: string) {
     setEditingSlotId(null);
     onChange(slots.filter((s) => s.id !== id));
   }
 
-  function handleSlotClick(slot: WizardSlot, e: React.MouseEvent) {
+  function handleSlotClick(slot: CalendarSlot, e: React.MouseEvent) {
     if (justDraggedRef.current) return;
     if ((e.target as HTMLElement).closest("button")) return;
 
@@ -317,7 +218,7 @@ export function CalendarWeekView({
     setEditingSlotId(null);
   }
 
-  function handleAddParallelSlot(slot: WizardSlot, e: React.MouseEvent) {
+  function handleAddParallelSlot(slot: CalendarSlot, e: React.MouseEvent) {
     e.stopPropagation();
     onChange([
       ...slots,
@@ -335,10 +236,7 @@ export function CalendarWeekView({
     ]);
   }
 
-  function handleDayClick(
-    dayIndex: number,
-    e: React.MouseEvent<HTMLDivElement>,
-  ) {
+  function handleEmptyClick(dayIndex: number, e: React.MouseEvent<HTMLDivElement>) {
     if (justDraggedRef.current) return;
     if ((e.target as HTMLElement).closest("[data-slot-id]")) return;
 
@@ -349,7 +247,7 @@ export function CalendarWeekView({
 
     const clampedStart = Math.max(
       START_HOUR * 60,
-      Math.min(snappedMinutes, (END_HOUR - 1) * 60),
+      Math.min(snappedMinutes, (END_HOUR - 1) * 60)
     );
     const clampedEnd = Math.min(END_HOUR * 60, clampedStart + 60);
 
@@ -369,262 +267,116 @@ export function CalendarWeekView({
     ]);
   }
 
-  // ─── Ghost position — update via effect when drag changes ───────────────
-
-  useEffect(() => {
-    if (!drag?.moved || !gridBodyRef.current) {
-      setGhostStyle(null);
-      return;
-    }
-
-    const gridRect = gridBodyRef.current.getBoundingClientRect();
-    const colWidth = (gridRect.width - 60) / 7;
-
-    setGhostStyle({
-      left: 60 + drag.previewDay * colWidth + 2,
-      top: ((drag.previewStartMin - START_HOUR * 60) / 60) * ROW_HEIGHT,
-      width: colWidth - 4,
-      height: (drag.durationMin / 60) * ROW_HEIGHT,
-    });
-  }, [drag]);
-
   // ─── Render ─────────────────────────────────────────────────────────────
 
-  const totalHeight = HOURS.length * ROW_HEIGHT;
-  const gridColumns = `60px repeat(7, 1fr)`;
   const isDragging = drag?.moved ?? false;
 
   return (
     <>
-      <div
-        className={`bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden select-none ${isDragging ? "cursor-grabbing" : ""}`}
-      >
-        {/* Day headers */}
-        <div
-          className="border-b border-gray-200 bg-gray-50"
-          style={{ display: "grid", gridTemplateColumns: gridColumns }}
-        >
-          <div className="px-2 py-3" />
-          {DAY_NAMES_SHORT.map((day, i) => (
-            <div
-              key={i}
-              className="px-3 py-3 text-center border-l border-gray-200"
-            >
-              <div className="text-xs font-bold text-gray-900 uppercase">
-                {day}
-              </div>
-              <div className="text-[10px] text-gray-400">
-                {DAY_NAMES_FULL[i]}
-              </div>
-            </div>
-          ))}
-        </div>
+      <CalendarGrid
+        slots={slots}
+        gridBodyRef={gridBodyRef}
+        className={isDragging ? "cursor-grabbing" : ""}
+        onSlotMouseDown={handleSlotMouseDown}
+        onSlotClick={handleSlotClick}
+        onSlotRemove={handleSlotRemove}
+        renderDayOverlay={(dayIndex) => {
+          // Add-parallel buttons for slot clusters
+          const daySlots = slots
+            .filter((s) => s.dayOfWeek === dayIndex)
+            .sort((a, b) => a.startTime.localeCompare(b.startTime));
+          const layout = layoutDaySlots(daySlots);
 
-        {/* Grid body wrapper (for ghost overlay) */}
-        <div className="relative">
-          <div
-            ref={gridBodyRef}
-            className="relative"
-            style={{ display: "grid", gridTemplateColumns: gridColumns }}
-          >
-            {/* Time axis */}
-            <div className="relative" style={{ height: totalHeight }}>
-              {HOURS.map((hour) => (
-                <div
-                  key={hour}
-                  className="absolute left-0 right-0 flex items-start justify-end px-2"
-                  style={{ top: (hour - START_HOUR) * ROW_HEIGHT }}
-                >
-                  <span className="relative -top-2 text-[10px] text-gray-400 font-medium">
-                    {String(hour).padStart(2, "0")}:00
-                  </span>
-                </div>
-              ))}
-            </div>
+          // Compute clusters
+          const clusters: { slots: CalendarSlot[]; top: number; height: number }[] = [];
+          for (const slot of daySlots) {
+            const pos = getSlotPosition(slot);
+            const last = clusters[clusters.length - 1];
+            if (last && pos.top < last.top + last.height) {
+              last.slots.push(slot);
+              const endY = pos.top + pos.height + 2;
+              last.height = Math.max(last.height, endY - last.top);
+            } else {
+              clusters.push({ slots: [slot], top: pos.top, height: pos.height + 2 });
+            }
+          }
 
-            {/* Day columns */}
-            {DAY_NAMES_SHORT.map((_, dayIndex) => {
-              const daySlots = slots
-                .filter((s) => s.dayOfWeek === dayIndex)
-                .sort((a, b) => a.startTime.localeCompare(b.startTime));
+          return (
+            <>
+              {/* Click-to-add handler */}
+              <div
+                className="absolute inset-0 z-0"
+                onClick={(e) => handleEmptyClick(dayIndex, e)}
+              />
 
-              return (
-                <div
-                  key={dayIndex}
-                  className="relative border-l border-gray-100 cursor-pointer group/day"
-                  style={{ height: totalHeight }}
-                  onClick={(e) => handleDayClick(dayIndex, e)}
-                >
-                  {/* Half-hour cells (hover targets) + gridlines */}
-                  {HOURS.flatMap((hour) => {
-                    const baseTop = (hour - START_HOUR) * ROW_HEIGHT;
-                    const halfHeight = ROW_HEIGHT / 2;
-                    return [
+              {/* Dragged slot opacity */}
+              {isDragging &&
+                daySlots
+                  .filter((s) => s.id === drag?.slotId)
+                  .map((slot) => {
+                    const pos = getSlotPosition(slot);
+                    const col = layout.get(slot.id) ?? { colIndex: 0, totalCols: 1 };
+                    const colWidthPct = 100 / col.totalCols;
+                    return (
                       <div
-                        key={`${hour}-0`}
-                        className="absolute left-0 right-0 border-b border-dashed border-gray-200 hover:bg-tennis-green/5 transition-colors"
-                        style={{ top: baseTop, height: halfHeight }}
-                      />,
-                      <div
-                        key={`${hour}-30`}
-                        className="absolute left-0 right-0 border-b border-gray-100 hover:bg-tennis-green/5 transition-colors"
+                        key={`drag-overlay-${slot.id}`}
+                        className="absolute bg-white/60 z-20 pointer-events-none"
                         style={{
-                          top: baseTop + halfHeight,
-                          height: halfHeight,
+                          top: pos.top,
+                          height: pos.height,
+                          left: `calc(${col.colIndex * colWidthPct}% + 1px)`,
+                          width: `calc(${colWidthPct}% - 2px)`,
                         }}
-                      />,
-                    ];
+                      />
+                    );
                   })}
 
-                  {/* Slot blocks + add-parallel buttons */}
-                  {(() => {
-                    const layout = layoutDaySlots(daySlots);
-
-                    // Group slots into clusters to render one "+" button per cluster
-                    const clusters: { slots: WizardSlot[]; top: number; height: number }[] = [];
-                    const sorted = [...daySlots].sort((a, b) => a.startTime.localeCompare(b.startTime));
-                    for (const slot of sorted) {
-                      const pos = getSlotPosition(slot);
-                      const last = clusters[clusters.length - 1];
-                      if (last && pos.top < last.top + last.height) {
-                        last.slots.push(slot);
-                        const endY = pos.top + pos.height + SLOT_GAP;
-                        last.height = Math.max(last.height, endY - last.top);
-                      } else {
-                        clusters.push({ slots: [slot], top: pos.top, height: pos.height + SLOT_GAP });
-                      }
-                    }
-
-                    return (
-                      <>
-                        {daySlots.map((slot) => {
-                          const pos = getSlotPosition(slot);
-                          const isBeingDragged =
-                            drag?.slotId === slot.id && isDragging;
-                          const color = getTrainerColor(slot.trainerId);
-                          const col = layout.get(slot.id) ?? { colIndex: 0, totalCols: 1 };
-                          // Leave space for the "+" button
-                          const addBtnWidth = 24; // px
-                          const usableWidthCalc = `calc(100% - ${addBtnWidth + 2}px)`;
-
-                          return (
-                            <div
-                              key={slot.id}
-                              data-slot-id={slot.id}
-                              className={`absolute border-l-[3px] rounded-r-md px-1.5 py-1 transition-all group z-10 ${
-                                isBeingDragged
-                                  ? "opacity-30 cursor-grabbing"
-                                  : "cursor-grab"
-                              }`}
-                              style={{
-                                top: pos.top,
-                                height: pos.height,
-                                left: `calc(${(col.colIndex / col.totalCols)} * ${usableWidthCalc} + 1px)`,
-                                width: `calc(${(1 / col.totalCols)} * ${usableWidthCalc})`,
-                                backgroundColor: color.bg,
-                                borderLeftColor: color.border,
-                              }}
-                              onMouseDown={(e) => handleSlotMouseDown(slot, e)}
-                              onClick={(e) => handleSlotClick(slot, e)}
-                            >
-                              {/* Delete button */}
-                              <button
-                                type="button"
-                                data-slot-id={slot.id}
-                                onClick={(e) => handleRemoveSlot(slot.id, e)}
-                                className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 w-4 h-4 flex items-center justify-center text-gray-400 hover:text-red-500 transition-all z-20"
-                              >
-                                <X size={10} />
-                              </button>
-                              <div
-                                className="text-[11px] font-semibold"
-                                style={{ color: color.text }}
-                              >
-                                {slot.startTime} — {slot.endTime}
-                              </div>
-                              {pos.height >= 36 && (
-                                <div className="text-[10px] text-gray-600 truncate">
-                                  {slot.courtName || slot.trainerName ? (
-                                    <>
-                                      {slot.courtName && <>{slot.courtName} · </>}
-                                      {slot.trainerName && <>{slot.trainerName} · </>}
-                                      <span className="text-gray-400">
-                                        {slot.maxStudents} max
-                                      </span>
-                                    </>
-                                  ) : (
-                                    <span className="text-gray-400 italic">
-                                      {slot.maxStudents} max
-                                    </span>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-
-                        {/* Add-parallel buttons — one per cluster, right edge */}
-                        {clusters.map((cluster) => (
-                          <button
-                            key={`add-${cluster.slots[0].id}`}
-                            type="button"
-                            data-slot-id="add-parallel"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleAddParallelSlot(cluster.slots[0], e);
-                            }}
-                            className="absolute right-0 flex items-center justify-center rounded-md border border-dashed border-gray-200 bg-gray-50/80 text-gray-300 opacity-0 group-hover/day:opacity-100 hover:!border-tennis-green/40 hover:!text-tennis-green hover:!bg-tennis-green/5 transition-all z-10"
-                            style={{
-                              top: cluster.top,
-                              height: cluster.height - SLOT_GAP,
-                              width: 22,
-                            }}
-                          >
-                            <Plus size={14} strokeWidth={2} />
-                          </button>
-                        ))}
-                      </>
-                    );
-                  })()}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Drag ghost preview */}
-          {ghostStyle &&
-            drag &&
-            (() => {
-              const draggedSlot = slots.find((s) => s.id === drag.slotId);
-              const ghostColor = drag.isValid
-                ? getTrainerColor(draggedSlot?.trainerId ?? null)
-                : {
-                    bg: "rgba(239,68,68,0.15)",
-                    border: "#EF4444",
-                    text: "#DC2626",
-                  };
-
-              return (
-                <div
-                  className="absolute pointer-events-none rounded-r-md border-l-[3px] px-2 py-1 z-30"
+              {/* Add-parallel buttons */}
+              {clusters.map((cluster) => (
+                <button
+                  key={`add-${cluster.slots[0].id}`}
+                  type="button"
+                  data-slot-id="add-parallel"
+                  onClick={(e) => handleAddParallelSlot(cluster.slots[0], e)}
+                  className="absolute right-0 flex items-center justify-center rounded-md border border-dashed border-gray-200 bg-gray-50/80 text-gray-300 opacity-0 group-hover/day:opacity-100 hover:!border-tennis-green/40 hover:!text-tennis-green hover:!bg-tennis-green/5 transition-all z-10"
                   style={{
-                    ...ghostStyle,
-                    backgroundColor: ghostColor.bg,
-                    borderLeftColor: ghostColor.border,
+                    top: cluster.top,
+                    height: cluster.height - 2,
+                    width: 22,
                   }}
                 >
-                  <div
-                    className="text-[11px] font-semibold"
-                    style={{ color: ghostColor.text }}
-                  >
-                    {formatTime(drag.previewStartMin)} —{" "}
-                    {formatTime(drag.previewStartMin + drag.durationMin)}
-                  </div>
-                </div>
-              );
-            })()}
-        </div>
-      </div>
+                  <Plus size={14} strokeWidth={2} />
+                </button>
+              ))}
+            </>
+          );
+        }}
+        renderGridOverlay={() => {
+          if (!ghostStyle || !drag) return null;
+
+          const draggedSlot = slots.find((s) => s.id === drag.slotId);
+          const ghostColor = getTrainerColor(draggedSlot?.trainerId ?? null);
+
+          return (
+            <div
+              className="absolute pointer-events-none rounded-r-md border-l-[3px] px-2 py-1 z-30"
+              style={{
+                ...ghostStyle,
+                backgroundColor: ghostColor.bg,
+                borderLeftColor: ghostColor.border,
+              }}
+            >
+              <div
+                className="text-[11px] font-semibold"
+                style={{ color: ghostColor.text }}
+              >
+                {formatTime(drag.previewStartMin)} —{" "}
+                {formatTime(drag.previewStartMin + drag.durationMin)}
+              </div>
+            </div>
+          );
+        }}
+      />
 
       {/* Hint */}
       <p className="text-xs text-gray-400 mt-2 px-1">{t("calendarHint")}</p>
