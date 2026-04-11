@@ -62,10 +62,16 @@ user_id = auth["userId"]
 r = api("POST", "/tennisclubs", {"name": "Padel Club Antwerpen", "address": "Padelstraat 10"}, token)
 club_id = r.text.strip('"')
 
-from datetime import date, timedelta, datetime
+from datetime import date, timedelta, datetime, timezone
 today = date.today().isoformat()
 end_date = (date.today() + timedelta(days=90)).isoformat()
-deadline = (datetime.utcnow() + timedelta(days=60)).strftime("%Y-%m-%dT%H:%M:%SZ")
+deadline = (datetime.now(timezone.utc) + timedelta(days=60)).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+# Find first Monday from today (for the seed lesson to match the template)
+_d = date.today()
+while _d.weekday() != 0:  # 0 = Monday
+    _d += timedelta(days=1)
+first_monday = _d.isoformat()
 
 print(f"   Authenticated. Club: Padel Club Antwerpen\n")
 
@@ -74,27 +80,56 @@ def build_template():
     for day in [1, 2, 3, 4]:
         for hour in [18, 19, 20]:
             for field in range(1, 3):
+                # Only assign trainer to field 1; field 2 has no trainer yet
+                trainer = user_id if field == 1 else None
                 slots.append({
                     "dayOfWeek": day,
                     "startTime": f"{hour}:00",
                     "endTime": f"{hour+1}:00",
-                    "trainerId": user_id,
+                    "trainerId": trainer,
                     "courtName": f"Veld {field}",
                     "maxStudents": 4,
                 })
     return slots
 
+def build_lessons():
+    """Generate lessons for each week in the series, matching the weekly template."""
+    lessons = []
+    start = date.today()
+    end = date.today() + timedelta(days=90)
+    template = build_template()
+
+    for entry in template:
+        target_day = entry["dayOfWeek"]  # 1=Mon, 2=Tue, etc.
+        # Find first occurrence of this weekday
+        d = start
+        days_ahead = (target_day - d.isoweekday()) % 7
+        d += timedelta(days=days_ahead)
+
+        while d <= end:
+            lessons.append({
+                "trainerId": entry["trainerId"],
+                "date": d.isoformat(),
+                "startTime": entry["startTime"],
+                "endTime": entry["endTime"],
+                "courtName": entry["courtName"],
+                "maxStudents": entry["maxStudents"],
+            })
+            d += timedelta(days=7)
+
+    return lessons
+
 def create_series(name):
     r = api("POST", "/lessonseries", {
         "tennisClubId": club_id,
         "name": name,
-        "description": "6 velden, ma-do 18-21u",
+        "description": "2 velden, ma-do 18-21u",
         "level": 1, "price": 200.0,
         "startDate": today, "endDate": end_date,
         "registrationDeadline": deadline,
         "maxRegistrations": 300,
         "weeklyTemplate": build_template(),
-        "lessons": [{"trainerId": user_id, "date": today, "startTime": "18:00", "endTime": "19:00", "courtName": "Veld 1", "maxStudents": 4}],
+        "lessons": build_lessons(),
     }, token)
     if r.status_code not in (200, 201):
         print(f"   ERROR creating series: {r.status_code} {r.text[:200]}")

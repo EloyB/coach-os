@@ -105,11 +105,8 @@ public class PlanningService(
         // Run algorithm
         var result = SchedulingAlgorithm.Generate(input);
 
-        // Clear existing proposed assignments
-        var existingAssignments = await scheduleAssignmentRepo.GetBySeriesAsync(seriesId, organizationId, ct);
-        var proposedOnly = existingAssignments.Where(a => a.Status == ScheduleAssignmentStatus.Proposed).ToList();
-        if (proposedOnly.Count > 0)
-            scheduleAssignmentRepo.RemoveRange(proposedOnly);
+        // Clear existing proposed assignments (uses ExecuteDelete to avoid tracking conflicts)
+        await scheduleAssignmentRepo.RemoveProposedBySeriesAsync(seriesId, organizationId, ct);
 
         // Persist new assignments
         var newAssignments = result.Assignments.Select(a => new ScheduleAssignment

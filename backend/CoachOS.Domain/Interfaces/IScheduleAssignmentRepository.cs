@@ -14,5 +14,7 @@ public interface IScheduleAssignmentRepository
 
     void RemoveRange(IEnumerable<ScheduleAssignment> assignments);
 
+    Task RemoveProposedBySeriesAsync(Guid lessonSerieId, Guid organizationId, CancellationToken ct = default);
+
     Task SaveChangesAsync(CancellationToken ct = default);
 }

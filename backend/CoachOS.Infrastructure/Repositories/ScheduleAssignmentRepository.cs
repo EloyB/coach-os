@@ -1,4 +1,5 @@
 using CoachOS.Domain.Entities;
+using CoachOS.Domain.Enums;
 using CoachOS.Domain.Interfaces;
 using CoachOS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -39,6 +40,15 @@ public class ScheduleAssignmentRepository(ApplicationDbContext context) : ISched
     public void RemoveRange(IEnumerable<ScheduleAssignment> assignments)
     {
         context.ScheduleAssignments.RemoveRange(assignments);
+    }
+
+    public async Task RemoveProposedBySeriesAsync(Guid lessonSerieId, Guid organizationId, CancellationToken ct = default)
+    {
+        await context.ScheduleAssignments
+            .Where(a => a.LessonSerieId == lessonSerieId
+                && a.OrganizationId == organizationId
+                && a.Status == ScheduleAssignmentStatus.Proposed)
+            .ExecuteDeleteAsync(ct);
     }
 
     public async Task SaveChangesAsync(CancellationToken ct = default)
