@@ -73,7 +73,7 @@ def build_template():
     slots = []
     for day in [1, 2, 3, 4]:
         for hour in [18, 19, 20]:
-            for field in range(1, 7):
+            for field in range(1, 3):
                 slots.append({
                     "dayOfWeek": day,
                     "startTime": f"{hour}:00",
@@ -208,7 +208,8 @@ def run_scenario(name, description, enroll_fn):
     time_keys = sorted(slot_map.keys())
 
     ok, fail, total_people = enroll_fn(sid, slots, slot_map, time_keys)
-    print(f"   Enrolled: {ok} ok, {fail} failed ({total_people} people total)\n")
+    print(f"   Enrolled: {ok} ok, {fail} failed ({total_people} people total)")
+    print(f"   Capacity: {len(slots)} slots × 4 = {len(slots) * 4} plaatsen\n")
 
     generate_and_show(sid, name)
 
@@ -216,7 +217,7 @@ def run_scenario(name, description, enroll_fn):
 # ── SCENARIO 1: PERFECT ──────────────────────────────────────────────────────
 def scenario_perfect(sid, slots, slot_map, time_keys):
     ok = fail = 0
-    for i in range(60):
+    for i in range(20):
         primary = time_keys[i % len(time_keys)]
         secondary = time_keys[(i + 4) % len(time_keys)]
 
@@ -232,7 +233,7 @@ def scenario_perfect(sid, slots, slot_map, time_keys):
             fail += 1
     return ok, fail, 60
 
-run_scenario("SCENARIO 1: PERFECT FIT", "60 spelers, goed verdeeld over alle momenten", scenario_perfect)
+run_scenario("SCENARIO 1: PERFECT FIT", "20 spelers, goed verdeeld over alle momenten", scenario_perfect)
 
 
 # ── SCENARIO 2: OVERSUBSCRIBED ────────────────────────────────────────────────
@@ -240,8 +241,8 @@ def scenario_oversubscribed(sid, slots, slot_map, time_keys):
     ok = fail = 0
     popular = [(1, "19:00"), (2, "19:00")]
 
-    for i in range(50):
-        if i < 35:
+    for i in range(20):
+        if i < 14:
             def pref_fn(key, _sid, pop=popular):
                 if key in pop: return 2
                 if key[1] == "19:00": return 1
@@ -251,13 +252,13 @@ def scenario_oversubscribed(sid, slots, slot_map, time_keys):
                 return random.choice([1, 1, 2])
 
         prefs = build_prefs(slots, slot_map, time_keys, pref_fn)
-        if enroll(sid, NAMES[i % len(NAMES)], f"s{i}@oversub.be", prefs, open_to_grouping=(i < 35)):
+        if enroll(sid, NAMES[i % len(NAMES)], f"s{i}@oversub.be", prefs, open_to_grouping=(i < 14)):
             ok += 1
         else:
             fail += 1
-    return ok, fail, 50
+    return ok, fail, 20
 
-run_scenario("SCENARIO 2: OVERSUBSCRIBED", "50 spelers, 35 willen allemaal ma/di 19:00", scenario_oversubscribed)
+run_scenario("SCENARIO 2: OVERSUBSCRIBED", "20 spelers, 14 willen allemaal ma/di 19:00", scenario_oversubscribed)
 
 
 # ── SCENARIO 3: SPARSE ───────────────────────────────────────────────────────
@@ -300,7 +301,7 @@ def scenario_sparse(sid, slots, slot_map, time_keys):
 
     return ok, fail, total
 
-run_scenario("SCENARIO 3: SPARSE", "8 spelers (5 solo + 1 groep van 3), veel lege velden", scenario_sparse)
+run_scenario("SCENARIO 3: SPARSE", "8 spelers (5 solo + 1 groep van 3), veel lege velden  ", scenario_sparse)
 
 
 # ── SCENARIO 4: RANDOM ───────────────────────────────────────────────────────
@@ -308,7 +309,7 @@ def scenario_random(sid, slots, slot_map, time_keys):
     ok = fail = 0
     total = 0
 
-    for i in range(25):
+    for i in range(15):
         def pref_fn(key, _sid):
             return random.choices([1, 2, 3], weights=[30, 30, 40])[0]
 
@@ -319,8 +320,8 @@ def scenario_random(sid, slots, slot_map, time_keys):
             fail += 1
         total += 1
 
-    # 2 groups of 4
-    for g in range(2):
+    # 1 group of 4
+    for g in range(1):
         idx = 25 + g * 4
         def pref_fn(key, _sid):
             return random.choices([1, 2, 3], weights=[25, 35, 40])[0]
@@ -338,4 +339,86 @@ def scenario_random(sid, slots, slot_map, time_keys):
 
     return ok, fail, total
 
-run_scenario("SCENARIO 4: RANDOM", "33 spelers (25 solo + 2 groepen van 4), random voorkeuren", scenario_random)
+run_scenario("SCENARIO 4: RANDOM", "19 spelers (15 solo + 1 groep van 4), random voorkeuren", scenario_random)
+
+
+# ── SCENARIO 5: STAMPVOL — everything full, auto-groups, overflow ─────────────
+def scenario_stampvol(sid, slots, slot_map, time_keys):
+    """
+    2 fields × 4 days × 3 hours = 24 slots × 4 = 96 capacity.
+    We enroll 105 people: 1 pre-formed group of 3 + 25 open solos + 2 closed solos = 30 enrollments = 105 people... no.
+    Actually: 1 group of 3, plus enough solos to overflow.
+    24 slots × 4 = 96 spots. Enroll 105 people (102 solo + 1 group of 3).
+    Most are open to grouping so auto-grouping kicks in.
+    Everyone wants only 2 of the 4 days → guaranteed overflow.
+    """
+    ok = fail = 0
+    total = 0
+
+    # 1 pre-formed group of 3, only wants Monday evening
+    def pref_fn_group(key, _sid):
+        if key[0] == 1: return 2   # Monday preferred
+        return 3                    # everything else unavailable
+
+    prefs = build_prefs(slots, slot_map, time_keys, pref_fn_group)
+    members = [
+        {"studentName": "Liam Dubois", "studentEmail": "liam@stampvol.be"},
+        {"studentName": "Nora Dubois", "studentEmail": "nora@stampvol.be"},
+    ]
+    if enroll(sid, "Papa Dubois", "papa@stampvol.be", prefs, "group", group_members=members):
+        ok += 1
+    else:
+        fail += 1
+    total += 3
+
+    # 27 solos who ONLY want Monday or Tuesday (12 slots × 4 = 48 spots, but 27+3=30 people)
+    for i in range(27):
+        def pref_fn(key, _sid):
+            if key[0] in (1, 2):  # Mon or Tue
+                if key[1] == "19:00": return 2  # everyone prefers 19:00
+                return 1
+            return 3  # Wed/Thu unavailable
+
+        prefs = build_prefs(slots, slot_map, time_keys, pref_fn)
+        if enroll(sid, NAMES[i], f"s{i}@stampvol.be", prefs, open_to_grouping=True):
+            ok += 1
+        else:
+            fail += 1
+        total += 1
+
+    # 20 solos who ONLY want Wednesday or Thursday (same pattern — 48 spots, 20 people)
+    for i in range(20):
+        def pref_fn(key, _sid):
+            if key[0] in (3, 4):  # Wed or Thu
+                if key[1] == "20:00": return 2  # prefer 20:00
+                return 1
+            return 3  # Mon/Tue unavailable
+
+        prefs = build_prefs(slots, slot_map, time_keys, pref_fn)
+        if enroll(sid, NAMES[30 + i], f"s{30+i}@stampvol.be", prefs, open_to_grouping=True):
+            ok += 1
+        else:
+            fail += 1
+        total += 1
+
+    # 8 solos who ONLY want Monday 19:00 (4 spots on 2 fields = 8 spots, but group already took 3)
+    # → at most 5 fit, 3 should overflow
+    for i in range(8):
+        def pref_fn(key, _sid):
+            if key == (1, "19:00"): return 2
+            return 3  # everything else unavailable
+
+        prefs = build_prefs(slots, slot_map, time_keys, pref_fn)
+        if enroll(sid, NAMES[60 + i], f"s{60+i}@stampvol.be", prefs, open_to_grouping=False):
+            ok += 1
+        else:
+            fail += 1
+        total += 1
+
+    return ok, fail, total
+
+run_scenario(
+    "SCENARIO 5: STAMPVOL",
+    "58 spelers, iedereen wil ma/di of wo/do, 8 willen enkel ma 19:00",
+    scenario_stampvol
+)
