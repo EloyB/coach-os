@@ -12,6 +12,11 @@ RUN dotnet restore CoachOS.slnx
 
 # Copy everything and build
 COPY . .
+
+# Remove directories with literal backslashes in their names (created by dotnet-ef on macOS).
+# These break MSBuild glob expansion on Linux, causing MSB3552.
+RUN find . -type d -name '*\\*' -exec rm -rf {} + 2>/dev/null || true
+
 RUN dotnet publish CoachOS.API/CoachOS.API.csproj -c Release -o /app
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime

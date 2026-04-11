@@ -102,3 +102,43 @@ export async function createLesson(seriesId: string, request: CreateLessonReques
 export async function deleteLesson(seriesId: string, lessonId: string): Promise<void> {
   await apiClient.delete(`/lessonseries/${seriesId}/lessons/${lessonId}`);
 }
+
+// ─── Wizard API ───────────────────────────────────────────────────────────────
+
+export interface WizardSlotRequest {
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  trainerId?: string;
+  courtName?: string;
+  maxStudents: number;
+}
+
+export interface LessonRequest {
+  date: string; // ISO date
+  startTime: string;
+  endTime: string;
+  trainerId?: string;
+  courtName?: string;
+  maxStudents: number;
+  level?: number;
+}
+
+export interface CreateLessonSeriesWizardRequest {
+  name: string;
+  price: number;
+  maxRegistrations: number;
+  tennisClubId: string;
+  startDate: string;
+  endDate: string;
+  registrationDeadline: string;
+  weeklyTemplate: WizardSlotRequest[];
+  lessons: LessonRequest[];
+}
+
+export async function createLessonSeriesWizard(
+  request: CreateLessonSeriesWizardRequest
+): Promise<string> {
+  const { data } = await apiClient.post<string>("/lessonseries", request);
+  return data;
+}
