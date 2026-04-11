@@ -20,7 +20,7 @@ public partial class ApplicationMapper
             Price = request.Price,
             StartDate = DateOnly.ParseExact(request.StartDate, "yyyy-MM-dd"),
             EndDate = DateOnly.ParseExact(request.EndDate, "yyyy-MM-dd"),
-            RegistrationDeadline = request.RegistrationDeadline,
+            RegistrationDeadline = DateTime.SpecifyKind(request.RegistrationDeadline, DateTimeKind.Utc),
             TennisClubId = request.TennisClubId,
             MaxRegistrations = request.MaxRegistrations,
             IsActive = true,

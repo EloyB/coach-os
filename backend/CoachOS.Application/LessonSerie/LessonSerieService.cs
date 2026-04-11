@@ -116,7 +116,7 @@ public class LessonSerieService(
         series.Description = request.Description;
         series.Level = request.Level.HasValue ? (LessonLevel)request.Level.Value : null;
         series.Price = request.Price;
-        series.RegistrationDeadline = request.RegistrationDeadline;
+        series.RegistrationDeadline = DateTime.SpecifyKind(request.RegistrationDeadline, DateTimeKind.Utc);
         series.IsActive = request.IsActive;
         series.MaxRegistrations = request.MaxRegistrations;
         series.TennisClubId = request.TennisClubId;
