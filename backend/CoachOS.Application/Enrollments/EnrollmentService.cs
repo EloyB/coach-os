@@ -1,6 +1,6 @@
 using System.Text.Json;
 using CoachOS.Application.Enrollments.DTOs;
-using CoachOS.Application.LessonSeries.DTOs;
+using CoachOS.Application.LessonSerie.DTOs;
 using CoachOS.Application.Mappings;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
@@ -13,22 +13,21 @@ namespace CoachOS.Application.Enrollments;
 public class EnrollmentService(
     IEnrollmentRepository enrollmentRepo,
     IEnrollmentFormRepository enrollmentFormRepo,
-    ILessonSeriesRepository lessonSeriesRepo,
+    ILessonSerieRepository lessonSeriesRepo,
     IUserLookupService userLookup,
     IEmailService emailService,
     ApplicationMapper mapper,
     ILogger<EnrollmentService> logger) : IEnrollmentService
 {
-    public async Task<Result<PublicLessonSeriesDto>> GetPublicLessonSeriesAsync(
+    public async Task<Result<PublicLessonSerieDto>> GetPublicLessonSerieAsync(
         Guid lessonSeriesId, CancellationToken ct = default)
     {
-        Domain.Entities.LessonSeries? series = await lessonSeriesRepo.GetByIdPublicAsync(lessonSeriesId, ct);
+        Domain.Entities.LessonSerie? series = await lessonSeriesRepo.GetByIdPublicAsync(lessonSeriesId, ct);
 
         if (series is null)
-            return Result<PublicLessonSeriesDto>.Fail(
+            return Result<PublicLessonSerieDto>.Fail(
                 new Error(ErrorCodes.NotFound, "Lessenreeks niet gevonden."));
 
-        string trainerName = await userLookup.GetUserNameByIdAsync(series.TrainerId, ct) ?? string.Empty;
         int enrollmentCount = await enrollmentRepo.CountActiveBySeriesAsync(series.Id, ct);
 
         List<LessonDto> lessons = series.Lessons
@@ -37,23 +36,22 @@ public class EnrollmentService(
             .Select(l => mapper.ToLessonDto(l, series.Id))
             .ToList();
 
-        PublicLessonSeriesDto dto = new()
+        PublicLessonSerieDto dto = new()
         {
             Id = series.Id,
             Name = series.Name,
             Description = series.Description,
-            TrainerName = trainerName,
-            Level = (int)series.Level,
+            Level = series.Level.HasValue ? (int)series.Level.Value : null,
             Price = series.Price,
             StartDate = series.StartDate.ToString("yyyy-MM-dd"),
             EndDate = series.EndDate.ToString("yyyy-MM-dd"),
-            DurationMinutes = series.DurationMinutes,
+            RegistrationDeadline = series.RegistrationDeadline,
             TennisClubName = series.TennisClub?.Name ?? string.Empty,
             EnrollmentCount = enrollmentCount,
             Lessons = lessons,
         };
 
-        return Result<PublicLessonSeriesDto>.Ok(dto);
+        return Result<PublicLessonSerieDto>.Ok(dto);
     }
 
     public async Task<Result<EnrollmentFormDto?>> GetEnrollmentFormAsync(
@@ -67,7 +65,7 @@ public class EnrollmentService(
         EnrollmentFormDto dto = new()
         {
             Id = form.Id,
-            LessonSeriesId = form.LessonSeriesId,
+            LessonSerieId = form.LessonSerieId,
             Fields = form.Fields.Select(f => new FormFieldDto
             {
                 Id = f.Id,
@@ -84,13 +82,13 @@ public class EnrollmentService(
         return Result<EnrollmentFormDto?>.Ok(dto);
     }
 
-    public async Task<Result<List<LessonSeriesEnrollmentDto>>> GetSeriesEnrollmentsAsync(
+    public async Task<Result<List<LessonSerieEnrollmentDto>>> GetSeriesEnrollmentsAsync(
         Guid lessonSeriesId, Guid organizationId, CancellationToken ct = default)
     {
         List<Enrollment> enrollments =
             await enrollmentRepo.GetBySeriesAsync(lessonSeriesId, organizationId, ct);
 
-        List<LessonSeriesEnrollmentDto> dtos = enrollments.Select(e => new LessonSeriesEnrollmentDto
+        List<LessonSerieEnrollmentDto> dtos = enrollments.Select(e => new LessonSerieEnrollmentDto
         {
             Id = e.Id,
             StudentName = e.StudentName,
@@ -107,7 +105,7 @@ public class EnrollmentService(
                 }).ToList(),
         }).ToList();
 
-        return Result<List<LessonSeriesEnrollmentDto>>.Ok(dtos);
+        return Result<List<LessonSerieEnrollmentDto>>.Ok(dtos);
     }
 
     public async Task<Result<Guid>> SaveFormAsync(
@@ -124,7 +122,7 @@ public class EnrollmentService(
             form = new EnrollmentForm
             {
                 OrganizationId = organizationId,
-                LessonSeriesId = lessonSeriesId,
+                LessonSerieId = lessonSeriesId,
             };
             await enrollmentFormRepo.AddAsync(form, ct);
         }
@@ -187,7 +185,7 @@ public class EnrollmentService(
         Guid lessonSeriesId, SubmitEnrollmentRequest request, CancellationToken ct = default)
     {
         // 1. Load active lesson series
-        Domain.Entities.LessonSeries? series = await lessonSeriesRepo.GetByIdPublicAsync(lessonSeriesId, ct);
+        Domain.Entities.LessonSerie? series = await lessonSeriesRepo.GetByIdPublicAsync(lessonSeriesId, ct);
         if (series is null)
             return Result<Guid>.Fail(new Error(ErrorCodes.NotFound, "Lessenreeks niet gevonden."));
 
@@ -222,7 +220,7 @@ public class EnrollmentService(
         Enrollment enrollment = new()
         {
             OrganizationId = series.OrganizationId,
-            LessonSeriesId = series.Id,
+            LessonSerieId = series.Id,
             StudentName = request.StudentName,
             StudentEmail = request.StudentEmail,
             Status = EnrollmentStatus.Confirmed,
@@ -248,8 +246,14 @@ public class EnrollmentService(
         // 7. Send notification emails (fire-and-forget in try/catch)
         try
         {
-            (string FullName, string Email)? trainerInfo =
-                await userLookup.GetUserInfoByIdAsync(series.TrainerId, ct);
+            Guid? firstTrainerId = series.Lessons
+                .OrderBy(l => l.Date).ThenBy(l => l.StartTime)
+                .Select(l => (Guid?)l.TrainerId)
+                .FirstOrDefault();
+
+            (string FullName, string Email)? trainerInfo = firstTrainerId.HasValue
+                ? await userLookup.GetUserInfoByIdAsync(firstTrainerId.Value, ct)
+                : null;
 
             List<(string FieldLabel, string Value)> responseItems = new();
             if (form is not null)

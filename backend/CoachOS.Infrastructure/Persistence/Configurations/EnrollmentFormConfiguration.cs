@@ -10,12 +10,12 @@ public class EnrollmentFormConfiguration : IEntityTypeConfiguration<EnrollmentFo
     {
         builder.HasKey(f => f.Id);
 
-        builder.HasOne(f => f.LessonSeries)
+        builder.HasOne(f => f.LessonSerie)
             .WithOne(ls => ls.EnrollmentForm)
-            .HasForeignKey<EnrollmentForm>(f => f.LessonSeriesId)
+            .HasForeignKey<EnrollmentForm>(f => f.LessonSerieId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasIndex(f => f.LessonSeriesId).IsUnique();
+        builder.HasIndex(f => f.LessonSerieId).IsUnique();
         builder.HasIndex(f => f.OrganizationId);
     }
 }

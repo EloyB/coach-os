@@ -5,13 +5,13 @@ namespace CoachOS.Application.Enrollments;
 
 public interface IEnrollmentService
 {
-    Task<Result<PublicLessonSeriesDto>> GetPublicLessonSeriesAsync(
+    Task<Result<PublicLessonSerieDto>> GetPublicLessonSerieAsync(
         Guid lessonSeriesId, CancellationToken ct = default);
 
     Task<Result<EnrollmentFormDto?>> GetEnrollmentFormAsync(
         Guid lessonSeriesId, CancellationToken ct = default);
 
-    Task<Result<List<LessonSeriesEnrollmentDto>>> GetSeriesEnrollmentsAsync(
+    Task<Result<List<LessonSerieEnrollmentDto>>> GetSeriesEnrollmentsAsync(
         Guid lessonSeriesId, Guid organizationId, CancellationToken ct = default);
 
     Task<Result<Guid>> SaveFormAsync(

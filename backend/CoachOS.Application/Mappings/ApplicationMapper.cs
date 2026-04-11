@@ -1,4 +1,4 @@
-using CoachOS.Application.LessonSeries.DTOs;
+using CoachOS.Application.LessonSerie.DTOs;
 using CoachOS.Application.TennisClubs.DTOs;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
@@ -9,39 +9,36 @@ namespace CoachOS.Application.Mappings;
 [Mapper]
 public partial class ApplicationMapper
 {
-    public Domain.Entities.LessonSeries ToLessonSeries(CreateLessonSeriesRequest request, Guid organizationId)
+    public Domain.Entities.LessonSerie ToLessonSerie(CreateLessonSerieRequest request, Guid organizationId)
     {
-        return new Domain.Entities.LessonSeries
+        return new Domain.Entities.LessonSerie
         {
             OrganizationId = organizationId,
-            TrainerId = request.TrainerId,
             Name = request.Name,
             Description = request.Description,
-            Level = (LessonLevel)request.Level,
+            Level = request.Level.HasValue ? (LessonLevel)request.Level.Value : null,
             Price = request.Price,
             StartDate = DateOnly.ParseExact(request.StartDate, "yyyy-MM-dd"),
             EndDate = DateOnly.ParseExact(request.EndDate, "yyyy-MM-dd"),
-            DurationMinutes = request.DurationMinutes,
+            RegistrationDeadline = request.RegistrationDeadline,
             TennisClubId = request.TennisClubId,
             IsActive = true,
         };
     }
 
-    public LessonSeriesDto ToLessonSeriesDto(Domain.Entities.LessonSeries ls, string trainerName, int lessonCount)
+    public LessonSerieDto ToLessonSerieDto(Domain.Entities.LessonSerie ls, int lessonCount)
     {
-        return new LessonSeriesDto
+        return new LessonSerieDto
         {
             Id = ls.Id,
             OrganizationId = ls.OrganizationId,
-            TrainerId = ls.TrainerId,
-            TrainerName = trainerName,
             Name = ls.Name,
             Description = ls.Description,
-            Level = (int)ls.Level,
+            Level = ls.Level.HasValue ? (int)ls.Level.Value : null,
             Price = ls.Price,
             StartDate = ls.StartDate.ToString("yyyy-MM-dd"),
             EndDate = ls.EndDate.ToString("yyyy-MM-dd"),
-            DurationMinutes = ls.DurationMinutes,
+            RegistrationDeadline = ls.RegistrationDeadline,
             IsActive = ls.IsActive,
             LessonCount = lessonCount,
             CreatedAt = ls.CreatedAt,
@@ -56,33 +53,35 @@ public partial class ApplicationMapper
         return new LessonDto
         {
             Id = lesson.Id,
-            LessonSeriesId = seriesId,
+            LessonSerieId = seriesId,
+            TrainerId = lesson.TrainerId,
             Date = lesson.Date.ToString("yyyy-MM-dd"),
             StartTime = lesson.StartTime.ToString("HH:mm"),
             EndTime = lesson.EndTime.ToString("HH:mm"),
             CourtName = lesson.CourtName,
+            Level = lesson.Level.HasValue ? (int)lesson.Level.Value : null,
             MaxStudents = lesson.MaxStudents,
             Notes = lesson.Notes,
             IsCancelled = lesson.IsCancelled,
         };
     }
 
-    public Lesson ToLesson(CreateLessonRequest request, Domain.Entities.LessonSeries series)
+    public Lesson ToLesson(CreateLessonRequest request, Domain.Entities.LessonSerie series)
     {
         DateOnly date = DateOnly.ParseExact(request.Date, "yyyy-MM-dd");
         TimeOnly startTime = TimeOnly.ParseExact(request.StartTime, "HH:mm");
-        TimeOnly endTime = startTime.AddMinutes(series.DurationMinutes);
+        TimeOnly endTime = TimeOnly.ParseExact(request.EndTime, "HH:mm");
 
         return new Lesson
         {
             OrganizationId = series.OrganizationId,
-            LessonSeriesId = series.Id,
-            TrainerId = series.TrainerId,
+            LessonSerieId = series.Id,
+            TrainerId = request.TrainerId,
             CourtName = request.CourtName,
             Date = date,
             StartTime = startTime,
             EndTime = endTime,
-            Level = series.Level,
+            Level = request.Level.HasValue ? (LessonLevel)request.Level.Value : null,
             MaxStudents = 0,
             Notes = request.Notes,
             IsCancelled = false,

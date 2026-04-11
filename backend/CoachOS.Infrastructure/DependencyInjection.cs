@@ -45,7 +45,7 @@ public static class DependencyInjection
         services.AddScoped<ITrainerService, TrainerService>();
         services.AddScoped<IUserLookupService, UserLookupService>();
         services.AddScoped<IEmailService, EmailService>();
-        services.AddScoped<ILessonSeriesRepository, LessonSeriesRepository>();
+        services.AddScoped<ILessonSerieRepository, LessonSerieRepository>();
         services.AddScoped<ILessonRepository, LessonRepository>();
         services.AddScoped<ITennisClubRepository, TennisClubRepository>();
         services.AddScoped<IEnrollmentRepository, EnrollmentRepository>();

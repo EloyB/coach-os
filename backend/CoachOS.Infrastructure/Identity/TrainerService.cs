@@ -102,9 +102,9 @@ public class TrainerService(
         Guid organizationId,
         CancellationToken ct = default)
     {
-        Dictionary<Guid, int> counts = await context.LessonSeries
-            .Where(ls => ls.OrganizationId == organizationId)
-            .GroupBy(ls => ls.TrainerId)
+        Dictionary<Guid, int> counts = await context.Lessons
+            .Where(l => l.OrganizationId == organizationId)
+            .GroupBy(l => l.TrainerId)
             .Select(g => new { g.Key, Count = g.Count() })
             .ToDictionaryAsync(x => x.Key, x => x.Count, ct);
 
@@ -127,7 +127,7 @@ public class TrainerService(
 
         foreach (TrainerDto trainer in trainers)
         {
-            trainer.LessonSeriesCount = counts.GetValueOrDefault(trainer.Id, 0);
+            trainer.LessonCount = counts.GetValueOrDefault(trainer.Id, 0);
         }
 
         return Result<List<TrainerDto>>.Ok(trainers);
@@ -168,11 +168,11 @@ public class TrainerService(
         if (trainer.Role != UserRole.Trainer)
             return Result.Fail("Gebruiker is geen trainer");
 
-        int count = await context.LessonSeries
-            .CountAsync(ls => ls.TrainerId == trainerId && ls.OrganizationId == organizationId, ct);
+        int count = await context.Lessons
+            .CountAsync(l => l.TrainerId == trainerId && l.OrganizationId == organizationId, ct);
 
         if (count > 0)
-            return Result.Fail($"Trainer heeft {count} lesreeks(en). Wijs deze eerst toe aan een andere trainer.");
+            return Result.Fail($"Trainer heeft {count} les(sen). Wijs deze eerst toe aan een andere trainer.");
 
         IdentityResult result = await userManager.DeleteAsync(trainer);
         return result.Succeeded
@@ -198,9 +198,9 @@ public class TrainerService(
         if (!toTrainer.IsActive)
             return Result.Fail("Doeltrainer is niet actief");
 
-        await context.LessonSeries
-            .Where(ls => ls.TrainerId == fromTrainerId && ls.OrganizationId == organizationId)
-            .ExecuteUpdateAsync(s => s.SetProperty(ls => ls.TrainerId, toTrainerId), ct);
+        await context.Lessons
+            .Where(l => l.TrainerId == fromTrainerId && l.OrganizationId == organizationId)
+            .ExecuteUpdateAsync(s => s.SetProperty(l => l.TrainerId, toTrainerId), ct);
 
         return Result.Ok();
     }

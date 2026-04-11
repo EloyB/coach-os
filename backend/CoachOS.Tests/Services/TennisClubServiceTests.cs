@@ -14,7 +14,7 @@ namespace CoachOS.Tests.Services;
 public class TennisClubServiceTests
 {
     private Mock<ITennisClubRepository> _tennisClubRepo = null!;
-    private Mock<ILessonSeriesRepository> _lessonSeriesRepo = null!;
+    private Mock<ILessonSerieRepository> _lessonSeriesRepo = null!;
     private ApplicationMapper _mapper = null!;
     private TennisClubService _service = null!;
 
@@ -24,7 +24,7 @@ public class TennisClubServiceTests
     public void SetUp()
     {
         _tennisClubRepo = new Mock<ITennisClubRepository>();
-        _lessonSeriesRepo = new Mock<ILessonSeriesRepository>();
+        _lessonSeriesRepo = new Mock<ILessonSerieRepository>();
         _mapper = new ApplicationMapper();
         _service = new TennisClubService(_tennisClubRepo.Object, _lessonSeriesRepo.Object, _mapper);
     }

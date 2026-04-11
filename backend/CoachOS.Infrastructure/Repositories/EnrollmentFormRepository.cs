@@ -10,14 +10,14 @@ public class EnrollmentFormRepository(ApplicationDbContext context) : IEnrollmen
     public async Task<EnrollmentForm?> GetBySeriesIdAsync(Guid lessonSeriesId, CancellationToken ct = default)
     {
         return await context.EnrollmentForms
-            .FirstOrDefaultAsync(f => f.LessonSeriesId == lessonSeriesId, ct);
+            .FirstOrDefaultAsync(f => f.LessonSerieId == lessonSeriesId, ct);
     }
 
     public async Task<EnrollmentForm?> GetBySeriesIdWithFieldsAsync(Guid lessonSeriesId, CancellationToken ct = default)
     {
         return await context.EnrollmentForms
             .Include(f => f.Fields)
-            .FirstOrDefaultAsync(f => f.LessonSeriesId == lessonSeriesId, ct);
+            .FirstOrDefaultAsync(f => f.LessonSerieId == lessonSeriesId, ct);
     }
 
     public async Task<EnrollmentForm?> GetBySeriesIdReadOnlyAsync(Guid lessonSeriesId, CancellationToken ct = default)
@@ -25,7 +25,7 @@ public class EnrollmentFormRepository(ApplicationDbContext context) : IEnrollmen
         return await context.EnrollmentForms
             .AsNoTracking()
             .Include(f => f.Fields.OrderBy(ff => ff.Order))
-            .FirstOrDefaultAsync(f => f.LessonSeriesId == lessonSeriesId, ct);
+            .FirstOrDefaultAsync(f => f.LessonSerieId == lessonSeriesId, ct);
     }
 
     public async Task AddAsync(EnrollmentForm form, CancellationToken ct = default)

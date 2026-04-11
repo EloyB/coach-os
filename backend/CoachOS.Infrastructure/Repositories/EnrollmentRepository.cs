@@ -15,7 +15,7 @@ public class EnrollmentRepository(ApplicationDbContext context) : IEnrollmentRep
             .AsNoTracking()
             .Include(e => e.FormResponses)
                 .ThenInclude(r => r.FormField)
-            .Where(e => e.LessonSeriesId == lessonSeriesId && e.OrganizationId == organizationId)
+            .Where(e => e.LessonSerieId == lessonSeriesId && e.OrganizationId == organizationId)
             .OrderByDescending(e => e.EnrolledAt)
             .ToListAsync(ct);
     }
@@ -26,7 +26,7 @@ public class EnrollmentRepository(ApplicationDbContext context) : IEnrollmentRep
         return await context.Enrollments
             .AsNoTracking()
             .AnyAsync(e =>
-                e.LessonSeriesId == lessonSeriesId &&
+                e.LessonSerieId == lessonSeriesId &&
                 e.StudentEmail == studentEmail &&
                 (e.Status == EnrollmentStatus.Confirmed || e.Status == EnrollmentStatus.Pending), ct);
     }
@@ -36,7 +36,7 @@ public class EnrollmentRepository(ApplicationDbContext context) : IEnrollmentRep
         return await context.Enrollments
             .AsNoTracking()
             .CountAsync(e =>
-                e.LessonSeriesId == lessonSeriesId &&
+                e.LessonSerieId == lessonSeriesId &&
                 (e.Status == EnrollmentStatus.Confirmed || e.Status == EnrollmentStatus.Pending), ct);
     }
 

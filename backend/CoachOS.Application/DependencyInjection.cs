@@ -1,7 +1,7 @@
 using System.Reflection;
 using CoachOS.Application.Dashboard;
 using CoachOS.Application.Enrollments;
-using CoachOS.Application.LessonSeries;
+using CoachOS.Application.LessonSerie;
 using CoachOS.Application.Mappings;
 using CoachOS.Application.TennisClubs;
 using FluentValidation;
@@ -17,7 +17,7 @@ public static class DependencyInjection
         services.AddSingleton<ApplicationMapper>();
 
         services.AddScoped<IDashboardService, DashboardService>();
-        services.AddScoped<ILessonSeriesService, LessonSeriesService>();
+        services.AddScoped<ILessonSerieService, LessonSerieService>();
         services.AddScoped<ITennisClubService, TennisClubService>();
         services.AddScoped<IEnrollmentService, EnrollmentService>();
 

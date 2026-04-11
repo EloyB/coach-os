@@ -20,17 +20,14 @@ public class LessonConfiguration : IEntityTypeConfiguration<Lesson>
         builder.Property(l => l.CancellationReason)
             .HasMaxLength(500);
 
-        builder.Property(l => l.Level)
-            .IsRequired();
-
         builder.HasOne(l => l.Organization)
             .WithMany()
             .HasForeignKey(l => l.OrganizationId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasOne(l => l.LessonSeries)
+        builder.HasOne(l => l.LessonSerie)
             .WithMany(ls => ls.Lessons)
-            .HasForeignKey(l => l.LessonSeriesId)
+            .HasForeignKey(l => l.LessonSerieId)
             .OnDelete(DeleteBehavior.Restrict)
             .IsRequired(false);
 

@@ -18,6 +18,6 @@ public class Organization : BaseEntity
     public string? LogoUrl { get; set; }
 
     // Navigation properties
-    public ICollection<LessonSeries> LessonSeries { get; set; } = new List<LessonSeries>();
+    public ICollection<LessonSerie> LessonSeries { get; set; } = new List<LessonSerie>();
     public Subscription? Subscription { get; set; }
 }

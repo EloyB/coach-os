@@ -17,7 +17,7 @@ public class EnrollmentServiceTests
 {
     private Mock<IEnrollmentRepository> _enrollmentRepo = null!;
     private Mock<IEnrollmentFormRepository> _enrollmentFormRepo = null!;
-    private Mock<ILessonSeriesRepository> _lessonSeriesRepo = null!;
+    private Mock<ILessonSerieRepository> _lessonSeriesRepo = null!;
     private Mock<IUserLookupService> _userLookup = null!;
     private Mock<IEmailService> _emailService = null!;
     private ApplicationMapper _mapper = null!;
@@ -33,7 +33,7 @@ public class EnrollmentServiceTests
     {
         _enrollmentRepo = new Mock<IEnrollmentRepository>();
         _enrollmentFormRepo = new Mock<IEnrollmentFormRepository>();
-        _lessonSeriesRepo = new Mock<ILessonSeriesRepository>();
+        _lessonSeriesRepo = new Mock<ILessonSerieRepository>();
         _userLookup = new Mock<IUserLookupService>();
         _emailService = new Mock<IEmailService>();
         _mapper = new ApplicationMapper();
@@ -51,26 +51,36 @@ public class EnrollmentServiceTests
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private static LessonSeries BuildActiveSeries() => new()
+    private static LessonSerie BuildActiveSeries() => new()
     {
         Id = SeriesId,
         OrganizationId = OrgId,
-        TrainerId = TrainerId,
         Name = "Beginners A",
         Level = LessonLevel.Beginner,
         Price = 120m,
         StartDate = DateOnly.FromDateTime(DateTime.Today),
         EndDate = DateOnly.FromDateTime(DateTime.Today.AddMonths(3)),
-        DurationMinutes = 60,
         IsActive = true,
-        Lessons = new List<Lesson>(),
+        Lessons = new List<Lesson>
+        {
+            new()
+            {
+                Id = Guid.NewGuid(),
+                OrganizationId = OrgId,
+                TrainerId = TrainerId,
+                Date = DateOnly.FromDateTime(DateTime.Today.AddDays(7)),
+                StartTime = TimeOnly.FromTimeSpan(TimeSpan.FromHours(10)),
+                EndTime = TimeOnly.FromTimeSpan(TimeSpan.FromHours(11)),
+                CourtName = "Baan 1",
+            }
+        },
     };
 
     private static EnrollmentForm BuildFormWithFields() => new()
     {
         Id = Guid.NewGuid(),
         OrganizationId = OrgId,
-        LessonSeriesId = SeriesId,
+        LessonSerieId = SeriesId,
         Fields = new List<FormField>
         {
             new()
@@ -84,38 +94,34 @@ public class EnrollmentServiceTests
         },
     };
 
-    // ── GetPublicLessonSeriesAsync ───────────────────────────────────────────
+    // ── GetPublicLessonSerieAsync ───────────────────────────────────────────
 
     [Test]
-    public async Task GetPublicLessonSeries_ReturnsDto_WhenFound()
+    public async Task GetPublicLessonSerie_ReturnsDto_WhenFound()
     {
-        LessonSeries series = BuildActiveSeries();
+        LessonSerie series = BuildActiveSeries();
         _lessonSeriesRepo
             .Setup(r => r.GetByIdPublicAsync(SeriesId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(series);
-        _userLookup
-            .Setup(u => u.GetUserNameByIdAsync(TrainerId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync("Jan Peeters");
         _enrollmentRepo
             .Setup(r => r.CountActiveBySeriesAsync(SeriesId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(5);
 
-        Result<PublicLessonSeriesDto> result = await _service.GetPublicLessonSeriesAsync(SeriesId);
+        Result<PublicLessonSerieDto> result = await _service.GetPublicLessonSerieAsync(SeriesId);
 
         result.IsSuccess.Should().BeTrue();
         result.Value!.Name.Should().Be("Beginners A");
-        result.Value.TrainerName.Should().Be("Jan Peeters");
         result.Value.EnrollmentCount.Should().Be(5);
     }
 
     [Test]
-    public async Task GetPublicLessonSeries_ReturnsNotFound_WhenMissing()
+    public async Task GetPublicLessonSerie_ReturnsNotFound_WhenMissing()
     {
         _lessonSeriesRepo
             .Setup(r => r.GetByIdPublicAsync(SeriesId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((LessonSeries?)null);
+            .ReturnsAsync((LessonSerie?)null);
 
-        Result<PublicLessonSeriesDto> result = await _service.GetPublicLessonSeriesAsync(SeriesId);
+        Result<PublicLessonSerieDto> result = await _service.GetPublicLessonSerieAsync(SeriesId);
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.NotFound);
@@ -163,7 +169,7 @@ public class EnrollmentServiceTests
             {
                 Id = Guid.NewGuid(),
                 OrganizationId = OrgId,
-                LessonSeriesId = SeriesId,
+                LessonSerieId = SeriesId,
                 StudentName = "Piet Janssen",
                 StudentEmail = "piet@test.be",
                 Status = EnrollmentStatus.Confirmed,
@@ -176,7 +182,7 @@ public class EnrollmentServiceTests
             .Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(enrollments);
 
-        Result<List<LessonSeriesEnrollmentDto>> result =
+        Result<List<LessonSerieEnrollmentDto>> result =
             await _service.GetSeriesEnrollmentsAsync(SeriesId, OrgId);
 
         result.IsSuccess.Should().BeTrue();
@@ -234,7 +240,7 @@ public class EnrollmentServiceTests
     {
         _lessonSeriesRepo
             .Setup(r => r.GetByIdPublicAsync(SeriesId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((LessonSeries?)null);
+            .ReturnsAsync((LessonSerie?)null);
 
         SubmitEnrollmentRequest request = new()
         {
@@ -251,7 +257,7 @@ public class EnrollmentServiceTests
     [Test]
     public async Task SubmitEnrollment_ReturnsDuplicate_WhenAlreadyEnrolled()
     {
-        LessonSeries series = BuildActiveSeries();
+        LessonSerie series = BuildActiveSeries();
         _lessonSeriesRepo
             .Setup(r => r.GetByIdPublicAsync(SeriesId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(series);
@@ -277,7 +283,7 @@ public class EnrollmentServiceTests
     [Test]
     public async Task SubmitEnrollment_Succeeds_WhenValid()
     {
-        LessonSeries series = BuildActiveSeries();
+        LessonSerie series = BuildActiveSeries();
         _lessonSeriesRepo
             .Setup(r => r.GetByIdPublicAsync(SeriesId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(series);
@@ -309,7 +315,7 @@ public class EnrollmentServiceTests
     [Test]
     public async Task SubmitEnrollment_FailsValidation_WhenRequiredFieldMissing()
     {
-        LessonSeries series = BuildActiveSeries();
+        LessonSerie series = BuildActiveSeries();
         EnrollmentForm form = BuildFormWithFields();
 
         _lessonSeriesRepo

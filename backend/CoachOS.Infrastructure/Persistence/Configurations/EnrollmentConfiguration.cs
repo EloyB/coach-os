@@ -35,15 +35,15 @@ public class EnrollmentConfiguration : IEntityTypeConfiguration<Enrollment>
             .OnDelete(DeleteBehavior.Restrict)
             .IsRequired(false);
 
-        builder.HasOne(e => e.LessonSeries)
+        builder.HasOne(e => e.LessonSerie)
             .WithMany(ls => ls.Enrollments)
-            .HasForeignKey(e => e.LessonSeriesId)
+            .HasForeignKey(e => e.LessonSerieId)
             .OnDelete(DeleteBehavior.Restrict)
             .IsRequired(false);
 
         builder.HasIndex(e => e.OrganizationId);
         builder.HasIndex(e => e.StudentEmail);
         builder.HasIndex(e => e.LessonId);
-        builder.HasIndex(e => e.LessonSeriesId);
+        builder.HasIndex(e => e.LessonSerieId);
     }
 }

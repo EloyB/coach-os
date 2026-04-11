@@ -8,7 +8,7 @@ namespace CoachOS.Application.TennisClubs;
 
 public class TennisClubService(
     ITennisClubRepository tennisClubRepo,
-    ILessonSeriesRepository lessonSeriesRepo,
+    ILessonSerieRepository lessonSeriesRepo,
     ApplicationMapper mapper) : ITennisClubService
 {
     public async Task<Result<List<TennisClubDto>>> GetAllAsync(

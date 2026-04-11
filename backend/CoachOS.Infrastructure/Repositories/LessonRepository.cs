@@ -14,7 +14,7 @@ public class LessonRepository(ApplicationDbContext context) : ILessonRepository
             .Include(l => l.Enrollments)
             .FirstOrDefaultAsync(l =>
                 l.Id == lessonId &&
-                l.LessonSeriesId == seriesId &&
+                l.LessonSerieId == seriesId &&
                 l.OrganizationId == organizationId, ct);
     }
 
@@ -22,7 +22,7 @@ public class LessonRepository(ApplicationDbContext context) : ILessonRepository
     {
         return await context.Lessons
             .AsNoTracking()
-            .CountAsync(l => l.LessonSeriesId == seriesId, ct);
+            .CountAsync(l => l.LessonSerieId == seriesId, ct);
     }
 
     public async Task<Dictionary<Guid, int>> GetLessonCountsBySeriesIdsAsync(
@@ -34,8 +34,8 @@ public class LessonRepository(ApplicationDbContext context) : ILessonRepository
 
         return await context.Lessons
             .AsNoTracking()
-            .Where(l => l.LessonSeriesId.HasValue && ids.Contains(l.LessonSeriesId.Value))
-            .GroupBy(l => l.LessonSeriesId!.Value)
+            .Where(l => l.LessonSerieId.HasValue && ids.Contains(l.LessonSerieId.Value))
+            .GroupBy(l => l.LessonSerieId!.Value)
             .Select(g => new { SeriesId = g.Key, Count = g.Count() })
             .ToDictionaryAsync(x => x.SeriesId, x => x.Count, ct);
     }
@@ -45,7 +45,7 @@ public class LessonRepository(ApplicationDbContext context) : ILessonRepository
     {
         return await context.Lessons
             .AsNoTracking()
-            .Include(l => l.LessonSeries)
+            .Include(l => l.LessonSerie)
             .Where(l => l.OrganizationId == organizationId && l.Date >= fromDate && !l.IsCancelled)
             .OrderBy(l => l.Date)
             .ThenBy(l => l.StartTime)

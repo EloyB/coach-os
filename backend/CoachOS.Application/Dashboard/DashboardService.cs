@@ -5,7 +5,7 @@ using CoachOS.Domain.Models;
 namespace CoachOS.Application.Dashboard;
 
 public class DashboardService(
-    ILessonSeriesRepository lessonSeriesRepo,
+    ILessonSerieRepository lessonSeriesRepo,
     ILessonRepository lessonRepo,
     IEnrollmentRepository enrollmentRepo,
     ITennisClubRepository tennisClubRepo,
@@ -14,7 +14,7 @@ public class DashboardService(
     public async Task<Result<DashboardSummaryDto>> GetSummaryAsync(
         Guid organizationId, CancellationToken ct = default)
     {
-        IReadOnlyList<Domain.Entities.LessonSeries> allSeries =
+        IReadOnlyList<Domain.Entities.LessonSerie> allSeries =
             await lessonSeriesRepo.GetByOrganizationAsync(organizationId, ct: ct);
 
         int activeSeriesCount = allSeries.Count(s => s.IsActive);
@@ -51,7 +51,7 @@ public class DashboardService(
         List<UpcomingLessonDto> upcomingDtos = upcomingLessons.Select(l => new UpcomingLessonDto
         {
             Id = l.Id,
-            SeriesName = l.LessonSeries?.Name ?? string.Empty,
+            SeriesName = l.LessonSerie?.Name ?? string.Empty,
             Date = l.Date.ToString("yyyy-MM-dd"),
             StartTime = l.StartTime.ToString("HH:mm"),
             EndTime = l.EndTime.ToString("HH:mm"),

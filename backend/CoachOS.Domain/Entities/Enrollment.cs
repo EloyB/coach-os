@@ -5,7 +5,7 @@ namespace CoachOS.Domain.Entities;
 
 /// <summary>
 /// Anonieme inschrijving voor een lessenreeks.
-/// Ofwel LessonId ofwel LessonSeriesId is ingevuld.
+/// Ofwel LessonId ofwel LessonSerieId is ingevuld.
 /// </summary>
 public class Enrollment : BaseEntity
 {
@@ -17,7 +17,7 @@ public class Enrollment : BaseEntity
     public Guid? LessonId { get; set; }
 
     /// <summary>Inschrijving voor een volledige reeks.</summary>
-    public Guid? LessonSeriesId { get; set; }
+    public Guid? LessonSerieId { get; set; }
 
     public EnrollmentStatus Status { get; set; }
     public DateTime EnrolledAt { get; set; }
@@ -26,7 +26,7 @@ public class Enrollment : BaseEntity
     // Navigation properties
     public Organization Organization { get; set; } = null!;
     public Lesson? Lesson { get; set; }
-    public LessonSeries? LessonSeries { get; set; }
+    public LessonSerie? LessonSerie { get; set; }
     public ICollection<Payment> Payments { get; set; } = new List<Payment>();
     public ICollection<FormResponse> FormResponses { get; set; } = new List<FormResponse>();
 }

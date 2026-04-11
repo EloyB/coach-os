@@ -5,6 +5,8 @@ using CoachOS.Infrastructure;
 using CoachOS.Infrastructure.Configuration;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using CoachOS.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using Serilog;
 
@@ -97,6 +99,12 @@ try
                   .AllowAnyMethod()));
 
     WebApplication app = builder.Build();
+
+    using (IServiceScope scope = app.Services.CreateScope())
+    {
+        ApplicationDbContext db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        await db.Database.MigrateAsync();
+    }
 
     if (app.Environment.IsDevelopment())
     {
