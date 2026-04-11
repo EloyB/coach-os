@@ -60,6 +60,7 @@ public class EnrollmentServiceTests
         Price = 120m,
         StartDate = DateOnly.FromDateTime(DateTime.Today),
         EndDate = DateOnly.FromDateTime(DateTime.Today.AddMonths(3)),
+        RegistrationDeadline = DateTime.UtcNow.AddMonths(1),
         IsActive = true,
         Lessons = new List<Lesson>
         {

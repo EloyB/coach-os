@@ -47,6 +47,7 @@ public class EnrollmentService(
             EndDate = series.EndDate.ToString("yyyy-MM-dd"),
             RegistrationDeadline = series.RegistrationDeadline,
             TennisClubName = series.TennisClub?.Name ?? string.Empty,
+            MaxParticipants = series.MaxParticipants,
             EnrollmentCount = enrollmentCount,
             Lessons = lessons,
         };
@@ -189,12 +190,37 @@ public class EnrollmentService(
         if (series is null)
             return Result<Guid>.Fail(new Error(ErrorCodes.NotFound, "Lessenreeks niet gevonden."));
 
-        // 2. Load enrollment form with fields (may be null)
+        // 2. Registration deadline check
+        if (DateTime.UtcNow > series.RegistrationDeadline)
+            return Result<Guid>.Fail(
+                new Error(ErrorCodes.Validation, "De inschrijvingsdeadline is verstreken."));
+
+        // 3. Capacity check
+        if (series.MaxParticipants.HasValue)
+        {
+            var activeCount = await enrollmentRepo.CountActiveBySeriesAsync(lessonSeriesId, ct);
+            if (activeCount >= series.MaxParticipants.Value)
+                return Result<Guid>.Fail(
+                    new Error(ErrorCodes.Conflict, "Deze lessenreeks is volzet."));
+        }
+
+        // 4. Load enrollment form with fields (may be null)
         var form = await enrollmentFormRepo.GetBySeriesIdReadOnlyAsync(lessonSeriesId, ct);
 
-        // 3. Validate required custom fields
+        // 5. Validate form responses against actual form fields
         if (form is not null)
         {
+            var formFieldIds = form.Fields.Select(f => f.Id).ToHashSet();
+
+            // Reject responses referencing fields that don't belong to this form
+            foreach (var response in request.Responses)
+            {
+                if (!formFieldIds.Contains(response.FormFieldId))
+                    return Result<Guid>.Fail(
+                        new Error(ErrorCodes.Validation, "Ongeldig formulierveld."));
+            }
+
+            // Validate required fields have a non-empty response
             var requiredFields = form.Fields
                 .Where(f => f.IsRequired)
                 .ToList();
@@ -206,17 +232,17 @@ public class EnrollmentService(
 
                 if (!hasResponse)
                     return Result<Guid>.Fail(
-                        new Error(ErrorCodes.Validation, $"Veld '{requiredField.Label}' is verplicht"));
+                        new Error(ErrorCodes.Validation, $"Veld '{requiredField.Label}' is verplicht."));
             }
         }
 
-        // 4. Duplicate check
+        // 6. Duplicate check
         var isDuplicate = await enrollmentRepo.IsDuplicateAsync(lessonSeriesId, request.StudentEmail, ct);
         if (isDuplicate)
             return Result<Guid>.Fail(
-                new Error(ErrorCodes.Conflict, "Je bent al ingeschreven voor deze lessenreeks"));
+                new Error(ErrorCodes.Conflict, "Je bent al ingeschreven voor deze lessenreeks."));
 
-        // 5. Create enrollment
+        // 7. Create enrollment
         Enrollment enrollment = new()
         {
             OrganizationId = series.OrganizationId,
@@ -229,7 +255,7 @@ public class EnrollmentService(
 
         await enrollmentRepo.AddAsync(enrollment, ct);
 
-        // 6. Create form responses
+        // 8. Create form responses
         foreach (var responseDto in request.Responses)
         {
             FormResponse response = new()
@@ -243,7 +269,7 @@ public class EnrollmentService(
 
         await enrollmentRepo.SaveChangesAsync(ct);
 
-        // 7. Send notification emails (fire-and-forget in try/catch)
+        // 9. Send notification emails (fire-and-forget in try/catch)
         try
         {
             var firstTrainerId = series.Lessons

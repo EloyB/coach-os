@@ -12,6 +12,7 @@ public class LessonSerieDto
     public string EndDate { get; set; } = string.Empty;
     public DateTime RegistrationDeadline { get; set; }
     public bool IsActive { get; set; }
+    public int? MaxParticipants { get; set; }
     public Guid TennisClubId { get; set; }
     public string TennisClubName { get; set; } = string.Empty;
     public string TennisClubAddress { get; set; } = string.Empty;

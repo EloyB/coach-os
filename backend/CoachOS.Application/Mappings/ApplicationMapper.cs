@@ -22,6 +22,7 @@ public partial class ApplicationMapper
             EndDate = DateOnly.ParseExact(request.EndDate, "yyyy-MM-dd"),
             RegistrationDeadline = request.RegistrationDeadline,
             TennisClubId = request.TennisClubId,
+            MaxParticipants = request.MaxParticipants,
             IsActive = true,
         };
     }
@@ -40,6 +41,7 @@ public partial class ApplicationMapper
             EndDate = ls.EndDate.ToString("yyyy-MM-dd"),
             RegistrationDeadline = ls.RegistrationDeadline,
             IsActive = ls.IsActive,
+            MaxParticipants = ls.MaxParticipants,
             LessonCount = lessonCount,
             CreatedAt = ls.CreatedAt,
             TennisClubId = ls.TennisClubId,

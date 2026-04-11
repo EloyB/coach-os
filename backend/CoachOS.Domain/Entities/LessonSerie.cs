@@ -21,6 +21,7 @@ public class LessonSerie : BaseEntity
     public DateOnly EndDate { get; set; }
     public DateTime RegistrationDeadline { get; set; }
     public bool IsActive { get; set; } = true;
+    public int? MaxParticipants { get; set; }
 
     public Guid TennisClubId { get; set; }
 

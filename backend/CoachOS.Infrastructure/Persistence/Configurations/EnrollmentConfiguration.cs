@@ -45,5 +45,10 @@ public class EnrollmentConfiguration : IEntityTypeConfiguration<Enrollment>
         builder.HasIndex(e => e.StudentEmail);
         builder.HasIndex(e => e.LessonId);
         builder.HasIndex(e => e.LessonSerieId);
+
+        // Prevent duplicate active enrollments for the same email + series
+        builder.HasIndex(e => new { e.LessonSerieId, e.StudentEmail })
+            .IsUnique()
+            .HasFilter("\"Status\" IN (1, 2)");
     }
 }

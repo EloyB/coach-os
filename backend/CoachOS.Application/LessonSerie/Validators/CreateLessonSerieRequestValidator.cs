@@ -21,6 +21,10 @@ public class CreateLessonSerieRequestValidator : AbstractValidator<CreateLessonS
         RuleFor(x => x.Price)
             .GreaterThanOrEqualTo(0).WithMessage("Prijs mag niet negatief zijn.");
 
+        RuleFor(x => x.MaxParticipants)
+            .GreaterThan(0).WithMessage("Maximum aantal deelnemers moet groter dan 0 zijn.")
+            .When(x => x.MaxParticipants.HasValue);
+
         RuleFor(x => x.StartDate)
             .NotEmpty().WithMessage("Startdatum is verplicht.")
             .Matches(@"^\d{4}-\d{2}-\d{2}$").WithMessage("Startdatum moet het formaat yyyy-MM-dd hebben.");

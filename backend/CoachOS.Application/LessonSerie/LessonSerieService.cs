@@ -107,6 +107,7 @@ public class LessonSerieService(
         series.Price = request.Price;
         series.RegistrationDeadline = request.RegistrationDeadline;
         series.IsActive = request.IsActive;
+        series.MaxParticipants = request.MaxParticipants;
         series.TennisClubId = request.TennisClubId;
 
         await lessonSeriesRepo.UpdateAsync(series, ct);
