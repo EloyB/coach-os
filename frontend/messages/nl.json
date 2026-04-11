@@ -84,7 +84,22 @@
     "form_last_name": "Achternaam",
     "form_email": "E-mailadres",
     "form_submit": "Inschrijven",
-    "form_error": "Inschrijven mislukt. Controleer je gegevens en probeer opnieuw."
+    "form_error": "Inschrijven mislukt. Controleer je gegevens en probeer opnieuw.",
+    "availability_title": "Beschikbaarheid",
+    "availability_desc": "Geef aan wanneer je beschikbaar bent voor de lessen.",
+    "pref_preferred": "Voorkeur",
+    "pref_available": "Beschikbaar",
+    "pref_unavailable": "Niet beschikbaar",
+    "enrollment_type": "Inschrijving type",
+    "type_solo": "Solo",
+    "type_group": "Groep",
+    "open_to_grouping": "Ik sta open voor groepsindeling",
+    "group_members_title": "Groepsleden",
+    "group_members_desc": "Voeg de andere leden van je groep toe (max. 3).",
+    "add_member": "Lid toevoegen",
+    "remove_member": "Verwijderen",
+    "member_name": "Naam",
+    "member_email": "E-mailadres"
   },
   "formBuilder": {
     "title": "Inschrijfformulier",

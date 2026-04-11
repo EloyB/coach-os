@@ -3,14 +3,32 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { CalendarDays, Clock, MapPin, User, Euro, CheckCircle2, Copy } from "lucide-react";
+import {
+  CalendarDays,
+  Clock,
+  MapPin,
+  User,
+  Users,
+  Euro,
+  CheckCircle2,
+  Copy,
+  Plus,
+  X,
+  Check,
+} from "lucide-react";
 
 import {
   getPublicLessonSeries,
   getEnrollmentForm,
   submitEnrollment,
 } from "@/lib/api/enrollments";
-import type { PublicLessonSeriesDto, EnrollmentFormDto, FormFieldDto } from "@/lib/api/enrollments";
+import type {
+  PublicLessonSeriesDto,
+  EnrollmentFormDto,
+  FormFieldDto,
+} from "@/lib/api/enrollments";
+import { getPublicTimeSlots } from "@/lib/api/timeSlots";
+import type { TimeSlotDto } from "@/lib/api/timeSlots";
 import { LESSON_LEVELS } from "@/lib/api/lessonSeries";
 import { getAuthUser } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -18,16 +36,51 @@ import { Badge } from "@/components/ui/badge";
 import { TennisBallIcon } from "@/components/ui/tennis-ball-icon";
 import Link from "next/link";
 
-// FormFieldType enum values (mirrors backend)
+// ─── Constants ───────────────────────────────────────────────────────────────
+
 const FIELD_TYPE_TEXT = 1;
 const FIELD_TYPE_MULTIPLE_CHOICE = 2;
 const FIELD_TYPE_YES_NO = 3;
 
+const PREF_AVAILABLE = 1;
+const PREF_PREFERRED = 2;
+const PREF_UNAVAILABLE = 3;
+
+const DAY_NAMES = [
+  "Maandag",
+  "Dinsdag",
+  "Woensdag",
+  "Donderdag",
+  "Vrijdag",
+  "Zaterdag",
+  "Zondag",
+];
+
+type GroupMember = { name: string; email: string };
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
 function Spinner() {
   return (
-    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+    <svg
+      className="animate-spin h-4 w-4"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <circle
+        className="opacity-25"
+        cx="12"
+        cy="12"
+        r="10"
+        stroke="currentColor"
+        strokeWidth="4"
+      />
+      <path
+        className="opacity-75"
+        fill="currentColor"
+        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+      />
     </svg>
   );
 }
@@ -38,12 +91,14 @@ function formatDate(dateStr: string): string {
 }
 
 function inputClass(hasError: boolean) {
-  return `w-full px-3 py-2 text-sm border rounded-lg outline-none transition-colors ${
+  return `w-full border rounded-lg px-3 py-2 text-sm outline-none transition-colors focus:ring-2 focus:ring-tennis-green/20 ${
     hasError
       ? "border-red-300 focus:border-red-400 bg-red-50"
-      : "border-gray-200 focus:border-tennis-green"
+      : "border-gray-300 focus:border-tennis-green"
   }`;
 }
+
+// ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function EnrollPage() {
   const { seriesId } = useParams<{ seriesId: string }>();
@@ -51,6 +106,7 @@ export default function EnrollPage() {
 
   const [series, setSeries] = useState<PublicLessonSeriesDto | null>(null);
   const [form, setForm] = useState<EnrollmentFormDto | null>(null);
+  const [timeSlots, setTimeSlots] = useState<TimeSlotDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -64,7 +120,24 @@ export default function EnrollPage() {
   const [email, setEmail] = useState("");
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [baseErrors, setBaseErrors] = useState<{ firstName?: string; lastName?: string; email?: string }>({});
+  const [baseErrors, setBaseErrors] = useState<{
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+  }>({});
+
+  // Availability preferences
+  const [preferences, setPreferences] = useState<Record<string, number>>({});
+
+  // Enrollment type
+  const [enrollmentType, setEnrollmentType] = useState<"solo" | "group">(
+    "solo"
+  );
+  const [isOpenToGrouping, setIsOpenToGrouping] = useState(false);
+  const [groupMembers, setGroupMembers] = useState<GroupMember[]>([]);
+  const [memberErrors, setMemberErrors] = useState<
+    Record<number, { name?: string; email?: string }>
+  >({});
 
   const user = getAuthUser();
   const isAdminOrTrainer = user?.role === "Admin" || user?.role === "Trainer";
@@ -72,12 +145,14 @@ export default function EnrollPage() {
   useEffect(() => {
     async function loadData() {
       try {
-        const [seriesData, formData] = await Promise.all([
+        const [seriesData, formData, slotsData] = await Promise.all([
           getPublicLessonSeries(seriesId),
           getEnrollmentForm(seriesId),
+          getPublicTimeSlots(seriesId),
         ]);
         setSeries(seriesData);
         setForm(formData);
+        setTimeSlots(slotsData);
       } catch {
         setError("Lessenreeks niet gevonden.");
       } finally {
@@ -87,19 +162,63 @@ export default function EnrollPage() {
     loadData();
   }, [seriesId]);
 
+  // ─── Field helpers ──────────────────────────────────────────────────────
+
   function setFieldValue(fieldId: string, value: string) {
     setFieldValues((prev) => ({ ...prev, [fieldId]: value }));
     if (fieldErrors[fieldId]) {
-      setFieldErrors((prev) => { const next = { ...prev }; delete next[fieldId]; return next; });
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        delete next[fieldId];
+        return next;
+      });
     }
   }
+
+  function setPreference(slotId: string, pref: number) {
+    setPreferences((prev) => ({ ...prev, [slotId]: pref }));
+  }
+
+  function addGroupMember() {
+    if (groupMembers.length >= 3) return;
+    setGroupMembers((prev) => [...prev, { name: "", email: "" }]);
+  }
+
+  function removeGroupMember(index: number) {
+    setGroupMembers((prev) => prev.filter((_, i) => i !== index));
+    setMemberErrors((prev) => {
+      const next = { ...prev };
+      delete next[index];
+      return next;
+    });
+  }
+
+  function updateGroupMember(
+    index: number,
+    field: "name" | "email",
+    value: string
+  ) {
+    setGroupMembers((prev) =>
+      prev.map((m, i) => (i === index ? { ...m, [field]: value } : m))
+    );
+    if (memberErrors[index]?.[field]) {
+      setMemberErrors((prev) => {
+        const next = { ...prev };
+        if (next[index]) next[index] = { ...next[index], [field]: undefined };
+        return next;
+      });
+    }
+  }
+
+  // ─── Validation ─────────────────────────────────────────────────────────
 
   function validate(): boolean {
     const errors: typeof baseErrors = {};
     if (!firstName.trim()) errors.firstName = "Voornaam is verplicht";
     if (!lastName.trim()) errors.lastName = "Achternaam is verplicht";
     if (!email.trim()) errors.email = "E-mailadres is verplicht";
-    else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) errors.email = "Ongeldig e-mailadres";
+    else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))
+      errors.email = "Ongeldig e-mailadres";
     setBaseErrors(errors);
 
     const fErrors: Record<string, string> = {};
@@ -112,8 +231,27 @@ export default function EnrollPage() {
     }
     setFieldErrors(fErrors);
 
-    return Object.keys(errors).length === 0 && Object.keys(fErrors).length === 0;
+    const mErrors: Record<number, { name?: string; email?: string }> = {};
+    if (enrollmentType === "group") {
+      groupMembers.forEach((m, i) => {
+        const e: { name?: string; email?: string } = {};
+        if (!m.name.trim()) e.name = "Naam is verplicht";
+        if (!m.email.trim()) e.email = "E-mailadres is verplicht";
+        else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(m.email))
+          e.email = "Ongeldig e-mailadres";
+        if (e.name || e.email) mErrors[i] = e;
+      });
+    }
+    setMemberErrors(mErrors);
+
+    return (
+      Object.keys(errors).length === 0 &&
+      Object.keys(fErrors).length === 0 &&
+      Object.keys(mErrors).length === 0
+    );
   }
+
+  // ─── Submit ─────────────────────────────────────────────────────────────
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -126,10 +264,30 @@ export default function EnrollPage() {
         .filter(([, v]) => v.trim())
         .map(([formFieldId, value]) => ({ formFieldId, value }));
 
+      const timeSlotPreferences = Object.entries(preferences).map(
+        ([weeklyTemplateEntryId, preference]) => ({
+          weeklyTemplateEntryId,
+          preference,
+        })
+      );
+
       await submitEnrollment(seriesId, {
         studentName: `${firstName.trim()} ${lastName.trim()}`,
         studentEmail: email.trim(),
         responses,
+        timeSlotPreferences:
+          timeSlotPreferences.length > 0 ? timeSlotPreferences : undefined,
+        enrollmentType,
+        isOpenToGrouping:
+          enrollmentType === "solo" ? isOpenToGrouping : undefined,
+        groupMembers:
+          enrollmentType === "group" && groupMembers.length > 0
+            ? groupMembers.map((m) => ({
+                studentName: m.name.trim(),
+                studentEmail: m.email.trim(),
+                responses: [],
+              }))
+            : undefined,
       });
       setSubmitted(true);
     } catch {
@@ -145,6 +303,8 @@ export default function EnrollPage() {
     setTimeout(() => setCopied(false), 2000);
   }
 
+  // ─── Custom field renderer ──────────────────────────────────────────────
+
   function renderCustomField(field: FormFieldDto) {
     const value = fieldValues[field.id] ?? "";
     const hasError = !!fieldErrors[field.id];
@@ -153,7 +313,8 @@ export default function EnrollPage() {
       return (
         <div key={field.id} className="space-y-1.5">
           <label className="block text-sm font-medium text-gray-700">
-            {field.label}{field.isRequired && <span className="text-red-500 ml-1">*</span>}
+            {field.label}
+            {field.isRequired && <span className="text-red-500 ml-1">*</span>}
           </label>
           <div className="space-y-2">
             {field.options.map((opt) => (
@@ -164,7 +325,7 @@ export default function EnrollPage() {
                   value={opt}
                   checked={value === opt}
                   onChange={() => setFieldValue(field.id, opt)}
-                  className="accent-tennis-green"
+                  className="w-4 h-4 text-tennis-green focus:ring-tennis-green"
                 />
                 <span className="text-sm text-gray-700">{opt}</span>
               </label>
@@ -179,7 +340,8 @@ export default function EnrollPage() {
       return (
         <div key={field.id} className="space-y-1.5">
           <label className="block text-sm font-medium text-gray-700">
-            {field.label}{field.isRequired && <span className="text-red-500 ml-1">*</span>}
+            {field.label}
+            {field.isRequired && <span className="text-red-500 ml-1">*</span>}
           </label>
           <div className="flex items-center gap-4">
             {["Ja", "Nee"].map((opt) => (
@@ -190,7 +352,7 @@ export default function EnrollPage() {
                   value={opt}
                   checked={value === opt}
                   onChange={() => setFieldValue(field.id, opt)}
-                  className="accent-tennis-green"
+                  className="w-4 h-4 text-tennis-green focus:ring-tennis-green"
                 />
                 <span className="text-sm text-gray-700">{opt}</span>
               </label>
@@ -201,11 +363,11 @@ export default function EnrollPage() {
       );
     }
 
-    // Default: text field (FIELD_TYPE_TEXT)
     return (
       <div key={field.id} className="space-y-1.5">
         <label className="block text-sm font-medium text-gray-700">
-          {field.label}{field.isRequired && <span className="text-red-500 ml-1">*</span>}
+          {field.label}
+          {field.isRequired && <span className="text-red-500 ml-1">*</span>}
         </label>
         <input
           type="text"
@@ -217,6 +379,56 @@ export default function EnrollPage() {
       </div>
     );
   }
+
+  // ─── Preference button component ────────────────────────────────────────
+
+  function PrefButton({
+    slotId,
+    value,
+    color,
+    icon,
+  }: {
+    slotId: string;
+    value: number;
+    color: { border: string; bg: string };
+    icon: "check" | "x";
+  }) {
+    const isSelected = preferences[slotId] === value;
+    return (
+      <label className="cursor-pointer">
+        <input
+          type="radio"
+          name={`pref_${slotId}`}
+          checked={isSelected}
+          onChange={() => setPreference(slotId, value)}
+          className="sr-only peer"
+        />
+        <div
+          className="w-8 h-8 rounded-full border-2 flex items-center justify-center transition-colors"
+          style={{
+            borderColor: isSelected ? color.border : "#e5e7eb",
+            backgroundColor: isSelected ? color.bg : "transparent",
+          }}
+        >
+          {icon === "check" ? (
+            <Check
+              size={16}
+              strokeWidth={3}
+              className={isSelected ? "text-white" : "text-transparent"}
+            />
+          ) : (
+            <X
+              size={16}
+              strokeWidth={3}
+              className={isSelected ? "text-white" : "text-transparent"}
+            />
+          )}
+        </div>
+      </label>
+    );
+  }
+
+  // ─── Loading / Error ────────────────────────────────────────────────────
 
   if (loading) {
     return (
@@ -239,180 +451,528 @@ export default function EnrollPage() {
     );
   }
 
+  const sortedSlots = [...timeSlots].sort(
+    (a, b) => a.dayOfWeek - b.dayOfWeek || a.startTime.localeCompare(b.startTime)
+  );
+
+  // ─── Render ─────────────────────────────────────────────────────────────
+
   return (
     <div className="min-h-screen bg-[#FAFAF8]">
-      {/* Header */}
-      <header className="bg-tennis-green px-6 py-4 flex items-center gap-3">
-        <div className="w-7 h-7 rounded-full bg-tennis-lime flex items-center justify-center">
-          <TennisBallIcon className="w-4 h-4" strokeWidth={2} />
-        </div>
-        <span className="text-white text-lg font-bold tracking-tight">
-          Coach<span className="text-tennis-lime">OS</span>
-        </span>
-      </header>
-
-      <main className="max-w-2xl mx-auto px-4 py-10">
-        {/* Series header */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 mb-6">
-          <div className="flex items-start justify-between gap-4 mb-6">
-            <div>
-              <Badge className="bg-tennis-lime/20 text-tennis-green border-0 mb-3 text-xs font-semibold">
-                {LESSON_LEVELS[series.level] ?? "Niveau " + series.level}
-              </Badge>
-              <h1 className="text-2xl font-bold text-gray-900 mb-1">{series.name}</h1>
-              {series.description && (
-                <p className="text-gray-500 text-sm mt-2 leading-relaxed">{series.description}</p>
-              )}
-            </div>
-            <div className="text-right flex-shrink-0">
-              <p className="text-3xl font-bold text-tennis-green">€{series.price.toFixed(2)}</p>
-              <p className="text-gray-400 text-xs mt-1">per reeks</p>
-            </div>
+      <div className="max-w-2xl mx-auto px-4 py-8">
+        {/* Logo */}
+        <div className="flex items-center gap-2 mb-8">
+          <div className="w-8 h-8 bg-tennis-green rounded-full flex items-center justify-center">
+            <TennisBallIcon className="w-4 h-4 text-white" strokeWidth={2} />
           </div>
+          <span className="font-semibold text-lg text-tennis-green">CoachOS</span>
+        </div>
 
-          {/* Details grid */}
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div className="flex items-center gap-2 text-gray-600">
-              <User className="w-4 h-4 text-tennis-green flex-shrink-0" />
-              <span>{series.trainerName}</span>
+        {/* Series info card */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 mb-6">
+          <Badge className="bg-tennis-lime/20 text-tennis-green border-0 mb-2 text-xs font-semibold">
+            {LESSON_LEVELS[series.level] ?? "Niveau " + series.level}
+          </Badge>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">{series.name}</h1>
+          {series.description && (
+            <p className="text-gray-600 text-sm mb-4 leading-relaxed">
+              {series.description}
+            </p>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <CalendarDays className="w-4 h-4 text-gray-400 shrink-0" />
+              <span>
+                {formatDate(series.startDate)} – {formatDate(series.endDate)}
+              </span>
             </div>
-            <div className="flex items-center gap-2 text-gray-600">
-              <MapPin className="w-4 h-4 text-tennis-green flex-shrink-0" />
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <MapPin className="w-4 h-4 text-gray-400 shrink-0" />
               <span>{series.tennisClubName}</span>
             </div>
-            <div className="flex items-center gap-2 text-gray-600">
-              <CalendarDays className="w-4 h-4 text-tennis-green flex-shrink-0" />
-              <span>{formatDate(series.startDate)} – {formatDate(series.endDate)}</span>
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <Euro className="w-4 h-4 text-gray-400 shrink-0" />
+              <span>€{series.price.toFixed(2)} per reeks</span>
             </div>
-            <div className="flex items-center gap-2 text-gray-600">
-              <Clock className="w-4 h-4 text-tennis-green flex-shrink-0" />
-              <span>{series.durationMinutes} min</span>
-            </div>
-            <div className="flex items-center gap-2 text-gray-600">
-              <Euro className="w-4 h-4 text-tennis-green flex-shrink-0" />
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <Users className="w-4 h-4 text-gray-400 shrink-0" />
               <span>{series.enrollmentCount} {t("enrolled").toLowerCase()}</span>
             </div>
           </div>
         </div>
 
-        {/* Lessons schedule */}
-        {series.lessons.length > 0 && (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-6">
-            <h2 className="text-base font-semibold text-gray-900 mb-4">Lesmomenten</h2>
-            <div className="space-y-2">
-              {series.lessons.map((lesson) => (
-                <div
-                  key={lesson.id}
-                  className={`flex items-center justify-between py-2.5 px-3 rounded-lg text-sm ${
-                    lesson.isCancelled ? "bg-gray-50 opacity-50" : "bg-[#FAFAF8]"
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="font-medium text-gray-700">{formatDate(lesson.date)}</span>
-                    {lesson.isCancelled && (
-                      <Badge variant="secondary" className="text-xs">Geannuleerd</Badge>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-3 text-gray-500">
-                    <span>{lesson.startTime} – {lesson.endTime}</span>
-                    {lesson.courtName && (
-                      <span className="text-xs bg-gray-100 px-2 py-0.5 rounded">{lesson.courtName}</span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Enrollment form / success */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+        {/* Enrollment form card */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
           {submitted ? (
-            <div className="flex flex-col items-center py-6 text-center">
+            <div className="flex flex-col items-center py-12 text-center px-6">
               <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center mb-4">
                 <CheckCircle2 className="w-7 h-7 text-green-600" />
               </div>
-              <h2 className="text-lg font-bold text-gray-900 mb-2">{t("enroll_success_title")}</h2>
+              <h2 className="text-lg font-bold text-gray-900 mb-2">
+                {t("enroll_success_title")}
+              </h2>
               <p className="text-sm text-gray-500">{t("enroll_success_body")}</p>
             </div>
           ) : (
-            <>
-              <h2 className="text-base font-semibold text-gray-900 mb-5">Inschrijven</h2>
+            <form onSubmit={handleSubmit} noValidate>
+              {/* Form header */}
+              <div className="px-6 py-5 border-b border-gray-100">
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Inschrijving
+                </h2>
+                <p className="text-sm text-gray-500 mt-0.5">
+                  Vul je gegevens in en kies je beschikbaarheid
+                </p>
+              </div>
 
-              {submitError && (
-                <div className="mb-4 px-4 py-3 rounded-lg bg-red-50 border border-red-100">
-                  <p className="text-red-600 text-sm">{submitError}</p>
-                </div>
-              )}
-
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Predefined: first + last name */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <label className="block text-sm font-medium text-gray-700">
-                      {t("form_first_name")}<span className="text-red-500 ml-1">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={firstName}
-                      onChange={(e) => { setFirstName(e.target.value); setBaseErrors((p) => ({ ...p, firstName: undefined })); }}
-                      className={inputClass(!!baseErrors.firstName)}
-                    />
-                    {baseErrors.firstName && <p className="text-xs text-red-500">{baseErrors.firstName}</p>}
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="block text-sm font-medium text-gray-700">
-                      {t("form_last_name")}<span className="text-red-500 ml-1">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={lastName}
-                      onChange={(e) => { setLastName(e.target.value); setBaseErrors((p) => ({ ...p, lastName: undefined })); }}
-                      className={inputClass(!!baseErrors.lastName)}
-                    />
-                    {baseErrors.lastName && <p className="text-xs text-red-500">{baseErrors.lastName}</p>}
-                  </div>
-                </div>
-
-                {/* Predefined: email */}
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-gray-700">
-                    {t("form_email")}<span className="text-red-500 ml-1">*</span>
-                  </label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => { setEmail(e.target.value); setBaseErrors((p) => ({ ...p, email: undefined })); }}
-                    className={inputClass(!!baseErrors.email)}
-                  />
-                  {baseErrors.email && <p className="text-xs text-red-500">{baseErrors.email}</p>}
-                </div>
-
-                {/* Custom fields */}
-                {form && form.fields.length > 0 && (
-                  <div className="space-y-4 pt-2 border-t border-gray-100">
-                    {form.fields.map((field) => renderCustomField(field))}
+              <div className="p-6 space-y-6">
+                {submitError && (
+                  <div className="px-4 py-3 rounded-lg bg-red-50 border border-red-100">
+                    <p className="text-red-600 text-sm">{submitError}</p>
                   </div>
                 )}
 
-                <Button
+                {/* ── Personal info ── */}
+                <div>
+                  <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                    Persoonlijke gegevens
+                  </h3>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                          {t("form_first_name")} *
+                        </label>
+                        <input
+                          type="text"
+                          value={firstName}
+                          onChange={(e) => {
+                            setFirstName(e.target.value);
+                            setBaseErrors((p) => ({ ...p, firstName: undefined }));
+                          }}
+                          className={inputClass(!!baseErrors.firstName)}
+                        />
+                        {baseErrors.firstName && (
+                          <p className="text-xs text-red-500 mt-1">{baseErrors.firstName}</p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                          {t("form_last_name")} *
+                        </label>
+                        <input
+                          type="text"
+                          value={lastName}
+                          onChange={(e) => {
+                            setLastName(e.target.value);
+                            setBaseErrors((p) => ({ ...p, lastName: undefined }));
+                          }}
+                          className={inputClass(!!baseErrors.lastName)}
+                        />
+                        {baseErrors.lastName && (
+                          <p className="text-xs text-red-500 mt-1">{baseErrors.lastName}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                        {t("form_email")} *
+                      </label>
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => {
+                          setEmail(e.target.value);
+                          setBaseErrors((p) => ({ ...p, email: undefined }));
+                        }}
+                        className={inputClass(!!baseErrors.email)}
+                      />
+                      {baseErrors.email && (
+                        <p className="text-xs text-red-500 mt-1">{baseErrors.email}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <hr className="border-gray-100" />
+
+                {/* ── Enrollment type ── */}
+                <div>
+                  <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                    {t("enrollment_type")}
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <label
+                      className={`border-2 rounded-lg p-4 cursor-pointer transition ${
+                        enrollmentType === "solo"
+                          ? "border-tennis-green bg-tennis-green/5"
+                          : "border-gray-200 hover:border-tennis-green/30"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="enrollType"
+                        value="solo"
+                        checked={enrollmentType === "solo"}
+                        onChange={() => setEnrollmentType("solo")}
+                        className="sr-only"
+                      />
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
+                          <User className="w-5 h-5 text-gray-600" />
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900 text-sm">
+                            {t("type_solo")}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            Ik schrijf mezelf in
+                          </div>
+                        </div>
+                      </div>
+                    </label>
+
+                    <label
+                      className={`border-2 rounded-lg p-4 cursor-pointer transition ${
+                        enrollmentType === "group"
+                          ? "border-tennis-green bg-tennis-green/5"
+                          : "border-gray-200 hover:border-tennis-green/30"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="enrollType"
+                        value="group"
+                        checked={enrollmentType === "group"}
+                        onChange={() => setEnrollmentType("group")}
+                        className="sr-only"
+                      />
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
+                          <Users className="w-5 h-5 text-gray-600" />
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900 text-sm">
+                            {t("type_group")}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            Ik schrijf meerdere personen in
+                          </div>
+                        </div>
+                      </div>
+                    </label>
+                  </div>
+
+                  {/* Solo: open to grouping */}
+                  {enrollmentType === "solo" && (
+                    <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                      <label className="flex items-start gap-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={isOpenToGrouping}
+                          onChange={(e) => setIsOpenToGrouping(e.target.checked)}
+                          className="mt-0.5 w-4 h-4 rounded border-gray-300 text-tennis-green focus:ring-tennis-green"
+                        />
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {t("open_to_grouping")}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-0.5">
+                            Het systeem kan je automatisch koppelen aan andere
+                            leerlingen met dezelfde beschikbaarheid
+                          </div>
+                        </div>
+                      </label>
+                    </div>
+                  )}
+
+                  {/* Group: member fields */}
+                  {enrollmentType === "group" && (
+                    <div className="mt-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-700">
+                          {t("group_members_title")} (max 3 extra)
+                        </span>
+                        {groupMembers.length < 3 && (
+                          <button
+                            type="button"
+                            onClick={addGroupMember}
+                            className="text-sm text-tennis-green hover:underline font-medium flex items-center gap-1"
+                          >
+                            <Plus size={14} />
+                            {t("add_member")}
+                          </button>
+                        )}
+                      </div>
+
+                      {groupMembers.map((member, i) => (
+                        <div
+                          key={i}
+                          className="border border-gray-200 rounded-lg p-3 space-y-3"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-xs text-gray-500">
+                              <span className="w-5 h-5 rounded-full bg-tennis-green text-white flex items-center justify-center text-xs font-medium">
+                                {i + 1}
+                              </span>
+                              Groepslid
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeGroupMember(i)}
+                              className="text-xs text-gray-400 hover:text-red-500 flex items-center gap-1 transition-colors"
+                            >
+                              <X size={12} />
+                              {t("remove_member")}
+                            </button>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <input
+                                type="text"
+                                value={member.name}
+                                onChange={(e) =>
+                                  updateGroupMember(i, "name", e.target.value)
+                                }
+                                placeholder={t("member_name")}
+                                className={inputClass(!!memberErrors[i]?.name)}
+                              />
+                              {memberErrors[i]?.name && (
+                                <p className="text-xs text-red-500 mt-1">
+                                  {memberErrors[i].name}
+                                </p>
+                              )}
+                            </div>
+                            <div>
+                              <input
+                                type="email"
+                                value={member.email}
+                                onChange={(e) =>
+                                  updateGroupMember(i, "email", e.target.value)
+                                }
+                                placeholder={t("member_email")}
+                                className={inputClass(!!memberErrors[i]?.email)}
+                              />
+                              {memberErrors[i]?.email && (
+                                <p className="text-xs text-red-500 mt-1">
+                                  {memberErrors[i].email}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* ── Availability grid ── */}
+                {sortedSlots.length > 0 && (
+                  <>
+                    <hr className="border-gray-100" />
+                    <div>
+                      <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
+                        {t("availability_title")}
+                      </h3>
+                      <p className="text-xs text-gray-500 mb-4">
+                        {t("availability_desc")}
+                      </p>
+
+                      {/* Mobile legend — shown once above the grid */}
+                      <div className="sm:hidden flex items-center gap-4 mb-3 text-xs text-gray-500">
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-3 h-3 rounded-full bg-green-500" />
+                          {t("pref_preferred")}
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-3 h-3 rounded-full bg-blue-500" />
+                          {t("pref_available")}
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-3 h-3 rounded-full bg-gray-400" />
+                          {t("pref_unavailable")}
+                        </div>
+                      </div>
+
+                      <div className="border border-gray-200 rounded-lg overflow-hidden">
+                        {/* Header — hidden on mobile */}
+                        <div className="hidden sm:grid grid-cols-[1fr_100px_100px_100px] bg-gray-50 border-b border-gray-200">
+                          <div className="px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase">
+                            Tijdslot
+                          </div>
+                          <div className="px-2 py-2.5 text-xs font-semibold text-green-700 uppercase text-center">
+                            {t("pref_preferred")}
+                          </div>
+                          <div className="px-2 py-2.5 text-xs font-semibold text-blue-700 uppercase text-center">
+                            {t("pref_available")}
+                          </div>
+                          <div className="px-2 py-2.5 text-xs font-semibold text-gray-500 uppercase text-center">
+                            Niet besch.
+                          </div>
+                        </div>
+
+                        {/* Rows grouped by day */}
+                        {(() => {
+                          const grouped: { day: number; slots: TimeSlotDto[] }[] = [];
+                          for (const slot of sortedSlots) {
+                            const last = grouped[grouped.length - 1];
+                            if (last && last.day === slot.dayOfWeek) {
+                              last.slots.push(slot);
+                            } else {
+                              grouped.push({ day: slot.dayOfWeek, slots: [slot] });
+                            }
+                          }
+
+                          return grouped.map((group, gi) => (
+                            <div
+                              key={group.day}
+                              className={gi < grouped.length - 1 ? "border-b border-gray-200" : ""}
+                            >
+                              {/* Day header */}
+                              <div className="px-4 py-2 bg-gray-50/70 border-b border-gray-100">
+                                <span className="text-xs font-semibold text-gray-700">
+                                  {DAY_NAMES[group.day]}
+                                </span>
+                              </div>
+
+                              {/* Slots for this day */}
+                              {group.slots.map((slot, si) => (
+                                <div
+                                  key={slot.id}
+                                  className={
+                                    si < group.slots.length - 1 ? "border-b border-gray-100" : ""
+                                  }
+                                >
+                                  {/* Desktop: table row */}
+                                  <div className="hidden sm:grid grid-cols-[1fr_100px_100px_100px] hover:bg-gray-50/50">
+                                    <div className="px-4 py-3">
+                                      <div className="text-sm font-medium text-gray-900">
+                                        {slot.startTime} — {slot.endTime}
+                                      </div>
+                                      <div className="text-xs text-gray-500">
+                                        {slot.courtName}
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center justify-center">
+                                      <PrefButton
+                                        slotId={slot.id}
+                                        value={PREF_PREFERRED}
+                                        color={{ border: "#22c55e", bg: "#22c55e" }}
+                                        icon="check"
+                                      />
+                                    </div>
+                                    <div className="flex items-center justify-center">
+                                      <PrefButton
+                                        slotId={slot.id}
+                                        value={PREF_AVAILABLE}
+                                        color={{ border: "#3b82f6", bg: "#3b82f6" }}
+                                        icon="check"
+                                      />
+                                    </div>
+                                    <div className="flex items-center justify-center">
+                                      <PrefButton
+                                        slotId={slot.id}
+                                        value={PREF_UNAVAILABLE}
+                                        color={{ border: "#9ca3af", bg: "#9ca3af" }}
+                                        icon="x"
+                                      />
+                                    </div>
+                                  </div>
+
+                                  {/* Mobile: compact layout — just colored circles */}
+                                  <div className="sm:hidden px-4 py-3 flex items-center justify-between">
+                                    <div>
+                                      <div className="text-sm font-medium text-gray-900">
+                                        {slot.startTime} — {slot.endTime}
+                                      </div>
+                                      <div className="text-xs text-gray-500">
+                                        {slot.courtName}
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-2.5 shrink-0">
+                                      <PrefButton
+                                        slotId={slot.id}
+                                        value={PREF_PREFERRED}
+                                        color={{ border: "#22c55e", bg: "#22c55e" }}
+                                        icon="check"
+                                      />
+                                      <PrefButton
+                                        slotId={slot.id}
+                                        value={PREF_AVAILABLE}
+                                        color={{ border: "#3b82f6", bg: "#3b82f6" }}
+                                        icon="check"
+                                      />
+                                      <PrefButton
+                                        slotId={slot.id}
+                                        value={PREF_UNAVAILABLE}
+                                        color={{ border: "#9ca3af", bg: "#9ca3af" }}
+                                        icon="x"
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ));
+                        })()}
+                      </div>
+
+                      {/* Legend — desktop only (mobile has inline labels) */}
+                      <div className="hidden sm:flex items-center gap-4 mt-3 text-xs text-gray-500">
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-3 h-3 rounded-full bg-green-500" />
+                          {t("pref_preferred")}
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-3 h-3 rounded-full bg-blue-500" />
+                          {t("pref_available")}
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-3 h-3 rounded-full bg-gray-400" />
+                          {t("pref_unavailable")}
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* ── Custom form fields ── */}
+                {form && form.fields.length > 0 && (
+                  <>
+                    <hr className="border-gray-100" />
+                    <div>
+                      <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                        Extra vragen
+                      </h3>
+                      <div className="space-y-4">
+                        {form.fields.map((field) => renderCustomField(field))}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Submit footer */}
+              <div className="px-6 py-5 bg-gray-50 border-t border-gray-100">
+                <button
                   type="submit"
                   disabled={submitting}
-                  className="w-full h-12 bg-tennis-green hover:bg-tennis-green/90 text-white font-semibold rounded-xl cursor-pointer mt-2"
+                  className="w-full bg-tennis-green text-white py-3 rounded-lg font-medium hover:bg-tennis-green/90 transition text-sm disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  {submitting ? (
-                    <span className="flex items-center gap-2"><Spinner />{t("form_submit")}...</span>
-                  ) : (
-                    t("form_submit")
-                  )}
-                </Button>
-              </form>
-            </>
+                  {submitting && <Spinner />}
+                  {t("form_submit")}
+                </button>
+                <p className="text-xs text-gray-400 text-center mt-3">
+                  Je ontvangt een bevestiging per e-mail
+                </p>
+              </div>
+            </form>
           )}
 
           {/* Share link for admin/trainer */}
           {isAdminOrTrainer && !submitted && (
-            <div className="mt-5 pt-5 border-t border-gray-100">
+            <div className="px-6 py-4 border-t border-gray-100">
               <Button
                 variant="outline"
                 className="w-full h-11 border-gray-200 cursor-pointer"
@@ -424,7 +984,12 @@ export default function EnrollPage() {
             </div>
           )}
         </div>
-      </main>
+
+        {/* Footer */}
+        <div className="text-center mt-8 text-xs text-gray-400">
+          Powered by CoachOS
+        </div>
+      </div>
     </div>
   );
 }
