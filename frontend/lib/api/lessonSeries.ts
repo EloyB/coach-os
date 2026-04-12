@@ -3,6 +3,7 @@ import apiClient from "@/lib/api-client";
 export interface LessonDto {
   id: string;
   lessonSeriesId: string;
+  trainerId?: string | null;
   date: string;
   startTime: string;
   endTime: string;

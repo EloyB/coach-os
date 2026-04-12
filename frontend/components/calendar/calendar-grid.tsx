@@ -6,7 +6,7 @@ import React from "react";
 
 export const START_HOUR = 6.5; // 06:30 — half-hour buffer so the 07:00 label isn't on the edge
 export const END_HOUR = 24;
-export const ROW_HEIGHT = 48; // px per hour
+export const ROW_HEIGHT = 80; // px per hour
 export const SLOT_GAP = 2; // px gap below each slot
 
 // Full hour labels to render (skip 6 since we start at 6:30)
@@ -86,10 +86,10 @@ export function getTrainerColor(trainerId: string | null) {
 
 // ─── Layout algorithm ────────────────────────────────────────────────────────
 
-export function getSlotPosition(slot: CalendarSlot) {
+export function getSlotPosition(slot: CalendarSlot, startHour: number = START_HOUR) {
   const startMin = parseTime(slot.startTime);
   const endMin = parseTime(slot.endTime);
-  const gridStartMin = START_HOUR * 60;
+  const gridStartMin = startHour * 60;
 
   return {
     top: ((startMin - gridStartMin) / 60) * ROW_HEIGHT,
@@ -162,6 +162,11 @@ interface CalendarGridProps {
   slots: CalendarSlot[];
   readOnly?: boolean;
   dayDates?: string[]; // 7 formatted date strings for day sub-headers
+  /** Override the default start/end hours for the visible range */
+  startHour?: number;
+  endHour?: number;
+  /** Reserve px on the right of each slot for action buttons (e.g. add-parallel) */
+  slotRightPadding?: number;
   /** Ref forwarded to the grid body div (used by interactive wrappers for drag) */
   gridBodyRef?: React.RefObject<HTMLDivElement | null>;
   /** Render extra content inside each day column (e.g. hover cells, add buttons) */
@@ -180,6 +185,9 @@ export function CalendarGrid({
   slots,
   readOnly,
   dayDates,
+  startHour: startHourProp,
+  endHour: endHourProp,
+  slotRightPadding = 0,
   gridBodyRef,
   renderDayOverlay,
   renderGridOverlay,
@@ -188,13 +196,20 @@ export function CalendarGrid({
   onSlotRemove,
   className,
 }: CalendarGridProps) {
-  const totalHeight = (END_HOUR - START_HOUR) * ROW_HEIGHT;
+  const effectiveStartHour = startHourProp ?? START_HOUR;
+  const effectiveEndHour = endHourProp ?? END_HOUR;
+  const totalHeight = (effectiveEndHour - effectiveStartHour) * ROW_HEIGHT;
   const gridColumns = `60px repeat(7, 1fr)`;
+  const visibleHours = Array.from(
+    { length: effectiveEndHour - Math.ceil(effectiveStartHour) },
+    (_, i) => Math.ceil(effectiveStartHour) + i
+  );
 
   return (
     <div
-      className={`bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden select-none ${className ?? ""}`}
+      className={`bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto select-none ${className ?? ""}`}
     >
+      <div style={{ minWidth: 1940 }}>
       {/* Day headers */}
       <div
         className="border-b border-gray-200 bg-gray-50"
@@ -225,11 +240,11 @@ export function CalendarGrid({
         >
           {/* Time axis */}
           <div className="relative" style={{ height: totalHeight }}>
-            {HOURS.map((hour) => (
+            {visibleHours.map((hour) => (
               <div
                 key={hour}
                 className="absolute left-0 right-0 flex items-start justify-end px-2"
-                style={{ top: (hour - START_HOUR) * ROW_HEIGHT }}
+                style={{ top: (hour - effectiveStartHour) * ROW_HEIGHT }}
               >
                 <span className="relative -top-2 text-[10px] text-gray-400 font-medium">
                   {String(hour).padStart(2, "0")}:00
@@ -251,18 +266,18 @@ export function CalendarGrid({
                 className={`relative border-l border-gray-200 ${readOnly ? "" : "cursor-pointer group/day"}`}
                 style={{ height: totalHeight }}
               >
-                {/* Leading half-hour cell (06:30–07:00) */}
-                {START_HOUR % 1 !== 0 && (
+                {/* Leading half-hour cell */}
+                {effectiveStartHour % 1 !== 0 && (
                   <div
                     key="leading-half"
                     className={`absolute left-0 right-0 border-b border-gray-300 ${!readOnly ? "hover:bg-tennis-green/5 transition-colors" : ""}`}
-                    style={{ top: 0, height: (Math.ceil(START_HOUR) - START_HOUR) * ROW_HEIGHT }}
+                    style={{ top: 0, height: (Math.ceil(effectiveStartHour) - effectiveStartHour) * ROW_HEIGHT }}
                   />
                 )}
 
                 {/* Gridlines */}
-                {HOURS.flatMap((hour) => {
-                  const baseTop = (hour - START_HOUR) * ROW_HEIGHT;
+                {visibleHours.flatMap((hour) => {
+                  const baseTop = (hour - effectiveStartHour) * ROW_HEIGHT;
                   const halfHeight = ROW_HEIGHT / 2;
                   return [
                     <div
@@ -283,7 +298,7 @@ export function CalendarGrid({
 
                 {/* Slot blocks */}
                 {daySlots.map((slot) => {
-                  const pos = getSlotPosition(slot);
+                  const pos = getSlotPosition(slot, effectiveStartHour);
                   const color = getTrainerColor(slot.trainerId);
                   const col = layout.get(slot.id) ?? {
                     colIndex: 0,
@@ -301,8 +316,8 @@ export function CalendarGrid({
                       style={{
                         top: pos.top,
                         height: pos.height,
-                        left: `calc(${col.colIndex * colWidthPct}% + 1px)`,
-                        width: `calc(${colWidthPct}% - 2px)`,
+                        left: `calc(${(col.colIndex / col.totalCols)} * (100% - ${slotRightPadding}px) + 1px)`,
+                        width: `calc(${(1 / col.totalCols)} * (100% - ${slotRightPadding}px) - 2px)`,
                         backgroundColor: color.bg,
                         borderLeftColor: color.border,
                       }}
@@ -379,6 +394,7 @@ export function CalendarGrid({
 
         {/* Grid overlay (drag ghost, etc.) */}
         {renderGridOverlay?.()}
+      </div>
       </div>
     </div>
   );

@@ -240,8 +240,12 @@ function EditSeriesForm({
 
 import {
   CalendarGrid,
+  parseTime,
+  getTrainerColor,
   type CalendarSlot,
 } from "@/components/calendar/calendar-grid";
+import { getTrainers } from "@/lib/api/trainers";
+import type { TrainerDto } from "@/lib/api/trainers";
 
 function toLocalISODate(d: Date): string {
   const year = d.getFullYear();
@@ -306,16 +310,21 @@ function LessonWeekView({
   lessons,
   startDate,
   endDate,
+  trainers,
 }: {
   lessons: LessonDto[];
   startDate: string;
   endDate: string;
+  trainers: TrainerDto[];
 }) {
   const [weekIndex, setWeekIndex] = useState(0);
   const weeks = computeWeeks(startDate, endDate);
   const currentWeek = weeks[weekIndex];
 
   if (!currentWeek) return null;
+
+  // Build trainer name lookup
+  const trainerMap = new Map(trainers.map((t) => [t.id, `${t.firstName} ${t.lastName}`]));
 
   // Convert lessons for the current week into CalendarSlots
   const weekSlots: CalendarSlot[] = lessons
@@ -327,13 +336,35 @@ function LessonWeekView({
       dayOfWeek: dayOfWeekFromDate(l.date, currentWeek.days),
       startTime: l.startTime,
       endTime: l.endTime,
-      trainerId: null,
-      trainerName: null,
+      trainerId: l.trainerId ?? null,
+      trainerName: l.trainerId ? (trainerMap.get(l.trainerId) ?? null) : null,
       courtName: l.courtName,
       maxStudents: l.maxStudents,
     }));
 
+  // Collect unique trainers used in lessons for the legend
+  const usedTrainerIds = new Set(
+    lessons.filter((l) => l.trainerId).map((l) => l.trainerId!)
+  );
+  const legendTrainers = trainers.filter((t) => usedTrainerIds.has(t.id));
+
   const dayDates = currentWeek.days.map(formatDateShort);
+
+  // Compute dynamic hour range from all lessons
+  let calStartHour: number | undefined;
+  let calEndHour: number | undefined;
+  if (lessons.length > 0) {
+    let minMin = Infinity;
+    let maxMin = -Infinity;
+    for (const l of lessons) {
+      const start = parseTime(l.startTime);
+      const end = parseTime(l.endTime);
+      if (start < minMin) minMin = start;
+      if (end > maxMin) maxMin = end;
+    }
+    calStartHour = Math.max(0, Math.floor(minMin / 60) - 1) + 0.5;
+    calEndHour = Math.min(24, Math.ceil(maxMin / 60) + 1);
+  }
 
   return (
     <div>
@@ -378,7 +409,40 @@ function LessonWeekView({
       </div>
 
       {/* Calendar grid (read-only) */}
-      <CalendarGrid slots={weekSlots} readOnly dayDates={dayDates} />
+      <CalendarGrid
+        slots={weekSlots}
+        readOnly
+        dayDates={dayDates}
+        startHour={calStartHour}
+        endHour={calEndHour}
+      />
+
+      {/* Trainer legend */}
+      {legendTrainers.length > 0 && (
+        <div className="flex items-center gap-4 mt-3 px-1 flex-wrap">
+          {usedTrainerIds.has(undefined as unknown as string) || lessons.some((l) => !l.trainerId) ? (
+            <div className="flex items-center gap-1.5 text-xs text-gray-500">
+              <div
+                className="w-3 h-3 rounded-full"
+                style={{ backgroundColor: getTrainerColor(null).border }}
+              />
+              Geen trainer
+            </div>
+          ) : null}
+          {legendTrainers.map((t) => {
+            const color = getTrainerColor(t.id);
+            return (
+              <div key={t.id} className="flex items-center gap-1.5 text-xs text-gray-500">
+                <div
+                  className="w-3 h-3 rounded-full"
+                  style={{ backgroundColor: color.border }}
+                />
+                {t.firstName} {t.lastName}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -874,6 +938,11 @@ export default function LessonSeriesDetailPage({
     queryFn: () => getLessonSeriesById(id),
   });
 
+  const { data: trainers = [] } = useQuery({
+    queryKey: ["trainers"],
+    queryFn: getTrainers,
+  });
+
   const deleteSeriesMutation = useMutation({
     mutationFn: () => deleteLessonSeries(id),
     onSuccess: () => {
@@ -955,13 +1024,22 @@ export default function LessonSeriesDetailPage({
               </div>
 
               {!editing ? (
-                <button
-                  onClick={() => setEditing(true)}
-                  className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
-                >
-                  <Pencil size={12} />
-                  Bewerken
-                </button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Link
+                    href={`/dashboard/lessons/${id}/planning`}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-tennis-green text-white text-xs font-medium hover:bg-tennis-green/90 transition-colors"
+                  >
+                    <CalendarDays size={12} />
+                    Plan lessen
+                  </Link>
+                  <button
+                    onClick={() => setEditing(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+                  >
+                    <Pencil size={12} />
+                    Bewerken
+                  </button>
+                </div>
               ) : (
                 <button
                   onClick={() => setEditing(false)}
@@ -995,6 +1073,7 @@ export default function LessonSeriesDetailPage({
             lessons={series.lessons}
             startDate={series.startDate}
             endDate={series.endDate}
+            trainers={trainers}
           />
 
           {/* ── Section 4: Form builder ── */}

@@ -276,6 +276,7 @@ export function CalendarWeekView({
       <CalendarGrid
         slots={slots}
         gridBodyRef={gridBodyRef}
+        slotRightPadding={24}
         className={isDragging ? "cursor-grabbing" : ""}
         onSlotMouseDown={handleSlotMouseDown}
         onSlotClick={handleSlotClick}

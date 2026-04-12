@@ -7,7 +7,7 @@ import { LogOut } from "lucide-react";
 import { CourtLines } from "@/components/ui/court-lines";
 import { TennisBallIcon } from "@/components/ui/tennis-ball-icon";
 import { navItems } from "@/lib/nav-items";
-import { getAuthUser } from "@/lib/auth";
+import { getAuthUser, clearAuth } from "@/lib/auth";
 
 export function DashboardSidebar() {
   const pathname = usePathname();
@@ -73,13 +73,16 @@ export function DashboardSidebar() {
 
       {/* Logout */}
       <div className="relative z-10 px-3 py-5 border-t border-white/10">
-        <Link
-          href="/login"
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-white/50 hover:text-white hover:bg-white/10 transition-colors group"
+        <button
+          onClick={() => {
+            clearAuth();
+            window.location.href = "/login";
+          }}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-white/50 hover:text-white hover:bg-white/10 transition-colors group cursor-pointer"
         >
           <LogOut size={16} className="shrink-0 group-hover:text-white/80" />
           <span>Uitloggen</span>
-        </Link>
+        </button>
       </div>
     </aside>
   );
