@@ -33,4 +33,10 @@ public interface IPlanningService
 
     Task<Result<List<NonResponderDto>>> GetNonRespondersAsync(
         Guid seriesId, Guid organizationId, CancellationToken ct = default);
+
+    Task<Result<bool>> ResendConfirmationEmailAsync(
+        Guid seriesId, Guid assignmentId, Guid organizationId, CancellationToken ct = default);
+
+    Task<Result<bool>> AdminConfirmAssignmentAsync(
+        Guid seriesId, Guid assignmentId, Guid organizationId, CancellationToken ct = default);
 }

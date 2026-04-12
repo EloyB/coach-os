@@ -12,7 +12,8 @@ public class AssignmentConfirmationTokenRepository(ApplicationDbContext context)
         string tokenHash, CancellationToken ct = default)
     {
         return await context.AssignmentConfirmationTokens
-            .Include(t => t.ScheduleAssignment)
+            .Include(t => t.ScheduleAssignment).ThenInclude(a => a.Enrollment)
+            .Include(t => t.ScheduleAssignment).ThenInclude(a => a.EnrollmentGroup!).ThenInclude(g => g.Members)
             .Include(t => t.Enrollment)
             .FirstOrDefaultAsync(t => t.TokenHash == tokenHash, ct);
     }
@@ -21,7 +22,8 @@ public class AssignmentConfirmationTokenRepository(ApplicationDbContext context)
         Guid lessonSerieId, Guid organizationId, CancellationToken ct = default)
     {
         return await context.AssignmentConfirmationTokens
-            .Include(t => t.ScheduleAssignment)
+            .Include(t => t.ScheduleAssignment).ThenInclude(a => a.Enrollment)
+            .Include(t => t.ScheduleAssignment).ThenInclude(a => a.EnrollmentGroup!).ThenInclude(g => g.Members)
             .Include(t => t.Enrollment)
             .Where(t => t.OrganizationId == organizationId
                 && t.ScheduleAssignment.LessonSerieId == lessonSerieId)

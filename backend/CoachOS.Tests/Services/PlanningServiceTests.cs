@@ -21,6 +21,7 @@ public class PlanningServiceTests
     private Mock<ITimeSlotPreferenceRepository> _prefRepo = null!;
     private Mock<IScheduleAssignmentRepository> _assignmentRepo = null!;
     private Mock<IAssignmentConfirmationTokenRepository> _tokenRepo = null!;
+    private Mock<IPaymentRepository> _paymentRepo = null!;
     private Mock<IUserLookupService> _userLookup = null!;
     private Mock<IEmailService> _emailService = null!;
     private Mock<IOptions<AppOptions>> _appOptions = null!;
@@ -40,6 +41,7 @@ public class PlanningServiceTests
         _prefRepo = new Mock<ITimeSlotPreferenceRepository>();
         _assignmentRepo = new Mock<IScheduleAssignmentRepository>();
         _tokenRepo = new Mock<IAssignmentConfirmationTokenRepository>();
+        _paymentRepo = new Mock<IPaymentRepository>();
         _userLookup = new Mock<IUserLookupService>();
         _emailService = new Mock<IEmailService>();
         _appOptions = new Mock<IOptions<AppOptions>>();
@@ -53,6 +55,7 @@ public class PlanningServiceTests
             _prefRepo.Object,
             _assignmentRepo.Object,
             _tokenRepo.Object,
+            _paymentRepo.Object,
             _userLookup.Object,
             _emailService.Object,
             _appOptions.Object,
