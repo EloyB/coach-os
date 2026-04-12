@@ -18,7 +18,6 @@ public class PlanningServiceTests
     private Mock<IEnrollmentGroupRepository> _groupRepo = null!;
     private Mock<ITimeSlotPreferenceRepository> _prefRepo = null!;
     private Mock<IScheduleAssignmentRepository> _assignmentRepo = null!;
-    private Mock<ILessonRepository> _lessonRepo = null!;
     private Mock<ILogger<PlanningService>> _logger = null!;
     private PlanningService _service = null!;
 
@@ -34,7 +33,6 @@ public class PlanningServiceTests
         _groupRepo = new Mock<IEnrollmentGroupRepository>();
         _prefRepo = new Mock<ITimeSlotPreferenceRepository>();
         _assignmentRepo = new Mock<IScheduleAssignmentRepository>();
-        _lessonRepo = new Mock<ILessonRepository>();
         _logger = new Mock<ILogger<PlanningService>>();
 
         _service = new PlanningService(
@@ -43,7 +41,6 @@ public class PlanningServiceTests
             _groupRepo.Object,
             _prefRepo.Object,
             _assignmentRepo.Object,
-            _lessonRepo.Object,
             _logger.Object);
     }
 
@@ -151,24 +148,19 @@ public class PlanningServiceTests
     }
 
     [Test]
-    public async Task ConfirmScheduleAsync_ValidState_GeneratesLessonsAndConfirms()
+    public async Task ConfirmScheduleAsync_ValidState_ConfirmsAssignmentsAndSetsStatus()
     {
         var series = BuildSeries(withSlots: true);
         series.PlanningStatus = PlanningStatus.Planning;
-        // Series spans 4 weeks on slot's DayOfWeek
-        series.StartDate = new DateOnly(2026, 5, 4); // Monday
-        series.EndDate = new DateOnly(2026, 5, 25);   // 4 Mondays
 
-        var slot = series.WeeklyTemplate.First();
         var assignment = new ScheduleAssignment
         {
             Id = Guid.NewGuid(),
             OrganizationId = OrgId,
             LessonSerieId = SeriesId,
-            WeeklyTemplateEntryId = slot.Id,
+            WeeklyTemplateEntryId = SlotId,
             EnrollmentId = Guid.NewGuid(),
             Status = ScheduleAssignmentStatus.Proposed,
-            WeeklyTemplateEntry = slot,
         };
 
         _seriesRepo.Setup(r => r.GetByIdAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
@@ -181,9 +173,6 @@ public class PlanningServiceTests
         result.IsSuccess.Should().BeTrue();
         series.PlanningStatus.Should().Be(PlanningStatus.Scheduled);
         assignment.Status.Should().Be(ScheduleAssignmentStatus.Confirmed);
-
-        // Slot is Monday (DayOfWeek=1), series spans 4 Mondays → 4 lessons
-        _lessonRepo.Verify(r => r.AddAsync(It.IsAny<Lesson>(), It.IsAny<CancellationToken>()), Times.Exactly(4));
     }
 
     // ── UpdateAssignmentAsync ────────────────────────────────────────────────

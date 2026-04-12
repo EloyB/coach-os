@@ -13,7 +13,6 @@ public class PlanningService(
     IEnrollmentGroupRepository enrollmentGroupRepo,
     ITimeSlotPreferenceRepository timeSlotPreferenceRepo,
     IScheduleAssignmentRepository scheduleAssignmentRepo,
-    ILessonRepository lessonRepo,
     ILogger<PlanningService> logger) : IPlanningService
 {
     public async Task<Result<PlanningOverviewDto>> GenerateProposalAsync(
@@ -138,75 +137,77 @@ public class PlanningService(
 
         var assignments = await scheduleAssignmentRepo.GetBySeriesAsync(seriesId, organizationId, ct);
         var enrollments = await enrollmentRepo.GetBySeriesAsync(seriesId, organizationId, ct);
+        var groups = await enrollmentGroupRepo.GetBySeriesAsync(seriesId, organizationId, ct);
+        var preferences = await timeSlotPreferenceRepo.GetBySeriesAsync(seriesId, organizationId, ct);
+
         var activeEnrollments = enrollments
             .Where(e => e.Status is EnrollmentStatus.Confirmed or EnrollmentStatus.Pending)
             .ToList();
-        var slots = series.WeeklyTemplate.ToList();
 
-        // Build assigned enrollment IDs
-        var assignedEnrollmentIds = new HashSet<Guid>();
-        foreach (var assignment in assignments)
-        {
-            if (assignment.EnrollmentId.HasValue)
-                assignedEnrollmentIds.Add(assignment.EnrollmentId.Value);
-            if (assignment.EnrollmentGroup is not null)
-                foreach (var member in assignment.EnrollmentGroup.Members)
-                    assignedEnrollmentIds.Add(member.Id);
-        }
+        var prefsByEnrollment = preferences
+            .GroupBy(p => p.EnrollmentId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.ToDictionary(p => p.WeeklyTemplateEntryId, p => p.Preference.ToString()));
 
-        var slotDtos = slots
+        var timeSlotDtos = series.WeeklyTemplate
             .OrderBy(s => s.DayOfWeek)
             .ThenBy(s => s.StartTime)
-            .Select(slot =>
+            .Select(slot => new PlanningTimeSlotDto
             {
-                var slotAssignments = assignments
-                    .Where(a => a.WeeklyTemplateEntryId == slot.Id)
-                    .ToList();
-
-                var currentCount = slotAssignments.Sum(a =>
-                    a.EnrollmentGroup?.Members.Count ?? 1);
-
-                return new SlotAssignmentDto
-                {
-                    WeeklyTemplateEntryId = slot.Id,
-                    DayOfWeek = slot.DayOfWeek,
-                    StartTime = slot.StartTime.ToString("HH:mm"),
-                    EndTime = slot.EndTime.ToString("HH:mm"),
-                    CourtName = slot.CourtName,
-                    TrainerId = slot.TrainerId,
-                    MaxCapacity = slot.MaxStudents,
-                    CurrentCount = currentCount,
-                    Assignments = slotAssignments.Select(a => new AssignedItemDto
-                    {
-                        AssignmentId = a.Id,
-                        EnrollmentId = a.EnrollmentId,
-                        GroupId = a.EnrollmentGroupId,
-                        StudentNames = a.EnrollmentGroup is not null
-                            ? a.EnrollmentGroup.Members.Select(m => m.StudentName).ToList()
-                            : a.Enrollment is not null
-                                ? [a.Enrollment.StudentName]
-                                : [],
-                        Status = a.Status.ToString(),
-                    }).ToList(),
-                };
+                Id = slot.Id,
+                DayOfWeek = slot.DayOfWeek,
+                StartTime = slot.StartTime.ToString("HH:mm"),
+                EndTime = slot.EndTime.ToString("HH:mm"),
+                CourtName = slot.CourtName,
+                TrainerId = slot.TrainerId,
+                MaxCapacity = slot.MaxStudents,
             })
             .ToList();
 
-        var unassigned = activeEnrollments
-            .Where(e => !assignedEnrollmentIds.Contains(e.Id))
-            .Select(e => new UnassignedEnrollmentDto
+        var enrollmentDtos = activeEnrollments
+            .Select(e => new PlanningEnrollmentDto
             {
-                EnrollmentId = e.Id,
+                Id = e.Id,
                 StudentName = e.StudentName,
-                Reason = "Niet toegewezen",
+                StudentEmail = e.StudentEmail,
+                IsOpenToGrouping = e.IsOpenToGrouping,
+                GroupId = e.EnrollmentGroupId,
+                Preferences = prefsByEnrollment.GetValueOrDefault(e.Id, new()),
+            })
+            .ToList();
+
+        var groupDtos = groups
+            .Select(g => new PlanningGroupDto
+            {
+                Id = g.Id,
+                Name = g.Name,
+                LeaderEnrollmentId = g.LeaderEnrollmentId,
+                MemberEnrollmentIds = activeEnrollments
+                    .Where(e => e.EnrollmentGroupId == g.Id)
+                    .Select(e => e.Id)
+                    .ToList(),
+            })
+            .ToList();
+
+        var assignmentDtos = assignments
+            .Select(a => new PlanningAssignmentDto
+            {
+                Id = a.Id,
+                TimeSlotId = a.WeeklyTemplateEntryId,
+                EnrollmentId = a.EnrollmentId,
+                GroupId = a.EnrollmentGroupId,
+                Status = a.Status.ToString(),
             })
             .ToList();
 
         return Result<PlanningOverviewDto>.Ok(new PlanningOverviewDto
         {
             PlanningStatus = series.PlanningStatus.ToString(),
-            Slots = slotDtos,
-            Unassigned = unassigned,
+            TimeSlots = timeSlotDtos,
+            Enrollments = enrollmentDtos,
+            Groups = groupDtos,
+            Assignments = assignmentDtos,
         });
     }
 
@@ -308,37 +309,6 @@ public class PlanningService(
             return Result<bool>.Fail(
                 new Error(ErrorCodes.Validation, "Er zijn geen voorgestelde toewijzingen om te bevestigen."));
 
-        var slots = series.WeeklyTemplate.ToDictionary(w => w.Id);
-
-        // Generate lessons for each unique slot that has assignments
-        var assignedSlotIds = proposedAssignments.Select(a => a.WeeklyTemplateEntryId).Distinct();
-
-        foreach (var slotId in assignedSlotIds)
-        {
-            if (!slots.TryGetValue(slotId, out var slot)) continue;
-
-            var dates = GetWeeklyDates(series.StartDate, series.EndDate, (DayOfWeek)slot.DayOfWeek);
-
-            foreach (var date in dates)
-            {
-                Lesson lesson = new()
-                {
-                    OrganizationId = organizationId,
-                    LessonSerieId = seriesId,
-                    Date = date,
-                    StartTime = slot.StartTime,
-                    EndTime = slot.EndTime,
-                    CourtName = slot.CourtName,
-                    TrainerId = slot.TrainerId,
-                    MaxStudents = slot.MaxStudents,
-                    Level = series.Level,
-                    IsCancelled = false,
-                };
-
-                await lessonRepo.AddAsync(lesson, ct);
-            }
-        }
-
         // Confirm all assignments
         foreach (var assignment in proposedAssignments)
             assignment.Status = ScheduleAssignmentStatus.Confirmed;
@@ -347,25 +317,10 @@ public class PlanningService(
         await lessonSeriesRepo.SaveChangesAsync(ct);
 
         logger.LogInformation(
-            "Planning bevestigd voor reeks {SeriesId}: {Count} toewijzingen, lessen gegenereerd",
+            "Planning bevestigd voor reeks {SeriesId}: {Count} toewijzingen",
             seriesId, proposedAssignments.Count);
 
         return Result<bool>.Ok(true);
-    }
-
-    private static IEnumerable<DateOnly> GetWeeklyDates(DateOnly start, DateOnly end, DayOfWeek day)
-    {
-        var current = start;
-
-        // Advance to first occurrence of the target day
-        var daysUntilTarget = ((int)day - (int)current.DayOfWeek + 7) % 7;
-        current = current.AddDays(daysUntilTarget);
-
-        while (current <= end)
-        {
-            yield return current;
-            current = current.AddDays(7);
-        }
     }
 
     private static Dictionary<Guid, SlotPreference> IntersectPreferences(
