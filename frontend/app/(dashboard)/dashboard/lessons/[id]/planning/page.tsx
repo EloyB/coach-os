@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState, useMemo, useEffect } from "react";
+import { use, useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -9,6 +9,8 @@ import {
   ArrowLeft,
   RefreshCw,
   Check,
+  Users,
+  User,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -25,6 +27,7 @@ import {
   getPlanningOverview,
   generatePlanning,
   confirmPlanning,
+  createAssignment,
 } from "@/lib/api/planning";
 import type {
   PlanningOverviewDto,
@@ -113,6 +116,22 @@ export default function PlanningPage({
       queryClient.invalidateQueries({ queryKey: ["planning", id] });
       queryClient.invalidateQueries({ queryKey: ["lessonSeries", id] });
       router.push(`/dashboard/lessons/${id}`);
+    },
+  });
+
+  // Manual assign
+  const [assigningEnrollmentId, setAssigningEnrollmentId] = useState<string | null>(null);
+
+  // Slot hover popover
+  const [hoveredSlotId, setHoveredSlotId] = useState<string | null>(null);
+  const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const assignMutation = useMutation({
+    mutationFn: ({ enrollmentId, slotId }: { enrollmentId: string; slotId: string }) =>
+      createAssignment(id, { enrollmentId, weeklyTemplateEntryId: slotId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["planning", id] });
+      setAssigningEnrollmentId(null);
     },
   });
 
@@ -337,19 +356,19 @@ export default function PlanningPage({
         </div>
       </div>
 
-      {/* Stats bar */}
-      <div className="bg-white border-b border-gray-200 px-8 py-3 flex items-center gap-6 text-sm shrink-0">
-        <div className="flex items-center gap-2">
-          <div className="w-2.5 h-2.5 rounded-full bg-green-500" />
-          <span className="text-gray-600">
-            {t("assigned")}: <strong>{totalAssigned}</strong>
-          </span>
+      {/* Legend bar */}
+      <div className="bg-white border-b border-gray-200 px-8 py-3 flex items-center gap-5 text-xs text-gray-500 shrink-0">
+        <div className="flex items-center gap-1.5">
+          <div className="w-4 h-3 rounded border border-green-300 bg-green-50" />
+          {t("legendAutoAssigned")}
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-2.5 h-2.5 rounded-full bg-red-500" />
-          <span className="text-gray-600">
-            {t("unassigned")}: <strong>{totalUnassigned}</strong>
-          </span>
+        <div className="flex items-center gap-1.5">
+          <div className="w-4 h-3 rounded border border-amber-300 bg-amber-50" />
+          {t("legendSuggestion")}
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-4 h-3 rounded border border-blue-300 bg-blue-50" />
+          {t("legendAutoGrouped")}
         </div>
         <div className="ml-auto text-xs text-gray-400">
           {totalEnrollments} {t("enrollments")} · {totalSlots} {t("timeSlots")}{" "}
@@ -398,83 +417,181 @@ export default function PlanningPage({
                       totalCols: 1,
                     };
                     const colWidthPct = 100 / col.totalCols;
-                    const names = getSlotNames(slot.id);
+                    const slotAssignments = assignmentsBySlot.get(slot.id) ?? [];
                     const currentCount = getSlotCurrentCount(slot.id);
                     const hasProposed = slotHasProposed(slot.id);
-                    const borderColor = hasProposed
-                      ? "border-amber-300"
-                      : "border-green-300";
-                    const bgColor = hasProposed ? "bg-amber-50" : "bg-green-50";
-                    const isSingle = names.length === 1;
+                    const hasAutoMerged = slotAssignments.some((a) => a.isAutoMerged);
+                    const borderColor = hasAutoMerged
+                      ? "border-blue-300"
+                      : hasProposed
+                        ? "border-amber-300"
+                        : "border-green-300";
+                    const bgColor = hasAutoMerged
+                      ? "bg-blue-50"
+                      : hasProposed
+                        ? "bg-amber-50"
+                        : "bg-green-50";
 
                     return (
                       <div
                         key={slot.id}
-                        className={`absolute ${bgColor} border ${borderColor} rounded-lg px-2 py-1.5 cursor-pointer shadow-sm hover:shadow-md transition-shadow z-10 overflow-hidden`}
+                        className={`absolute ${bgColor} border ${borderColor} rounded-lg px-2 py-1.5 cursor-pointer shadow-sm transition-shadow z-10 ${
+                          hoveredSlotId === slot.id ? "shadow-md z-30" : ""
+                        }`}
                         style={{
                           top: pos.top,
                           height: pos.height,
                           left: `calc(${col.colIndex * colWidthPct}% + 1px)`,
                           width: `calc(${colWidthPct}% - 2px)`,
                         }}
+                        onMouseEnter={() => {
+                          if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+                          if (slotAssignments.length > 0) setHoveredSlotId(slot.id);
+                        }}
+                        onMouseLeave={() => {
+                          hoverTimeoutRef.current = setTimeout(() => setHoveredSlotId(null), 200);
+                        }}
                       >
-                        {/* Header: court + capacity */}
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-medium text-gray-500 truncate">
-                            {slot.courtName ?? ""}
-                          </span>
+                        {/* Hover popover */}
+                        {hoveredSlotId === slot.id && (
+                          <div
+                            className="absolute left-full top-0 ml-2 z-50 bg-white border border-gray-200 rounded-xl shadow-lg p-3 w-60"
+                            onMouseEnter={() => {
+                              if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+                            }}
+                            onMouseLeave={() => {
+                              hoverTimeoutRef.current = setTimeout(() => setHoveredSlotId(null), 200);
+                            }}
+                          >
+                            <div className="text-[11px] font-semibold text-gray-800 mb-0.5">
+                              {DAY_NAMES_SHORT[slot.dayOfWeek]} {slot.startTime}–{slot.endTime}
+                            </div>
+                            {slot.courtName && (
+                              <div className="text-[10px] text-gray-400 mb-2">{slot.courtName}</div>
+                            )}
+                            <div className="space-y-2.5">
+                              {slotAssignments.map((assignment) => {
+                                const aNames: string[] = [];
+                                let gName: string | null = null;
+
+                                if (assignment.groupId) {
+                                  const group = groupMap.get(assignment.groupId);
+                                  if (group) {
+                                    gName = group.name;
+                                    for (const mId of group.memberEnrollmentIds) {
+                                      const e = enrollmentMap.get(mId);
+                                      if (e) aNames.push(e.studentName);
+                                    }
+                                  }
+                                } else if (assignment.enrollmentId) {
+                                  const e = enrollmentMap.get(assignment.enrollmentId);
+                                  if (e) aNames.push(e.studentName);
+                                }
+
+                                if (aNames.length === 0) return null;
+
+                                return (
+                                  <div key={assignment.id}>
+                                    <div className="flex items-center gap-1.5 mb-1">
+                                      {gName ? (
+                                        <>
+                                          <Users size={10} className="text-gray-400 shrink-0" />
+                                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                                            assignment.isAutoMerged ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700"
+                                          }`}>
+                                            {gName}
+                                          </span>
+                                          {assignment.isAutoMerged && <span className="text-[9px] text-blue-500 italic">auto</span>}
+                                        </>
+                                      ) : (
+                                        <>
+                                          <User size={10} className="text-gray-400 shrink-0" />
+                                          <span className="text-[10px] text-gray-500">Individueel</span>
+                                          {assignment.isAutoMerged && <span className="text-[9px] text-blue-500 italic">auto</span>}
+                                        </>
+                                      )}
+                                    </div>
+                                    <div className="space-y-1 pl-4">
+                                      {aNames.map((name, ni) => {
+                                        const aColor = getAvatarColor(name);
+                                        return (
+                                          <div key={ni} className="flex items-center gap-1.5">
+                                            <div className={`w-4 h-4 rounded-full ${aColor.bg} ${aColor.text} flex items-center justify-center text-[7px] font-bold shrink-0`}>
+                                              {getInitials(name)}
+                                            </div>
+                                            <span className="text-[11px] text-gray-700">{name}</span>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            <div className="mt-2 pt-2 border-t border-gray-100 text-[10px] text-gray-400">
+                              {currentCount}/{slot.maxCapacity} bezet
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Header: court + capacity + auto badge */}
+                        <div className="flex items-center justify-between gap-1">
+                          <div className="flex items-center gap-1 min-w-0">
+                            <span className="text-[10px] font-medium text-gray-500 truncate">
+                              {slot.courtName ?? ""}
+                            </span>
+                            {hasAutoMerged && (
+                              <span className="text-[9px] text-blue-500 italic shrink-0">
+                                auto
+                              </span>
+                            )}
+                          </div>
                           <span
                             className={`text-[10px] shrink-0 ${
-                              hasProposed
-                                ? "text-amber-600"
-                                : "text-green-600"
+                              hasAutoMerged
+                                ? "text-blue-600"
+                                : hasProposed
+                                  ? "text-amber-600"
+                                  : "text-green-600"
                             }`}
                           >
                             {currentCount}/{slot.maxCapacity}
-                            {hasProposed && " ⚠"}
                           </span>
                         </div>
 
-                        {/* Assigned people */}
+                        {/* Assigned people — flat list of avatars */}
                         {pos.height >= 36 &&
                           (() => {
-                            if (names.length === 0) return null;
+                            const allNames = getSlotNames(slot.id);
+                            if (allNames.length === 0) return null;
 
-                            if (isSingle) {
-                              const name = names[0];
+                            if (allNames.length === 1) {
+                              const name = allNames[0];
                               const color = getAvatarColor(name);
-                              const enrollment = planning.enrollments.find(
-                                (e) => e.studentName === name
-                              );
-                              const pref = enrollment?.preferences[slot.id];
                               return (
                                 <div className="mt-1 flex items-center gap-1">
                                   <div
-                                    className={`w-4 h-4 rounded-full ${color.bg} ${color.text} flex items-center justify-center text-[8px] font-bold shrink-0`}
+                                    title={name}
+                                    className={`w-5 h-5 rounded-full ${color.bg} ${color.text} flex items-center justify-center text-[8px] font-bold shrink-0`}
                                   >
                                     {getInitials(name)}
                                   </div>
                                   <span className="text-[10px] text-gray-700 truncate">
                                     {name}
                                   </span>
-                                  {pref === "Preferred" && (
-                                    <span className="text-[9px] text-green-600 ml-auto shrink-0">
-                                      ★
-                                    </span>
-                                  )}
                                 </div>
                               );
                             }
 
                             return (
                               <div className="mt-1 flex items-center gap-0.5 flex-wrap">
-                                {names.map((name, i) => {
+                                {allNames.map((name, i) => {
                                   const color = getAvatarColor(name);
                                   return (
                                     <div
                                       key={i}
                                       title={name}
-                                      className={`w-5 h-5 rounded-full ${color.bg} ${color.text} flex items-center justify-center text-[8px] font-bold shrink-0`}
+                                      className={`w-5 h-5 rounded-full ${color.bg} ${color.text} flex items-center justify-center text-[8px] font-bold shrink-0 cursor-default`}
                                     >
                                       {getInitials(name)}
                                     </div>
@@ -491,21 +608,6 @@ export default function PlanningPage({
             }}
           />
 
-          {/* Legend */}
-          <div className="flex items-center gap-5 mt-4 text-xs text-gray-500 px-1">
-            <div className="flex items-center gap-1.5">
-              <div className="w-4 h-3 rounded border border-green-300 bg-green-50" />
-              {t("legendAutoAssigned")}
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-4 h-3 rounded border border-amber-300 bg-amber-50" />
-              {t("legendSuggestion")}
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-green-600">★</span>
-              {t("legendPreferred")}
-            </div>
-          </div>
         </div>
 
         {/* Right sidebar */}
@@ -606,6 +708,71 @@ export default function PlanningPage({
                           )}
                         </div>
                       )}
+
+                      {/* Manual assign: slot picker */}
+                      {assigningEnrollmentId === enrollment.id ? (
+                        <div className="mt-2 space-y-1.5">
+                          <p className="text-[10px] text-gray-500 font-medium">
+                            Kies een tijdslot:
+                          </p>
+                          <div className="space-y-1">
+                            {planning.timeSlots
+                              .sort((a, b) => a.dayOfWeek - b.dayOfWeek || a.startTime.localeCompare(b.startTime))
+                              .map((slot) => {
+                                const count = getSlotCurrentCount(slot.id);
+                                const isFull = count >= slot.maxCapacity;
+                                return (
+                                  <button
+                                    key={slot.id}
+                                    type="button"
+                                    disabled={isFull || assignMutation.isPending}
+                                    onClick={() =>
+                                      assignMutation.mutate({
+                                        enrollmentId: enrollment.id,
+                                        slotId: slot.id,
+                                      })
+                                    }
+                                    className={`w-full text-left px-2 py-1.5 rounded text-[10px] transition-colors ${
+                                      isFull
+                                        ? "bg-gray-50 text-gray-300 cursor-not-allowed"
+                                        : "bg-white border border-gray-200 text-gray-700 hover:border-tennis-green hover:bg-tennis-green/5 cursor-pointer"
+                                    }`}
+                                  >
+                                    <span className="font-medium">
+                                      {DAY_NAMES_SHORT[slot.dayOfWeek]}{" "}
+                                      {slot.startTime}–{slot.endTime}
+                                    </span>
+                                    {slot.courtName && (
+                                      <span className="text-gray-400 ml-1">
+                                        · {slot.courtName}
+                                      </span>
+                                    )}
+                                    <span className="float-right text-gray-400">
+                                      {count}/{slot.maxCapacity}
+                                    </span>
+                                  </button>
+                                );
+                              })}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setAssigningEnrollmentId(null)}
+                            className="text-[10px] text-gray-400 hover:text-gray-600"
+                          >
+                            Annuleren
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setAssigningEnrollmentId(enrollment.id)
+                          }
+                          className="mt-2 text-[10px] text-tennis-green hover:underline font-medium"
+                        >
+                          {t("assignManually")} →
+                        </button>
+                      )}
                     </div>
                   );
                 })}
@@ -630,20 +797,26 @@ export default function PlanningPage({
                   const memberNames = group.memberEnrollmentIds
                     .map((id) => enrollmentMap.get(id)?.studentName ?? "?")
                     .join(", ");
-                  const leaderName =
-                    enrollmentMap.get(group.leaderEnrollmentId)?.studentName;
+                  const groupAssignment = planning.assignments.find(
+                    (a) => a.groupId === group.id
+                  );
+                  const isAutoMerged = groupAssignment?.isAutoMerged ?? false;
 
                   return (
                     <div
                       key={group.id}
-                      className="border border-gray-200 rounded-lg p-3"
+                      className={`border rounded-lg p-3 ${
+                        isAutoMerged
+                          ? "border-blue-200 bg-blue-50/30"
+                          : "border-gray-200"
+                      }`}
                     >
                       <div className="flex items-center justify-between mb-1.5">
                         <span className="text-[10px] font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded">
                           {group.name}
                         </span>
-                        <span className="text-[10px] text-gray-400">
-                          {leaderName ? t("preFormed") : t("autoGrouped")}
+                        <span className={`text-[10px] ${isAutoMerged ? "text-blue-500 italic" : "text-gray-400"}`}>
+                          {isAutoMerged ? t("autoGrouped") : t("preFormed")}
                         </span>
                       </div>
                       <div className="text-[10px] text-gray-600">

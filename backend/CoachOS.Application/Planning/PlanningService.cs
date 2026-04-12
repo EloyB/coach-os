@@ -70,6 +70,7 @@ public class PlanningService(
                 groupPrefs = IntersectPreferences(
                     membersWithPrefs.Select(e => prefsByEnrollment[e.Id]).ToList());
 
+            var leaderEnrollment = memberEnrollments.FirstOrDefault(e => e.Id == group.LeaderEnrollmentId);
             units.Add(new EnrollmentUnit(
                 Id: group.Id,
                 IsGroup: true,
@@ -77,7 +78,7 @@ public class PlanningService(
                 EnrollmentIds: memberEnrollments.Select(e => e.Id).ToList(),
                 StudentNames: memberEnrollments.Select(e => e.StudentName).ToList(),
                 Size: memberEnrollments.Count,
-                IsOpenToGrouping: false,
+                IsOpenToGrouping: leaderEnrollment?.IsOpenToGrouping ?? false,
                 Preferences: groupPrefs));
 
             foreach (var e in memberEnrollments)
@@ -116,6 +117,7 @@ public class PlanningService(
             EnrollmentGroupId = a.GroupId,
             EnrollmentId = a.EnrollmentId,
             Status = ScheduleAssignmentStatus.Proposed,
+            IsAutoMerged = a.IsAutoMerged,
         });
 
         await scheduleAssignmentRepo.AddRangeAsync(newAssignments, ct);
@@ -198,6 +200,7 @@ public class PlanningService(
                 EnrollmentId = a.EnrollmentId,
                 GroupId = a.EnrollmentGroupId,
                 Status = a.Status.ToString(),
+                IsAutoMerged = a.IsAutoMerged,
             })
             .ToList();
 
@@ -224,6 +227,46 @@ public class PlanningService(
                 new Error(ErrorCodes.Validation, "Bevestigde toewijzingen kunnen niet verplaatst worden."));
 
         assignment.WeeklyTemplateEntryId = request.WeeklyTemplateEntryId;
+        await scheduleAssignmentRepo.SaveChangesAsync(ct);
+
+        return Result<bool>.Ok(true);
+    }
+
+    public async Task<Result<bool>> CreateAssignmentAsync(
+        Guid seriesId, CreateAssignmentRequest request,
+        Guid organizationId, CancellationToken ct = default)
+    {
+        var series = await lessonSeriesRepo.GetByIdAsync(seriesId, organizationId, ct);
+        if (series is null)
+            return Result<bool>.Fail(new Error(ErrorCodes.NotFound, "Lessenreeks niet gevonden."));
+
+        // Verify enrollment belongs to this series
+        var enrollment = await enrollmentRepo.GetByIdAsync(request.EnrollmentId, organizationId, ct);
+        if (enrollment is null || enrollment.LessonSerieId != seriesId)
+            return Result<bool>.Fail(new Error(ErrorCodes.NotFound, "Inschrijving niet gevonden."));
+
+        // Verify slot belongs to this series
+        var slot = series.WeeklyTemplate.FirstOrDefault(s => s.Id == request.WeeklyTemplateEntryId);
+        if (slot is null)
+            return Result<bool>.Fail(new Error(ErrorCodes.NotFound, "Tijdslot niet gevonden."));
+
+        // Check if enrollment already has an assignment
+        var existingAssignments = await scheduleAssignmentRepo.GetBySeriesAsync(seriesId, organizationId, ct);
+        bool alreadyAssigned = existingAssignments.Any(a => a.EnrollmentId == request.EnrollmentId);
+        if (alreadyAssigned)
+            return Result<bool>.Fail(new Error(ErrorCodes.Validation, "Inschrijving is al toegewezen."));
+
+        ScheduleAssignment assignment = new()
+        {
+            OrganizationId = organizationId,
+            LessonSerieId = seriesId,
+            WeeklyTemplateEntryId = request.WeeklyTemplateEntryId,
+            EnrollmentId = request.EnrollmentId,
+            Status = ScheduleAssignmentStatus.Proposed,
+            IsAutoMerged = false,
+        };
+
+        await scheduleAssignmentRepo.AddRangeAsync([assignment], ct);
         await scheduleAssignmentRepo.SaveChangesAsync(ct);
 
         return Result<bool>.Ok(true);

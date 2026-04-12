@@ -15,6 +15,10 @@ public interface IPlanningService
         Guid seriesId, Guid assignmentId, UpdateAssignmentRequest request,
         Guid organizationId, CancellationToken ct = default);
 
+    Task<Result<bool>> CreateAssignmentAsync(
+        Guid seriesId, CreateAssignmentRequest request,
+        Guid organizationId, CancellationToken ct = default);
+
     Task<Result<Guid>> CreateGroupAsync(
         Guid seriesId, CreateGroupRequest request, Guid organizationId, CancellationToken ct = default);
 

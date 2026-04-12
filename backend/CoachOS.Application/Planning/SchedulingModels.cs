@@ -28,7 +28,8 @@ public record ProposedAssignment(
     Guid WeeklyTemplateEntryId,
     Guid? GroupId,
     Guid? EnrollmentId,
-    int Size);
+    int Size,
+    bool IsAutoMerged = false);
 
 public record ConflictItem(
     Guid EnrollmentId,

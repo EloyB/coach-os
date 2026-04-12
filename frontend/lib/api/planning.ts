@@ -35,6 +35,7 @@ export interface PlanningAssignmentDto {
   enrollmentId: string | null;
   groupId: string | null;
   status: string; // "Proposed" | "Confirmed"
+  isAutoMerged: boolean;
 }
 
 export interface PlanningOverviewDto {
@@ -48,6 +49,11 @@ export interface PlanningOverviewDto {
 // ─── Request types ───────────────────────────────────────────────────────────
 
 export interface UpdateAssignmentRequest {
+  weeklyTemplateEntryId: string;
+}
+
+export interface CreateAssignmentRequest {
+  enrollmentId: string;
   weeklyTemplateEntryId: string;
 }
 
@@ -68,6 +74,16 @@ export async function getPlanningOverview(
 
 export async function generatePlanning(seriesId: string): Promise<void> {
   await apiClient.post(`/lessonseries/${seriesId}/planning/generate`);
+}
+
+export async function createAssignment(
+  seriesId: string,
+  request: CreateAssignmentRequest
+): Promise<void> {
+  await apiClient.post(
+    `/lessonseries/${seriesId}/planning/assignments`,
+    request
+  );
 }
 
 export async function updateAssignment(

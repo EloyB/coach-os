@@ -11,47 +11,67 @@ public static class SchedulingAlgorithm
 {
     public static SchedulingResult Generate(SchedulingInput input)
     {
-        var assignments = new List<ProposedAssignment>();
-        var conflicts = new List<ConflictItem>();
-        var slotCapacity = input.Slots.ToDictionary(s => s.WeeklyTemplateEntryId, s => s.MaxCapacity);
-        var slotUsed = input.Slots.ToDictionary(s => s.WeeklyTemplateEntryId, _ => 0);
-        var assigned = new HashSet<Guid>(); // unit IDs that have been assigned
+        List<ProposedAssignment> assignments = new();
+        List<ConflictItem> conflicts = new();
+        Dictionary<Guid, int> slotCapacity = input.Slots.ToDictionary(s => s.WeeklyTemplateEntryId, s => s.MaxCapacity);
+        Dictionary<Guid, int> slotUsed = input.Slots.ToDictionary(s => s.WeeklyTemplateEntryId, _ => 0);
+        // Track which slots have assignments and whether they are open to merging
+        Dictionary<Guid, bool> slotIsOpenToMerging = new();
+        HashSet<Guid> assigned = new(); // unit IDs that have been assigned
 
-        var groups = input.Units.Where(u => u.IsGroup).ToList();
-        var solos = input.Units.Where(u => !u.IsGroup).ToList();
+        List<EnrollmentUnit> groups = input.Units.Where(u => u.IsGroup).ToList();
+        List<EnrollmentUnit> solos = input.Units.Where(u => !u.IsGroup).ToList();
 
-        // Step 1: Lock pre-formed groups to their best viable slot
-        foreach (var group in groups)
+        // Step 1: Lock pre-formed groups that are NOT open to grouping (exclusive slots)
+        foreach (EnrollmentUnit group in groups.Where(g => !g.IsOpenToGrouping))
         {
-            var bestSlot = GetBestViableSlot(group, slotCapacity, slotUsed);
+            Guid? bestSlot = GetBestExclusiveSlot(group, slotCapacity, slotUsed, slotIsOpenToMerging);
             if (bestSlot.HasValue)
             {
                 assignments.Add(new ProposedAssignment(bestSlot.Value, group.GroupId, null, group.Size));
                 slotUsed[bestSlot.Value] += group.Size;
+                slotIsOpenToMerging[bestSlot.Value] = false;
                 assigned.Add(group.Id);
             }
         }
 
-        // Step 2: Lock uncontested slots (iterate until stable)
-        var unassignedSolos = solos.Where(u => !assigned.Contains(u.Id)).ToList();
+        // Step 2: Lock pre-formed groups that ARE open to grouping
+        foreach (EnrollmentUnit group in groups.Where(g => g.IsOpenToGrouping && !assigned.Contains(g.Id)))
+        {
+            Guid? bestSlot = GetBestViableSlot(group, slotCapacity, slotUsed);
+            if (bestSlot.HasValue)
+            {
+                assignments.Add(new ProposedAssignment(bestSlot.Value, group.GroupId, null, group.Size));
+                slotUsed[bestSlot.Value] += group.Size;
+                slotIsOpenToMerging[bestSlot.Value] = true;
+                assigned.Add(group.Id);
+            }
+        }
+
+        // Step 3: Lock uncontested slots (iterate until stable)
+        List<EnrollmentUnit> unassignedSolos = solos.Where(u => !assigned.Contains(u.Id)).ToList();
         bool changed;
         do
         {
             changed = false;
-            foreach (var slotId in slotCapacity.Keys)
+            foreach (Guid slotId in slotCapacity.Keys)
             {
-                var remaining = slotCapacity[slotId] - slotUsed[slotId];
+                int remaining = slotCapacity[slotId] - slotUsed[slotId];
                 if (remaining <= 0) continue;
 
-                var candidates = unassignedSolos
+                // Skip slots that are exclusively taken (not open to merging)
+                if (slotIsOpenToMerging.TryGetValue(slotId, out bool isOpen) && !isOpen)
+                    continue;
+
+                List<EnrollmentUnit> candidates = unassignedSolos
                     .Where(u => !assigned.Contains(u.Id)
-                        && u.Preferences.TryGetValue(slotId, out var pref)
+                        && u.Preferences.TryGetValue(slotId, out SlotPreference pref)
                         && pref != SlotPreference.Unavailable)
                     .ToList();
 
                 if (candidates.Count == 1 && candidates[0].Size <= remaining)
                 {
-                    var unit = candidates[0];
+                    EnrollmentUnit unit = candidates[0];
                     assignments.Add(new ProposedAssignment(slotId, null, unit.EnrollmentIds[0], unit.Size));
                     slotUsed[slotId] += unit.Size;
                     assigned.Add(unit.Id);
@@ -60,42 +80,51 @@ public static class SchedulingAlgorithm
             }
         } while (changed);
 
-        // Step 3: Auto-group open solos with overlapping preferred slots
-        var openSolos = unassignedSolos
+        // Step 4: Auto-merge open units (solos AND groups with IsOpenToGrouping)
+        List<EnrollmentUnit> openUnits = input.Units
             .Where(u => !assigned.Contains(u.Id) && u.IsOpenToGrouping)
             .ToList();
 
-        if (openSolos.Count >= 2)
+        if (openUnits.Count >= 2)
         {
-            var autoGrouped = AutoGroupSolos(openSolos, slotCapacity, slotUsed);
-            foreach (var (slotId, members) in autoGrouped)
+            List<(Guid SlotId, List<EnrollmentUnit> Members)> autoMerged = AutoMergeUnits(openUnits, slotCapacity, slotUsed, slotIsOpenToMerging);
+            foreach ((Guid slotId, List<EnrollmentUnit> members) in autoMerged)
             {
-                foreach (var member in members)
+                foreach (EnrollmentUnit member in members)
                 {
-                    assignments.Add(new ProposedAssignment(slotId, null, member.EnrollmentIds[0], member.Size));
+                    if (member.IsGroup)
+                    {
+                        assignments.Add(new ProposedAssignment(slotId, member.GroupId, null, member.Size, IsAutoMerged: true));
+                    }
+                    else
+                    {
+                        assignments.Add(new ProposedAssignment(slotId, null, member.EnrollmentIds[0], member.Size, IsAutoMerged: true));
+                    }
                     slotUsed[slotId] += member.Size;
                     assigned.Add(member.Id);
                 }
             }
         }
 
-        // Step 4: Assign remaining solos to best available slot
-        var remaining2 = unassignedSolos.Where(u => !assigned.Contains(u.Id)).ToList();
-        foreach (var unit in remaining2)
+        // Step 5: Assign remaining solos to best available slot
+        List<EnrollmentUnit> remainingSolos = unassignedSolos.Where(u => !assigned.Contains(u.Id)).ToList();
+        foreach (EnrollmentUnit unit in remainingSolos)
         {
-            var bestSlot = GetBestViableSlot(unit, slotCapacity, slotUsed);
+            Guid? bestSlot = GetBestViableSlot(unit, slotCapacity, slotUsed);
             if (bestSlot.HasValue)
             {
-                assignments.Add(new ProposedAssignment(bestSlot.Value, null, unit.EnrollmentIds[0], unit.Size));
+                // Check if this slot already has assignments that are open to merging
+                bool isMerging = slotIsOpenToMerging.TryGetValue(bestSlot.Value, out bool open) && open && slotUsed[bestSlot.Value] > 0;
+                assignments.Add(new ProposedAssignment(bestSlot.Value, null, unit.EnrollmentIds[0], unit.Size, IsAutoMerged: isMerging));
                 slotUsed[bestSlot.Value] += unit.Size;
                 assigned.Add(unit.Id);
             }
         }
 
-        // Step 5: Flag conflicts for unassigned units
-        foreach (var unit in input.Units.Where(u => !assigned.Contains(u.Id)))
+        // Step 6: Flag conflicts for unassigned units
+        foreach (EnrollmentUnit unit in input.Units.Where(u => !assigned.Contains(u.Id)))
         {
-            foreach (var name in unit.StudentNames)
+            foreach (string name in unit.StudentNames)
             {
                 conflicts.Add(new ConflictItem(
                     unit.EnrollmentIds[0],
@@ -104,7 +133,33 @@ public static class SchedulingAlgorithm
             }
         }
 
+        // Post-process: mark existing assignments in slots that got auto-merged units
+        HashSet<Guid> autoMergedSlots = new(assignments.Where(a => a.IsAutoMerged).Select(a => a.WeeklyTemplateEntryId));
+        assignments = assignments.Select(a =>
+            autoMergedSlots.Contains(a.WeeklyTemplateEntryId) ? a with { IsAutoMerged = true } : a
+        ).ToList();
+
         return new SchedulingResult(assignments, conflicts);
+    }
+
+    /// <summary>
+    /// Find the best slot that is either empty or only has open-to-merging assignments.
+    /// </summary>
+    private static Guid? GetBestExclusiveSlot(
+        EnrollmentUnit unit,
+        Dictionary<Guid, int> slotCapacity,
+        Dictionary<Guid, int> slotUsed,
+        Dictionary<Guid, bool> slotIsOpenToMerging)
+    {
+        return unit.Preferences
+            .Where(p => p.Value != SlotPreference.Unavailable
+                && slotCapacity.ContainsKey(p.Key)
+                && slotCapacity[p.Key] - slotUsed[p.Key] >= unit.Size
+                && !slotIsOpenToMerging.ContainsKey(p.Key)) // only empty/unassigned slots
+            .OrderByDescending(p => p.Value)
+            .ThenBy(p => slotUsed[p.Key])
+            .Select(p => (Guid?)p.Key)
+            .FirstOrDefault();
     }
 
     private static Guid? GetBestViableSlot(
@@ -116,37 +171,56 @@ public static class SchedulingAlgorithm
             .Where(p => p.Value != SlotPreference.Unavailable
                 && slotCapacity.ContainsKey(p.Key)
                 && slotCapacity[p.Key] - slotUsed[p.Key] >= unit.Size)
-            .OrderByDescending(p => p.Value) // Preferred (2) before Available (1)
-            .ThenBy(p => slotUsed[p.Key]) // prefer emptier slots
+            .OrderByDescending(p => p.Value)
+            .ThenBy(p => slotUsed[p.Key])
             .Select(p => (Guid?)p.Key)
             .FirstOrDefault();
     }
 
-    private static List<(Guid SlotId, List<EnrollmentUnit> Members)> AutoGroupSolos(
-        List<EnrollmentUnit> openSolos,
+    /// <summary>
+    /// Auto-merge open units (solos and groups with IsOpenToGrouping) into shared slots.
+    /// </summary>
+    private static List<(Guid SlotId, List<EnrollmentUnit> Members)> AutoMergeUnits(
+        List<EnrollmentUnit> openUnits,
         Dictionary<Guid, int> slotCapacity,
-        Dictionary<Guid, int> slotUsed)
+        Dictionary<Guid, int> slotUsed,
+        Dictionary<Guid, bool> slotIsOpenToMerging)
     {
-        var result = new List<(Guid, List<EnrollmentUnit>)>();
-        var used = new HashSet<Guid>();
+        List<(Guid, List<EnrollmentUnit>)> result = new();
+        HashSet<Guid> used = new();
 
-        // For each slot, find solos that prefer it and group them
-        foreach (var slotId in slotCapacity.Keys)
+        foreach (Guid slotId in slotCapacity.Keys)
         {
-            var remaining = slotCapacity[slotId] - slotUsed[slotId];
+            // Skip slots that are exclusively taken
+            if (slotIsOpenToMerging.TryGetValue(slotId, out bool isOpen) && !isOpen)
+                continue;
+
+            int remaining = slotCapacity[slotId] - slotUsed[slotId];
             if (remaining < 2) continue;
 
-            var candidates = openSolos
+            List<EnrollmentUnit> candidates = openUnits
                 .Where(u => !used.Contains(u.Id)
-                    && u.Preferences.TryGetValue(slotId, out var pref)
+                    && u.Size <= remaining
+                    && u.Preferences.TryGetValue(slotId, out SlotPreference pref)
                     && pref == SlotPreference.Preferred)
-                .Take(remaining)
                 .ToList();
 
-            if (candidates.Count >= 2)
+            // Greedily pack candidates into the slot
+            List<EnrollmentUnit> selected = new();
+            int filled = 0;
+            foreach (EnrollmentUnit candidate in candidates)
             {
-                result.Add((slotId, candidates));
-                foreach (var c in candidates)
+                if (filled + candidate.Size <= remaining)
+                {
+                    selected.Add(candidate);
+                    filled += candidate.Size;
+                }
+            }
+
+            if (selected.Count >= 2 || (selected.Count >= 1 && slotUsed[slotId] > 0))
+            {
+                result.Add((slotId, selected));
+                foreach (EnrollmentUnit c in selected)
                     used.Add(c.Id);
             }
         }

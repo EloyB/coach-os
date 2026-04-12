@@ -15,6 +15,7 @@ public class ScheduleAssignment : BaseEntity
     public Guid? EnrollmentGroupId { get; set; }
     public Guid? EnrollmentId { get; set; }
     public ScheduleAssignmentStatus Status { get; set; }
+    public bool IsAutoMerged { get; set; }
 
     // Navigation properties
     public Organization Organization { get; set; } = null!;

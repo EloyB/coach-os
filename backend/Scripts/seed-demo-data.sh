@@ -236,6 +236,237 @@ for i in $(seq 0 9); do
 done
 echo "   Created $enrollCount enrollments"
 
+# 7. Create a planning-ready series with multiple time slots and diverse enrollments
+echo ""
+echo "7. Creating planning-ready series..."
+
+# Get a second trainer ID if available
+trainerId2=$(echo "$trainerList" | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+active = [t for t in data if t.get('isActive')]
+print(active[1]['id'] if len(active) > 1 else active[0]['id'] if active else '')
+" 2>/dev/null)
+
+# Generate lessons JSON from weekly template
+lessonsJson=$(python3 << PYEOF2
+import json
+from datetime import datetime, timedelta
+
+start = datetime.strptime("$today", "%Y-%m-%d")
+end = datetime.strptime("$endDate", "%Y-%m-%d")
+
+template = [
+    (0, "09:00", "10:00", "Baan 1", 4),
+    (0, "09:00", "10:00", "Baan 2", 4),
+    (0, "11:00", "12:00", "Baan 1", 4),
+    (2, "10:00", "11:00", "Baan 1", 4),
+    (2, "14:00", "15:00", "Baan 2", 4),
+    (4, "16:00", "17:00", "Baan 1", 4),
+]
+
+lessons = []
+dow = start.weekday()
+week_start = start - timedelta(days=dow)
+current = week_start
+
+while current <= end:
+    for day_of_week, st, et, court, ms in template:
+        lesson_date = current + timedelta(days=day_of_week)
+        if lesson_date < start or lesson_date > end:
+            continue
+        lessons.append({
+            "date": lesson_date.strftime("%Y-%m-%d"),
+            "startTime": st,
+            "endTime": et,
+            "courtName": court,
+            "maxStudents": ms,
+        })
+    current += timedelta(days=7)
+
+print(json.dumps(lessons))
+PYEOF2
+)
+
+planningSeriesId=$(invoke_api POST "/lessonseries" "{
+    \"tennisClubId\": \"$clubId\",
+    \"name\": \"Zomerlessen 2026\",
+    \"description\": \"Lesreeks met meerdere trainers en tijdsloten. Perfect om de planning te testen.\",
+    \"level\": 2, \"price\": 150.00,
+    \"startDate\": \"$today\", \"endDate\": \"$endDate\",
+    \"registrationDeadline\": \"$deadline\", \"maxRegistrations\": 24,
+    \"weeklyTemplate\": [
+        {\"dayOfWeek\": 0, \"startTime\": \"09:00\", \"endTime\": \"10:00\", \"trainerId\": null, \"courtName\": \"Baan 1\", \"maxStudents\": 4},
+        {\"dayOfWeek\": 0, \"startTime\": \"09:00\", \"endTime\": \"10:00\", \"trainerId\": null, \"courtName\": \"Baan 2\", \"maxStudents\": 4},
+        {\"dayOfWeek\": 0, \"startTime\": \"11:00\", \"endTime\": \"12:00\", \"trainerId\": null, \"courtName\": \"Baan 1\", \"maxStudents\": 4},
+        {\"dayOfWeek\": 2, \"startTime\": \"10:00\", \"endTime\": \"11:00\", \"trainerId\": null, \"courtName\": \"Baan 1\", \"maxStudents\": 4},
+        {\"dayOfWeek\": 2, \"startTime\": \"14:00\", \"endTime\": \"15:00\", \"trainerId\": null, \"courtName\": \"Baan 2\", \"maxStudents\": 4},
+        {\"dayOfWeek\": 4, \"startTime\": \"16:00\", \"endTime\": \"17:00\", \"trainerId\": null, \"courtName\": \"Baan 1\", \"maxStudents\": 4}
+    ],
+    \"lessons\": $lessonsJson
+}" "$token")
+planningSeriesId=$(echo "$planningSeriesId" | tr -d '"')
+
+if [ -z "$planningSeriesId" ] || [ "$planningSeriesId" = "null" ]; then
+    echo "   Failed to create planning series."
+else
+    echo "   Created: Zomerlessen 2026 ($planningSeriesId)"
+
+    # Fetch time slot IDs
+    echo "   Fetching time slots..."
+    slotsJson=$(invoke_api GET "/public/lessonseries/$planningSeriesId/timeslots" "" "")
+    slotIds=$(echo "$slotsJson" | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+for s in sorted(data, key=lambda x: (x['dayOfWeek'], x['startTime'], x.get('courtName',''))):
+    print(s['id'])
+" 2>/dev/null)
+
+    # Convert to array
+    IFS=$'\n' read -r -d '' -a slotArr <<< "$slotIds"
+    echo "   Found ${#slotArr[@]} time slots"
+
+    # Slots by index (sorted by day+time+court):
+    # 0: Ma 09:00 Baan 1   3: Wo 10:00 Baan 1
+    # 1: Ma 09:00 Baan 2   4: Wo 14:00 Baan 2
+    # 2: Ma 11:00 Baan 1   5: Vr 16:00 Baan 1
+
+    echo ""
+    echo "8. Creating enrollments with preferences and groups..."
+
+    # Group A: Family Claes (3 people, prefer Mon morning, open to merging)
+    echo "   Enrolling: Family Claes (group of 3, open to merging)..."
+    invoke_api POST "/public/lessonseries/$planningSeriesId/enroll" "{
+        \"studentName\": \"Emma Claes\", \"studentEmail\": \"emma.claes@tennis.be\",
+        \"enrollmentType\": \"group\", \"isOpenToGrouping\": true,
+        \"timeSlotPreferences\": [
+            {\"weeklyTemplateEntryId\": \"${slotArr[0]}\", \"preference\": 2},
+            {\"weeklyTemplateEntryId\": \"${slotArr[1]}\", \"preference\": 2},
+            {\"weeklyTemplateEntryId\": \"${slotArr[2]}\", \"preference\": 3},
+            {\"weeklyTemplateEntryId\": \"${slotArr[3]}\", \"preference\": 3},
+            {\"weeklyTemplateEntryId\": \"${slotArr[4]}\", \"preference\": 3},
+            {\"weeklyTemplateEntryId\": \"${slotArr[5]}\", \"preference\": 3}
+        ],
+        \"groupMembers\": [
+            {\"studentName\": \"Lucas Claes\", \"studentEmail\": \"lucas.claes@tennis.be\", \"responses\": []},
+            {\"studentName\": \"Lotte Claes\", \"studentEmail\": \"lotte.claes@tennis.be\", \"responses\": []}
+        ],
+        \"responses\": []
+    }" > /dev/null
+
+    # Group B: Hermans-Lambert (2 people, prefer Wed, exclusive — no merging)
+    echo "   Enrolling: Hermans & Lambert (group of 2, exclusive)..."
+    invoke_api POST "/public/lessonseries/$planningSeriesId/enroll" "{
+        \"studentName\": \"Thomas Hermans\", \"studentEmail\": \"thomas.h@tennis.be\",
+        \"enrollmentType\": \"group\", \"isOpenToGrouping\": false,
+        \"timeSlotPreferences\": [
+            {\"weeklyTemplateEntryId\": \"${slotArr[0]}\", \"preference\": 3},
+            {\"weeklyTemplateEntryId\": \"${slotArr[1]}\", \"preference\": 3},
+            {\"weeklyTemplateEntryId\": \"${slotArr[2]}\", \"preference\": 3},
+            {\"weeklyTemplateEntryId\": \"${slotArr[3]}\", \"preference\": 2},
+            {\"weeklyTemplateEntryId\": \"${slotArr[4]}\", \"preference\": 2},
+            {\"weeklyTemplateEntryId\": \"${slotArr[5]}\", \"preference\": 3}
+        ],
+        \"groupMembers\": [
+            {\"studentName\": \"Marie Lambert\", \"studentEmail\": \"marie.l@tennis.be\", \"responses\": []}
+        ],
+        \"responses\": []
+    }" > /dev/null
+
+    # Solo: Noah — open, prefers Mon (should auto-merge with Julie)
+    echo "   Enrolling: Noah Willems (solo, open)..."
+    invoke_api POST "/public/lessonseries/$planningSeriesId/enroll" "{
+        \"studentName\": \"Noah Willems\", \"studentEmail\": \"noah.w@tennis.be\",
+        \"enrollmentType\": \"solo\", \"isOpenToGrouping\": true,
+        \"timeSlotPreferences\": [
+            {\"weeklyTemplateEntryId\": \"${slotArr[0]}\", \"preference\": 2},
+            {\"weeklyTemplateEntryId\": \"${slotArr[1]}\", \"preference\": 2},
+            {\"weeklyTemplateEntryId\": \"${slotArr[2]}\", \"preference\": 1},
+            {\"weeklyTemplateEntryId\": \"${slotArr[3]}\", \"preference\": 3},
+            {\"weeklyTemplateEntryId\": \"${slotArr[4]}\", \"preference\": 3},
+            {\"weeklyTemplateEntryId\": \"${slotArr[5]}\", \"preference\": 3}
+        ],
+        \"responses\": []
+    }" > /dev/null
+
+    # Solo: Julie — open, also prefers Mon (auto-merge candidate with Noah)
+    echo "   Enrolling: Julie Maes (solo, open)..."
+    invoke_api POST "/public/lessonseries/$planningSeriesId/enroll" "{
+        \"studentName\": \"Julie Maes\", \"studentEmail\": \"julie.m@tennis.be\",
+        \"enrollmentType\": \"solo\", \"isOpenToGrouping\": true,
+        \"timeSlotPreferences\": [
+            {\"weeklyTemplateEntryId\": \"${slotArr[0]}\", \"preference\": 2},
+            {\"weeklyTemplateEntryId\": \"${slotArr[1]}\", \"preference\": 2},
+            {\"weeklyTemplateEntryId\": \"${slotArr[2]}\", \"preference\": 3},
+            {\"weeklyTemplateEntryId\": \"${slotArr[3]}\", \"preference\": 3},
+            {\"weeklyTemplateEntryId\": \"${slotArr[4]}\", \"preference\": 3},
+            {\"weeklyTemplateEntryId\": \"${slotArr[5]}\", \"preference\": 3}
+        ],
+        \"responses\": []
+    }" > /dev/null
+
+    # Solo: Axel — exclusive, EVERYTHING unavailable = CONFLICT (needs manual assign)
+    echo "   Enrolling: Axel Dubois (solo, exclusive, ALL unavailable = conflict)..."
+    invoke_api POST "/public/lessonseries/$planningSeriesId/enroll" "{
+        \"studentName\": \"Axel Dubois\", \"studentEmail\": \"axel.d@tennis.be\",
+        \"enrollmentType\": \"solo\", \"isOpenToGrouping\": false,
+        \"timeSlotPreferences\": [
+            {\"weeklyTemplateEntryId\": \"${slotArr[0]}\", \"preference\": 3},
+            {\"weeklyTemplateEntryId\": \"${slotArr[1]}\", \"preference\": 3},
+            {\"weeklyTemplateEntryId\": \"${slotArr[2]}\", \"preference\": 3},
+            {\"weeklyTemplateEntryId\": \"${slotArr[3]}\", \"preference\": 3},
+            {\"weeklyTemplateEntryId\": \"${slotArr[4]}\", \"preference\": 3},
+            {\"weeklyTemplateEntryId\": \"${slotArr[5]}\", \"preference\": 3}
+        ],
+        \"responses\": []
+    }" > /dev/null
+
+    # Solo: Bram — open, only Fri available (limited options, might conflict)
+    echo "   Enrolling: Bram Wouters (solo, open, only Fri)..."
+    invoke_api POST "/public/lessonseries/$planningSeriesId/enroll" "{
+        \"studentName\": \"Bram Wouters\", \"studentEmail\": \"bram.w@tennis.be\",
+        \"enrollmentType\": \"solo\", \"isOpenToGrouping\": true,
+        \"timeSlotPreferences\": [
+            {\"weeklyTemplateEntryId\": \"${slotArr[0]}\", \"preference\": 3},
+            {\"weeklyTemplateEntryId\": \"${slotArr[1]}\", \"preference\": 3},
+            {\"weeklyTemplateEntryId\": \"${slotArr[2]}\", \"preference\": 3},
+            {\"weeklyTemplateEntryId\": \"${slotArr[3]}\", \"preference\": 3},
+            {\"weeklyTemplateEntryId\": \"${slotArr[4]}\", \"preference\": 3},
+            {\"weeklyTemplateEntryId\": \"${slotArr[5]}\", \"preference\": 2}
+        ],
+        \"responses\": []
+    }" > /dev/null
+
+    # Solo: Lotte VD — open, prefers multiple (algorithm should place, but maybe contested)
+    echo "   Enrolling: Lotte Van Damme (solo, open, multiple options)..."
+    invoke_api POST "/public/lessonseries/$planningSeriesId/enroll" "{
+        \"studentName\": \"Lotte Van Damme\", \"studentEmail\": \"lotte.vd@tennis.be\",
+        \"enrollmentType\": \"solo\", \"isOpenToGrouping\": true,
+        \"timeSlotPreferences\": [
+            {\"weeklyTemplateEntryId\": \"${slotArr[0]}\", \"preference\": 2},
+            {\"weeklyTemplateEntryId\": \"${slotArr[1]}\", \"preference\": 1},
+            {\"weeklyTemplateEntryId\": \"${slotArr[2]}\", \"preference\": 1},
+            {\"weeklyTemplateEntryId\": \"${slotArr[3]}\", \"preference\": 2},
+            {\"weeklyTemplateEntryId\": \"${slotArr[4]}\", \"preference\": 1},
+            {\"weeklyTemplateEntryId\": \"${slotArr[5]}\", \"preference\": 2}
+        ],
+        \"responses\": []
+    }" > /dev/null
+
+    # Solo: Nina — exclusive, NO preferences submitted at all = CONFLICT
+    echo "   Enrolling: Nina Cools (solo, exclusive, NO preferences = conflict)..."
+    invoke_api POST "/public/lessonseries/$planningSeriesId/enroll" "{
+        \"studentName\": \"Nina Cools\", \"studentEmail\": \"nina.c@tennis.be\",
+        \"enrollmentType\": \"solo\", \"isOpenToGrouping\": false,
+        \"timeSlotPreferences\": [],
+        \"responses\": []
+    }" > /dev/null
+
+    echo "   Done — 9 enrollments (2 groups + 7 solos)"
+    echo "   Expected conflicts: Axel (all unavailable), Nina (no preferences)"
+    echo "   Expected auto-merge: Noah + Julie (both prefer Mon)"
+fi
+
 # Done
 echo ""
 echo "=== Seed Complete ==="
@@ -248,4 +479,9 @@ echo "URLs:"
 echo "  Frontend:  http://localhost:5317"
 echo "  API:       http://localhost:5142/swagger"
 echo "  Email:     http://localhost:3001"
+echo ""
+echo "Planning test series: Zomerlessen 2026"
+echo "  6 time slots (Ma/Wo/Vr), 2 trainers, 2 courts"
+echo "  2 groups (1 open to merge, 1 exclusive)"
+echo "  7 solos (5 open to grouping, 2 exclusive)"
 echo ""

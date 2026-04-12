@@ -8,6 +8,13 @@ namespace CoachOS.Infrastructure.Repositories;
 
 public class EnrollmentRepository(ApplicationDbContext context) : IEnrollmentRepository
 {
+    public async Task<Enrollment?> GetByIdAsync(
+        Guid id, Guid organizationId, CancellationToken ct = default)
+    {
+        return await context.Enrollments
+            .FirstOrDefaultAsync(e => e.Id == id && e.OrganizationId == organizationId, ct);
+    }
+
     public async Task<List<Enrollment>> GetBySeriesAsync(
         Guid lessonSeriesId, Guid organizationId, CancellationToken ct = default)
     {

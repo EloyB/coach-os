@@ -7,4 +7,5 @@ public record PlanningAssignmentDto
     public Guid? EnrollmentId { get; init; }
     public Guid? GroupId { get; init; }
     public string Status { get; init; } = string.Empty;
+    public bool IsAutoMerged { get; init; }
 }

@@ -278,8 +278,7 @@ export default function EnrollPage() {
         timeSlotPreferences:
           timeSlotPreferences.length > 0 ? timeSlotPreferences : undefined,
         enrollmentType,
-        isOpenToGrouping:
-          enrollmentType === "solo" ? isOpenToGrouping : undefined,
+        isOpenToGrouping,
         groupMembers:
           enrollmentType === "group" && groupMembers.length > 0
             ? groupMembers.map((m) => ({
@@ -664,8 +663,8 @@ export default function EnrollPage() {
                     </label>
                   </div>
 
-                  {/* Solo: open to grouping */}
-                  {enrollmentType === "solo" && (
+                  {/* Open to grouping (both solo and group) */}
+                  {(enrollmentType === "solo" || enrollmentType === "group") && (
                     <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
                       <label className="flex items-start gap-3 cursor-pointer">
                         <input

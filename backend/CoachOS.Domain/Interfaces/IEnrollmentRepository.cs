@@ -5,6 +5,9 @@ namespace CoachOS.Domain.Interfaces;
 
 public interface IEnrollmentRepository
 {
+    Task<Enrollment?> GetByIdAsync(
+        Guid id, Guid organizationId, CancellationToken ct = default);
+
     Task<List<Enrollment>> GetBySeriesAsync(
         Guid lessonSeriesId, Guid organizationId, CancellationToken ct = default);
 
