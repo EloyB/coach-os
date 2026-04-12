@@ -9,6 +9,7 @@ export interface PlanningTimeSlotDto {
   endTime: string;
   courtName: string | null;
   trainerId: string | null;
+  trainerName: string | null;
   maxCapacity: number;
 }
 
@@ -16,6 +17,7 @@ export interface PlanningEnrollmentDto {
   id: string;
   studentName: string;
   studentEmail: string;
+  studentPhone: string | null;
   isOpenToGrouping: boolean;
   groupId: string | null;
   /** Map of timeSlotId → "Preferred" | "Available" | "Unavailable" */
@@ -36,10 +38,12 @@ export interface PlanningAssignmentDto {
   groupId: string | null;
   status: string; // "Proposed" | "Confirmed"
   isAutoMerged: boolean;
+  isLocked: boolean;
 }
 
 export interface PlanningOverviewDto {
   planningStatus: string; // "Enrollment" | "Planning" | "Scheduled"
+  planningLastEditedAt: string | null;
   timeSlots: PlanningTimeSlotDto[];
   enrollments: PlanningEnrollmentDto[];
   groups: PlanningGroupDto[];
@@ -53,7 +57,8 @@ export interface UpdateAssignmentRequest {
 }
 
 export interface CreateAssignmentRequest {
-  enrollmentId: string;
+  enrollmentId?: string;
+  groupId?: string;
   weeklyTemplateEntryId: string;
 }
 
@@ -72,8 +77,22 @@ export async function getPlanningOverview(
   return data;
 }
 
-export async function generatePlanning(seriesId: string): Promise<void> {
-  await apiClient.post(`/lessonseries/${seriesId}/planning/generate`);
+export async function generatePlanning(
+  seriesId: string,
+  force = false
+): Promise<void> {
+  await apiClient.post(
+    `/lessonseries/${seriesId}/planning/generate${force ? "?force=true" : ""}`
+  );
+}
+
+export async function deleteAssignment(
+  seriesId: string,
+  assignmentId: string
+): Promise<void> {
+  await apiClient.delete(
+    `/lessonseries/${seriesId}/planning/assignments/${assignmentId}`
+  );
 }
 
 export async function createAssignment(

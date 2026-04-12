@@ -118,6 +118,7 @@ export default function EnrollPage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [baseErrors, setBaseErrors] = useState<{
@@ -274,6 +275,7 @@ export default function EnrollPage() {
       await submitEnrollment(seriesId, {
         studentName: `${firstName.trim()} ${lastName.trim()}`,
         studentEmail: email.trim(),
+        studentPhone: phone.trim() || undefined,
         responses,
         timeSlotPreferences:
           timeSlotPreferences.length > 0 ? timeSlotPreferences : undefined,
@@ -590,6 +592,18 @@ export default function EnrollPage() {
                       {baseErrors.email && (
                         <p className="text-xs text-red-500 mt-1">{baseErrors.email}</p>
                       )}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                        {t("form_phone")}
+                      </label>
+                      <input
+                        type="tel"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        placeholder="+32 471 23 45 67"
+                        className={inputClass(false)}
+                      />
                     </div>
                   </div>
                 </div>

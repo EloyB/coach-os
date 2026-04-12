@@ -63,12 +63,14 @@ export interface TimeSlotPreferenceRequest {
 export interface GroupMemberRequest {
   studentName: string;
   studentEmail: string;
+  studentPhone?: string;
   responses: { formFieldId: string; value: string }[];
 }
 
 export interface SubmitEnrollmentRequest {
   studentName: string;
   studentEmail: string;
+  studentPhone?: string;
   responses: { formFieldId: string; value: string }[];
   timeSlotPreferences?: TimeSlotPreferenceRequest[];
   enrollmentType?: string; // "solo" | "group"

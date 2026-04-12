@@ -789,13 +789,24 @@ function EnrollmentRow({
           <span className="text-xs text-gray-400">
             {new Date(enrollment.enrolledAt).toLocaleDateString("nl-BE")}
           </span>
-          {enrollment.status === "Confirmed" ? (
+          {enrollment.status === "Confirmed" && (
             <Badge className="bg-green-100 text-green-700 border-0 text-xs">
               Bevestigd
             </Badge>
-          ) : (
-            <Badge className="bg-gray-100 text-gray-500 border-0 text-xs">
+          )}
+          {enrollment.status === "Pending" && (
+            <Badge className="bg-amber-100 text-amber-700 border-0 text-xs">
+              In afwachting
+            </Badge>
+          )}
+          {enrollment.status === "Cancelled" && (
+            <Badge className="bg-red-100 text-red-700 border-0 text-xs">
               Geannuleerd
+            </Badge>
+          )}
+          {enrollment.status === "Waitlisted" && (
+            <Badge className="bg-blue-100 text-blue-700 border-0 text-xs">
+              Wachtlijst
             </Badge>
           )}
           {hasResponses &&
@@ -840,7 +851,7 @@ function EnrollmentsSection({ seriesId }: { seriesId: string }) {
     setTimeout(() => setCopied(false), 2000);
   }
 
-  const active = enrollments.filter((e) => e.status === "Confirmed");
+  const active = enrollments.filter((e) => e.status === "Confirmed" || e.status === "Pending");
 
   return (
     <div className="bg-white rounded-xl shadow-sm shadow-gray-100 overflow-hidden">
