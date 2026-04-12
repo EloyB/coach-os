@@ -71,6 +71,7 @@ public class StudentConfirmationService(
         token.Response = ConfirmationResponse.Confirmed;
         token.RespondedAt = DateTime.UtcNow;
 
+        ConfirmEnrollmentStatuses(assignment);
         await paymentRepo.SaveChangesAsync(ct);
 
         // If this was the last pending token for the series, flip series to Scheduled.
@@ -178,6 +179,7 @@ public class StudentConfirmationService(
         token.Response = ConfirmationResponse.Confirmed;
         token.RespondedAt = DateTime.UtcNow;
 
+        ConfirmEnrollmentStatuses(oldAssignment);
         await paymentRepo.SaveChangesAsync(ct);
 
         await TryFinalizeSeriesAsync(oldAssignment.LessonSerieId, token.OrganizationId, ct);
@@ -294,6 +296,19 @@ public class StudentConfirmationService(
             series.PlanningStatus = PlanningStatus.Scheduled;
             await seriesRepo.SaveChangesAsync(ct);
             logger.LogInformation("Reeks {SeriesId} is volledig bevestigd — status Scheduled.", seriesId);
+        }
+    }
+
+    private static void ConfirmEnrollmentStatuses(ScheduleAssignment assignment)
+    {
+        if (assignment.EnrollmentGroupId.HasValue && assignment.EnrollmentGroup is not null)
+        {
+            foreach (var member in assignment.EnrollmentGroup.Members)
+                member.Status = EnrollmentStatus.Confirmed;
+        }
+        else if (assignment.Enrollment is not null)
+        {
+            assignment.Enrollment.Status = EnrollmentStatus.Confirmed;
         }
     }
 
