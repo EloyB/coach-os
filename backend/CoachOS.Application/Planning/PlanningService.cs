@@ -187,11 +187,15 @@ public class PlanningService(
             .Where(e => e.Status is EnrollmentStatus.Confirmed or EnrollmentStatus.Pending)
             .ToList();
 
-        var prefsByEnrollment = preferences
+        var prefsRawByEnrollment = preferences
             .GroupBy(p => p.EnrollmentId)
             .ToDictionary(
                 g => g.Key,
-                g => g.ToDictionary(p => p.WeeklyTemplateEntryId, p => p.Preference.ToString()));
+                g => g.ToDictionary(p => p.WeeklyTemplateEntryId, p => p.Preference));
+        var prefsByEnrollment = prefsRawByEnrollment
+            .ToDictionary(
+                kv => kv.Key,
+                kv => kv.Value.ToDictionary(p => p.Key, p => p.Value.ToString()));
 
         var trainerIds = series.WeeklyTemplate
             .Where(s => s.TrainerId.HasValue)
@@ -263,6 +267,9 @@ public class PlanningService(
             ? assignments.Max(a => a.UpdatedAt == default ? a.CreatedAt : a.UpdatedAt)
             : null;
 
+        var conflicts = BuildConflicts(
+            activeEnrollments, assignments, series.WeeklyTemplate.ToList(), prefsRawByEnrollment);
+
         return Result<PlanningOverviewDto>.Ok(new PlanningOverviewDto
         {
             PlanningStatus = series.PlanningStatus.ToString(),
@@ -271,7 +278,61 @@ public class PlanningService(
             Enrollments = enrollmentDtos,
             Groups = groupDtos,
             Assignments = assignmentDtos,
+            Conflicts = conflicts,
         });
+    }
+
+    private static List<PlanningConflictDto> BuildConflicts(
+        List<Enrollment> activeEnrollments,
+        List<ScheduleAssignment> assignments,
+        List<WeeklyTemplateEntry> slots,
+        Dictionary<Guid, Dictionary<Guid, SlotPreference>> prefsByEnrollment)
+    {
+        var conflicts = new List<PlanningConflictDto>();
+
+        // Assigned enrollment IDs (solo + group members)
+        var assignedEnrollmentIds = assignments
+            .SelectMany(a => a.EnrollmentGroup is not null
+                ? a.EnrollmentGroup.Members.Select(m => m.Id)
+                : a.EnrollmentId.HasValue ? [a.EnrollmentId.Value] : Array.Empty<Guid>())
+            .ToHashSet();
+
+        // 1. No viable slot — unassigned + every slot is Unavailable (or missing from prefs)
+        foreach (var enrollment in activeEnrollments)
+        {
+            if (assignedEnrollmentIds.Contains(enrollment.Id)) continue;
+
+            var prefs = prefsByEnrollment.GetValueOrDefault(enrollment.Id, new());
+            bool hasViable = slots.Any(s =>
+                prefs.TryGetValue(s.Id, out var p) &&
+                (p == SlotPreference.Preferred || p == SlotPreference.Available));
+
+            if (!hasViable)
+                conflicts.Add(new PlanningConflictDto
+                {
+                    EnrollmentId = enrollment.Id,
+                    Type = "no_viable_slot",
+                    Message = $"{enrollment.StudentName} heeft geen beschikbaar tijdslot.",
+                });
+        }
+
+        // 2. Oversubscribed slot — assigned count exceeds MaxStudents
+        foreach (var slot in slots)
+        {
+            var count = assignments
+                .Where(a => a.WeeklyTemplateEntryId == slot.Id)
+                .Sum(a => a.EnrollmentGroup?.Members.Count ?? 1);
+
+            if (count > slot.MaxStudents)
+                conflicts.Add(new PlanningConflictDto
+                {
+                    TimeSlotId = slot.Id,
+                    Type = "oversubscribed",
+                    Message = $"Tijdslot overboekt ({count}/{slot.MaxStudents}).",
+                });
+        }
+
+        return conflicts;
     }
 
     public async Task<Result<bool>> DeleteAssignmentAsync(
@@ -303,6 +364,14 @@ public class PlanningService(
             return Result<bool>.Fail(
                 new Error(ErrorCodes.Validation, "Bevestigde toewijzingen kunnen niet verplaatst worden."));
 
+        // Capacity guard on target slot (excluding the assignment being moved)
+        var capacityError = await EnsureSlotCapacityAsync(
+            seriesId, organizationId, request.WeeklyTemplateEntryId,
+            addSize: assignment.EnrollmentGroup?.Members.Count ?? 1,
+            excludeAssignmentId: assignment.Id, ct);
+        if (capacityError is not null)
+            return Result<bool>.Fail(capacityError);
+
         assignment.WeeklyTemplateEntryId = request.WeeklyTemplateEntryId;
         assignment.IsLocked = true;
         await scheduleAssignmentRepo.SaveChangesAsync(ct);
@@ -333,6 +402,11 @@ public class PlanningService(
         bool alreadyAssigned = existingAssignments.Any(a => a.EnrollmentId == request.EnrollmentId);
         if (alreadyAssigned)
             return Result<bool>.Fail(new Error(ErrorCodes.Validation, "Inschrijving is al toegewezen."));
+
+        var capacityError = await EnsureSlotCapacityAsync(
+            seriesId, organizationId, request.WeeklyTemplateEntryId, addSize: 1, excludeAssignmentId: null, ct);
+        if (capacityError is not null)
+            return Result<bool>.Fail(capacityError);
 
         ScheduleAssignment assignment = new()
         {
@@ -443,6 +517,26 @@ public class PlanningService(
             seriesId, proposedAssignments.Count);
 
         return Result<bool>.Ok(true);
+    }
+
+    private async Task<Error?> EnsureSlotCapacityAsync(
+        Guid seriesId, Guid organizationId, Guid slotId, int addSize,
+        Guid? excludeAssignmentId, CancellationToken ct)
+    {
+        var series = await lessonSeriesRepo.GetByIdAsync(seriesId, organizationId, ct);
+        var slot = series?.WeeklyTemplate.FirstOrDefault(s => s.Id == slotId);
+        if (slot is null) return null; // caller already validated
+
+        var existing = await scheduleAssignmentRepo.GetBySeriesAsync(seriesId, organizationId, ct);
+        var currentCount = existing
+            .Where(a => a.WeeklyTemplateEntryId == slotId && a.Id != excludeAssignmentId)
+            .Sum(a => a.EnrollmentGroup?.Members.Count ?? 1);
+
+        if (currentCount + addSize > slot.MaxStudents)
+            return new Error(ErrorCodes.Validation,
+                $"Tijdslot heeft geen plaats meer ({currentCount}/{slot.MaxStudents}).");
+
+        return null;
     }
 
     private static Dictionary<Guid, SlotPreference> IntersectPreferences(
