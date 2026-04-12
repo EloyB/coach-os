@@ -4,6 +4,7 @@ public record SubmitEnrollmentRequest
 {
     public string StudentName { get; init; } = string.Empty;
     public string StudentEmail { get; init; } = string.Empty;
+    public string? StudentPhone { get; init; }
     public List<FormResponseValueDto> Responses { get; init; } = new();
     public List<TimeSlotPreferenceDto>? TimeSlotPreferences { get; init; }
     public string EnrollmentType { get; init; } = "solo";

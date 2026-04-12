@@ -219,6 +219,7 @@ echo "6. Creating enrollments..."
 
 studentNames=("Emma Claes" "Lucas Peeters" "Lotte Van Damme" "Noah Willems" "Julie Maes" "Axel Dubois" "Sarah Jacobs" "Thomas Hermans" "Marie Lambert" "Bram Wouters")
 studentEmails=("emma.claes@gmail.com" "lucas.peeters@hotmail.com" "lotte.vd@outlook.com" "noah.w@gmail.com" "julie.maes@yahoo.com" "axel.dubois@gmail.com" "sarah.j@hotmail.com" "thomas.h@outlook.com" "marie.lambert@gmail.com" "bram.wouters@hotmail.com")
+studentPhones=("+32471234567" "+32472345678" "+32473456789" "+32474567890" "+32475678901" "+32476789012" "+32477890123" "+32478901234" "+32479012345" "+32470123456")
 
 enrollCount=0
 for i in $(seq 0 9); do
@@ -228,6 +229,7 @@ for i in $(seq 0 9); do
     result=$(invoke_api POST "/public/lessonseries/$targetSeries/enroll" "{
         \"studentName\": \"${studentNames[$i]}\",
         \"studentEmail\": \"${studentEmails[$i]}\",
+        \"studentPhone\": \"${studentPhones[$i]}\",
         \"responses\": []
     }")
     if [ -n "$result" ] && [ "$result" != "null" ]; then
@@ -337,7 +339,7 @@ for s in sorted(data, key=lambda x: (x['dayOfWeek'], x['startTime'], x.get('cour
     # Group A: Family Claes (3 people, prefer Mon morning, open to merging)
     echo "   Enrolling: Family Claes (group of 3, open to merging)..."
     invoke_api POST "/public/lessonseries/$planningSeriesId/enroll" "{
-        \"studentName\": \"Emma Claes\", \"studentEmail\": \"emma.claes@tennis.be\",
+        \"studentName\": \"Emma Claes\", \"studentEmail\": \"emma.claes@tennis.be\", \"studentPhone\": \"+32471111111\",
         \"enrollmentType\": \"group\", \"isOpenToGrouping\": true,
         \"timeSlotPreferences\": [
             {\"weeklyTemplateEntryId\": \"${slotArr[0]}\", \"preference\": 2},
@@ -348,8 +350,8 @@ for s in sorted(data, key=lambda x: (x['dayOfWeek'], x['startTime'], x.get('cour
             {\"weeklyTemplateEntryId\": \"${slotArr[5]}\", \"preference\": 3}
         ],
         \"groupMembers\": [
-            {\"studentName\": \"Lucas Claes\", \"studentEmail\": \"lucas.claes@tennis.be\", \"responses\": []},
-            {\"studentName\": \"Lotte Claes\", \"studentEmail\": \"lotte.claes@tennis.be\", \"responses\": []}
+            {\"studentName\": \"Lucas Claes\", \"studentEmail\": \"lucas.claes@tennis.be\", \"studentPhone\": \"+32471111112\", \"responses\": []},
+            {\"studentName\": \"Lotte Claes\", \"studentEmail\": \"lotte.claes@tennis.be\", \"studentPhone\": \"+32471111113\", \"responses\": []}
         ],
         \"responses\": []
     }" > /dev/null
@@ -357,7 +359,7 @@ for s in sorted(data, key=lambda x: (x['dayOfWeek'], x['startTime'], x.get('cour
     # Group B: Hermans-Lambert (2 people, prefer Wed, exclusive — no merging)
     echo "   Enrolling: Hermans & Lambert (group of 2, exclusive)..."
     invoke_api POST "/public/lessonseries/$planningSeriesId/enroll" "{
-        \"studentName\": \"Thomas Hermans\", \"studentEmail\": \"thomas.h@tennis.be\",
+        \"studentName\": \"Thomas Hermans\", \"studentEmail\": \"thomas.h@tennis.be\", \"studentPhone\": \"+32472222221\",
         \"enrollmentType\": \"group\", \"isOpenToGrouping\": false,
         \"timeSlotPreferences\": [
             {\"weeklyTemplateEntryId\": \"${slotArr[0]}\", \"preference\": 3},
@@ -368,7 +370,7 @@ for s in sorted(data, key=lambda x: (x['dayOfWeek'], x['startTime'], x.get('cour
             {\"weeklyTemplateEntryId\": \"${slotArr[5]}\", \"preference\": 3}
         ],
         \"groupMembers\": [
-            {\"studentName\": \"Marie Lambert\", \"studentEmail\": \"marie.l@tennis.be\", \"responses\": []}
+            {\"studentName\": \"Marie Lambert\", \"studentEmail\": \"marie.l@tennis.be\", \"studentPhone\": \"+32472222222\", \"responses\": []}
         ],
         \"responses\": []
     }" > /dev/null
@@ -376,7 +378,7 @@ for s in sorted(data, key=lambda x: (x['dayOfWeek'], x['startTime'], x.get('cour
     # Solo: Noah — open, prefers Mon (should auto-merge with Julie)
     echo "   Enrolling: Noah Willems (solo, open)..."
     invoke_api POST "/public/lessonseries/$planningSeriesId/enroll" "{
-        \"studentName\": \"Noah Willems\", \"studentEmail\": \"noah.w@tennis.be\",
+        \"studentName\": \"Noah Willems\", \"studentEmail\": \"noah.w@tennis.be\", \"studentPhone\": \"+32473333333\",
         \"enrollmentType\": \"solo\", \"isOpenToGrouping\": true,
         \"timeSlotPreferences\": [
             {\"weeklyTemplateEntryId\": \"${slotArr[0]}\", \"preference\": 2},
@@ -392,7 +394,7 @@ for s in sorted(data, key=lambda x: (x['dayOfWeek'], x['startTime'], x.get('cour
     # Solo: Julie — open, also prefers Mon (auto-merge candidate with Noah)
     echo "   Enrolling: Julie Maes (solo, open)..."
     invoke_api POST "/public/lessonseries/$planningSeriesId/enroll" "{
-        \"studentName\": \"Julie Maes\", \"studentEmail\": \"julie.m@tennis.be\",
+        \"studentName\": \"Julie Maes\", \"studentEmail\": \"julie.m@tennis.be\", \"studentPhone\": \"+32474444444\",
         \"enrollmentType\": \"solo\", \"isOpenToGrouping\": true,
         \"timeSlotPreferences\": [
             {\"weeklyTemplateEntryId\": \"${slotArr[0]}\", \"preference\": 2},
@@ -408,7 +410,7 @@ for s in sorted(data, key=lambda x: (x['dayOfWeek'], x['startTime'], x.get('cour
     # Solo: Axel — exclusive, EVERYTHING unavailable = CONFLICT (needs manual assign)
     echo "   Enrolling: Axel Dubois (solo, exclusive, ALL unavailable = conflict)..."
     invoke_api POST "/public/lessonseries/$planningSeriesId/enroll" "{
-        \"studentName\": \"Axel Dubois\", \"studentEmail\": \"axel.d@tennis.be\",
+        \"studentName\": \"Axel Dubois\", \"studentEmail\": \"axel.d@tennis.be\", \"studentPhone\": \"+32475555555\",
         \"enrollmentType\": \"solo\", \"isOpenToGrouping\": false,
         \"timeSlotPreferences\": [
             {\"weeklyTemplateEntryId\": \"${slotArr[0]}\", \"preference\": 3},
@@ -424,7 +426,7 @@ for s in sorted(data, key=lambda x: (x['dayOfWeek'], x['startTime'], x.get('cour
     # Solo: Bram — open, only Fri available (limited options, might conflict)
     echo "   Enrolling: Bram Wouters (solo, open, only Fri)..."
     invoke_api POST "/public/lessonseries/$planningSeriesId/enroll" "{
-        \"studentName\": \"Bram Wouters\", \"studentEmail\": \"bram.w@tennis.be\",
+        \"studentName\": \"Bram Wouters\", \"studentEmail\": \"bram.w@tennis.be\", \"studentPhone\": \"+32476666666\",
         \"enrollmentType\": \"solo\", \"isOpenToGrouping\": true,
         \"timeSlotPreferences\": [
             {\"weeklyTemplateEntryId\": \"${slotArr[0]}\", \"preference\": 3},
@@ -440,7 +442,7 @@ for s in sorted(data, key=lambda x: (x['dayOfWeek'], x['startTime'], x.get('cour
     # Solo: Lotte VD — open, prefers multiple (algorithm should place, but maybe contested)
     echo "   Enrolling: Lotte Van Damme (solo, open, multiple options)..."
     invoke_api POST "/public/lessonseries/$planningSeriesId/enroll" "{
-        \"studentName\": \"Lotte Van Damme\", \"studentEmail\": \"lotte.vd@tennis.be\",
+        \"studentName\": \"Lotte Van Damme\", \"studentEmail\": \"lotte.vd@tennis.be\", \"studentPhone\": \"+32477777777\",
         \"enrollmentType\": \"solo\", \"isOpenToGrouping\": true,
         \"timeSlotPreferences\": [
             {\"weeklyTemplateEntryId\": \"${slotArr[0]}\", \"preference\": 2},
@@ -456,7 +458,7 @@ for s in sorted(data, key=lambda x: (x['dayOfWeek'], x['startTime'], x.get('cour
     # Solo: Nina — exclusive, NO preferences submitted at all = CONFLICT
     echo "   Enrolling: Nina Cools (solo, exclusive, NO preferences = conflict)..."
     invoke_api POST "/public/lessonseries/$planningSeriesId/enroll" "{
-        \"studentName\": \"Nina Cools\", \"studentEmail\": \"nina.c@tennis.be\",
+        \"studentName\": \"Nina Cools\", \"studentEmail\": \"nina.c@tennis.be\", \"studentPhone\": null,
         \"enrollmentType\": \"solo\", \"isOpenToGrouping\": false,
         \"timeSlotPreferences\": [],
         \"responses\": []

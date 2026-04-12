@@ -226,6 +226,7 @@ public class PlanningService(
                 Id = e.Id,
                 StudentName = e.StudentName,
                 StudentEmail = e.StudentEmail,
+                StudentPhone = e.StudentPhone,
                 IsOpenToGrouping = e.IsOpenToGrouping,
                 GroupId = e.EnrollmentGroupId,
                 Preferences = prefsByEnrollment.GetValueOrDefault(e.Id, new()),

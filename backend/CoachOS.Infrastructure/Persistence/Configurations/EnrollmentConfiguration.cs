@@ -21,6 +21,9 @@ public class EnrollmentConfiguration : IEntityTypeConfiguration<Enrollment>
             .IsRequired()
             .HasMaxLength(200);
 
+        builder.Property(e => e.StudentPhone)
+            .HasMaxLength(30);
+
         builder.Property(e => e.Notes)
             .HasMaxLength(500);
 
