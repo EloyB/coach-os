@@ -249,7 +249,16 @@
     "copyEmail": "E-mail kopiëren",
     "emailCopied": "Gekopieerd!",
     "groupLeader": "leider van groep ({size})",
-    "allConfirmed": "Iedereen heeft bevestigd — planning is definitief."
+    "allConfirmed": "Iedereen heeft bevestigd — planning is definitief.",
+    "resend": "Opnieuw verzenden",
+    "resendSuccess": "Bevestigingsmail opnieuw verstuurd.",
+    "resendError": "E-mail kon niet verzonden worden. Probeer opnieuw of bevestig handmatig.",
+    "adminConfirm": "Manueel bevestigen",
+    "adminConfirmTitle": "Handmatig bevestigen?",
+    "adminConfirmDesc": "Je bevestigt {name} namens hen en registreert een cashbetaling. De student ontvangt geen e-mail meer. Deze actie kan niet ongedaan gemaakt worden.",
+    "adminConfirmDescGroup": "Je bevestigt {name} namens hen en registreert een cashbetaling (voor {size} personen). De student ontvangt geen e-mail meer. Deze actie kan niet ongedaan gemaakt worden.",
+    "adminConfirmButton": "Bevestigen",
+    "adminConfirmSuccess": "Toewijzing bevestigd."
   },
   "auth": {
     "login": "Inloggen",

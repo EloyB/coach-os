@@ -135,6 +135,24 @@ export async function deleteGroup(
   );
 }
 
+export async function resendConfirmation(
+  seriesId: string,
+  assignmentId: string
+): Promise<void> {
+  await apiClient.post(
+    `/lessonseries/${seriesId}/planning/assignments/${assignmentId}/resend-confirmation`
+  );
+}
+
+export async function adminConfirm(
+  seriesId: string,
+  assignmentId: string
+): Promise<void> {
+  await apiClient.post(
+    `/lessonseries/${seriesId}/planning/assignments/${assignmentId}/admin-confirm`
+  );
+}
+
 export async function confirmPlanning(seriesId: string): Promise<void> {
   await apiClient.post(`/lessonseries/${seriesId}/planning/confirm`);
 }

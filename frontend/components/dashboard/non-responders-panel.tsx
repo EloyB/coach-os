@@ -1,10 +1,29 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { Phone, MessageCircle, Copy, Check } from "lucide-react";
+import {
+  Phone,
+  MessageCircle,
+  Copy,
+  Check,
+  RefreshCw,
+  CheckCircle2,
+} from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { getNonResponders } from "@/lib/api/confirmation";
+import { resendConfirmation, adminConfirm } from "@/lib/api/planning";
 import type { NonResponderDto } from "@/lib/api/confirmation";
 
 const DAY_NAMES_SHORT = ["Zo", "Ma", "Di", "Wo", "Do", "Vr", "Za"];
@@ -29,21 +48,54 @@ function formatRelativeExpiry(expiresAt: string): string {
 
 export function NonRespondersPanel({ seriesId }: { seriesId: string }) {
   const t = useTranslations("nonResponders");
+  const queryClient = useQueryClient();
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const { data: nonResponders = [] } = useQuery({
     queryKey: ["planning", seriesId, "non-responders"],
     queryFn: () => getNonResponders(seriesId),
-    refetchInterval: 30000, // poll every 30s
+    refetchInterval: 30000,
   });
 
-  if (nonResponders.length === 0) return null;
+  const resendMutation = useMutation({
+    mutationFn: (assignmentId: string) =>
+      resendConfirmation(seriesId, assignmentId),
+    onSuccess: () => {
+      showToast(t("resendSuccess"));
+      queryClient.invalidateQueries({
+        queryKey: ["planning", seriesId, "non-responders"],
+      });
+    },
+    onError: () => {
+      showToast(t("resendError"));
+    },
+  });
+
+  const adminConfirmMutation = useMutation({
+    mutationFn: (assignmentId: string) =>
+      adminConfirm(seriesId, assignmentId),
+    onSuccess: () => {
+      showToast(t("adminConfirmSuccess"));
+      queryClient.invalidateQueries({
+        queryKey: ["planning", seriesId, "non-responders"],
+      });
+      queryClient.invalidateQueries({ queryKey: ["planning", seriesId] });
+    },
+  });
+
+  function showToast(msg: string) {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3000);
+  }
 
   function handleCopyEmail(nr: NonResponderDto) {
     navigator.clipboard.writeText(nr.studentEmail);
     setCopiedId(nr.assignmentId);
     setTimeout(() => setCopiedId(null), 2000);
   }
+
+  if (nonResponders.length === 0) return null;
 
   return (
     <div className="p-4 border-b border-gray-100">
@@ -52,6 +104,13 @@ export function NonRespondersPanel({ seriesId }: { seriesId: string }) {
           {t("title")} ({nonResponders.length})
         </h3>
       </div>
+
+      {/* Toast */}
+      {toastMessage && (
+        <div className="mb-3 px-3 py-2 rounded-lg bg-tennis-green/10 border border-tennis-green/20 text-xs text-tennis-green font-medium">
+          {toastMessage}
+        </div>
+      )}
 
       <div className="space-y-2">
         {nonResponders.map((nr) => (
@@ -63,6 +122,7 @@ export function NonRespondersPanel({ seriesId }: { seriesId: string }) {
                 : "border-amber-200 bg-amber-50/50"
             }`}
           >
+            {/* Header: name + expiry */}
             <div className="flex items-start justify-between gap-2 mb-1.5">
               <div className="min-w-0">
                 <div className="text-xs font-medium text-gray-900 truncate">
@@ -79,7 +139,6 @@ export function NonRespondersPanel({ seriesId }: { seriesId: string }) {
                 </div>
               </div>
 
-              {/* Expiry badge */}
               {nr.isExpired ? (
                 <span className="shrink-0 text-[10px] font-medium px-2 py-0.5 rounded-full bg-red-100 text-red-700">
                   {t("expired")}
@@ -130,6 +189,66 @@ export function NonRespondersPanel({ seriesId }: { seriesId: string }) {
                   </>
                 )}
               </button>
+            </div>
+
+            {/* Recovery actions */}
+            <div className="flex items-center gap-2 mt-2 pt-2 border-t border-gray-200/60">
+              <button
+                type="button"
+                disabled={resendMutation.isPending}
+                onClick={() => resendMutation.mutate(nr.assignmentId)}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-[10px] font-medium text-gray-700 bg-white border border-gray-200 hover:border-tennis-green/40 hover:text-tennis-green transition-colors disabled:opacity-50"
+              >
+                <RefreshCw
+                  size={11}
+                  className={
+                    resendMutation.isPending &&
+                    resendMutation.variables === nr.assignmentId
+                      ? "animate-spin"
+                      : ""
+                  }
+                />
+                {t("resend")}
+              </button>
+
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <button
+                    type="button"
+                    disabled={adminConfirmMutation.isPending}
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-[10px] font-medium text-white bg-tennis-green hover:bg-tennis-green/90 transition-colors disabled:opacity-50"
+                  >
+                    <CheckCircle2 size={11} />
+                    {t("adminConfirm")}
+                  </button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>
+                      {t("adminConfirmTitle")}
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {nr.isGroup
+                        ? t("adminConfirmDescGroup", {
+                            name: nr.studentName,
+                            size: nr.groupSize,
+                          })
+                        : t("adminConfirmDesc", { name: nr.studentName })}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Annuleren</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() =>
+                        adminConfirmMutation.mutate(nr.assignmentId)
+                      }
+                      className="bg-tennis-green hover:bg-tennis-green/90"
+                    >
+                      {t("adminConfirmButton")}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </div>
         ))}
