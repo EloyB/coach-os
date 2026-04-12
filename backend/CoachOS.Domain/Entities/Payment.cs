@@ -15,6 +15,7 @@ public class Payment : BaseEntity
     public decimal Amount { get; set; }
 
     public PaymentStatus Status { get; set; }
+    public PaymentMethod? Method { get; set; }
     public string? MolliePaymentId { get; set; }
     public string? MollieCheckoutUrl { get; set; }
     public DateTime? PaidAt { get; set; }

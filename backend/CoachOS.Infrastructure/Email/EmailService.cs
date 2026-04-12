@@ -32,6 +32,22 @@ public class EmailService(IOptions<EmailOptions> options, ILogger<EmailService> 
         await SendAsync(studentEmail, studentName, subject, html, ct);
     }
 
+    public async Task SendScheduleConfirmationAsync(
+        string studentEmail,
+        string studentName,
+        string seriesName,
+        int dayOfWeek,
+        string startTime,
+        string endTime,
+        string? courtName,
+        string confirmationUrl,
+        CancellationToken ct = default)
+    {
+        (var subject, var html) = EmailTemplates.ScheduleConfirmation(
+            studentName, seriesName, dayOfWeek, startTime, endTime, courtName, confirmationUrl);
+        await SendAsync(studentEmail, studentName, subject, html, ct);
+    }
+
     public async Task SendEnrollmentNotificationToTrainerAsync(
         string trainerEmail,
         string trainerName,

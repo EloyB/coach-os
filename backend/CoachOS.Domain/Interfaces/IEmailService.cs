@@ -19,4 +19,15 @@ public interface IEmailService
         string seriesName,
         List<(string FieldLabel, string Value)> responses,
         CancellationToken ct = default);
+
+    Task SendScheduleConfirmationAsync(
+        string studentEmail,
+        string studentName,
+        string seriesName,
+        int dayOfWeek,
+        string startTime,
+        string endTime,
+        string? courtName,
+        string confirmationUrl,
+        CancellationToken ct = default);
 }

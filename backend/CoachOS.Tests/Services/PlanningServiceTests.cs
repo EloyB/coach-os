@@ -1,3 +1,4 @@
+using CoachOS.Application.Configuration;
 using CoachOS.Application.Planning;
 using CoachOS.Application.Planning.DTOs;
 using CoachOS.Domain.Entities;
@@ -5,6 +6,7 @@ using CoachOS.Domain.Enums;
 using CoachOS.Domain.Interfaces;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Moq;
 using NUnit.Framework;
 
@@ -18,7 +20,10 @@ public class PlanningServiceTests
     private Mock<IEnrollmentGroupRepository> _groupRepo = null!;
     private Mock<ITimeSlotPreferenceRepository> _prefRepo = null!;
     private Mock<IScheduleAssignmentRepository> _assignmentRepo = null!;
+    private Mock<IAssignmentConfirmationTokenRepository> _tokenRepo = null!;
     private Mock<IUserLookupService> _userLookup = null!;
+    private Mock<IEmailService> _emailService = null!;
+    private Mock<IOptions<AppOptions>> _appOptions = null!;
     private Mock<ILogger<PlanningService>> _logger = null!;
     private PlanningService _service = null!;
 
@@ -34,7 +39,11 @@ public class PlanningServiceTests
         _groupRepo = new Mock<IEnrollmentGroupRepository>();
         _prefRepo = new Mock<ITimeSlotPreferenceRepository>();
         _assignmentRepo = new Mock<IScheduleAssignmentRepository>();
+        _tokenRepo = new Mock<IAssignmentConfirmationTokenRepository>();
         _userLookup = new Mock<IUserLookupService>();
+        _emailService = new Mock<IEmailService>();
+        _appOptions = new Mock<IOptions<AppOptions>>();
+        _appOptions.Setup(o => o.Value).Returns(new AppOptions());
         _logger = new Mock<ILogger<PlanningService>>();
 
         _service = new PlanningService(
@@ -43,7 +52,10 @@ public class PlanningServiceTests
             _groupRepo.Object,
             _prefRepo.Object,
             _assignmentRepo.Object,
+            _tokenRepo.Object,
             _userLookup.Object,
+            _emailService.Object,
+            _appOptions.Object,
             _logger.Object);
     }
 
@@ -174,8 +186,8 @@ public class PlanningServiceTests
         var result = await _service.ConfirmScheduleAsync(SeriesId, OrgId);
 
         result.IsSuccess.Should().BeTrue();
-        series.PlanningStatus.Should().Be(PlanningStatus.Scheduled);
-        assignment.Status.Should().Be(ScheduleAssignmentStatus.Confirmed);
+        series.PlanningStatus.Should().Be(PlanningStatus.AwaitingConfirmation);
+        assignment.Status.Should().Be(ScheduleAssignmentStatus.AwaitingConfirmation);
     }
 
     // ── UpdateAssignmentAsync ────────────────────────────────────────────────

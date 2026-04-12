@@ -1,4 +1,5 @@
 using CoachOS.Application.Auth;
+using CoachOS.Application.Configuration;
 using CoachOS.Application.Trainers;
 using CoachOS.Domain.Interfaces;
 using CoachOS.Infrastructure.Email;
@@ -39,6 +40,7 @@ public static class DependencyInjection
             .AddDefaultTokenProviders();
 
         services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.Section));
+        services.Configure<AppOptions>(configuration.GetSection(AppOptions.Section));
 
         services.AddScoped<TokenService>();
         services.AddScoped<IAuthService, AuthService>();
@@ -53,6 +55,8 @@ public static class DependencyInjection
         services.AddScoped<IEnrollmentGroupRepository, EnrollmentGroupRepository>();
         services.AddScoped<ITimeSlotPreferenceRepository, TimeSlotPreferenceRepository>();
         services.AddScoped<IScheduleAssignmentRepository, ScheduleAssignmentRepository>();
+        services.AddScoped<IAssignmentConfirmationTokenRepository, AssignmentConfirmationTokenRepository>();
+        services.AddScoped<IPaymentRepository, PaymentRepository>();
 
         return services;
     }

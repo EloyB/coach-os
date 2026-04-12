@@ -27,6 +27,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<EnrollmentGroup> EnrollmentGroups { get; set; } = null!;
     public DbSet<TimeSlotPreference> TimeSlotPreferences { get; set; } = null!;
     public DbSet<ScheduleAssignment> ScheduleAssignments { get; set; } = null!;
+    public DbSet<AssignmentConfirmationToken> AssignmentConfirmationTokens { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

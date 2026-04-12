@@ -4,6 +4,7 @@ using CoachOS.Application.Enrollments;
 using CoachOS.Application.LessonSerie;
 using CoachOS.Application.Mappings;
 using CoachOS.Application.Planning;
+using CoachOS.Application.StudentConfirmation;
 using CoachOS.Application.TennisClubs;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,6 +23,7 @@ public static class DependencyInjection
         services.AddScoped<ITennisClubService, TennisClubService>();
         services.AddScoped<IEnrollmentService, EnrollmentService>();
         services.AddScoped<IPlanningService, PlanningService>();
+        services.AddScoped<IStudentConfirmationService, StudentConfirmationService>();
 
         return services;
     }

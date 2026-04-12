@@ -1,9 +1,13 @@
+using System.Security.Cryptography;
+using System.Text;
+using CoachOS.Application.Configuration;
 using CoachOS.Application.Planning.DTOs;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
 using CoachOS.Domain.Interfaces;
 using CoachOS.Domain.Models;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace CoachOS.Application.Planning;
 
@@ -13,7 +17,10 @@ public class PlanningService(
     IEnrollmentGroupRepository enrollmentGroupRepo,
     ITimeSlotPreferenceRepository timeSlotPreferenceRepo,
     IScheduleAssignmentRepository scheduleAssignmentRepo,
+    IAssignmentConfirmationTokenRepository tokenRepo,
     IUserLookupService userLookup,
+    IEmailService emailService,
+    IOptions<AppOptions> appOptions,
     ILogger<PlanningService> logger) : IPlanningService
 {
     public async Task<Result<PlanningOverviewDto>> GenerateProposalAsync(
@@ -525,18 +532,142 @@ public class PlanningService(
             return Result<bool>.Fail(
                 new Error(ErrorCodes.Validation, "Er zijn geen voorgestelde toewijzingen om te bevestigen."));
 
-        // Confirm all assignments
-        foreach (var assignment in proposedAssignments)
-            assignment.Status = ScheduleAssignmentStatus.Confirmed;
+        // Move assignments to AwaitingConfirmation and generate a token per contact point.
+        var expiresAt = DateTime.UtcNow.AddHours(72);
+        var tokens = new List<AssignmentConfirmationToken>();
+        var emailsToSend = new List<(Enrollment recipient, ScheduleAssignment assignment, string rawToken)>();
+        var slotById = series.WeeklyTemplate.ToDictionary(s => s.Id);
 
-        series.PlanningStatus = PlanningStatus.Scheduled;
+        foreach (var assignment in proposedAssignments)
+        {
+            assignment.Status = ScheduleAssignmentStatus.AwaitingConfirmation;
+
+            // Group: token for the leader only. Solo: token for the enrolled individual.
+            Enrollment? recipient = null;
+            if (assignment.EnrollmentGroupId.HasValue && assignment.EnrollmentGroup is not null)
+            {
+                recipient = assignment.EnrollmentGroup.Members
+                    .FirstOrDefault(m => m.Id == assignment.EnrollmentGroup.LeaderEnrollmentId);
+            }
+            else if (assignment.EnrollmentId.HasValue && assignment.Enrollment is not null)
+            {
+                recipient = assignment.Enrollment;
+            }
+
+            if (recipient is null)
+            {
+                logger.LogWarning("Toewijzing {AssignmentId} heeft geen ontvanger — token overgeslagen.", assignment.Id);
+                continue;
+            }
+
+            var rawToken = GenerateRawToken();
+            tokens.Add(new AssignmentConfirmationToken
+            {
+                OrganizationId = organizationId,
+                ScheduleAssignmentId = assignment.Id,
+                EnrollmentId = recipient.Id,
+                TokenHash = HashToken(rawToken),
+                ExpiresAt = expiresAt,
+                Response = ConfirmationResponse.Pending,
+            });
+            emailsToSend.Add((recipient, assignment, rawToken));
+        }
+
+        await tokenRepo.AddRangeAsync(tokens, ct);
+        series.PlanningStatus = PlanningStatus.AwaitingConfirmation;
         await lessonSeriesRepo.SaveChangesAsync(ct);
 
+        // Send confirmation emails after the state is persisted.
+        var baseUrl = appOptions.Value.ConfirmationBaseUrl.TrimEnd('/');
+        foreach (var (recipient, assignment, rawToken) in emailsToSend)
+        {
+            if (!slotById.TryGetValue(assignment.WeeklyTemplateEntryId, out var slot)) continue;
+
+            try
+            {
+                await emailService.SendScheduleConfirmationAsync(
+                    recipient.StudentEmail,
+                    recipient.StudentName,
+                    series.Name,
+                    slot.DayOfWeek,
+                    slot.StartTime.ToString("HH:mm"),
+                    slot.EndTime.ToString("HH:mm"),
+                    slot.CourtName,
+                    $"{baseUrl}/{rawToken}",
+                    ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "E-mail voor toewijzing {AssignmentId} mislukt.", assignment.Id);
+            }
+        }
+
         logger.LogInformation(
-            "Planning bevestigd voor reeks {SeriesId}: {Count} toewijzingen",
-            seriesId, proposedAssignments.Count);
+            "Planning bevestigd voor reeks {SeriesId}: {Count} toewijzingen, {TokenCount} tokens verzonden",
+            seriesId, proposedAssignments.Count, tokens.Count);
 
         return Result<bool>.Ok(true);
+    }
+
+    public async Task<Result<List<NonResponderDto>>> GetNonRespondersAsync(
+        Guid seriesId, Guid organizationId, CancellationToken ct = default)
+    {
+        var series = await lessonSeriesRepo.GetByIdAsync(seriesId, organizationId, ct);
+        if (series is null)
+            return Result<List<NonResponderDto>>.Fail(
+                new Error(ErrorCodes.NotFound, "Lessenreeks niet gevonden."));
+
+        var tokens = await tokenRepo.GetBySeriesAsync(seriesId, organizationId, ct);
+        var pending = tokens.Where(t => t.Response == ConfirmationResponse.Pending).ToList();
+        if (pending.Count == 0)
+            return Result<List<NonResponderDto>>.Ok([]);
+
+        var slotById = series.WeeklyTemplate.ToDictionary(s => s.Id);
+        var now = DateTime.UtcNow;
+
+        var list = new List<NonResponderDto>();
+        foreach (var token in pending)
+        {
+            if (!slotById.TryGetValue(token.ScheduleAssignment.WeeklyTemplateEntryId, out var slot))
+                continue;
+
+            var isGroup = token.ScheduleAssignment.EnrollmentGroupId.HasValue
+                && token.ScheduleAssignment.EnrollmentGroup is not null;
+            var groupSize = isGroup ? token.ScheduleAssignment.EnrollmentGroup!.Members.Count : 1;
+
+            list.Add(new NonResponderDto
+            {
+                AssignmentId = token.ScheduleAssignmentId,
+                EnrollmentId = token.EnrollmentId,
+                StudentName = token.Enrollment.StudentName,
+                StudentEmail = token.Enrollment.StudentEmail,
+                StudentPhone = token.Enrollment.StudentPhone,
+                IsGroup = isGroup,
+                GroupSize = groupSize,
+                DayOfWeek = slot.DayOfWeek,
+                StartTime = slot.StartTime.ToString("HH:mm"),
+                EndTime = slot.EndTime.ToString("HH:mm"),
+                CourtName = slot.CourtName,
+                ExpiresAt = token.ExpiresAt,
+                IsExpired = token.ExpiresAt < now,
+            });
+        }
+
+        return Result<List<NonResponderDto>>.Ok(
+            list.OrderBy(r => r.IsExpired ? 0 : 1).ThenBy(r => r.ExpiresAt).ToList());
+    }
+
+    private static string GenerateRawToken()
+    {
+        Span<byte> bytes = stackalloc byte[32];
+        RandomNumberGenerator.Fill(bytes);
+        return Convert.ToHexString(bytes).ToLowerInvariant();
+    }
+
+    private static string HashToken(string rawToken)
+    {
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(rawToken));
+        return Convert.ToHexString(bytes).ToLowerInvariant();
     }
 
     private async Task<Error?> EnsureSlotCapacityAsync(

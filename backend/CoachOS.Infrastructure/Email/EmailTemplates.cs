@@ -224,4 +224,52 @@ public static class EmailTemplates
 
         return (subject, Base($"Nieuwe inschrijving: {studentName} voor {seriesName}", body));
     }
+
+    /// <summary>Confirmation request sent after admin locks the planning.</summary>
+    public static (string Subject, string Html) ScheduleConfirmation(
+        string studentName,
+        string seriesName,
+        int dayOfWeek,
+        string startTime,
+        string endTime,
+        string? courtName,
+        string confirmationUrl)
+    {
+        string[] days = ["zondag", "maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag"];
+        var dayName = days[Math.Clamp(dayOfWeek, 0, 6)];
+        var courtLine = string.IsNullOrWhiteSpace(courtName) ? "" : $"<p style=\"margin:4px 0 0;font-size:13px;color:#6b7280;\">Baan: {courtName}</p>";
+
+        var subject = $"Bevestig je lesmoment: {seriesName}";
+
+        var body = $"""
+                    <h1 style="margin:0 0 8px;font-size:26px;font-weight:700;color:#111827;letter-spacing:-0.5px;">
+                      Bevestig je lesmoment
+                    </h1>
+                    <p style="margin:0 0 24px;font-size:15px;color:#6b7280;line-height:1.6;">
+                      Hoi {studentName}, we hebben een tijdslot voor je gereserveerd in <strong style="color:#111827;">{seriesName}</strong>.
+                      Bevestig binnen 72 uur.
+                    </p>
+
+                    <table width="100%" cellpadding="0" cellspacing="0" border="0"
+                           style="background-color:{OffWhite};border-radius:8px;border-left:4px solid {Lime};margin-bottom:24px;">
+                      <tr>
+                        <td style="padding:16px 20px;">
+                          <p style="margin:0;font-size:14px;font-weight:600;color:#111827;">{dayName} {startTime} — {endTime}</p>
+                          {courtLine}
+                        </td>
+                      </tr>
+                    </table>
+
+                    <a href="{confirmationUrl}"
+                       style="display:inline-block;padding:12px 24px;background:{Green};color:#fff;text-decoration:none;border-radius:6px;font-weight:600;font-size:14px;">
+                      Bevestigen of wijzigen
+                    </a>
+
+                    <p style="margin:28px 0 0;font-size:13px;color:#9ca3af;line-height:1.6;">
+                      Geen antwoord binnen 72 uur? Dan neemt je club contact op.
+                    </p>
+                    """;
+
+        return (subject, Base($"Bevestig je lesmoment voor {seriesName}", body));
+    }
 }
