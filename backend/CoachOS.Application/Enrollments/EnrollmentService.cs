@@ -264,7 +264,7 @@ public class EnrollmentService(
             StudentName = request.StudentName,
             StudentEmail = request.StudentEmail,
             StudentPhone = request.StudentPhone,
-            Status = EnrollmentStatus.Confirmed,
+            Status = EnrollmentStatus.Pending,
             EnrolledAt = DateTime.UtcNow,
             IsOpenToGrouping = request.IsOpenToGrouping,
         };
@@ -315,7 +315,7 @@ public class EnrollmentService(
                     StudentName = member.StudentName,
                     StudentEmail = member.StudentEmail,
                     StudentPhone = member.StudentPhone,
-                    Status = EnrollmentStatus.Confirmed,
+                    Status = EnrollmentStatus.Pending,
                     EnrolledAt = DateTime.UtcNow,
                     EnrollmentGroupId = group.Id,
                 };
