@@ -13,6 +13,9 @@ public class ScheduleAssignmentConfiguration : IEntityTypeConfiguration<Schedule
         builder.Property(a => a.Status)
             .IsRequired();
 
+        builder.Property(a => a.IsLocked)
+            .HasDefaultValue(false);
+
         builder.HasOne(a => a.Organization)
             .WithMany()
             .HasForeignKey(a => a.OrganizationId)

@@ -18,6 +18,7 @@ public class PlanningServiceTests
     private Mock<IEnrollmentGroupRepository> _groupRepo = null!;
     private Mock<ITimeSlotPreferenceRepository> _prefRepo = null!;
     private Mock<IScheduleAssignmentRepository> _assignmentRepo = null!;
+    private Mock<IUserLookupService> _userLookup = null!;
     private Mock<ILogger<PlanningService>> _logger = null!;
     private PlanningService _service = null!;
 
@@ -33,6 +34,7 @@ public class PlanningServiceTests
         _groupRepo = new Mock<IEnrollmentGroupRepository>();
         _prefRepo = new Mock<ITimeSlotPreferenceRepository>();
         _assignmentRepo = new Mock<IScheduleAssignmentRepository>();
+        _userLookup = new Mock<IUserLookupService>();
         _logger = new Mock<ILogger<PlanningService>>();
 
         _service = new PlanningService(
@@ -41,6 +43,7 @@ public class PlanningServiceTests
             _groupRepo.Object,
             _prefRepo.Object,
             _assignmentRepo.Object,
+            _userLookup.Object,
             _logger.Object);
     }
 

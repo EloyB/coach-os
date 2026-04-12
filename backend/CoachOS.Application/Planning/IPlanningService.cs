@@ -6,7 +6,10 @@ namespace CoachOS.Application.Planning;
 public interface IPlanningService
 {
     Task<Result<PlanningOverviewDto>> GenerateProposalAsync(
-        Guid seriesId, Guid organizationId, CancellationToken ct = default);
+        Guid seriesId, Guid organizationId, bool force = false, CancellationToken ct = default);
+
+    Task<Result<bool>> DeleteAssignmentAsync(
+        Guid seriesId, Guid assignmentId, Guid organizationId, CancellationToken ct = default);
 
     Task<Result<PlanningOverviewDto>> GetPlanningOverviewAsync(
         Guid seriesId, Guid organizationId, CancellationToken ct = default);

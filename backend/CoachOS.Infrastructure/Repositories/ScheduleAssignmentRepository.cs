@@ -47,7 +47,8 @@ public class ScheduleAssignmentRepository(ApplicationDbContext context) : ISched
         await context.ScheduleAssignments
             .Where(a => a.LessonSerieId == lessonSerieId
                 && a.OrganizationId == organizationId
-                && a.Status == ScheduleAssignmentStatus.Proposed)
+                && a.Status == ScheduleAssignmentStatus.Proposed
+                && !a.IsLocked)
             .ExecuteDeleteAsync(ct);
     }
 

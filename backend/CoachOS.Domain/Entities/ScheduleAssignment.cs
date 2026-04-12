@@ -17,6 +17,12 @@ public class ScheduleAssignment : BaseEntity
     public ScheduleAssignmentStatus Status { get; set; }
     public bool IsAutoMerged { get; set; }
 
+    /// <summary>
+    /// True when the admin manually placed/moved this assignment. Regenerate keeps locked
+    /// assignments intact and schedules the remaining units around them.
+    /// </summary>
+    public bool IsLocked { get; set; }
+
     // Navigation properties
     public Organization Organization { get; set; } = null!;
     public LessonSerie LessonSerie { get; set; } = null!;

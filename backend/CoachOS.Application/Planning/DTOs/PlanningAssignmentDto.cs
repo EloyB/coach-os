@@ -8,4 +8,5 @@ public record PlanningAssignmentDto
     public Guid? GroupId { get; init; }
     public string Status { get; init; } = string.Empty;
     public bool IsAutoMerged { get; init; }
+    public bool IsLocked { get; init; }
 }

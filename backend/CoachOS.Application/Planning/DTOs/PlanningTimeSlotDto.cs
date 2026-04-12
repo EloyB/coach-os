@@ -8,5 +8,6 @@ public record PlanningTimeSlotDto
     public string EndTime { get; init; } = string.Empty;
     public string? CourtName { get; init; }
     public Guid? TrainerId { get; init; }
+    public string? TrainerName { get; init; }
     public int MaxCapacity { get; init; }
 }

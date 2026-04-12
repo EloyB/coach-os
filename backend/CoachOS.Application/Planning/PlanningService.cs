@@ -13,15 +13,21 @@ public class PlanningService(
     IEnrollmentGroupRepository enrollmentGroupRepo,
     ITimeSlotPreferenceRepository timeSlotPreferenceRepo,
     IScheduleAssignmentRepository scheduleAssignmentRepo,
+    IUserLookupService userLookup,
     ILogger<PlanningService> logger) : IPlanningService
 {
     public async Task<Result<PlanningOverviewDto>> GenerateProposalAsync(
-        Guid seriesId, Guid organizationId, CancellationToken ct = default)
+        Guid seriesId, Guid organizationId, bool force = false, CancellationToken ct = default)
     {
         var series = await lessonSeriesRepo.GetByIdAsync(seriesId, organizationId, ct);
         if (series is null)
             return Result<PlanningOverviewDto>.Fail(
                 new Error(ErrorCodes.NotFound, "Lessenreeks niet gevonden."));
+
+        // Protect manual edits: after the first generate the status flips to Planning.
+        // Re-running then would wipe admin tweaks — require an explicit force flag.
+        if (series.PlanningStatus == PlanningStatus.Planning && !force)
+            return await GetPlanningOverviewAsync(seriesId, organizationId, ct);
 
         // Load all data
         var enrollments = await enrollmentRepo.GetBySeriesAsync(seriesId, organizationId, ct);
@@ -43,6 +49,28 @@ public class PlanningService(
                 g => g.Key,
                 g => g.ToDictionary(p => p.WeeklyTemplateEntryId, p => p.Preference));
 
+        // On force-regenerate, preserve manually locked assignments: exclude their
+        // units from the algorithm and reduce the affected slots' remaining capacity.
+        var existingAssignments = await scheduleAssignmentRepo.GetBySeriesAsync(seriesId, organizationId, ct);
+        var lockedAssignments = existingAssignments
+            .Where(a => a.IsLocked && a.Status == ScheduleAssignmentStatus.Proposed)
+            .ToList();
+
+        var lockedGroupIds = lockedAssignments
+            .Where(a => a.EnrollmentGroupId.HasValue)
+            .Select(a => a.EnrollmentGroupId!.Value)
+            .ToHashSet();
+        var lockedEnrollmentIds = lockedAssignments
+            .Where(a => a.EnrollmentId.HasValue)
+            .Select(a => a.EnrollmentId!.Value)
+            .ToHashSet();
+
+        var capacityUsedBySlot = lockedAssignments
+            .GroupBy(a => a.WeeklyTemplateEntryId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.Sum(a => a.EnrollmentGroup?.Members.Count ?? 1));
+
         // Build enrollment units
         var units = new List<EnrollmentUnit>();
         var groupedEnrollmentIds = new HashSet<Guid>();
@@ -54,6 +82,14 @@ public class PlanningService(
                 .ToList();
 
             if (memberEnrollments.Count == 0) continue;
+
+            // Skip locked groups: they stay where the admin put them.
+            if (lockedGroupIds.Contains(group.Id))
+            {
+                foreach (var e in memberEnrollments)
+                    groupedEnrollmentIds.Add(e.Id);
+                continue;
+            }
 
             // Use leader's preferences for the group (members don't submit individual preferences).
             // Fall back to intersection if multiple members have preferences.
@@ -85,7 +121,8 @@ public class PlanningService(
                 groupedEnrollmentIds.Add(e.Id);
         }
 
-        foreach (var enrollment in activeEnrollments.Where(e => !groupedEnrollmentIds.Contains(e.Id)))
+        foreach (var enrollment in activeEnrollments.Where(e =>
+            !groupedEnrollmentIds.Contains(e.Id) && !lockedEnrollmentIds.Contains(e.Id)))
         {
             var prefs = prefsByEnrollment.GetValueOrDefault(enrollment.Id, new());
             units.Add(new EnrollmentUnit(
@@ -99,7 +136,11 @@ public class PlanningService(
                 Preferences: prefs));
         }
 
-        var slotInfos = slots.Select(s => new SlotInfo(s.Id, s.MaxStudents)).ToList();
+        var slotInfos = slots
+            .Select(s => new SlotInfo(
+                s.Id,
+                Math.Max(0, s.MaxStudents - capacityUsedBySlot.GetValueOrDefault(s.Id, 0))))
+            .ToList();
         var input = new SchedulingInput(units, slotInfos);
 
         // Run algorithm
@@ -152,6 +193,15 @@ public class PlanningService(
                 g => g.Key,
                 g => g.ToDictionary(p => p.WeeklyTemplateEntryId, p => p.Preference.ToString()));
 
+        var trainerIds = series.WeeklyTemplate
+            .Where(s => s.TrainerId.HasValue)
+            .Select(s => s.TrainerId!.Value)
+            .Distinct()
+            .ToList();
+        var trainerNames = trainerIds.Count > 0
+            ? await userLookup.GetUserNamesByIdsAsync(trainerIds, ct)
+            : new Dictionary<Guid, string>();
+
         var timeSlotDtos = series.WeeklyTemplate
             .OrderBy(s => s.DayOfWeek)
             .ThenBy(s => s.StartTime)
@@ -163,6 +213,9 @@ public class PlanningService(
                 EndTime = slot.EndTime.ToString("HH:mm"),
                 CourtName = slot.CourtName,
                 TrainerId = slot.TrainerId,
+                TrainerName = slot.TrainerId.HasValue
+                    ? trainerNames.GetValueOrDefault(slot.TrainerId.Value)
+                    : null,
                 MaxCapacity = slot.MaxStudents,
             })
             .ToList();
@@ -201,17 +254,40 @@ public class PlanningService(
                 GroupId = a.EnrollmentGroupId,
                 Status = a.Status.ToString(),
                 IsAutoMerged = a.IsAutoMerged,
+                IsLocked = a.IsLocked,
             })
             .ToList();
+
+        DateTime? lastEditedAt = assignments.Count > 0
+            ? assignments.Max(a => a.UpdatedAt == default ? a.CreatedAt : a.UpdatedAt)
+            : null;
 
         return Result<PlanningOverviewDto>.Ok(new PlanningOverviewDto
         {
             PlanningStatus = series.PlanningStatus.ToString(),
+            PlanningLastEditedAt = lastEditedAt,
             TimeSlots = timeSlotDtos,
             Enrollments = enrollmentDtos,
             Groups = groupDtos,
             Assignments = assignmentDtos,
         });
+    }
+
+    public async Task<Result<bool>> DeleteAssignmentAsync(
+        Guid seriesId, Guid assignmentId, Guid organizationId, CancellationToken ct = default)
+    {
+        var assignment = await scheduleAssignmentRepo.GetByIdAsync(assignmentId, organizationId, ct);
+        if (assignment is null || assignment.LessonSerieId != seriesId)
+            return Result<bool>.Fail(new Error(ErrorCodes.NotFound, "Toewijzing niet gevonden."));
+
+        if (assignment.Status == ScheduleAssignmentStatus.Confirmed)
+            return Result<bool>.Fail(
+                new Error(ErrorCodes.Validation, "Bevestigde toewijzingen kunnen niet verwijderd worden."));
+
+        scheduleAssignmentRepo.RemoveRange([assignment]);
+        await scheduleAssignmentRepo.SaveChangesAsync(ct);
+
+        return Result<bool>.Ok(true);
     }
 
     public async Task<Result<bool>> UpdateAssignmentAsync(
@@ -227,6 +303,7 @@ public class PlanningService(
                 new Error(ErrorCodes.Validation, "Bevestigde toewijzingen kunnen niet verplaatst worden."));
 
         assignment.WeeklyTemplateEntryId = request.WeeklyTemplateEntryId;
+        assignment.IsLocked = true;
         await scheduleAssignmentRepo.SaveChangesAsync(ct);
 
         return Result<bool>.Ok(true);
@@ -264,6 +341,7 @@ public class PlanningService(
             EnrollmentId = request.EnrollmentId,
             Status = ScheduleAssignmentStatus.Proposed,
             IsAutoMerged = false,
+            IsLocked = true,
         };
 
         await scheduleAssignmentRepo.AddRangeAsync([assignment], ct);
