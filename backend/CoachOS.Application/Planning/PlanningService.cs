@@ -387,24 +387,43 @@ public class PlanningService(
         if (series is null)
             return Result<bool>.Fail(new Error(ErrorCodes.NotFound, "Lessenreeks niet gevonden."));
 
-        // Verify enrollment belongs to this series
-        var enrollment = await enrollmentRepo.GetByIdAsync(request.EnrollmentId, organizationId, ct);
-        if (enrollment is null || enrollment.LessonSerieId != seriesId)
-            return Result<bool>.Fail(new Error(ErrorCodes.NotFound, "Inschrijving niet gevonden."));
-
-        // Verify slot belongs to this series
         var slot = series.WeeklyTemplate.FirstOrDefault(s => s.Id == request.WeeklyTemplateEntryId);
         if (slot is null)
             return Result<bool>.Fail(new Error(ErrorCodes.NotFound, "Tijdslot niet gevonden."));
 
-        // Check if enrollment already has an assignment
         var existingAssignments = await scheduleAssignmentRepo.GetBySeriesAsync(seriesId, organizationId, ct);
-        bool alreadyAssigned = existingAssignments.Any(a => a.EnrollmentId == request.EnrollmentId);
-        if (alreadyAssigned)
-            return Result<bool>.Fail(new Error(ErrorCodes.Validation, "Inschrijving is al toegewezen."));
+
+        int addSize;
+        Guid? enrollmentId = null;
+        Guid? groupId = null;
+
+        if (request.GroupId.HasValue)
+        {
+            var group = await enrollmentGroupRepo.GetByIdAsync(request.GroupId.Value, organizationId, ct);
+            if (group is null || group.LessonSerieId != seriesId)
+                return Result<bool>.Fail(new Error(ErrorCodes.NotFound, "Groep niet gevonden."));
+
+            if (existingAssignments.Any(a => a.EnrollmentGroupId == request.GroupId))
+                return Result<bool>.Fail(new Error(ErrorCodes.Validation, "Groep is al toegewezen."));
+
+            groupId = group.Id;
+            addSize = group.Members.Count;
+        }
+        else
+        {
+            var enrollment = await enrollmentRepo.GetByIdAsync(request.EnrollmentId!.Value, organizationId, ct);
+            if (enrollment is null || enrollment.LessonSerieId != seriesId)
+                return Result<bool>.Fail(new Error(ErrorCodes.NotFound, "Inschrijving niet gevonden."));
+
+            if (existingAssignments.Any(a => a.EnrollmentId == request.EnrollmentId))
+                return Result<bool>.Fail(new Error(ErrorCodes.Validation, "Inschrijving is al toegewezen."));
+
+            enrollmentId = enrollment.Id;
+            addSize = 1;
+        }
 
         var capacityError = await EnsureSlotCapacityAsync(
-            seriesId, organizationId, request.WeeklyTemplateEntryId, addSize: 1, excludeAssignmentId: null, ct);
+            seriesId, organizationId, request.WeeklyTemplateEntryId, addSize, excludeAssignmentId: null, ct);
         if (capacityError is not null)
             return Result<bool>.Fail(capacityError);
 
@@ -413,7 +432,8 @@ public class PlanningService(
             OrganizationId = organizationId,
             LessonSerieId = seriesId,
             WeeklyTemplateEntryId = request.WeeklyTemplateEntryId,
-            EnrollmentId = request.EnrollmentId,
+            EnrollmentId = enrollmentId,
+            EnrollmentGroupId = groupId,
             Status = ScheduleAssignmentStatus.Proposed,
             IsAutoMerged = false,
             IsLocked = true,

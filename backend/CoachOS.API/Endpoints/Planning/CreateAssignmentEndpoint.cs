@@ -1,4 +1,5 @@
 using CoachOS.API.Extensions;
+using CoachOS.API.Filters;
 using CoachOS.Application.Planning;
 using CoachOS.Application.Planning.DTOs;
 
@@ -17,6 +18,7 @@ public class CreateAssignmentEndpoint : IEndpoint
                 return result.IsSuccess ? Results.Ok(result.Value) : result.ToErrorResult();
             })
         .RequireAuthorization(policy => policy.RequireRole("Admin"))
+        .AddEndpointFilter<ValidationFilter<CreateAssignmentRequest>>()
         .WithTags("Planning");
     }
 }
