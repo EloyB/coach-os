@@ -749,9 +749,9 @@ public class PlanningService(
         if (assignment is null || assignment.LessonSerieId != seriesId)
             return Result<bool>.Fail(new Error(ErrorCodes.NotFound, "Toewijzing niet gevonden."));
 
-        if (assignment.Status != ScheduleAssignmentStatus.AwaitingConfirmation)
+        if (assignment.Status == ScheduleAssignmentStatus.Confirmed)
             return Result<bool>.Fail(
-                new Error(ErrorCodes.Validation, "Enkel toewijzingen in afwachting kunnen handmatig bevestigd worden."));
+                new Error(ErrorCodes.Validation, "Deze toewijzing is al bevestigd."));
 
         // Determine payer + group size (for pricing) + enrollees to flip to Confirmed
         Enrollment? payer;
