@@ -100,6 +100,15 @@ resource "scaleway_rdb_database" "coach_os" {
   name        = "coachos"
 }
 
+# Grant the instance user full access to the coachos database.
+# Scaleway RDB doesn't auto-grant when DB is created separately from the user.
+resource "scaleway_rdb_privilege" "coach_os" {
+  instance_id   = scaleway_rdb_instance.coach_os.id
+  user_name     = scaleway_rdb_instance.coach_os.user_name
+  database_name = scaleway_rdb_database.coach_os.name
+  permission    = "all"
+}
+
 # ── Transactional Email domain ───────────────────────────────────────────────
 # The domain must be DNS-verified before it can send; the records for that are
 # created in dns.tf to avoid a circular dependency.

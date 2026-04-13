@@ -1,0 +1,100 @@
+name: Terraform — Plan
+
+# Plan-only for now. A follow-up PR will add an apply job that runs on
+# merge to main. Until then, applies still happen locally from your
+# laptop after merging.
+#
+# Required GitHub secrets (in addition to existing ones):
+#   SCALEWAY_TF_ACCESS_KEY / SCALEWAY_TF_SECRET_KEY
+#       — API key from a dedicated `coach-os-terraform-ci` IAM application
+#         with the same broad permissions as the local terraform key
+#         (Block/Object Storage, Instances, Registry, RDB, TEM, Domains,
+#          Secret Manager, IAMManager at org level)
+#   GHA_DEPLOY_SSH_PUBLIC_KEY
+#       — contents of `~/.ssh/coach-os-gha.pub` (public, safe to store)
+
+on:
+  pull_request:
+    paths:
+      - 'infrastructure/terraform/**'
+      - '.github/workflows/terraform.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infrastructure/terraform
+
+    env:
+      # S3 backend uses AWS_-prefixed env vars; values are the Scaleway TF key
+      AWS_ACCESS_KEY_ID:         ${{ secrets.SCALEWAY_TF_ACCESS_KEY }}
+      AWS_SECRET_ACCESS_KEY:     ${{ secrets.SCALEWAY_TF_SECRET_KEY }}
+      AWS_EC2_METADATA_DISABLED: "true"
+
+      # Scaleway provider — read by both `scaleway` provider and modules
+      SCW_ACCESS_KEY:              ${{ secrets.SCALEWAY_TF_ACCESS_KEY }}
+      SCW_SECRET_KEY:              ${{ secrets.SCALEWAY_TF_SECRET_KEY }}
+      SCW_DEFAULT_ORGANIZATION_ID: ${{ secrets.SCALEWAY_DEFAULT_ORGANIZATION_ID }}
+      SCW_DEFAULT_PROJECT_ID:      ${{ secrets.SCALEWAY_PROJECT_ID }}
+      SCW_DEFAULT_REGION:          fr-par
+      SCW_DEFAULT_ZONE:            fr-par-1
+
+      # tofu variables (other vars use defaults from variables.tf)
+      TF_VAR_scw_organization_id: ${{ secrets.SCALEWAY_DEFAULT_ORGANIZATION_ID }}
+      TF_VAR_scw_project_id:      ${{ secrets.SCALEWAY_PROJECT_ID }}
+      TF_VAR_ssh_public_key:      ${{ secrets.GHA_DEPLOY_SSH_PUBLIC_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: "1.11.6"
+
+      - name: tofu fmt -check
+        run: tofu fmt -check -diff
+
+      - name: tofu init
+        run: tofu init -input=false
+
+      - name: tofu validate
+        run: tofu validate
+
+      - name: tofu plan
+        id: plan
+        run: |
+          set +e
+          tofu plan -no-color -input=false -out=tfplan > plan_out.txt 2>&1
+          code=$?
+          echo "exitcode=$code" >> "$GITHUB_OUTPUT"
+          cat plan_out.txt
+          exit $code
+
+      - name: Post plan to PR
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = 'infrastructure/terraform/plan_out.txt';
+            if (!fs.existsSync(path)) {
+              return;
+            }
+            const planOut = fs.readFileSync(path, 'utf8');
+            const max = 60000;
+            const truncated = planOut.length > max
+              ? planOut.slice(-max) + "\n…(truncated, see workflow logs)"
+              : planOut;
+            const body = `### Tofu plan\n\n<details><summary>Plan output</summary>\n\n\`\`\`hcl\n${truncated}\n\`\`\`\n\n</details>`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body
+            });
