@@ -1,0 +1,26 @@
+# Copy to terraform.tfvars (which is gitignored) and fill in real values.
+
+scw_organization_id = "00000000-0000-0000-0000-000000000000"
+scw_project_id      = "00000000-0000-0000-0000-000000000000"
+scw_region          = "fr-par"
+scw_zone            = "fr-par-1"
+
+domain_name = "coach-os.be"
+
+# Public half of the GitHub Actions deploy SSH key.
+# Generate locally with: ssh-keygen -t ed25519 -C "gha-deploy@coach-os" -f ~/.ssh/coach-os-gha
+# Then paste the contents of ~/.ssh/coach-os-gha.pub here:
+ssh_public_key = "ssh-ed25519 AAAA... gha-deploy@coach-os"
+
+# Cheapest viable defaults; bump these only if metrics demand it.
+vps_instance_type = "STARDUST1-S"
+vps_image         = "ubuntu_jammy"
+db_node_type      = "DB-DEV-S"
+db_volume_size_gb = 10
+
+registry_namespace = "coach-os"
+smtp_from_address  = "noreply@coach-os.be"
+
+jwt_issuer         = "CoachOS"
+jwt_audience       = "CoachOS"
+jwt_expiry_minutes = 60

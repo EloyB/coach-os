@@ -1,0 +1,90 @@
+# Production compose for coach-os, deployed to /app on the Scaleway VPS by
+# .github/workflows/deploy-infra.yml. Secrets are written to /app/.env by the
+# deploy job (sourced from Scaleway Secret Manager) — never committed.
+#
+# Local dev uses the docker-compose.yml at the repo root, NOT this file.
+
+services:
+  api:
+    image: ${REGISTRY_ENDPOINT}/api:latest
+    container_name: coach-os-api
+    restart: unless-stopped
+
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      # Scaleway API credentials — used by the in-process Scaleway Secret
+      # Manager configuration provider to fetch runtime config (DB connection
+      # string, JWT key, SMTP creds, etc).
+      SCW_DEFAULT_PROJECT_ID: ${SCW_DEFAULT_PROJECT_ID}
+      SCW_DEFAULT_ORGANIZATION_ID: ${SCW_DEFAULT_ORGANIZATION_ID}
+      SCW_SECRET_KEY: ${SCW_SECRET_KEY}
+      SCW_REGION: ${SCW_REGION:-fr-par}
+
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    networks:
+      - coach-os-network
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  frontend:
+    image: ${REGISTRY_ENDPOINT}/frontend:latest
+    container_name: coach-os-frontend
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    networks:
+      - coach-os-network
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  nginx:
+    image: nginx:alpine
+    container_name: coach-os-nginx
+    restart: unless-stopped
+
+    ports:
+      - "80:80"
+      - "443:443"
+
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+
+    depends_on:
+      - api
+      - frontend
+
+    networks:
+      - coach-os-network
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  coach-os-network:
+    driver: bridge
