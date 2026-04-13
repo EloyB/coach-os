@@ -85,6 +85,6 @@ jobs:
               if docker compose pull frontend; then break; fi
               [ $i -lt 3 ] && sleep 10 || exit 1
             done
-            docker compose up -d --no-deps frontend
+            docker compose up -d --no-deps --force-recreate frontend
             sleep 5
             docker compose ps frontend

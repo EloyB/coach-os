@@ -151,6 +151,6 @@ jobs:
               if docker compose pull api; then break; fi
               [ $i -lt 3 ] && sleep 10 || exit 1
             done
-            docker compose up -d --no-deps api
+            docker compose up -d --no-deps --force-recreate api
             sleep 5
             docker compose ps api
