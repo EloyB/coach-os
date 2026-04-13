@@ -88,6 +88,9 @@ jobs:
               exit 1
             fi
 
+            # Login to Scaleway Container Registry (idempotent — refreshes creds each deploy)
+            echo "$SCW_SECRET_KEY" | docker login rg.fr-par.scw.cloud -u nologin --password-stdin
+
             # Pull latest images and bring everything up
             docker compose pull
             docker compose up -d

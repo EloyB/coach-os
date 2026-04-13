@@ -135,13 +135,18 @@ jobs:
 
       - name: Pull new image and restart api on VPS
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          SCW_SECRET_KEY: ${{ secrets.SCALEWAY_SECRET_KEY }}
         with:
           host: ${{ secrets.VPS_IP }}
           username: root
           key: ${{ secrets.VPS_SSH_KEY }}
           port: 22
+          envs: SCW_SECRET_KEY
           script: |
+            set -euo pipefail
             cd /app
+            echo "$SCW_SECRET_KEY" | docker login rg.fr-par.scw.cloud -u nologin --password-stdin
             for i in 1 2 3; do
               if docker compose pull api; then break; fi
               [ $i -lt 3 ] && sleep 10 || exit 1
