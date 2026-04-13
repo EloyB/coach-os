@@ -21,10 +21,13 @@ RUN dotnet publish CoachOS.API/CoachOS.API.csproj -c Release -o /app
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
-COPY --from=build /app .
+
+# aspnet:10.0 ships with a non-root "app" user (uid 1654); just use it.
+COPY --from=build --chown=app:app /app .
+
+USER app
 
 ENV ASPNETCORE_URLS=http://+:5142
-ENV ASPNETCORE_ENVIRONMENT=Development
 EXPOSE 5142
 
 ENTRYPOINT ["dotnet", "CoachOS.API.dll"]

@@ -43,6 +43,15 @@ public static class ConfigurationExtensions
             var jwtKey = configuration["Jwt:Key"]
                          ?? throw new InvalidOperationException("Jwt:Key is niet geconfigureerd.");
 
+            // Reject the placeholder from appsettings.json and any key shorter than the
+            // HMAC-SHA256 minimum (256 bits). Prevents shipping with a dev key in prod.
+            if (jwtKey.Contains("CHANGE_THIS", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException(
+                    "Jwt:Key is nog op de placeholder-waarde. Stel een productiesleutel in via de omgeving of Scaleway Secret Manager.");
+            if (Encoding.UTF8.GetByteCount(jwtKey) < 32)
+                throw new InvalidOperationException(
+                    "Jwt:Key moet minimaal 32 bytes (256 bits) zijn voor HMAC-SHA256.");
+
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(options =>
                 {
@@ -66,9 +75,19 @@ public static class ConfigurationExtensions
         public IServiceCollection AddCorsPolicy(IConfiguration configuration,
             bool isDevelopment)
         {
-            var frontendOrigin = isDevelopment
-                ? "http://localhost:5317"
-                : configuration["Frontend:Origin"] ?? "http://localhost:5317";
+            string frontendOrigin;
+            if (isDevelopment)
+            {
+                frontendOrigin = "http://localhost:5317";
+            }
+            else
+            {
+                // In production, Frontend:Origin MUST be configured. Silently defaulting to
+                // localhost would make the API unusable from any real client.
+                frontendOrigin = configuration["Frontend:Origin"]
+                    ?? throw new InvalidOperationException(
+                        "Frontend:Origin is verplicht in productie (bv. https://coach-os.be).");
+            }
 
             services.AddCors(options =>
                 options.AddPolicy("Frontend", policy =>

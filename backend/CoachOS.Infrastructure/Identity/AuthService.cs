@@ -28,7 +28,7 @@ public class AuthService(
         var existingUser = await userManager.FindByEmailAsync(email);
         if (existingUser is not null)
         {
-            logger.LogWarning("Registratie geweigerd: e-mail {Email} is al in gebruik", email);
+            logger.LogWarning("Registratie geweigerd: e-mail {Email} is al in gebruik", MaskEmail(email));
             return Result<AuthResponseDto>.Fail("E-mailadres is al in gebruik");
         }
 
@@ -103,20 +103,20 @@ public class AuthService(
         var user = await userManager.FindByEmailAsync(email);
         if (user is null)
         {
-            logger.LogWarning("Mislukte inlogpoging: onbekend e-mailadres {Email}", email);
+            logger.LogWarning("Mislukte inlogpoging: onbekend e-mailadres {Email}", MaskEmail(email));
             return Result<AuthResponseDto>.Fail("Ongeldige inloggegevens");
         }
 
         var validPassword = await userManager.CheckPasswordAsync(user, password);
         if (!validPassword)
         {
-            logger.LogWarning("Mislukte inlogpoging: fout wachtwoord voor {Email} (UserId: {UserId})", email, user.Id);
+            logger.LogWarning("Mislukte inlogpoging: fout wachtwoord voor {Email} (UserId: {UserId})", MaskEmail(email), user.Id);
             return Result<AuthResponseDto>.Fail("Ongeldige inloggegevens");
         }
 
         if (!user.IsActive)
         {
-            logger.LogWarning("Inlogpoging op gedeactiveerd account: {Email} (UserId: {UserId})", email, user.Id);
+            logger.LogWarning("Inlogpoging op gedeactiveerd account: {Email} (UserId: {UserId})", MaskEmail(email), user.Id);
             return Result<AuthResponseDto>.Fail("Account is gedeactiveerd");
         }
 
@@ -135,5 +135,22 @@ public class AuthService(
             OrganizationId = user.OrganizationId,
             Role = user.Role.ToString()
         });
+    }
+
+    /// <summary>
+    /// Redacts the local part of an email for high-volume warning logs (failed
+    /// auth attempts) so they remain useful for support without enabling
+    /// enumeration if logs are exfiltrated. Successful-login info logs keep the
+    /// full address since they correlate to a known user.
+    /// </summary>
+    private static string MaskEmail(string email)
+    {
+        if (string.IsNullOrEmpty(email)) return email;
+        var at = email.IndexOf('@');
+        if (at <= 0) return "***";
+        var local = email[..at];
+        var domain = email[(at + 1)..];
+        var visible = local.Length <= 2 ? local[..1] : local[..2];
+        return $"{visible}***@{domain}";
     }
 }
