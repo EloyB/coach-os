@@ -18,6 +18,7 @@ try
 
     builder.Host.UseSerilog((context, services, config) =>
         config.ReadFrom.Configuration(context.Configuration)
+              .Enrich.FromLogContext()
               .WriteTo.Console());
 
     builder.Services.AddJwtAuthentication(configuration);
@@ -40,6 +41,8 @@ try
             options.SwaggerEndpoint("/swagger/v1/swagger.json", "CoachOS API v1"));
     }
 
+    app.UseMiddleware<CorrelationIdMiddleware>();
+
     app.UseExceptionHandler(errorApp =>
     {
         errorApp.Run(async context =>
@@ -49,16 +52,25 @@ try
 
             var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
             var exceptionFeature = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>();
+            var correlationId = context.Items[CorrelationIdMiddleware.ContextKey]?.ToString();
 
             if (exceptionFeature?.Error is UnauthorizedAccessException)
             {
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                await context.Response.WriteAsJsonAsync(new { message = "Niet geautoriseerd." });
+                await context.Response.WriteAsJsonAsync(new
+                {
+                    message = "Niet geautoriseerd.",
+                    correlationId,
+                });
                 return;
             }
 
             logger.LogError(exceptionFeature?.Error, "Onverwerkte fout bij {Path}", context.Request.Path);
-            await context.Response.WriteAsJsonAsync(new { message = "Er is een fout opgetreden. Probeer het later opnieuw." });
+            await context.Response.WriteAsJsonAsync(new
+            {
+                message = "Er is een fout opgetreden. Probeer het later opnieuw.",
+                correlationId,
+            });
         });
     });
 

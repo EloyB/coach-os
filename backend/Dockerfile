@@ -21,10 +21,17 @@ RUN dotnet publish CoachOS.API/CoachOS.API.csproj -c Release -o /app
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
-COPY --from=build /app .
+
+# Run as non-root user (UID 1000 matches dotnet:runtime-deps "app" user on newer images;
+# here we create one explicitly for aspnet:10.0 which doesn't ship with one).
+RUN groupadd --system --gid 1000 app \
+    && useradd --system --uid 1000 --gid app --home-dir /app --shell /usr/sbin/nologin app
+
+COPY --from=build --chown=app:app /app .
+
+USER app
 
 ENV ASPNETCORE_URLS=http://+:5142
-ENV ASPNETCORE_ENVIRONMENT=Development
 EXPOSE 5142
 
 ENTRYPOINT ["dotnet", "CoachOS.API.dll"]
