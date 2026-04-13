@@ -81,18 +81,18 @@ resource "random_password" "db" {
 }
 
 resource "scaleway_rdb_instance" "coach_os" {
-  project_id     = var.scw_project_id
-  region         = var.scw_region
-  name           = "coach-os-db"
-  node_type      = var.db_node_type
-  engine         = var.db_engine
-  user_name      = "coachos"
-  password       = random_password.db.result
-  volume_type    = "sbs_5k"
+  project_id        = var.scw_project_id
+  region            = var.scw_region
+  name              = "coach-os-db"
+  node_type         = var.db_node_type
+  engine            = var.db_engine
+  user_name         = "coachos"
+  password          = random_password.db.result
+  volume_type       = "sbs_5k"
   volume_size_in_gb = var.db_volume_size_gb
-  is_ha_cluster  = false
-  disable_backup = false
-  tags           = ["coach-os", "prod"]
+  is_ha_cluster     = false
+  disable_backup    = false
+  tags              = ["coach-os", "prod"]
 }
 
 resource "scaleway_rdb_database" "coach_os" {

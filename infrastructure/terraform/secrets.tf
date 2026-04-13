@@ -52,7 +52,7 @@ resource "scaleway_secret" "app" {
 }
 
 resource "scaleway_secret_version" "app" {
-  for_each = local.secrets
+  for_each  = local.secrets
   secret_id = scaleway_secret.app[each.key].id
   data      = each.value
 }
