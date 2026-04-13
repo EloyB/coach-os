@@ -1,0 +1,111 @@
+name: Infrastructure — Deploy compose + nginx
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'infrastructure/docker-compose.yml'
+      - 'infrastructure/nginx/**'
+      - '.github/workflows/deploy-infra.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch VPS public IP from Scaleway
+        env:
+          SCW_SECRET_KEY: ${{ secrets.SCALEWAY_SECRET_KEY }}
+          SCW_ZONE: ${{ secrets.SCALEWAY_ZONE }}
+          SCW_INSTANCE_ID: ${{ secrets.SCALEWAY_INSTANCE_ID }}
+        run: |
+          set -euo pipefail
+          resp=$(curl -sS -H "X-Auth-Token: $SCW_SECRET_KEY" \
+            "https://api.scaleway.com/instance/v1/zones/${SCW_ZONE}/servers/${SCW_INSTANCE_ID}")
+          ip=$(echo "$resp" | jq -r '.server.public_ip.address // .server.public_ips[0].address // empty')
+          if [ -z "$ip" ] || [ "$ip" = "null" ]; then
+            echo "Failed to resolve VPS IP" >&2
+            exit 1
+          fi
+          echo "VPS_HOST=$ip" >> "$GITHUB_ENV"
+
+      - name: Compute REGISTRY_ENDPOINT
+        run: echo "REGISTRY_ENDPOINT=rg.fr-par.scw.cloud/coach-os" >> "$GITHUB_ENV"
+
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          SCW_SECRET_KEY: ${{ secrets.SCALEWAY_SECRET_KEY }}
+          SCW_DEFAULT_ORGANIZATION_ID: ${{ secrets.SCALEWAY_DEFAULT_ORGANIZATION_ID }}
+          SCW_DEFAULT_PROJECT_ID: ${{ secrets.SCALEWAY_PROJECT_ID }}
+          REGISTRY_ENDPOINT: ${{ env.REGISTRY_ENDPOINT }}
+        with:
+          host: ${{ env.VPS_HOST }}
+          username: root
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: 22
+          envs: SCW_SECRET_KEY,SCW_DEFAULT_ORGANIZATION_ID,SCW_DEFAULT_PROJECT_ID,REGISTRY_ENDPOINT
+          script: |
+            set -euo pipefail
+            cd /app
+
+            # Backup current config
+            mkdir -p backups
+            TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+            cp docker-compose.yml "backups/docker-compose.yml.$TIMESTAMP" 2>/dev/null || true
+            [ -d nginx ] && cp -r nginx "backups/nginx.$TIMESTAMP" || true
+
+            # Pull latest infra config
+            rm -rf /tmp/infra
+            git clone --depth 1 --branch main https://github.com/${{ github.repository }}.git /tmp/infra
+
+            cp -v /tmp/infra/infrastructure/docker-compose.yml ./docker-compose.yml
+            rm -rf ./nginx
+            mkdir -p ./nginx/conf.d
+            cp -v /tmp/infra/infrastructure/nginx/nginx.conf ./nginx/nginx.conf
+            cp -v /tmp/infra/infrastructure/nginx/conf.d/*.conf ./nginx/conf.d/
+
+            # Write env file consumed by docker-compose interpolation.
+            # umask 077 ensures only root can read.
+            umask 077
+            cat > /app/.env <<EOF
+            REGISTRY_ENDPOINT=${REGISTRY_ENDPOINT}
+            SCW_SECRET_KEY=${SCW_SECRET_KEY}
+            SCW_DEFAULT_ORGANIZATION_ID=${SCW_DEFAULT_ORGANIZATION_ID}
+            SCW_DEFAULT_PROJECT_ID=${SCW_DEFAULT_PROJECT_ID}
+            SCW_REGION=fr-par
+            EOF
+
+            # Validate compose syntax (rolls back on failure)
+            if ! docker compose --env-file /app/.env config > /dev/null; then
+              echo "Invalid docker-compose.yml — rolling back"
+              cp "backups/docker-compose.yml.$TIMESTAMP" ./docker-compose.yml
+              [ -d "backups/nginx.$TIMESTAMP" ] && { rm -rf ./nginx; cp -r "backups/nginx.$TIMESTAMP" ./nginx; }
+              exit 1
+            fi
+
+            # Validate nginx syntax (one-off container)
+            if ! docker run --rm \
+                  --add-host api:127.0.0.1 \
+                  --add-host frontend:127.0.0.1 \
+                  -v /app/nginx/nginx.conf:/etc/nginx/nginx.conf:ro \
+                  -v /app/nginx/conf.d:/etc/nginx/conf.d:ro \
+                  -v /etc/letsencrypt:/etc/letsencrypt:ro \
+                  nginx:alpine nginx -t; then
+              echo "Invalid nginx config — rolling back"
+              cp "backups/docker-compose.yml.$TIMESTAMP" ./docker-compose.yml
+              rm -rf ./nginx
+              cp -r "backups/nginx.$TIMESTAMP" ./nginx
+              exit 1
+            fi
+
+            # Pull latest images and bring everything up
+            docker compose pull
+            docker compose up -d
+            sleep 5
+            docker compose ps
