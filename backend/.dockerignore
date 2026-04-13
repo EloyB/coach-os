@@ -1,6 +1,13 @@
 **/bin
 **/obj
 **/.vs/
+**/.idea/
 **/node_modules/
 **/*.user
 **/.DS_Store
+.git/
+.gitignore
+.gitattributes
+**/*.md
+Dockerfile
+.dockerignore
