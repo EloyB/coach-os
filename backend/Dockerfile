@@ -22,11 +22,7 @@ RUN dotnet publish CoachOS.API/CoachOS.API.csproj -c Release -o /app
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 
-# Run as non-root user (UID 1000 matches dotnet:runtime-deps "app" user on newer images;
-# here we create one explicitly for aspnet:10.0 which doesn't ship with one).
-RUN groupadd --system --gid 1000 app \
-    && useradd --system --uid 1000 --gid app --home-dir /app --shell /usr/sbin/nologin app
-
+# aspnet:10.0 ships with a non-root "app" user (uid 1654); just use it.
 COPY --from=build --chown=app:app /app .
 
 USER app
