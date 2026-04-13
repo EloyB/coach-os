@@ -97,5 +97,13 @@ jobs:
             # Pull latest images and bring everything up
             docker compose pull
             docker compose up -d
+
+            # Reload nginx config — bind-mounted files don't trigger a
+            # container restart on 'compose up', so nginx keeps the old
+            # in-memory config until reloaded. Idempotent if config unchanged.
+            if docker compose ps --status running --services | grep -q '^nginx$'; then
+              docker compose exec -T nginx nginx -t && docker compose exec -T nginx nginx -s reload
+            fi
+
             sleep 5
             docker compose ps
