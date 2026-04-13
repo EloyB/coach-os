@@ -5,12 +5,11 @@ provider "scaleway" {
   zone            = var.scw_zone
 }
 
-# ── SSH key (registers the GitHub Actions deploy key on Scaleway) ────────────
-
-resource "scaleway_iam_ssh_key" "gha_deploy" {
-  name       = "gha-deploy"
-  public_key = trimspace(var.ssh_public_key)
-}
+# ── SSH key ────────────────────────────────────────────────────────────────
+# The "gha-deploy" SSH key is registered manually in the Scaleway console
+# (Project → SSH Keys) because the IAM application lacks SSH-key write
+# permission. Scaleway automatically attaches all project SSH keys to any
+# instance booted in the project, so no terraform reference is needed.
 
 # ── Reserved public IP (stable across VPS rebuilds) ──────────────────────────
 
@@ -57,11 +56,6 @@ resource "scaleway_instance_server" "vps" {
   ip_id             = scaleway_instance_ip.vps.id
   security_group_id = scaleway_instance_security_group.vps.id
   tags              = ["coach-os", "prod"]
-
-  # The SSH key is delivered to the VPS via the project-level IAM SSH keys;
-  # the explicit reference here forces a dependency so the key exists before
-  # the instance tries to boot with it.
-  depends_on = [scaleway_iam_ssh_key.gha_deploy]
 }
 
 # ── Container Registry ───────────────────────────────────────────────────────
@@ -77,8 +71,13 @@ resource "scaleway_registry_namespace" "coach_os" {
 # ── Managed Postgres ─────────────────────────────────────────────────────────
 
 resource "random_password" "db" {
-  length  = 32
-  special = false # Scaleway RDB rejects some special chars; alphanumerics only is safest
+  length           = 32
+  special          = true
+  override_special = "!#%*-_=+" # Avoids chars that break shell escaping or PG connection strings
+  min_lower        = 1
+  min_upper        = 1
+  min_numeric      = 1
+  min_special      = 1
 }
 
 resource "scaleway_rdb_instance" "coach_os" {
@@ -89,7 +88,7 @@ resource "scaleway_rdb_instance" "coach_os" {
   engine         = var.db_engine
   user_name      = "coachos"
   password       = random_password.db.result
-  volume_type    = "bssd"
+  volume_type    = "sbs_5k"
   volume_size_in_gb = var.db_volume_size_gb
   is_ha_cluster  = false
   disable_backup = false

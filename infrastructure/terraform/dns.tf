@@ -36,13 +36,10 @@ resource "scaleway_domain_record" "spf" {
 # Transactional Email DKIM (Scaleway generates the key; attach via the TEM resource output)
 resource "scaleway_domain_record" "dkim" {
   dns_zone = var.domain_name
-  name     = scaleway_tem_domain.coach_os.dkim_config
+  name     = scaleway_tem_domain.coach_os.dkim_name
   type     = "TXT"
   data     = scaleway_tem_domain.coach_os.dkim_config
   ttl      = 3600
-  # Scaleway's provider sometimes exposes dkim_config as a record name; if your
-  # provider version returns a key=value pair instead, split and use
-  # dkim_key_name / dkim_key_value outputs.
 }
 
 # DMARC
