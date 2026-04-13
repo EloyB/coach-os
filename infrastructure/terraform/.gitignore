@@ -1,0 +1,20 @@
+# Real values, never commit
+*.tfvars
+!*.tfvars.example
+
+# Local state (we use S3 backend, but be safe)
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfplan
+
+# Crash logs
+crash.log
+crash.*.log
+
+# CLI overrides
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
