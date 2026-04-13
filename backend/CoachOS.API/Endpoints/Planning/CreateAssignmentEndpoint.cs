@@ -11,7 +11,7 @@ public class CreateAssignmentEndpoint : IEndpoint
     {
         app.MapPost("/lessonseries/{id:guid}/planning/assignments",
             async (Guid id, CreateAssignmentRequest request,
-                IPlanningService service, HttpContext ctx, CancellationToken ct) =>
+                IAssignmentService service, HttpContext ctx, CancellationToken ct) =>
             {
                 var result = await service.CreateAssignmentAsync(
                     id, request, ctx.GetOrganizationId(), ct);

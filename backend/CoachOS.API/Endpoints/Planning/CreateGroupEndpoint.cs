@@ -11,7 +11,7 @@ public class CreateGroupEndpoint : IEndpoint
     {
         app.MapPost("/lessonseries/{id:guid}/planning/groups",
             async (Guid id, CreateGroupRequest request,
-                IPlanningService service, HttpContext ctx, CancellationToken ct) =>
+                IAssignmentService service, HttpContext ctx, CancellationToken ct) =>
             {
                 var result = await service.CreateGroupAsync(id, request, ctx.GetOrganizationId(), ct);
                 return result.IsSuccess

@@ -11,7 +11,7 @@ public class UpdateAssignmentEndpoint : IEndpoint
     {
         app.MapPut("/lessonseries/{id:guid}/planning/assignments/{assignmentId:guid}",
             async (Guid id, Guid assignmentId, UpdateAssignmentRequest request,
-                IPlanningService service, HttpContext ctx, CancellationToken ct) =>
+                IAssignmentService service, HttpContext ctx, CancellationToken ct) =>
             {
                 var result = await service.UpdateAssignmentAsync(
                     id, assignmentId, request, ctx.GetOrganizationId(), ct);

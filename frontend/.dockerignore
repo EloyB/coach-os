@@ -2,3 +2,10 @@ node_modules/
 .next/
 test-results/
 playwright-report/
+.git/
+.gitignore
+.env*
+**/.DS_Store
+**/*.md
+Dockerfile
+.dockerignore
