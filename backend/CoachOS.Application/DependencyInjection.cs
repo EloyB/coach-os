@@ -23,6 +23,8 @@ public static class DependencyInjection
         services.AddScoped<ITennisClubService, TennisClubService>();
         services.AddScoped<IEnrollmentService, EnrollmentService>();
         services.AddScoped<IPlanningService, PlanningService>();
+        services.AddScoped<IAssignmentService, AssignmentService>();
+        services.AddScoped<IConfirmationOrchestrationService, ConfirmationOrchestrationService>();
         services.AddScoped<IStudentConfirmationService, StudentConfirmationService>();
 
         return services;

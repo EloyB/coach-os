@@ -8,7 +8,7 @@ public class ConfirmScheduleEndpoint : IEndpoint
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapPost("/lessonseries/{id:guid}/planning/confirm",
-            async (Guid id, IPlanningService service, HttpContext ctx, CancellationToken ct) =>
+            async (Guid id, IConfirmationOrchestrationService service, HttpContext ctx, CancellationToken ct) =>
             {
                 var result = await service.ConfirmScheduleAsync(id, ctx.GetOrganizationId(), ct);
                 return result.IsSuccess ? Results.Ok() : result.ToErrorResult();

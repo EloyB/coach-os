@@ -8,7 +8,7 @@ public class ResendConfirmationEndpoint : IEndpoint
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapPost("/lessonseries/{id:guid}/planning/assignments/{assignmentId:guid}/resend-confirmation",
-            async (Guid id, Guid assignmentId, IPlanningService service, HttpContext ctx, CancellationToken ct) =>
+            async (Guid id, Guid assignmentId, IConfirmationOrchestrationService service, HttpContext ctx, CancellationToken ct) =>
             {
                 var result = await service.ResendConfirmationEmailAsync(
                     id, assignmentId, ctx.GetOrganizationId(), ct);

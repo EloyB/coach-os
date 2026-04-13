@@ -8,7 +8,7 @@ public class AdminConfirmAssignmentEndpoint : IEndpoint
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapPost("/lessonseries/{id:guid}/planning/assignments/{assignmentId:guid}/admin-confirm",
-            async (Guid id, Guid assignmentId, IPlanningService service, HttpContext ctx, CancellationToken ct) =>
+            async (Guid id, Guid assignmentId, IConfirmationOrchestrationService service, HttpContext ctx, CancellationToken ct) =>
             {
                 var result = await service.AdminConfirmAssignmentAsync(
                     id, assignmentId, ctx.GetOrganizationId(), ct);

@@ -8,7 +8,7 @@ public class DissolveGroupEndpoint : IEndpoint
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapDelete("/lessonseries/{id:guid}/planning/groups/{groupId:guid}",
-            async (Guid id, Guid groupId, IPlanningService service, HttpContext ctx, CancellationToken ct) =>
+            async (Guid id, Guid groupId, IAssignmentService service, HttpContext ctx, CancellationToken ct) =>
             {
                 var result = await service.DissolveGroupAsync(id, groupId, ctx.GetOrganizationId(), ct);
                 return result.IsSuccess ? Results.NoContent() : result.ToErrorResult();

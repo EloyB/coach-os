@@ -1,12 +1,8 @@
-using CoachOS.Application.Configuration;
 using CoachOS.Application.Planning;
-using CoachOS.Application.Planning.DTOs;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
 using CoachOS.Domain.Interfaces;
 using FluentAssertions;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Moq;
 using NUnit.Framework;
 
@@ -20,12 +16,7 @@ public class PlanningServiceTests
     private Mock<IEnrollmentGroupRepository> _groupRepo = null!;
     private Mock<ITimeSlotPreferenceRepository> _prefRepo = null!;
     private Mock<IScheduleAssignmentRepository> _assignmentRepo = null!;
-    private Mock<IAssignmentConfirmationTokenRepository> _tokenRepo = null!;
-    private Mock<IPaymentRepository> _paymentRepo = null!;
     private Mock<IUserLookupService> _userLookup = null!;
-    private Mock<IEmailService> _emailService = null!;
-    private Mock<IOptions<AppOptions>> _appOptions = null!;
-    private Mock<ILogger<PlanningService>> _logger = null!;
     private PlanningService _service = null!;
 
     private static readonly Guid OrgId = Guid.NewGuid();
@@ -40,13 +31,7 @@ public class PlanningServiceTests
         _groupRepo = new Mock<IEnrollmentGroupRepository>();
         _prefRepo = new Mock<ITimeSlotPreferenceRepository>();
         _assignmentRepo = new Mock<IScheduleAssignmentRepository>();
-        _tokenRepo = new Mock<IAssignmentConfirmationTokenRepository>();
-        _paymentRepo = new Mock<IPaymentRepository>();
         _userLookup = new Mock<IUserLookupService>();
-        _emailService = new Mock<IEmailService>();
-        _appOptions = new Mock<IOptions<AppOptions>>();
-        _appOptions.Setup(o => o.Value).Returns(new AppOptions());
-        _logger = new Mock<ILogger<PlanningService>>();
 
         _service = new PlanningService(
             _seriesRepo.Object,
@@ -54,12 +39,7 @@ public class PlanningServiceTests
             _groupRepo.Object,
             _prefRepo.Object,
             _assignmentRepo.Object,
-            _tokenRepo.Object,
-            _paymentRepo.Object,
-            _userLookup.Object,
-            _emailService.Object,
-            _appOptions.Object,
-            _logger.Object);
+            _userLookup.Object);
     }
 
     // ── GenerateProposalAsync ────────────────────────────────────────────────
@@ -119,214 +99,16 @@ public class PlanningServiceTests
         _seriesRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.AtLeastOnce);
     }
 
-    // ── ConfirmScheduleAsync ─────────────────────────────────────────────────
-
-    [Test]
-    public async Task ConfirmScheduleAsync_SeriesNotFound_ReturnsNotFound()
-    {
-        _seriesRepo.Setup(r => r.GetByIdAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((LessonSerie?)null);
-
-        var result = await _service.ConfirmScheduleAsync(SeriesId, OrgId);
-
-        result.IsSuccess.Should().BeFalse();
-        result.Errors[0].Code.Should().Be("not_found");
-    }
-
-    [Test]
-    public async Task ConfirmScheduleAsync_WrongStatus_ReturnsValidationError()
-    {
-        var series = BuildSeries(withSlots: true);
-        series.PlanningStatus = PlanningStatus.Enrollment; // not Planning
-
-        _seriesRepo.Setup(r => r.GetByIdAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(series);
-
-        var result = await _service.ConfirmScheduleAsync(SeriesId, OrgId);
-
-        result.IsSuccess.Should().BeFalse();
-        result.Errors[0].Code.Should().Be("validation");
-    }
-
-    [Test]
-    public async Task ConfirmScheduleAsync_NoProposedAssignments_ReturnsValidationError()
-    {
-        var series = BuildSeries(withSlots: true);
-        series.PlanningStatus = PlanningStatus.Planning;
-
-        _seriesRepo.Setup(r => r.GetByIdAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(series);
-        _assignmentRepo.Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<ScheduleAssignment>());
-
-        var result = await _service.ConfirmScheduleAsync(SeriesId, OrgId);
-
-        result.IsSuccess.Should().BeFalse();
-        result.Errors[0].Code.Should().Be("validation");
-    }
-
-    [Test]
-    public async Task ConfirmScheduleAsync_ValidState_ConfirmsAssignmentsAndSetsStatus()
-    {
-        var series = BuildSeries(withSlots: true);
-        series.PlanningStatus = PlanningStatus.Planning;
-
-        var assignment = new ScheduleAssignment
-        {
-            Id = Guid.NewGuid(),
-            OrganizationId = OrgId,
-            LessonSerieId = SeriesId,
-            WeeklyTemplateEntryId = SlotId,
-            EnrollmentId = Guid.NewGuid(),
-            Status = ScheduleAssignmentStatus.Proposed,
-        };
-
-        _seriesRepo.Setup(r => r.GetByIdAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(series);
-        _assignmentRepo.Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<ScheduleAssignment> { assignment });
-
-        var result = await _service.ConfirmScheduleAsync(SeriesId, OrgId);
-
-        result.IsSuccess.Should().BeTrue();
-        series.PlanningStatus.Should().Be(PlanningStatus.AwaitingConfirmation);
-        assignment.Status.Should().Be(ScheduleAssignmentStatus.AwaitingConfirmation);
-    }
-
-    // ── UpdateAssignmentAsync ────────────────────────────────────────────────
-
-    [Test]
-    public async Task UpdateAssignmentAsync_NotFound_ReturnsNotFound()
-    {
-        var assignmentId = Guid.NewGuid();
-        _assignmentRepo.Setup(r => r.GetByIdAsync(assignmentId, OrgId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((ScheduleAssignment?)null);
-
-        var result = await _service.UpdateAssignmentAsync(
-            SeriesId, assignmentId, new UpdateAssignmentRequest { WeeklyTemplateEntryId = SlotId }, OrgId);
-
-        result.IsSuccess.Should().BeFalse();
-        result.Errors[0].Code.Should().Be("not_found");
-    }
-
-    [Test]
-    public async Task UpdateAssignmentAsync_ConfirmedAssignment_ReturnsValidationError()
-    {
-        var assignment = new ScheduleAssignment
-        {
-            Id = Guid.NewGuid(),
-            OrganizationId = OrgId,
-            LessonSerieId = SeriesId,
-            WeeklyTemplateEntryId = SlotId,
-            Status = ScheduleAssignmentStatus.Confirmed,
-        };
-
-        _assignmentRepo.Setup(r => r.GetByIdAsync(assignment.Id, OrgId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(assignment);
-
-        var result = await _service.UpdateAssignmentAsync(
-            SeriesId, assignment.Id, new UpdateAssignmentRequest { WeeklyTemplateEntryId = Guid.NewGuid() }, OrgId);
-
-        result.IsSuccess.Should().BeFalse();
-        result.Errors[0].Code.Should().Be("validation");
-    }
-
-    [Test]
-    public async Task UpdateAssignmentAsync_ValidProposed_UpdatesSlot()
-    {
-        var newSlotId = Guid.NewGuid();
-        var assignment = new ScheduleAssignment
-        {
-            Id = Guid.NewGuid(),
-            OrganizationId = OrgId,
-            LessonSerieId = SeriesId,
-            WeeklyTemplateEntryId = SlotId,
-            Status = ScheduleAssignmentStatus.Proposed,
-        };
-
-        _assignmentRepo.Setup(r => r.GetByIdAsync(assignment.Id, OrgId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(assignment);
-
-        var result = await _service.UpdateAssignmentAsync(
-            SeriesId, assignment.Id, new UpdateAssignmentRequest { WeeklyTemplateEntryId = newSlotId }, OrgId);
-
-        result.IsSuccess.Should().BeTrue();
-        assignment.WeeklyTemplateEntryId.Should().Be(newSlotId);
-    }
-
-    // ── CreateGroupAsync ─────────────────────────────────────────────────────
-
-    [Test]
-    public async Task CreateGroupAsync_EnrollmentAlreadyInGroup_ReturnsValidationError()
-    {
-        _seriesRepo.Setup(r => r.ExistsAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true);
-
-        var enrollment = BuildEnrollment("Alice");
-        enrollment.EnrollmentGroupId = Guid.NewGuid(); // already in a group
-
-        _enrollmentRepo.Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<Enrollment> { enrollment });
-
-        var result = await _service.CreateGroupAsync(
-            SeriesId, new CreateGroupRequest { EnrollmentIds = [enrollment.Id] }, OrgId);
-
-        result.IsSuccess.Should().BeFalse();
-        result.Errors[0].Code.Should().Be("validation");
-    }
-
-    // ── DissolveGroupAsync ───────────────────────────────────────────────────
-
-    [Test]
-    public async Task DissolveGroupAsync_GroupNotFound_ReturnsNotFound()
-    {
-        var groupId = Guid.NewGuid();
-        _groupRepo.Setup(r => r.GetByIdAsync(groupId, OrgId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((EnrollmentGroup?)null);
-
-        var result = await _service.DissolveGroupAsync(SeriesId, groupId, OrgId);
-
-        result.IsSuccess.Should().BeFalse();
-        result.Errors[0].Code.Should().Be("not_found");
-    }
-
-    [Test]
-    public async Task DissolveGroupAsync_ValidGroup_RemovesGroupAndAssignments()
-    {
-        var group = new EnrollmentGroup
-        {
-            Id = Guid.NewGuid(),
-            OrganizationId = OrgId,
-            LessonSerieId = SeriesId,
-            Name = "Groep A",
-            LeaderEnrollmentId = Guid.NewGuid(),
-            Members = new List<Enrollment>
-            {
-                new() { Id = Guid.NewGuid(), EnrollmentGroupId = Guid.NewGuid() },
-                new() { Id = Guid.NewGuid(), EnrollmentGroupId = Guid.NewGuid() },
-            },
-        };
-
-        _groupRepo.Setup(r => r.GetByIdAsync(group.Id, OrgId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(group);
-        _assignmentRepo.Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<ScheduleAssignment>());
-
-        var result = await _service.DissolveGroupAsync(SeriesId, group.Id, OrgId);
-
-        result.IsSuccess.Should().BeTrue();
-        group.Members.Should().AllSatisfy(m => m.EnrollmentGroupId.Should().BeNull());
-        _groupRepo.Verify(r => r.Delete(group), Times.Once);
-    }
-
     // ── Helpers ──────────────────────────────────────────────────────────────
 
-    private static LessonSerie BuildSeries(bool withSlots)
+    internal static LessonSerie BuildSeries(bool withSlots, Guid? seriesId = null, Guid? orgId = null, Guid? slotId = null)
     {
+        var sid = seriesId ?? SeriesId;
+        var oid = orgId ?? OrgId;
         var series = new LessonSerie
         {
-            Id = SeriesId,
-            OrganizationId = OrgId,
+            Id = sid,
+            OrganizationId = oid,
             Name = "Test Series",
             StartDate = new DateOnly(2026, 5, 1),
             EndDate = new DateOnly(2026, 7, 31),
@@ -338,8 +120,8 @@ public class PlanningServiceTests
         {
             series.WeeklyTemplate.Add(new WeeklyTemplateEntry
             {
-                Id = SlotId,
-                LessonSerieId = SeriesId,
+                Id = slotId ?? SlotId,
+                LessonSerieId = sid,
                 DayOfWeek = 1, // Monday
                 StartTime = new TimeOnly(9, 0),
                 EndTime = new TimeOnly(10, 0),
@@ -351,13 +133,13 @@ public class PlanningServiceTests
         return series;
     }
 
-    private static Enrollment BuildEnrollment(string name)
+    internal static Enrollment BuildEnrollment(string name, Guid? orgId = null, Guid? seriesId = null)
     {
         return new Enrollment
         {
             Id = Guid.NewGuid(),
-            OrganizationId = OrgId,
-            LessonSerieId = SeriesId,
+            OrganizationId = orgId ?? OrgId,
+            LessonSerieId = seriesId ?? SeriesId,
             StudentName = name,
             StudentEmail = $"{name.ToLower()}@test.com",
             Status = EnrollmentStatus.Confirmed,
