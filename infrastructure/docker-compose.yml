@@ -61,8 +61,10 @@ services:
   # Live container log viewer at https://coach-os.be/_logs/ (basic auth).
   # Reads the host docker socket read-only — only sees containers, can't
   # exec into them or stop them.
+  # Pinned to v8.x — last major with built-in basic auth via env vars.
+  # v10 removed DOZZLE_USERNAME/PASSWORD in favor of a users.yml file.
   dozzle:
-    image: amir20/dozzle:latest
+    image: amir20/dozzle:v8.13.4
     container_name: coach-os-dozzle
     restart: unless-stopped
 
@@ -75,12 +77,8 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
 
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/_logs/healthcheck"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
+    # No healthcheck — dozzle uses a scratch-based image without wget/curl.
+    # nginx is the entry point for users; it'll surface dozzle being down.
 
     networks:
       - coach-os-network
