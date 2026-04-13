@@ -23,7 +23,11 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 
 # aspnet:10.0 ships with a non-root "app" user (uid 1654); just use it.
+# WORKDIR creates /app owned by root — chown it so the app user can create
+# subdirectories at runtime (e.g. LodeKennes.Extensions.Scaleway.SecretManager
+# caches fetched secrets to /app/lk-scw-secrets).
 COPY --from=build --chown=app:app /app .
+RUN chown app:app /app
 
 USER app
 
