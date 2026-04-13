@@ -79,6 +79,7 @@ jobs:
             if ! docker run --rm \
                   --add-host api:127.0.0.1 \
                   --add-host frontend:127.0.0.1 \
+                  --add-host dozzle:127.0.0.1 \
                   -v /app/nginx/nginx.conf:/etc/nginx/nginx.conf:ro \
                   -v /app/nginx/conf.d:/etc/nginx/conf.d:ro \
                   -v /etc/letsencrypt:/etc/letsencrypt:ro \
