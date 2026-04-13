@@ -105,6 +105,7 @@ jobs:
           secret-key: ${{ secrets.SCALEWAY_SECRET_KEY }}
           default-project-id: ${{ secrets.SCALEWAY_PROJECT_ID }}
           default-organization-id: ${{ secrets.SCALEWAY_DEFAULT_ORGANIZATION_ID }}
+          default-region: fr-par
 
       - name: Export connection string for EF Core
         run: |
