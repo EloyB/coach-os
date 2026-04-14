@@ -27,33 +27,55 @@ public class TrainerService(
         CancellationToken ct = default)
     {
         var existing = await userManager.FindByEmailAsync(email);
-        if (existing is not null)
+        // Block only if an ACTIVE user already has this email.
+        // Inactive users (pending/expired invite or deactivated trainer) may be
+        // re-invited — we update the existing record to avoid orphaning related
+        // entities (LessonSeries.TrainerId etc) that reference the original Id.
+        if (existing is { IsActive: true })
             return Result<Guid>.Fail("E-mailadres is al in gebruik");
 
         var inviteToken = Guid.NewGuid().ToString("N");
         var hashedToken = HashToken(inviteToken);
 
-        ApplicationUser user = new()
+        ApplicationUser user;
+        if (existing is not null)
         {
-            Id = Guid.NewGuid(),
-            UserName = email,
-            Email = email,
-            FirstName = firstName,
-            LastName = lastName,
-            OrganizationId = organizationId,
-            Role = UserRole.Trainer,
-            IsActive = false,
-            InviteToken = hashedToken,
-            InviteTokenExpiry = DateTime.UtcNow.AddHours(72),
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
+            existing.FirstName = firstName;
+            existing.LastName = lastName;
+            existing.OrganizationId = organizationId;
+            existing.Role = UserRole.Trainer;
+            existing.InviteToken = hashedToken;
+            existing.InviteTokenExpiry = DateTime.UtcNow.AddHours(72);
+            existing.UpdatedAt = DateTime.UtcNow;
+            var updateResult = await userManager.UpdateAsync(existing);
+            if (!updateResult.Succeeded)
+                return Result<Guid>.Fail(updateResult.Errors.Select(e => e.Description));
+            user = existing;
+        }
+        else
+        {
+            user = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                UserName = email,
+                Email = email,
+                FirstName = firstName,
+                LastName = lastName,
+                OrganizationId = organizationId,
+                Role = UserRole.Trainer,
+                IsActive = false,
+                InviteToken = hashedToken,
+                InviteTokenExpiry = DateTime.UtcNow.AddHours(72),
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
 
-        // Random password — will be replaced on invite acceptance
-        var randomPassword = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)) + "!A1";
-        var result = await userManager.CreateAsync(user, randomPassword);
-        if (!result.Succeeded)
-            return Result<Guid>.Fail(result.Errors.Select(e => e.Description));
+            // Random password — will be replaced on invite acceptance
+            var randomPassword = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)) + "!A1";
+            var createResult = await userManager.CreateAsync(user, randomPassword);
+            if (!createResult.Succeeded)
+                return Result<Guid>.Fail(createResult.Errors.Select(e => e.Description));
+        }
 
         var inviteUrl = $"{inviteBaseUrl.TrimEnd('/')}/invite/{inviteToken}";
         await emailService.SendTrainerInviteAsync(email, firstName, inviteUrl, ct);
@@ -108,7 +130,9 @@ public class TrainerService(
     {
         var trainers = await userManager.Users
             .AsNoTracking()
-            .Where(u => u.OrganizationId == organizationId && u.Role == UserRole.Trainer)
+            .Where(u => u.OrganizationId == organizationId
+                        && u.Role == UserRole.Trainer
+                        && u.IsActive)
             .OrderBy(u => u.FirstName)
             .ThenBy(u => u.LastName)
             .Select(u => new TrainerDto
