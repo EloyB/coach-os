@@ -22,9 +22,17 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        // Scaleway Secret Manager pushes the connection string as
+        // "DatabaseSettings__ConnectionString" (literal). Local dev uses
+        // ConnectionStrings:DefaultConnection in appsettings.
+        var connectionString = configuration["DatabaseSettings__ConnectionString"]
+                               ?? configuration.GetConnectionString("DefaultConnection")
+                               ?? throw new InvalidOperationException(
+                                   "No DB connection string configured (DatabaseSettings__ConnectionString or ConnectionStrings:DefaultConnection).");
+
         services.AddDbContext<ApplicationDbContext>(options =>
             options.UseNpgsql(
-                configuration.GetConnectionString("DefaultConnection"),
+                connectionString,
                 npgsql => npgsql.MigrationsAssembly(typeof(ApplicationDbContext).Assembly.FullName)));
 
         services.AddIdentityCore<ApplicationUser>(options =>
