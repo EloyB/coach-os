@@ -110,12 +110,15 @@ resource "scaleway_rdb_privilege" "coach_os" {
 }
 
 # ── Transactional Email domain ───────────────────────────────────────────────
-# The domain must be DNS-verified before it can send; the records for that are
-# created in dns.tf to avoid a circular dependency.
+# autoconfig = true lets Scaleway create and maintain the SPF/DKIM/DMARC
+# records directly in Scaleway Domains. We previously managed them manually
+# in dns.tf but the DKIM value drifted out of sync with TEM's expectations,
+# blocking domain verification.
 
 resource "scaleway_tem_domain" "coach_os" {
   project_id = var.scw_project_id
   region     = var.scw_region
   name       = var.domain_name
   accept_tos = true
+  autoconfig = true
 }

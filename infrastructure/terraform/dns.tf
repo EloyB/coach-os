@@ -1,10 +1,8 @@
 # DNS records on Scaleway Domains for coach-os.be.
 # The domain itself must be registered/transferred at Scaleway before these apply.
-
-locals {
-  tem_spf_record   = "v=spf1 include:_spf.tem.scw.cloud -all"
-  tem_dmarc_record = "v=DMARC1; p=quarantine; rua=mailto:postmaster@${var.domain_name}"
-}
+#
+# SPF/DKIM/DMARC records are NOT managed here — they're auto-created by
+# scaleway_tem_domain.coach_os (autoconfig = true). See main.tf.
 
 # Apex: coach-os.be → VPS public IP
 resource "scaleway_domain_record" "apex" {
@@ -22,31 +20,4 @@ resource "scaleway_domain_record" "www" {
   type     = "A"
   data     = scaleway_instance_ip.vps.address
   ttl      = 300
-}
-
-# Transactional Email SPF
-resource "scaleway_domain_record" "spf" {
-  dns_zone = var.domain_name
-  name     = ""
-  type     = "TXT"
-  data     = local.tem_spf_record
-  ttl      = 3600
-}
-
-# Transactional Email DKIM (Scaleway generates the key; attach via the TEM resource output)
-resource "scaleway_domain_record" "dkim" {
-  dns_zone = var.domain_name
-  name     = scaleway_tem_domain.coach_os.dkim_name
-  type     = "TXT"
-  data     = scaleway_tem_domain.coach_os.dkim_config
-  ttl      = 3600
-}
-
-# DMARC
-resource "scaleway_domain_record" "dmarc" {
-  dns_zone = var.domain_name
-  name     = "_dmarc"
-  type     = "TXT"
-  data     = local.tem_dmarc_record
-  ttl      = 3600
 }
