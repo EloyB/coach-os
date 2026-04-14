@@ -23,9 +23,12 @@ resource "scaleway_instance_ip" "vps" {
 resource "scaleway_instance_security_group" "vps" {
   name                    = "coach-os-vps"
   project_id              = var.scw_project_id
-  description             = "VPS firewall for coach-os: SSH, HTTP, HTTPS inbound only"
+  description             = "VPS firewall for coach-os: SSH, HTTP, HTTPS inbound; outbound SMTP allowed"
   inbound_default_policy  = "drop"
   outbound_default_policy = "accept"
+  # Disable Scaleway's default anti-spam rules that drop outbound 25/465/587.
+  # We need outbound 587 for Scaleway TEM SMTP (smtp.tem.scw.cloud:587).
+  enable_default_security = false
 
   inbound_rule {
     action   = "accept"
