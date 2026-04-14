@@ -31,6 +31,24 @@ public static class ConfigurationExtensions
                         ?? throw new InvalidOperationException("SCW_DEFAULT_ORGANIZATION_ID niet gevonden.")
                 );
             });
+
+            // Scaleway Secret Manager stores keys with their literal names
+            // (e.g. "Email__SmtpHost"). .NET config section-binding expects
+            // colon form ("Email:SmtpHost"). Duplicate every "__"-key as
+            // ":"-key so GetSection<T> / Bind<T> / configuration[...] all work
+            // uniformly regardless of which form the caller uses.
+            var normalized = new Dictionary<string, string?>();
+            foreach (var kv in builder.Configuration.AsEnumerable())
+            {
+                if (kv.Key.Contains("__") && !string.IsNullOrEmpty(kv.Value))
+                {
+                    normalized[kv.Key.Replace("__", ":")] = kv.Value;
+                }
+            }
+            if (normalized.Count > 0)
+            {
+                builder.Configuration.AddInMemoryCollection(normalized);
+            }
         }
 
         return builder.Configuration;
