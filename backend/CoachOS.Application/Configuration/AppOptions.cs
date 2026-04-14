@@ -6,4 +6,7 @@ public class AppOptions
 
     /// <summary>Base URL for student confirmation pages, e.g. "https://app.coachos.be/confirmation".</summary>
     public string ConfirmationBaseUrl { get; set; } = "http://localhost:5317/confirmation";
+
+    /// <summary>Base URL for student magic-link redemption, e.g. "https://app.coachos.be/auth/magic".</summary>
+    public string StudentMagicLinkBaseUrl { get; set; } = "http://localhost:5317/auth/magic";
 }

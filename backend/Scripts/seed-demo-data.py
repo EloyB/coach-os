@@ -298,6 +298,25 @@ def create_planning_series(api: ApiClient, spec: dict, club_ids: list[str],
     return sid
 
 
+def generate_and_confirm_planning(api: ApiClient, planning_series_id: str) -> None:
+    """Run the admin planning flow so ScheduleAssignments exist for the demo.
+    Produces assignments in AwaitingConfirmation state (each student has a
+    per-assignment confirmation token they can act on — or simply view via
+    the student portal)."""
+    print("\n9. Generating planning proposal...")
+    proposal = api.post(
+        f"/lessonseries/{planning_series_id}/planning/generate?force=true",
+        {},
+    )
+    if proposal is None:
+        print("   Failed to generate planning proposal.")
+        return
+
+    print("   Confirming planning (locks schedule, creates student confirmation tokens)...")
+    api.post(f"/lessonseries/{planning_series_id}/planning/confirm", {})
+    print("   Done.")
+
+
 def planning_enrollments(api: ApiClient, planning_series_id: str,
                          enrollments: list[dict]) -> None:
     print("   Fetching time slots...")
@@ -366,6 +385,7 @@ def main() -> int:
         api, data["planningSeries"], club_ids, trainer_id, today, deadline_iso)
     if planning_id:
         planning_enrollments(api, planning_id, data["planningEnrollments"])
+        generate_and_confirm_planning(api, planning_id)
 
     print("\n=== Seed Complete ===\n")
     print("Login credentials:")

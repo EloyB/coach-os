@@ -45,3 +45,19 @@ export async function registerStudent(request: RegisterStudentRequest): Promise<
   const { data } = await apiClient.post<AuthResponse>('/auth/register-student', request);
   return data;
 }
+
+export interface StudentAuthResponse {
+  token: string;
+  expiresAt: string;
+  email: string;
+  role: string;
+}
+
+export async function requestMagicLink(email: string): Promise<void> {
+  await apiClient.post('/auth/magic/request', { email });
+}
+
+export async function redeemMagicLink(token: string): Promise<StudentAuthResponse> {
+  const { data } = await apiClient.post<StudentAuthResponse>('/auth/magic/redeem', { token });
+  return data;
+}

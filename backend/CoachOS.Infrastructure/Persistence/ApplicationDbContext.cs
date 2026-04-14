@@ -28,6 +28,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<TimeSlotPreference> TimeSlotPreferences { get; set; } = null!;
     public DbSet<ScheduleAssignment> ScheduleAssignments { get; set; } = null!;
     public DbSet<AssignmentConfirmationToken> AssignmentConfirmationTokens { get; set; } = null!;
+    public DbSet<MagicLinkToken> MagicLinkTokens { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -48,6 +49,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         builder.ApplyConfiguration(new EnrollmentGroupConfiguration());
         builder.ApplyConfiguration(new TimeSlotPreferenceConfiguration());
         builder.ApplyConfiguration(new ScheduleAssignmentConfiguration());
+        builder.ApplyConfiguration(new MagicLinkTokenConfiguration());
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

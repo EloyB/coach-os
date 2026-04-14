@@ -3,12 +3,16 @@ const USER_KEY = 'auth_user';
 const AUTH_COOKIE = 'has_token';
 
 export interface AuthUser {
-  userId: string;
+  userId?: string;
   email: string;
-  firstName: string;
-  lastName: string;
-  organizationId: string | null;
+  firstName?: string;
+  lastName?: string;
+  organizationId?: string | null;
   role: string;
+}
+
+export function isStudent(): boolean {
+  return getAuthUser()?.role === "Student";
 }
 
 export function getToken(): string | null {

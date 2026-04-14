@@ -1,0 +1,32 @@
+<mj-raw>
+  <meta name="color-scheme" content="light only" />
+  <meta name="supported-color-schemes" content="light only" />
+</mj-raw>
+<mj-style>
+  :root { color-scheme: light only; supported-color-schemes: light only; }
+  /* Force light palette in clients that auto-invert (Apple Mail, iOS Mail, Gmail Android) */
+  @media (prefers-color-scheme: dark) {
+    body, table, td, p, h1, h2, h3, span, a, div {
+      color-scheme: light only !important;
+    }
+    body, .cos-shell { background-color: #FAFAF8 !important; }
+    .cos-card       { background-color: #FFFFFF !important; }
+    .cos-header     { background-color: #2D5016 !important; }
+    .cos-info       { background-color: #FAFAF8 !important; }
+    .cos-ink        { color: #111827 !important; }
+    .cos-muted      { color: #6b7280 !important; }
+    .cos-faint      { color: #9ca3af !important; }
+    .cos-white      { color: #FFFFFF !important; }
+    .cos-lime       { color: #D0FF14 !important; }
+  }
+  /* Outlook.com / Outlook 365 dark mode */
+  [data-ogsc] body, [data-ogsc] .cos-shell { background-color: #FAFAF8 !important; }
+  [data-ogsc] .cos-card   { background-color: #FFFFFF !important; }
+  [data-ogsc] .cos-header { background-color: #2D5016 !important; }
+  [data-ogsc] .cos-info   { background-color: #FAFAF8 !important; }
+  [data-ogsc] .cos-ink    { color: #111827 !important; }
+  [data-ogsc] .cos-muted  { color: #6b7280 !important; }
+  [data-ogsc] .cos-faint  { color: #9ca3af !important; }
+  [data-ogsc] .cos-white  { color: #FFFFFF !important; }
+  [data-ogsc] .cos-lime   { color: #D0FF14 !important; }
+</mj-style>

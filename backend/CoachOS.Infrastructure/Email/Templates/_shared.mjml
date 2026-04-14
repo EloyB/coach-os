@@ -1,0 +1,7 @@
+<!--
+  Reference partial — these blocks are copy-pasted into each template
+  so we keep MJML files self-contained (no <mj-include> path tricks).
+  Edit here first, propagate to all templates if you change shared visuals.
+
+  Brand tokens: green=#2D5016 lime=#D0FF14 offwhite=#FAFAF8 ink=#111827 muted=#6b7280 faint=#9ca3af
+-->

@@ -32,6 +32,28 @@ public class ScheduleAssignmentRepository(ApplicationDbContext context) : ISched
             .FirstOrDefaultAsync(a => a.Id == id && a.OrganizationId == organizationId, ct);
     }
 
+    public async Task<List<ScheduleAssignment>> GetByStudentEmailAsync(
+        string email, CancellationToken ct = default)
+    {
+        var normalized = email.Trim().ToLower();
+
+        return await context.ScheduleAssignments
+            .AsNoTracking()
+            .Include(a => a.WeeklyTemplateEntry)
+            .Include(a => a.LessonSerie)
+            .Include(a => a.Enrollment)
+            .Include(a => a.EnrollmentGroup)
+                .ThenInclude(g => g!.Members)
+            .Where(a => a.Status != ScheduleAssignmentStatus.Declined
+                && a.LessonSerie.IsActive
+                && (
+                    (a.Enrollment != null && a.Enrollment.StudentEmail.ToLower() == normalized)
+                    || (a.EnrollmentGroup != null
+                        && a.EnrollmentGroup.Members.Any(m => m.StudentEmail.ToLower() == normalized))
+                ))
+            .ToListAsync(ct);
+    }
+
     public async Task AddRangeAsync(IEnumerable<ScheduleAssignment> assignments, CancellationToken ct = default)
     {
         await context.ScheduleAssignments.AddRangeAsync(assignments, ct);
