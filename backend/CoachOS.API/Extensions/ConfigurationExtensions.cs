@@ -40,7 +40,11 @@ public static class ConfigurationExtensions
     {
         public IServiceCollection AddJwtAuthentication(IConfiguration configuration)
         {
-            var jwtKey = configuration["Jwt:Key"]
+            // Scaleway Secret Manager pushes secrets with their literal names
+            // ("Jwt__Key"), not the .NET colon-separated form. Dev uses nested
+            // JSON (reads as "Jwt:Key"). Prefer the Scaleway form, fall back
+            // to the colon form for local dev.
+            var jwtKey = configuration["Jwt__Key"] ?? configuration["Jwt:Key"]
                          ?? throw new InvalidOperationException("Jwt:Key is niet geconfigureerd.");
 
             // Reject the placeholder from appsettings.json and any key shorter than the
@@ -61,8 +65,8 @@ public static class ConfigurationExtensions
                         ValidateAudience = true,
                         ValidateLifetime = true,
                         ValidateIssuerSigningKey = true,
-                        ValidIssuer = configuration["Jwt:Issuer"],
-                        ValidAudience = configuration["Jwt:Audience"],
+                        ValidIssuer = configuration["Jwt__Issuer"] ?? configuration["Jwt:Issuer"],
+                        ValidAudience = configuration["Jwt__Audience"] ?? configuration["Jwt:Audience"],
                         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
                     };
                 });
@@ -84,7 +88,7 @@ public static class ConfigurationExtensions
             {
                 // In production, Frontend:Origin MUST be configured. Silently defaulting to
                 // localhost would make the API unusable from any real client.
-                frontendOrigin = configuration["Frontend:Origin"]
+                frontendOrigin = configuration["Frontend__Origin"] ?? configuration["Frontend:Origin"]
                     ?? throw new InvalidOperationException(
                         "Frontend:Origin is verplicht in productie (bv. https://coach-os.be).");
             }

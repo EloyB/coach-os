@@ -10,10 +10,12 @@ public sealed class TokenService(IConfiguration configuration)
 {
     public (string Token, DateTime ExpiresAt) GenerateToken(ApplicationUser user)
     {
-        var key = configuration["Jwt:Key"]!;
-        var issuer = configuration["Jwt:Issuer"]!;
-        var audience = configuration["Jwt:Audience"]!;
-        var expiryMinutes = int.Parse(configuration["Jwt:ExpiryMinutes"]!);
+        // Prefer Scaleway Secret Manager literal names, fall back to colon form
+        // (nested appsettings.json) for local dev.
+        var key = (configuration["Jwt__Key"] ?? configuration["Jwt:Key"])!;
+        var issuer = (configuration["Jwt__Issuer"] ?? configuration["Jwt:Issuer"])!;
+        var audience = (configuration["Jwt__Audience"] ?? configuration["Jwt:Audience"])!;
+        var expiryMinutes = int.Parse((configuration["Jwt__ExpiryMinutes"] ?? configuration["Jwt:ExpiryMinutes"])!);
 
         SymmetricSecurityKey securityKey = new(Encoding.UTF8.GetBytes(key));
         SigningCredentials credentials = new(securityKey, SecurityAlgorithms.HmacSha256);
