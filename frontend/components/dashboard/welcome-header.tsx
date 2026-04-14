@@ -10,7 +10,7 @@ export function WelcomeHeader() {
   useEffect(() => {
     const user = getAuthUser();
     if (user) {
-      setName(user.firstName);
+      setName(user.firstName ?? null);
       setIsTrainer(user.role === "Trainer");
     }
   }, []);

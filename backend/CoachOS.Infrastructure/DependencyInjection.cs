@@ -1,5 +1,6 @@
 using CoachOS.Application.Auth;
 using CoachOS.Application.Configuration;
+using CoachOS.Application.StudentAuth;
 using CoachOS.Application.Trainers;
 using CoachOS.Domain.Interfaces;
 using CoachOS.Infrastructure.Email;
@@ -54,6 +55,7 @@ public static class DependencyInjection
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<ITrainerService, TrainerService>();
         services.AddScoped<IUserLookupService, UserLookupService>();
+        services.AddSingleton<IMjmlTemplateRenderer, MjmlTemplateRenderer>();
         services.AddScoped<IEmailService, EmailService>();
         services.AddScoped<ILessonSerieRepository, LessonSerieRepository>();
         services.AddScoped<ILessonRepository, LessonRepository>();
@@ -65,6 +67,8 @@ public static class DependencyInjection
         services.AddScoped<IScheduleAssignmentRepository, ScheduleAssignmentRepository>();
         services.AddScoped<IAssignmentConfirmationTokenRepository, AssignmentConfirmationTokenRepository>();
         services.AddScoped<IPaymentRepository, PaymentRepository>();
+        services.AddScoped<IMagicLinkTokenRepository, MagicLinkTokenRepository>();
+        services.AddScoped<IStudentMagicLinkService, StudentMagicLinkService>();
 
         return services;
     }

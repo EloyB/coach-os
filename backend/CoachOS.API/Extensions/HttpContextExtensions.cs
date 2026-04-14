@@ -22,4 +22,13 @@ public static class HttpContextExtensions
 
     public static bool IsTrainer(this HttpContext context) =>
         context.User.IsInRole("Trainer");
+
+    public static string GetEmail(this HttpContext context)
+    {
+        var claim = context.User.FindFirst(ClaimTypes.Email)
+                    ?? context.User.FindFirst("email");
+        if (claim is null || string.IsNullOrWhiteSpace(claim.Value))
+            throw new UnauthorizedAccessException("Missing or invalid email claim.");
+        return claim.Value;
+    }
 }

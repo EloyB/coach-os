@@ -8,6 +8,32 @@ namespace CoachOS.Infrastructure.Identity;
 
 public sealed class TokenService(IConfiguration configuration)
 {
+    public (string Token, DateTime ExpiresAt) GenerateStudentToken(string email)
+    {
+        (var key, var issuer, var audience, var expiryMinutes) = ReadJwtConfig();
+
+        SymmetricSecurityKey securityKey = new(Encoding.UTF8.GetBytes(key));
+        SigningCredentials credentials = new(securityKey, SecurityAlgorithms.HmacSha256);
+
+        Claim[] claims =
+        [
+            new(JwtRegisteredClaimNames.Email, email),
+            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new(ClaimTypes.Role, "Student")
+        ];
+
+        var expiresAt = DateTime.UtcNow.AddMinutes(expiryMinutes);
+
+        JwtSecurityToken token = new(
+            issuer: issuer,
+            audience: audience,
+            claims: claims,
+            expires: expiresAt,
+            signingCredentials: credentials);
+
+        return (new JwtSecurityTokenHandler().WriteToken(token), expiresAt);
+    }
+
     public (string Token, DateTime ExpiresAt) GenerateToken(ApplicationUser user)
     {
         // Prefer Scaleway Secret Manager literal names, fall back to colon form
@@ -43,5 +69,14 @@ public sealed class TokenService(IConfiguration configuration)
             signingCredentials: credentials);
 
         return (new JwtSecurityTokenHandler().WriteToken(token), expiresAt);
+    }
+
+    private (string Key, string Issuer, string Audience, int ExpiryMinutes) ReadJwtConfig()
+    {
+        var key = (configuration["Jwt__Key"] ?? configuration["Jwt:Key"])!;
+        var issuer = (configuration["Jwt__Issuer"] ?? configuration["Jwt:Issuer"])!;
+        var audience = (configuration["Jwt__Audience"] ?? configuration["Jwt:Audience"])!;
+        var expiryMinutes = int.Parse((configuration["Jwt__ExpiryMinutes"] ?? configuration["Jwt:ExpiryMinutes"])!);
+        return (key, issuer, audience, expiryMinutes);
     }
 }

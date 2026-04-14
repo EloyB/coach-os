@@ -10,6 +10,14 @@ public interface IScheduleAssignmentRepository
     Task<ScheduleAssignment?> GetByIdAsync(
         Guid id, Guid organizationId, CancellationToken ct = default);
 
+    /// <summary>
+    /// Returns all assignments where the student (by email) participates — either
+    /// directly via the enrollment, or as a group member. Excludes declined
+    /// assignments and inactive series.
+    /// </summary>
+    Task<List<ScheduleAssignment>> GetByStudentEmailAsync(
+        string email, CancellationToken ct = default);
+
     Task AddRangeAsync(IEnumerable<ScheduleAssignment> assignments, CancellationToken ct = default);
 
     void RemoveRange(IEnumerable<ScheduleAssignment> assignments);

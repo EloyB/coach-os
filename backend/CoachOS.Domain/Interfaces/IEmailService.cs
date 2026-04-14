@@ -30,4 +30,9 @@ public interface IEmailService
         string? courtName,
         string confirmationUrl,
         CancellationToken ct = default);
+
+    Task SendStudentMagicLinkAsync(
+        string toEmail,
+        string magicLinkUrl,
+        CancellationToken ct = default);
 }
