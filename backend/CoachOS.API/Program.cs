@@ -29,6 +29,7 @@ try
     builder.Services.AddMemoryCache();
     builder.Services.AddApplication();
     builder.Services.AddInfrastructure(configuration);
+    builder.Services.AddHealthChecks();
 
     var app = builder.Build();
 
@@ -81,6 +82,7 @@ try
     app.UseAuthorization();
     app.UseMiddleware<OrganizationValidationMiddleware>();
     app.MapAllEndpoints();
+    app.MapHealthChecks("/health").AllowAnonymous().DisableRateLimiting();
 
     app.Run();
 }
