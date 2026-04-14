@@ -100,12 +100,11 @@ jobs:
             docker compose pull
             docker compose up -d
 
-            # Reload nginx config — bind-mounted files don't trigger a
-            # container restart on 'compose up', so nginx keeps the old
-            # in-memory config until reloaded. Idempotent if config unchanged.
-            if docker compose ps --status running --services | grep -q '^nginx$'; then
-              docker compose exec -T nginx nginx -t && docker compose exec -T nginx nginx -s reload
-            fi
+            # Force-recreate nginx so bind-mounted config changes are picked up
+            # AND upstream DNS cache is reset. 'nginx -s reload' sometimes leaves
+            # the process in a half-broken state when upstreams transitioned
+            # down→up during a prior reload; a fresh container avoids this.
+            docker compose up -d --force-recreate nginx
 
             sleep 5
             docker compose ps
