@@ -6,6 +6,20 @@
     "email": "jan@deaces.be",
     "password": "Demo1234!"
   },
+  "secondOrg": {
+    "admin": {
+      "organizationName": "Padel Brugge",
+      "firstName": "Maria",
+      "lastName": "Peeters",
+      "email": "maria@padelbrugge.be",
+      "password": "Demo1234!"
+    },
+    "inviteExistingTrainer": {
+      "firstName": "Jan",
+      "lastName": "Janssen",
+      "email": "jan@deaces.be"
+    }
+  },
   "clubs": [
     { "name": "TC De Aces", "address": "Sportlaan 12, 2000 Antwerpen" },
     { "name": "Padel Center Brussel", "address": "Louizalaan 45, 1050 Brussel" }
