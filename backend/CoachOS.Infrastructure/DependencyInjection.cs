@@ -5,6 +5,7 @@ using CoachOS.Application.Trainers;
 using CoachOS.Domain.Interfaces;
 using CoachOS.Infrastructure.Email;
 using CoachOS.Infrastructure.Identity;
+using CoachOS.Infrastructure.MultiTenancy;
 using CoachOS.Infrastructure.Persistence;
 using CoachOS.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Identity;
@@ -50,6 +51,9 @@ public static class DependencyInjection
 
         services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.Section));
         services.Configure<AppOptions>(configuration.GetSection(AppOptions.Section));
+
+        services.AddScoped<TenantContext>();
+        services.AddScoped<ITenantContext>(sp => sp.GetRequiredService<TenantContext>());
 
         services.AddScoped<TokenService>();
         services.AddScoped<IAuthService, AuthService>();

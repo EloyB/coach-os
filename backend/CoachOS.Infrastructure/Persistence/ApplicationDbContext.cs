@@ -1,4 +1,5 @@
 using CoachOS.Domain.Entities;
+using CoachOS.Domain.Interfaces;
 using CoachOS.Infrastructure.Identity;
 using CoachOS.Infrastructure.Persistence.Configurations;
 using Microsoft.AspNetCore.Identity;
@@ -9,10 +10,20 @@ namespace CoachOS.Infrastructure.Persistence;
 
 /// <summary>
 /// Centrale DbContext voor CoachOS. Uitbreidt IdentityDbContext voor ASP.NET Identity.
+///
+/// Multi-tenancy: alle entities met een <c>OrganizationId</c> krijgen een global
+/// query filter. De filter is "loose" — hij beperkt tot de actieve tenant zodra
+/// er één gezet is, maar laat queries door als er geen tenant is (anonieme/publieke
+/// requests zoals enrollment, student magic-link, trainer invite accept).
+/// Zo hoeven publieke paden niet overal <c>IgnoreQueryFilters()</c> aan te roepen.
 /// </summary>
-public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+public class ApplicationDbContext(
+    DbContextOptions<ApplicationDbContext> options,
+    ITenantContext tenant)
     : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>(options)
 {
+    private readonly ITenantContext _tenant = tenant;
+
     public DbSet<Organization> Organizations { get; set; } = null!;
     public DbSet<TennisClub> TennisClubs { get; set; } = null!;
     public DbSet<LessonSerie> LessonSeries { get; set; } = null!;
@@ -29,6 +40,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<ScheduleAssignment> ScheduleAssignments { get; set; } = null!;
     public DbSet<AssignmentConfirmationToken> AssignmentConfirmationTokens { get; set; } = null!;
     public DbSet<MagicLinkToken> MagicLinkTokens { get; set; } = null!;
+    public DbSet<OrganizationMembership> OrganizationMemberships { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -50,6 +62,41 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         builder.ApplyConfiguration(new TimeSlotPreferenceConfiguration());
         builder.ApplyConfiguration(new ScheduleAssignmentConfiguration());
         builder.ApplyConfiguration(new MagicLinkTokenConfiguration());
+        builder.ApplyConfiguration(new OrganizationMembershipConfiguration());
+
+        ApplyTenantFilters(builder);
+    }
+
+    /// <summary>
+    /// Global query filters: loose — alleen actief wanneer er een tenant is gezet.
+    /// Ontbreekt de tenant (publieke/anonieme request) dan blijft de query ongefilterd
+    /// zodat bestaande publieke flows (enrollment, magic-link, invite accept) werken.
+    /// Geauthenticeerde requests worden automatisch gescoped op de active organisatie.
+    /// </summary>
+    private void ApplyTenantFilters(ModelBuilder builder)
+    {
+        builder.Entity<TennisClub>().HasQueryFilter(e =>
+            _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
+        builder.Entity<LessonSerie>().HasQueryFilter(e =>
+            _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
+        builder.Entity<Lesson>().HasQueryFilter(e =>
+            _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
+        builder.Entity<Enrollment>().HasQueryFilter(e =>
+            _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
+        builder.Entity<EnrollmentForm>().HasQueryFilter(e =>
+            _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
+        builder.Entity<EnrollmentGroup>().HasQueryFilter(e =>
+            _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
+        builder.Entity<Payment>().HasQueryFilter(e =>
+            _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
+        builder.Entity<Subscription>().HasQueryFilter(e =>
+            _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
+        builder.Entity<ScheduleAssignment>().HasQueryFilter(e =>
+            _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
+        builder.Entity<AssignmentConfirmationToken>().HasQueryFilter(e =>
+            _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
+        builder.Entity<TimeSlotPreference>().HasQueryFilter(e =>
+            _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
