@@ -1,4 +1,5 @@
 using CoachOS.Domain.Entities;
+using CoachOS.Domain.Enums;
 using CoachOS.Domain.Interfaces;
 using CoachOS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -39,5 +40,19 @@ public class AssignmentConfirmationTokenRepository(ApplicationDbContext context)
     public async Task SaveChangesAsync(CancellationToken ct = default)
     {
         await context.SaveChangesAsync(ct);
+    }
+
+    public async Task<bool> TryClaimResponseAsync(
+        Guid tokenId,
+        ConfirmationResponse target,
+        DateTime now,
+        CancellationToken ct = default)
+    {
+        var affected = await context.AssignmentConfirmationTokens
+            .Where(t => t.Id == tokenId && t.Response == ConfirmationResponse.Pending)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(t => t.Response, target)
+                .SetProperty(t => t.RespondedAt, now), ct);
+        return affected == 1;
     }
 }

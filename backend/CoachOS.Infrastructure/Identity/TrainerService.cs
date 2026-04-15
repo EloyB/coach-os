@@ -126,16 +126,30 @@ public class TrainerService(
         if (user.InviteTokenExpiry is null || user.InviteTokenExpiry < DateTime.UtcNow)
             return Result<AuthResponseDto>.Fail("Uitnodigingslink is verlopen");
 
+        // Hele accept-flow in één transactie: password reset, user activation
+        // en membership activation moeten atomair gebeuren. Zonder transactie
+        // kon een fout halverwege een account met nieuw wachtwoord maar
+        // inactieve membership achterlaten.
+        await using var tx = await context.Database.BeginTransactionAsync(ct);
+
         var resetToken = await userManager.GeneratePasswordResetTokenAsync(user);
         var result = await userManager.ResetPasswordAsync(user, resetToken, password);
         if (!result.Succeeded)
+        {
+            await tx.RollbackAsync(ct);
             return Result<AuthResponseDto>.Fail(result.Errors.Select(e => e.Description));
+        }
 
         user.IsActive = true;
         user.InviteToken = null;
         user.InviteTokenExpiry = null;
         user.UpdatedAt = DateTime.UtcNow;
-        await userManager.UpdateAsync(user);
+        var updateResult = await userManager.UpdateAsync(user);
+        if (!updateResult.Succeeded)
+        {
+            await tx.RollbackAsync(ct);
+            return Result<AuthResponseDto>.Fail(updateResult.Errors.Select(e => e.Description));
+        }
 
         // Activeer het bijbehorende (pending) membership. Een nieuwe user heeft
         // bij acceptatie per definitie exact één pending membership — we checken
@@ -147,15 +161,22 @@ public class TrainerService(
             .ToListAsync(ct);
 
         if (pendings.Count == 0)
+        {
+            await tx.RollbackAsync(ct);
             return Result<AuthResponseDto>.Fail("Geen openstaande uitnodiging gevonden");
+        }
 
         if (pendings.Count > 1)
+        {
+            await tx.RollbackAsync(ct);
             return Result<AuthResponseDto>.Fail("Meerdere openstaande uitnodigingen gevonden — neem contact op met support");
+        }
 
         var pending = pendings[0];
 
         pending.IsActive = true;
         await context.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
 
         (var jwtToken, var expiresAt) = tokenService.GenerateToken(user, pending);
 

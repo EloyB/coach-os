@@ -54,6 +54,14 @@ public class StudentConfirmationService(
         if (series is null)
             return Result<ConfirmResultDto>.Fail(new Error(ErrorCodes.NotFound, "Lessenreeks niet gevonden."));
 
+        // Atomisch de token claimen: voorkomt dubbele bevestiging als de student
+        // twee keer op "Bevestigen" tikt (dubbele Payment row anders gemaakt).
+        var claimed = await tokenRepo.TryClaimResponseAsync(
+            token.Id, ConfirmationResponse.Confirmed, DateTime.UtcNow, ct);
+        if (!claimed)
+            return Result<ConfirmResultDto>.Fail(
+                new Error(ErrorCodes.Validation, "Deze bevestiging is al verwerkt."));
+
         // Cash: mark paid immediately, create Payment(Paid, Cash)
         Payment payment = new()
         {
@@ -68,8 +76,6 @@ public class StudentConfirmationService(
         await paymentRepo.AddAsync(payment, ct);
 
         assignment.Status = ScheduleAssignmentStatus.Confirmed;
-        token.Response = ConfirmationResponse.Confirmed;
-        token.RespondedAt = DateTime.UtcNow;
 
         ConfirmEnrollmentStatuses(assignment);
         await paymentRepo.SaveChangesAsync(ct);
@@ -90,11 +96,15 @@ public class StudentConfirmationService(
             return Result<List<AvailableSlotDto>>.Fail(
                 new Error(ErrorCodes.Validation, "Deze bevestiging is al verwerkt."));
 
+        // Atomisch declinen — idem redenering als Confirm.
+        var claimed = await tokenRepo.TryClaimResponseAsync(
+            token.Id, ConfirmationResponse.Declined, DateTime.UtcNow, ct);
+        if (!claimed)
+            return Result<List<AvailableSlotDto>>.Fail(
+                new Error(ErrorCodes.Validation, "Deze bevestiging is al verwerkt."));
+
         var assignment = token.ScheduleAssignment;
         assignment.Status = ScheduleAssignmentStatus.Declined;
-        token.Response = ConfirmationResponse.Declined;
-        token.RespondedAt = DateTime.UtcNow;
-
         await tokenRepo.SaveChangesAsync(ct);
 
         var slots = await GetAvailableSlotsForAssignmentAsync(token, ct);
