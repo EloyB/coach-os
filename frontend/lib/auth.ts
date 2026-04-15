@@ -2,6 +2,13 @@ const TOKEN_KEY = 'token';
 const USER_KEY = 'auth_user';
 const AUTH_COOKIE = 'has_token';
 
+export interface OrganizationMembershipInfo {
+  organizationId: string;
+  organizationName: string;
+  role: string;
+  isActive: boolean;
+}
+
 export interface AuthUser {
   userId?: string;
   email: string;
@@ -9,6 +16,7 @@ export interface AuthUser {
   lastName?: string;
   organizationId?: string | null;
   role: string;
+  memberships?: OrganizationMembershipInfo[];
 }
 
 export function isStudent(): boolean {

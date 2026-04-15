@@ -102,6 +102,7 @@ export default function RegisterPage() {
         lastName: response.lastName,
         organizationId: response.organizationId,
         role: response.role,
+        memberships: response.memberships,
       });
       router.push("/dashboard");
     } catch (error) {

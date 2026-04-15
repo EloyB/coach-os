@@ -1,5 +1,12 @@
 import apiClient from '@/lib/api-client';
 
+export interface OrganizationMembershipInfo {
+  organizationId: string;
+  organizationName: string;
+  role: string;
+  isActive: boolean;
+}
+
 export interface AuthResponse {
   token: string;
   expiresAt: string;
@@ -9,6 +16,7 @@ export interface AuthResponse {
   lastName: string;
   organizationId: string | null;
   role: string;
+  memberships: OrganizationMembershipInfo[];
 }
 
 export interface RegisterStudentRequest {
@@ -43,6 +51,18 @@ export async function register(request: RegisterRequest): Promise<AuthResponse> 
 
 export async function registerStudent(request: RegisterStudentRequest): Promise<AuthResponse> {
   const { data } = await apiClient.post<AuthResponse>('/auth/register-student', request);
+  return data;
+}
+
+export async function getMyMemberships(): Promise<OrganizationMembershipInfo[]> {
+  const { data } = await apiClient.get<OrganizationMembershipInfo[]>('/auth/memberships');
+  return data;
+}
+
+export async function switchOrganization(organizationId: string): Promise<AuthResponse> {
+  const { data } = await apiClient.post<AuthResponse>('/auth/switch-organization', {
+    organizationId,
+  });
   return data;
 }
 

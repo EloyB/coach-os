@@ -9,6 +9,9 @@
     "create": "Aanmaken",
     "search": "Zoeken"
   },
+  "orgSwitcher": {
+    "title": "Wissel van organisatie"
+  },
   "navigation": {
     "dashboard": "Dashboard",
     "courts": "Banen",

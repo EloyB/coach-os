@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DashboardSidebar } from "@/components/layouts/dashboard-sidebar";
 import { MobileBottomNav } from "@/components/layouts/dashboard-bottom-nav";
+import { OrgSwitcher } from "@/components/layouts/org-switcher";
 import { getAuthUser, isAuthenticated, type AuthUser } from "@/lib/auth";
 
 const ROLE_LABELS: Record<string, string> = {
@@ -48,6 +49,12 @@ export default function DashboardLayout({
             Tennis &amp; Padel Platform
           </p>
           <div className="flex items-center gap-3">
+            {user.memberships && user.memberships.length > 1 && (
+              <OrgSwitcher
+                memberships={user.memberships}
+                activeOrganizationId={user.organizationId}
+              />
+            )}
             <div className="text-right">
               <p className="text-sm font-semibold text-gray-800 leading-none">{fullName}</p>
               <p className="text-xs text-gray-400 mt-0.5">{roleLabel}</p>
