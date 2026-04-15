@@ -29,24 +29,30 @@ public class UserLookupService(ApplicationDbContext context) : IUserLookupServic
 
     public async Task<List<(Guid Id, string FullName)>> GetOrganizationMembersAsync(Guid organizationId, CancellationToken ct = default)
     {
-        var users = await context.Users
-            .AsNoTracking()
-            .Where(u => u.OrganizationId == organizationId && u.IsActive && (u.Role == UserRole.Trainer || u.Role == UserRole.Admin))
-            .OrderBy(u => u.FirstName)
-            .ThenBy(u => u.LastName)
-            .ToListAsync(ct);
+        // Tenant-scoped via OrganizationMembership ipv de legacy user.OrganizationId.
+        var query =
+            from m in context.OrganizationMemberships.AsNoTracking()
+            join u in context.Users.AsNoTracking() on m.UserId equals u.Id
+            where m.OrganizationId == organizationId
+                  && m.IsActive
+                  && u.IsActive
+                  && (m.Role == UserRole.Trainer || m.Role == UserRole.Admin)
+            orderby u.FirstName, u.LastName
+            select new { u.Id, u.FirstName, u.LastName };
 
+        var users = await query.ToListAsync(ct);
         return users.Select(u => (u.Id, (u.FirstName + " " + u.LastName).Trim())).ToList();
     }
 
     public async Task<bool> IsActiveTrainerAsync(Guid trainerId, Guid organizationId, CancellationToken ct = default)
     {
-        return await context.Users
+        // Tenant-scoped membership check.
+        return await context.OrganizationMemberships
             .AsNoTracking()
-            .AnyAsync(u => u.Id == trainerId
-                && u.OrganizationId == organizationId
-                && (u.Role == UserRole.Trainer || u.Role == UserRole.Admin)
-                && u.IsActive, ct);
+            .AnyAsync(m => m.UserId == trainerId
+                && m.OrganizationId == organizationId
+                && (m.Role == UserRole.Trainer || m.Role == UserRole.Admin)
+                && m.IsActive, ct);
     }
 
     public async Task<Dictionary<Guid, (string FullName, string Email)>> GetUserNamesAndEmailsByIdsAsync(IEnumerable<Guid> ids, CancellationToken ct = default)

@@ -1,6 +1,8 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using CoachOS.Domain.Entities;
+using CoachOS.Domain.Enums;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 
@@ -34,30 +36,26 @@ public sealed class TokenService(IConfiguration configuration)
         return (new JwtSecurityTokenHandler().WriteToken(token), expiresAt);
     }
 
-    public (string Token, DateTime ExpiresAt) GenerateToken(ApplicationUser user)
+    /// <summary>
+    /// Genereert een JWT voor een user binnen een specifieke <see cref="OrganizationMembership"/>.
+    /// De <c>organizationId</c> en <c>role</c> claims komen altijd uit de membership — niet van
+    /// de user zelf — zodat multi-org users een sessie per organisatie kunnen hebben.
+    /// </summary>
+    public (string Token, DateTime ExpiresAt) GenerateToken(ApplicationUser user, OrganizationMembership membership)
     {
-        // Prefer Scaleway Secret Manager literal names, fall back to colon form
-        // (nested appsettings.json) for local dev.
-        var key = (configuration["Jwt__Key"] ?? configuration["Jwt:Key"])!;
-        var issuer = (configuration["Jwt__Issuer"] ?? configuration["Jwt:Issuer"])!;
-        var audience = (configuration["Jwt__Audience"] ?? configuration["Jwt:Audience"])!;
-        var expiryMinutes = int.Parse((configuration["Jwt__ExpiryMinutes"] ?? configuration["Jwt:ExpiryMinutes"])!);
+        (var key, var issuer, var audience, var expiryMinutes) = ReadJwtConfig();
 
         SymmetricSecurityKey securityKey = new(Encoding.UTF8.GetBytes(key));
         SigningCredentials credentials = new(securityKey, SecurityAlgorithms.HmacSha256);
 
-        List<Claim> claimsList =
+        Claim[] claims =
         [
             new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new(JwtRegisteredClaimNames.Email, user.Email!),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-            new(ClaimTypes.Role, user.Role.ToString())
+            new(ClaimTypes.Role, membership.Role.ToString()),
+            new("organizationId", membership.OrganizationId.ToString())
         ];
-
-        if (user.OrganizationId.HasValue)
-            claimsList.Add(new Claim("organizationId", user.OrganizationId.Value.ToString()));
-
-        var claims = claimsList.ToArray();
 
         var expiresAt = DateTime.UtcNow.AddMinutes(expiryMinutes);
 
@@ -71,8 +69,19 @@ public sealed class TokenService(IConfiguration configuration)
         return (new JwtSecurityTokenHandler().WriteToken(token), expiresAt);
     }
 
+    /// <summary>Synthesizeert een tijdelijke membership in-memory — voor registratie waar nog geen membership is opgeslagen.</summary>
+    public (string Token, DateTime ExpiresAt) GenerateToken(ApplicationUser user, Guid organizationId, UserRole role) =>
+        GenerateToken(user, new OrganizationMembership
+        {
+            UserId = user.Id,
+            OrganizationId = organizationId,
+            Role = role,
+            IsActive = true
+        });
+
     private (string Key, string Issuer, string Audience, int ExpiryMinutes) ReadJwtConfig()
     {
+        // Scaleway Secret Manager literal names hebben voorrang, colon-vorm is fallback voor local dev.
         var key = (configuration["Jwt__Key"] ?? configuration["Jwt:Key"])!;
         var issuer = (configuration["Jwt__Issuer"] ?? configuration["Jwt:Issuer"])!;
         var audience = (configuration["Jwt__Audience"] ?? configuration["Jwt:Audience"])!;

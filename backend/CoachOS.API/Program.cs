@@ -80,6 +80,7 @@ try
     app.UseRateLimiter();
     app.UseAuthentication();
     app.UseAuthorization();
+    app.UseMiddleware<TenantContextMiddleware>();
     app.UseMiddleware<OrganizationValidationMiddleware>();
     app.MapAllEndpoints();
     app.MapHealthChecks("/health").AllowAnonymous().DisableRateLimiting();

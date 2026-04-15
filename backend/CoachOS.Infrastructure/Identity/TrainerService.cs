@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using CoachOS.Application.Auth.DTOs;
 using CoachOS.Application.Trainers;
 using CoachOS.Application.Trainers.DTOs;
+using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
 using CoachOS.Domain.Interfaces;
 using CoachOS.Domain.Models;
@@ -27,55 +28,82 @@ public class TrainerService(
         CancellationToken ct = default)
     {
         var existing = await userManager.FindByEmailAsync(email);
-        // Block only if an ACTIVE user already has this email.
-        // Inactive users (pending/expired invite or deactivated trainer) may be
-        // re-invited — we update the existing record to avoid orphaning related
-        // entities (LessonSeries.TrainerId etc) that reference the original Id.
-        if (existing is { IsActive: true })
-            return Result<Guid>.Fail("E-mailadres is al in gebruik");
 
+        // Case 1: bestaande user — check alleen membership in deze org (multi-tenant!).
+        if (existing is not null)
+        {
+            var existingMembership = await context.OrganizationMemberships
+                .FirstOrDefaultAsync(m => m.UserId == existing.Id && m.OrganizationId == organizationId, ct);
+
+            if (existingMembership is { IsActive: true })
+                return Result<Guid>.Fail("Trainer is al lid van deze organisatie");
+
+            // User bestaat globaal en is actief elders → voeg direct membership toe,
+            // geen accept-flow nodig. User logt in met bestaand wachtwoord en switcht.
+            if (existing.IsActive)
+            {
+                if (existingMembership is null)
+                {
+                    context.OrganizationMemberships.Add(new OrganizationMembership
+                    {
+                        Id = Guid.NewGuid(),
+                        UserId = existing.Id,
+                        OrganizationId = organizationId,
+                        Role = UserRole.Trainer,
+                        IsActive = true,
+                        JoinedAt = DateTime.UtcNow
+                    });
+                }
+                else
+                {
+                    existingMembership.IsActive = true;
+                    existingMembership.Role = UserRole.Trainer;
+                }
+                await context.SaveChangesAsync(ct);
+
+                // Informatieve mail (geen accept-link nodig).
+                await emailService.SendTrainerInviteAsync(email, firstName, $"{inviteBaseUrl.TrimEnd('/')}/login", ct);
+                return Result<Guid>.Ok(existing.Id);
+            }
+
+            // User bestaat maar is inactief (openstaande invite elders) — dat pad
+            // houden we strikt om accounts-takeover te voorkomen.
+            return Result<Guid>.Fail("Er bestaat al een openstaande uitnodiging voor dit e-mailadres");
+        }
+
+        // Case 2: volledig nieuwe user — klassieke invite+accept flow.
         var inviteToken = Guid.NewGuid().ToString("N");
         var hashedToken = HashToken(inviteToken);
 
-        ApplicationUser user;
-        if (existing is not null)
+        ApplicationUser user = new()
         {
-            existing.FirstName = firstName;
-            existing.LastName = lastName;
-            existing.OrganizationId = organizationId;
-            existing.Role = UserRole.Trainer;
-            existing.InviteToken = hashedToken;
-            existing.InviteTokenExpiry = DateTime.UtcNow.AddHours(72);
-            existing.UpdatedAt = DateTime.UtcNow;
-            var updateResult = await userManager.UpdateAsync(existing);
-            if (!updateResult.Succeeded)
-                return Result<Guid>.Fail(updateResult.Errors.Select(e => e.Description));
-            user = existing;
-        }
-        else
-        {
-            user = new ApplicationUser
-            {
-                Id = Guid.NewGuid(),
-                UserName = email,
-                Email = email,
-                FirstName = firstName,
-                LastName = lastName,
-                OrganizationId = organizationId,
-                Role = UserRole.Trainer,
-                IsActive = false,
-                InviteToken = hashedToken,
-                InviteTokenExpiry = DateTime.UtcNow.AddHours(72),
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
+            Id = Guid.NewGuid(),
+            UserName = email,
+            Email = email,
+            FirstName = firstName,
+            LastName = lastName,
+            IsActive = false,
+            InviteToken = hashedToken,
+            InviteTokenExpiry = DateTime.UtcNow.AddHours(72),
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
 
-            // Random password — will be replaced on invite acceptance
-            var randomPassword = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)) + "!A1";
-            var createResult = await userManager.CreateAsync(user, randomPassword);
-            if (!createResult.Succeeded)
-                return Result<Guid>.Fail(createResult.Errors.Select(e => e.Description));
-        }
+        var randomPassword = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)) + "!A1";
+        var createResult = await userManager.CreateAsync(user, randomPassword);
+        if (!createResult.Succeeded)
+            return Result<Guid>.Fail(createResult.Errors.Select(e => e.Description));
+
+        context.OrganizationMemberships.Add(new OrganizationMembership
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            OrganizationId = organizationId,
+            Role = UserRole.Trainer,
+            IsActive = false, // wordt actief bij AcceptInvite
+            JoinedAt = DateTime.UtcNow
+        });
+        await context.SaveChangesAsync(ct);
 
         var inviteUrl = $"{inviteBaseUrl.TrimEnd('/')}/invite/{inviteToken}";
         await emailService.SendTrainerInviteAsync(email, firstName, inviteUrl, ct);
@@ -109,7 +137,27 @@ public class TrainerService(
         user.UpdatedAt = DateTime.UtcNow;
         await userManager.UpdateAsync(user);
 
-        (var jwtToken, var expiresAt) = tokenService.GenerateToken(user);
+        // Activeer het bijbehorende (pending) membership. Een nieuwe user heeft
+        // bij acceptatie per definitie exact één pending membership — we checken
+        // dit expliciet om te voorkomen dat we bij toekomstige flow-uitbreidingen
+        // per ongeluk de verkeerde membership activeren.
+        var pendings = await context.OrganizationMemberships
+            .Include(m => m.Organization)
+            .Where(m => m.UserId == user.Id && !m.IsActive)
+            .ToListAsync(ct);
+
+        if (pendings.Count == 0)
+            return Result<AuthResponseDto>.Fail("Geen openstaande uitnodiging gevonden");
+
+        if (pendings.Count > 1)
+            return Result<AuthResponseDto>.Fail("Meerdere openstaande uitnodigingen gevonden — neem contact op met support");
+
+        var pending = pendings[0];
+
+        pending.IsActive = true;
+        await context.SaveChangesAsync(ct);
+
+        (var jwtToken, var expiresAt) = tokenService.GenerateToken(user, pending);
 
         return Result<AuthResponseDto>.Ok(new AuthResponseDto
         {
@@ -119,8 +167,18 @@ public class TrainerService(
             Email = user.Email!,
             FirstName = user.FirstName,
             LastName = user.LastName,
-            OrganizationId = user.OrganizationId,
-            Role = user.Role.ToString()
+            OrganizationId = pending.OrganizationId,
+            Role = pending.Role.ToString(),
+            Memberships =
+            [
+                new OrganizationMembershipDto
+                {
+                    OrganizationId = pending.OrganizationId,
+                    OrganizationName = pending.Organization?.Name ?? string.Empty,
+                    Role = pending.Role.ToString(),
+                    IsActive = true
+                }
+            ]
         });
     }
 
@@ -128,14 +186,15 @@ public class TrainerService(
         Guid organizationId,
         CancellationToken ct = default)
     {
-        var trainers = await userManager.Users
-            .AsNoTracking()
-            .Where(u => u.OrganizationId == organizationId
-                        && u.Role == UserRole.Trainer
-                        && u.IsActive)
-            .OrderBy(u => u.FirstName)
-            .ThenBy(u => u.LastName)
-            .Select(u => new TrainerDto
+        // Trainers zijn alle memberships (Trainer-rol) in deze org, via join met users.
+        var query =
+            from m in context.OrganizationMemberships.AsNoTracking()
+            join u in context.Users.AsNoTracking() on m.UserId equals u.Id
+            where m.OrganizationId == organizationId
+                  && m.Role == UserRole.Trainer
+                  && m.IsActive
+            orderby u.FirstName, u.LastName
+            select new TrainerDto
             {
                 Id = u.Id,
                 FirstName = u.FirstName,
@@ -146,9 +205,9 @@ public class TrainerService(
                 CreatedAt = u.CreatedAt,
                 LessonCount = context.Lessons
                     .Count(l => l.TrainerId == u.Id && l.OrganizationId == organizationId)
-            })
-            .ToListAsync(ct);
+            };
 
+        var trainers = await query.ToListAsync(ct);
         return Result<List<TrainerDto>>.Ok(trainers);
     }
 
@@ -157,19 +216,16 @@ public class TrainerService(
         Guid organizationId,
         CancellationToken ct = default)
     {
-        var trainer = await userManager.Users
-            .FirstOrDefaultAsync(u => u.Id == trainerId && u.OrganizationId == organizationId, ct);
+        // Deactivatie = membership intrekken. De user-account blijft globaal bestaan;
+        // ze kunnen in andere orgs blijven werken.
+        var membership = await context.OrganizationMemberships
+            .FirstOrDefaultAsync(m => m.UserId == trainerId && m.OrganizationId == organizationId, ct);
 
-        if (trainer is null)
+        if (membership is null || membership.Role != UserRole.Trainer)
             return Result.Fail("Trainer niet gevonden");
 
-        if (trainer.Role != UserRole.Trainer)
-            return Result.Fail("Gebruiker is geen trainer");
-
-        trainer.IsActive = false;
-        trainer.UpdatedAt = DateTime.UtcNow;
-        await userManager.UpdateAsync(trainer);
-
+        membership.IsActive = false;
+        await context.SaveChangesAsync(ct);
         return Result.Ok();
     }
 
@@ -178,14 +234,16 @@ public class TrainerService(
         Guid organizationId,
         CancellationToken ct = default)
     {
-        var trainer = await userManager.Users
-            .FirstOrDefaultAsync(u => u.Id == trainerId && u.OrganizationId == organizationId, ct);
+        // Draai de hele remove-operatie in één transactie: anders kan tussen
+        // "check resterende memberships" en "delete user" een parallelle invite
+        // een nieuw membership aanmaken — en we verwijderen alsnog de user.
+        await using var tx = await context.Database.BeginTransactionAsync(ct);
 
-        if (trainer is null)
+        var membership = await context.OrganizationMemberships
+            .FirstOrDefaultAsync(m => m.UserId == trainerId && m.OrganizationId == organizationId, ct);
+
+        if (membership is null || membership.Role != UserRole.Trainer)
             return Result.Fail("Trainer niet gevonden");
-
-        if (trainer.Role != UserRole.Trainer)
-            return Result.Fail("Gebruiker is geen trainer");
 
         var count = await context.Lessons
             .CountAsync(l => l.TrainerId == trainerId && l.OrganizationId == organizationId, ct);
@@ -193,10 +251,28 @@ public class TrainerService(
         if (count > 0)
             return Result.Fail($"Trainer heeft {count} les(sen). Wijs deze eerst toe aan een andere trainer.");
 
-        var result = await userManager.DeleteAsync(trainer);
-        return result.Succeeded
-            ? Result.Ok()
-            : Result.Fail(result.Errors.Select(e => e.Description));
+        context.OrganizationMemberships.Remove(membership);
+        await context.SaveChangesAsync(ct);
+
+        // Alleen het user-account verwijderen als er geen andere memberships meer zijn.
+        var remainingMemberships = await context.OrganizationMemberships
+            .AnyAsync(m => m.UserId == trainerId, ct);
+        if (!remainingMemberships)
+        {
+            var user = await userManager.FindByIdAsync(trainerId.ToString());
+            if (user is not null)
+            {
+                var result = await userManager.DeleteAsync(user);
+                if (!result.Succeeded)
+                {
+                    await tx.RollbackAsync(ct);
+                    return Result.Fail(result.Errors.Select(e => e.Description));
+                }
+            }
+        }
+
+        await tx.CommitAsync(ct);
+        return Result.Ok();
     }
 
     public async Task<Result> ReassignSeriesAsync(
@@ -205,17 +281,14 @@ public class TrainerService(
         Guid organizationId,
         CancellationToken ct = default)
     {
-        var toTrainer = await userManager.Users
-            .FirstOrDefaultAsync(u => u.Id == toTrainerId && u.OrganizationId == organizationId, ct);
+        var toMembership = await context.OrganizationMemberships
+            .FirstOrDefaultAsync(m => m.UserId == toTrainerId
+                && m.OrganizationId == organizationId
+                && m.Role == UserRole.Trainer
+                && m.IsActive, ct);
 
-        if (toTrainer is null)
-            return Result.Fail("Doeltrainer niet gevonden");
-
-        if (toTrainer.Role != UserRole.Trainer)
-            return Result.Fail("Doelgebruiker is geen trainer");
-
-        if (!toTrainer.IsActive)
-            return Result.Fail("Doeltrainer is niet actief");
+        if (toMembership is null)
+            return Result.Fail("Doeltrainer niet gevonden of niet actief");
 
         await context.Lessons
             .Where(l => l.TrainerId == fromTrainerId && l.OrganizationId == organizationId)
