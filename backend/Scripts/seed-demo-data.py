@@ -298,6 +298,32 @@ def create_planning_series(api: ApiClient, spec: dict, club_ids: list[str],
     return sid
 
 
+def setup_second_org(api_base: str, cfg: dict) -> None:
+    """Registreert een tweede organisatie met eigen admin en nodigt de eerste
+    admin uit als trainer in die nieuwe org. Omdat die user al globaal actief
+    is, krijgt hij meteen een actief membership — handig om de org-switcher
+    in de FE meteen te kunnen testen na ./reset.sh."""
+    print("\n10. Setting up second org for multi-org demo...")
+    second_api = ApiClient(api_base)
+    auth = second_api.post("/auth/register", cfg["admin"], auth=False)
+    if not auth or not auth.get("token"):
+        # Already exists from a previous seed run — just log in.
+        auth = second_api.post("/auth/login", {
+            "email": cfg["admin"]["email"],
+            "password": cfg["admin"]["password"],
+        }, auth=False)
+    if not auth or not auth.get("token"):
+        print("   Could not register/login second admin — skipping.")
+        return
+    second_api.token = auth["token"]
+    print(f"   Created org: {cfg['admin']['organizationName']} "
+          f"(admin: {cfg['admin']['email']})")
+
+    invite = cfg["inviteExistingTrainer"]
+    second_api.post("/trainers/invite", invite)
+    print(f"   Invited existing trainer {invite['email']} - direct membership")
+
+
 def generate_and_confirm_planning(api: ApiClient, planning_series_id: str) -> None:
     """Run the admin planning flow so ScheduleAssignments exist for the demo.
     Produces assignments in AwaitingConfirmation state (each student has a
@@ -387,10 +413,16 @@ def main() -> int:
         planning_enrollments(api, planning_id, data["planningEnrollments"])
         generate_and_confirm_planning(api, planning_id)
 
+    if "secondOrg" in data:
+        setup_second_org(api_base, data["secondOrg"])
+
     print("\n=== Seed Complete ===\n")
     print("Login credentials:")
     print(f"  Email:    {data['admin']['email']}")
     print(f"  Password: {data['admin']['password']}")
+    if "secondOrg" in data:
+        print(f"\n  Second org admin: {data['secondOrg']['admin']['email']}")
+        print(f"  Jan is lid van beide orgs - org-switcher zichtbaar in topbar")
     print("\nURLs:")
     print("  Frontend:  http://localhost:5317")
     print("  API:       http://localhost:5142/swagger")
