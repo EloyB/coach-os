@@ -82,6 +82,7 @@ function LoginForm() {
         lastName: response.lastName,
         organizationId: response.organizationId,
         role: response.role,
+        memberships: response.memberships,
       });
       if (redirectTo) {
         router.push(redirectTo);

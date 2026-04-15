@@ -34,10 +34,8 @@ public class DashboardService(
         // Enrollment count
         var totalEnrollments = await enrollmentRepo.CountActiveByOrganizationAsync(organizationId, ct);
 
-        // Trainer count
-        var trainers =
-            await userLookup.GetOrganizationMembersAsync(organizationId, ct);
-        var activeTrainerCount = trainers.Count;
+        // Trainer count — enkel rol Trainer, admins uitgesloten.
+        var activeTrainerCount = await userLookup.CountActiveTrainersAsync(organizationId, ct);
 
         // Tennis club count
         var clubs =

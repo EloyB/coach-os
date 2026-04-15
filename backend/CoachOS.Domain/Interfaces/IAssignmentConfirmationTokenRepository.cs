@@ -14,4 +14,15 @@ public interface IAssignmentConfirmationTokenRepository
         IEnumerable<AssignmentConfirmationToken> tokens, CancellationToken ct = default);
 
     Task SaveChangesAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Atomisch de Response van <c>Pending</c> naar <paramref name="target"/> flippen.
+    /// Retourneert true als de update één rij raakte (pending was), anders false
+    /// (al verwerkt door een parallel request). Voorkomt double-confirm / double-decline.
+    /// </summary>
+    Task<bool> TryClaimResponseAsync(
+        Guid tokenId,
+        Domain.Enums.ConfirmationResponse target,
+        DateTime now,
+        CancellationToken ct = default);
 }

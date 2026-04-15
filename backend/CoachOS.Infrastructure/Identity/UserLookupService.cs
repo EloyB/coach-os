@@ -55,6 +55,15 @@ public class UserLookupService(ApplicationDbContext context) : IUserLookupServic
                 && m.IsActive, ct);
     }
 
+    public async Task<int> CountActiveTrainersAsync(Guid organizationId, CancellationToken ct = default)
+    {
+        return await context.OrganizationMemberships
+            .AsNoTracking()
+            .CountAsync(m => m.OrganizationId == organizationId
+                && m.Role == UserRole.Trainer
+                && m.IsActive, ct);
+    }
+
     public async Task<Dictionary<Guid, (string FullName, string Email)>> GetUserNamesAndEmailsByIdsAsync(IEnumerable<Guid> ids, CancellationToken ct = default)
     {
         var idList = ids.ToList();

@@ -61,28 +61,15 @@ public class StudentMagicLinkService(
     public async Task<Result<StudentAuthResponseDto>> RedeemAsync(string rawToken, CancellationToken ct = default)
     {
         var tokenHash = Sha256Hex(rawToken);
-        var entity = await repo.GetByTokenHashAsync(tokenHash, ct);
 
+        // Atomisch consumeren voorkomt dat twee parallelle requests dezelfde token
+        // beide accepteren (race-condition tussen check en mark-used).
+        var entity = await repo.TryConsumeAsync(tokenHash, DateTime.UtcNow, ct);
         if (entity is null)
         {
-            logger.LogWarning("Magic-link redeem: onbekende token");
+            logger.LogWarning("Magic-link redeem: onbekende, verlopen of al gebruikte token");
             return Result<StudentAuthResponseDto>.Fail("Ongeldige of verlopen link");
         }
-
-        if (entity.UsedAt is not null)
-        {
-            logger.LogWarning("Magic-link redeem: al gebruikt (Id {Id})", entity.Id);
-            return Result<StudentAuthResponseDto>.Fail("Ongeldige of verlopen link");
-        }
-
-        if (entity.ExpiresAt < DateTime.UtcNow)
-        {
-            logger.LogWarning("Magic-link redeem: verlopen (Id {Id})", entity.Id);
-            return Result<StudentAuthResponseDto>.Fail("Ongeldige of verlopen link");
-        }
-
-        entity.UsedAt = DateTime.UtcNow;
-        await repo.SaveChangesAsync(ct);
 
         (var jwt, var expiresAt) = tokenService.GenerateStudentToken(entity.Email);
 
