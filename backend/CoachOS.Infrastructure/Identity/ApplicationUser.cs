@@ -1,18 +1,16 @@
-using CoachOS.Domain.Enums;
-using Microsoft.AspNetCore.Identity;
-
 namespace CoachOS.Infrastructure.Identity;
 
 /// <summary>
 /// ASP.NET Identity user met CoachOS-specifieke velden.
 /// Leeft in Infrastructure (niet Domain) omdat het IdentityUser uitbreidt.
+///
+/// Organisatie-lidmaatschap en rol zitten op <see cref="Domain.Entities.OrganizationMembership"/>.
+/// Een user kan in meerdere organisaties lid zijn met verschillende rollen.
 /// </summary>
-public class ApplicationUser : IdentityUser<Guid>
+public class ApplicationUser : Microsoft.AspNetCore.Identity.IdentityUser<Guid>
 {
-    public Guid? OrganizationId { get; set; }
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
-    public UserRole Role { get; set; }
     public bool IsActive { get; set; } = true;
 
     /// <summary>Geboortedatum - verplicht voor GDPR bij minderjarigen.</summary>

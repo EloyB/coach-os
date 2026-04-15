@@ -25,6 +25,10 @@ public class AuthService(
         string password,
         CancellationToken cancellationToken = default)
     {
+        // Bij registratie van een nieuwe organisatie mag dezelfde email niet
+        // opnieuw een nieuwe org aanmaken — dan groeien de tenants ongecontroleerd.
+        // Wil je als bestaande user een nieuwe org starten, dan gebeurt dat via
+        // een aparte "create organization" flow (post-MVP).
         var existingUser = await userManager.FindByEmailAsync(email);
         if (existingUser is not null)
         {
@@ -56,8 +60,6 @@ public class AuthService(
                 Email = email,
                 FirstName = firstName,
                 LastName = lastName,
-                OrganizationId = organization.Id,
-                Role = UserRole.Admin,
                 IsActive = true
             };
 
@@ -68,12 +70,24 @@ public class AuthService(
                 return Result<AuthResponseDto>.Fail(result.Errors.Select(e => e.Description));
             }
 
+            OrganizationMembership membership = new()
+            {
+                Id = Guid.NewGuid(),
+                UserId = user.Id,
+                OrganizationId = organization.Id,
+                Role = UserRole.Admin,
+                IsActive = true,
+                JoinedAt = DateTime.UtcNow
+            };
+            context.OrganizationMemberships.Add(membership);
+            await context.SaveChangesAsync(cancellationToken);
+
             await transaction.CommitAsync(cancellationToken);
 
             logger.LogInformation("Nieuwe registratie: {Email}, organisatie {OrgName} ({OrgId})",
                 email, organizationName, organization.Id);
 
-            (var token, var expiresAt) = tokenService.GenerateToken(user);
+            (var token, var expiresAt) = tokenService.GenerateToken(user, membership);
 
             return Result<AuthResponseDto>.Ok(new AuthResponseDto
             {
@@ -83,8 +97,18 @@ public class AuthService(
                 Email = user.Email!,
                 FirstName = user.FirstName,
                 LastName = user.LastName,
-                OrganizationId = user.OrganizationId,
-                Role = user.Role.ToString()
+                OrganizationId = organization.Id,
+                Role = UserRole.Admin.ToString(),
+                Memberships =
+                [
+                    new OrganizationMembershipDto
+                    {
+                        OrganizationId = organization.Id,
+                        OrganizationName = organization.Name,
+                        Role = UserRole.Admin.ToString(),
+                        IsActive = true
+                    }
+                ]
             });
         }
         catch (DbUpdateException ex)
@@ -120,10 +144,64 @@ public class AuthService(
             return Result<AuthResponseDto>.Fail("Account is gedeactiveerd");
         }
 
-        logger.LogInformation("Succesvolle login: {Email} (UserId: {UserId})", email, user.Id);
+        var memberships = await LoadActiveMembershipsAsync(user.Id, cancellationToken);
+        if (memberships.Count == 0)
+        {
+            logger.LogWarning("Login zonder actieve memberships: {Email} (UserId: {UserId})", MaskEmail(email), user.Id);
+            return Result<AuthResponseDto>.Fail("Geen actieve organisatie gekoppeld aan dit account");
+        }
 
-        (var token, var expiresAt) = tokenService.GenerateToken(user);
+        // Standaard: eerste membership. Bij Admin-rol krijgt die voorrang zodat
+        // admins niet elke keer expliciet moeten switchen.
+        var active = memberships.FirstOrDefault(m => m.Role == UserRole.Admin) ?? memberships[0];
 
+        logger.LogInformation("Succesvolle login: {Email} (UserId: {UserId}), actieve org {OrgId}",
+            email, user.Id, active.OrganizationId);
+
+        return BuildAuthResponse(user, active, memberships);
+    }
+
+    public async Task<Result<AuthResponseDto>> SwitchOrganizationAsync(
+        Guid userId,
+        Guid organizationId,
+        CancellationToken cancellationToken = default)
+    {
+        var user = await userManager.FindByIdAsync(userId.ToString());
+        if (user is null || !user.IsActive)
+            return Result<AuthResponseDto>.Fail("Account niet gevonden");
+
+        var memberships = await LoadActiveMembershipsAsync(userId, cancellationToken);
+        var target = memberships.FirstOrDefault(m => m.OrganizationId == organizationId);
+        if (target is null)
+            return Result<AuthResponseDto>.Fail("Geen toegang tot deze organisatie");
+
+        return BuildAuthResponse(user, target, memberships);
+    }
+
+    public async Task<Result<List<OrganizationMembershipDto>>> GetMembershipsAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+        var memberships = await LoadActiveMembershipsAsync(userId, cancellationToken);
+        return Result<List<OrganizationMembershipDto>>.Ok(memberships.Select(ToDto).ToList());
+    }
+
+    private async Task<List<OrganizationMembership>> LoadActiveMembershipsAsync(Guid userId, CancellationToken ct)
+    {
+        return await context.OrganizationMemberships
+            .AsNoTracking()
+            .Include(m => m.Organization)
+            .Where(m => m.UserId == userId && m.IsActive)
+            .OrderBy(m => m.Organization.Name)
+            .ToListAsync(ct);
+    }
+
+    private Result<AuthResponseDto> BuildAuthResponse(
+        ApplicationUser user,
+        OrganizationMembership active,
+        IReadOnlyList<OrganizationMembership> all)
+    {
+        (var token, var expiresAt) = tokenService.GenerateToken(user, active);
         return Result<AuthResponseDto>.Ok(new AuthResponseDto
         {
             Token = token,
@@ -132,17 +210,20 @@ public class AuthService(
             Email = user.Email!,
             FirstName = user.FirstName,
             LastName = user.LastName,
-            OrganizationId = user.OrganizationId,
-            Role = user.Role.ToString()
+            OrganizationId = active.OrganizationId,
+            Role = active.Role.ToString(),
+            Memberships = all.Select(ToDto).ToList()
         });
     }
 
-    /// <summary>
-    /// Redacts the local part of an email for high-volume warning logs (failed
-    /// auth attempts) so they remain useful for support without enabling
-    /// enumeration if logs are exfiltrated. Successful-login info logs keep the
-    /// full address since they correlate to a known user.
-    /// </summary>
+    private static OrganizationMembershipDto ToDto(OrganizationMembership m) => new()
+    {
+        OrganizationId = m.OrganizationId,
+        OrganizationName = m.Organization?.Name ?? string.Empty,
+        Role = m.Role.ToString(),
+        IsActive = m.IsActive
+    };
+
     private static string MaskEmail(string email)
     {
         if (string.IsNullOrEmpty(email)) return email;
