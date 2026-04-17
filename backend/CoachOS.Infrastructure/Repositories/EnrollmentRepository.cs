@@ -1,3 +1,4 @@
+using System.Data;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
 using CoachOS.Domain.Interfaces;
@@ -30,11 +31,12 @@ public class EnrollmentRepository(ApplicationDbContext context) : IEnrollmentRep
     public async Task<bool> IsDuplicateAsync(
         Guid lessonSeriesId, string studentEmail, CancellationToken ct = default)
     {
+        var normalized = studentEmail.Trim().ToLower();
         return await context.Enrollments
             .AsNoTracking()
             .AnyAsync(e =>
                 e.LessonSerieId == lessonSeriesId &&
-                e.StudentEmail == studentEmail &&
+                e.StudentEmail.ToLower() == normalized &&
                 (e.Status == EnrollmentStatus.Confirmed || e.Status == EnrollmentStatus.Pending), ct);
     }
 
@@ -74,6 +76,11 @@ public class EnrollmentRepository(ApplicationDbContext context) : IEnrollmentRep
     public async Task BeginTransactionAsync(CancellationToken ct = default)
     {
         await context.Database.BeginTransactionAsync(ct);
+    }
+
+    public async Task BeginTransactionAsync(IsolationLevel isolationLevel, CancellationToken ct = default)
+    {
+        await context.Database.BeginTransactionAsync(isolationLevel, ct);
     }
 
     public async Task CommitTransactionAsync(CancellationToken ct = default)

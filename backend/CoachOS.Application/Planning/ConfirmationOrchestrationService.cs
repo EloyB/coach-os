@@ -67,9 +67,23 @@ public class ConfirmationOrchestrationService(
             emailsToSend.Add((recipient, assignment, rawToken));
         }
 
-        await tokenRepo.AddRangeAsync(tokens, ct);
-        series.PlanningStatus = PlanningStatus.AwaitingConfirmation;
-        await lessonSeriesRepo.SaveChangesAsync(ct);
+        // Atomic: status-flips + token-inserts moeten samen committen. Zonder transactie
+        // kan een crash tussen de twee saves de reeks in Planning laten met zwevende tokens
+        // (of tokens zonder status-flip op de assignments).
+        await lessonSeriesRepo.BeginTransactionAsync(ct);
+        try
+        {
+            await tokenRepo.AddRangeAsync(tokens, ct);
+            series.PlanningStatus = PlanningStatus.AwaitingConfirmation;
+            await lessonSeriesRepo.SaveChangesAsync(ct);
+            await lessonSeriesRepo.CommitTransactionAsync(ct);
+        }
+        catch (Exception ex)
+        {
+            await lessonSeriesRepo.RollbackTransactionAsync(ct);
+            logger.LogError(ex, "Planning-bevestiging commit mislukt voor reeks {SeriesId}", seriesId);
+            return Result<bool>.Fail(new Error(ErrorCodes.Unexpected, "Planning kon niet bevestigd worden. Probeer het opnieuw."));
+        }
 
         foreach (var (recipient, assignment, rawToken) in emailsToSend)
         {

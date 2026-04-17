@@ -28,6 +28,13 @@ cd backend
 dotnet ef migrations add <Name> --project CoachOS.Infrastructure --startup-project CoachOS.API
 dotnet ef database update --project CoachOS.Infrastructure --startup-project CoachOS.API
 
+# Reset & seed (definitieve E2E-check — destructief, wipet DB volume)
+cd backend
+bash Scripts/reset-db.sh --no-frontend         # docker compose down -v + up -d (zonder frontend)
+# Wacht tot /health 200 terugkeert, dan:
+bash Scripts/seed-demo-data.sh                 # registreert admin, creëert clubs/series/enrollments/planning
+# PowerShell equivalenten: Scripts/reset-db.ps1 en Scripts/seed-demo-data.ps1
+
 # Add shadcn component
 cd frontend && bunx shadcn add <component>
 ```
@@ -102,6 +109,40 @@ PostgreSQL via EF Core. All entities use `Guid` PKs. `ApplicationUser` configura
 ## Seed Scripts
 
 When modifying the database schema (entities, migrations), API request/response DTOs, validation rules, or business logic that affects public endpoints — **always check and update the seed scripts** in `backend/Scripts/` (`seed-demo-data.sh`, `setup.sh`) to match. The seed scripts call the API to create demo data, so any contract change will silently break seeding.
+
+## Reset-flow: definitieve E2E-check
+
+Een feature is **pas "done" als een volledige reset + seed end-to-end groen loopt.** Unit tests bewijzen correctheid van losse services — reset bewijst dat migrations, contracts, validators, transactie-volgorde en seed-script allemaal met elkaar kloppen.
+
+**Standaard flow na significant backend werk:**
+
+```bash
+cd backend
+bash Scripts/reset-db.sh --no-frontend      # 1. Wipet postgres_data volume + rebuild containers
+# Wacht tot http://localhost:5142/health → 200 (API draait auto-migrate bij startup)
+bash Scripts/seed-demo-data.sh              # 2. API-based seed: registratie, clubs, series, enrollments, planning
+```
+
+**Wat de reset test:**
+
+- Migrations passen toe op lege DB (geen drift)
+- `RegisterAsync` / admin creatie werkt (1e org)
+- `TennisClub` / `LessonSerie` CRUD + validators
+- Trainer-uitnodiging + membership flow
+- Enrollment submit (solo + group) inclusief capacity/duplicate checks in transactie
+- Planning generatie + scheduling algorithm
+- `ConfirmScheduleAsync` incl. token creatie + email rendering
+- Tweede org + multi-org membership (`org-switcher`)
+
+**Wanneer reset verplicht:**
+
+- EF migratie toegevoegd
+- Contract van publieke endpoint (enrollment, magic-link, confirmation) gewijzigd
+- Transactieboundary of service-orchestratie aangepast
+- Email template tokens / `MjmlTemplateRenderer` gewijzigd
+- Before opening PR met backend changes
+
+Als seed faalt: drift in DTO/validator/migratie → eerst `seed-data.json` + `seed-demo-data.py` bijwerken, niet de validators verzwakken.
 
 ## Working Style
 

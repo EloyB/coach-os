@@ -79,6 +79,12 @@ public class LessonSerieService(
         if (!clubExists)
             return Result<Guid>.Fail(new Error(ErrorCodes.NotFound, "Tennisclub niet gevonden."));
 
+        var trainerIds = request.WeeklyTemplate.Select(t => t.TrainerId)
+            .Concat(request.Lessons.Select(l => l.TrainerId));
+        var trainerError = await ValidateTrainerIdsAsync(trainerIds, organizationId, ct);
+        if (trainerError is not null)
+            return Result<Guid>.Fail(trainerError);
+
         var series = mapper.ToLessonSerie(request, organizationId);
 
         foreach (var templateRequest in request.WeeklyTemplate)
@@ -163,11 +169,38 @@ public class LessonSerieService(
         if (series is null)
             return Result<Guid>.Fail(new Error(ErrorCodes.NotFound, "LessonSerie niet gevonden."));
 
+        if (request.TrainerId.HasValue)
+        {
+            var isValid = await userLookup.IsActiveTrainerAsync(request.TrainerId.Value, organizationId, ct);
+            if (!isValid)
+                return Result<Guid>.Fail(
+                    new Error(ErrorCodes.Validation, "Deze trainer behoort niet tot deze organisatie."));
+        }
+
         var lesson = mapper.ToLesson(request, series);
         await lessonRepo.AddAsync(lesson, ct);
         await lessonRepo.SaveChangesAsync(ct);
 
         return Result<Guid>.Ok(lesson.Id);
+    }
+
+    private async Task<Error?> ValidateTrainerIdsAsync(
+        IEnumerable<Guid?> trainerIds, Guid organizationId, CancellationToken ct)
+    {
+        var distinctIds = trainerIds
+            .Where(id => id.HasValue)
+            .Select(id => id!.Value)
+            .Distinct()
+            .ToList();
+
+        foreach (var trainerId in distinctIds)
+        {
+            var isValid = await userLookup.IsActiveTrainerAsync(trainerId, organizationId, ct);
+            if (!isValid)
+                return new Error(ErrorCodes.Validation,
+                    "Een of meer geselecteerde trainers behoren niet tot deze organisatie.");
+        }
+        return null;
     }
 
     public async Task<Result> DeleteLessonAsync(

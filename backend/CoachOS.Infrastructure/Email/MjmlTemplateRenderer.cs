@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text;
 using Microsoft.Extensions.Logging;
 using Mjml.Net;
@@ -58,9 +59,22 @@ public class MjmlTemplateRenderer : IMjmlTemplateRenderer
         if (!_compiled.TryGetValue(templateName, out var html))
             throw new KeyNotFoundException($"MJML template '{templateName}' not loaded. Available: {string.Join(", ", _compiled.Keys)}");
 
+        // HTML-encode elke token-value om XSS/HTML-injectie via student-invoer te blokkeren
+        // (student names, form responses, trainer names, enz). Keys met prefix "raw:" worden
+        // NIET geëncodeerd — gebruik alleen voor door de app gegenereerde HTML (tabelrijen e.d.).
         var sb = new StringBuilder(html);
         foreach (var kv in tokens)
-            sb.Replace("{{" + kv.Key + "}}", kv.Value);
+        {
+            if (kv.Key.StartsWith("raw:", StringComparison.Ordinal))
+            {
+                var realKey = kv.Key.Substring(4);
+                sb.Replace("{{" + realKey + "}}", kv.Value);
+            }
+            else
+            {
+                sb.Replace("{{" + kv.Key + "}}", WebUtility.HtmlEncode(kv.Value));
+            }
+        }
         return sb.ToString();
     }
 }

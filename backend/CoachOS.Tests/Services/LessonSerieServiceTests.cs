@@ -39,6 +39,12 @@ public class LessonSerieServiceTests
             _tennisClubRepo.Object,
             _userLookup.Object,
             _mapper);
+
+        // Default: alle trainers valideren als actief binnen de org. Individuele tests
+        // kunnen dit overriden voor negatieve scenarios (invalid/cross-tenant trainer).
+        _userLookup
+            .Setup(u => u.IsActiveTrainerAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
@@ -341,7 +347,7 @@ public class LessonSerieServiceTests
     }
 
     [Test]
-    public async Task CreateAsync_ReturnsNotFound_WhenTrainerInvalid()
+    public async Task CreateAsync_ReturnsValidation_WhenTrainerBelongsToAnotherOrg()
     {
         CreateLessonSerieRequest request = new()
         {
@@ -367,14 +373,16 @@ public class LessonSerieServiceTests
             .Setup(r => r.ExistsAsync(ClubId, OrgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
-        _lessonSeriesRepo
-            .Setup(r => r.AddAsync(It.IsAny<LessonSerie>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
+        // Simuleer cross-tenant trainer: IsActiveTrainerAsync geeft false voor deze org.
+        _userLookup
+            .Setup(u => u.IsActiveTrainerAsync(TrainerId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
 
         var result = await _service.CreateAsync(OrgId, request);
 
-        // Trainer validation no longer happens at series level — series creates successfully
-        result.IsSuccess.Should().BeTrue();
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.Validation);
+        _lessonSeriesRepo.Verify(r => r.AddAsync(It.IsAny<LessonSerie>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     // ── UpdateAsync ───────────────────────────────────────────────────────────

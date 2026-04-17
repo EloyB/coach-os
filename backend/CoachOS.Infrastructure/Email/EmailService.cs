@@ -90,11 +90,13 @@ public class EmailService(
         if (responses.Count > 0)
         {
             responsesLabel = "Antwoorden formulier";
+            // Elke waarde HTML-encoden: FieldLabel en Value zijn student-invoer en kunnen
+            // anders HTML/script bevatten dat in de trainer-inbox gerenderd wordt.
             var rows = string.Join("",
                 responses.Select(r =>
                     $"<div style=\"padding:8px 0;border-bottom:1px solid #f3f4f6\">" +
-                    $"<span style=\"color:#6b7280;display:inline-block;width:40%\">{r.FieldLabel}</span>" +
-                    $"<span style=\"color:#111827\">{r.Value}</span></div>"));
+                    $"<span style=\"color:#6b7280;display:inline-block;width:40%\">{WebUtility.HtmlEncode(r.FieldLabel)}</span>" +
+                    $"<span style=\"color:#111827\">{WebUtility.HtmlEncode(r.Value)}</span></div>"));
             responsesHtml = rows;
         }
         else
@@ -103,6 +105,8 @@ public class EmailService(
             responsesHtml = string.Empty;
         }
 
+        // responsesHtml is door ons zelf gebouwde HTML (reeds geëncodeerde waarden) →
+        // gebruik "raw:" prefix zodat de renderer niet nogmaals encodeert.
         var html = renderer.Render("enrollment-notification-trainer", new Dictionary<string, string>
         {
             ["trainerName"] = trainerName,
@@ -110,7 +114,7 @@ public class EmailService(
             ["studentEmail"] = studentEmail,
             ["seriesName"] = seriesName,
             ["responsesLabel"] = responsesLabel,
-            ["responsesHtml"] = responsesHtml,
+            ["raw:responsesHtml"] = responsesHtml,
             ["year"] = DateTime.UtcNow.Year.ToString(),
         });
         await SendAsync(trainerEmail, trainerName,
