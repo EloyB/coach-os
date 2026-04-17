@@ -277,7 +277,17 @@ public class ConfirmationOrchestrationService(
         var allTokens = await tokenRepo.GetBySeriesAsync(seriesId, organizationId, ct);
         var stillPending = allTokens.Any(t => t.Response == ConfirmationResponse.Pending
             && t.ExpiresAt >= DateTime.UtcNow);
-        if (!stillPending && series.PlanningStatus == PlanningStatus.AwaitingConfirmation)
+
+        // Alleen finaliseren als élke deelnemer minstens één Confirmed toewijzing heeft.
+        // Een Declined zonder vervanging is een gat in de planning — admin moet eerst
+        // resolven voordat de reeks naar Scheduled mag.
+        var allAssignments = await scheduleAssignmentRepo.GetBySeriesAsync(seriesId, organizationId, ct);
+        var everyParticipantConfirmed = allAssignments
+            .GroupBy(a => a.EnrollmentGroupId ?? a.EnrollmentId ?? Guid.Empty)
+            .Where(g => g.Key != Guid.Empty)
+            .All(g => g.Any(a => a.Status == ScheduleAssignmentStatus.Confirmed));
+
+        if (!stillPending && everyParticipantConfirmed && series.PlanningStatus == PlanningStatus.AwaitingConfirmation)
         {
             series.PlanningStatus = PlanningStatus.Scheduled;
             await lessonSeriesRepo.SaveChangesAsync(ct);
