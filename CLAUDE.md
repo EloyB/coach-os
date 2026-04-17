@@ -12,7 +12,7 @@ CoachOS — tennis/padel lesson planning SaaS for Benelux (Dutch MVP, French lat
 # Start all services
 docker-compose up -d                          # PostgreSQL + pgAdmin
 cd backend/CoachOS.API && dotnet run          # API on http://localhost:5142
-cd frontend && bun dev                        # Frontend on http://localhost:3000
+cd frontend && bun dev                        # Frontend on http://localhost:5317
 
 # Build
 cd backend && dotnet build CoachOS.slnx
@@ -21,6 +21,7 @@ cd frontend && bun run build
 # Tests
 cd backend && dotnet test CoachOS.slnx
 cd backend && dotnet test --filter "FullyQualifiedName~SomeTest"
+cd frontend && bun run test:e2e               # Playwright E2E
 
 # Migrations
 cd backend
@@ -33,29 +34,32 @@ cd frontend && bunx shadcn add <component>
 
 ## Architecture
 
-### Backend — Clean Architecture + CQRS
+### Backend — Clean Architecture + Service Pattern
 
 Dependency direction: `API → Infrastructure → Application → Domain`
 
-- **Domain** — pure entities extending `BaseEntity` (Id, CreatedAt, UpdatedAt), enums. Zero external dependencies.
-- **Application** — CQRS handlers via MediatR, DTOs, FluentValidation validators, interfaces (`IApplicationDbContext`, `ITrainerService`, etc.). Returns `Result<T>` — never throws for business logic.
-- **Infrastructure** — EF Core (`ApplicationDbContext`), ASP.NET Identity (`ApplicationUser`), email, token/auth services. Implements Application interfaces.
-- **API** — thin controllers that only route to `IMediator`. Claims org/user from JWT.
+- **Domain** — pure entities extending `BaseEntity` (Id, CreatedAt, UpdatedAt), enums, repository/service interfaces, `Result<T>` / `Error` / `ErrorCodes`. Zero external dependencies.
+- **Application** — business logic in service classes (`I{Feature}Service` + `{Feature}Service`), DTOs, FluentValidation validators, Mapperly mapper (`ApplicationMapper`). Services return `Result<T>` — never throw for business errors.
+- **Infrastructure** — EF Core (`ApplicationDbContext`), repository implementations, ASP.NET Identity (`ApplicationUser`), email, JWT/auth/token services.
+- **API** — minimal-API endpoints implementing `IEndpoint` in `Endpoints/{Feature}/`. Each endpoint routes to a service and maps `Result<T>` to HTTP via `ResultExtensions`. Uses `ValidationFilter<T>` for request validation.
 
-**Feature folder structure:** `Application/{Feature}/Commands/{Verb}{Entity}/` and `Application/{Feature}/Queries/Get{Entity}/`.
+**Feature folder structure:** `Application/{Feature}/` contains `I{Feature}Service.cs`, `{Feature}Service.cs`, `DTOs/`, and `Validators/`. Repository interfaces live in `Domain/Interfaces/I{Entity}Repository.cs`; implementations in `Infrastructure/Repositories/`. See [backend/CLAUDE.md](backend/CLAUDE.md) for the full 10-step recipe.
 
-**Key constraint:** `ApplicationUser` lives in Infrastructure (Identity dependency). Domain entities reference users by `Guid` only — no navigation properties to `ApplicationUser`. Use `IUserLookupService` from Application when handlers need user names, `ITrainerService` when UserManager is needed.
+**No MediatR, no CQRS `Commands/Queries/` folders** — the project uses a plain service pattern backed by repositories.
 
-**Multi-tenancy:** Every handler must filter by `OrganizationId`. The `OrganizationId` claim comes from the JWT and is read in controllers via `User.FindFirst("organizationId")`.
+**Key constraint:** `ApplicationUser` lives in Infrastructure (Identity dependency). Domain entities reference users by `Guid` only — no navigation properties to `ApplicationUser`. Use `IUserLookupService` when services need user names, `ITrainerService` when `UserManager` is needed.
+
+**Multi-tenancy:** Every service must filter by `OrganizationId`. Endpoints extract it from the JWT via `ctx.GetOrganizationId()` (see `HttpContextExtensions`) and pass it into the service. `ITenantContext` is available for ambient access where passing it explicitly is awkward.
 
 ### Frontend — Next.js App Router
 
 - Server Components by default; `"use client"` only for interactivity/hooks.
-- Route groups `(auth)` and `(dashboard)` are invisible in URLs.
+- Route groups `(auth)`, `(dashboard)`, `(public)`, `(student)` are invisible in URLs.
 - All API calls live in `lib/api/*.ts` using the axios `apiClient` from `lib/api-client.ts`.
 - Auth tokens stored via helpers in `lib/auth.ts` (key: `"token"`, user: `"auth_user"`).
 - React Query (`["trainers"]`, `["lessonSeries"]`, etc.) for client-side data with `QueryClientProvider` in `components/providers/query-provider.tsx`.
-- i18n: all Dutch strings go in `messages/nl.json`; components use `useTranslations('namespace')`.
+- i18n: `next-intl` with Dutch strings in `messages/nl.json`; components use `useTranslations('namespace')`. Request config in `i18n/request.ts`.
+- E2E tests in `frontend/e2e/*.spec.ts` (Playwright); run with `bun run test:e2e`.
 
 **Zod v4 + react-hook-form:** Never use `z.coerce.number()` — use `z.number()` with `valueAsNumber: true` on the `register()` call instead.
 
@@ -71,20 +75,25 @@ PostgreSQL via EF Core. All entities use `Guid` PKs. `ApplicationUser` configura
 
 ## Critical Patterns
 
-**New backend feature checklist:**
+**New backend feature checklist** (short version — full walkthrough in [backend/CLAUDE.md](backend/CLAUDE.md)):
 
-1. Domain entity → EF configuration → `DbSet` in `ApplicationDbContext` + `IApplicationDbContext` → migration
-2. DTOs in `Application/{Feature}/`
-3. Commands/Queries each get their own folder with Command/Handler/Validator files
-4. Thin controller, reads `OrganizationId` from claims
+1. Domain entity in `Domain/Entities/` → `IEntityTypeConfiguration<T>` in `Infrastructure/Persistence/Configurations/` → `DbSet<T>` on `ApplicationDbContext` → `dotnet ef migrations add ...`
+2. Repository interface in `Domain/Interfaces/I{Entity}Repository.cs` → implementation in `Infrastructure/Repositories/`
+3. DTOs in `Application/{Feature}/DTOs/` + FluentValidation validators in `Application/{Feature}/Validators/`
+4. Mapperly mapping methods added to `Application/Mappings/ApplicationMapper.cs`
+5. `I{Feature}Service` + `{Feature}Service` in `Application/{Feature}/`, returning `Result<T>`, always filtering by `organizationId`
+6. `IEndpoint` implementation in `API/Endpoints/{Feature}/` using `.RequireAuthorization()`, `AddEndpointFilter<ValidationFilter<T>>()`, `ctx.GetOrganizationId()`, and `result.ToErrorResult()` for failures
+7. Update seed scripts in `backend/Scripts/` if the public contract changed
 
 **Never:**
 
-- Business logic in controllers
+- Business logic in endpoints (route to services only)
 - `any` in TypeScript
-- Hardcoded Dutch strings (always `messages/nl.json`)
+- Hardcoded Dutch strings (always `messages/nl.json` on FE, `IStringLocalizer` on BE)
 - Cascade deletes (use `DeleteBehavior.Restrict`)
-- `ApplicationDbContext` directly in Application handlers — use `IApplicationDbContext`
+- Throwing exceptions for business failures — return `Result<T>.Failure(...)`
+- Accessing `ApplicationDbContext` from endpoints — go through the service → repository
+- Fluent configuration directly in `ApplicationDbContext.OnModelCreating` — use an `IEntityTypeConfiguration<T>` class
 
 **Courts:** No dedicated Courts feature in MVP. Court name is a plain text field on `LessonSeries`. The `Court` entity and DB table exist but are not used yet — post-MVP.
 
@@ -101,19 +110,10 @@ When modifying the database schema (entities, migrations), API request/response 
 
 ## graphify
 
-This project has a graphify knowledge graph at graphify-out/.
-
-Rules:
-- Before answering architecture or codebase questions, read graphify-out/GRAPH_REPORT.md for god nodes and community structure
-- If graphify-out/wiki/index.md exists, navigate it instead of reading raw files
-- After modifying code files in this session, run `python3 -c "from graphify.watch import _rebuild_code; from pathlib import Path; _rebuild_code(Path('.'))"` to keep the graph current
-
-## graphify
-
-This project has a graphify knowledge graph at graphify-out/.
+This project has a graphify knowledge graph at `graphify-out/`.
 
 Rules:
 
-- Before answering architecture or codebase questions, read graphify-out/GRAPH_REPORT.md for god nodes and community structure
-- If graphify-out/wiki/index.md exists, navigate it instead of reading raw files
+- Before answering architecture or codebase questions, read `graphify-out/GRAPH_REPORT.md` for god nodes and community structure
+- If `graphify-out/wiki/index.md` exists, navigate it instead of reading raw files
 - After modifying code files in this session, run `python3 -c "from graphify.watch import _rebuild_code; from pathlib import Path; _rebuild_code(Path('.'))"` to keep the graph current
