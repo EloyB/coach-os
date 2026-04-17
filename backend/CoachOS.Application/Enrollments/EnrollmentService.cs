@@ -1,3 +1,4 @@
+using System.Data;
 using System.Text.Json;
 using CoachOS.Application.Enrollments.DTOs;
 using CoachOS.Application.LessonSerie.DTOs;
@@ -200,22 +201,10 @@ public class EnrollmentService(
             return Result<Guid>.Fail(
                 new Error(ErrorCodes.Validation, "De inschrijvingsdeadline is verstreken."));
 
-        // 3. Capacity check (accounts for group size)
-        if (series.MaxRegistrations.HasValue)
-        {
-            var activeCount = await enrollmentRepo.CountActiveBySeriesAsync(lessonSeriesId, ct);
-            var groupSize = request.EnrollmentType == "group" && request.GroupMembers is not null
-                ? request.GroupMembers.Count + 1
-                : 1;
-            if (activeCount + groupSize > series.MaxRegistrations.Value)
-                return Result<Guid>.Fail(
-                    new Error(ErrorCodes.Conflict, "Deze lessenreeks is volzet."));
-        }
-
-        // 4. Load enrollment form with fields (may be null)
+        // 3. Load enrollment form with fields (may be null)
         var form = await enrollmentFormRepo.GetBySeriesIdReadOnlyAsync(lessonSeriesId, ct);
 
-        // 5. Validate form responses against actual form fields
+        // 4. Validate form responses against actual form fields (pre-transaction: cheap, no race risk)
         if (form is not null)
         {
             var formFieldIds = form.Fields.Select(f => f.Id).ToHashSet();
@@ -244,17 +233,37 @@ public class EnrollmentService(
             }
         }
 
-        // 6. Duplicate check
-        var isDuplicate = await enrollmentRepo.IsDuplicateAsync(lessonSeriesId, request.StudentEmail, ct);
-        if (isDuplicate)
-            return Result<Guid>.Fail(
-                new Error(ErrorCodes.Conflict, "Je bent al ingeschreven voor deze lessenreeks."));
+        var groupSize = request.EnrollmentType == "group" && request.GroupMembers is not null
+            ? request.GroupMembers.Count + 1
+            : 1;
 
-        // 7. Begin transaction for multi-step enrollment
+        // 5. Begin SERIALIZABLE transaction: capacity + duplicate checks moeten ATOMIC zijn
+        //    met de insert, anders kunnen twee parallelle submitters beide de check passeren
+        //    en samen MaxRegistrations overschrijden of een duplicate email creëren.
         Enrollment enrollment;
-        await enrollmentRepo.BeginTransactionAsync(ct);
+        await enrollmentRepo.BeginTransactionAsync(IsolationLevel.Serializable, ct);
         try
         {
+            // 6. Capacity check INSIDE transaction (accounts for group size)
+            if (series.MaxRegistrations.HasValue)
+            {
+                var activeCount = await enrollmentRepo.CountActiveBySeriesAsync(lessonSeriesId, ct);
+                if (activeCount + groupSize > series.MaxRegistrations.Value)
+                {
+                    await enrollmentRepo.RollbackTransactionAsync(ct);
+                    return Result<Guid>.Fail(
+                        new Error(ErrorCodes.Conflict, "Deze lessenreeks is volzet."));
+                }
+            }
+
+            // 7. Duplicate check INSIDE transaction (case-insensitive)
+            var isDuplicate = await enrollmentRepo.IsDuplicateAsync(lessonSeriesId, request.StudentEmail, ct);
+            if (isDuplicate)
+            {
+                await enrollmentRepo.RollbackTransactionAsync(ct);
+                return Result<Guid>.Fail(
+                    new Error(ErrorCodes.Conflict, "Je bent al ingeschreven voor deze lessenreeks."));
+            }
 
         // 8. Create enrollment
         enrollment = new()
@@ -291,13 +300,15 @@ public class EnrollmentService(
         {
             var existingGroupCount = await enrollmentGroupRepo.CountBySeriesAsync(
                 lessonSeriesId, series.OrganizationId, ct);
-            var groupLetter = (char)('A' + existingGroupCount);
+            // Naming: A–Z voor eerste 26 groepen, dan AA, AB, …, BA, BB, … zodat de namen
+            // leesbaar blijven (geen non-printables zoals [ of \ bij 'A'+26).
+            var groupName = BuildGroupName(existingGroupCount);
 
             EnrollmentGroup group = new()
             {
                 OrganizationId = series.OrganizationId,
                 LessonSerieId = series.Id,
-                Name = $"Groep {groupLetter}",
+                Name = $"Groep {groupName}",
                 LeaderEnrollmentId = enrollment.Id,
             };
 
@@ -395,6 +406,30 @@ public class EnrollmentService(
                 trainerInfo?.FullName ?? string.Empty,
                 ct);
 
+            // Bij groepsinschrijving ook elk groepslid een bevestigingsmail sturen —
+            // anders weten alleen de leider dat de inschrijving gelukt is.
+            if (request.EnrollmentType == "group" && request.GroupMembers is { Count: > 0 })
+            {
+                foreach (var member in request.GroupMembers)
+                {
+                    try
+                    {
+                        await emailService.SendEnrollmentConfirmationAsync(
+                            member.StudentEmail,
+                            member.StudentName,
+                            series.Name,
+                            trainerInfo?.FullName ?? string.Empty,
+                            ct);
+                    }
+                    catch (Exception memberEx)
+                    {
+                        logger.LogError(memberEx,
+                            "E-mail naar groepslid {Email} mislukt voor inschrijving {EnrollmentId}",
+                            member.StudentEmail, enrollment.Id);
+                    }
+                }
+            }
+
             if (trainerInfo.HasValue)
             {
                 await emailService.SendEnrollmentNotificationToTrainerAsync(
@@ -480,6 +515,20 @@ public class EnrollmentService(
             .ToList();
 
         return Result<List<EnrollmentWithPreferencesDto>>.Ok(dtos);
+    }
+
+    private static string BuildGroupName(int index)
+    {
+        // 0 → A, 25 → Z, 26 → AA, 27 → AB, …, 701 → ZZ, 702 → AAA, enz.
+        var name = string.Empty;
+        var n = index;
+        while (true)
+        {
+            name = (char)('A' + n % 26) + name;
+            n = n / 26 - 1;
+            if (n < 0) break;
+        }
+        return name;
     }
 
     private List<string>? DeserializeOptions(string? json)

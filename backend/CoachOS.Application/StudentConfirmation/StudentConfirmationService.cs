@@ -160,6 +160,20 @@ public class StudentConfirmationService(
                 new Error(ErrorCodes.Validation,
                     $"Tijdslot heeft geen plaats meer ({currentCount}/{targetSlot.MaxStudents})."));
 
+        // Atomisch de token-response flippen VOOR het aanmaken van assignment/payment.
+        // Zonder deze claim kunnen twee parallelle "pick alternative" requests beide de
+        // capacity check passeren en elk een nieuwe ScheduleAssignment + Payment aanmaken
+        // → dubbele booking + dubbele betaling.
+        var claimed = await tokenRepo.TryTransitionResponseAsync(
+            token.Id,
+            ConfirmationResponse.Declined,
+            ConfirmationResponse.Confirmed,
+            DateTime.UtcNow,
+            ct);
+        if (!claimed)
+            return Result<ConfirmResultDto>.Fail(
+                new Error(ErrorCodes.Validation, "Deze bevestiging is al verwerkt."));
+
         // Create new assignment in Confirmed state directly (user is committing).
         ScheduleAssignment newAssignment = new()
         {
@@ -185,9 +199,6 @@ public class StudentConfirmationService(
             Description = $"Cash (alternatief) — {series.Name}",
         };
         await paymentRepo.AddAsync(payment, ct);
-
-        token.Response = ConfirmationResponse.Confirmed;
-        token.RespondedAt = DateTime.UtcNow;
 
         ConfirmEnrollmentStatuses(oldAssignment);
         await paymentRepo.SaveChangesAsync(ct);

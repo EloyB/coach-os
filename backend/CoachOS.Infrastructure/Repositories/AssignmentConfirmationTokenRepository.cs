@@ -55,4 +55,19 @@ public class AssignmentConfirmationTokenRepository(ApplicationDbContext context)
                 .SetProperty(t => t.RespondedAt, now), ct);
         return affected == 1;
     }
+
+    public async Task<bool> TryTransitionResponseAsync(
+        Guid tokenId,
+        ConfirmationResponse from,
+        ConfirmationResponse to,
+        DateTime now,
+        CancellationToken ct = default)
+    {
+        var affected = await context.AssignmentConfirmationTokens
+            .Where(t => t.Id == tokenId && t.Response == from)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(t => t.Response, to)
+                .SetProperty(t => t.RespondedAt, now), ct);
+        return affected == 1;
+    }
 }

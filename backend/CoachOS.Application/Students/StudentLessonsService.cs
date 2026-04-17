@@ -44,10 +44,14 @@ public class StudentLessonsService(
 
         var trainerNames = await userLookup.GetUserNamesByIdsAsync(trainerIds, ct);
 
+        // Betaling wordt opgeslagen tegen de leader (solo: eigen enrollment, group: LeaderEnrollmentId).
+        // Lookup moet dezelfde leader gebruiken — anders krijgen niet-leader-members PaymentStatus=null.
         var enrollmentIds = assignments
-            .SelectMany(a => a.EnrollmentGroupId.HasValue && a.EnrollmentGroup is not null
-                ? a.EnrollmentGroup.Members.Select(m => m.Id)
-                : a.EnrollmentId.HasValue ? [a.EnrollmentId.Value] : Enumerable.Empty<Guid>())
+            .Select(a => a.EnrollmentGroupId.HasValue && a.EnrollmentGroup is not null
+                ? a.EnrollmentGroup.LeaderEnrollmentId
+                : a.EnrollmentId)
+            .Where(id => id.HasValue)
+            .Select(id => id!.Value)
             .Distinct()
             .ToList();
 
@@ -63,9 +67,10 @@ public class StudentLessonsService(
                 var isGroup = a.EnrollmentGroupId.HasValue && a.EnrollmentGroup is not null;
                 var size = isGroup ? a.EnrollmentGroup!.Members.Count : 1;
 
-                // Use the current student's own enrollment id for payment lookup when possible.
-                Guid? enrId = a.EnrollmentId
-                    ?? a.EnrollmentGroup?.Members.FirstOrDefault()?.Id;
+                // Payment is altijd tegen de leader geboekt — gebruik LeaderEnrollmentId voor groups.
+                Guid? enrId = a.EnrollmentGroupId.HasValue && a.EnrollmentGroup is not null
+                    ? a.EnrollmentGroup.LeaderEnrollmentId
+                    : a.EnrollmentId;
 
                 return new StudentLessonDto
                 {

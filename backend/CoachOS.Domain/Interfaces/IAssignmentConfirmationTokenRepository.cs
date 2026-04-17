@@ -25,4 +25,16 @@ public interface IAssignmentConfirmationTokenRepository
         Domain.Enums.ConfirmationResponse target,
         DateTime now,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Atomisch de Response van een specifieke waarde (<paramref name="from"/>) naar
+    /// <paramref name="to"/> flippen. Gebruikt voor "pick alternative" waar de
+    /// transition Declined → Confirmed is. Retourneert true bij één rij affected.
+    /// </summary>
+    Task<bool> TryTransitionResponseAsync(
+        Guid tokenId,
+        Domain.Enums.ConfirmationResponse from,
+        Domain.Enums.ConfirmationResponse to,
+        DateTime now,
+        CancellationToken ct = default);
 }
