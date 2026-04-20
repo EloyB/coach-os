@@ -31,6 +31,19 @@ public class AssignmentConfirmationTokenRepository(ApplicationDbContext context)
             .ToListAsync(ct);
     }
 
+    public async Task<List<AssignmentConfirmationToken>> GetBySeriesAsNoTrackingAsync(
+        Guid lessonSerieId, Guid organizationId, CancellationToken ct = default)
+    {
+        return await context.AssignmentConfirmationTokens
+            .AsNoTracking()
+            .Include(t => t.ScheduleAssignment).ThenInclude(a => a.Enrollment)
+            .Include(t => t.ScheduleAssignment).ThenInclude(a => a.EnrollmentGroup!).ThenInclude(g => g.Members)
+            .Include(t => t.Enrollment)
+            .Where(t => t.OrganizationId == organizationId
+                && t.ScheduleAssignment.LessonSerieId == lessonSerieId)
+            .ToListAsync(ct);
+    }
+
     public async Task AddRangeAsync(
         IEnumerable<AssignmentConfirmationToken> tokens, CancellationToken ct = default)
     {

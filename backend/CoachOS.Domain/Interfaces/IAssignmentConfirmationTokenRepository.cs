@@ -10,6 +10,15 @@ public interface IAssignmentConfirmationTokenRepository
     Task<List<AssignmentConfirmationToken>> GetBySeriesAsync(
         Guid lessonSerieId, Guid organizationId, CancellationToken ct = default);
 
+    /// <summary>
+    /// No-tracking variant voor read-only paden die moeten lezen nadat
+    /// <see cref="TryClaimResponseAsync"/> of <see cref="TryTransitionResponseAsync"/>
+    /// via <c>ExecuteUpdateAsync</c> de DB heeft gemuteerd. De tracking-versie zou
+    /// via identity resolution een stale in-memory instance teruggeven.
+    /// </summary>
+    Task<List<AssignmentConfirmationToken>> GetBySeriesAsNoTrackingAsync(
+        Guid lessonSerieId, Guid organizationId, CancellationToken ct = default);
+
     Task AddRangeAsync(
         IEnumerable<AssignmentConfirmationToken> tokens, CancellationToken ct = default);
 

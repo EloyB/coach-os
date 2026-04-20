@@ -302,7 +302,11 @@ public class StudentConfirmationService(
     private async Task TryFinalizeSeriesAsync(
         Guid seriesId, Guid organizationId, CancellationToken ct)
     {
-        var tokens = await tokenRepo.GetBySeriesAsync(seriesId, organizationId, ct);
+        // No-tracking: TryClaim/TryTransition muteren via ExecuteUpdateAsync (bypasst
+        // change tracker). Een tracking-query zou via identity resolution de zojuist
+        // geclaimde token teruggeven met stale in-memory Response=Pending, waardoor
+        // de anyPending-guard hieronder altijd true zou zijn op het student-pad.
+        var tokens = await tokenRepo.GetBySeriesAsNoTrackingAsync(seriesId, organizationId, ct);
         if (tokens.Count == 0) return;
 
         // Stap 1: zijn er nog openstaande tokens? (student heeft nog niet gereageerd en is niet verlopen)
@@ -310,22 +314,27 @@ public class StudentConfirmationService(
             && t.ExpiresAt >= DateTime.UtcNow);
         if (anyPending) return;
 
-        // Stap 2: elke enrollment/group moet minstens één Confirmed assignment hebben.
-        // Een Declined zonder Confirmed vervanging betekent dat een student een gat
-        // heeft in de planning — de reeks mag dan NIET naar Scheduled gaan, want dan
-        // lijkt het alsof iedereen is ingedeeld. Admin moet eerst handmatig oplossen
-        // (resend, admin-confirm, of extra pick-alternative).
+        // Stap 2: zijn er deelnemers met een "gat" in de planning?
+        // Een gat = een Declined toewijzing zonder Confirmed vervanging. Dat mag niet
+        // stilletjes Scheduled worden, want dan lijkt die student ingedeeld terwijl
+        // hij feitelijk nergens staat. Admin moet eerst resolven.
+        //
+        // Let op — expired non-responders blokkeren NIET: hun token is verlopen
+        // (Stap 1 filtert Pending+expired weg) en hun toewijzing blijft Awaiting-
+        // Confirmation. Per MVP-contract (docs/student-confirmation-cash-mvp.md:163)
+        // tellen die als "handled" zodat één niet-reagerende student de reeks niet
+        // permanent tegenhoudt.
         var assignments = await assignmentRepo.GetBySeriesAsync(seriesId, organizationId, ct);
-        var byParticipant = assignments
+        var hasBlockingParticipant = assignments
             .GroupBy(a => a.EnrollmentGroupId ?? a.EnrollmentId ?? Guid.Empty)
-            .Where(g => g.Key != Guid.Empty);
+            .Where(g => g.Key != Guid.Empty)
+            .Any(g => g.Any(a => a.Status == ScheduleAssignmentStatus.Declined)
+                && g.All(a => a.Status != ScheduleAssignmentStatus.Confirmed));
 
-        var allParticipantsConfirmed = byParticipant.All(g =>
-            g.Any(a => a.Status == ScheduleAssignmentStatus.Confirmed));
-        if (!allParticipantsConfirmed)
+        if (hasBlockingParticipant)
         {
             logger.LogInformation(
-                "Reeks {SeriesId} niet gefinaliseerd: nog deelnemers zonder bevestigde toewijzing.",
+                "Reeks {SeriesId} niet gefinaliseerd: deelnemer met Declined zonder vervanging.",
                 seriesId);
             return;
         }
