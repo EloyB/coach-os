@@ -274,20 +274,28 @@ public class ConfirmationOrchestrationService(
 
         await paymentRepo.SaveChangesAsync(ct);
 
-        var allTokens = await tokenRepo.GetBySeriesAsync(seriesId, organizationId, ct);
+        // No-tracking: concurrent requests kunnen tokens via ExecuteUpdateAsync hebben
+        // gemuteerd zonder dat onze change tracker dat weet. Tracking-read zou dan via
+        // identity resolution stale in-memory Response=Pending teruggeven → stillPending
+        // zou onterecht true zijn en de finaliseer-stap zou gemist worden.
+        var allTokens = await tokenRepo.GetBySeriesAsNoTrackingAsync(seriesId, organizationId, ct);
         var stillPending = allTokens.Any(t => t.Response == ConfirmationResponse.Pending
             && t.ExpiresAt >= DateTime.UtcNow);
 
-        // Alleen finaliseren als élke deelnemer minstens één Confirmed toewijzing heeft.
-        // Een Declined zonder vervanging is een gat in de planning — admin moet eerst
-        // resolven voordat de reeks naar Scheduled mag.
+        // Alleen finaliseren als élke deelnemer "afgerond" is.
+        // - Confirmed toewijzing: OK.
+        // - Geen Declined en geen Confirmed (alleen AwaitingConfirmation + expired token):
+        //   niet-responder, per MVP-contract geldt dat als "handled" — blokkeert niet.
+        // - Declined zonder Confirmed vervanging: WÉL blokkerend — dat is een gat in de
+        //   planning, admin moet eerst resenden / admin-confirmen / pick-alternative.
         var allAssignments = await scheduleAssignmentRepo.GetBySeriesAsync(seriesId, organizationId, ct);
-        var everyParticipantConfirmed = allAssignments
+        var hasBlockingParticipant = allAssignments
             .GroupBy(a => a.EnrollmentGroupId ?? a.EnrollmentId ?? Guid.Empty)
             .Where(g => g.Key != Guid.Empty)
-            .All(g => g.Any(a => a.Status == ScheduleAssignmentStatus.Confirmed));
+            .Any(g => g.Any(a => a.Status == ScheduleAssignmentStatus.Declined)
+                && g.All(a => a.Status != ScheduleAssignmentStatus.Confirmed));
 
-        if (!stillPending && everyParticipantConfirmed && series.PlanningStatus == PlanningStatus.AwaitingConfirmation)
+        if (!stillPending && !hasBlockingParticipant && series.PlanningStatus == PlanningStatus.AwaitingConfirmation)
         {
             series.PlanningStatus = PlanningStatus.Scheduled;
             await lessonSeriesRepo.SaveChangesAsync(ct);
