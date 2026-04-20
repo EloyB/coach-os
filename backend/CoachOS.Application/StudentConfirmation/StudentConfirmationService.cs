@@ -305,9 +305,30 @@ public class StudentConfirmationService(
         var tokens = await tokenRepo.GetBySeriesAsync(seriesId, organizationId, ct);
         if (tokens.Count == 0) return;
 
+        // Stap 1: zijn er nog openstaande tokens? (student heeft nog niet gereageerd en is niet verlopen)
         var anyPending = tokens.Any(t => t.Response == ConfirmationResponse.Pending
             && t.ExpiresAt >= DateTime.UtcNow);
         if (anyPending) return;
+
+        // Stap 2: elke enrollment/group moet minstens één Confirmed assignment hebben.
+        // Een Declined zonder Confirmed vervanging betekent dat een student een gat
+        // heeft in de planning — de reeks mag dan NIET naar Scheduled gaan, want dan
+        // lijkt het alsof iedereen is ingedeeld. Admin moet eerst handmatig oplossen
+        // (resend, admin-confirm, of extra pick-alternative).
+        var assignments = await assignmentRepo.GetBySeriesAsync(seriesId, organizationId, ct);
+        var byParticipant = assignments
+            .GroupBy(a => a.EnrollmentGroupId ?? a.EnrollmentId ?? Guid.Empty)
+            .Where(g => g.Key != Guid.Empty);
+
+        var allParticipantsConfirmed = byParticipant.All(g =>
+            g.Any(a => a.Status == ScheduleAssignmentStatus.Confirmed));
+        if (!allParticipantsConfirmed)
+        {
+            logger.LogInformation(
+                "Reeks {SeriesId} niet gefinaliseerd: nog deelnemers zonder bevestigde toewijzing.",
+                seriesId);
+            return;
+        }
 
         var series = await seriesRepo.GetByIdAsync(seriesId, organizationId, ct);
         if (series is null) return;
