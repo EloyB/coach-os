@@ -5,12 +5,9 @@ import { useTranslations } from "next-intl";
 import {
   CheckCircle2,
   Clock,
-  MapPin,
-  CalendarDays,
-  Euro,
-  Users,
   AlertTriangle,
   ArrowRight,
+  Calendar,
 } from "lucide-react";
 import {
   getAssignmentDetails,
@@ -22,19 +19,40 @@ import type {
   AssignmentDetailsDto,
   AvailableSlotDto,
 } from "@/lib/api/confirmation";
-import { TennisBallIcon } from "@/components/ui/tennis-ball-icon";
-import { Spinner } from "@/components/ui/spinner";
+import { Mono } from "@/components/ui/mono";
+import { SlashLabel } from "@/components/ui/slash-label";
+import { InkHeroCard } from "@/components/ui/ink-hero-card";
 
-// dayOfWeek: 0=Sunday..6=Saturday
 const DAY_NAMES = [
-  "Zondag",
-  "Maandag",
-  "Dinsdag",
-  "Woensdag",
-  "Donderdag",
-  "Vrijdag",
-  "Zaterdag",
+  "Zondag", "Maandag", "Dinsdag", "Woensdag", "Donderdag", "Vrijdag", "Zaterdag",
 ];
+const DAY_SHORT = ["Zo", "Ma", "Di", "Wo", "Do", "Vr", "Za"];
+
+function Spinner() {
+  return (
+    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+    </svg>
+  );
+}
+
+function useCountdown(expiresAt: string) {
+  const [remaining, setRemaining] = useState("");
+  useEffect(() => {
+    function calc() {
+      const diff = new Date(expiresAt).getTime() - Date.now();
+      if (diff <= 0) { setRemaining("0 min"); return; }
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      setRemaining(h > 0 ? `${h} u ${m} min` : `${m} min`);
+    }
+    calc();
+    const id = setInterval(calc, 60000);
+    return () => clearInterval(id);
+  }, [expiresAt]);
+  return remaining;
+}
 
 export default function ConfirmationPage({
   params,
@@ -47,8 +65,6 @@ export default function ConfirmationPage({
   const [details, setDetails] = useState<AssignmentDetailsDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorState, setErrorState] = useState<"expired" | "not-found" | null>(null);
-
-  // Flow state
   const [step, setStep] = useState<"view" | "confirm" | "decline" | "success" | "moved">("view");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -63,12 +79,8 @@ export default function ConfirmationPage({
         setDetails(data);
         if (data.status === "Confirmed") setStep("success");
       } catch (err: unknown) {
-        const response = (err as { response?: { status?: number; data?: { message?: string } } })?.response;
-        if (response?.status === 400) {
-          setErrorState("expired");
-        } else {
-          setErrorState("not-found");
-        }
+        const response = (err as { response?: { status?: number } })?.response;
+        setErrorState(response?.status === 400 ? "expired" : "not-found");
       } finally {
         setLoading(false);
       }
@@ -80,14 +92,8 @@ export default function ConfirmationPage({
     setSubmitting(true);
     setSubmitError(null);
     try {
-      const result = await confirmAssignment(
-        token,
-        2, // Cash
-        window.location.origin + "/confirmation/done"
-      );
-      if (result.isConfirmed) {
-        setStep("success");
-      }
+      const result = await confirmAssignment(token, 2, window.location.origin + "/confirmation/done");
+      if (result.isConfirmed) setStep("success");
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       setSubmitError(msg ?? "Er ging iets mis.");
@@ -117,16 +123,9 @@ export default function ConfirmationPage({
     setSubmitError(null);
     try {
       const slot = availableSlots.find((s) => s.weeklyTemplateEntryId === selectedSlotId);
-      const result = await pickAlternativeSlot(
-        token,
-        selectedSlotId,
-        2, // Cash
-        window.location.origin + "/confirmation/done"
-      );
+      const result = await pickAlternativeSlot(token, selectedSlotId, 2, window.location.origin + "/confirmation/done");
       if (result.isConfirmed) {
-        setMovedSlotLabel(
-          slot ? `${DAY_NAMES[slot.dayOfWeek]} ${slot.startTime}` : ""
-        );
+        setMovedSlotLabel(slot ? `${DAY_NAMES[slot.dayOfWeek]} ${slot.startTime}` : "");
         setStep("moved");
       }
     } catch (err: unknown) {
@@ -137,14 +136,13 @@ export default function ConfirmationPage({
     }
   }
 
-  // ─── Loading / Error states ─────────────────────────────────────────────
-
+  // ─── Loading / Error ──────────────────────────────────────────────────
   if (loading) {
     return (
       <Shell>
         <div className="flex flex-col items-center py-16">
-          <Spinner className="h-5 w-5" />
-          <p className="text-sm text-gray-500 mt-3">{t("loading")}</p>
+          <Spinner />
+          <p className="text-sm text-ink-3 mt-3">{t("loading")}</p>
         </div>
       </Shell>
     );
@@ -153,12 +151,12 @@ export default function ConfirmationPage({
   if (errorState === "expired") {
     return (
       <Shell>
-        <div className="flex flex-col items-center py-16 text-center">
+        <div className="flex flex-col items-center py-16 text-center px-6">
           <div className="w-14 h-14 rounded-full bg-amber-100 flex items-center justify-center mb-4">
             <AlertTriangle className="w-7 h-7 text-amber-600" />
           </div>
-          <h2 className="text-lg font-bold text-gray-900 mb-2">{t("expired")}</h2>
-          <p className="text-sm text-gray-500">{t("expiredDesc")}</p>
+          <h2 className="text-lg font-bold text-ink mb-2">{t("expired")}</h2>
+          <p className="text-sm text-ink-3">{t("expiredDesc")}</p>
         </div>
       </Shell>
     );
@@ -167,28 +165,37 @@ export default function ConfirmationPage({
   if (errorState === "not-found" || !details) {
     return (
       <Shell>
-        <div className="flex flex-col items-center py-16 text-center">
+        <div className="flex flex-col items-center py-16 text-center px-6">
           <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center mb-4">
             <AlertTriangle className="w-7 h-7 text-red-600" />
           </div>
-          <h2 className="text-lg font-bold text-gray-900 mb-2">{t("notFound")}</h2>
-          <p className="text-sm text-gray-500">{t("notFoundDesc")}</p>
+          <h2 className="text-lg font-bold text-ink mb-2">{t("notFound")}</h2>
+          <p className="text-sm text-ink-3">{t("notFoundDesc")}</p>
         </div>
       </Shell>
     );
   }
 
-  // ─── Success states ─────────────────────────────────────────────────────
-
+  // ─── Success ──────────────────────────────────────────────────────────
   if (step === "success") {
+    const calendarUrl = `${process.env.NEXT_PUBLIC_API_URL?.replace(/\/api$/, "")}/confirm/${token}/calendar.ics`;
+
     return (
       <Shell>
-        <div className="flex flex-col items-center py-16 text-center">
+        <div className="flex flex-col items-center py-16 text-center px-6">
           <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center mb-4">
             <CheckCircle2 className="w-7 h-7 text-green-600" />
           </div>
-          <h2 className="text-lg font-bold text-gray-900 mb-2">{t("successTitle")}</h2>
-          <p className="text-sm text-gray-500">{t("successDesc")}</p>
+          <h2 className="text-lg font-bold text-ink mb-2">{t("successTitle")}</h2>
+          <p className="text-sm text-ink-3 mb-5">{t("successDesc")}</p>
+          <a
+            href={calendarUrl}
+            download
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-ink text-white text-xs font-semibold rounded-lg hover:bg-ink/90 transition-colors"
+          >
+            <Calendar size={14} />
+            {t("addToCalendar")}
+          </a>
         </div>
       </Shell>
     );
@@ -197,33 +204,24 @@ export default function ConfirmationPage({
   if (step === "moved") {
     return (
       <Shell>
-        <div className="flex flex-col items-center py-16 text-center">
+        <div className="flex flex-col items-center py-16 text-center px-6">
           <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center mb-4">
             <CheckCircle2 className="w-7 h-7 text-green-600" />
           </div>
-          <h2 className="text-lg font-bold text-gray-900 mb-2">{t("successMoved")}</h2>
-          <p className="text-sm text-gray-500">
-            Je plek is verplaatst naar {movedSlotLabel}.
-          </p>
+          <h2 className="text-lg font-bold text-ink mb-2">{t("successMoved")}</h2>
+          <p className="text-sm text-ink-3">Je plek is verplaatst naar {movedSlotLabel}.</p>
         </div>
       </Shell>
     );
   }
 
-  // Format expiry
-  const expiryDate = new Date(details.expiresAt);
-  const expiryFormatted = `${expiryDate.toLocaleDateString("nl-BE", { day: "2-digit", month: "2-digit" })} om ${expiryDate.toLocaleTimeString("nl-BE", { hour: "2-digit", minute: "2-digit" })}`;
-
-  // ─── Decline: pick alternative ──────────────────────────────────────────
-
+  // ─── Decline: pick alternative ────────────────────────────────────────
   if (step === "decline") {
     return (
       <Shell>
         <div className="p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-1">
-            {t("chooseAlternative")}
-          </h2>
-          <p className="text-sm text-gray-500 mb-5">{t("chooseAlternativeDesc")}</p>
+          <h2 className="text-lg font-bold text-ink mb-1">{t("chooseAlternative")}</h2>
+          <p className="text-sm text-ink-3 mb-5">{t("chooseAlternativeDesc")}</p>
 
           {submitError && (
             <div className="mb-4 px-4 py-3 rounded-lg bg-red-50 border border-red-100">
@@ -235,10 +233,10 @@ export default function ConfirmationPage({
             {availableSlots.map((slot) => (
               <label
                 key={slot.weeklyTemplateEntryId}
-                className={`flex items-center justify-between p-3 rounded-lg border-2 cursor-pointer transition ${
+                className={`flex items-center justify-between p-3.5 rounded-[10px] border-2 cursor-pointer transition ${
                   selectedSlotId === slot.weeklyTemplateEntryId
-                    ? "border-tennis-green bg-tennis-green/5"
-                    : "border-gray-200 hover:border-tennis-green/30"
+                    ? "border-tennis-green bg-tennis-green/[.04]"
+                    : "border-rule hover:border-tennis-green/30"
                 }`}
               >
                 <input
@@ -250,16 +248,16 @@ export default function ConfirmationPage({
                   className="sr-only"
                 />
                 <div>
-                  <div className="text-sm font-medium text-gray-900">
+                  <div className="text-[12.5px] font-semibold text-ink">
                     {DAY_NAMES[slot.dayOfWeek]} {slot.startTime} — {slot.endTime}
                   </div>
                   {slot.courtName && (
-                    <div className="text-xs text-gray-500">{slot.courtName}</div>
+                    <div className="text-[11px] text-ink-3">{slot.courtName}</div>
                   )}
                 </div>
-                <span className="text-xs text-gray-400">
+                <Mono className="text-[10.5px] text-ink-3">
                   {slot.remainingCapacity} {t("spotsLeft")}
-                </span>
+                </Mono>
               </label>
             ))}
           </div>
@@ -268,9 +266,9 @@ export default function ConfirmationPage({
             type="button"
             disabled={!selectedSlotId || submitting}
             onClick={handlePickAlternative}
-            className="w-full bg-tennis-green text-white py-3 rounded-lg font-medium hover:bg-tennis-green/90 transition text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full bg-ink text-white py-3 rounded-[10px] font-semibold text-[13px] disabled:opacity-50 flex items-center justify-center gap-2"
           >
-            {submitting ? <Spinner className="h-5 w-5" /> : <ArrowRight size={16} />}
+            {submitting ? <Spinner /> : <ArrowRight size={16} />}
             {submitting ? t("picking") : t("pickSlot")}
           </button>
         </div>
@@ -278,152 +276,135 @@ export default function ConfirmationPage({
     );
   }
 
-  // ─── Main view: confirm or decline ──────────────────────────────────────
-
+  // ─── Main view ────────────────────────────────────────────────────────
   return (
     <Shell>
-      <div className="p-6">
-        {/* Series name */}
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">
-          {details.seriesName}
-        </h2>
+      <ConfirmCountdown expiresAt={details.expiresAt} />
 
-        {/* Slot details */}
-        <div className="bg-[#FAFAF8] rounded-lg p-4 mb-4 space-y-2.5">
-          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-            {t("yourSlot")}
-          </h3>
-          <div className="flex items-center gap-2 text-sm text-gray-700">
-            <CalendarDays size={15} className="text-tennis-green shrink-0" />
-            {DAY_NAMES[details.dayOfWeek]} {details.startTime} — {details.endTime}
-          </div>
-          {details.courtName && (
-            <div className="flex items-center gap-2 text-sm text-gray-700">
-              <MapPin size={15} className="text-tennis-green shrink-0" />
-              {details.courtName}
-            </div>
-          )}
-          <div className="flex items-center gap-2 text-sm text-gray-700">
-            <Euro size={15} className="text-tennis-green shrink-0" />
-            €{details.pricePerPerson.toFixed(2)} {t("perPerson")}
-            {details.isGroup && (
-              <span className="text-gray-400">
-                — {t("total")}: €{details.totalPrice.toFixed(2)}
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-2 text-xs text-gray-400">
-            <Clock size={13} className="shrink-0" />
-            {t("expiresAt", {
-              date: expiryDate.toLocaleDateString("nl-BE", { day: "2-digit", month: "2-digit" }),
-              time: expiryDate.toLocaleTimeString("nl-BE", { hour: "2-digit", minute: "2-digit" }),
-            })}
-          </div>
+      <div className="bg-white border border-rule rounded-[14px] overflow-hidden">
+        {/* Greeting */}
+        <div className="px-6 pt-5 pb-3.5">
+          <Mono className="text-[11px] text-ink-3">Hi {details.studentName}!</Mono>
+          <h2 className="text-xl font-extrabold text-ink tracking-tight mt-1 mb-0.5">
+            Je hebt een plek
+          </h2>
+          <p className="text-[12.5px] text-ink-3">
+            Bevestig om je inschrijving vast te leggen.
+          </p>
         </div>
 
-        {/* Group info */}
-        {details.isGroup && details.groupMemberNames.length > 0 && (
-          <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 mb-4">
-            <div className="flex items-center gap-2 mb-1">
-              <Users size={14} className="text-blue-600" />
-              <span className="text-xs font-medium text-blue-800">
-                Groepsinschrijving
-              </span>
+        {/* Ink slot card */}
+        <div className="mx-6 mb-4">
+          <InkHeroCard className="p-5">
+            <div className="flex items-start justify-between mb-3">
+              <div>
+                <Mono className="text-[10.5px] text-tennis-lime uppercase tracking-[0.1em]">
+                  {DAY_SHORT[details.dayOfWeek]}
+                </Mono>
+                <Mono className="text-[28px] font-extrabold mt-1 block">
+                  {details.startTime} <span className="text-[#8a8377] text-lg">— {details.endTime}</span>
+                </Mono>
+              </div>
+              <div className="text-right">
+                <Mono className="text-[10.5px] text-[#8a8377]">{t("total")}</Mono>
+                <Mono className="text-lg font-extrabold block">€{details.totalPrice.toFixed(2)}</Mono>
+              </div>
             </div>
-            <p className="text-xs text-blue-700">
-              Je bevestigt voor {details.studentName} + {details.groupMemberNames.length} leden ({details.groupMemberNames.join(", ")}). Totaal: €{details.totalPrice.toFixed(2)}.
-            </p>
-          </div>
-        )}
+            <div className="text-[12.5px] text-[#e9e4db] space-y-1">
+              <div>{details.seriesName}</div>
+              {details.courtName && (
+                <div className="text-[#a8a195]">{details.courtName}</div>
+              )}
+            </div>
+          </InkHeroCard>
+        </div>
 
-        {submitError && (
-          <div className="mb-4 px-4 py-3 rounded-lg bg-red-50 border border-red-100">
-            <p className="text-red-600 text-sm">{submitError}</p>
-          </div>
-        )}
-
-        {/* Confirm step: payment method */}
+        {/* Payment method */}
         {step === "confirm" && (
-          <div className="mb-5">
-            <h3 className="text-sm font-medium text-gray-700 mb-2">
-              {t("paymentMethod")}
-            </h3>
+          <div className="px-6 pb-[18px]">
+            <SlashLabel className="mb-2.5">/betaal</SlashLabel>
             <div className="space-y-2">
-              <label className="flex items-center gap-3 p-3 rounded-lg border-2 border-tennis-green bg-tennis-green/5 cursor-pointer">
-                <input type="radio" name="payment" value="cash" defaultChecked className="accent-tennis-green" />
-                <span className="text-sm text-gray-900">{t("cash")}</span>
-              </label>
-              <label className="flex items-center gap-3 p-3 rounded-lg border-2 border-gray-200 opacity-50 cursor-not-allowed">
-                <input type="radio" name="payment" value="online" disabled className="accent-tennis-green" />
-                <div>
-                  <span className="text-sm text-gray-500">{t("online")}</span>
-                  <span className="text-xs text-gray-400 ml-2 italic">({t("onlineComingSoon")})</span>
+              <label className="flex items-center gap-3 p-3.5 border-2 border-tennis-green bg-tennis-green/[.04] rounded-[10px] cursor-pointer">
+                <div className="w-4 h-4 rounded-full border-[5px] border-tennis-green bg-white" />
+                <div className="flex-1">
+                  <div className="text-[13px] font-semibold text-ink">{t("cash")}</div>
                 </div>
               </label>
             </div>
           </div>
         )}
 
-        {/* Action buttons */}
-        {step === "view" && (
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={() => setStep("confirm")}
-              className="flex-1 bg-tennis-green text-white py-3 rounded-lg font-medium hover:bg-tennis-green/90 transition text-sm"
-            >
-              {t("confirm")}
-            </button>
-            <button
-              type="button"
-              onClick={handleDecline}
-              disabled={submitting}
-              className="flex-1 border border-gray-300 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-50 transition text-sm disabled:opacity-50"
-            >
-              {submitting ? <Spinner className="h-5 w-5" /> : t("decline")}
-            </button>
+        {submitError && (
+          <div className="mx-6 mb-4 px-4 py-3 rounded-lg bg-red-50 border border-red-100">
+            <p className="text-red-600 text-sm">{submitError}</p>
           </div>
         )}
 
-        {step === "confirm" && (
-          <button
-            type="button"
-            onClick={handleConfirm}
-            disabled={submitting}
-            className="w-full bg-tennis-green text-white py-3 rounded-lg font-medium hover:bg-tennis-green/90 transition text-sm disabled:opacity-50 flex items-center justify-center gap-2"
-          >
-            {submitting && <Spinner className="h-5 w-5" />}
-            {submitting ? t("confirming") : t("confirmSlot")}
-          </button>
-        )}
+        {/* Actions */}
+        <div className="px-6 py-4 border-t border-rule flex gap-2.5">
+          {step === "view" && (
+            <>
+              <button
+                type="button"
+                onClick={() => setStep("confirm")}
+                className="flex-1 h-[46px] bg-ink text-white text-[13px] font-bold rounded-[10px]"
+              >
+                {t("confirm")} ✓
+              </button>
+              <button
+                type="button"
+                onClick={handleDecline}
+                disabled={submitting}
+                className="px-[18px] h-[46px] bg-white text-ink text-[12.5px] font-semibold border border-rule rounded-[10px] disabled:opacity-50"
+              >
+                {submitting ? <Spinner /> : t("decline")}
+              </button>
+            </>
+          )}
+          {step === "confirm" && (
+            <button
+              type="button"
+              onClick={handleConfirm}
+              disabled={submitting}
+              className="flex-1 h-[46px] bg-ink text-white text-[13px] font-bold rounded-[10px] disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {submitting && <Spinner />}
+              {submitting ? t("confirming") : `${t("confirmSlot")} ✓`}
+            </button>
+          )}
+        </div>
       </div>
     </Shell>
   );
 }
 
-// ─── Shell wrapper ────────────────────────────────────────────────────────
+function ConfirmCountdown({ expiresAt }: { expiresAt: string }) {
+  const remaining = useCountdown(expiresAt);
+  return (
+    <div
+      className="bg-red-50 text-red-800 px-3.5 py-2.5 rounded-[10px] mb-3 flex items-center gap-2 text-xs"
+      role="timer"
+      aria-live="polite"
+    >
+      <Clock size={14} />
+      <span className="font-semibold">
+        Deze link verloopt over <Mono>{remaining}</Mono>
+      </span>
+    </div>
+  );
+}
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-[#FAFAF8]">
-      <div className="max-w-lg mx-auto px-4 py-8">
-        {/* Logo */}
-        <div className="flex items-center gap-2 mb-8">
-          <div className="w-8 h-8 bg-tennis-green rounded-full flex items-center justify-center">
-            <TennisBallIcon className="w-4 h-4 text-white" strokeWidth={2} />
+    <div className="min-h-screen bg-paper overflow-auto">
+      <div className="max-w-[520px] mx-auto px-4 py-7">
+        <div className="flex items-center gap-2 mb-[18px]">
+          <div className="w-[26px] h-[26px] rounded-md bg-tennis-green grid place-items-center">
+            <Mono className="text-tennis-lime font-extrabold text-[11px]">c/</Mono>
           </div>
-          <span className="font-semibold text-lg text-tennis-green">CoachOS</span>
+          <span className="text-sm font-bold text-ink">CoachOS</span>
         </div>
-
-        {/* Card */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          {children}
-        </div>
-
-        {/* Footer */}
-        <div className="text-center mt-8 text-xs text-gray-400">
-          Powered by CoachOS
-        </div>
+        {children}
       </div>
     </div>
   );

@@ -24,3 +24,12 @@ export async function createTennisClub(request: CreateTennisClubRequest): Promis
 export async function deleteTennisClub(id: string): Promise<void> {
   await apiClient.delete(`/tennisclubs/${id}`);
 }
+
+export interface UpdateTennisClubRequest {
+  name?: string;
+  address?: string;
+}
+
+export async function updateTennisClub(id: string, data: UpdateTennisClubRequest): Promise<void> {
+  await apiClient.patch(`/tennisclubs/${id}`, data);
+}

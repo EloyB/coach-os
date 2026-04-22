@@ -23,6 +23,12 @@ public interface ITrainerService
         Guid organizationId,
         CancellationToken ct = default);
 
+    Task<Result> ResendInviteAsync(
+        Guid trainerId,
+        Guid organizationId,
+        string inviteBaseUrl,
+        CancellationToken ct = default);
+
     Task<Result> DeactivateAsync(
         Guid trainerId,
         Guid organizationId,

@@ -16,6 +16,7 @@ public class LessonSerieServiceTests
 {
     private Mock<ILessonSerieRepository> _lessonSeriesRepo = null!;
     private Mock<ILessonRepository> _lessonRepo = null!;
+    private Mock<IEnrollmentRepository> _enrollmentRepo = null!;
     private Mock<ITennisClubRepository> _tennisClubRepo = null!;
     private Mock<IUserLookupService> _userLookup = null!;
     private ApplicationMapper _mapper = null!;
@@ -30,15 +31,22 @@ public class LessonSerieServiceTests
     {
         _lessonSeriesRepo = new Mock<ILessonSerieRepository>();
         _lessonRepo = new Mock<ILessonRepository>();
+        _enrollmentRepo = new Mock<IEnrollmentRepository>();
         _tennisClubRepo = new Mock<ITennisClubRepository>();
         _userLookup = new Mock<IUserLookupService>();
         _mapper = new ApplicationMapper();
         _service = new LessonSerieService(
             _lessonSeriesRepo.Object,
             _lessonRepo.Object,
+            _enrollmentRepo.Object,
             _tennisClubRepo.Object,
             _userLookup.Object,
             _mapper);
+
+        // Default: enrollment counts returnen lege dictionary (geen inschrijvingen).
+        _enrollmentRepo
+            .Setup(r => r.CountActiveBySeriesIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<Guid, int>());
 
         // Default: alle trainers valideren als actief binnen de org. Individuele tests
         // kunnen dit overriden voor negatieve scenarios (invalid/cross-tenant trainer).

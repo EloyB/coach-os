@@ -5,13 +5,24 @@ import { useRouter } from "next/navigation";
 import { DashboardSidebar } from "@/components/layouts/dashboard-sidebar";
 import { MobileBottomNav } from "@/components/layouts/dashboard-bottom-nav";
 import { OrgSwitcher } from "@/components/layouts/org-switcher";
-import { clearAuth, getAuthUser, isAuthenticated, type AuthUser } from "@/lib/auth";
+import { SlashLabel } from "@/components/ui/slash-label";
+import { getAuthUser, isAuthenticated, type AuthUser } from "@/lib/auth";
 
-const ROLE_LABELS: Record<string, string> = {
-  Admin: "Beheerder",
-  Trainer: "Trainer",
-  Student: "Leerling",
-};
+function formatDayHeader(): string {
+  const now = new Date();
+  const day = now.toLocaleDateString("nl-BE", { weekday: "short" }).toUpperCase().replace(".", "");
+  const date = now.toLocaleDateString("nl-BE", { day: "numeric", month: "short", year: "numeric" }).toUpperCase();
+  const week = getISOWeek(now);
+  return `${day} · ${date} · WEEK ${week}`;
+}
+
+function getISOWeek(d: Date): number {
+  const date = new Date(d.getTime());
+  date.setHours(0, 0, 0, 0);
+  date.setDate(date.getDate() + 3 - ((date.getDay() + 6) % 7));
+  const week1 = new Date(date.getFullYear(), 0, 4);
+  return 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + ((week1.getDay() + 6) % 7)) / 7);
+}
 
 export default function DashboardLayout({
   children,
@@ -24,7 +35,6 @@ export default function DashboardLayout({
 
   useEffect(() => {
     if (!isAuthenticated()) {
-      clearAuth();
       router.replace("/login");
     } else {
       setUser(getAuthUser());
@@ -34,40 +44,38 @@ export default function DashboardLayout({
 
   if (!checked || !user) return null;
 
-  const fullName = `${user.firstName} ${user.lastName}`.trim() || "Coach";
-  const roleLabel = ROLE_LABELS[user.role] ?? user.role;
   const initials =
     `${user.firstName?.[0] ?? ""}${user.lastName?.[0] ?? ""}`.toUpperCase() || "C";
 
   return (
-    <div className="flex h-screen bg-[#F5F4F1] overflow-hidden">
+    <div className="flex h-screen bg-canvas overflow-hidden">
       <DashboardSidebar />
 
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Topbar */}
-        <header className="bg-white border-b border-gray-100 px-8 py-4 flex items-center justify-between shrink-0">
-          <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">
-            Tennis &amp; Padel Platform
-          </p>
-          <div className="flex items-center gap-3">
+        <header className="bg-paper border-b border-rule px-7 py-3.5 flex items-center justify-between shrink-0">
+          <div>
+            <SlashLabel>{formatDayHeader()}</SlashLabel>
+          </div>
+          <div className="flex items-center gap-2.5">
             {user.memberships && user.memberships.length > 1 && (
               <OrgSwitcher
                 memberships={user.memberships}
                 activeOrganizationId={user.organizationId}
               />
             )}
-            <div className="text-right">
-              <p className="text-sm font-semibold text-gray-800 leading-none">{fullName}</p>
-              <p className="text-xs text-gray-400 mt-0.5">{roleLabel}</p>
-            </div>
-            <div className="w-9 h-9 rounded-full bg-tennis-green flex items-center justify-center shrink-0">
-              <span className="text-tennis-lime text-sm font-bold">{initials}</span>
+            <div className="w-[30px] h-[30px] rounded-full bg-tennis-green grid place-items-center shrink-0">
+              <span className="text-tennis-lime text-[11px] font-bold">
+                {initials}
+              </span>
             </div>
           </div>
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto px-8 py-8 pb-16 lg:pb-8">{children}</main>
+        <main className="flex-1 overflow-y-auto px-7 py-6 pb-16 lg:pb-6">
+          {children}
+        </main>
       </div>
 
       <MobileBottomNav />

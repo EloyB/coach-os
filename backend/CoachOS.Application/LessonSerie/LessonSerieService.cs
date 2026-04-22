@@ -9,6 +9,7 @@ namespace CoachOS.Application.LessonSerie;
 public class LessonSerieService(
     ILessonSerieRepository lessonSeriesRepo,
     ILessonRepository lessonRepo,
+    IEnrollmentRepository enrollmentRepo,
     ITennisClubRepository tennisClubRepo,
     IUserLookupService userLookup,
     ApplicationMapper mapper) : ILessonSerieService
@@ -16,18 +17,24 @@ public class LessonSerieService(
     public async Task<Result<List<LessonSerieDto>>> GetAllAsync(
         Guid organizationId, Guid? trainerId = null, CancellationToken ct = default)
     {
-        var seriesList =
+        IReadOnlyList<Domain.Entities.LessonSerie> seriesList =
             await lessonSeriesRepo.GetByOrganizationAsync(organizationId, trainerId, ct);
 
         if (seriesList.Count == 0)
             return Result<List<LessonSerieDto>>.Ok([]);
 
-        var lessonCounts =
-            await lessonRepo.GetLessonCountsBySeriesIdsAsync(seriesList.Select(s => s.Id), ct);
+        IEnumerable<Guid> seriesIds = seriesList.Select(s => s.Id);
 
-        var dtos = seriesList.Select(ls =>
+        Dictionary<Guid, int> lessonCounts =
+            await lessonRepo.GetLessonCountsBySeriesIdsAsync(seriesIds, ct);
+
+        Dictionary<Guid, int> enrollmentCounts =
+            await enrollmentRepo.CountActiveBySeriesIdsAsync(seriesIds, ct);
+
+        List<LessonSerieDto> dtos = seriesList.Select(ls =>
             mapper.ToLessonSerieDto(ls,
-                lessonCounts.GetValueOrDefault(ls.Id, 0))
+                lessonCounts.GetValueOrDefault(ls.Id, 0),
+                enrollmentCounts.GetValueOrDefault(ls.Id, 0))
         ).ToList();
 
         return Result<List<LessonSerieDto>>.Ok(dtos);
@@ -36,19 +43,21 @@ public class LessonSerieService(
     public async Task<Result<LessonSerieDto>> GetByIdAsync(
         Guid id, Guid organizationId, CancellationToken ct = default)
     {
-        var series =
+        Domain.Entities.LessonSerie? series =
             await lessonSeriesRepo.GetByIdAsync(id, organizationId, ct);
 
         if (series is null)
             return Result<LessonSerieDto>.Fail(new Error(ErrorCodes.NotFound, "LessonSerie niet gevonden."));
 
-        var lessons = series.Lessons
+        List<LessonDto> lessons = series.Lessons
             .OrderBy(l => l.Date)
             .ThenBy(l => l.StartTime)
             .Select(l => mapper.ToLessonDto(l, series.Id))
             .ToList();
 
-        var dto = mapper.ToLessonSerieDto(series, lessons.Count);
+        int enrolledCount = await enrollmentRepo.CountActiveBySeriesAsync(series.Id, ct);
+
+        LessonSerieDto dto = mapper.ToLessonSerieDto(series, lessons.Count, enrolledCount);
         dto.Lessons = lessons;
         dto.WeeklyTemplate = series.WeeklyTemplate
             .OrderBy(w => w.DayOfWeek)
@@ -85,11 +94,27 @@ public class LessonSerieService(
         if (trainerError is not null)
             return Result<Guid>.Fail(trainerError);
 
-        var series = mapper.ToLessonSerie(request, organizationId);
+        // Reject duplicate weekly template entries (same day + time + court = same slot)
+        List<(int DayOfWeek, string StartTime, string EndTime, string CourtName)> duplicates = request.WeeklyTemplate
+            .GroupBy(t => (t.DayOfWeek, t.StartTime, t.EndTime, CourtName: t.CourtName ?? ""))
+            .Where(g => g.Count() > 1)
+            .Select(g => g.Key)
+            .ToList();
 
-        foreach (var templateRequest in request.WeeklyTemplate)
+        if (duplicates.Count > 0)
         {
-            var entry = mapper.ToWeeklyTemplateEntry(templateRequest, series);
+            string[] dayNames = ["ma", "di", "wo", "do", "vr", "za", "zo"];
+            string slots = string.Join(", ", duplicates.Select(d =>
+                $"{dayNames[d.DayOfWeek]} {d.StartTime}–{d.EndTime}" + (d.CourtName != "" ? $" ({d.CourtName})" : "")));
+            return Result<Guid>.Fail(new Error(ErrorCodes.Validation,
+                $"Dubbele tijdsloten in weekindeling: {slots}. Verwijder de duplicaten."));
+        }
+
+        Domain.Entities.LessonSerie series = mapper.ToLessonSerie(request, organizationId);
+
+        foreach (WeeklyTemplateEntryRequest templateRequest in request.WeeklyTemplate)
+        {
+            Domain.Entities.WeeklyTemplateEntry entry = mapper.ToWeeklyTemplateEntry(templateRequest, series);
             series.WeeklyTemplate.Add(entry);
         }
 
@@ -171,17 +196,97 @@ public class LessonSerieService(
 
         if (request.TrainerId.HasValue)
         {
-            var isValid = await userLookup.IsActiveTrainerAsync(request.TrainerId.Value, organizationId, ct);
+            bool isValid = await userLookup.IsActiveTrainerAsync(request.TrainerId.Value, organizationId, ct);
             if (!isValid)
                 return Result<Guid>.Fail(
                     new Error(ErrorCodes.Validation, "Deze trainer behoort niet tot deze organisatie."));
+
+            DateOnly lessonDate = DateOnly.ParseExact(request.Date, "yyyy-MM-dd");
+            TimeOnly lessonStart = TimeOnly.ParseExact(request.StartTime, "HH:mm");
+            TimeOnly lessonEnd = TimeOnly.ParseExact(request.EndTime, "HH:mm");
+            Error? conflictError = await CheckTrainerConflictAsync(
+                request.TrainerId.Value, lessonDate, lessonStart, lessonEnd, ct: ct);
+            if (conflictError is not null)
+                return Result<Guid>.Fail(conflictError);
         }
 
-        var lesson = mapper.ToLesson(request, series);
+        Domain.Entities.Lesson lesson = mapper.ToLesson(request, series);
         await lessonRepo.AddAsync(lesson, ct);
         await lessonRepo.SaveChangesAsync(ct);
 
         return Result<Guid>.Ok(lesson.Id);
+    }
+
+    public async Task<Result<LessonDto>> UpdateLessonAsync(
+        Guid seriesId, Guid lessonId, Guid organizationId, UpdateLessonRequest request, CancellationToken ct = default)
+    {
+        Domain.Entities.Lesson? lesson = await lessonRepo.GetByIdAsync(lessonId, seriesId, organizationId, ct);
+        if (lesson is null)
+            return Result<LessonDto>.Fail(new Error(ErrorCodes.NotFound, "Lesmoment niet gevonden."));
+
+        Domain.Entities.LessonSerie? series = await lessonSeriesRepo.GetByIdAsync(seriesId, organizationId, ct);
+        if (series is null)
+            return Result<LessonDto>.Fail(new Error(ErrorCodes.NotFound, "Lesreeks niet gevonden."));
+
+        // Trainer validation
+        if (request.TrainerId.HasValue)
+        {
+            bool isValid = await userLookup.IsActiveTrainerAsync(request.TrainerId.Value, organizationId, ct);
+            if (!isValid)
+                return Result<LessonDto>.Fail(
+                    new Error(ErrorCodes.Validation, "Deze trainer behoort niet tot deze organisatie."));
+            lesson.TrainerId = request.TrainerId.Value;
+        }
+
+        if (request.Date is not null)
+        {
+            DateOnly newDate = DateOnly.ParseExact(request.Date, "yyyy-MM-dd");
+            lesson.Date = newDate;
+        }
+
+        // Apply time changes
+        if (request.StartTime is not null)
+            lesson.StartTime = TimeOnly.ParseExact(request.StartTime, "HH:mm");
+        if (request.EndTime is not null)
+            lesson.EndTime = TimeOnly.ParseExact(request.EndTime, "HH:mm");
+
+        // Validate end > start (after applying partial updates)
+        if (lesson.EndTime <= lesson.StartTime)
+            return Result<LessonDto>.Fail(new Error(ErrorCodes.Validation,
+                "Eindtijd moet na de starttijd liggen."));
+
+        // Duration: min 15 min, max 4 uur
+        TimeSpan duration = lesson.EndTime.ToTimeSpan() - lesson.StartTime.ToTimeSpan();
+        if (duration.TotalMinutes < 15)
+            return Result<LessonDto>.Fail(new Error(ErrorCodes.Validation,
+                "Een lesmoment moet minstens 15 minuten duren."));
+        if (duration.TotalHours > 4)
+            return Result<LessonDto>.Fail(new Error(ErrorCodes.Validation,
+                "Een lesmoment mag maximaal 4 uur duren."));
+
+        // Trainer overlap check (cross-org)
+        if (lesson.TrainerId.HasValue)
+        {
+            Error? conflictError = await CheckTrainerConflictAsync(
+                lesson.TrainerId.Value, lesson.Date, lesson.StartTime, lesson.EndTime,
+                lesson.Id, ct);
+            if (conflictError is not null)
+                return Result<LessonDto>.Fail(conflictError);
+        }
+
+        if (request.CourtName is not null)
+            lesson.CourtName = request.CourtName;
+        if (request.MaxStudents.HasValue)
+            lesson.MaxStudents = request.MaxStudents.Value;
+        if (request.Notes is not null)
+            lesson.Notes = request.Notes;
+        if (request.IsCancelled.HasValue)
+            lesson.IsCancelled = request.IsCancelled.Value;
+
+        await lessonRepo.SaveChangesAsync(ct);
+
+        LessonDto dto = mapper.ToLessonDto(lesson, seriesId);
+        return Result<LessonDto>.Ok(dto);
     }
 
     private async Task<Error?> ValidateTrainerIdsAsync(
@@ -201,6 +306,22 @@ public class LessonSerieService(
                     "Een of meer geselecteerde trainers behoren niet tot deze organisatie.");
         }
         return null;
+    }
+
+    private async Task<Error?> CheckTrainerConflictAsync(
+        Guid trainerId, DateOnly date, TimeOnly startTime, TimeOnly endTime,
+        Guid? excludeLessonId = null, CancellationToken ct = default)
+    {
+        Domain.Entities.Lesson? conflict = await lessonRepo.FindTrainerConflictAsync(
+            trainerId, date, startTime, endTime, excludeLessonId, ct);
+
+        if (conflict is null)
+            return null;
+
+        string seriesName = conflict.LessonSerie?.Name ?? "onbekende reeks";
+        string conflictTime = $"{conflict.StartTime:HH:mm}–{conflict.EndTime:HH:mm}";
+        return new Error(ErrorCodes.Conflict,
+            $"Deze trainer heeft al een les op {conflict.Date:dd/MM/yyyy} van {conflictTime} ({seriesName}).");
     }
 
     public async Task<Result> DeleteLessonAsync(

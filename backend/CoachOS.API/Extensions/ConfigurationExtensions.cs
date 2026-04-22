@@ -115,7 +115,7 @@ public static class ConfigurationExtensions
                 options.AddPolicy("Frontend", policy =>
                     policy.WithOrigins(frontendOrigin)
                         .WithHeaders("Content-Type", "Authorization", "Accept")
-                        .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                        .WithMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
                         .AllowCredentials()));
 
             return services;

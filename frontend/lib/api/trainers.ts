@@ -9,6 +9,8 @@ export interface TrainerDto {
   isActive: boolean;
   invitePending: boolean;
   lessonSeriesCount: number;
+  currentWeekHoursBooked: number;
+  weeklyCapacityHours: number;
   createdAt: string;
 }
 
@@ -48,4 +50,8 @@ export async function reassignTrainerSeries(fromId: string, toId: string): Promi
 
 export async function removeTrainer(id: string): Promise<void> {
   await apiClient.delete(`/trainers/${id}/remove`);
+}
+
+export async function resendTrainerInvite(id: string): Promise<void> {
+  await apiClient.post(`/trainers/${id}/resend-invite`);
 }

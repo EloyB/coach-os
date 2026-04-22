@@ -5,22 +5,22 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { useTranslations } from "next-intl";
 import {
   GraduationCap,
-  Plus,
   UserX,
   Trash2,
   Mail,
-  CheckCircle2,
-  Clock,
   X,
 } from "lucide-react";
+import { Mono } from "@/components/ui/mono";
 import {
   getTrainers,
   inviteTrainer,
   deactivateTrainer,
   reassignTrainerSeries,
   removeTrainer,
+  resendTrainerInvite,
   TrainerDto,
 } from "@/lib/api/trainers";
 import { getAxiosErrorMessages } from "@/lib/utils/api-errors";
@@ -42,6 +42,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { FieldError } from "@/components/forms/field-error";
+import { NativeSelect } from "@/components/ui/native-select";
 import { inputClass } from "@/lib/styles";
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
@@ -54,110 +55,18 @@ const inviteSchema = z.object({
 
 type InviteFormValues = z.infer<typeof inviteSchema>;
 
-// ─── Status badge ──────────────────────────────────────────────────────────────
+// ─── Capacity label helper ────────────────────────────────────────────────────
 
-function StatusBadge({ trainer }: { trainer: TrainerDto }) {
-  if (trainer.isActive) {
-    return (
-      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700">
-        <CheckCircle2 size={11} />
-        Actief
-      </span>
-    );
-  }
-  if (trainer.invitePending) {
-    return (
-      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700">
-        <Clock size={11} />
-        Uitgenodigd
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-red-50 text-red-700">
-      <UserX size={11} />
-      Gedeactiveerd
-    </span>
-  );
-}
-
-// ─── Skeleton ─────────────────────────────────────────────────────────────────
-
-function SkeletonRow() {
-  return (
-    <div className="flex items-center justify-between py-4 border-b border-gray-100 last:border-0 animate-pulse">
-      <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-full bg-gray-200" />
-        <div>
-          <div className="h-4 bg-gray-200 rounded w-32 mb-1.5" />
-          <div className="h-3 bg-gray-100 rounded w-44" />
-        </div>
-      </div>
-      <div className="h-6 w-20 bg-gray-100 rounded-full" />
-    </div>
-  );
-}
-
-// ─── Trainer Row ──────────────────────────────────────────────────────────────
-
-function TrainerRow({
-  trainer,
-  onDeactivate,
-  isDeactivating,
-  onRemoveClick,
-}: {
-  trainer: TrainerDto;
-  onDeactivate: (id: string) => void;
-  isDeactivating: boolean;
-  onRemoveClick: (trainer: TrainerDto) => void;
-}) {
-  const initials = `${trainer.firstName[0] ?? ""}${trainer.lastName[0] ?? ""}`.toUpperCase();
-
-  // Show remove button: always for inactive, for active only if no series
-  const showRemove = !trainer.isActive || trainer.lessonSeriesCount === 0;
-
-  return (
-    <div className="flex items-center justify-between py-4 border-b border-gray-100 last:border-0 group">
-      <div className="flex items-center gap-3 min-w-0">
-        <div className="w-9 h-9 rounded-full bg-tennis-green/10 flex items-center justify-center shrink-0">
-          <span className="text-tennis-green text-sm font-semibold">{initials}</span>
-        </div>
-        <div className="min-w-0">
-          <p className="text-sm font-medium text-gray-900 truncate">
-            {trainer.firstName} {trainer.lastName}
-          </p>
-          <p className="text-xs text-gray-400 truncate">{trainer.email}</p>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-3 shrink-0 ml-4">
-        <StatusBadge trainer={trainer} />
-
-        {/* Deactivate (active trainers only) */}
-        {trainer.isActive && (
-          <button
-            onClick={() => onDeactivate(trainer.id)}
-            disabled={isDeactivating}
-            title="Deactiveer trainer"
-            className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-gray-400 hover:text-amber-500 hover:bg-amber-50 transition-all disabled:opacity-40"
-          >
-            <UserX size={15} />
-          </button>
-        )}
-
-        {/* Remove */}
-        {showRemove && (
-          <button
-            onClick={() => onRemoveClick(trainer)}
-            title="Verwijder trainer"
-            className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all"
-          >
-            <Trash2 size={15} />
-          </button>
-        )}
-      </div>
-    </div>
-  );
+function capacityLabel(
+  booked: number,
+  capacity: number,
+  t: ReturnType<typeof useTranslations>
+): { text: string; color: string } {
+  if (capacity <= 0) return { text: "", color: "" };
+  const ratio = booked / capacity;
+  if (ratio >= 0.85) return { text: t("loadAlmostFull"), color: "text-red-600" };
+  if (ratio >= 0.5) return { text: t("loadHealthy"), color: "text-tennis-green" };
+  return { text: t("loadSpaceAvailable"), color: "text-blue-600" };
 }
 
 // ─── Remove dialogs ────────────────────────────────────────────────────────────
@@ -173,27 +82,26 @@ function RemoveConfirmDialog({
   onConfirm: () => void;
   isRemoving: boolean;
 }) {
+  const t = useTranslations("trainers");
+  const tCommon = useTranslations("common");
+
   return (
     <AlertDialog open onOpenChange={(open) => !open && onClose()}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Trainer verwijderen</AlertDialogTitle>
+          <AlertDialogTitle>{t("removeTitle")}</AlertDialogTitle>
           <AlertDialogDescription>
-            Weet je zeker dat je{" "}
-            <span className="font-semibold text-gray-900">
-              {trainer.firstName} {trainer.lastName}
-            </span>{" "}
-            wilt verwijderen? Dit kan niet ongedaan worden gemaakt.
+            {t("removeConfirm", { name: `${trainer.firstName} ${trainer.lastName}` })}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={onClose}>Annuleren</AlertDialogCancel>
+          <AlertDialogCancel onClick={onClose}>{tCommon("cancel")}</AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirm}
             disabled={isRemoving}
             className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
           >
-            {isRemoving ? "Verwijderen..." : "Verwijderen"}
+            {isRemoving ? t("removing") : tCommon("delete")}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -215,43 +123,44 @@ function ReassignAndRemoveDialog({
   isProcessing: boolean;
 }) {
   const [selectedId, setSelectedId] = useState("");
+  const t = useTranslations("trainers");
+  const tCommon = useTranslations("common");
 
-  const candidates = activeTrainers.filter((t) => t.id !== trainer.id);
+  const candidates = activeTrainers.filter((at) => at.id !== trainer.id);
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Trainer verwijderen</DialogTitle>
+          <DialogTitle>{t("removeTitle")}</DialogTitle>
         </DialogHeader>
 
         <p className="text-sm text-gray-600">
-          <span className="font-semibold text-gray-900">
-            {trainer.firstName} {trainer.lastName}
-          </span>{" "}
-          heeft {trainer.lessonSeriesCount} lesreeks(en). Wijs deze toe aan een
-          andere trainer voor je verwijdert.
+          {t("removeHasSeries", {
+            name: `${trainer.firstName} ${trainer.lastName}`,
+            count: trainer.lessonSeriesCount,
+          })}
         </p>
 
         <div className="mt-2">
           <label className="block text-sm font-medium text-gray-700 mb-1.5">
-            Toewijzen aan
+            {t("reassignTo")}
           </label>
-          <select
+          <NativeSelect
             value={selectedId}
             onChange={(e) => setSelectedId(e.target.value)}
-            className={inputClass}
+            className="w-full"
           >
-            <option value="">Selecteer trainer...</option>
-            {candidates.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.firstName} {t.lastName}
+            <option value="">{t("selectTrainer")}</option>
+            {candidates.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.firstName} {c.lastName}
               </option>
             ))}
-          </select>
+          </NativeSelect>
           {candidates.length === 0 && (
             <p className="text-xs text-red-500 mt-1">
-              Er zijn geen andere actieve trainers beschikbaar.
+              {t("noActiveTrainers")}
             </p>
           )}
         </div>
@@ -261,14 +170,14 @@ function ReassignAndRemoveDialog({
             onClick={onClose}
             className="px-4 py-2 border border-gray-200 text-sm font-medium text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"
           >
-            Annuleren
+            {tCommon("cancel")}
           </button>
           <button
             onClick={() => onConfirm(selectedId)}
             disabled={!selectedId || isProcessing || candidates.length === 0}
             className="px-4 py-2 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isProcessing ? "Bezig..." : "Toewijzen & verwijderen"}
+            {isProcessing ? t("processing") : t("reassignAndRemove")}
           </button>
         </DialogFooter>
       </DialogContent>
@@ -282,6 +191,8 @@ function InviteForm({ onClose }: { onClose: () => void }) {
   const queryClient = useQueryClient();
   const [successEmail, setSuccessEmail] = useState<string | null>(null);
   const [apiErrors, setApiErrors] = useState<string[]>([]);
+  const t = useTranslations("trainers");
+  const tCommon = useTranslations("common");
 
   const mutation = useMutation({
     mutationFn: inviteTrainer,
@@ -308,9 +219,9 @@ function InviteForm({ onClose }: { onClose: () => void }) {
         <div className="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-4">
           <Mail size={22} className="text-green-600" />
         </div>
-        <h3 className="text-base font-semibold text-gray-900 mb-1">Uitnodiging verzonden</h3>
+        <h3 className="text-base font-semibold text-gray-900 mb-1">{t("inviteSent")}</h3>
         <p className="text-sm text-gray-400 mb-6">
-          De uitnodigingslink is gelogd in de console (dev mode).
+          {t("inviteSentDesc")}
           <br />
           <span className="font-medium text-gray-600">{successEmail}</span>
         </p>
@@ -318,7 +229,7 @@ function InviteForm({ onClose }: { onClose: () => void }) {
           onClick={onClose}
           className="px-4 py-2 bg-tennis-green text-white text-sm font-semibold rounded-lg hover:bg-tennis-green/90 transition-colors"
         >
-          Sluiten
+          {t("inviteClose")}
         </button>
       </div>
     );
@@ -341,7 +252,7 @@ function InviteForm({ onClose }: { onClose: () => void }) {
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">
-            Voornaam <span className="text-red-400">*</span>
+            {t("firstName")} <span className="text-red-400">*</span>
           </label>
           <input
             {...register("firstName")}
@@ -353,7 +264,7 @@ function InviteForm({ onClose }: { onClose: () => void }) {
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">
-            Achternaam <span className="text-red-400">*</span>
+            {t("lastName")} <span className="text-red-400">*</span>
           </label>
           <input
             {...register("lastName")}
@@ -367,7 +278,7 @@ function InviteForm({ onClose }: { onClose: () => void }) {
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1.5">
-          E-mailadres <span className="text-red-400">*</span>
+          {t("email")} <span className="text-red-400">*</span>
         </label>
         <input
           {...register("email")}
@@ -384,14 +295,14 @@ function InviteForm({ onClose }: { onClose: () => void }) {
           onClick={onClose}
           className="flex-1 px-4 py-2.5 border border-gray-200 text-sm font-medium text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"
         >
-          Annuleren
+          {tCommon("cancel")}
         </button>
         <button
           type="submit"
           disabled={mutation.isPending}
           className="flex-1 px-4 py-2.5 bg-tennis-green text-white text-sm font-semibold rounded-lg hover:bg-tennis-green/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
         >
-          {mutation.isPending ? "Versturen..." : "Uitnodiging sturen"}
+          {mutation.isPending ? t("inviteSending") : t("inviteSend")}
         </button>
       </div>
     </form>
@@ -409,6 +320,7 @@ export default function TrainersPage() {
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [removeDialog, setRemoveDialog] = useState<RemoveDialogState>({ type: "none" });
   const queryClient = useQueryClient();
+  const t = useTranslations("trainers");
 
   const { data: trainers, isLoading } = useQuery({
     queryKey: ["trainers"],
@@ -439,6 +351,11 @@ export default function TrainersPage() {
     },
   });
 
+  const resendMutation = useMutation({
+    mutationFn: resendTrainerInvite,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["trainers"] }),
+  });
+
   function handleRemoveClick(trainer: TrainerDto) {
     if (trainer.lessonSeriesCount > 0) {
       setRemoveDialog({ type: "reassign", trainer });
@@ -447,40 +364,43 @@ export default function TrainersPage() {
     }
   }
 
-  const active = trainers?.filter((t) => t.isActive) ?? [];
-  const invited = trainers?.filter((t) => !t.isActive && t.invitePending) ?? [];
-  const deactivated = trainers?.filter((t) => !t.isActive && !t.invitePending) ?? [];
+  const active = trainers?.filter((tr) => tr.isActive) ?? [];
+  const invited = trainers?.filter((tr) => !tr.isActive && tr.invitePending) ?? [];
+  const deactivated = trainers?.filter((tr) => !tr.isActive && !tr.invitePending) ?? [];
+  const allTrainers = [...active, ...invited, ...deactivated];
+  const activeCount = active.length;
+  const invitedCount = invited.length;
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Trainers</h1>
-          <p className="text-gray-400 text-sm mt-1">
-            Beheer de trainers van je organisatie.
+          <p className="font-mono text-[10.5px] text-ink-3 uppercase tracking-[0.1em] m-0">
+            {activeCount} {t("active")} · {invitedCount} {t("invited")}
           </p>
+          <h1 className="text-lg font-bold text-ink tracking-tight mt-0.5">
+            {t("title")}
+          </h1>
         </div>
-
         {!showInviteForm && (
           <button
             onClick={() => setShowInviteForm(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-tennis-green text-white text-sm font-semibold rounded-lg hover:bg-tennis-green/90 transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-ink text-white text-[11.5px] font-semibold rounded-md cursor-pointer"
           >
-            <Plus size={15} />
-            Trainer uitnodigen
+            + {t("invite")}
           </button>
         )}
       </div>
 
       {/* Invite form panel */}
       {showInviteForm && (
-        <div className="bg-white rounded-xl shadow-sm shadow-gray-100 p-6 mb-6 relative">
+        <div className="bg-paper border border-rule rounded-xl p-6 mb-5 relative">
           <div className="flex items-center justify-between mb-5">
-            <h2 className="text-base font-semibold text-gray-900">Trainer uitnodigen</h2>
+            <h2 className="text-base font-semibold text-ink">{t("inviteTitle")}</h2>
             <button
               onClick={() => setShowInviteForm(false)}
-              className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+              className="p-1.5 rounded-lg text-ink-3 hover:text-ink hover:bg-canvas transition-colors"
             >
               <X size={16} />
             </button>
@@ -489,77 +409,149 @@ export default function TrainersPage() {
         </div>
       )}
 
-      {/* Trainer list */}
-      <div className="bg-white rounded-xl shadow-sm shadow-gray-100 p-6">
-        {isLoading ? (
-          <div>
-            <SkeletonRow />
-            <SkeletonRow />
-            <SkeletonRow />
+      {/* Trainer card grid */}
+      {isLoading ? (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="bg-paper border border-rule rounded-xl p-4 animate-pulse h-[160px]" />
+          ))}
+        </div>
+      ) : !trainers?.length ? (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="w-14 h-14 rounded-full bg-tennis-green/[.08] flex items-center justify-center mb-4">
+            <GraduationCap size={26} className="text-tennis-green/40" />
           </div>
-        ) : !trainers?.length ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="w-14 h-14 rounded-full bg-tennis-green/8 flex items-center justify-center mb-4">
-              <GraduationCap size={26} className="text-tennis-green/40" />
-            </div>
-            <p className="text-gray-700 font-semibold mb-1">Nog geen trainers</p>
-            <p className="text-gray-400 text-sm max-w-56 leading-relaxed">
-              Nodig je eerste trainer uit via de knop hierboven.
-            </p>
-          </div>
-        ) : (
-          <>
-            {active.length > 0 && (
-              <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-                  Actief ({active.length})
-                </p>
-                {active.map((t) => (
-                  <TrainerRow
-                    key={t.id}
-                    trainer={t}
-                    onDeactivate={(id) => deactivateMutation.mutate(id)}
-                    isDeactivating={deactivateMutation.isPending}
-                    onRemoveClick={handleRemoveClick}
-                  />
-                ))}
+          <p className="text-ink font-semibold mb-1">{t("noTrainers")}</p>
+          <p className="text-ink-3 text-sm max-w-56 leading-relaxed">
+            {t("noTrainersDesc")}
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
+          {allTrainers.map((tr) => {
+            const initials = `${tr.firstName[0] ?? ""}${tr.lastName[0] ?? ""}`.toUpperCase();
+            const isInvited = !tr.isActive && tr.invitePending;
+            const isDeactivatedState = !tr.isActive && !tr.invitePending;
+            const cap = capacityLabel(tr.currentWeekHoursBooked, tr.weeklyCapacityHours, t);
+            const loadPct = tr.weeklyCapacityHours > 0
+              ? Math.min(100, Math.round((tr.currentWeekHoursBooked / tr.weeklyCapacityHours) * 100))
+              : 0;
+
+            return (
+              <div key={tr.id} className="bg-paper border border-rule rounded-xl p-4 group">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-[10px] bg-tennis-green grid place-items-center shrink-0">
+                    <span className="text-tennis-lime font-bold text-[13px]">{initials}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-center">
+                      <p className="text-[13.5px] font-bold text-ink m-0">
+                        {tr.firstName} {tr.lastName}
+                      </p>
+                      {isInvited ? (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 font-semibold">
+                          {t("invitedLabel")}
+                        </span>
+                      ) : isDeactivatedState ? (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-50 text-red-600 font-semibold">
+                          {t("inactiveLabel")}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-tennis-green/10 text-tennis-green font-semibold">
+                          {t("activeLabel")}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-ink-3 font-mono mt-0.5 m-0">{tr.email}</p>
+                  </div>
+                </div>
+
+                {tr.isActive && (
+                  <>
+                    <div className="grid grid-cols-3 gap-2.5 mt-3.5 pt-3 border-t border-dashed border-rule">
+                      <div>
+                        <p className="text-[9.5px] text-ink-3 uppercase tracking-[0.06em] m-0">{t("seriesCount")}</p>
+                        <p className="text-sm font-bold text-ink font-mono mt-0.5 m-0">
+                          {tr.lessonSeriesCount}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[9.5px] text-ink-3 uppercase tracking-[0.06em] m-0">{t("weekLoad")}</p>
+                        {tr.weeklyCapacityHours > 0 ? (
+                          <div className="mt-1">
+                            <div className="flex items-center gap-1.5">
+                              <div className="flex-1 h-[5px] bg-gray-100 rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full transition-all ${
+                                    loadPct >= 85 ? "bg-red-500" : loadPct >= 50 ? "bg-tennis-green" : "bg-blue-400"
+                                  }`}
+                                  style={{ width: `${loadPct}%` }}
+                                />
+                              </div>
+                              <Mono className="text-[10px] text-ink-3">{tr.currentWeekHoursBooked}/{tr.weeklyCapacityHours}u</Mono>
+                            </div>
+                            {cap.text && (
+                              <p className={`text-[9px] mt-0.5 m-0 font-medium ${cap.color}`}>
+                                {cap.text}
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <p className="text-sm font-bold text-ink font-mono mt-0.5 m-0">&mdash;</p>
+                        )}
+                      </div>
+                      <div className="flex gap-1 justify-end items-end">
+                        <button
+                          onClick={() => deactivateMutation.mutate(tr.id)}
+                          disabled={deactivateMutation.isPending}
+                          title={t("deactivate")}
+                          className="opacity-0 group-hover:opacity-100 p-1.5 rounded text-ink-3 hover:text-amber-500 hover:bg-amber-50 transition-all"
+                        >
+                          <UserX size={14} />
+                        </button>
+                        {tr.lessonSeriesCount === 0 && (
+                          <button
+                            onClick={() => handleRemoveClick(tr)}
+                            title={t("remove")}
+                            className="opacity-0 group-hover:opacity-100 p-1.5 rounded text-ink-3 hover:text-red-500 hover:bg-red-50 transition-all"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {isInvited && (
+                  <div className="mt-3 px-3 py-2.5 bg-amber-50/60 rounded-lg border border-dashed border-amber-200 flex justify-between items-center">
+                    <p className="text-[11px] text-amber-800 m-0">{t("invitePending")}</p>
+                    <button
+                      onClick={() => resendMutation.mutate(tr.id)}
+                      disabled={resendMutation.isPending}
+                      className="px-2.5 py-1 bg-white border border-amber-300 rounded text-[10.5px] text-amber-800 font-semibold disabled:opacity-50"
+                    >
+                      {resendMutation.isPending ? t("resending") : t("resend")}
+                    </button>
+                  </div>
+                )}
+
+                {isDeactivatedState && (
+                  <div className="mt-3 flex gap-1 justify-end">
+                    <button
+                      onClick={() => handleRemoveClick(tr)}
+                      title={t("remove")}
+                      className="p-1.5 rounded text-ink-3 hover:text-red-500 hover:bg-red-50 transition-all"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                )}
               </div>
-            )}
-            {invited.length > 0 && (
-              <div className={active.length > 0 ? "mt-6" : ""}>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-                  Uitgenodigd ({invited.length})
-                </p>
-                {invited.map((t) => (
-                  <TrainerRow
-                    key={t.id}
-                    trainer={t}
-                    onDeactivate={(id) => deactivateMutation.mutate(id)}
-                    isDeactivating={deactivateMutation.isPending}
-                    onRemoveClick={handleRemoveClick}
-                  />
-                ))}
-              </div>
-            )}
-            {deactivated.length > 0 && (
-              <div className={active.length > 0 || invited.length > 0 ? "mt-6" : ""}>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-                  Gedeactiveerd ({deactivated.length})
-                </p>
-                {deactivated.map((t) => (
-                  <TrainerRow
-                    key={t.id}
-                    trainer={t}
-                    onDeactivate={(id) => deactivateMutation.mutate(id)}
-                    isDeactivating={deactivateMutation.isPending}
-                    onRemoveClick={handleRemoveClick}
-                  />
-                ))}
-              </div>
-            )}
-          </>
-        )}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Remove dialogs */}
       {removeDialog.type === "confirm" && (
@@ -584,6 +576,7 @@ export default function TrainersPage() {
           isProcessing={reassignAndRemoveMutation.isPending}
         />
       )}
-    </div>
+    </>
   );
 }
+

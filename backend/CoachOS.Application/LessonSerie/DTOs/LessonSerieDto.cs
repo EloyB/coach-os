@@ -18,6 +18,8 @@ public class LessonSerieDto
     public string TennisClubName { get; set; } = string.Empty;
     public string TennisClubAddress { get; set; } = string.Empty;
     public int LessonCount { get; set; }
+    public int EnrolledCount { get; set; }
+    public int TotalCapacity { get; set; }
     public DateTime CreatedAt { get; set; }
     public List<LessonDto> Lessons { get; set; } = [];
 }

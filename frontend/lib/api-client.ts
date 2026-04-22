@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { toast } from 'sonner';
 import { clearAuth } from '@/lib/auth';
 
 const apiClient = axios.create({
@@ -24,7 +25,32 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401 && typeof window !== 'undefined') {
       clearAuth();
       window.location.href = '/login';
+      return Promise.reject(error);
     }
+
+    // Show toast for all non-401 errors
+    if (typeof window !== 'undefined' && error.response) {
+      const status = error.response.status;
+      const data = error.response.data;
+
+      let message = 'Er ging iets mis.';
+      if (Array.isArray(data)) {
+        message = data.join('\n');
+      } else if (typeof data === 'string') {
+        message = data;
+      } else if (data?.message) {
+        message = data.message;
+      } else if (data?.title) {
+        message = data.title;
+      }
+
+      if (status >= 400 && status < 500) {
+        toast.error(message);
+      } else if (status >= 500) {
+        toast.error('Serverfout — probeer het later opnieuw.');
+      }
+    }
+
     return Promise.reject(error);
   }
 );

@@ -49,6 +49,20 @@ public class EnrollmentRepository(ApplicationDbContext context) : IEnrollmentRep
                 (e.Status == EnrollmentStatus.Confirmed || e.Status == EnrollmentStatus.Pending), ct);
     }
 
+    public async Task<Dictionary<Guid, int>> CountActiveBySeriesIdsAsync(
+        IEnumerable<Guid> seriesIds, CancellationToken ct = default)
+    {
+        List<Guid> ids = seriesIds.ToList();
+        return await context.Enrollments
+            .AsNoTracking()
+            .Where(e =>
+                e.LessonSerieId.HasValue &&
+                ids.Contains(e.LessonSerieId.Value) &&
+                (e.Status == EnrollmentStatus.Confirmed || e.Status == EnrollmentStatus.Pending))
+            .GroupBy(e => e.LessonSerieId!.Value)
+            .ToDictionaryAsync(g => g.Key, g => g.Count(), ct);
+    }
+
     public async Task<int> CountActiveByOrganizationAsync(Guid organizationId, CancellationToken ct = default)
     {
         return await context.Enrollments

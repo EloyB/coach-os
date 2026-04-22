@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -65,6 +66,8 @@ import type {
 
 import { getTennisClubs } from "@/lib/api/tennisClubs";
 import { FieldError } from "@/components/forms/field-error";
+import { DatePicker } from "@/components/ui/date-picker";
+import { NativeSelect } from "@/components/ui/native-select";
 import { inputClass } from "@/lib/styles";
 import { formatDateShort } from "@/lib/date-utils";
 import { enrollmentStatusStyles } from "@/lib/status-styles";
@@ -192,10 +195,16 @@ function EditSeriesForm({
             <label className="block text-xs font-medium text-gray-600 mb-1">
               Inschrijfdeadline
             </label>
-            <input
-              {...register("registrationDeadline")}
-              type="date"
-              className={inputClass}
+            <Controller
+              control={control}
+              name="registrationDeadline"
+              render={({ field }) => (
+                <DatePicker
+                  value={field.value ?? ""}
+                  onChange={field.onChange}
+                  placeholder="Optioneel"
+                />
+              )}
             />
           </div>
         </div>
@@ -303,18 +312,196 @@ function dayOfWeekFromDate(dateStr: string, weekDays: string[]): number {
   return idx >= 0 ? idx : new Date(dateStr + "T00:00:00").getDay();
 }
 
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { updateLesson } from "@/lib/api/lessonSeries";
+import type { UpdateLessonRequest } from "@/lib/api/lessonSeries";
+
+function EditLessonDialog({
+  lesson,
+  seriesId,
+  trainers,
+  onClose,
+  onSaved,
+}: {
+  lesson: LessonDto;
+  seriesId: string;
+  trainers: TrainerDto[];
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const [date, setDate] = useState(lesson.date);
+  const [trainerId, setTrainerId] = useState(lesson.trainerId ?? "");
+  const [courtName, setCourtName] = useState(lesson.courtName ?? "");
+  const [startTime, setStartTime] = useState(lesson.startTime);
+  const [endTime, setEndTime] = useState(lesson.endTime);
+  const [maxStudents, setMaxStudents] = useState(lesson.maxStudents);
+  const [notes, setNotes] = useState(lesson.notes ?? "");
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      const request: UpdateLessonRequest = {
+        date,
+        trainerId: trainerId || null,
+        courtName,
+        startTime,
+        endTime,
+        maxStudents,
+        notes,
+      };
+
+      await updateLesson(seriesId, lesson.id, request);
+      toast.success("Lesmoment opgeslagen");
+      onSaved();
+    } catch {
+      // Error toast is already shown by axios interceptor
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    setDeleting(true);
+    try {
+      const { deleteLesson } = await import("@/lib/api/lessonSeries");
+      await deleteLesson(seriesId, lesson.id);
+      queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
+      onClose();
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Lesmoment bewerken</DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Datum</label>
+            <DatePicker value={date} onChange={setDate} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Starttijd</label>
+              <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inputClass} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Eindtijd</label>
+              <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className={inputClass} />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Trainer</label>
+            <NativeSelect value={trainerId} onChange={(e) => setTrainerId(e.target.value)} className="w-full">
+              <option value="">Geen trainer</option>
+              {trainers.map((t) => (
+                <option key={t.id} value={t.id}>{t.firstName} {t.lastName}</option>
+              ))}
+            </NativeSelect>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Baan</label>
+            <input type="text" value={courtName} onChange={(e) => setCourtName(e.target.value)} placeholder="Baan 1" className={inputClass} />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Max. leerlingen</label>
+            <input type="number" min={1} value={maxStudents} onChange={(e) => setMaxStudents(parseInt(e.target.value) || 1)} className={inputClass} />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Notities</label>
+            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className={inputClass + " resize-none"} />
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 pt-2">
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving}
+            className="flex-1 px-4 py-2 bg-tennis-green text-white text-sm font-semibold rounded-lg hover:bg-tennis-green/90 disabled:opacity-60"
+          >
+            {saving ? "Opslaan..." : "Opslaan"}
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 border border-gray-200 text-sm font-medium text-gray-600 rounded-lg hover:bg-gray-50"
+          >
+            Annuleren
+          </button>
+        </div>
+
+        {/* Delete */}
+        <div className="border-t border-gray-100 pt-3 mt-1">
+          {confirmDelete ? (
+            <div className="flex items-center gap-2">
+              <p className="text-xs text-red-600 flex-1">Weet je het zeker?</p>
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={deleting}
+                className="px-3 py-1.5 bg-red-600 text-white text-xs font-semibold rounded-lg hover:bg-red-700 disabled:opacity-60"
+              >
+                {deleting ? "Verwijderen..." : "Ja, verwijder"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(false)}
+                className="px-3 py-1.5 border border-gray-200 text-xs font-medium text-gray-600 rounded-lg hover:bg-gray-50"
+              >
+                Nee
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(true)}
+              className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 transition-colors"
+            >
+              <Trash2 size={12} />
+              Lesmoment verwijderen
+            </button>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function LessonWeekView({
   lessons,
   startDate,
   endDate,
   trainers,
+  seriesId,
 }: {
   lessons: LessonDto[];
   startDate: string;
   endDate: string;
   trainers: TrainerDto[];
+  seriesId: string;
 }) {
   const [weekIndex, setWeekIndex] = useState(0);
+  const [editingLesson, setEditingLesson] = useState<LessonDto | null>(null);
+  const queryClient = useQueryClient();
   const weeks = computeWeeks(startDate, endDate);
   const currentWeek = weeks[weekIndex];
 
@@ -405,14 +592,32 @@ function LessonWeekView({
         </div>
       </div>
 
-      {/* Calendar grid (read-only) */}
+      {/* Calendar grid — click slot to edit */}
       <CalendarGrid
         slots={weekSlots}
         readOnly
         dayDates={dayDates}
         startHour={calStartHour}
         endHour={calEndHour}
+        onSlotClick={(slot) => {
+          const lesson = lessons.find((l) => l.id === slot.id);
+          if (lesson) setEditingLesson(lesson);
+        }}
       />
+
+      {/* Edit lesson dialog */}
+      {editingLesson && (
+        <EditLessonDialog
+          lesson={editingLesson}
+          seriesId={seriesId}
+          trainers={trainers}
+          onClose={() => setEditingLesson(null)}
+          onSaved={() => {
+            setEditingLesson(null);
+            queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
+          }}
+        />
+      )}
 
       {/* Trainer legend */}
       {legendTrainers.length > 0 && (
@@ -632,7 +837,7 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
 
               {/* Row 2: type + required + reorder + delete */}
               <div className="flex items-center gap-2">
-                <select
+                <NativeSelect
                   value={field.type}
                   onChange={(e) =>
                     updateField(field._key, {
@@ -640,14 +845,13 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
                       options: undefined,
                     })
                   }
-                  className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:border-tennis-green bg-white cursor-pointer"
                 >
                   {FIELD_TYPES.map((t) => (
                     <option key={t.value} value={t.value}>
                       {t.label}
                     </option>
                   ))}
-                </select>
+                </NativeSelect>
 
                 <label className="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer select-none">
                   <input
@@ -1069,6 +1273,7 @@ export default function LessonSeriesDetailPage({
             startDate={series.startDate}
             endDate={series.endDate}
             trainers={trainers}
+            seriesId={id}
           />
 
           {/* ── Section 4: Form builder ── */}

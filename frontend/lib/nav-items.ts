@@ -1,32 +1,43 @@
 import {
   LayoutDashboard,
-  Map,
+  CalendarDays,
   BookOpen,
-  GraduationCap,
   Users,
+  GraduationCap,
   Settings,
 } from "lucide-react";
 
 export const navItems = [
   {
-    label: "Dashboard",
+    label: "Vandaag",
     href: "/dashboard",
     icon: LayoutDashboard,
     exact: true,
   },
-  { label: "Lessen", href: "/dashboard/lessons", icon: BookOpen, exact: false },
   {
-    label: "Trainers",
-    href: "/dashboard/trainers",
-    icon: GraduationCap,
+    label: "Planning",
+    href: "/dashboard/planning",
+    icon: CalendarDays,
     exact: false,
-    adminOnly: true,
+  },
+  {
+    label: "Lesreeksen",
+    href: "/dashboard/lessons",
+    icon: BookOpen,
+    exact: false,
   },
   {
     label: "Leerlingen",
     href: "/dashboard/students",
     icon: Users,
     exact: false,
+  },
+  {
+    label: "Trainers",
+    href: "/dashboard/trainers",
+    icon: GraduationCap,
+    exact: false,
+    adminOnly: true,
   },
   {
     label: "Instellingen",

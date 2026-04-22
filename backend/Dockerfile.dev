@@ -1,0 +1,17 @@
+FROM mcr.microsoft.com/dotnet/sdk:10.0
+WORKDIR /src
+
+COPY CoachOS.slnx .
+COPY CoachOS.Domain/CoachOS.Domain.csproj CoachOS.Domain/
+COPY CoachOS.Application/CoachOS.Application.csproj CoachOS.Application/
+COPY CoachOS.Infrastructure/CoachOS.Infrastructure.csproj CoachOS.Infrastructure/
+COPY CoachOS.API/CoachOS.API.csproj CoachOS.API/
+COPY CoachOS.Tests/CoachOS.Tests.csproj CoachOS.Tests/
+RUN dotnet restore CoachOS.slnx
+
+COPY . .
+
+ENV ASPNETCORE_URLS=http://+:5142
+EXPOSE 5142
+
+ENTRYPOINT ["dotnet", "watch", "run", "--project", "CoachOS.API/CoachOS.API.csproj", "--no-launch-profile"]

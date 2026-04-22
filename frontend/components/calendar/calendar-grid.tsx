@@ -207,25 +207,27 @@ export function CalendarGrid({
 
   return (
     <div
-      className={`bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto select-none ${className ?? ""}`}
+      className={`bg-paper rounded-xl border border-rule overflow-x-auto select-none ${className ?? ""}`}
     >
       <div style={{ minWidth: 1940 }}>
       {/* Day headers */}
       <div
-        className="border-b border-gray-200 bg-gray-50"
+        className="border-b border-rule bg-[#fbfaf6]"
         style={{ display: "grid", gridTemplateColumns: gridColumns }}
       >
         <div className="px-2 py-3" />
         {DAY_NAMES_SHORT.map((day, i) => (
           <div
             key={i}
-            className="px-3 py-3 text-center border-l border-gray-200"
+            className="px-3 py-2 text-center border-l border-rule"
           >
-            <div className="text-xs font-bold text-gray-900 uppercase">
-              {day}
-            </div>
-            <div className="text-[10px] text-gray-400">
-              {dayDates?.[i] ?? DAY_NAMES_FULL[i]}
+            <div className="flex justify-between items-baseline px-1">
+              <span className="text-[10.5px] font-bold text-ink uppercase tracking-[0.06em]">
+                {day}
+              </span>
+              <span className="text-[10.5px] text-ink-3 font-mono">
+                {dayDates?.[i] ?? ""}
+              </span>
             </div>
           </div>
         ))}
@@ -246,8 +248,8 @@ export function CalendarGrid({
                 className="absolute left-0 right-0 flex items-start justify-end px-2"
                 style={{ top: (hour - effectiveStartHour) * ROW_HEIGHT }}
               >
-                <span className="relative -top-2 text-[10px] text-gray-400 font-medium">
-                  {String(hour).padStart(2, "0")}:00
+                <span className="relative -top-2 text-[9.5px] text-ink-3 font-mono">
+                  {String(hour).padStart(2, "0")}
                 </span>
               </div>
             ))}
@@ -263,14 +265,14 @@ export function CalendarGrid({
             return (
               <div
                 key={dayIndex}
-                className={`relative border-l border-gray-200 ${readOnly ? "" : "cursor-pointer group/day"}`}
+                className={`relative border-l border-rule ${readOnly ? "" : "cursor-pointer group/day"}`}
                 style={{ height: totalHeight }}
               >
                 {/* Leading half-hour cell */}
                 {effectiveStartHour % 1 !== 0 && (
                   <div
                     key="leading-half"
-                    className={`absolute left-0 right-0 border-b border-gray-300 ${!readOnly ? "hover:bg-tennis-green/5 transition-colors" : ""}`}
+                    className={`absolute left-0 right-0 border-b border-rule ${!readOnly ? "hover:bg-tennis-green/5 transition-colors" : ""}`}
                     style={{ top: 0, height: (Math.ceil(effectiveStartHour) - effectiveStartHour) * ROW_HEIGHT }}
                   />
                 )}
@@ -282,12 +284,12 @@ export function CalendarGrid({
                   return [
                     <div
                       key={`${hour}-0`}
-                      className={`absolute left-0 right-0 border-b border-dashed border-gray-200 ${!readOnly ? "hover:bg-tennis-green/5 transition-colors" : ""}`}
+                      className={`absolute left-0 right-0 border-b border-dashed border-rule ${!readOnly ? "hover:bg-tennis-green/5 transition-colors" : ""}`}
                       style={{ top: baseTop, height: halfHeight }}
                     />,
                     <div
                       key={`${hour}-30`}
-                      className={`absolute left-0 right-0 border-b border-gray-300 ${!readOnly ? "hover:bg-tennis-green/5 transition-colors" : ""}`}
+                      className={`absolute left-0 right-0 border-b border-rule ${!readOnly ? "hover:bg-tennis-green/5 transition-colors" : ""}`}
                       style={{ top: baseTop + halfHeight, height: halfHeight }}
                     />,
                   ];
@@ -366,7 +368,7 @@ export function CalendarGrid({
                         {slot.startTime} — {slot.endTime}
                       </div>
                       {pos.height >= 36 && (
-                        <div className="text-[10px] text-gray-600 truncate">
+                        <div className="text-[10px] text-ink-2 truncate">
                           {slot.courtName || slot.trainerName ? (
                             <>
                               {slot.courtName && <>{slot.courtName} · </>}

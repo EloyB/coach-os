@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { getTennisClubs } from "@/lib/api/tennisClubs";
 import { FieldError } from "@/components/forms/field-error";
+import { DatePicker } from "@/components/ui/date-picker";
 import { inputClass } from "@/lib/styles";
 import type { Step1Data } from "../_types";
 
@@ -169,19 +170,23 @@ export function Step1Basisinfo({ defaultValues, onNext }: Step1Props) {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <Label required>{t("startDate")}</Label>
-            <input
-              {...register("startDate")}
-              type="date"
-              className={inputClass}
+            <Controller
+              control={control}
+              name="startDate"
+              render={({ field }) => (
+                <DatePicker value={field.value} onChange={field.onChange} />
+              )}
             />
             <FieldError message={errors.startDate?.message} />
           </div>
           <div>
             <Label required>{t("endDate")}</Label>
-            <input
-              {...register("endDate")}
-              type="date"
-              className={inputClass}
+            <Controller
+              control={control}
+              name="endDate"
+              render={({ field }) => (
+                <DatePicker value={field.value} onChange={field.onChange} />
+              )}
             />
             <FieldError message={errors.endDate?.message} />
           </div>
@@ -190,10 +195,12 @@ export function Step1Basisinfo({ defaultValues, onNext }: Step1Props) {
         {/* Inschrijfdeadline */}
         <div>
           <Label required>{t("registrationDeadline")}</Label>
-          <input
-            {...register("registrationDeadline")}
-            type="date"
-            className={inputClass}
+          <Controller
+            control={control}
+            name="registrationDeadline"
+            render={({ field }) => (
+              <DatePicker value={field.value} onChange={field.onChange} />
+            )}
           />
           <FieldError message={errors.registrationDeadline?.message} />
         </div>

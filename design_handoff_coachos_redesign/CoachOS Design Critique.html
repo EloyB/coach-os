@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>CoachOS — Design Critique</title>
+<meta name="viewport" content="width=1280" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  html, body { margin: 0; padding: 0; background: #f0eee9; font-family: 'Inter', system-ui, sans-serif; color: #161513; }
+  #root { width: 100vw; height: 100vh; }
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="screens-current.jsx"></script>
+<script type="text/babel" src="screens-states.jsx"></script>
+<script type="text/babel" src="annotations.jsx"></script>
+<script type="text/babel" src="screens-proposed.jsx"></script>
+<script type="text/babel" src="screens-states-critique.jsx"></script>
+
+<script type="text/babel" data-presets="react">
+// ── Intro / summary card for top-left of canvas ─────────────────────────────
+const Intro = () => (
+  <div style={{
+    width: 680, padding: "32px 36px", background: "#161513", color: "#fff",
+    borderRadius: 16, boxShadow: "0 8px 40px rgba(0,0,0,.25)",
+    fontFamily: "'Inter', system-ui, sans-serif",
+  }}>
+    <p style={{ margin: 0, fontSize: 11, color: "#D0FF14", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.15em", textTransform: "uppercase" }}>
+      /design-review · v1 · apr 2026
+    </p>
+    <h1 style={{ margin: "8px 0 12px", fontSize: 32, fontWeight: 700, letterSpacing: -0.6, lineHeight: 1.1 }}>
+      CoachOS — what’s working, what isn’t,<br /> and where it could go.
+    </h1>
+    <p style={{ margin: "0 0 20px", fontSize: 14, color: "#b8b0a0", lineHeight: 1.6 }}>
+      A pixel-faithful read of the current product, annotated critique per screen, and an opinionated redesign that
+      keeps the tennis-green brand but pushes the product toward the density, hierarchy, and personality a coach actually needs.
+    </p>
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+      {[
+        { n: "01", t: "Current", s: "6 screens lifted from the codebase" },
+        { n: "02", t: "Critique", s: "Numbered annotations per screen" },
+        { n: "03", t: "Proposed", s: "Redesigns with a richer visual system" },
+      ].map((x) => (
+        <div key={x.n} style={{ padding: "12px 14px", background: "rgba(255,255,255,.04)", borderRadius: 10, border: "1px solid rgba(255,255,255,.08)" }}>
+          <p style={{ margin: 0, fontSize: 11, color: "#D0FF14", fontFamily: "'JetBrains Mono', monospace" }}>{x.n}</p>
+          <p style={{ margin: "4px 0 2px", fontSize: 14, fontWeight: 700 }}>{x.t}</p>
+          <p style={{ margin: 0, fontSize: 11.5, color: "#8f877a" }}>{x.s}</p>
+        </div>
+      ))}
+    </div>
+    <p style={{ margin: "20px 0 0", fontSize: 11, color: "#8f877a", fontFamily: "'JetBrains Mono', monospace" }}>
+      ↳ drag to pan · scroll/pinch to zoom · click any artboard to focus · ←/→ to step through
+    </p>
+  </div>
+);
+
+// ── Annotation notes for each screen ───────────────────────────────────────
+const NOTES = {
+  login: {
+    title: "Login — strong brand, weak purpose",
+    takeaway: "The marketing side is doing too much; the form side is doing too little. Invert the ratio and add one concrete proof point.",
+    items: [
+      { tone: "amber", title: "Headline is a slogan, not a promise", body: "‘Plan lessen. Vul banen. Groei je club.’ reads like ad copy. Coaches returning to the tool every morning don’t need a sales pitch — they need reassurance they’re in the right place." },
+      { tone: "red",   title: "Marketing column eats 52% of the screen", body: "Three feature bullets repeat what the headline already says. The return-user doesn’t read them; the first-time user doesn’t trust them without proof." },
+      { tone: "amber", title: "Form feels generic and flat", body: "No role segmentation (coach vs. student), no magic-link option, no visible product identity inside the form column. The input states blend into the background." },
+      { tone: "blue",  title: "Missed chance for tone of voice", body: "The word ‘CoachOS’ and the tennis-green branding deserve one memorable typographic moment — a pull quote, a ticker, a versioned release tag — anything that feels like a product and not a template." },
+    ],
+  },
+  dashboard: {
+    title: "Dashboard — vanity metrics, no focus",
+    takeaway: "Replace the four colored stat cards with ‘what needs my attention today’. Push aggregate numbers to a sidebar.",
+    items: [
+      { tone: "red",   title: "Stats don’t earn the hero slot", body: "‘214 inschrijvingen’ and ‘6 trainers’ are org facts, not daily tasks. They’re the first thing a coach sees every morning and they never change meaningfully day-to-day." },
+      { tone: "red",   title: "‘Komende lessen’ has no urgency signal", body: "No indication of which lessons are under-booked, which students haven’t confirmed, or which slots are about to lock. Everything is treated as equally important, so nothing is." },
+      { tone: "amber", title: "Four different accent colors with no meaning", body: "Green, blue, purple, amber on the stats cards — but these categories aren’t semantically different. Color is spent before it can mean anything elsewhere in the UI." },
+      { tone: "amber", title: "Right rail is underused", body: "Two quick-action shortcuts and a tip box. A coach sees this 20× a day; it could surface pending confirmations, payment gaps, or this-week occupancy instead of a help tip." },
+    ],
+  },
+  calendar: {
+    title: "Planning — pretty, not operational",
+    takeaway: "A coach reads this grid to answer ‘is this week full?’ — the design doesn’t make that answer glanceable.",
+    items: [
+      { tone: "amber", title: "Five random pastel colors = decorative", body: "Violet, blue, amber, pink, teal per lesson look nice but map to nothing the user knows. Tie color to trainer or lesson-type and make the mapping visible as a legend." },
+      { tone: "red",   title: "No capacity information on slots", body: "‘Baan 1 · Jan P. · 4 max’ — ‘4 max’ is meaningless without ‘3/4 booked’. The most-asked question of a planning view (is it full?) has no answer here." },
+      { tone: "amber", title: "Days look identical", body: "Weekend days aren’t visually differentiated from weekdays, and ‘today’ isn’t marked. In the proposed version, weekends tint and hour markers use mono type for scan-ability." },
+      { tone: "blue",  title: "Header is a blob", body: "Series name + ‘Week 1 van 12’ + navigation all compete. A breadcrumb pattern (Lesreeks → week → view) would let the coach jump between contexts without re-entering the list page." },
+    ],
+  },
+  lessons: {
+    title: "Lesreeksen — cards burn space, hide value",
+    takeaway: "Coaches with 20+ series need a table, not a card grid. Show trainer, price, dates, and occupancy in one row.",
+    items: [
+      { tone: "red",   title: "Three empty stat tiles per card", body: "Every card has a ‘Prijs’ tile and three blank beige tiles. This was clearly meant for more data that never materialised — the result is a lot of visual weight for one number." },
+      { tone: "amber", title: "No occupancy signal anywhere", body: "‘12 lesmomenten’ tells you scope, not health. Without showing how full each series is, the list can’t drive action (which series need promoting, which are over-booked)." },
+      { tone: "amber", title: "Green left border on everything", body: "When every item is emphasised, nothing is. Reserve the accent border for draft/warning states — and make ‘Inactief’ visually quieter than active." },
+      { tone: "blue",  title: "No way to switch view", body: "A card view is fine for 3 series; beyond that a coach needs a sortable table and a calendar view. The absence of a view switcher hard-codes scale assumptions." },
+    ],
+  },
+  trainers: {
+    title: "Trainers — a contact list, not a staffing tool",
+    takeaway: "This is the only page that shows who the trainers are. It should also show what they’re doing.",
+    items: [
+      { tone: "red",   title: "Zero operational data", body: "Name, email, status. That’s it. A club manager opens ‘Trainers’ to answer: who has capacity this week? who’s overloaded? who has the best attendance? None of that is here." },
+      { tone: "amber", title: "Narrow one-column list", body: "The content max-width is ~640px in the middle of a 1200px screen. Feels like a settings page, not a primary nav item." },
+      { tone: "amber", title: "Status badge does one job", body: "Actief / Uitgenodigd are the only two states. No ‘op verlof’, ‘verminderde uren’, etc. The data model is richer than the UI admits." },
+      { tone: "blue",  title: "Invitation state is a dead end", body: "‘Uitgenodigd’ has no resend button, no invite-sent-at timestamp, no way to cancel. It’s informational when it should be actionable." },
+    ],
+  },
+  portal: {
+    title: "Student portal — correct but cold",
+    takeaway: "Biggest UX gap: the three statuses are technical jargon exposed raw to a 12-year-old’s parent.",
+    items: [
+      { tone: "red",   title: "Status pills use code names", body: "‘AwaitingConfirmation’, ‘Proposed’ with PascalCase — these are enum values, not human copy. A parent or junior has to guess what action, if any, is needed." },
+      { tone: "red",   title: "Lessons repeat verbatim", body: "Three cards with identical trainer, court, time, series — only the status differs. This pattern will collapse the second a student has two series running." },
+      { tone: "amber", title: "No next-action hierarchy", body: "The ‘needs confirmation’ lesson looks exactly like the confirmed one. The first job of this page is ‘what do I have to do right now?’ — nothing answers that." },
+      { tone: "blue",  title: "No mobile-first thinking", body: "Students open this on their phone. Cards are too wide, the confirm/refuse actions are buried behind a status pill, and there’s no weekday glyph for fast scanning." },
+    ],
+  },
+};
+
+// ── Main ───────────────────────────────────────────────────────────────────
+const App = () => (
+  <DesignCanvas minScale={0.15} maxScale={2.5}>
+    <DCSection id="intro" title="Design review" subtitle="Pan and zoom — click any artboard to focus.">
+      <DCArtboard id="readme" label="README" width={720} height={360}>
+        <Intro />
+      </DCArtboard>
+    </DCSection>
+
+    <DCSection id="current" title="01 — Current product" subtitle="Pixel-faithful recreations from the codebase.">
+      <DCArtboard id="c-login" label="Login" width={1280} height={800}><LoginCurrent /></DCArtboard>
+      <DCArtboard id="c-dash" label="Dashboard" width={1280} height={800}><DashboardCurrent /></DCArtboard>
+      <DCArtboard id="c-cal" label="Planning — weekly calendar" width={1280} height={800}><CalendarCurrent /></DCArtboard>
+      <DCArtboard id="c-less" label="Lesreeksen" width={1280} height={800}><LessonsCurrent /></DCArtboard>
+      <DCArtboard id="c-tr" label="Trainers" width={1280} height={800}><TrainersCurrent /></DCArtboard>
+      <DCArtboard id="c-port" label="Student portal" width={1280} height={800}><StudentPortalCurrent /></DCArtboard>
+    </DCSection>
+
+    <DCSection id="crit" title="02 — Critique" subtitle="Numbered annotations per screen; read notes alongside.">
+      <DCArtboard id="a-login" label="Login" width={1620} height={800}>
+        <AnnotationFrame
+          notes={NOTES.login}
+          pins={[
+            { n: 1, top: 330, left: 160, tone: "amber" },
+            { n: 2, top: 110, left: 40, tone: "red" },
+            { n: 3, top: 510, left: 980, tone: "amber" },
+            { n: 4, top: 70, left: 70, tone: "blue" },
+          ]}
+        >
+          <LoginCurrent />
+        </AnnotationFrame>
+      </DCArtboard>
+
+      <DCArtboard id="a-dash" label="Dashboard" width={1620} height={800}>
+        <AnnotationFrame
+          notes={NOTES.dashboard}
+          pins={[
+            { n: 1, top: 175, left: 300, tone: "red" },
+            { n: 2, top: 360, left: 320, tone: "red" },
+            { n: 3, top: 180, left: 1030, tone: "amber" },
+            { n: 4, top: 420, left: 1030, tone: "amber" },
+          ]}
+        >
+          <DashboardCurrent />
+        </AnnotationFrame>
+      </DCArtboard>
+
+      <DCArtboard id="a-cal" label="Planning" width={1620} height={800}>
+        <AnnotationFrame
+          notes={NOTES.calendar}
+          pins={[
+            { n: 1, top: 430, left: 560, tone: "amber" },
+            { n: 2, top: 470, left: 860, tone: "red" },
+            { n: 3, top: 220, left: 1050, tone: "amber" },
+            { n: 4, top: 95, left: 310, tone: "blue" },
+          ]}
+        >
+          <CalendarCurrent />
+        </AnnotationFrame>
+      </DCArtboard>
+
+      <DCArtboard id="a-less" label="Lesreeksen" width={1620} height={800}>
+        <AnnotationFrame
+          notes={NOTES.lessons}
+          pins={[
+            { n: 1, top: 330, left: 520, tone: "red" },
+            { n: 2, top: 460, left: 310, tone: "amber" },
+            { n: 3, top: 235, left: 260, tone: "amber" },
+            { n: 4, top: 90, left: 640, tone: "blue" },
+          ]}
+        >
+          <LessonsCurrent />
+        </AnnotationFrame>
+      </DCArtboard>
+
+      <DCArtboard id="a-tr" label="Trainers" width={1620} height={800}>
+        <AnnotationFrame
+          notes={NOTES.trainers}
+          pins={[
+            { n: 1, top: 330, left: 540, tone: "red" },
+            { n: 2, top: 100, left: 240, tone: "amber" },
+            { n: 3, top: 260, left: 880, tone: "amber" },
+            { n: 4, top: 540, left: 880, tone: "blue" },
+          ]}
+        >
+          <TrainersCurrent />
+        </AnnotationFrame>
+      </DCArtboard>
+
+      <DCArtboard id="a-port" label="Student portal" width={1620} height={800}>
+        <AnnotationFrame
+          notes={NOTES.portal}
+          pins={[
+            { n: 1, top: 280, left: 920, tone: "red" },
+            { n: 2, top: 380, left: 360, tone: "red" },
+            { n: 3, top: 280, left: 370, tone: "amber" },
+            { n: 4, top: 100, left: 370, tone: "blue" },
+          ]}
+        >
+          <StudentPortalCurrent />
+        </AnnotationFrame>
+      </DCArtboard>
+    </DCSection>
+
+    <DCSection id="more-pages" title="02b — Pages not yet covered" subtitle="Every other page in the codebase: auth, settings, public enrollment, confirmation, and the lesson wizard.">
+      <DCArtboard id="c-reg" label="Register" width={1280} height={800}><RegisterCurrent /></DCArtboard>
+      <DCArtboard id="c-slogin" label="Student login" width={1280} height={800}><StudentLoginCurrent /></DCArtboard>
+      <DCArtboard id="c-set" label="Settings — Tennis clubs" width={1280} height={800}><SettingsCurrent /></DCArtboard>
+      <DCArtboard id="c-enroll" label="Public enrollment form" width={680} height={1100}><EnrollCurrent /></DCArtboard>
+      <DCArtboard id="c-conf" label="Slot confirmation" width={540} height={640}><ConfirmationCurrent /></DCArtboard>
+      <DCArtboard id="c-wiz3" label="New lesson — step 3 (Bevestigen)" width={1280} height={900}><WizardStep3Current /></DCArtboard>
+    </DCSection>
+
+    <DCSection id="crit-more" title="02b · Critique — the other pages" subtitle="Annotated notes on register, student login, settings, enrollment, confirmation, and wizard step 3.">
+      <DCArtboard id="a-reg" label="Register" width={1620} height={800}>
+        <AnnotationFrame notes={NOTES_MORE.register} pins={PINS.register}><RegisterCurrent /></AnnotationFrame>
+      </DCArtboard>
+      <DCArtboard id="a-slogin" label="Student login" width={1620} height={800}>
+        <AnnotationFrame notes={NOTES_MORE.slogin} pins={PINS.slogin}><StudentLoginCurrent /></AnnotationFrame>
+      </DCArtboard>
+      <DCArtboard id="a-set" label="Settings" width={1620} height={800}>
+        <AnnotationFrame notes={NOTES_MORE.settings} pins={PINS.settings}><SettingsCurrent /></AnnotationFrame>
+      </DCArtboard>
+      <DCArtboard id="a-enroll" label="Public enrollment" width={1020} height={1100}>
+        <AnnotationFrame notes={NOTES_MORE.enroll} pins={PINS.enroll}><EnrollCurrent /></AnnotationFrame>
+      </DCArtboard>
+      <DCArtboard id="a-conf" label="Confirmation" width={880} height={640}>
+        <AnnotationFrame notes={NOTES_MORE.confirm} pins={PINS.confirm}><ConfirmationCurrent /></AnnotationFrame>
+      </DCArtboard>
+      <DCArtboard id="a-wiz3" label="Wizard · step 3" width={1620} height={900}>
+        <AnnotationFrame notes={NOTES_MORE.wiz3} pins={PINS.wiz3}><WizardStep3Current /></AnnotationFrame>
+      </DCArtboard>
+    </DCSection>
+
+    <DCSection id="states" title="02c — Different states per page" subtitle="What happens after the user clicks. Each card shows the same page at a different point in its flow.">
+      <DCArtboard id="s-wiz3-load" label="Wizard — submitting (Reeks aanmaken)" width={1280} height={900}><WizardStep3Loading /></DCArtboard>
+      <DCArtboard id="s-conf-pay" label="Confirmation — after 'Plan bevestigen' → payment step" width={540} height={560}><ConfirmationPaymentState /></DCArtboard>
+      <DCArtboard id="s-conf-dec" label="Confirmation — 'Weigeren' → pick alternative slot" width={540} height={640}><ConfirmationDeclineState /></DCArtboard>
+      <DCArtboard id="s-conf-ok" label="Confirmation — success" width={540} height={420}><ConfirmationSuccessState /></DCArtboard>
+      <DCArtboard id="s-conf-exp" label="Confirmation — expired link" width={540} height={420}><ConfirmationExpiredState /></DCArtboard>
+      <DCArtboard id="s-enroll-ok" label="Enrollment — submitted" width={680} height={520}><EnrollSubmittedState /></DCArtboard>
+      <DCArtboard id="s-set-del" label="Settings — delete confirm dialog" width={1280} height={800}><SettingsDeleteState /></DCArtboard>
+      <DCArtboard id="s-less-empty" label="Lesreeksen — empty state" width={1280} height={800}><LessonsEmptyState /></DCArtboard>
+    </DCSection>
+
+    <DCSection id="crit-states" title="02c · Critique — key states" subtitle="The confirmation payment step, decline flow, and wizard submit all hide real UX bugs.">
+      <DCArtboard id="a-s-conf-pay" label="Confirmation · payment step" width={880} height={560}>
+        <AnnotationFrame notes={NOTES_STATES.confPay} pins={PINS.confPay}><ConfirmationPaymentState /></AnnotationFrame>
+      </DCArtboard>
+      <DCArtboard id="a-s-conf-dec" label="Confirmation · decline → alternatives" width={880} height={640}>
+        <AnnotationFrame notes={NOTES_STATES.confDec} pins={PINS.confDec}><ConfirmationDeclineState /></AnnotationFrame>
+      </DCArtboard>
+      <DCArtboard id="a-s-wiz3-load" label="Wizard · submitting" width={1620} height={900}>
+        <AnnotationFrame notes={NOTES_STATES.wizLoad} pins={PINS.wizLoad}><WizardStep3Loading /></AnnotationFrame>
+      </DCArtboard>
+    </DCSection>
+
+    <DCSection id="proposed" title="03 — Proposed direction" subtitle="Same brand, richer hierarchy, operational-grade density.">
+      <DCArtboard id="p-login" label="Login" width={1280} height={800}><LoginP /></DCArtboard>
+      <DCArtboard id="p-dash" label="Today (new dashboard)" width={1280} height={800}><DashboardP /></DCArtboard>
+      <DCArtboard id="p-cal" label="Planning" width={1280} height={800}><CalendarP /></DCArtboard>
+      <DCArtboard id="p-less" label="Lesreeksen (table)" width={1280} height={800}><LessonsP /></DCArtboard>
+      <DCArtboard id="p-tr" label="Trainers" width={1280} height={800}><TrainersP /></DCArtboard>
+      <DCArtboard id="p-port" label="Student portal" width={1280} height={800}><StudentP /></DCArtboard>
+    </DCSection>
+
+    <DCSection id="proposed-more" title="03b — Proposed direction · the other pages" subtitle="Redesigned register, student login, settings, enrollment, confirmation, and wizard step 3.">
+      <DCArtboard id="p-reg" label="Register" width={1280} height={800}><RegisterP /></DCArtboard>
+      <DCArtboard id="p-slogin" label="Student login" width={1280} height={800}><StudentLoginP /></DCArtboard>
+      <DCArtboard id="p-set" label="Settings" width={1280} height={800}><SettingsP /></DCArtboard>
+      <DCArtboard id="p-enroll" label="Public enrollment" width={720} height={1100}><EnrollP /></DCArtboard>
+      <DCArtboard id="p-conf" label="Confirmation" width={540} height={760}><ConfirmationP /></DCArtboard>
+      <DCArtboard id="p-wiz3" label="Wizard · step 3" width={1280} height={900}><WizardStep3P /></DCArtboard>
+    </DCSection>
+
+    <DCSection id="system" title="04 — Visual system notes" subtitle="A concise read of the proposed direction.">
+      <DCArtboard id="s-sys" label="System" width={900} height={560}>
+        <div style={{ padding: 40, height: "100%", background: "#fdfcf9", fontFamily: "'Inter', system-ui, sans-serif" }}>
+          <p style={{ margin: 0, fontSize: 11, color: "#8a867e", fontFamily: "'JetBrains Mono', monospace", textTransform: "uppercase", letterSpacing: "0.1em" }}>/system</p>
+          <h2 style={{ margin: "6px 0 18px", fontSize: 28, fontWeight: 700, letterSpacing: -0.5 }}>What changed, and why</h2>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 22, fontSize: 13, color: "#4a4741", lineHeight: 1.55 }}>
+            <div>
+              <p style={{ margin: "0 0 4px", fontWeight: 700, color: "#161513" }}>Color discipline</p>
+              <p style={{ margin: 0 }}>Tennis-green stays as the primary brand anchor; lime is reserved for accent/affordance. Trainer colors become a functional palette — visible as a legend, consistent across calendar &amp; reports.</p>
+            </div>
+            <div>
+              <p style={{ margin: "0 0 4px", fontWeight: 700, color: "#161513" }}>Type as signal</p>
+              <p style={{ margin: 0 }}>Inter for UI; JetBrains Mono for every number, timestamp, ID, and URL fragment. Monospace earns its keep because it makes 12-series occupancy tables readable at a glance.</p>
+            </div>
+            <div>
+              <p style={{ margin: "0 0 4px", fontWeight: 700, color: "#161513" }}>Density, honestly</p>
+              <p style={{ margin: 0 }}>Coaches live in this app. Stats that currently occupy 180×90px tiles get tucked into sparkline rows; tables replace card grids anywhere the list will grow past 6 items.</p>
+            </div>
+            <div>
+              <p style={{ margin: "0 0 4px", fontWeight: 700, color: "#161513" }}>A personality, not a mood board</p>
+              <p style={{ margin: 0 }}>Tiny court-line pattern on dark surfaces. A c/ monogram on sticky brand moments. One pull quote on login. Small, repeatable — avoids the stock-SaaS feeling without adding chrome.</p>
+            </div>
+          </div>
+        </div>
+      </DCArtboard>
+    </DCSection>
+  </DesignCanvas>
+);
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

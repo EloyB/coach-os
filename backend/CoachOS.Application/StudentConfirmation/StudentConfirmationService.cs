@@ -208,6 +208,73 @@ public class StudentConfirmationService(
         return Result<ConfirmResultDto>.Ok(new ConfirmResultDto { IsConfirmed = true });
     }
 
+    public async Task<Result<string>> GenerateCalendarAsync(
+        string rawToken, CancellationToken ct = default)
+    {
+        (AssignmentConfirmationToken? token, Error? error) = await LoadTokenAsync(rawToken, ct);
+        if (error is not null) return Result<string>.Fail(error);
+
+        if (token!.Response != ConfirmationResponse.Confirmed)
+            return Result<string>.Fail(
+                new Error(ErrorCodes.Validation, "Alleen bevestigde toewijzingen kunnen als kalender gedownload worden."));
+
+        ScheduleAssignment assignment = token.ScheduleAssignment;
+        Domain.Entities.LessonSerie? series = await seriesRepo.GetByIdAsync(assignment.LessonSerieId, token.OrganizationId, ct);
+        if (series is null)
+            return Result<string>.Fail(new Error(ErrorCodes.NotFound, "Lessenreeks niet gevonden."));
+
+        Domain.Entities.WeeklyTemplateEntry? slot = series.WeeklyTemplate.FirstOrDefault(s => s.Id == assignment.WeeklyTemplateEntryId);
+        if (slot is null)
+            return Result<string>.Fail(new Error(ErrorCodes.NotFound, "Tijdslot niet gevonden."));
+
+        string clubName = series.TennisClub?.Name ?? "";
+        string location = string.IsNullOrWhiteSpace(slot.CourtName)
+            ? clubName
+            : string.IsNullOrWhiteSpace(clubName)
+                ? slot.CourtName
+                : $"{slot.CourtName}, {clubName}";
+
+        // Calculate next occurrence of this DayOfWeek in Europe/Brussels timezone.
+        TimeZoneInfo brusselsTz = TimeZoneInfo.FindSystemTimeZoneById("Europe/Brussels");
+        DateTimeOffset nowBrussels = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, brusselsTz);
+        DateOnly today = DateOnly.FromDateTime(nowBrussels.DateTime);
+
+        // DayOfWeek in the entity is int (0=Sunday or 1=Monday depending on convention).
+        // .NET DayOfWeek: 0=Sunday, 1=Monday, ..., 6=Saturday.
+        DayOfWeek targetDay = (DayOfWeek)slot.DayOfWeek;
+        int daysUntil = ((int)targetDay - (int)today.DayOfWeek + 7) % 7;
+        if (daysUntil == 0) daysUntil = 7; // always next week if today is the same day
+        DateOnly nextDate = today.AddDays(daysUntil);
+
+        // Build UTC DateTimes from the local date + time in Brussels timezone.
+        DateTime localStart = nextDate.ToDateTime(slot.StartTime);
+        DateTime localEnd = nextDate.ToDateTime(slot.EndTime);
+        DateTimeOffset startUtc = new DateTimeOffset(localStart, brusselsTz.GetUtcOffset(localStart)).ToUniversalTime();
+        DateTimeOffset endUtc = new DateTimeOffset(localEnd, brusselsTz.GetUtcOffset(localEnd)).ToUniversalTime();
+
+        string dtStart = startUtc.ToString("yyyyMMdd'T'HHmmss'Z'");
+        string dtEnd = endUtc.ToString("yyyyMMdd'T'HHmmss'Z'");
+        string dtStamp = DateTimeOffset.UtcNow.ToString("yyyyMMdd'T'HHmmss'Z'");
+
+        string ics = string.Join("\r\n",
+            "BEGIN:VCALENDAR",
+            "VERSION:2.0",
+            "PRODID:-//CoachOS//Lesplanning//NL",
+            "BEGIN:VEVENT",
+            $"UID:{assignment.Id}@coachos.be",
+            $"DTSTAMP:{dtStamp}",
+            $"DTSTART:{dtStart}",
+            $"DTEND:{dtEnd}",
+            $"SUMMARY:{EscapeIcsText(series.Name)}",
+            $"LOCATION:{EscapeIcsText(location)}",
+            "DESCRIPTION:Les via CoachOS",
+            "END:VEVENT",
+            "END:VCALENDAR",
+            "");
+
+        return Result<string>.Ok(ics);
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     private async Task<(AssignmentConfirmationToken? token, Error? error)> LoadTokenAsync(
@@ -365,7 +432,19 @@ public class StudentConfirmationService(
 
     private static string HashToken(string rawToken)
     {
-        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(rawToken.Trim()));
+        byte[] bytes = SHA256.HashData(Encoding.UTF8.GetBytes(rawToken.Trim()));
         return Convert.ToHexString(bytes).ToLowerInvariant();
+    }
+
+    /// <summary>
+    /// Escapes text for iCalendar TEXT values per RFC 5545 Section 3.3.11.
+    /// </summary>
+    private static string EscapeIcsText(string value)
+    {
+        return value
+            .Replace("\\", "\\\\")
+            .Replace(";", "\\;")
+            .Replace(",", "\\,")
+            .Replace("\n", "\\n");
     }
 }

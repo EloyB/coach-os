@@ -28,8 +28,9 @@ public partial class ApplicationMapper
         };
     }
 
-    public LessonSerieDto ToLessonSerieDto(Domain.Entities.LessonSerie ls, int lessonCount)
+    public LessonSerieDto ToLessonSerieDto(Domain.Entities.LessonSerie ls, int lessonCount, int enrolledCount = 0)
     {
+        int totalCapacity = ls.MaxRegistrations ?? 0;
         return new LessonSerieDto
         {
             Id = ls.Id,
@@ -44,6 +45,8 @@ public partial class ApplicationMapper
             IsActive = ls.IsActive,
             MaxRegistrations = ls.MaxRegistrations,
             LessonCount = lessonCount,
+            EnrolledCount = enrolledCount,
+            TotalCapacity = totalCapacity,
             CreatedAt = ls.CreatedAt,
             TennisClubId = ls.TennisClubId,
             TennisClubName = ls.TennisClub?.Name ?? string.Empty,

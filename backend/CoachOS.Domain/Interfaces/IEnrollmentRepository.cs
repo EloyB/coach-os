@@ -17,6 +17,9 @@ public interface IEnrollmentRepository
 
     Task<int> CountActiveBySeriesAsync(Guid lessonSeriesId, CancellationToken ct = default);
 
+    Task<Dictionary<Guid, int>> CountActiveBySeriesIdsAsync(
+        IEnumerable<Guid> seriesIds, CancellationToken ct = default);
+
     Task<int> CountActiveByOrganizationAsync(Guid organizationId, CancellationToken ct = default);
 
     Task AddAsync(Enrollment enrollment, CancellationToken ct = default);
