@@ -12,6 +12,7 @@ export interface UpcomingLessonDto {
 
 export interface DashboardSummaryDto {
   activeSeriesCount: number;
+  lessonsTodayCount: number;
   lessonsThisWeekCount: number;
   totalEnrollmentCount: number;
   activeTrainerCount: number;

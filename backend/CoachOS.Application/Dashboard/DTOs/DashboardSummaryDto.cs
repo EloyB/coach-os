@@ -3,6 +3,7 @@ namespace CoachOS.Application.Dashboard.DTOs;
 public class DashboardSummaryDto
 {
     public int ActiveSeriesCount { get; set; }
+    public int LessonsTodayCount { get; set; }
     public int LessonsThisWeekCount { get; set; }
     public int TotalEnrollmentCount { get; set; }
     public int ActiveTrainerCount { get; set; }

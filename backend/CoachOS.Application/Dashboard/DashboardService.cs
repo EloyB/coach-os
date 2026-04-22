@@ -66,9 +66,13 @@ public class DashboardService(
                 : string.Empty,
         }).ToList();
 
+        int lessonsToday = await lessonRepo.CountByOrganizationAndDateRangeAsync(
+            organizationId, today, today, ct);
+
         DashboardSummaryDto summary = new()
         {
             ActiveSeriesCount = activeSeriesCount,
+            LessonsTodayCount = lessonsToday,
             LessonsThisWeekCount = lessonsThisWeek,
             TotalEnrollmentCount = totalEnrollments,
             ActiveTrainerCount = activeTrainerCount,

@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CoachOS.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260422122911_AddRescheduleRequest")]
+    [Migration("20260422150021_AddRescheduleRequest")]
     partial class AddRescheduleRequest
     {
         /// <inheritdoc />
@@ -607,7 +607,10 @@ namespace CoachOS.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid>("EnrollmentId")
+                    b.Property<Guid?>("EnrollmentGroupId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("EnrollmentId")
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("OrganizationId")
@@ -640,6 +643,8 @@ namespace CoachOS.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("AlternativeWeeklyTemplateEntryId");
+
+                    b.HasIndex("EnrollmentGroupId");
 
                     b.HasIndex("EnrollmentId");
 
@@ -1287,11 +1292,15 @@ namespace CoachOS.Infrastructure.Migrations
                         .HasForeignKey("AlternativeWeeklyTemplateEntryId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("CoachOS.Domain.Entities.EnrollmentGroup", "EnrollmentGroup")
+                        .WithMany()
+                        .HasForeignKey("EnrollmentGroupId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("CoachOS.Domain.Entities.Enrollment", "Enrollment")
                         .WithMany()
                         .HasForeignKey("EnrollmentId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("CoachOS.Domain.Entities.Organization", "Organization")
                         .WithMany()
@@ -1308,6 +1317,8 @@ namespace CoachOS.Infrastructure.Migrations
                     b.Navigation("AlternativeWeeklyTemplateEntry");
 
                     b.Navigation("Enrollment");
+
+                    b.Navigation("EnrollmentGroup");
 
                     b.Navigation("Organization");
 

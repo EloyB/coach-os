@@ -43,12 +43,13 @@ function EmptyState() {
 
 function SeriesRow({ series, index }: { series: LessonSeriesDto; index: number }) {
   const enrolled = series.enrolledCount ?? 0;
-  const capacity = series.totalCapacity > 0 ? series.totalCapacity : 1;
+  const capacity = series.totalCapacity ?? 0;
+  const hasCapacity = capacity > 0;
 
   return (
     <Link
       href={`/dashboard/lessons/${series.id}`}
-      className="grid grid-cols-[2.2fr_1fr_1.1fr_1.4fr_0.9fr_0.7fr] px-4 py-3.5 items-center border-b border-rule last:border-b-0 text-xs hover:bg-canvas/50 transition-colors"
+      className="grid grid-cols-[2.2fr_1.1fr_1.2fr_0.9fr_0.7fr] px-4 py-3.5 items-center border-b border-rule last:border-b-0 text-xs hover:bg-canvas/50 transition-colors"
     >
       <div>
         <p className="text-ink font-semibold text-[12px] m-0">{series.name}</p>
@@ -56,11 +57,16 @@ function SeriesRow({ series, index }: { series: LessonSeriesDto; index: number }
           {series.lessonCount} lesmomenten · reeks #{index + 1}
         </Mono>
       </div>
-      <p className="text-ink-2 m-0">{series.trainerName || "—"}</p>
       <Mono className="text-ink-2 text-[11px]">
         {formatDateRange(series.startDate, series.endDate)}
       </Mono>
-      <OccupancyBar filled={enrolled} capacity={capacity} />
+      {hasCapacity ? (
+        <OccupancyBar filled={enrolled} capacity={capacity} />
+      ) : (
+        <Mono className="text-ink-2 text-[11px]">
+          {enrolled} ingeschreven
+        </Mono>
+      )}
       <Mono className="text-ink font-bold">€{series.price}</Mono>
       <div className="text-right">
         {series.isActive ? (
@@ -134,9 +140,8 @@ export default function LessonsPage() {
       {!isLoading && !isError && series && series.length > 0 && (
         <div className="bg-paper border border-rule rounded-xl overflow-hidden">
           {/* Column header */}
-          <div className="grid grid-cols-[2.2fr_1fr_1.1fr_1.4fr_0.9fr_0.7fr] px-4 py-2.5 text-[10.5px] text-ink-3 font-semibold font-mono uppercase tracking-[0.08em] border-b border-rule bg-[#fbfaf6]">
+          <div className="grid grid-cols-[2.2fr_1.1fr_1.2fr_0.9fr_0.7fr] px-4 py-2.5 text-[10.5px] text-ink-3 font-semibold font-mono uppercase tracking-[0.08em] border-b border-rule bg-[#fbfaf6]">
             <span>Reeks</span>
-            <span>Trainer</span>
             <span>Periode</span>
             <span>Bezetting</span>
             <span>Prijs</span>

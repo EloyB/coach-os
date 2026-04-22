@@ -26,14 +26,14 @@ public class RescheduleService(
         if (hasPending)
             return Result<Guid>.Fail(new Error(ErrorCodes.Conflict, "Er loopt al een ruilverzoek voor deze toewijzing."));
 
-        Guid enrollmentId = assignment.EnrollmentId ?? assignment.EnrollmentGroupId ?? Guid.Empty;
-        if (enrollmentId == Guid.Empty)
+        if (assignment.EnrollmentId is null && assignment.EnrollmentGroupId is null)
             return Result<Guid>.Fail(new Error(ErrorCodes.Validation, "Toewijzing heeft geen gekoppelde inschrijving."));
 
         RescheduleRequest reschedule = new()
         {
             OrganizationId = organizationId,
-            EnrollmentId = enrollmentId,
+            EnrollmentId = assignment.EnrollmentId,
+            EnrollmentGroupId = assignment.EnrollmentGroupId,
             ScheduleAssignmentId = assignmentId,
             AlternativeWeeklyTemplateEntryId = request.AlternativeWeeklyTemplateEntryId,
             Reason = request.Reason,
@@ -57,9 +57,9 @@ public class RescheduleService(
             return new RescheduleRequestDto
             {
                 Id = r.Id,
-                EnrollmentId = r.EnrollmentId,
-                StudentName = r.Enrollment.StudentName,
-                StudentEmail = r.Enrollment.StudentEmail,
+                EnrollmentId = r.EnrollmentId ?? r.EnrollmentGroupId ?? Guid.Empty,
+                StudentName = r.Enrollment?.StudentName ?? "Groep",
+                StudentEmail = r.Enrollment?.StudentEmail ?? string.Empty,
                 ScheduleAssignmentId = r.ScheduleAssignmentId,
                 CurrentSlotDay = entry is not null ? DayNames[(int)entry.DayOfWeek] : string.Empty,
                 CurrentSlotTime = entry is not null ? entry.StartTime.ToString("HH:mm") : string.Empty,

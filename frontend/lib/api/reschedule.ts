@@ -1,23 +1,30 @@
 import apiClient from "@/lib/api-client";
 
 export interface CreateRescheduleRequest {
-  reason?: string;
+  alternativeWeeklyTemplateEntryId?: string;
+  reason: string;
 }
 
 export interface RescheduleRequestDto {
   id: string;
-  assignmentId: string;
+  enrollmentId: string;
   studentName: string;
-  seriesName: string;
-  currentSlot: string;
+  studentEmail: string;
+  scheduleAssignmentId: string;
+  currentSlotDay: string;
+  currentSlotTime: string;
+  alternativeWeeklyTemplateEntryId?: string;
+  alternativeSlotDay?: string;
+  alternativeSlotTime?: string;
   reason: string;
   status: string;
   createdAt: string;
+  resolvedAt?: string;
 }
 
 export interface ResolveRescheduleRequest {
-  status: string;
-  newSlotId?: string;
+  state: string;
+  note?: string;
 }
 
 export async function createRescheduleRequest(

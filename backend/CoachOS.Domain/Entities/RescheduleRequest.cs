@@ -6,7 +6,11 @@ namespace CoachOS.Domain.Entities;
 public class RescheduleRequest : BaseEntity
 {
     public Guid OrganizationId { get; set; }
-    public Guid EnrollmentId { get; set; }
+
+    /// <summary>Precies één van EnrollmentId of EnrollmentGroupId is ingevuld.</summary>
+    public Guid? EnrollmentId { get; set; }
+    public Guid? EnrollmentGroupId { get; set; }
+
     public Guid ScheduleAssignmentId { get; set; }
     public Guid? AlternativeWeeklyTemplateEntryId { get; set; }
     public string Reason { get; set; } = string.Empty;
@@ -17,7 +21,8 @@ public class RescheduleRequest : BaseEntity
 
     // Navigation properties
     public Organization Organization { get; set; } = null!;
-    public Enrollment Enrollment { get; set; } = null!;
+    public Enrollment? Enrollment { get; set; }
+    public EnrollmentGroup? EnrollmentGroup { get; set; }
     public ScheduleAssignment ScheduleAssignment { get; set; } = null!;
     public WeeklyTemplateEntry? AlternativeWeeklyTemplateEntry { get; set; }
 }

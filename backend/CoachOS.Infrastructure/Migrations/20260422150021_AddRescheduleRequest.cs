@@ -17,7 +17,8 @@ namespace CoachOS.Infrastructure.Migrations
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     OrganizationId = table.Column<Guid>(type: "uuid", nullable: false),
-                    EnrollmentId = table.Column<Guid>(type: "uuid", nullable: false),
+                    EnrollmentId = table.Column<Guid>(type: "uuid", nullable: true),
+                    EnrollmentGroupId = table.Column<Guid>(type: "uuid", nullable: true),
                     ScheduleAssignmentId = table.Column<Guid>(type: "uuid", nullable: false),
                     AlternativeWeeklyTemplateEntryId = table.Column<Guid>(type: "uuid", nullable: true),
                     Reason = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: false),
@@ -31,6 +32,12 @@ namespace CoachOS.Infrastructure.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_RescheduleRequests", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_RescheduleRequests_EnrollmentGroups_EnrollmentGroupId",
+                        column: x => x.EnrollmentGroupId,
+                        principalTable: "EnrollmentGroups",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_RescheduleRequests_Enrollments_EnrollmentId",
                         column: x => x.EnrollmentId,
@@ -61,6 +68,11 @@ namespace CoachOS.Infrastructure.Migrations
                 name: "IX_RescheduleRequests_AlternativeWeeklyTemplateEntryId",
                 table: "RescheduleRequests",
                 column: "AlternativeWeeklyTemplateEntryId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_RescheduleRequests_EnrollmentGroupId",
+                table: "RescheduleRequests",
+                column: "EnrollmentGroupId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_RescheduleRequests_EnrollmentId",

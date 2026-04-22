@@ -87,7 +87,7 @@ export default function DashboardPage() {
 
   const statItems = [
     {
-      value: String(summary?.lessonsThisWeekCount ?? 0),
+      value: String(summary?.lessonsTodayCount ?? 0),
       label: t("statLessonsToday"),
       color: "text-tennis-lime",
     },

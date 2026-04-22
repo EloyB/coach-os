@@ -228,15 +228,15 @@ public class LessonSerieService(
         if (series is null)
             return Result<LessonDto>.Fail(new Error(ErrorCodes.NotFound, "Lesreeks niet gevonden."));
 
-        // Trainer validation
+        // Trainer: validate if assigning, allow null to unassign
         if (request.TrainerId.HasValue)
         {
             bool isValid = await userLookup.IsActiveTrainerAsync(request.TrainerId.Value, organizationId, ct);
             if (!isValid)
                 return Result<LessonDto>.Fail(
                     new Error(ErrorCodes.Validation, "Deze trainer behoort niet tot deze organisatie."));
-            lesson.TrainerId = request.TrainerId.Value;
         }
+        lesson.TrainerId = request.TrainerId;
 
         if (request.Date is not null)
         {
