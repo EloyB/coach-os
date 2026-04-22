@@ -5,7 +5,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import axios from "axios";
 import {
   GraduationCap,
   Plus,
@@ -24,6 +23,7 @@ import {
   removeTrainer,
   TrainerDto,
 } from "@/lib/api/trainers";
+import { getAxiosErrorMessages } from "@/lib/utils/api-errors";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -290,12 +290,9 @@ function InviteForm({ onClose }: { onClose: () => void }) {
       setSuccessEmail(vars.email);
     },
     onError: (err) => {
-      if (axios.isAxiosError(err) && err.response?.data) {
-        const d = err.response.data;
-        setApiErrors(Array.isArray(d) ? d : [String(d)]);
-      } else {
-        setApiErrors(["Er ging iets mis. Probeer het opnieuw."]);
-      }
+      setApiErrors(
+        getAxiosErrorMessages(err, "Er ging iets mis. Probeer het opnieuw.")
+      );
     },
   });
 

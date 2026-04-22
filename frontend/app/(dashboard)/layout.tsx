@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { DashboardSidebar } from "@/components/layouts/dashboard-sidebar";
 import { MobileBottomNav } from "@/components/layouts/dashboard-bottom-nav";
 import { OrgSwitcher } from "@/components/layouts/org-switcher";
-import { getAuthUser, isAuthenticated, type AuthUser } from "@/lib/auth";
+import { clearAuth, getAuthUser, isAuthenticated, type AuthUser } from "@/lib/auth";
 
 const ROLE_LABELS: Record<string, string> = {
   Admin: "Beheerder",
@@ -24,6 +24,7 @@ export default function DashboardLayout({
 
   useEffect(() => {
     if (!isAuthenticated()) {
+      clearAuth();
       router.replace("/login");
     } else {
       setUser(getAuthUser());

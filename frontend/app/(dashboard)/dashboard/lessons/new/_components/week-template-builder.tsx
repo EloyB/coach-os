@@ -5,6 +5,7 @@ import { Plus, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { LESSON_LEVELS } from "@/lib/api/lessonSeries";
 import type { TrainerDto } from "@/lib/api/trainers";
+import { formatDateShort } from "@/lib/date-utils";
 import type { WizardSlot } from "../_types";
 import { SlotDialog } from "./slot-dialog";
 
@@ -90,11 +91,6 @@ function SlotCard({
   );
 }
 
-function formatDate(isoDate: string): string {
-  const d = new Date(isoDate + "T00:00:00");
-  return d.toLocaleDateString("nl-BE", { day: "numeric", month: "short" });
-}
-
 interface WeekTemplateBuilderProps {
   slots: WizardSlot[];
   onChange: (slots: WizardSlot[]) => void;
@@ -155,7 +151,7 @@ export function WeekTemplateBuilder({
                     {day}
                     {dayDate && (
                       <span className="text-gray-400 font-normal ml-1.5">
-                        {formatDate(dayDate)}
+                        {formatDateShort(dayDate)}
                       </span>
                     )}
                   </span>

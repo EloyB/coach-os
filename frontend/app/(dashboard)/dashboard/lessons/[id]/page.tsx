@@ -66,6 +66,8 @@ import type {
 import { getTennisClubs } from "@/lib/api/tennisClubs";
 import { FieldError } from "@/components/forms/field-error";
 import { inputClass } from "@/lib/styles";
+import { formatDateShort } from "@/lib/date-utils";
+import { enrollmentStatusStyles } from "@/lib/status-styles";
 import { Badge } from "@/components/ui/badge";
 
 // ─── Edit Series Form ─────────────────────────────────────────────────────────
@@ -252,11 +254,6 @@ function toLocalISODate(d: Date): string {
   const month = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
-}
-
-function formatDateShort(isoDate: string): string {
-  const d = new Date(isoDate + "T00:00:00");
-  return d.toLocaleDateString("nl-BE", { day: "numeric", month: "short" });
 }
 
 interface WeekInfo {
@@ -789,24 +786,11 @@ function EnrollmentRow({
           <span className="text-xs text-gray-400">
             {new Date(enrollment.enrolledAt).toLocaleDateString("nl-BE")}
           </span>
-          {enrollment.status === "Confirmed" && (
-            <Badge className="bg-green-100 text-green-700 border-0 text-xs">
-              Bevestigd
-            </Badge>
-          )}
-          {enrollment.status === "Pending" && (
-            <Badge className="bg-amber-100 text-amber-700 border-0 text-xs">
-              In afwachting
-            </Badge>
-          )}
-          {enrollment.status === "Cancelled" && (
-            <Badge className="bg-red-100 text-red-700 border-0 text-xs">
-              Geannuleerd
-            </Badge>
-          )}
-          {enrollment.status === "Waitlisted" && (
-            <Badge className="bg-blue-100 text-blue-700 border-0 text-xs">
-              Wachtlijst
+          {enrollmentStatusStyles[enrollment.status] && (
+            <Badge
+              className={`${enrollmentStatusStyles[enrollment.status].className} border-0 text-xs`}
+            >
+              {enrollmentStatusStyles[enrollment.status].label}
             </Badge>
           )}
           {hasResponses &&

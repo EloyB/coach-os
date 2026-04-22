@@ -368,85 +368,87 @@ export default function PlanningPage({
             </span>
           )}
         </div>
-        <div className="flex items-center gap-3">
-          <Link
-            href={`/dashboard/lessons/${id}`}
-            className="inline-flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
-          >
-            {t("goBack")}
-          </Link>
+        {planning.planningStatus !== "Scheduled" && (
+          <div className="flex items-center gap-3">
+            <Link
+              href={`/dashboard/lessons/${id}`}
+              className="inline-flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
+            >
+              {t("goBack")}
+            </Link>
 
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <button
-                type="button"
-                disabled={generateMutation.isPending}
-                className="inline-flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition disabled:opacity-50"
-              >
-                <RefreshCw
-                  size={16}
-                  className={generateMutation.isPending ? "animate-spin" : ""}
-                />
-                {generateMutation.isPending ? t("generating") : t("regenerate")}
-              </button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>{t("regenerateConfirmTitle")}</AlertDialogTitle>
-                <AlertDialogDescription>
-                  {t("regenerateKeepOrOverwrite")}
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-                <AlertDialogCancel>Annuleren</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={() => generateMutation.mutate(false)}
-                  className="bg-tennis-green hover:bg-tennis-green/90"
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <button
+                  type="button"
+                  disabled={generateMutation.isPending}
+                  className="inline-flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition disabled:opacity-50"
                 >
-                  <Lock size={14} className="mr-1.5" />
-                  {t("regenerateKeep")}
-                </AlertDialogAction>
-                <AlertDialogAction
-                  onClick={() => generateMutation.mutate(true)}
-                  className="bg-amber-600 hover:bg-amber-700"
-                >
-                  <RefreshCw size={14} className="mr-1.5" />
-                  {t("regenerateOverwrite")}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+                  <RefreshCw
+                    size={16}
+                    className={generateMutation.isPending ? "animate-spin" : ""}
+                  />
+                  {generateMutation.isPending ? t("generating") : t("regenerate")}
+                </button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>{t("regenerateConfirmTitle")}</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {t("regenerateKeepOrOverwrite")}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+                  <AlertDialogCancel>Annuleren</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => generateMutation.mutate(false)}
+                    className="bg-tennis-green hover:bg-tennis-green/90"
+                  >
+                    <Lock size={14} className="mr-1.5" />
+                    {t("regenerateKeep")}
+                  </AlertDialogAction>
+                  <AlertDialogAction
+                    onClick={() => generateMutation.mutate(true)}
+                    className="bg-amber-600 hover:bg-amber-700"
+                  >
+                    <RefreshCw size={14} className="mr-1.5" />
+                    {t("regenerateOverwrite")}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
 
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <button
-                type="button"
-                disabled={confirmMutation.isPending || totalUnassigned > 0}
-                className="inline-flex items-center gap-2 bg-tennis-green text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-tennis-green/90 transition disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Check size={16} />
-                {confirmMutation.isPending ? t("confirming") : t("confirm")}
-              </button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>{t("confirmTitle")}</AlertDialogTitle>
-                <AlertDialogDescription>
-                  {t("confirmDesc")}
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Annuleren</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={() => confirmMutation.mutate()}
-                  className="bg-tennis-green hover:bg-tennis-green/90"
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <button
+                  type="button"
+                  disabled={confirmMutation.isPending || totalUnassigned > 0}
+                  className="inline-flex items-center gap-2 bg-tennis-green text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-tennis-green/90 transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {t("confirmButton")}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </div>
+                  <Check size={16} />
+                  {confirmMutation.isPending ? t("confirming") : t("confirm")}
+                </button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>{t("confirmTitle")}</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {t("confirmDesc")}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Annuleren</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => confirmMutation.mutate()}
+                    className="bg-tennis-green hover:bg-tennis-green/90"
+                  >
+                    {t("confirmButton")}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        )}
       </div>
 
       {/* Legend bar */}

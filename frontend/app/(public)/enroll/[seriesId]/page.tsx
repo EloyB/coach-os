@@ -34,6 +34,8 @@ import { getAuthUser } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { TennisBallIcon } from "@/components/ui/tennis-ball-icon";
+import { Spinner } from "@/components/ui/spinner";
+import { formatDateNL } from "@/lib/date-utils";
 import Link from "next/link";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -59,36 +61,6 @@ const DAY_NAMES = [
 type GroupMember = { name: string; email: string };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function Spinner() {
-  return (
-    <svg
-      className="animate-spin h-4 w-4"
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-    >
-      <circle
-        className="opacity-25"
-        cx="12"
-        cy="12"
-        r="10"
-        stroke="currentColor"
-        strokeWidth="4"
-      />
-      <path
-        className="opacity-75"
-        fill="currentColor"
-        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-      />
-    </svg>
-  );
-}
-
-function formatDate(dateStr: string): string {
-  const [year, month, day] = dateStr.split("-");
-  return `${day}/${month}/${year}`;
-}
 
 function inputClass(hasError: boolean) {
   return `w-full border rounded-lg px-3 py-2 text-sm outline-none transition-colors focus:ring-2 focus:ring-tennis-green/20 ${
@@ -485,7 +457,7 @@ export default function EnrollPage() {
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <CalendarDays className="w-4 h-4 text-gray-400 shrink-0" />
               <span>
-                {formatDate(series.startDate)} – {formatDate(series.endDate)}
+                {formatDateNL(series.startDate)} – {formatDateNL(series.endDate)}
               </span>
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-600">

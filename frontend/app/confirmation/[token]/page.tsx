@@ -23,6 +23,7 @@ import type {
   AvailableSlotDto,
 } from "@/lib/api/confirmation";
 import { TennisBallIcon } from "@/components/ui/tennis-ball-icon";
+import { Spinner } from "@/components/ui/spinner";
 
 // dayOfWeek: 0=Sunday..6=Saturday
 const DAY_NAMES = [
@@ -34,15 +35,6 @@ const DAY_NAMES = [
   "Vrijdag",
   "Zaterdag",
 ];
-
-function Spinner() {
-  return (
-    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
-      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-    </svg>
-  );
-}
 
 export default function ConfirmationPage({
   params,
@@ -151,7 +143,7 @@ export default function ConfirmationPage({
     return (
       <Shell>
         <div className="flex flex-col items-center py-16">
-          <Spinner />
+          <Spinner className="h-5 w-5" />
           <p className="text-sm text-gray-500 mt-3">{t("loading")}</p>
         </div>
       </Shell>
@@ -278,7 +270,7 @@ export default function ConfirmationPage({
             onClick={handlePickAlternative}
             className="w-full bg-tennis-green text-white py-3 rounded-lg font-medium hover:bg-tennis-green/90 transition text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            {submitting ? <Spinner /> : <ArrowRight size={16} />}
+            {submitting ? <Spinner className="h-5 w-5" /> : <ArrowRight size={16} />}
             {submitting ? t("picking") : t("pickSlot")}
           </button>
         </div>
@@ -388,7 +380,7 @@ export default function ConfirmationPage({
               disabled={submitting}
               className="flex-1 border border-gray-300 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-50 transition text-sm disabled:opacity-50"
             >
-              {submitting ? <Spinner /> : t("decline")}
+              {submitting ? <Spinner className="h-5 w-5" /> : t("decline")}
             </button>
           </div>
         )}
@@ -400,7 +392,7 @@ export default function ConfirmationPage({
             disabled={submitting}
             className="w-full bg-tennis-green text-white py-3 rounded-lg font-medium hover:bg-tennis-green/90 transition text-sm disabled:opacity-50 flex items-center justify-center gap-2"
           >
-            {submitting && <Spinner />}
+            {submitting && <Spinner className="h-5 w-5" />}
             {submitting ? t("confirming") : t("confirmSlot")}
           </button>
         )}

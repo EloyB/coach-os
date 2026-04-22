@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { ChevronLeft, Pencil } from "lucide-react";
 import { createLessonSeriesWizard } from "@/lib/api/lessonSeries";
 import { getTrainers } from "@/lib/api/trainers";
+import { formatDateShort } from "@/lib/date-utils";
 import { toLocalISODate, type Step1Data, type WizardSlot, type WeekOverride } from "../_types";
 import { EditWeekDialog } from "./edit-week-dialog";
 
@@ -53,11 +54,6 @@ function computeWeeks(startDate: string, endDate: string): WeekInfo[] {
   }
 
   return weeks;
-}
-
-function formatDate(isoDate: string): string {
-  const d = new Date(isoDate + "T00:00:00");
-  return d.toLocaleDateString("nl-BE", { day: "numeric", month: "short" });
 }
 
 const DAY_NAMES_SHORT = ["Ma", "Di", "Wo", "Do", "Vr", "Za", "Zo"];
@@ -199,7 +195,7 @@ export function Step3Validation({
                   {t("weekLabel")} {week.index + 1}
                 </span>
                 <span className="text-xs text-gray-400">
-                  {formatDate(week.startDate)} – {formatDate(week.endDate)}
+                  {formatDateShort(week.startDate)} – {formatDateShort(week.endDate)}
                 </span>
                 {hasOverride && (
                   <span className="inline-flex items-center px-1.5 py-0.5 bg-amber-50 text-amber-600 text-[10px] font-medium rounded">
@@ -249,7 +245,7 @@ export function Step3Validation({
                             isInRange ? "text-gray-400" : "text-gray-200"
                           }`}
                         >
-                          {formatDate(dayDate)}
+                          {formatDateShort(dayDate)}
                         </p>
                       </div>
 

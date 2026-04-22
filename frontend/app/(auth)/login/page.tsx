@@ -7,10 +7,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import * as z from "zod";
-import axios from "axios";
 
 import { login } from "@/lib/api/auth";
 import { setToken, setAuthUser } from "@/lib/auth";
+import { getAxiosErrorMessages } from "@/lib/utils/api-errors";
 import { CourtPattern } from "@/components/ui/court-pattern";
 import { TennisBallIcon } from "@/components/ui/tennis-ball-icon";
 import {
@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 
 const loginSchema = z.object({
   email: z.email(),
@@ -30,31 +31,6 @@ const loginSchema = z.object({
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
-
-function Spinner() {
-  return (
-    <svg
-      className="animate-spin h-4 w-4"
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-    >
-      <circle
-        className="opacity-25"
-        cx="12"
-        cy="12"
-        r="10"
-        stroke="currentColor"
-        strokeWidth="4"
-      />
-      <path
-        className="opacity-75"
-        fill="currentColor"
-        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-      />
-    </svg>
-  );
-}
 
 function LoginForm() {
   const t = useTranslations("auth");
@@ -90,18 +66,7 @@ function LoginForm() {
         router.push("/dashboard");
       }
     } catch (error) {
-      if (axios.isAxiosError(error) && error.response?.data) {
-        const data = error.response.data;
-        if (Array.isArray(data)) {
-          setErrors(data);
-        } else if (typeof data === "string") {
-          setErrors([data]);
-        } else {
-          setErrors([t("loginError")]);
-        }
-      } else {
-        setErrors([t("loginError")]);
-      }
+      setErrors(getAxiosErrorMessages(error, t("loginError")));
     } finally {
       setIsLoading(false);
     }

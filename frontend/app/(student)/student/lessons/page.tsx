@@ -6,16 +6,15 @@ import { useTranslations } from "next-intl";
 
 import { getMyLessons, type StudentLesson } from "@/lib/api/student";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  assignmentStatusStyles,
+  assignmentStatusFallback,
+} from "@/lib/status-styles";
 
 const DAYS_NL = ["zondag", "maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag"];
 
 function StatusBadge({ status }: { status: string }) {
-  const styles: Record<string, string> = {
-    Confirmed: "bg-tennis-lime/20 text-tennis-green",
-    AwaitingConfirmation: "bg-amber-100 text-amber-800",
-    Proposed: "bg-blue-100 text-blue-800",
-  };
-  const cls = styles[status] ?? "bg-gray-100 text-gray-700";
+  const cls = assignmentStatusStyles[status] ?? assignmentStatusFallback;
   return (
     <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold ${cls}`}>
       {status}

@@ -9,13 +9,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { TrainerDto } from "@/lib/api/trainers";
+import { formatDateShort } from "@/lib/date-utils";
 import { toLocalISODate, type WizardSlot } from "../_types";
 import { WeekTemplateBuilder } from "./week-template-builder";
-
-function formatDate(isoDate: string): string {
-  const d = new Date(isoDate + "T00:00:00");
-  return d.toLocaleDateString("nl-BE", { day: "numeric", month: "short" });
-}
 
 interface EditWeekDialogProps {
   weekIndex: number;
@@ -62,7 +58,7 @@ export function EditWeekDialog({
         <DialogHeader>
           <DialogTitle>
             {t("adjustWeekDialogTitle")} — {t("weekLabel")} {weekIndex + 1} (
-            {formatDate(weekStartDate)} – {formatDate(weekEndDate)})
+            {formatDateShort(weekStartDate)} – {formatDateShort(weekEndDate)})
           </DialogTitle>
         </DialogHeader>
 

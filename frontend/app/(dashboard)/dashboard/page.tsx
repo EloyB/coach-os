@@ -15,11 +15,7 @@ import {
 import { TennisBallEmptyIcon } from "@/components/ui/tennis-ball-icon";
 import { WelcomeHeader } from "@/components/dashboard/welcome-header";
 import { getDashboardSummary } from "@/lib/api/dashboard";
-
-function formatDate(dateStr: string): string {
-  const [year, month, day] = dateStr.split("-");
-  return `${day}/${month}/${year}`;
-}
+import { formatDateNL } from "@/lib/date-utils";
 
 function StatSkeleton() {
   return (
@@ -166,7 +162,7 @@ export default function DashboardPage() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-medium text-gray-700">{formatDate(lesson.date)}</p>
+                    <p className="text-sm font-medium text-gray-700">{formatDateNL(lesson.date)}</p>
                     <p className="text-xs text-gray-400 flex items-center gap-1 justify-end">
                       <Clock size={10} />
                       {lesson.startTime} – {lesson.endTime}
