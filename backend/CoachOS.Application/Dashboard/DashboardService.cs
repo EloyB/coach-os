@@ -107,8 +107,8 @@ public class DashboardService(
             items.Add(new InboxItemDto
             {
                 Type = "confirmation_pending",
-                RefType = "Student",
-                RefId = token.EnrollmentId,
+                RefType = "Series",
+                RefId = token.ScheduleAssignment?.LessonSerieId ?? token.EnrollmentId,
                 Title = studentName,
                 Body = "heeft nog niet bevestigd",
                 Meta = meta,

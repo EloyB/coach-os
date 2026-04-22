@@ -313,7 +313,7 @@ export function CalendarGrid({
                       key={slot.id}
                       data-slot-id={slot.id}
                       className={`absolute border-l-[3px] rounded-r-md px-1.5 py-1 transition-all group z-10 ${
-                        readOnly ? "cursor-default" : "cursor-grab"
+                        onSlotClick ? "cursor-pointer hover:brightness-95 hover:shadow-md" : readOnly ? "cursor-default" : "cursor-grab"
                       }`}
                       style={{
                         top: pos.top,

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { Plus, Clock, Calendar } from "lucide-react";
@@ -13,7 +14,7 @@ import {
   getDashboardInbox,
   getDashboardMetrics,
 } from "@/lib/api/dashboard";
-import type { InboxItemDto } from "@/lib/api/dashboard";
+import type { InboxItemDto, InboxResponse } from "@/lib/api/dashboard";
 import { useTranslations } from "next-intl";
 
 function formatDate(dateStr: string): string {
@@ -64,6 +65,57 @@ function InboxItem({ item }: { item: InboxItemDto }) {
       >
         {t("inboxResolve")}
       </Link>
+    </div>
+  );
+}
+
+const INBOX_COLLAPSED_COUNT = 3;
+
+function InboxSection({ inbox }: { inbox: InboxResponse | undefined }) {
+  const t = useTranslations("dashboard");
+  const [expanded, setExpanded] = useState(false);
+
+  const items = inbox?.items ?? [];
+  const hasItems = items.length > 0;
+  const hasMore = items.length > INBOX_COLLAPSED_COUNT;
+  const visibleItems = expanded ? items : items.slice(0, INBOX_COLLAPSED_COUNT);
+
+  return (
+    <div className="bg-paper border border-rule rounded-xl p-[18px] mb-[18px]">
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <SlashLabel>{t("priorityLabel")}</SlashLabel>
+          <p className="text-sm font-bold text-ink mt-0.5">
+            {hasItems
+              ? `${items.length} dingen om nu aan te pakken`
+              : t("priorityEmpty")}
+          </p>
+        </div>
+      </div>
+      {hasItems ? (
+        <>
+          <div className="space-y-2">
+            {visibleItems.map((item, idx) => (
+              <InboxItem key={`${item.refType}-${item.refId}-${idx}`} item={item} />
+            ))}
+          </div>
+          {hasMore && (
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              className="mt-2.5 text-[11px] text-ink-3 font-medium hover:text-ink transition-colors cursor-pointer"
+            >
+              {expanded
+                ? "Minder tonen"
+                : `+ ${items.length - INBOX_COLLAPSED_COUNT} meer tonen`}
+            </button>
+          )}
+        </>
+      ) : (
+        <div className="text-[12.5px] text-ink-3 text-center py-4 border border-dashed border-rule rounded-lg">
+          {t("priorityEmptyDesc")}
+        </div>
+      )}
     </div>
   );
 }
@@ -146,29 +198,7 @@ export default function DashboardPage() {
       )}
 
       {/* Priority row — inbox items */}
-      <div className="bg-paper border border-rule rounded-xl p-[18px] mb-[18px]">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <SlashLabel>{t("priorityLabel")}</SlashLabel>
-            <p className="text-sm font-bold text-ink mt-0.5">
-              {hasInboxItems
-                ? `${inbox.items.length} dingen om nu aan te pakken`
-                : t("priorityEmpty")}
-            </p>
-          </div>
-        </div>
-        {hasInboxItems ? (
-          <div className="space-y-2">
-            {inbox.items.map((item, idx) => (
-              <InboxItem key={`${item.refType}-${item.refId}-${idx}`} item={item} />
-            ))}
-          </div>
-        ) : (
-          <div className="text-[12.5px] text-ink-3 text-center py-4 border border-dashed border-rule rounded-lg">
-            {t("priorityEmptyDesc")}
-          </div>
-        )}
-      </div>
+      <InboxSection inbox={inbox} />
 
       {/* Two-column: today schedule + sparklines */}
       <div className="grid grid-cols-1 xl:grid-cols-[1.6fr_1fr] gap-[18px]">
