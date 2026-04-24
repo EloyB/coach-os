@@ -44,6 +44,20 @@ public class AssignmentConfirmationTokenRepository(ApplicationDbContext context)
             .ToListAsync(ct);
     }
 
+    public async Task<List<AssignmentConfirmationToken>> GetPendingByOrganizationAsync(
+        Guid organizationId, CancellationToken ct = default)
+    {
+        return await context.AssignmentConfirmationTokens
+            .AsNoTracking()
+            .Include(t => t.Enrollment)
+            .Include(t => t.ScheduleAssignment)
+                .ThenInclude(a => a.LessonSerie)
+            .Where(t => t.OrganizationId == organizationId
+                && t.Response == ConfirmationResponse.Pending)
+            .OrderBy(t => t.ExpiresAt)
+            .ToListAsync(ct);
+    }
+
     public async Task AddRangeAsync(
         IEnumerable<AssignmentConfirmationToken> tokens, CancellationToken ct = default)
     {

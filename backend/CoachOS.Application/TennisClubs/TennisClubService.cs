@@ -40,6 +40,25 @@ public class TennisClubService(
         return Result<Guid>.Ok(club.Id);
     }
 
+    public async Task<Result<TennisClubDto>> UpdateAsync(
+        Guid id, Guid organizationId, UpdateTennisClubRequest request, CancellationToken ct = default)
+    {
+        TennisClub? club = await tennisClubRepo.GetByIdAsync(id, organizationId, ct);
+
+        if (club is null)
+            return Result<TennisClubDto>.Fail(new Error(ErrorCodes.NotFound, "Tennisclub niet gevonden."));
+
+        if (request.Name is not null)
+            club.Name = request.Name;
+
+        if (request.Address is not null)
+            club.Address = request.Address;
+
+        await tennisClubRepo.SaveChangesAsync(ct);
+
+        return Result<TennisClubDto>.Ok(mapper.ToTennisClubDto(club));
+    }
+
     public async Task<Result> DeleteAsync(
         Guid id, Guid organizationId, CancellationToken ct = default)
     {

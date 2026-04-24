@@ -1,7 +1,12 @@
-export function CourtLines() {
+interface CourtLinesProps {
+  opacity?: number;
+}
+
+export function CourtLines({ opacity = 0.07 }: CourtLinesProps) {
   return (
     <svg
-      className="absolute inset-0 w-full h-full opacity-[0.07]"
+      className="absolute inset-0 w-full h-full"
+      style={{ opacity }}
       viewBox="0 0 240 800"
       fill="none"
       preserveAspectRatio="xMidYMid slice"

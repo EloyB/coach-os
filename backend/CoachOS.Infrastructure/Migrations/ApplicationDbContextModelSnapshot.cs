@@ -592,6 +592,66 @@ namespace CoachOS.Infrastructure.Migrations
                     b.ToTable("Payments");
                 });
 
+            modelBuilder.Entity("CoachOS.Domain.Entities.RescheduleRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("AlternativeWeeklyTemplateEntryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("EnrollmentGroupId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("EnrollmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTime?>("ResolvedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ResolvedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ResolverNote")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<Guid>("ScheduleAssignmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AlternativeWeeklyTemplateEntryId");
+
+                    b.HasIndex("EnrollmentGroupId");
+
+                    b.HasIndex("EnrollmentId");
+
+                    b.HasIndex("OrganizationId");
+
+                    b.HasIndex("ScheduleAssignmentId");
+
+                    b.ToTable("RescheduleRequests");
+                });
+
             modelBuilder.Entity("CoachOS.Domain.Entities.ScheduleAssignment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1220,6 +1280,46 @@ namespace CoachOS.Infrastructure.Migrations
                     b.Navigation("Enrollment");
 
                     b.Navigation("Organization");
+                });
+
+            modelBuilder.Entity("CoachOS.Domain.Entities.RescheduleRequest", b =>
+                {
+                    b.HasOne("CoachOS.Domain.Entities.WeeklyTemplateEntry", "AlternativeWeeklyTemplateEntry")
+                        .WithMany()
+                        .HasForeignKey("AlternativeWeeklyTemplateEntryId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("CoachOS.Domain.Entities.EnrollmentGroup", "EnrollmentGroup")
+                        .WithMany()
+                        .HasForeignKey("EnrollmentGroupId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("CoachOS.Domain.Entities.Enrollment", "Enrollment")
+                        .WithMany()
+                        .HasForeignKey("EnrollmentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("CoachOS.Domain.Entities.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CoachOS.Domain.Entities.ScheduleAssignment", "ScheduleAssignment")
+                        .WithMany()
+                        .HasForeignKey("ScheduleAssignmentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("AlternativeWeeklyTemplateEntry");
+
+                    b.Navigation("Enrollment");
+
+                    b.Navigation("EnrollmentGroup");
+
+                    b.Navigation("Organization");
+
+                    b.Navigation("ScheduleAssignment");
                 });
 
             modelBuilder.Entity("CoachOS.Domain.Entities.ScheduleAssignment", b =>

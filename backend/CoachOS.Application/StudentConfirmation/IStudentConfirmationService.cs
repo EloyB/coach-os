@@ -17,4 +17,6 @@ public interface IStudentConfirmationService
 
     Task<Result<ConfirmResultDto>> PickAlternativeAsync(
         string rawToken, PickAlternativeRequest request, CancellationToken ct = default);
+
+    Task<Result<string>> GenerateCalendarAsync(string rawToken, CancellationToken ct = default);
 }

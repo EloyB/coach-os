@@ -31,6 +31,8 @@ export interface LessonSeriesDto {
   tennisClubName: string;
   tennisClubAddress: string;
   lessonCount: number;
+  enrolledCount: number;
+  totalCapacity: number;
   createdAt: string;
   lessons: LessonDto[];
 }
@@ -97,6 +99,22 @@ export async function deleteLessonSeries(id: string): Promise<void> {
 
 export async function createLesson(seriesId: string, request: CreateLessonRequest): Promise<string> {
   const { data } = await apiClient.post<string>(`/lessonseries/${seriesId}/lessons`, request);
+  return data;
+}
+
+export interface UpdateLessonRequest {
+  trainerId?: string | null;
+  date?: string;
+  startTime?: string;
+  endTime?: string;
+  courtName?: string;
+  maxStudents?: number;
+  notes?: string;
+  isCancelled?: boolean;
+}
+
+export async function updateLesson(seriesId: string, lessonId: string, request: UpdateLessonRequest): Promise<LessonDto> {
+  const { data } = await apiClient.patch<LessonDto>(`/lessonseries/${seriesId}/lessons/${lessonId}`, request);
   return data;
 }
 

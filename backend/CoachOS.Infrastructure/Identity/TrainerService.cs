@@ -224,12 +224,93 @@ public class TrainerService(
                 IsActive = u.IsActive,
                 InvitePending = u.InviteToken != null,
                 CreatedAt = u.CreatedAt,
-                LessonCount = context.Lessons
-                    .Count(l => l.TrainerId == u.Id && l.OrganizationId == organizationId)
+                LessonSeriesCount = context.LessonSeries
+                    .Count(ls => ls.Lessons.Any(l => l.TrainerId == u.Id) && ls.OrganizationId == organizationId && ls.IsActive),
+                WeeklyCapacityHours = 16,
             };
 
-        var trainers = await query.ToListAsync(ct);
+        List<TrainerDto> trainers = await query.ToListAsync(ct);
+
+        // Calculate current week hours booked in-memory (TimeOnly arithmetic not supported in EF/Npgsql)
+        DateOnly today = DateOnly.FromDateTime(DateTime.UtcNow);
+        int dayOffset = ((int)today.DayOfWeek + 6) % 7; // Monday=0
+        DateOnly weekStart = today.AddDays(-dayOffset);
+        DateOnly weekEnd = weekStart.AddDays(6);
+
+        List<Guid> trainerIds = trainers.Select(t => t.Id).ToList();
+
+        var weekLessons = await context.Lessons
+            .AsNoTracking()
+            .Where(l => l.OrganizationId == organizationId
+                && l.TrainerId.HasValue
+                && trainerIds.Contains(l.TrainerId.Value)
+                && l.Date >= weekStart && l.Date <= weekEnd
+                && !l.IsCancelled)
+            .Select(l => new { l.TrainerId, l.StartTime, l.EndTime })
+            .ToListAsync(ct);
+
+        Dictionary<Guid, decimal> hoursMap = weekLessons
+            .GroupBy(l => l.TrainerId!.Value)
+            .ToDictionary(
+                g => g.Key,
+                g => g.Sum(l => (decimal)(l.EndTime - l.StartTime).TotalHours));
+
+        foreach (TrainerDto trainer in trainers)
+        {
+            trainer.CurrentWeekHoursBooked = hoursMap.GetValueOrDefault(trainer.Id, 0m);
+        }
+
         return Result<List<TrainerDto>>.Ok(trainers);
+    }
+
+    public async Task<Result> ResendInviteAsync(
+        Guid trainerId,
+        Guid organizationId,
+        string inviteBaseUrl,
+        CancellationToken ct = default)
+    {
+        // Verify membership exists in this org and is a trainer.
+        OrganizationMembership? membership = await context.OrganizationMemberships
+            .FirstOrDefaultAsync(m => m.UserId == trainerId
+                && m.OrganizationId == organizationId
+                && m.Role == UserRole.Trainer, ct);
+
+        if (membership is null)
+            return Result.Fail(new Error(ErrorCodes.NotFound, "Trainer niet gevonden in deze organisatie."));
+
+        ApplicationUser? user = await userManager.FindByIdAsync(trainerId.ToString());
+        if (user is null)
+            return Result.Fail(new Error(ErrorCodes.NotFound, "Gebruiker niet gevonden."));
+
+        // Only allow resend when there is a pending invite (user not yet active, token present).
+        if (user.IsActive || user.InviteToken is null)
+            return Result.Fail(new Error(ErrorCodes.Validation, "Er is geen openstaande uitnodiging voor deze trainer."));
+
+        // Rate limit: block resend if the current token was issued less than 5 minutes ago.
+        // InviteTokenExpiry = issued + 72h, so issued = expiry - 72h.
+        if (user.InviteTokenExpiry.HasValue)
+        {
+            DateTime lastInviteSent = user.InviteTokenExpiry.Value.AddHours(-72);
+            if (DateTime.UtcNow - lastInviteSent < TimeSpan.FromMinutes(5))
+                return Result.Fail(new Error(ErrorCodes.Validation, "Wacht minstens 5 minuten voordat je opnieuw een uitnodiging verstuurt."));
+        }
+
+        // Generate a fresh invite token.
+        string newInviteToken = Guid.NewGuid().ToString("N");
+        string hashedToken = HashToken(newInviteToken);
+
+        user.InviteToken = hashedToken;
+        user.InviteTokenExpiry = DateTime.UtcNow.AddHours(72);
+        user.UpdatedAt = DateTime.UtcNow;
+
+        IdentityResult updateResult = await userManager.UpdateAsync(user);
+        if (!updateResult.Succeeded)
+            return Result.Fail(updateResult.Errors.Select(e => e.Description));
+
+        string inviteUrl = $"{inviteBaseUrl.TrimEnd('/')}/invite/{newInviteToken}";
+        await emailService.SendTrainerInviteAsync(user.Email!, user.FirstName, inviteUrl, ct);
+
+        return Result.Ok();
     }
 
     public async Task<Result> DeactivateAsync(

@@ -7,12 +7,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import * as z from "zod";
+import axios from "axios";
 
 import { login } from "@/lib/api/auth";
 import { setToken, setAuthUser } from "@/lib/auth";
-import { getAxiosErrorMessages } from "@/lib/utils/api-errors";
-import { CourtPattern } from "@/components/ui/court-pattern";
-import { TennisBallIcon } from "@/components/ui/tennis-ball-icon";
+import { CourtLines } from "@/components/ui/court-lines";
+import { Mono } from "@/components/ui/mono";
+import { SlashLabel } from "@/components/ui/slash-label";
 import {
   Form,
   FormControl,
@@ -23,7 +24,6 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/ui/spinner";
 
 const loginSchema = z.object({
   email: z.email(),
@@ -31,6 +31,31 @@ const loginSchema = z.object({
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
+
+function Spinner() {
+  return (
+    <svg
+      className="animate-spin h-4 w-4"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <circle
+        className="opacity-25"
+        cx="12"
+        cy="12"
+        r="10"
+        stroke="currentColor"
+        strokeWidth="4"
+      />
+      <path
+        className="opacity-75"
+        fill="currentColor"
+        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+      />
+    </svg>
+  );
+}
 
 function LoginForm() {
   const t = useTranslations("auth");
@@ -66,86 +91,121 @@ function LoginForm() {
         router.push("/dashboard");
       }
     } catch (error) {
-      setErrors(getAxiosErrorMessages(error, t("loginError")));
+      if (axios.isAxiosError(error) && error.response?.data) {
+        const data = error.response.data;
+        if (Array.isArray(data)) {
+          setErrors(data);
+        } else if (typeof data === "string") {
+          setErrors([data]);
+        } else {
+          setErrors([t("loginError")]);
+        }
+      } else {
+        setErrors([t("loginError")]);
+      }
     } finally {
       setIsLoading(false);
     }
   }
 
-  const features = [t("feature1"), t("feature2"), t("feature3")];
-
   return (
     <div className="min-h-screen flex">
-      {/* Left panel — branding */}
-      <div className="hidden lg:flex lg:w-[52%] bg-tennis-green relative overflow-hidden flex-col justify-between p-14">
-        <CourtPattern />
+      {/* Left panel — ink branding */}
+      <div className="hidden lg:flex lg:w-[44%] bg-ink relative overflow-hidden flex-col justify-between p-10">
+        <CourtLines opacity={0.05} />
 
-        {/* Logo */}
-        <div className="relative z-10">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-tennis-lime flex items-center justify-center">
-              <TennisBallIcon className="w-5 h-5" strokeWidth={2} />
-            </div>
-            <span className="text-white text-2xl font-bold tracking-tight">
-              Coach<span className="text-tennis-lime">OS</span>
-            </span>
+        {/* Subtle green glow */}
+        <div
+          className="absolute -right-[120px] -top-[80px] w-[320px] h-[320px] rounded-full blur-[10px]"
+          style={{ background: "radial-gradient(closest-side, rgba(45,80,22,.55), transparent)" }}
+        />
+
+        {/* Logo + version */}
+        <div className="relative z-10 flex items-center gap-2.5">
+          <div className="w-[30px] h-[30px] rounded-md bg-tennis-lime grid place-items-center">
+            <Mono className="text-ink font-extrabold text-[13px]">c/</Mono>
           </div>
+          <span className="text-white font-bold text-base">CoachOS</span>
+          <Mono className="ml-auto text-[10.5px] text-[#8a8377]">
+            {t("heroVersion")}
+          </Mono>
         </div>
 
         {/* Hero copy */}
         <div className="relative z-10">
-          <p className="text-tennis-lime text-sm font-semibold tracking-widest uppercase mb-6 opacity-80">
-            Tennis &amp; Padel
-          </p>
-          <h1 className="text-[3.25rem] font-extrabold text-white leading-[1.1] mb-6">
-            {t("heroLine1")}
+          <SlashLabel className="text-tennis-lime mb-2.5">
+            {t("heroRelease")}
+          </SlashLabel>
+          <h1 className="text-[34px] font-extrabold text-white leading-[1.05] tracking-tight mb-3">
+            {t("heroHeadline1")}
             <br />
-            <span className="text-tennis-lime">{t("heroLine2")}</span>
-            <br />
-            {t("heroLine3")}
+            {t("heroHeadline2")}{" "}
+            <span className="text-tennis-lime">{t("heroHeadline3")}</span>
           </h1>
-          <p className="text-white/60 text-base max-w-xs leading-relaxed">
+          <p className="text-[13px] text-[#a8a195] max-w-[300px] leading-relaxed">
             {t("tagline")}
           </p>
         </div>
 
-        {/* Feature list */}
-        <div className="relative z-10 space-y-4">
-          {features.map((feature) => (
-            <div key={feature} className="flex items-center gap-3">
-              <div className="w-5 h-5 rounded-full bg-tennis-lime/20 flex items-center justify-center flex-shrink-0">
-                <div className="w-1.5 h-1.5 rounded-full bg-tennis-lime" />
-              </div>
-              <span className="text-white/70 text-sm">{feature}</span>
+        {/* Testimonial */}
+        <div className="relative z-10 p-4 bg-white/[.04] rounded-[10px] border border-white/[.08]">
+          <p className="text-[13px] leading-relaxed text-[#e9e4db] font-medium m-0">
+            &ldquo;{t("testimonialQuote")}&rdquo;
+          </p>
+          <div className="flex items-center gap-2.5 mt-3">
+            <div className="w-6 h-6 rounded-full bg-tennis-lime grid place-items-center">
+              <Mono className="text-ink text-[10px] font-bold">SD</Mono>
             </div>
-          ))}
+            <div>
+              <p className="text-[11px] text-white font-semibold m-0">
+                {t("testimonialName")}
+              </p>
+              <Mono className="text-[10.5px] text-[#8a8377]">
+                {t("testimonialClub")}
+              </Mono>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Right panel — form */}
-      <div className="w-full lg:w-[48%] flex items-center justify-center p-8 bg-[#FAFAF8]">
-        <div className="w-full max-w-[360px]">
+      <div className="w-full lg:w-[56%] flex items-center justify-center p-8 bg-paper">
+        <div className="w-full max-w-[340px]">
           {/* Mobile logo */}
           <div className="flex items-center gap-2 mb-10 lg:hidden">
-            <div className="w-7 h-7 rounded-full bg-tennis-green flex items-center justify-center">
-              <TennisBallIcon className="w-4 h-4" strokeColor="#D0FF14" strokeWidth={2} />
+            <div className="w-7 h-7 rounded-md bg-tennis-green grid place-items-center">
+              <Mono className="text-tennis-lime font-extrabold text-[12px]">c/</Mono>
             </div>
-            <span className="text-tennis-green text-xl font-bold">
-              Coach<span className="text-tennis-lime">OS</span>
-            </span>
+            <span className="text-ink text-xl font-bold">CoachOS</span>
           </div>
 
           {/* Heading */}
-          <div className="mb-8">
-            <h2 className="text-[1.75rem] font-bold text-gray-900 mb-1 tracking-tight">
-              {t("login")}
+          <div className="mb-5">
+            <SlashLabel>/login</SlashLabel>
+            <h2 className="text-2xl font-bold text-ink tracking-tight mt-1 mb-1.5">
+              {t("welcomeBack")}
             </h2>
-            <p className="text-gray-400 text-sm">{t("welcomeBack")}</p>
+            <p className="text-[12.5px] text-ink-3">
+              {t("welcomeBackSub")}
+            </p>
+          </div>
+
+          {/* Role segment */}
+          <div className="flex border border-rule rounded-lg p-[3px] bg-canvas mb-5">
+            <div className="flex-1 py-[7px] text-center bg-white rounded-md text-[11.5px] font-semibold text-ink shadow-[0_1px_2px_rgba(0,0,0,.04)]">
+              {t("roleCoach")}
+            </div>
+            <Link
+              href="/student-login"
+              className="flex-1 py-[7px] text-center text-[11.5px] text-ink-3"
+            >
+              {t("roleStudent")}
+            </Link>
           </div>
 
           {/* Error banner */}
           {errors.length > 0 && (
-            <div className="mb-6 px-4 py-3 rounded-lg bg-red-50 border border-red-100">
+            <div className="mb-5 px-4 py-3 rounded-lg bg-red-50 border border-red-100">
               {errors.map((err, i) => (
                 <p key={i} className="text-red-600 text-sm">
                   {err}
@@ -155,13 +215,13 @@ function LoginForm() {
           )}
 
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3.5">
               <FormField
                 control={form.control}
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-gray-600 text-sm font-medium">
+                    <FormLabel className="font-mono text-[11px] text-ink-2 font-semibold uppercase tracking-[0.06em]">
                       {t("email")}
                     </FormLabel>
                     <FormControl>
@@ -170,7 +230,7 @@ function LoginForm() {
                         type="email"
                         autoComplete="email"
                         placeholder={t("emailPlaceholder")}
-                        className="h-11 bg-white border-gray-200 rounded-lg text-gray-900 placeholder:text-gray-300 focus-visible:ring-1 focus-visible:ring-tennis-green focus-visible:border-tennis-green transition-colors"
+                        className="h-10 bg-white border-rule rounded-lg text-ink text-[12.5px] placeholder:text-[#c5c0b6] focus-visible:ring-1 focus-visible:ring-tennis-green focus-visible:border-tennis-green"
                       />
                     </FormControl>
                     <FormMessage className="text-xs" />
@@ -183,13 +243,13 @@ function LoginForm() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <FormLabel className="text-gray-600 text-sm font-medium mb-0">
+                    <div className="flex items-center justify-between">
+                      <FormLabel className="font-mono text-[11px] text-ink-2 font-semibold uppercase tracking-[0.06em]">
                         {t("password")}
                       </FormLabel>
                       <Link
                         href="/forgot-password"
-                        className="text-xs text-tennis-green hover:underline font-medium"
+                        className="text-[11px] text-tennis-green font-semibold hover:underline"
                       >
                         {t("forgotPassword")}
                       </Link>
@@ -199,7 +259,7 @@ function LoginForm() {
                         {...field}
                         type="password"
                         autoComplete="current-password"
-                        className="h-11 bg-white border-gray-200 rounded-lg text-gray-900 focus-visible:ring-1 focus-visible:ring-tennis-green focus-visible:border-tennis-green transition-colors"
+                        className="h-10 bg-white border-rule rounded-lg text-ink text-[12.5px] focus-visible:ring-1 focus-visible:ring-tennis-green focus-visible:border-tennis-green"
                       />
                     </FormControl>
                     <FormMessage className="text-xs" />
@@ -210,7 +270,7 @@ function LoginForm() {
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="w-full h-11 bg-tennis-green hover:bg-tennis-green/90 text-white font-semibold rounded-lg transition-colors mt-2 cursor-pointer"
+                className="w-full h-[42px] bg-ink hover:bg-ink/90 text-white font-bold text-[13px] rounded-lg cursor-pointer"
               >
                 {isLoading ? (
                   <span className="flex items-center gap-2">
@@ -218,19 +278,36 @@ function LoginForm() {
                     {t("loading")}
                   </span>
                 ) : (
-                  t("loginButton")
+                  <>
+                    {t("loginButton")} →
+                  </>
                 )}
               </Button>
             </form>
           </Form>
 
-          <p className="mt-7 text-center text-sm text-gray-400">
+          {/* Divider */}
+          <div className="flex items-center gap-2.5 my-4">
+            <div className="flex-1 h-px bg-rule" />
+            <Mono className="text-[10.5px] text-ink-3">{t("or")}</Mono>
+            <div className="flex-1 h-px bg-rule" />
+          </div>
+
+          {/* Magic link */}
+          <Button
+            variant="outline"
+            className="w-full h-10 bg-white text-ink text-xs font-semibold border-rule rounded-lg"
+          >
+            {t("magicLink")}
+          </Button>
+
+          <p className="mt-5 text-center text-[11.5px] text-ink-3">
             {t("noAccount")}{" "}
             <Link
               href="/register"
-              className="text-tennis-green font-semibold hover:underline"
+              className="text-ink font-bold border-b border-tennis-lime"
             >
-              {t("register")}
+              {t("noAccountCta")}
             </Link>
           </p>
         </div>

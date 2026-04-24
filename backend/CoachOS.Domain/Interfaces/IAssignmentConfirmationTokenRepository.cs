@@ -10,6 +10,9 @@ public interface IAssignmentConfirmationTokenRepository
     Task<List<AssignmentConfirmationToken>> GetBySeriesAsync(
         Guid lessonSerieId, Guid organizationId, CancellationToken ct = default);
 
+    Task<List<AssignmentConfirmationToken>> GetPendingByOrganizationAsync(
+        Guid organizationId, CancellationToken ct = default);
+
     /// <summary>
     /// No-tracking variant voor read-only paden die moeten lezen nadat
     /// <see cref="TryClaimResponseAsync"/> of <see cref="TryTransitionResponseAsync"/>
