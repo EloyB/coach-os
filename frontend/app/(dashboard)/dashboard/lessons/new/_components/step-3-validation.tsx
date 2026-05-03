@@ -6,7 +6,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { ChevronLeft, Pencil } from "lucide-react";
 import { createLessonSeriesWizard } from "@/lib/api/lessonSeries";
-import { getTrainers } from "@/lib/api/trainers";
+import { getTrainers, isAssignableTrainer } from "@/lib/api/trainers";
 import { formatDateShort } from "@/lib/date-utils";
 import { toLocalISODate, type Step1Data, type WizardSlot, type WeekOverride } from "../_types";
 import { EditWeekDialog } from "./edit-week-dialog";
@@ -83,6 +83,7 @@ export function Step3Validation({
     queryKey: ["trainers"],
     queryFn: getTrainers,
   });
+  const assignableTrainers = trainers.filter(isAssignableTrainer);
 
   const weeks = computeWeeks(step1Data.startDate, step1Data.endDate);
 
@@ -310,7 +311,7 @@ export function Step3Validation({
           weekStartDate={weeks[editingWeekIndex].startDate}
           weekEndDate={weeks[editingWeekIndex].endDate}
           currentSlots={getSlotsForWeek(weeks[editingWeekIndex])}
-          trainers={trainers}
+          trainers={assignableTrainers}
           seriesStartDate={step1Data.startDate}
           seriesEndDate={step1Data.endDate}
           onSave={(slots) => handleWeekSave(editingWeekIndex, slots)}

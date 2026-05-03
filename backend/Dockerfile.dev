@@ -10,8 +10,9 @@ COPY CoachOS.Tests/CoachOS.Tests.csproj CoachOS.Tests/
 RUN dotnet restore CoachOS.slnx
 
 COPY . .
+RUN chmod +x entrypoint.dev.sh
 
 ENV ASPNETCORE_URLS=http://+:5142
 EXPOSE 5142
 
-ENTRYPOINT ["dotnet", "watch", "run", "--project", "CoachOS.API/CoachOS.API.csproj", "--no-launch-profile"]
+ENTRYPOINT ["/src/entrypoint.dev.sh"]

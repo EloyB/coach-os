@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { LESSON_LEVELS } from "@/lib/api/lessonSeries";
-import { getTrainers } from "@/lib/api/trainers";
+import { getTrainers, isAssignableTrainer } from "@/lib/api/trainers";
 import { inputClass } from "@/lib/styles";
 import type { WizardSlot } from "../_types";
 
@@ -39,6 +39,7 @@ export function SlotEditPopover({
     queryKey: ["trainers"],
     queryFn: getTrainers,
   });
+  const assignableTrainers = trainers.filter(isAssignableTrainer);
 
   const [trainerId, setTrainerId] = useState(slot.trainerId ?? "none");
   const [startTime, setStartTime] = useState(slot.startTime);
@@ -129,7 +130,7 @@ export function SlotEditPopover({
               <SelectItem value="none">
                 <span className="text-gray-400">{t("nonePicker")}</span>
               </SelectItem>
-              {trainers.map((tr) => (
+              {assignableTrainers.map((tr) => (
                 <SelectItem key={tr.id} value={tr.id}>
                   {tr.firstName} {tr.lastName}
                 </SelectItem>

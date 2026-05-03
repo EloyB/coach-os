@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { LESSON_LEVELS } from "@/lib/api/lessonSeries";
-import { getTrainers } from "@/lib/api/trainers";
+import { getTrainers, isAssignableTrainer } from "@/lib/api/trainers";
 import { inputClass } from "@/lib/styles";
 import type { WizardSlot } from "../_types";
 import { CalendarWeekView, type SlotDefaults } from "./calendar-week-view";
@@ -35,6 +35,7 @@ export function Step2Planning({
     queryKey: ["trainers"],
     queryFn: getTrainers,
   });
+  const assignableTrainers = trainers.filter(isAssignableTrainer);
 
   const [defaults, setDefaults] = useState<SlotDefaults>({
     trainerId: null,
@@ -113,7 +114,7 @@ export function Step2Planning({
                   <SelectItem value="none">
                     <span className="text-gray-400">{t("nonePicker")}</span>
                   </SelectItem>
-                  {trainers.map((tr) => (
+                  {assignableTrainers.map((tr) => (
                     <SelectItem key={tr.id} value={tr.id}>
                       {tr.firstName} {tr.lastName}
                     </SelectItem>

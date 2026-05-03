@@ -1,21 +1,65 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { LogOut, ChevronRight } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { LogOut, ChevronRight, Check } from "lucide-react";
 import { CourtLines } from "@/components/ui/court-lines";
 import { Mono } from "@/components/ui/mono";
 import { navItems } from "@/lib/nav-items";
-import { getAuthUser, clearAuth, type AuthUser } from "@/lib/auth";
+import { switchOrganization } from "@/lib/api/auth";
+import { getAuthUser, setAuthUser, setToken, clearAuth, type AuthUser } from "@/lib/auth";
 
 export function DashboardSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const tSwitcher = useTranslations("orgSwitcher");
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [switcherOpen, setSwitcherOpen] = useState(false);
+  const [isSwitching, setIsSwitching] = useState(false);
+  const switcherRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setUser(getAuthUser());
   }, []);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (switcherRef.current && !switcherRef.current.contains(event.target as Node)) {
+        setSwitcherOpen(false);
+      }
+    }
+    if (switcherOpen) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [switcherOpen]);
+
+  async function handleSelectOrg(organizationId: string) {
+    if (organizationId === user?.organizationId || isSwitching) {
+      setSwitcherOpen(false);
+      return;
+    }
+    setIsSwitching(true);
+    try {
+      const response = await switchOrganization(organizationId);
+      setToken(response.token);
+      const current = getAuthUser();
+      setAuthUser({
+        userId: response.userId,
+        email: response.email,
+        firstName: response.firstName ?? current?.firstName,
+        lastName: response.lastName ?? current?.lastName,
+        organizationId: response.organizationId,
+        role: response.role,
+        memberships: response.memberships,
+      });
+      setSwitcherOpen(false);
+      router.refresh();
+      window.location.reload();
+    } catch {
+      setIsSwitching(false);
+    }
+  }
 
   const role = user?.role ?? null;
   const visibleItems = navItems.filter(
@@ -30,7 +74,7 @@ export function DashboardSidebar() {
     : "C";
 
   return (
-    <aside className="hidden lg:flex flex-col w-56 bg-tennis-green relative overflow-hidden shrink-0">
+    <aside className="hidden lg:flex flex-col w-56 bg-tennis-green relative shrink-0">
       <CourtLines opacity={0.05} />
 
       {/* Logo + c/ monogram */}
@@ -47,24 +91,80 @@ export function DashboardSidebar() {
         </div>
 
         {/* Club switcher */}
-        {user?.memberships && user.memberships.length > 0 && (
-          <div className="mt-4 px-2.5 py-2 bg-black/[.18] rounded-md flex items-center gap-2">
-            <div className="w-5 h-5 rounded bg-tennis-lime/20 grid place-items-center">
-              <Mono className="text-tennis-lime text-[10px] font-bold">
-                {(user.memberships.find(m => m.organizationId === user.organizationId)?.organizationName ?? "TC")[0].toUpperCase()}
-              </Mono>
+        {user?.memberships && user.memberships.length > 0 && (() => {
+          const activeName =
+            user.memberships.find((m) => m.organizationId === user.organizationId)
+              ?.organizationName ?? "Club";
+          const monogram = (activeName[0] ?? "C").toUpperCase();
+          const canSwitch = user.memberships.length > 1;
+
+          const tileClass =
+            "w-full px-2.5 py-2 bg-black/[.18] rounded-md flex items-center gap-2 text-left";
+          const tileInner = (
+            <>
+              <div className="w-5 h-5 rounded bg-tennis-lime/20 grid place-items-center">
+                <Mono className="text-tennis-lime text-[10px] font-bold">
+                  {monogram}
+                </Mono>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] text-white/50 uppercase tracking-[0.08em] m-0">
+                  Club
+                </p>
+                <p className="text-[11.5px] font-semibold text-white m-0 truncate">
+                  {activeName}
+                </p>
+              </div>
+              <ChevronRight className="w-3 h-3 text-white/50 rotate-90" />
+            </>
+          );
+
+          return (
+            <div ref={switcherRef} className="relative mt-4">
+              {canSwitch ? (
+                <button
+                  type="button"
+                  onClick={() => setSwitcherOpen((v) => !v)}
+                  disabled={isSwitching}
+                  className={`${tileClass} cursor-pointer disabled:opacity-50`}
+                >
+                  {tileInner}
+                </button>
+              ) : (
+                <div className={tileClass}>{tileInner}</div>
+              )}
+
+              {switcherOpen && canSwitch && (
+                <div className="absolute left-full ml-2 top-0 w-64 rounded-lg border border-gray-100 bg-white shadow-lg z-50 overflow-hidden">
+                  <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider border-b border-gray-100">
+                    {tSwitcher("title")}
+                  </div>
+                  <ul className="py-1 max-h-80 overflow-y-auto">
+                    {user.memberships.map((m) => (
+                      <li key={m.organizationId}>
+                        <button
+                          type="button"
+                          onClick={() => handleSelectOrg(m.organizationId)}
+                          className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left hover:bg-gray-50 transition-colors cursor-pointer"
+                        >
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-gray-800 truncate">
+                              {m.organizationName}
+                            </p>
+                            <p className="text-xs text-gray-400">{m.role}</p>
+                          </div>
+                          {m.organizationId === user.organizationId && (
+                            <Check className="w-4 h-4 text-tennis-green shrink-0" />
+                          )}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[10px] text-white/50 uppercase tracking-[0.08em] m-0">
-                Club
-              </p>
-              <p className="text-[11.5px] font-semibold text-white m-0 truncate">
-                {user.memberships.find(m => m.organizationId === user.organizationId)?.organizationName ?? "Club"}
-              </p>
-            </div>
-            <ChevronRight className="w-3 h-3 text-white/50 rotate-90" />
-          </div>
-        )}
+          );
+        })()}
       </div>
 
       {/* Nav */}

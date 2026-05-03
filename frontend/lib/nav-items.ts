@@ -14,24 +14,24 @@ export const navItems = [
     icon: LayoutDashboard,
     exact: true,
   },
-  {
-    label: "Planning",
-    href: "/dashboard/planning",
-    icon: CalendarDays,
-    exact: false,
-  },
+  // {
+  //   label: "Planning",
+  //   href: "/dashboard/planning",
+  //   icon: CalendarDays,
+  //   exact: false,
+  // },
   {
     label: "Lesreeksen",
     href: "/dashboard/lessons",
     icon: BookOpen,
     exact: false,
   },
-  {
-    label: "Leerlingen",
-    href: "/dashboard/students",
-    icon: Users,
-    exact: false,
-  },
+  // {
+  //   label: "Leerlingen",
+  //   href: "/dashboard/students",
+  //   icon: Users,
+  //   exact: false,
+  // },
   {
     label: "Trainers",
     href: "/dashboard/trainers",

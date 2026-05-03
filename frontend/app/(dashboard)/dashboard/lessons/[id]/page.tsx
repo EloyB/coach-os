@@ -255,7 +255,7 @@ import {
   getTrainerColor,
   type CalendarSlot,
 } from "@/components/calendar/calendar-grid";
-import { getTrainers } from "@/lib/api/trainers";
+import { getTrainers, isAssignableTrainer } from "@/lib/api/trainers";
 import type { TrainerDto } from "@/lib/api/trainers";
 
 function toLocalISODate(d: Date): string {
@@ -390,44 +390,93 @@ function EditLessonDialog({
 
         <div className="space-y-3">
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Datum</label>
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              Datum
+            </label>
             <DatePicker value={date} onChange={setDate} />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Starttijd</label>
-              <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inputClass} />
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                Starttijd
+              </label>
+              <input
+                type="time"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+                className={inputClass}
+              />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Eindtijd</label>
-              <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className={inputClass} />
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                Eindtijd
+              </label>
+              <input
+                type="time"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+                className={inputClass}
+              />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Trainer</label>
-            <NativeSelect value={trainerId} onChange={(e) => setTrainerId(e.target.value)} className="w-full">
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              Trainer
+            </label>
+            <NativeSelect
+              value={trainerId}
+              onChange={(e) => setTrainerId(e.target.value)}
+              className="w-full"
+            >
               <option value="">Geen trainer</option>
-              {trainers.map((t) => (
-                <option key={t.id} value={t.id}>{t.firstName} {t.lastName}</option>
-              ))}
+              {trainers
+                .filter((t) => isAssignableTrainer(t) || t.id === trainerId)
+                .map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.firstName} {t.lastName}
+                  </option>
+                ))}
             </NativeSelect>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Baan</label>
-            <input type="text" value={courtName} onChange={(e) => setCourtName(e.target.value)} placeholder="Baan 1" className={inputClass} />
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              Baan
+            </label>
+            <input
+              type="text"
+              value={courtName}
+              onChange={(e) => setCourtName(e.target.value)}
+              placeholder="Baan 1"
+              className={inputClass}
+            />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Max. leerlingen</label>
-            <input type="number" min={1} value={maxStudents} onChange={(e) => setMaxStudents(parseInt(e.target.value) || 1)} className={inputClass} />
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              Max. leerlingen
+            </label>
+            <input
+              type="number"
+              min={1}
+              value={maxStudents}
+              onChange={(e) => setMaxStudents(parseInt(e.target.value) || 1)}
+              className={inputClass}
+            />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Notities</label>
-            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className={inputClass + " resize-none"} />
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              Notities
+            </label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={2}
+              className={inputClass + " resize-none"}
+            />
           </div>
         </div>
 
@@ -508,7 +557,9 @@ function LessonWeekView({
   if (!currentWeek) return null;
 
   // Build trainer name lookup
-  const trainerMap = new Map(trainers.map((t) => [t.id, `${t.firstName} ${t.lastName}`]));
+  const trainerMap = new Map(
+    trainers.map((t) => [t.id, `${t.firstName} ${t.lastName}`]),
+  );
 
   // Convert lessons for the current week into CalendarSlots
   const weekSlots: CalendarSlot[] = lessons
@@ -528,7 +579,7 @@ function LessonWeekView({
 
   // Collect unique trainers used in lessons for the legend
   const usedTrainerIds = new Set(
-    lessons.filter((l) => l.trainerId).map((l) => l.trainerId!)
+    lessons.filter((l) => l.trainerId).map((l) => l.trainerId!),
   );
   const legendTrainers = trainers.filter((t) => usedTrainerIds.has(t.id));
 
@@ -614,7 +665,9 @@ function LessonWeekView({
           onClose={() => setEditingLesson(null)}
           onSaved={() => {
             setEditingLesson(null);
-            queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
+            queryClient.invalidateQueries({
+              queryKey: ["lessonSeries", seriesId],
+            });
           }}
         />
       )}
@@ -622,7 +675,8 @@ function LessonWeekView({
       {/* Trainer legend */}
       {legendTrainers.length > 0 && (
         <div className="flex items-center gap-4 mt-3 px-1 flex-wrap">
-          {usedTrainerIds.has(undefined as unknown as string) || lessons.some((l) => !l.trainerId) ? (
+          {usedTrainerIds.has(undefined as unknown as string) ||
+          lessons.some((l) => !l.trainerId) ? (
             <div className="flex items-center gap-1.5 text-xs text-gray-500">
               <div
                 className="w-3 h-3 rounded-full"
@@ -634,7 +688,10 @@ function LessonWeekView({
           {legendTrainers.map((t) => {
             const color = getTrainerColor(t.id);
             return (
-              <div key={t.id} className="flex items-center gap-1.5 text-xs text-gray-500">
+              <div
+                key={t.id}
+                className="flex items-center gap-1.5 text-xs text-gray-500"
+              >
                 <div
                   className="w-3 h-3 rounded-full"
                   style={{ backgroundColor: color.border }}
@@ -1039,7 +1096,9 @@ function EnrollmentsSection({ seriesId }: { seriesId: string }) {
     setTimeout(() => setCopied(false), 2000);
   }
 
-  const active = enrollments.filter((e) => e.status === "Confirmed" || e.status === "Pending");
+  const active = enrollments.filter(
+    (e) => e.status === "Confirmed" || e.status === "Pending",
+  );
 
   return (
     <div className="bg-white rounded-xl shadow-sm shadow-gray-100 overflow-hidden">
@@ -1201,12 +1260,8 @@ export default function LessonSeriesDetailPage({
                 {!editing && (
                   <div className="flex flex-wrap gap-2">
                     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#F5F4F1] text-xs text-gray-600">
-                      <Euro size={11} className="text-tennis-green" />€
+                      <Euro size={11} className="text-tennis-green" />
                       {series.price}
-                    </span>
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#F5F4F1] text-xs text-gray-600">
-                      <Clock size={11} className="text-tennis-green" />
-                      {series.durationMinutes} min
                     </span>
                     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#F5F4F1] text-xs text-gray-600">
                       <CalendarDays size={11} className="text-tennis-green" />
@@ -1258,7 +1313,8 @@ export default function LessonSeriesDetailPage({
                   description: series.description ?? "",
                   tennisClubId: series.tennisClubId,
                   price: series.price,
-                  registrationDeadline: series.registrationDeadline?.split("T")[0] ?? "",
+                  registrationDeadline:
+                    series.registrationDeadline?.split("T")[0] ?? "",
                   isActive: series.isActive,
                 }}
                 onCancel={() => setEditing(false)}

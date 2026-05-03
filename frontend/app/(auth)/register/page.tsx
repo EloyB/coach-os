@@ -264,6 +264,22 @@ export default function RegisterPage() {
                 )}
               />
 
+              <FormField
+                control={form.control}
+                name="confirmPassword"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-[11px] text-ink-2 font-medium">
+                      {t("confirmPassword")}
+                    </FormLabel>
+                    <FormControl>
+                      <Input {...field} type="password" autoComplete="new-password" className={inputCls} />
+                    </FormControl>
+                    <FormMessage className="text-xs" />
+                  </FormItem>
+                )}
+              />
+
               <Button
                 type="submit"
                 disabled={isLoading}

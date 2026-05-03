@@ -26,10 +26,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Update="Email\Templates\*.mjml">
+    <None Update="Email/Templates/*.mjml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="Email\Templates\*.mjml-partial">
+    <None Update="Email/Templates/*.mjml-partial">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>

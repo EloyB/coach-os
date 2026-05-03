@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DashboardSidebar } from "@/components/layouts/dashboard-sidebar";
 import { MobileBottomNav } from "@/components/layouts/dashboard-bottom-nav";
-import { OrgSwitcher } from "@/components/layouts/org-switcher";
 import { SlashLabel } from "@/components/ui/slash-label";
 import { getAuthUser, isAuthenticated, type AuthUser } from "@/lib/auth";
 
@@ -44,32 +43,14 @@ export default function DashboardLayout({
 
   if (!checked || !user) return null;
 
-  const initials =
-    `${user.firstName?.[0] ?? ""}${user.lastName?.[0] ?? ""}`.toUpperCase() || "C";
-
   return (
     <div className="flex h-screen bg-canvas overflow-hidden">
       <DashboardSidebar />
 
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Topbar */}
-        <header className="bg-paper border-b border-rule px-7 py-3.5 flex items-center justify-between shrink-0">
-          <div>
-            <SlashLabel>{formatDayHeader()}</SlashLabel>
-          </div>
-          <div className="flex items-center gap-2.5">
-            {user.memberships && user.memberships.length > 1 && (
-              <OrgSwitcher
-                memberships={user.memberships}
-                activeOrganizationId={user.organizationId}
-              />
-            )}
-            <div className="w-[30px] h-[30px] rounded-full bg-tennis-green grid place-items-center shrink-0">
-              <span className="text-tennis-lime text-[11px] font-bold">
-                {initials}
-              </span>
-            </div>
-          </div>
+        <header className="bg-paper border-b border-rule px-7 py-3.5 flex items-center shrink-0">
+          <SlashLabel>{formatDayHeader()}</SlashLabel>
         </header>
 
         {/* Page content */}
