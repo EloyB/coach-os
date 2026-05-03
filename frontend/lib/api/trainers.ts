@@ -30,6 +30,10 @@ export async function getTrainers(): Promise<TrainerDto[]> {
   return data;
 }
 
+export function isAssignableTrainer(t: TrainerDto): boolean {
+  return t.isActive && !t.invitePending;
+}
+
 export async function inviteTrainer(req: InviteTrainerRequest): Promise<string> {
   const { data } = await apiClient.post<string>("/trainers/invite", req);
   return data;

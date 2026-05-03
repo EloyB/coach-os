@@ -208,12 +208,13 @@ public class TrainerService(
         CancellationToken ct = default)
     {
         // Trainers zijn alle memberships (Trainer-rol) in deze org, via join met users.
+        // Pending invites (m.IsActive == false, u.InviteToken != null) blijven meekomen
+        // zodat de admin uitstaande uitnodigingen ziet en kan opnieuw versturen.
         var query =
             from m in context.OrganizationMemberships.AsNoTracking()
             join u in context.Users.AsNoTracking() on m.UserId equals u.Id
             where m.OrganizationId == organizationId
                   && m.Role == UserRole.Trainer
-                  && m.IsActive
             orderby u.FirstName, u.LastName
             select new TrainerDto
             {
