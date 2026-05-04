@@ -1,12 +1,9 @@
 # DNS records on Scaleway Domains for coach-os.be.
 # The domain itself must be registered/transferred at Scaleway before these apply.
 #
-# Mail authentication records (SPF, DKIM, DMARC) and the TEM blackhole MX were
-# originally created by scaleway_tem_domain.coach_os with autoconfig = true.
-# Autoconfig is now disabled (see main.tf) so these records can co-host Google
-# Workspace SPF without TEM overwriting our merges. The 4 records were imported
-# via `import {}` blocks below — once apply succeeds, the import blocks can be
-# removed (kept here for traceability of where the values came from).
+# Mail authentication records (SPF, DKIM, DMARC) were originally created by
+# scaleway_tem_domain.coach_os with autoconfig = true. Autoconfig is now off
+# (see main.tf) so SPF can include both TEM and Google Workspace senders.
 
 # Apex: coach-os.be → VPS public IP
 resource "scaleway_domain_record" "apex" {
@@ -45,35 +42,10 @@ resource "scaleway_domain_record" "mx_google" {
   }
 }
 
-# ── TEM blackhole MX (to be destroyed in follow-up PR) ───────────────────────
-# This record was created by TEM autoconfig to signal "this domain doesn't
-# accept mail". With Google Workspace as the inbox, it must be removed —
-# but Terraform requires importing first, then destroying in a separate plan.
-# Follow-up PR will delete the resource block (and import block) below.
-
-import {
-  to = scaleway_domain_record.tem_blackhole_mx
-  id = "coach-os.be/c13a636a-ce0e-4006-b010-514fd766fd7b"
-}
-
-resource "scaleway_domain_record" "tem_blackhole_mx" {
-  dns_zone = var.domain_name
-  name     = ""
-  type     = "MX"
-  data     = "blackhole.tem.scaleway.com."
-  priority = 0
-  ttl      = 3600
-}
-
 # ── SPF: combined Scaleway TEM + Google Workspace ────────────────────────────
 # include:_spf.tem.scaleway.com  → authorizes TEM for transactional email
 # include:_spf.google.com        → authorizes Gmail for outbound from @coach-os.be
 # ~all                           → softfail (Google-recommended for combined senders)
-
-import {
-  to = scaleway_domain_record.spf
-  id = "coach-os.be/8dc654ad-e20d-49fa-9316-e3107564a76d"
-}
 
 resource "scaleway_domain_record" "spf" {
   dns_zone = var.domain_name
@@ -89,11 +61,6 @@ resource "scaleway_domain_record" "spf" {
 # If TEM ever rotates the key, look up the new value via the Scaleway API
 # and update both the name (selector) and data (public key) here.
 
-import {
-  to = scaleway_domain_record.tem_dkim
-  id = "coach-os.be/b57b69a7-cd66-417d-a474-650722debdbf"
-}
-
 resource "scaleway_domain_record" "tem_dkim" {
   dns_zone = var.domain_name
   name     = "9d341648-bcbf-496f-820b-968265d8394f._domainkey"
@@ -106,11 +73,6 @@ resource "scaleway_domain_record" "tem_dkim" {
 # p=none means receivers don't quarantine/reject on SPF/DKIM failure — they
 # just report. Tighten to p=quarantine or p=reject once we add a rua= mailbox
 # and verify reports look healthy.
-
-import {
-  to = scaleway_domain_record.dmarc
-  id = "coach-os.be/fb08f5f5-340c-473c-a21e-37e58cc82e6c"
-}
 
 resource "scaleway_domain_record" "dmarc" {
   dns_zone = var.domain_name
