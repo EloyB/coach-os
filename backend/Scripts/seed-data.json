@@ -184,5 +184,36 @@
       "enrollmentType": "solo", "isOpenToGrouping": true,
       "slotPreferences": [2, 2, 1, 3, 3, 3, 1, 3, 3, 3, 3]
     }
+  ],
+  "standaloneLessons": [
+    {
+      "label": "Privé-clinic service & return (3 deelnemers)",
+      "startOffsetDays": 5,
+      "startTime": "21:00",
+      "durationMinutes": 60,
+      "courtName": "Baan 1",
+      "level": 2,
+      "maxParticipants": 4,
+      "notes": "Korte clinic op verzoek — focus op service en return.",
+      "participantEmails": [
+        "tom.standalone@gmail.com",
+        "anna.standalone@hotmail.com",
+        "ben.standalone@outlook.com"
+      ]
+    },
+    {
+      "label": "Open clinic gevorderden (2 deelnemers)",
+      "startOffsetDays": 12,
+      "startTime": "07:00",
+      "durationMinutes": 90,
+      "courtName": "Baan 2",
+      "level": 3,
+      "maxParticipants": 6,
+      "notes": null,
+      "participantEmails": [
+        "lieve.standalone@gmail.com",
+        "rik.standalone@telenet.be"
+      ]
+    }
   ]
 }

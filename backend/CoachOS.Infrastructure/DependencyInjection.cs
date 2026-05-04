@@ -74,6 +74,7 @@ public static class DependencyInjection
         services.AddScoped<IMagicLinkTokenRepository, MagicLinkTokenRepository>();
         services.AddScoped<IStudentMagicLinkService, StudentMagicLinkService>();
         services.AddScoped<IRescheduleRequestRepository, RescheduleRequestRepository>();
+        services.AddScoped<ILessonInvitationRepository, LessonInvitationRepository>();
 
         return services;
     }

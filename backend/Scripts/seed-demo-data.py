@@ -260,6 +260,34 @@ def simple_enrollments(api: ApiClient, students: list[dict],
     print(f"   Created {count} enrollments")
 
 
+def create_standalone_lessons(api: ApiClient, specs: list[dict],
+                              trainer_id: str, today: date) -> None:
+    """Creates losse lessen + uitnodigingen via /standalone-lessons."""
+    print("\n9. Creating standalone lessons...")
+    if not specs:
+        print("   None configured - skipping.")
+        return
+    created = 0
+    for spec in specs:
+        body = {
+            "date": iso_date(today + timedelta(days=spec["startOffsetDays"])),
+            "startTime": spec["startTime"],
+            "durationMinutes": spec["durationMinutes"],
+            "courtName": spec["courtName"],
+            "level": spec.get("level"),
+            "trainerId": trainer_id,
+            "maxParticipants": spec["maxParticipants"],
+            "notes": spec.get("notes"),
+            "participantEmails": spec["participantEmails"],
+        }
+        result = api.post("/standalone-lessons", body)
+        if result is not None:
+            created += 1
+            label = spec.get("label") or "(unnamed)"
+            print(f"   Created: {label} ({len(spec['participantEmails'])} invites)")
+    print(f"   Total: {created}/{len(specs)} standalone lessons")
+
+
 def create_planning_series(api: ApiClient, spec: dict, club_ids: list[str],
                            trainer_id: str, today: date,
                            deadline_iso: str) -> str | None:
@@ -412,6 +440,9 @@ def main() -> int:
     if planning_id:
         planning_enrollments(api, planning_id, data["planningEnrollments"])
         generate_and_confirm_planning(api, planning_id)
+
+    create_standalone_lessons(
+        api, data.get("standaloneLessons", []), trainer_id, today)
 
     if "secondOrg" in data:
         setup_second_org(api_base, data["secondOrg"])

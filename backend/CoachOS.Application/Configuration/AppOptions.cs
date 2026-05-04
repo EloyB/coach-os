@@ -12,4 +12,7 @@ public class AppOptions
 
     /// <summary>Base URL for student magic-link redemption, e.g. "https://app.coachos.be/auth/magic".</summary>
     public string StudentMagicLinkBaseUrl { get; set; } = "http://localhost:5317/auth/magic";
+
+    /// <summary>Base URL for the public standalone-lesson invitation page, e.g. "https://app.coachos.be/invitation".</summary>
+    public string StandaloneLessonInvitationBaseUrl { get; set; } = "http://localhost:5317/invitation";
 }
