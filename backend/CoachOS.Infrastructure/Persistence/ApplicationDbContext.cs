@@ -42,6 +42,7 @@ public class ApplicationDbContext(
     public DbSet<MagicLinkToken> MagicLinkTokens { get; set; } = null!;
     public DbSet<OrganizationMembership> OrganizationMemberships { get; set; } = null!;
     public DbSet<RescheduleRequest> RescheduleRequests { get; set; } = null!;
+    public DbSet<LessonInvitation> LessonInvitations { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -65,6 +66,7 @@ public class ApplicationDbContext(
         builder.ApplyConfiguration(new MagicLinkTokenConfiguration());
         builder.ApplyConfiguration(new OrganizationMembershipConfiguration());
         builder.ApplyConfiguration(new RescheduleRequestConfiguration());
+        builder.ApplyConfiguration(new LessonInvitationConfiguration());
 
         ApplyTenantFilters(builder);
     }
@@ -100,6 +102,8 @@ public class ApplicationDbContext(
         builder.Entity<TimeSlotPreference>().HasQueryFilter(e =>
             _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
         builder.Entity<RescheduleRequest>().HasQueryFilter(e =>
+            _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
+        builder.Entity<LessonInvitation>().HasQueryFilter(e =>
             _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
     }
 

@@ -1,5 +1,6 @@
 using CoachOS.Application.Enrollments.DTOs;
 using CoachOS.Application.LessonSerie.DTOs;
+using CoachOS.Application.StandaloneLessons.DTOs;
 using CoachOS.Application.TennisClubs.DTOs;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
@@ -142,6 +143,19 @@ public partial class ApplicationMapper
             Id = club.Id,
             Name = club.Name,
             Address = club.Address,
+        };
+    }
+
+    public InvitationDto ToInvitationDto(LessonInvitation invitation)
+    {
+        return new InvitationDto
+        {
+            Id = invitation.Id,
+            Email = invitation.Email,
+            FirstName = invitation.FirstName,
+            Status = (int)invitation.Status,
+            InvitationSentAt = invitation.InvitationSentAt,
+            RespondedAt = invitation.RespondedAt,
         };
     }
 }

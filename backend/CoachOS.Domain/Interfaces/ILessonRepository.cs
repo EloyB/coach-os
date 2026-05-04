@@ -24,4 +24,17 @@ public interface ILessonRepository
     Task DeleteAsync(Lesson lesson, CancellationToken ct = default);
     Task DeleteRangeAsync(IEnumerable<Lesson> lessons, CancellationToken ct = default);
     Task SaveChangesAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Lesson-by-id binnen een organisatie, ongeacht of deze tot een serie behoort.
+    /// Tracking ingeschakeld zodat de service mutaties (cancel) kan doorvoeren.
+    /// </summary>
+    Task<Lesson?> GetByIdInOrganizationAsync(
+        Guid lessonId, Guid organizationId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Alle losse lessen (LessonSerieId == null) van een organisatie, gesorteerd op datum + starttijd.
+    /// </summary>
+    Task<IReadOnlyList<Lesson>> GetStandaloneByOrganizationAsync(
+        Guid organizationId, CancellationToken ct = default);
 }

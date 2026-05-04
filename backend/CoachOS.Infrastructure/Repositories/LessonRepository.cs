@@ -145,4 +145,24 @@ public class LessonRepository(ApplicationDbContext context) : ILessonRepository
     {
         await context.SaveChangesAsync(ct);
     }
+
+    public async Task<Lesson?> GetByIdInOrganizationAsync(
+        Guid lessonId, Guid organizationId, CancellationToken ct = default)
+    {
+        return await context.Lessons
+            .FirstOrDefaultAsync(l =>
+                l.Id == lessonId &&
+                l.OrganizationId == organizationId, ct);
+    }
+
+    public async Task<IReadOnlyList<Lesson>> GetStandaloneByOrganizationAsync(
+        Guid organizationId, CancellationToken ct = default)
+    {
+        return await context.Lessons
+            .AsNoTracking()
+            .Where(l => l.OrganizationId == organizationId && l.LessonSerieId == null)
+            .OrderBy(l => l.Date)
+            .ThenBy(l => l.StartTime)
+            .ToListAsync(ct);
+    }
 }

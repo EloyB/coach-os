@@ -121,6 +121,46 @@ public class EmailService(
             $"Nieuwe inschrijving: {studentName} voor {seriesName}", html, ct);
     }
 
+    public async Task SendStandaloneLessonInvitationAsync(
+        string toEmail,
+        string? firstName,
+        DateOnly date,
+        TimeOnly startTime,
+        TimeOnly endTime,
+        string? courtName,
+        string trainerName,
+        string? levelText,
+        string? notes,
+        string invitationUrl,
+        CancellationToken ct = default)
+    {
+        string greetingName = string.IsNullOrWhiteSpace(firstName) ? string.Empty : $" {firstName}";
+        string dayName = DaysNl[(int)date.DayOfWeek];
+        string dateText = date.ToString("dd/MM/yyyy");
+        string courtSuffix = string.IsNullOrWhiteSpace(courtName) ? string.Empty : $" · Baan: {courtName}";
+        string levelLine = string.IsNullOrWhiteSpace(levelText) ? string.Empty : $"Niveau: {levelText}";
+        string notesLine = string.IsNullOrWhiteSpace(notes) ? string.Empty : notes!;
+        string toName = string.IsNullOrWhiteSpace(firstName) ? toEmail : firstName!;
+
+        string html = renderer.Render("standalone-lesson-invitation", new Dictionary<string, string>
+        {
+            ["greetingName"] = greetingName,
+            ["trainerName"] = trainerName,
+            ["dayName"] = dayName,
+            ["dateText"] = dateText,
+            ["startTime"] = startTime.ToString("HH:mm"),
+            ["endTime"] = endTime.ToString("HH:mm"),
+            ["courtSuffix"] = courtSuffix,
+            ["levelLine"] = levelLine,
+            ["notesLine"] = notesLine,
+            ["invitationUrl"] = invitationUrl,
+            ["year"] = DateTime.UtcNow.Year.ToString(),
+        });
+
+        await SendAsync(toEmail, toName,
+            $"Uitnodiging tennisles op {dateText}", html, ct);
+    }
+
     // ── Core send method (reused by all email types) ──────────────────────────
 
     private async Task SendAsync(
