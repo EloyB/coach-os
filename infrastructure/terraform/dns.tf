@@ -1,9 +1,12 @@
 # DNS records on Scaleway Domains for coach-os.be.
 # The domain itself must be registered/transferred at Scaleway before these apply.
 #
-# SPF/DKIM/DMARC records for TEM are auto-created by scaleway_tem_domain.coach_os
-# (autoconfig = true). When we add Google Workspace SPF/DKIM/DMARC, we'll need to
-# disable autoconfig and manage all auth records here so Google + TEM can coexist.
+# Mail authentication records (SPF, DKIM, DMARC) and the TEM blackhole MX were
+# originally created by scaleway_tem_domain.coach_os with autoconfig = true.
+# Autoconfig is now disabled (see main.tf) so these records can co-host Google
+# Workspace SPF without TEM overwriting our merges. The 4 records were imported
+# via `import {}` blocks below — once apply succeeds, the import blocks can be
+# removed (kept here for traceability of where the values came from).
 
 # Apex: coach-os.be → VPS public IP
 resource "scaleway_domain_record" "apex" {
@@ -40,4 +43,79 @@ resource "scaleway_domain_record" "mx_google" {
   lifecycle {
     prevent_destroy = true
   }
+}
+
+# ── TEM blackhole MX (to be destroyed in follow-up PR) ───────────────────────
+# This record was created by TEM autoconfig to signal "this domain doesn't
+# accept mail". With Google Workspace as the inbox, it must be removed —
+# but Terraform requires importing first, then destroying in a separate plan.
+# Follow-up PR will delete the resource block (and import block) below.
+
+import {
+  to = scaleway_domain_record.tem_blackhole_mx
+  id = "coach-os.be/c13a636a-ce0e-4006-b010-514fd766fd7b"
+}
+
+resource "scaleway_domain_record" "tem_blackhole_mx" {
+  dns_zone = var.domain_name
+  name     = ""
+  type     = "MX"
+  data     = "blackhole.tem.scaleway.com."
+  priority = 0
+  ttl      = 3600
+}
+
+# ── SPF: combined Scaleway TEM + Google Workspace ────────────────────────────
+# include:_spf.tem.scaleway.com  → authorizes TEM for transactional email
+# include:_spf.google.com        → authorizes Gmail for outbound from @coach-os.be
+# ~all                           → softfail (Google-recommended for combined senders)
+
+import {
+  to = scaleway_domain_record.spf
+  id = "coach-os.be/8dc654ad-e20d-49fa-9316-e3107564a76d"
+}
+
+resource "scaleway_domain_record" "spf" {
+  dns_zone = var.domain_name
+  name     = ""
+  type     = "TXT"
+  data     = "v=spf1 include:_spf.tem.scaleway.com include:_spf.google.com ~all"
+  ttl      = 3600
+}
+
+# ── TEM DKIM ─────────────────────────────────────────────────────────────────
+# Selector UUID is assigned by Scaleway TEM when the domain is created.
+# The public key value below is what TEM auto-published; treat it as opaque.
+# If TEM ever rotates the key, look up the new value via the Scaleway API
+# and update both the name (selector) and data (public key) here.
+
+import {
+  to = scaleway_domain_record.tem_dkim
+  id = "coach-os.be/b57b69a7-cd66-417d-a474-650722debdbf"
+}
+
+resource "scaleway_domain_record" "tem_dkim" {
+  dns_zone = var.domain_name
+  name     = "9d341648-bcbf-496f-820b-968265d8394f._domainkey"
+  type     = "TXT"
+  data     = "v=DKIM1; h=sha256; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsFduwgevWYvpdVXuN9ivdc/URB8d2SRn62ErXTFIqG3sHUAwtVrby6LGeOtWK63wVE/PhgMh3xBk934++jHFwfs0AryTVaQYEtcPd4QESpuN6bif7o3hhwjB9XsxC7l56DjuqKexlTewA18S5/OGuKpFY7wCMSbnOUSQlAqqy9xXa24Scw0F/IJYxqnSwdKcc7kWoMX1ZBiIdsX/XRsaSlJGbaU8bFOKjTcNF7u6p5RRX43JyMitagww6fhPNxBkwo6G4AEY1YDorbc/Ijd/Z3t6GhjdD5pUbdS/LJsDVW/Ig97Q5dRnCCGNTYF2ih4aKjsInTCReHguCfB57VZGMwIDAQAB"
+  ttl      = 3600
+}
+
+# ── DMARC: monitoring-only policy ────────────────────────────────────────────
+# p=none means receivers don't quarantine/reject on SPF/DKIM failure — they
+# just report. Tighten to p=quarantine or p=reject once we add a rua= mailbox
+# and verify reports look healthy.
+
+import {
+  to = scaleway_domain_record.dmarc
+  id = "coach-os.be/fb08f5f5-340c-473c-a21e-37e58cc82e6c"
+}
+
+resource "scaleway_domain_record" "dmarc" {
+  dns_zone = var.domain_name
+  name     = "_dmarc"
+  type     = "TXT"
+  data     = "v=DMARC1; p=none"
+  ttl      = 3600
 }
