@@ -113,15 +113,16 @@ resource "scaleway_rdb_privilege" "coach_os" {
 }
 
 # ── Transactional Email domain ───────────────────────────────────────────────
-# autoconfig = true lets Scaleway create and maintain the SPF/DKIM/DMARC
-# records directly in Scaleway Domains. We previously managed them manually
-# in dns.tf but the DKIM value drifted out of sync with TEM's expectations,
-# blocking domain verification.
+# autoconfig was enabled at bootstrap so Scaleway would auto-publish the
+# SPF/DKIM/DMARC + blackhole MX records. Now disabled because we co-host
+# Google Workspace SPF on the same TXT record, and TEM autoconfig would
+# overwrite our merged value. The auth records are now managed explicitly
+# in dns.tf (imported from the originals TEM created).
 
 resource "scaleway_tem_domain" "coach_os" {
   project_id = var.scw_project_id
   region     = var.scw_region
   name       = var.domain_name
   accept_tos = true
-  autoconfig = true
+  autoconfig = false
 }
