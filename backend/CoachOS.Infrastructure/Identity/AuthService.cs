@@ -2,6 +2,7 @@ using CoachOS.Application.Auth;
 using CoachOS.Application.Auth.DTOs;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
+using CoachOS.Domain.Interfaces;
 using CoachOS.Domain.Models;
 using CoachOS.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
@@ -14,6 +15,7 @@ public class AuthService(
     UserManager<ApplicationUser> userManager,
     ApplicationDbContext context,
     TokenService tokenService,
+    IEmailService emailService,
     ILogger<AuthService> logger)
     : IAuthService
 {
@@ -184,6 +186,53 @@ public class AuthService(
     {
         var memberships = await LoadActiveMembershipsAsync(userId, cancellationToken);
         return Result<List<OrganizationMembershipDto>>.Ok(memberships.Select(ToDto).ToList());
+    }
+
+    public async Task<Result> ForgotPasswordAsync(
+        string email,
+        string resetBaseUrl,
+        CancellationToken cancellationToken = default)
+    {
+        var user = await userManager.FindByEmailAsync(email);
+
+        // Anti-enumeration: always return Ok, even when e-mail not found.
+        if (user is null || !user.IsActive)
+        {
+            logger.LogWarning("Wachtwoord-reset aangevraagd voor onbekend/inactief e-mail {Email}", MaskEmail(email));
+            return Result.Ok();
+        }
+
+        var token = await userManager.GeneratePasswordResetTokenAsync(user);
+        var encodedToken = Uri.EscapeDataString(token);
+        var encodedEmail = Uri.EscapeDataString(email);
+        var resetUrl = $"{resetBaseUrl.TrimEnd('/')}/reset-password?token={encodedToken}&email={encodedEmail}";
+
+        await emailService.SendPasswordResetAsync(email, user.FirstName, resetUrl, cancellationToken);
+
+        logger.LogInformation("Wachtwoord-reset e-mail verstuurd naar {Email}", MaskEmail(email));
+        return Result.Ok();
+    }
+
+    public async Task<Result> ResetPasswordAsync(
+        string email,
+        string token,
+        string newPassword,
+        CancellationToken cancellationToken = default)
+    {
+        var user = await userManager.FindByEmailAsync(email);
+        if (user is null || !user.IsActive)
+            return Result.Fail(new Error(ErrorCodes.Validation, "Ongeldige reset-link"));
+
+        var result = await userManager.ResetPasswordAsync(user, token, newPassword);
+        if (!result.Succeeded)
+        {
+            logger.LogWarning("Wachtwoord-reset mislukt voor {Email}: {Errors}",
+                MaskEmail(email), string.Join(", ", result.Errors.Select(e => e.Description)));
+            return Result.Fail(result.Errors.Select(e => e.Description));
+        }
+
+        logger.LogInformation("Wachtwoord succesvol gereset voor {Email}", MaskEmail(email));
+        return Result.Ok();
     }
 
     private async Task<List<OrganizationMembership>> LoadActiveMembershipsAsync(Guid userId, CancellationToken ct)
