@@ -19,6 +19,7 @@ public class LessonSerieServiceTests
     private Mock<IEnrollmentRepository> _enrollmentRepo = null!;
     private Mock<ITennisClubRepository> _tennisClubRepo = null!;
     private Mock<IUserLookupService> _userLookup = null!;
+    private Mock<IEmailService> _emailService = null!;
     private ApplicationMapper _mapper = null!;
     private LessonSerieService _service = null!;
 
@@ -34,6 +35,7 @@ public class LessonSerieServiceTests
         _enrollmentRepo = new Mock<IEnrollmentRepository>();
         _tennisClubRepo = new Mock<ITennisClubRepository>();
         _userLookup = new Mock<IUserLookupService>();
+        _emailService = new Mock<IEmailService>();
         _mapper = new ApplicationMapper();
         _service = new LessonSerieService(
             _lessonSeriesRepo.Object,
@@ -41,6 +43,7 @@ public class LessonSerieServiceTests
             _enrollmentRepo.Object,
             _tennisClubRepo.Object,
             _userLookup.Object,
+            _emailService.Object,
             _mapper);
 
         // Default: enrollment counts returnen lege dictionary (geen inschrijvingen).
@@ -765,5 +768,148 @@ public class LessonSerieServiceTests
         template[1].DayOfWeek.Should().Be(0);
         template[1].StartTime.Should().Be("17:00");
         template[2].DayOfWeek.Should().Be(2);
+    }
+
+    // ── UpdateLessonAsync — Les annuleren ─────────────────────────────────────
+
+    [Test]
+    public async Task UpdateLessonAsync_CancelLesson_SetsCancelledAndReason()
+    {
+        LessonSerie series = BuildSeries();
+        Lesson lesson = BuildLesson(series.Id);
+
+        _lessonRepo
+            .Setup(r => r.GetByIdAsync(lesson.Id, series.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(lesson);
+        _lessonSeriesRepo
+            .Setup(r => r.GetByIdAsync(series.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+        _enrollmentRepo
+            .Setup(r => r.GetBySeriesAsync(series.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Domain.Entities.Enrollment>());
+
+        UpdateLessonRequest request = new() { IsCancelled = true, CancellationReason = "Trainer ziek" };
+
+        Result<LessonDto> result = await _service.UpdateLessonAsync(series.Id, lesson.Id, OrgId, request);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.IsCancelled.Should().BeTrue();
+        result.Value.CancellationReason.Should().Be("Trainer ziek");
+    }
+
+    [Test]
+    public async Task UpdateLessonAsync_CancelLesson_SendsEmailToActiveEnrollments()
+    {
+        LessonSerie series = BuildSeries();
+        Lesson lesson = BuildLesson(series.Id);
+
+        List<Domain.Entities.Enrollment> enrollments =
+        [
+            new Domain.Entities.Enrollment
+            {
+                Id = Guid.NewGuid(), OrganizationId = OrgId,
+                StudentName = "Jan Janssen", StudentEmail = "jan@example.com",
+                Status = Domain.Enums.EnrollmentStatus.Confirmed,
+            },
+            new Domain.Entities.Enrollment
+            {
+                Id = Guid.NewGuid(), OrganizationId = OrgId,
+                StudentName = "Sofie Peeters", StudentEmail = "sofie@example.com",
+                Status = Domain.Enums.EnrollmentStatus.Pending,
+            },
+            new Domain.Entities.Enrollment
+            {
+                Id = Guid.NewGuid(), OrganizationId = OrgId,
+                StudentName = "Marc Dubois", StudentEmail = "marc@example.com",
+                Status = Domain.Enums.EnrollmentStatus.Cancelled,
+            },
+        ];
+
+        _lessonRepo
+            .Setup(r => r.GetByIdAsync(lesson.Id, series.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(lesson);
+        _lessonSeriesRepo
+            .Setup(r => r.GetByIdAsync(series.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+        _enrollmentRepo
+            .Setup(r => r.GetBySeriesAsync(series.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(enrollments);
+
+        UpdateLessonRequest request = new() { IsCancelled = true, CancellationReason = "Overmacht" };
+
+        await _service.UpdateLessonAsync(series.Id, lesson.Id, OrgId, request);
+
+        // Enkel de 2 actieve studenten (Confirmed + Pending) krijgen een mail; de Cancelled niet.
+        _emailService.Verify(
+            e => e.SendLessonCancellationAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<DateOnly>(), It.IsAny<TimeOnly>(), It.IsAny<string?>(),
+                It.IsAny<CancellationToken>()),
+            Times.Exactly(2));
+
+        _emailService.Verify(
+            e => e.SendLessonCancellationAsync(
+                "jan@example.com", It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<DateOnly>(), It.IsAny<TimeOnly>(), It.IsAny<string?>(),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+
+        _emailService.Verify(
+            e => e.SendLessonCancellationAsync(
+                "sofie@example.com", It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<DateOnly>(), It.IsAny<TimeOnly>(), It.IsAny<string?>(),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Test]
+    public async Task UpdateLessonAsync_CancelAlreadyCancelledLesson_DoesNotSendEmail()
+    {
+        LessonSerie series = BuildSeries();
+        Lesson lesson = BuildLesson(series.Id);
+        lesson.IsCancelled = true;
+        lesson.CancellationReason = "Al eerder geannuleerd";
+
+        _lessonRepo
+            .Setup(r => r.GetByIdAsync(lesson.Id, series.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(lesson);
+        _lessonSeriesRepo
+            .Setup(r => r.GetByIdAsync(series.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+
+        UpdateLessonRequest request = new() { IsCancelled = true };
+
+        await _service.UpdateLessonAsync(series.Id, lesson.Id, OrgId, request);
+
+        _emailService.Verify(
+            e => e.SendLessonCancellationAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<DateOnly>(), It.IsAny<TimeOnly>(), It.IsAny<string?>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Test]
+    public async Task UpdateLessonAsync_UndoCancel_ClearsCancellationReason()
+    {
+        LessonSerie series = BuildSeries();
+        Lesson lesson = BuildLesson(series.Id);
+        lesson.IsCancelled = true;
+        lesson.CancellationReason = "Trainer ziek";
+
+        _lessonRepo
+            .Setup(r => r.GetByIdAsync(lesson.Id, series.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(lesson);
+        _lessonSeriesRepo
+            .Setup(r => r.GetByIdAsync(series.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+
+        UpdateLessonRequest request = new() { IsCancelled = false };
+
+        Result<LessonDto> result = await _service.UpdateLessonAsync(series.Id, lesson.Id, OrgId, request);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.IsCancelled.Should().BeFalse();
+        result.Value.CancellationReason.Should().BeNull();
     }
 }

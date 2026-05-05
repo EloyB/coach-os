@@ -36,6 +36,15 @@ public interface IEmailService
         string magicLinkUrl,
         CancellationToken ct = default);
 
+    Task SendLessonCancellationAsync(
+        string studentEmail,
+        string studentName,
+        string seriesName,
+        DateOnly lessonDate,
+        TimeOnly startTime,
+        string? cancellationReason,
+        CancellationToken ct = default);
+
     Task SendStandaloneLessonInvitationAsync(
         string toEmail,
         string? firstName,

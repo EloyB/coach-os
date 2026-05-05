@@ -12,6 +12,7 @@ public class LessonSerieService(
     IEnrollmentRepository enrollmentRepo,
     ITennisClubRepository tennisClubRepo,
     IUserLookupService userLookup,
+    IEmailService emailService,
     ApplicationMapper mapper) : ILessonSerieService
 {
     public async Task<Result<List<LessonSerieDto>>> GetAllAsync(
@@ -280,10 +281,39 @@ public class LessonSerieService(
             lesson.MaxStudents = request.MaxStudents.Value;
         if (request.Notes is not null)
             lesson.Notes = request.Notes;
+
+        bool newlyCancelled = request.IsCancelled == true && !lesson.IsCancelled;
         if (request.IsCancelled.HasValue)
+        {
             lesson.IsCancelled = request.IsCancelled.Value;
+            if (request.IsCancelled.Value && request.CancellationReason is not null)
+                lesson.CancellationReason = request.CancellationReason;
+            else if (!request.IsCancelled.Value)
+                lesson.CancellationReason = null;
+        }
 
         await lessonRepo.SaveChangesAsync(ct);
+
+        if (newlyCancelled && lesson.LessonSerieId.HasValue)
+        {
+            List<Domain.Entities.Enrollment> enrollments =
+                await enrollmentRepo.GetBySeriesAsync(lesson.LessonSerieId.Value, organizationId, ct);
+
+            List<Domain.Entities.Enrollment> activeEnrollments = enrollments
+                .Where(e => e.Status is Domain.Enums.EnrollmentStatus.Pending or Domain.Enums.EnrollmentStatus.Confirmed)
+                .ToList();
+
+            foreach (Domain.Entities.Enrollment enrollment in activeEnrollments)
+            {
+                _ = emailService.SendLessonCancellationAsync(
+                    enrollment.StudentEmail,
+                    enrollment.StudentName,
+                    series.Name,
+                    lesson.Date,
+                    lesson.StartTime,
+                    lesson.CancellationReason);
+            }
+        }
 
         LessonDto dto = mapper.ToLessonDto(lesson, seriesId);
         return Result<LessonDto>.Ok(dto);

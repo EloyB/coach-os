@@ -37,6 +37,7 @@ export interface CalendarSlot {
   trainerName?: string | null;
   courtName?: string | null;
   maxStudents?: number;
+  isCancelled?: boolean;
 }
 
 // ─── Utility functions ───────────────────────────────────────────────────────
@@ -308,20 +309,24 @@ export function CalendarGrid({
                   };
                   const colWidthPct = 100 / col.totalCols;
 
+                  const cancelled = slot.isCancelled === true;
+                  const slotBg = cancelled ? "rgba(156,163,175,0.15)" : color.bg;
+                  const slotBorder = cancelled ? "#9CA3AF" : color.border;
+
                   return (
                     <div
                       key={slot.id}
                       data-slot-id={slot.id}
                       className={`absolute border-l-[3px] rounded-r-md px-1.5 py-1 transition-all group z-10 ${
                         onSlotClick ? "cursor-pointer hover:brightness-95 hover:shadow-md" : readOnly ? "cursor-default" : "cursor-grab"
-                      }`}
+                      } ${cancelled ? "opacity-60" : ""}`}
                       style={{
                         top: pos.top,
                         height: pos.height,
                         left: `calc(${(col.colIndex / col.totalCols)} * (100% - ${slotRightPadding}px) + 1px)`,
                         width: `calc(${(1 / col.totalCols)} * (100% - ${slotRightPadding}px) - 2px)`,
-                        backgroundColor: color.bg,
-                        borderLeftColor: color.border,
+                        backgroundColor: slotBg,
+                        borderLeftColor: slotBorder,
                       }}
                       onMouseDown={
                         onSlotMouseDown
@@ -361,9 +366,14 @@ export function CalendarGrid({
                         </button>
                       )}
 
+                      {cancelled && (
+                        <div className="text-[9px] font-bold uppercase tracking-wide text-gray-500 mb-0.5">
+                          Geannuleerd
+                        </div>
+                      )}
                       <div
-                        className="text-[11px] font-semibold"
-                        style={{ color: color.text }}
+                        className={`text-[11px] font-semibold ${cancelled ? "line-through" : ""}`}
+                        style={{ color: cancelled ? "#9CA3AF" : color.text }}
                       >
                         {slot.startTime} — {slot.endTime}
                       </div>
