@@ -21,6 +21,10 @@ services:
       SCW_ACCESS_KEY: ${SCW_ACCESS_KEY}
       SCW_SECRET_KEY: ${SCW_SECRET_KEY}
       SCW_REGION: ${SCW_REGION:-fr-par}
+      App__FrontendBaseUrl: https://coach-os.be
+      App__ConfirmationBaseUrl: https://coach-os.be/confirmation
+      App__StudentMagicLinkBaseUrl: https://coach-os.be/auth/magic
+      App__StandaloneLessonInvitationBaseUrl: https://coach-os.be/invitation
 
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/health"]
