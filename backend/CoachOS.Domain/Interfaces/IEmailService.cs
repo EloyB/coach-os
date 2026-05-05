@@ -45,6 +45,20 @@ public interface IEmailService
         string? cancellationReason,
         CancellationToken ct = default);
 
+    Task SendLessonRescheduledAsync(
+        string toEmail,
+        string toName,
+        string? seriesName,
+        DateOnly oldDate,
+        TimeOnly oldStartTime,
+        DateOnly newDate,
+        TimeOnly newStartTime,
+        TimeOnly newEndTime,
+        string? courtName,
+        string trainerName,
+        string? reason,
+        CancellationToken ct = default);
+
     Task SendStandaloneLessonInvitationAsync(
         string toEmail,
         string? firstName,

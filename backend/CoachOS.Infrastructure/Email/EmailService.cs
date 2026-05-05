@@ -146,6 +146,43 @@ public class EmailService(
             $"Lesannulatie: {seriesName} op {dateText}", html, ct);
     }
 
+    public async Task SendLessonRescheduledAsync(
+        string toEmail, string toName, string? seriesName,
+        DateOnly oldDate, TimeOnly oldStartTime,
+        DateOnly newDate, TimeOnly newStartTime, TimeOnly newEndTime,
+        string? courtName, string trainerName, string? reason,
+        CancellationToken ct = default)
+    {
+        string oldDayName = DaysNl[(int)oldDate.DayOfWeek];
+        string newDayName = DaysNl[(int)newDate.DayOfWeek];
+        string oldDateText = oldDate.ToString("dd/MM/yyyy");
+        string newDateText = newDate.ToString("dd/MM/yyyy");
+        string lessonLabel = string.IsNullOrWhiteSpace(seriesName) ? "Je les" : seriesName!;
+        string courtLine = string.IsNullOrWhiteSpace(courtName) ? string.Empty : $"Baan: {courtName}";
+        string reasonBlock = string.IsNullOrWhiteSpace(reason)
+            ? string.Empty
+            : $"<em>Reden: {WebUtility.HtmlEncode(reason)}</em>";
+
+        string html = renderer.Render("lesson-rescheduled", new Dictionary<string, string>
+        {
+            ["recipientName"] = toName,
+            ["lessonLabel"] = lessonLabel,
+            ["oldDayName"] = oldDayName,
+            ["oldDateText"] = oldDateText,
+            ["oldStartTime"] = oldStartTime.ToString("HH:mm"),
+            ["newDayName"] = newDayName,
+            ["newDateText"] = newDateText,
+            ["newStartTime"] = newStartTime.ToString("HH:mm"),
+            ["newEndTime"] = newEndTime.ToString("HH:mm"),
+            ["courtLine"] = courtLine,
+            ["trainerName"] = trainerName,
+            ["raw:reasonBlock"] = reasonBlock,
+            ["year"] = DateTime.UtcNow.Year.ToString(),
+        });
+        await SendAsync(toEmail, toName,
+            $"Lesmoment verplaatst naar {newDateText}", html, ct);
+    }
+
     public async Task SendStandaloneLessonInvitationAsync(
         string toEmail,
         string? firstName,

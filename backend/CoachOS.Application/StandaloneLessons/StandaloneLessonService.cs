@@ -193,7 +193,7 @@ public class StandaloneLessonService(
     }
 
     public async Task<Result> CancelAsync(
-        Guid organizationId, Guid lessonId, CancellationToken ct = default)
+        Guid organizationId, Guid lessonId, string? reason, CancellationToken ct = default)
     {
         Lesson? lesson = await lessonRepo.GetByIdInOrganizationAsync(lessonId, organizationId, ct);
         if (lesson is null || lesson.LessonSerieId is not null)
@@ -202,9 +202,41 @@ public class StandaloneLessonService(
         if (lesson.IsCancelled)
             return Result.Ok();
 
+        string trimmedReason = reason?.Trim() ?? string.Empty;
         lesson.IsCancelled = true;
-        lesson.CancellationReason ??= "Geannuleerd door trainer";
+        lesson.CancellationReason = string.IsNullOrEmpty(trimmedReason)
+            ? "Geannuleerd door trainer"
+            : trimmedReason;
         await lessonRepo.SaveChangesAsync(ct);
+
+        // Notificeer alle betrokken invitees (Pending + Accepted) — declined niet.
+        IReadOnlyList<LessonInvitation> invitees =
+            await invitationRepo.GetByLessonAsync(lessonId, organizationId, ct);
+
+        foreach (LessonInvitation invitee in invitees)
+        {
+            if (invitee.Status != LessonInvitationStatus.Pending &&
+                invitee.Status != LessonInvitationStatus.Accepted)
+                continue;
+
+            try
+            {
+                await emailService.SendLessonCancellationAsync(
+                    invitee.Email,
+                    invitee.FirstName ?? invitee.Email,
+                    "Losse les",
+                    lesson.Date,
+                    lesson.StartTime,
+                    string.IsNullOrEmpty(trimmedReason) ? null : trimmedReason,
+                    ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex,
+                    "Cancellation email faalde voor {Email} (lesson {LessonId})",
+                    invitee.Email, lessonId);
+            }
+        }
 
         return Result.Ok();
     }

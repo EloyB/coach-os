@@ -19,8 +19,12 @@ public class Lesson : LessonSlotBase
     public bool IsCancelled { get; set; }
     public string? CancellationReason { get; set; }
 
+    /// <summary>Verwijst naar de nieuwe les die deze (geannuleerde) les vervangt.</summary>
+    public Guid? RescheduledToLessonId { get; set; }
+
     // Navigation properties
     public Organization Organization { get; set; } = null!;
     public LessonSerie? LessonSerie { get; set; }
     public ICollection<Enrollment> Enrollments { get; set; } = new List<Enrollment>();
+    public Lesson? RescheduledToLesson { get; set; }
 }

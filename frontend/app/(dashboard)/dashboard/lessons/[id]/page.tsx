@@ -320,6 +320,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { updateLesson } from "@/lib/api/lessonSeries";
+import { rescheduleLesson } from "@/lib/api/lessons";
 import type { UpdateLessonRequest } from "@/lib/api/lessonSeries";
 
 function EditLessonDialog({
@@ -347,8 +348,13 @@ function EditLessonDialog({
   const [deleting, setDeleting] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [showActionsMenu, setShowActionsMenu] = useState(false);
-  const [activeAction, setActiveAction] = useState<"cancel" | "delete" | null>(null);
+  const [activeAction, setActiveAction] = useState<"cancel" | "delete" | "reschedule" | null>(null);
   const [cancellationReason, setCancellationReason] = useState("");
+  const [rescheduleDate, setRescheduleDate] = useState(lesson.date);
+  const [rescheduleStart, setRescheduleStart] = useState(lesson.startTime);
+  const [rescheduleEnd, setRescheduleEnd] = useState(lesson.endTime);
+  const [rescheduleReason, setRescheduleReason] = useState("");
+  const [rescheduling, setRescheduling] = useState(false);
 
   async function handleSave() {
     setSaving(true);
@@ -399,6 +405,27 @@ function EditLessonDialog({
       // Error toast shown by axios interceptor
     } finally {
       setCancelling(false);
+    }
+  }
+
+  async function handleReschedule() {
+    setRescheduling(true);
+    try {
+      const result = await rescheduleLesson(lesson.id, {
+        newDate: rescheduleDate,
+        newStartTime: rescheduleStart,
+        newEndTime: rescheduleEnd,
+        reason: rescheduleReason.trim() || undefined,
+      });
+      toast.success(
+        `Lesmoment verplaatst — ${result.notifiedCount} student(en) genotifieerd`,
+      );
+      queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
+      onSaved();
+    } catch {
+      // Error toast shown by axios interceptor
+    } finally {
+      setRescheduling(false);
     }
   }
 
@@ -564,6 +591,68 @@ function EditLessonDialog({
           </div>
         )}
 
+        {activeAction === "reschedule" && (
+          <div className="border border-tennis-green/30 rounded-lg p-3 space-y-2 bg-tennis-green/5">
+            <p className="text-xs font-medium text-tennis-green">Lesmoment verplaatsen</p>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-[11px] font-medium text-gray-600 mb-1">
+                  Nieuwe datum
+                </label>
+                <DatePicker value={rescheduleDate} onChange={setRescheduleDate} />
+              </div>
+              <div className="grid grid-cols-2 gap-1">
+                <div>
+                  <label className="block text-[11px] font-medium text-gray-600 mb-1">
+                    Start
+                  </label>
+                  <input
+                    type="time"
+                    value={rescheduleStart}
+                    onChange={(e) => setRescheduleStart(e.target.value)}
+                    className={inputClass + " text-xs"}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-medium text-gray-600 mb-1">
+                    Eind
+                  </label>
+                  <input
+                    type="time"
+                    value={rescheduleEnd}
+                    onChange={(e) => setRescheduleEnd(e.target.value)}
+                    className={inputClass + " text-xs"}
+                  />
+                </div>
+              </div>
+            </div>
+            <textarea
+              value={rescheduleReason}
+              onChange={(e) => setRescheduleReason(e.target.value)}
+              placeholder="Reden (optioneel) — wordt meegezonden in de mail aan studenten"
+              rows={2}
+              className={inputClass + " resize-none text-xs"}
+            />
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={handleReschedule}
+                disabled={rescheduling}
+                className="px-3 py-1.5 bg-tennis-green text-white text-xs font-semibold rounded-lg hover:bg-tennis-green/90 disabled:opacity-60"
+              >
+                {rescheduling ? "Bezig..." : "Verplaats les"}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setActiveAction(null); setRescheduleReason(""); }}
+                className="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700"
+              >
+                Terug
+              </button>
+            </div>
+          </div>
+        )}
+
         {activeAction === "delete" && (
           <div className="border border-red-200 rounded-lg p-3 bg-red-50/50">
             <p className="text-xs font-medium text-red-800 mb-2">Lesmoment permanent verwijderen?</p>
@@ -618,14 +707,24 @@ function EditLessonDialog({
               {showActionsMenu && (
                 <div className="absolute bottom-full right-0 mb-1 bg-white border border-gray-100 rounded-lg shadow-lg z-50 min-w-44 py-1 text-sm">
                   {!lesson.isCancelled && (
-                    <button
-                      type="button"
-                      onClick={() => { setShowActionsMenu(false); setActiveAction("cancel"); }}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-orange-600 hover:bg-orange-50 text-left"
-                    >
-                      <AlertTriangle size={13} />
-                      Les annuleren
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => { setShowActionsMenu(false); setActiveAction("reschedule"); }}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-tennis-green hover:bg-tennis-green/5 text-left"
+                      >
+                        <CalendarDays size={13} />
+                        Verplaatsen
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setShowActionsMenu(false); setActiveAction("cancel"); }}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-orange-600 hover:bg-orange-50 text-left"
+                      >
+                        <AlertTriangle size={13} />
+                        Les annuleren
+                      </button>
+                    </>
                   )}
                   <button
                     type="button"

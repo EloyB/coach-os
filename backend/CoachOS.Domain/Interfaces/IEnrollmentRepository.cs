@@ -22,6 +22,14 @@ public interface IEnrollmentRepository
 
     Task<int> CountActiveByOrganizationAsync(Guid organizationId, CancellationToken ct = default);
 
+    /// <summary>
+    /// Verplaatst alle single-lesson enrollments (LessonId-gekoppeld) van
+    /// <paramref name="fromLessonId"/> naar <paramref name="toLessonId"/>. Gebruikt bij
+    /// replanning. Series-gekoppelde enrollments (LessonSerieId) worden niet geraakt.
+    /// </summary>
+    Task<int> ReassignLessonLinkAsync(
+        Guid fromLessonId, Guid toLessonId, CancellationToken ct = default);
+
     Task AddAsync(Enrollment enrollment, CancellationToken ct = default);
 
     Task AddFormResponseAsync(FormResponse response, CancellationToken ct = default);

@@ -16,6 +16,18 @@ public class EnrollmentRepository(ApplicationDbContext context) : IEnrollmentRep
             .FirstOrDefaultAsync(e => e.Id == id && e.OrganizationId == organizationId, ct);
     }
 
+    public async Task<int> ReassignLessonLinkAsync(
+        Guid fromLessonId, Guid toLessonId, CancellationToken ct = default)
+    {
+        DateTime now = DateTime.UtcNow;
+        return await context.Enrollments
+            .Where(e => e.LessonId == fromLessonId)
+            .ExecuteUpdateAsync(s => s
+                    .SetProperty(e => e.LessonId, toLessonId)
+                    .SetProperty(e => e.UpdatedAt, now),
+                ct);
+    }
+
     public async Task<List<Enrollment>> GetBySeriesAsync(
         Guid lessonSeriesId, Guid organizationId, CancellationToken ct = default)
     {

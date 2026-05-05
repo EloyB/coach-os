@@ -30,6 +30,12 @@ public class LessonConfiguration : IEntityTypeConfiguration<Lesson>
             .OnDelete(DeleteBehavior.Restrict)
             .IsRequired(false);
 
+        builder.HasOne(l => l.RescheduledToLesson)
+            .WithOne()
+            .HasForeignKey<Lesson>(l => l.RescheduledToLessonId)
+            .OnDelete(DeleteBehavior.Restrict)
+            .IsRequired(false);
+
         builder.HasIndex(l => l.OrganizationId);
         builder.HasIndex(l => l.TrainerId);
         builder.HasIndex(l => l.Date);
