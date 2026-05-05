@@ -81,3 +81,22 @@ export async function redeemMagicLink(token: string): Promise<StudentAuthRespons
   const { data } = await apiClient.post<StudentAuthResponse>('/auth/magic/redeem', { token });
   return data;
 }
+
+export interface ForgotPasswordRequest {
+  email: string;
+  resetBaseUrl: string;
+}
+
+export async function forgotPassword(request: ForgotPasswordRequest): Promise<void> {
+  await apiClient.post('/auth/forgot-password', request);
+}
+
+export interface ResetPasswordRequest {
+  email: string;
+  token: string;
+  newPassword: string;
+}
+
+export async function resetPassword(request: ResetPasswordRequest): Promise<void> {
+  await apiClient.post('/auth/reset-password', request);
+}

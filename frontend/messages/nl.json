@@ -471,7 +471,18 @@
     "registerClubs": "200+ clubs · 12.400 leerlingen",
     "pwdRuleLength": "8+ tekens",
     "pwdRuleUpper": "1 hoofdletter",
-    "pwdRuleDigit": "1 cijfer"
+    "pwdRuleDigit": "1 cijfer",
+    "forgotPasswordTitle": "Wachtwoord vergeten",
+    "forgotPasswordSub": "Vul je e-mailadres in. We sturen je een link om je wachtwoord opnieuw in te stellen.",
+    "forgotPasswordButton": "Reset-link versturen",
+    "forgotPasswordSuccess": "Als dit e-mailadres bij ons bekend is, ontvang je zo meteen een e-mail met een reset-link.",
+    "backToLogin": "Terug naar inloggen",
+    "resetPasswordTitle": "Nieuw wachtwoord instellen",
+    "resetPasswordSub": "Kies een nieuw wachtwoord voor je account.",
+    "newPassword": "Nieuw wachtwoord",
+    "resetPasswordButton": "Wachtwoord instellen",
+    "resetPasswordSuccess": "Je wachtwoord is succesvol gewijzigd. Je kunt nu inloggen.",
+    "resetPasswordError": "Reset mislukt. De link is mogelijk verlopen. Vraag een nieuwe reset-link aan."
   },
   "studentAuth": {
     "title": "Inloggen als leerling",

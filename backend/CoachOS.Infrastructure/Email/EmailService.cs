@@ -223,6 +223,18 @@ public class EmailService(
             $"Uitnodiging tennisles op {dateText}", html, ct);
     }
 
+    public async Task SendPasswordResetAsync(
+        string toEmail, string firstName, string resetUrl, CancellationToken ct = default)
+    {
+        var html = renderer.Render("password-reset", new Dictionary<string, string>
+        {
+            ["firstName"] = firstName,
+            ["resetUrl"] = resetUrl,
+            ["year"] = DateTime.UtcNow.Year.ToString(),
+        });
+        await SendAsync(toEmail, firstName, "Wachtwoord opnieuw instellen — CoachOS", html, ct);
+    }
+
     // ── Core send method (reused by all email types) ──────────────────────────
 
     private async Task SendAsync(

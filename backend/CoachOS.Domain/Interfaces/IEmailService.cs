@@ -71,4 +71,10 @@ public interface IEmailService
         string? notes,
         string invitationUrl,
         CancellationToken ct = default);
+
+    Task SendPasswordResetAsync(
+        string toEmail,
+        string firstName,
+        string resetUrl,
+        CancellationToken ct = default);
 }
