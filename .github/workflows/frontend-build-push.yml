@@ -81,6 +81,7 @@ jobs:
             set -euo pipefail
             cd /app
             echo "$SCW_SECRET_KEY" | docker login rg.fr-par.scw.cloud -u nologin --password-stdin
+            docker image prune -f
             for i in 1 2 3; do
               if docker compose pull frontend; then break; fi
               [ $i -lt 3 ] && sleep 10 || exit 1

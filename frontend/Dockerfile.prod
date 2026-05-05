@@ -30,16 +30,13 @@ ENV HOSTNAME=0.0.0.0
 RUN addgroup --system --gid 1001 nodejs \
     && adduser --system --uid 1001 nextjs
 
-# Only copy what next start needs.
+# standalone/ contains server.js + minimal node_modules (no dev deps, no full tree).
+# static/ must be copied separately into the expected path.
 COPY --from=build --chown=nextjs:nodejs /app/public ./public
-COPY --from=build --chown=nextjs:nodejs /app/.next ./.next
-COPY --from=build --chown=nextjs:nodejs /app/node_modules ./node_modules
-COPY --from=build --chown=nextjs:nodejs /app/package.json ./package.json
-COPY --from=build --chown=nextjs:nodejs /app/next.config.ts ./next.config.ts
-COPY --from=build --chown=nextjs:nodejs /app/i18n ./i18n
-COPY --from=build --chown=nextjs:nodejs /app/messages ./messages
+COPY --from=build --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=build --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 USER nextjs
 EXPOSE 3000
 
-CMD ["npx", "next", "start", "--port", "3000", "--hostname", "0.0.0.0"]
+CMD ["node", "server.js"]
