@@ -121,6 +121,31 @@ public class EmailService(
             $"Nieuwe inschrijving: {studentName} voor {seriesName}", html, ct);
     }
 
+    public async Task SendLessonCancellationAsync(
+        string studentEmail, string studentName, string seriesName,
+        DateOnly lessonDate, TimeOnly startTime, string? cancellationReason,
+        CancellationToken ct = default)
+    {
+        string dayName = DaysNl[(int)lessonDate.DayOfWeek];
+        string dateText = lessonDate.ToString("dd/MM/yyyy");
+        string reasonBlock = string.IsNullOrWhiteSpace(cancellationReason)
+            ? string.Empty
+            : $"<em>Reden: {WebUtility.HtmlEncode(cancellationReason)}</em>";
+
+        string html = renderer.Render("lesson-cancellation", new Dictionary<string, string>
+        {
+            ["studentName"] = studentName,
+            ["seriesName"] = seriesName,
+            ["dayName"] = dayName,
+            ["dateText"] = dateText,
+            ["startTime"] = startTime.ToString("HH:mm"),
+            ["raw:reasonBlock"] = reasonBlock,
+            ["year"] = DateTime.UtcNow.Year.ToString(),
+        });
+        await SendAsync(studentEmail, studentName,
+            $"Lesannulatie: {seriesName} op {dateText}", html, ct);
+    }
+
     public async Task SendStandaloneLessonInvitationAsync(
         string toEmail,
         string? firstName,

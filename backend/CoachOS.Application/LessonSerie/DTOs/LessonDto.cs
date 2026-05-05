@@ -13,4 +13,5 @@ public class LessonDto
     public int MaxStudents { get; set; }
     public string? Notes { get; set; }
     public bool IsCancelled { get; set; }
+    public string? CancellationReason { get; set; }
 }

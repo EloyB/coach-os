@@ -10,4 +10,5 @@ public record UpdateLessonRequest
     public int? MaxStudents { get; init; }
     public string? Notes { get; init; }
     public bool? IsCancelled { get; init; }
+    public string? CancellationReason { get; init; }
 }

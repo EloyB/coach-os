@@ -28,6 +28,7 @@ import {
   Copy,
   CheckCircle2,
   ClipboardList,
+  MoreVertical,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -344,7 +345,10 @@ function EditLessonDialog({
   const [notes, setNotes] = useState(lesson.notes ?? "");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [showActionsMenu, setShowActionsMenu] = useState(false);
+  const [activeAction, setActiveAction] = useState<"cancel" | "delete" | null>(null);
+  const [cancellationReason, setCancellationReason] = useState("");
 
   async function handleSave() {
     setSaving(true);
@@ -378,6 +382,37 @@ function EditLessonDialog({
       onClose();
     } finally {
       setDeleting(false);
+    }
+  }
+
+  async function handleCancel() {
+    setCancelling(true);
+    try {
+      await updateLesson(seriesId, lesson.id, {
+        isCancelled: true,
+        cancellationReason: cancellationReason.trim() || undefined,
+      });
+      toast.success("Lesmoment geannuleerd");
+      queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
+      onSaved();
+    } catch {
+      // Error toast shown by axios interceptor
+    } finally {
+      setCancelling(false);
+    }
+  }
+
+  async function handleUndoCancel() {
+    setCancelling(true);
+    try {
+      await updateLesson(seriesId, lesson.id, { isCancelled: false });
+      toast.success("Annulatie ongedaan gemaakt");
+      queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
+      onSaved();
+    } catch {
+      // Error toast shown by axios interceptor
+    } finally {
+      setCancelling(false);
     }
   }
 
@@ -480,56 +515,132 @@ function EditLessonDialog({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 pt-2">
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={saving}
-            className="flex-1 px-4 py-2 bg-tennis-green text-white text-sm font-semibold rounded-lg hover:bg-tennis-green/90 disabled:opacity-60"
-          >
-            {saving ? "Opslaan..." : "Opslaan"}
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 border border-gray-200 text-sm font-medium text-gray-600 rounded-lg hover:bg-gray-50"
-          >
-            Annuleren
-          </button>
-        </div>
+        {/* Geannuleerd banner */}
+        {lesson.isCancelled && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-orange-50 border border-orange-200 rounded-lg text-xs text-orange-700">
+            <AlertTriangle size={12} className="shrink-0" />
+            <span className="flex-1">
+              Geannuleerd{lesson.cancellationReason && ` — ${lesson.cancellationReason}`}
+            </span>
+            <button
+              type="button"
+              onClick={handleUndoCancel}
+              disabled={cancelling}
+              className="font-medium underline underline-offset-2 hover:no-underline disabled:opacity-60"
+            >
+              Ongedaan maken
+            </button>
+          </div>
+        )}
 
-        {/* Delete */}
-        <div className="border-t border-gray-100 pt-3 mt-1">
-          {confirmDelete ? (
-            <div className="flex items-center gap-2">
-              <p className="text-xs text-red-600 flex-1">Weet je het zeker?</p>
+        {/* Actie bevestiging inline */}
+        {activeAction === "cancel" && (
+          <div className="border border-orange-200 rounded-lg p-3 space-y-2 bg-orange-50/50">
+            <p className="text-xs font-medium text-orange-800">Les annuleren</p>
+            <textarea
+              value={cancellationReason}
+              onChange={(e) => setCancellationReason(e.target.value)}
+              placeholder="Reden (optioneel) — wordt meegezonden in de mail aan studenten"
+              rows={2}
+              className={inputClass + " resize-none text-xs"}
+            />
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={handleCancel}
+                disabled={cancelling}
+                className="px-3 py-1.5 bg-orange-600 text-white text-xs font-semibold rounded-lg hover:bg-orange-700 disabled:opacity-60"
+              >
+                {cancelling ? "Bezig..." : "Annuleer les"}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setActiveAction(null); setCancellationReason(""); }}
+                className="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700"
+              >
+                Terug
+              </button>
+            </div>
+          </div>
+        )}
+
+        {activeAction === "delete" && (
+          <div className="border border-red-200 rounded-lg p-3 bg-red-50/50">
+            <p className="text-xs font-medium text-red-800 mb-2">Lesmoment permanent verwijderen?</p>
+            <div className="flex gap-2">
               <button
                 type="button"
                 onClick={handleDelete}
                 disabled={deleting}
                 className="px-3 py-1.5 bg-red-600 text-white text-xs font-semibold rounded-lg hover:bg-red-700 disabled:opacity-60"
               >
-                {deleting ? "Verwijderen..." : "Ja, verwijder"}
+                {deleting ? "Bezig..." : "Verwijder"}
               </button>
               <button
                 type="button"
-                onClick={() => setConfirmDelete(false)}
-                className="px-3 py-1.5 border border-gray-200 text-xs font-medium text-gray-600 rounded-lg hover:bg-gray-50"
+                onClick={() => setActiveAction(null)}
+                className="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700"
               >
-                Nee
+                Terug
               </button>
             </div>
-          ) : (
+          </div>
+        )}
+
+        {/* Footer: opslaan + ⋮ menu */}
+        {!activeAction && (
+          <div className="flex items-center gap-2 pt-2">
             <button
               type="button"
-              onClick={() => setConfirmDelete(true)}
-              className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 transition-colors"
+              onClick={handleSave}
+              disabled={saving}
+              className="flex-1 px-4 py-2 bg-tennis-green text-white text-sm font-semibold rounded-lg hover:bg-tennis-green/90 disabled:opacity-60"
             >
-              <Trash2 size={12} />
-              Lesmoment verwijderen
+              {saving ? "Opslaan..." : "Opslaan"}
             </button>
-          )}
-        </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 border border-gray-200 text-sm font-medium text-gray-600 rounded-lg hover:bg-gray-50"
+            >
+              Sluiten
+            </button>
+
+            {/* ⋮ acties menu */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowActionsMenu((v) => !v)}
+                className="w-9 h-9 flex items-center justify-center border border-gray-200 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors"
+              >
+                <MoreVertical size={15} />
+              </button>
+              {showActionsMenu && (
+                <div className="absolute bottom-full right-0 mb-1 bg-white border border-gray-100 rounded-lg shadow-lg z-50 min-w-44 py-1 text-sm">
+                  {!lesson.isCancelled && (
+                    <button
+                      type="button"
+                      onClick={() => { setShowActionsMenu(false); setActiveAction("cancel"); }}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-orange-600 hover:bg-orange-50 text-left"
+                    >
+                      <AlertTriangle size={13} />
+                      Les annuleren
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => { setShowActionsMenu(false); setActiveAction("delete"); }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-red-600 hover:bg-red-50 text-left"
+                  >
+                    <Trash2 size={13} />
+                    Verwijderen
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
       </DialogContent>
     </Dialog>
   );
@@ -575,6 +686,7 @@ function LessonWeekView({
       trainerName: l.trainerId ? (trainerMap.get(l.trainerId) ?? null) : null,
       courtName: l.courtName,
       maxStudents: l.maxStudents,
+      isCancelled: l.isCancelled,
     }));
 
   // Collect unique trainers used in lessons for the legend

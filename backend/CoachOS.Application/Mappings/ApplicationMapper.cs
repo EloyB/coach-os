@@ -70,6 +70,7 @@ public partial class ApplicationMapper
             MaxStudents = lesson.MaxStudents,
             Notes = lesson.Notes,
             IsCancelled = lesson.IsCancelled,
+            CancellationReason = lesson.CancellationReason,
         };
     }
 

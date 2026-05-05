@@ -11,6 +11,7 @@ export interface LessonDto {
   maxStudents: number;
   notes?: string;
   isCancelled: boolean;
+  cancellationReason?: string | null;
 }
 
 export interface LessonSeriesDto {
@@ -111,6 +112,7 @@ export interface UpdateLessonRequest {
   maxStudents?: number;
   notes?: string;
   isCancelled?: boolean;
+  cancellationReason?: string;
 }
 
 export async function updateLesson(seriesId: string, lessonId: string, request: UpdateLessonRequest): Promise<LessonDto> {
