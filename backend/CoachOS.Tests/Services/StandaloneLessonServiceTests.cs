@@ -74,6 +74,11 @@ public class StandaloneLessonServiceTests
         _invitationRepo
             .Setup(r => r.ExistsByLessonAndEmailAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
+
+        // Default: lege invitations-lijst (cancel/replan iteratie veilig).
+        _invitationRepo
+            .Setup(r => r.GetByLessonAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<LessonInvitation>());
     }
 
     private static CreateStandaloneLessonRequest BuildCreateRequest(
@@ -312,7 +317,7 @@ public class StandaloneLessonServiceTests
             .Setup(r => r.GetByIdInOrganizationAsync(lessonId, OrgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(lesson);
 
-        Result result = await _service.CancelAsync(OrgId, lessonId, CancellationToken.None);
+        Result result = await _service.CancelAsync(OrgId, lessonId, null, CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         lesson.IsCancelled.Should().BeTrue();
@@ -334,11 +339,62 @@ public class StandaloneLessonServiceTests
             .Setup(r => r.GetByIdInOrganizationAsync(lessonId, OrgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(lesson);
 
-        Result result = await _service.CancelAsync(OrgId, lessonId, CancellationToken.None);
+        Result result = await _service.CancelAsync(OrgId, lessonId, null, CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         // Geen extra SaveChanges nodig wanneer al geannuleerd.
         _lessonRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task CancelAsync_WithReason_StoresReasonAndMailsActiveInvitees()
+    {
+        Guid lessonId = Guid.NewGuid();
+        Lesson lesson = new()
+        {
+            Id = lessonId,
+            OrganizationId = OrgId,
+            LessonSerieId = null,
+            IsCancelled = false,
+            Date = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(7),
+            StartTime = new TimeOnly(10, 0),
+            TrainerId = TrainerId,
+        };
+        _lessonRepo
+            .Setup(r => r.GetByIdInOrganizationAsync(lessonId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(lesson);
+
+        List<LessonInvitation> invitees =
+        [
+            new() { Email = "p@x.be", FirstName = "Piet", Status = LessonInvitationStatus.Pending },
+            new() { Email = "a@x.be", FirstName = "Ann",  Status = LessonInvitationStatus.Accepted },
+            new() { Email = "d@x.be", FirstName = "Dirk", Status = LessonInvitationStatus.Declined },
+        ];
+        _invitationRepo
+            .Setup(r => r.GetByLessonAsync(lessonId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(invitees);
+
+        Result result = await _service.CancelAsync(OrgId, lessonId, "Trainer ziek", CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        lesson.IsCancelled.Should().BeTrue();
+        lesson.CancellationReason.Should().Be("Trainer ziek");
+
+        _emailService.Verify(e => e.SendLessonCancellationAsync(
+                "p@x.be", "Piet", "Losse les",
+                lesson.Date, lesson.StartTime, "Trainer ziek",
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+        _emailService.Verify(e => e.SendLessonCancellationAsync(
+                "a@x.be", "Ann", "Losse les",
+                lesson.Date, lesson.StartTime, "Trainer ziek",
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+        _emailService.Verify(e => e.SendLessonCancellationAsync(
+                "d@x.be", It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<DateOnly>(), It.IsAny<TimeOnly>(), It.IsAny<string?>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     // ── AddInvitationsAsync ───────────────────────────────────────────────────

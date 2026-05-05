@@ -36,6 +36,16 @@ import {
   STANDALONE_LESSON_LEVELS,
   type InvitationDto,
 } from "@/lib/api/standaloneLessons";
+import { rescheduleLesson } from "@/lib/api/lessons";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { DatePicker } from "@/components/ui/date-picker";
 import { SlashLabel } from "@/components/ui/slash-label";
 import { Mono } from "@/components/ui/mono";
 import { formatDateNL } from "@/lib/date-utils";
@@ -253,12 +263,41 @@ export default function StandaloneLessonDetailPage({
     queryFn: () => getStandaloneLesson(id),
   });
 
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [rescheduleOpen, setRescheduleOpen] = useState(false);
+  const [rescheduleDate, setRescheduleDate] = useState("");
+  const [rescheduleStart, setRescheduleStart] = useState("");
+  const [rescheduleEnd, setRescheduleEnd] = useState("");
+  const [rescheduleReason, setRescheduleReason] = useState("");
+
   const cancelMutation = useMutation({
-    mutationFn: () => cancelStandaloneLesson(id),
+    mutationFn: (reason?: string) => cancelStandaloneLesson(id, reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["standaloneLessons"] });
       queryClient.invalidateQueries({ queryKey: ["standaloneLessons", id] });
       toast.success(t("detailCancelSuccess"));
+      setCancelOpen(false);
+      setCancelReason("");
+    },
+  });
+
+  const rescheduleMutation = useMutation({
+    mutationFn: () =>
+      rescheduleLesson(id, {
+        newDate: rescheduleDate,
+        newStartTime: rescheduleStart,
+        newEndTime: rescheduleEnd,
+        reason: rescheduleReason.trim() || undefined,
+      }),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["standaloneLessons"] });
+      queryClient.invalidateQueries({ queryKey: ["standaloneLessons", id] });
+      toast.success(
+        t("detailRescheduleSuccess", { count: result.notifiedCount }),
+      );
+      setRescheduleOpen(false);
+      setRescheduleReason("");
     },
   });
 
@@ -307,35 +346,28 @@ export default function StandaloneLessonDetailPage({
               <AlertTriangle size={11} /> {t("detailCancelled")}
             </span>
           ) : (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <button
-                  type="button"
-                  className="text-[11.5px] text-red-600 hover:bg-red-50 rounded-md px-3 py-1.5 inline-flex items-center gap-1.5"
-                >
-                  <X size={12} /> {t("detailCancel")}
-                </button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>
-                    {t("detailCancelConfirmTitle")}
-                  </AlertDialogTitle>
-                  <AlertDialogDescription>
-                    {t("detailCancelConfirmDesc")}
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Annuleren</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => cancelMutation.mutate()}
-                    className="bg-red-600 hover:bg-red-700"
-                  >
-                    {t("detailCancel")}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setRescheduleDate(lesson.date);
+                  setRescheduleStart(lesson.startTime);
+                  setRescheduleEnd(lesson.endTime);
+                  setRescheduleReason("");
+                  setRescheduleOpen(true);
+                }}
+                className="text-[11.5px] text-tennis-green hover:bg-tennis-green/5 rounded-md px-3 py-1.5 inline-flex items-center gap-1.5"
+              >
+                <CalendarDays size={12} /> {t("detailReschedule")}
+              </button>
+              <button
+                type="button"
+                onClick={() => setCancelOpen(true)}
+                className="text-[11.5px] text-red-600 hover:bg-red-50 rounded-md px-3 py-1.5 inline-flex items-center gap-1.5"
+              >
+                <X size={12} /> {t("detailCancel")}
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -432,6 +464,123 @@ export default function StandaloneLessonDetailPage({
           </div>
         </div>
       </div>
+
+      <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("detailCancelConfirmTitle")}</DialogTitle>
+            <DialogDescription>{t("detailCancelConfirmDesc")}</DialogDescription>
+          </DialogHeader>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              {t("detailCancelReasonLabel")}
+            </label>
+            <textarea
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              placeholder={t("detailCancelReasonPlaceholder")}
+              rows={3}
+              className={inputClass + " resize-none text-sm"}
+            />
+          </div>
+          <DialogFooter>
+            <button
+              type="button"
+              onClick={() => setCancelOpen(false)}
+              className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
+            >
+              {t("detailCancelDialogBack")}
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                cancelMutation.mutate(cancelReason.trim() || undefined)
+              }
+              disabled={cancelMutation.isPending}
+              className="px-4 py-2 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 disabled:opacity-60"
+            >
+              {cancelMutation.isPending
+                ? t("detailCancelDialogBusy")
+                : t("detailCancel")}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={rescheduleOpen} onOpenChange={setRescheduleOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("detailRescheduleTitle")}</DialogTitle>
+            <DialogDescription>{t("detailRescheduleDesc")}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                {t("detailRescheduleNewDate")}
+              </label>
+              <DatePicker
+                value={rescheduleDate}
+                onChange={setRescheduleDate}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  {t("detailRescheduleStart")}
+                </label>
+                <input
+                  type="time"
+                  value={rescheduleStart}
+                  onChange={(e) => setRescheduleStart(e.target.value)}
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  {t("detailRescheduleEnd")}
+                </label>
+                <input
+                  type="time"
+                  value={rescheduleEnd}
+                  onChange={(e) => setRescheduleEnd(e.target.value)}
+                  className={inputClass}
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                {t("detailRescheduleReasonLabel")}
+              </label>
+              <textarea
+                value={rescheduleReason}
+                onChange={(e) => setRescheduleReason(e.target.value)}
+                placeholder={t("detailRescheduleReasonPlaceholder")}
+                rows={3}
+                className={inputClass + " resize-none text-sm"}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <button
+              type="button"
+              onClick={() => setRescheduleOpen(false)}
+              className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
+            >
+              {t("detailRescheduleBack")}
+            </button>
+            <button
+              type="button"
+              onClick={() => rescheduleMutation.mutate()}
+              disabled={rescheduleMutation.isPending}
+              className="px-4 py-2 bg-tennis-green text-white text-sm font-semibold rounded-lg hover:bg-tennis-green/90 disabled:opacity-60"
+            >
+              {rescheduleMutation.isPending
+                ? t("detailRescheduleBusy")
+                : t("detailRescheduleSubmit")}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

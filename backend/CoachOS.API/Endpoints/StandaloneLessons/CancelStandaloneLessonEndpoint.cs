@@ -1,5 +1,6 @@
 using CoachOS.API.Extensions;
 using CoachOS.Application.StandaloneLessons;
+using CoachOS.Application.StandaloneLessons.DTOs;
 
 namespace CoachOS.API.Endpoints.StandaloneLessons;
 
@@ -7,11 +8,15 @@ public class CancelStandaloneLessonEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapDelete("/standalone-lessons/{id:guid}",
-            async (Guid id, IStandaloneLessonService service, HttpContext ctx, CancellationToken ct) =>
+        app.MapPost("/standalone-lessons/{id:guid}/cancel",
+            async (Guid id,
+                CancelStandaloneLessonRequest? body,
+                IStandaloneLessonService service,
+                HttpContext ctx,
+                CancellationToken ct) =>
             {
                 Domain.Models.Result result =
-                    await service.CancelAsync(ctx.GetOrganizationId(), id, ct);
+                    await service.CancelAsync(ctx.GetOrganizationId(), id, body?.Reason, ct);
                 return result.IsSuccess ? Results.NoContent() : result.ToErrorResult();
             })
         .RequireAuthorization()

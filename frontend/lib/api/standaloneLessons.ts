@@ -94,8 +94,14 @@ export async function createStandaloneLesson(
   return data;
 }
 
-export async function cancelStandaloneLesson(id: string): Promise<void> {
-  await apiClient.delete(`/standalone-lessons/${id}`);
+export async function cancelStandaloneLesson(
+  id: string,
+  reason?: string
+): Promise<void> {
+  await apiClient.post(
+    `/standalone-lessons/${id}/cancel`,
+    reason ? { reason } : {}
+  );
 }
 
 export async function addInvitations(

@@ -20,7 +20,7 @@ public interface IStandaloneLessonService
         Guid organizationId, Guid lessonId, CancellationToken ct = default);
 
     Task<Result> CancelAsync(
-        Guid organizationId, Guid lessonId, CancellationToken ct = default);
+        Guid organizationId, Guid lessonId, string? reason, CancellationToken ct = default);
 
     Task<Result> AddInvitationsAsync(
         Guid organizationId, Guid lessonId, List<string> emails, CancellationToken ct = default);

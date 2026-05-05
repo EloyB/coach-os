@@ -63,4 +63,16 @@ public class LessonInvitationRepository(ApplicationDbContext context) : ILessonI
 
         return affected == 1;
     }
+
+    public async Task<int> ReassignToLessonAsync(
+        Guid fromLessonId, Guid toLessonId, CancellationToken ct = default)
+    {
+        DateTime now = DateTime.UtcNow;
+        return await context.LessonInvitations
+            .Where(i => i.LessonId == fromLessonId)
+            .ExecuteUpdateAsync(s => s
+                    .SetProperty(i => i.LessonId, toLessonId)
+                    .SetProperty(i => i.UpdatedAt, now),
+                ct);
+    }
 }

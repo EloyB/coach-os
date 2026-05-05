@@ -31,4 +31,11 @@ public interface ILessonInvitationRepository
         LessonInvitationStatus target,
         DateTime now,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Verplaatst alle invitations van <paramref name="fromLessonId"/> naar
+    /// <paramref name="toLessonId"/> via ExecuteUpdate. Gebruikt bij replanning.
+    /// </summary>
+    Task<int> ReassignToLessonAsync(
+        Guid fromLessonId, Guid toLessonId, CancellationToken ct = default);
 }
