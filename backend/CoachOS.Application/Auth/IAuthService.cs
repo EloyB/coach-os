@@ -28,4 +28,20 @@ public interface IAuthService
     Task<Result<List<OrganizationMembershipDto>>> GetMembershipsAsync(
         Guid userId,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Start de wachtwoord-reset flow: genereert een token en stuurt een e-mail.
+    /// Geeft altijd Ok terug — ook als het e-mailadres onbekend is (anti-enumeration).
+    /// </summary>
+    Task<Result> ForgotPasswordAsync(
+        string email,
+        string resetBaseUrl,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Valideert het reset-token en stelt een nieuw wachtwoord in.</summary>
+    Task<Result> ResetPasswordAsync(
+        string email,
+        string token,
+        string newPassword,
+        CancellationToken cancellationToken = default);
 }
