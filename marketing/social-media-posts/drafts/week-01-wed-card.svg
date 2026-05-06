@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1080" viewBox="0 0 1080 1080">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&amp;family=JetBrains+Mono:wght@500;600;700&amp;display=swap');
+      .sans { font-family: 'Inter', system-ui, sans-serif; }
+      .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+    </style>
+  </defs>
+
+  <!-- Paper background -->
+  <rect width="1080" height="1080" fill="#fdfcf9"/>
+
+  <!-- Lime vertical accent strip on right edge -->
+  <rect x="1015" y="0" width="65" height="1080" fill="#D0FF14"/>
+
+  <!-- Small dark monogram top-left -->
+  <rect x="80" y="80" width="90" height="90" rx="13" fill="#161513"/>
+  <g stroke="#D0FF14" stroke-width="5" fill="none" stroke-linecap="round">
+    <circle cx="125" cy="125" r="22"/>
+    <path d="M 104 125 C 110 117, 117 117, 125 125 C 133 133, 140 133, 146 125"/>
+  </g>
+
+  <!-- Wordmark next to monogram -->
+  <text x="190" y="143" class="sans" font-weight="700" font-size="44" fill="#161513" letter-spacing="-0.8">Coach<tspan fill="#2D5016">OS</tspan></text>
+
+  <!-- Hero statement -->
+  <text x="80" y="510" class="sans" font-weight="800" font-size="116" fill="#161513" letter-spacing="-3.5">Voor BE.</text>
+  <text x="80" y="640" class="sans" font-weight="800" font-size="116" fill="#161513" letter-spacing="-3.5">Voor NL.</text>
+  <text x="80" y="770" class="sans" font-weight="800" font-size="116" fill="#161513" letter-spacing="-3.5">Niet vertaald.</text>
+
+  <!-- Divider -->
+  <line x1="80" y1="870" x2="985" y2="870" stroke="#e7e4dc" stroke-width="2"/>
+
+  <!-- Subtitle -->
+  <text x="80" y="945" class="sans" font-weight="500" font-size="26" fill="#4a4741">iDEAL · Bancontact · Magic-link</text>
+
+  <!-- URL right-aligned -->
+  <text x="985" y="945" class="mono" font-weight="700" font-size="24" fill="#161513" letter-spacing="4" text-anchor="end">coach-os.be</text>
+</svg>
