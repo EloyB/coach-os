@@ -23,6 +23,16 @@ resource "scaleway_domain_record" "www" {
   ttl      = 300
 }
 
+# app: app.coach-os.be → VPS public IP
+# Apex + www serve the marketing website; the Next.js app lives on this subdomain.
+resource "scaleway_domain_record" "app" {
+  dns_zone = var.domain_name
+  name     = "app"
+  type     = "A"
+  data     = scaleway_instance_ip.vps.address
+  ttl      = 300
+}
+
 # ── Google Workspace MX record ───────────────────────────────────────────────
 # Mail for *@coach-os.be is delivered to Google Workspace mailboxes.
 # Modern Google setup uses a single MX (smtp.google.com) instead of the legacy

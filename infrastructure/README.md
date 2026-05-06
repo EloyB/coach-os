@@ -12,7 +12,7 @@ infrastructure/
 ├── nginx/
 │   ├── nginx.conf       # Global config (gzip, rate-limit zones, log format)
 │   └── conf.d/
-│       └── coach-os.conf  # Vhost: HTTP→HTTPS, /api/* → api:8080, /* → frontend:3000
+│       └── coach-os.conf  # Two vhosts: apex/www → website:3000, app.* → frontend:3000 + /api/* → api:8080
 ├── README.md            # this file
 └── SECRETS.md           # checklist of secrets to add to GitHub + Scaleway
 
@@ -20,8 +20,11 @@ infrastructure/
 
 ../.github/workflows/
 ├── backend-build-push.yml   # test → build → push → migrate → ssh+restart
-├── frontend-build-push.yml  # build → push → ssh+restart
-└── deploy-infra.yml         # ssh+sync compose + nginx
+├── frontend-build-push.yml  # build → push → ssh+restart       (app.coach-os.be)
+├── website-build-push.yml   # build → push → ssh+restart       (coach-os.be apex)
+├── deploy-infra.yml         # ssh+sync compose + nginx
+├── terraform.yml            # plan/apply Terraform (infrastructure/terraform/**)
+└── cert-expand.yml          # workflow_dispatch — certbot --expand for new SANs
 ```
 
 Application code is at `../backend/` and `../frontend/`. The local-dev compose
@@ -32,14 +35,24 @@ at the repo root is unrelated to this folder.
 ```
 Internet
   │
-  └─ coach-os.be ──→ Scaleway VPS (single instance)
-                      │
-                      └─ nginx:alpine (host :80, :443) — Let's Encrypt SSL
-                           ├─ /api/*   → coach-os-api      (internal :8080)
-                           └─ /*       → coach-os-frontend (internal :3000)
+  ├─ coach-os.be / www.coach-os.be ──→ Scaleway VPS (single instance)
+  │                                      │
+  │                                      └─ nginx → coach-os-website (internal :3000)
+  │                                          (marketing site, /api/contact + /api/waitlist
+  │                                           run inside the website container)
+  │
+  └─ app.coach-os.be ──────────────────→ Scaleway VPS (same instance)
+                                          │
+                                          └─ nginx (Let's Encrypt SAN cert)
+                                               ├─ /api/*  → coach-os-api      (internal :8080)
+                                               ├─ /_logs/ → coach-os-dozzle   (internal :8080)
+                                               └─ /*      → coach-os-frontend (internal :3000)
+
+Apex permanently redirects /login, /register, /dashboard, /confirmation, /auth, /invitation
+to app.coach-os.be (preserves bookmarks and old email links).
 
 Scaleway Managed Postgres (separate service) ◄─── api connects via private endpoint
-Scaleway Container Registry (rg.fr-par.scw.cloud/coach-os/{api,frontend})
+Scaleway Container Registry (rg.fr-par.scw.cloud/coach-os/{api,frontend,website})
 Scaleway Secret Manager (DB string, JWT key, SMTP creds — read by api at startup)
 Scaleway Transactional Email (SMTP for outbound mail)
 ```
@@ -54,6 +67,9 @@ Only nginx exposes ports on the host.
 | Push to `main` ∩ `infrastructure/docker-compose.yml` or `infrastructure/nginx/**` | `deploy-infra.yml` | SSH to VPS, backup, sync compose+nginx, validate, restart |
 | Push to `main` ∩ `backend/**` (excl. Scripts/, *.md) | `backend-build-push.yml` | Test → build → push → migrate-db → SSH pull-and-restart |
 | Push to `main` ∩ `frontend/**` (excl. e2e, *.md, dev Dockerfile) | `frontend-build-push.yml` | Build (Dockerfile.prod) → push → SSH pull-and-restart |
+| Push to `main` ∩ `website/**` (excl. *.md) | `website-build-push.yml` | Build (Dockerfile.prod) → push → SSH pull-and-restart |
+| Push to `main` ∩ `infrastructure/terraform/**` | `terraform.yml` | `tofu plan` + auto-apply (DNS, secrets, registry, etc.) |
+| Manual (`workflow_dispatch`) | `cert-expand.yml` | One-shot `certbot --expand` after adding a new hostname |
 
 All workflows are also `workflow_dispatch`-able from the GitHub Actions UI.
 

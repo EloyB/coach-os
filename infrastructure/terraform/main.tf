@@ -67,7 +67,7 @@ resource "scaleway_registry_namespace" "coach_os" {
   project_id  = var.scw_project_id
   region      = var.scw_region
   name        = var.registry_namespace
-  description = "Container images for coach-os (api, frontend)"
+  description = "Container images for coach-os (api, frontend, website)"
   is_public   = false
 }
 

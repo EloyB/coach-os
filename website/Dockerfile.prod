@@ -1,8 +1,12 @@
+# Marketing website (coach-os.be apex). Mirrors frontend/Dockerfile.prod but
+# without the NEXT_PUBLIC_API_URL build-arg — the marketing site does not
+# call the backend API directly; its own /api/contact and /api/waitlist routes
+# run server-side in this container.
+
 # ── Dependencies ─────────────────────────────────────────────────────────────
 FROM node:22-alpine AS deps
 WORKDIR /app
-COPY package.json package-lock.json* bun.lockb* ./
-# Prefer npm ci for reproducibility; falls back if only bun.lockb exists.
+COPY package.json package-lock.json* bun.lock* ./
 RUN if [ -f package-lock.json ]; then npm ci; \
     else npm install --no-audit --no-fund; fi
 
@@ -11,9 +15,6 @@ FROM node:22-alpine AS build
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-# API URL is baked into the client bundle at build time.
-ARG NEXT_PUBLIC_API_URL=https://app.coach-os.be/api
-ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
@@ -26,12 +27,9 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
-# Non-root user
 RUN addgroup --system --gid 1001 nodejs \
     && adduser --system --uid 1001 nextjs
 
-# standalone/ contains server.js + minimal node_modules (no dev deps, no full tree).
-# static/ must be copied separately into the expected path.
 COPY --from=build --chown=nextjs:nodejs /app/public ./public
 COPY --from=build --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=build --chown=nextjs:nodejs /app/.next/static ./.next/static

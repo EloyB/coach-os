@@ -30,8 +30,11 @@ locals {
     "Jwt__Issuer"                        = var.jwt_issuer
     "Jwt__Audience"                      = var.jwt_audience
     "Jwt__ExpiryMinutes"                 = tostring(var.jwt_expiry_minutes)
-    "Frontend__Origin"                   = "https://${var.domain_name}"
-    "App__ConfirmationBaseUrl"           = "https://${var.domain_name}/confirmation"
+    # The CoachOS app is served on app.<domain_name> (the apex hosts the
+    # marketing website). CORS origin and confirmation redirect URL must
+    # therefore both target the app subdomain.
+    "Frontend__Origin"                   = "https://app.${var.domain_name}"
+    "App__ConfirmationBaseUrl"           = "https://app.${var.domain_name}/confirmation"
     "Email__SmtpHost"                    = "smtp.tem.scw.cloud"
     "Email__SmtpPort"                    = "587"
     "Email__FromAddress"                 = var.smtp_from_address
