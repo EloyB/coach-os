@@ -1,3 +1,18 @@
+/**
+ * Site-wide visibility toggle for everything pricing-related:
+ * - homepage Pricing section
+ * - /prijzen page (returns 404 when hidden)
+ * - "Prijzen" nav link
+ * - /prijzen entry in sitemap.xml
+ *
+ * Hidden during the pilot stage while we finalise tarifering. Flip to
+ * `true` to bring the full pricing surface back without code changes.
+ *
+ * Typed as `boolean` (not the literal `false`) so the dependent
+ * conditional code paths don't get TS-narrowed away.
+ */
+export const PRICING_VISIBLE: boolean = false;
+
 export interface PricingTier {
   id: string;
   name: string;

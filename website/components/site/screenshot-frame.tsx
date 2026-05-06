@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { Mono } from "@/components/ui/mono";
@@ -10,6 +11,12 @@ interface ScreenshotFrameProps {
   expectedFilename?: string;
   className?: string;
   priority?: boolean;
+  /**
+   * If provided, renders inside the frame chrome instead of the static image
+   * or placeholder — used for animated mocks. The aspect-ratio container is
+   * dropped so the children dictate the natural height.
+   */
+  children?: ReactNode;
 }
 
 export function ScreenshotFrame({
@@ -18,6 +25,7 @@ export function ScreenshotFrame({
   expectedFilename,
   className,
   priority = false,
+  children,
 }: ScreenshotFrameProps) {
   if (chrome === "phone") {
     return (
@@ -26,7 +34,9 @@ export function ScreenshotFrame({
         expectedFilename={expectedFilename}
         className={className}
         priority={priority}
-      />
+      >
+        {children}
+      </PhoneFrame>
     );
   }
   return (
@@ -35,7 +45,9 @@ export function ScreenshotFrame({
       expectedFilename={expectedFilename}
       className={className}
       priority={priority}
-    />
+    >
+      {children}
+    </DashboardFrame>
   );
 }
 
@@ -44,6 +56,7 @@ function DashboardFrame({
   expectedFilename,
   className,
   priority,
+  children,
 }: Omit<ScreenshotFrameProps, "chrome">) {
   return (
     <div
@@ -60,23 +73,27 @@ function DashboardFrame({
           coach-os.be / dashboard
         </Mono>
       </div>
-      <div
-        className="relative w-full"
-        style={{ aspectRatio: `${image.width} / ${image.height}` }}
-      >
-        {image.src ? (
-          <Image
-            src={image.src}
-            alt={image.alt}
-            fill
-            sizes="(min-width: 1024px) 640px, 100vw"
-            className="object-cover"
-            priority={priority}
-          />
-        ) : (
-          <FramePlaceholder filename={expectedFilename} alt={image.alt} />
-        )}
-      </div>
+      {children ? (
+        <div className="relative w-full">{children}</div>
+      ) : (
+        <div
+          className="relative w-full"
+          style={{ aspectRatio: `${image.width} / ${image.height}` }}
+        >
+          {image.src ? (
+            <Image
+              src={image.src}
+              alt={image.alt}
+              fill
+              sizes="(min-width: 1024px) 640px, 100vw"
+              className="object-cover"
+              priority={priority}
+            />
+          ) : (
+            <FramePlaceholder filename={expectedFilename} alt={image.alt} />
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -86,28 +103,33 @@ function PhoneFrame({
   expectedFilename,
   className,
   priority,
+  children,
 }: Omit<ScreenshotFrameProps, "chrome">) {
   return (
     <div className={cn("relative mx-auto w-full max-w-[280px]", className)}>
       <div className="relative overflow-hidden rounded-[2.5rem] border-[10px] border-ink bg-ink shadow-[0_40px_80px_-30px_rgba(22,21,19,0.45)]">
         <div className="absolute left-1/2 top-2 z-10 h-5 w-24 -translate-x-1/2 rounded-full bg-ink" />
-        <div
-          className="relative w-full bg-canvas"
-          style={{ aspectRatio: `${image.width} / ${image.height}` }}
-        >
-          {image.src ? (
-            <Image
-              src={image.src}
-              alt={image.alt}
-              fill
-              sizes="280px"
-              className="object-cover"
-              priority={priority}
-            />
-          ) : (
-            <FramePlaceholder filename={expectedFilename} alt={image.alt} />
-          )}
-        </div>
+        {children ? (
+          <div className="relative w-full bg-canvas">{children}</div>
+        ) : (
+          <div
+            className="relative w-full bg-canvas"
+            style={{ aspectRatio: `${image.width} / ${image.height}` }}
+          >
+            {image.src ? (
+              <Image
+                src={image.src}
+                alt={image.alt}
+                fill
+                sizes="280px"
+                className="object-cover"
+                priority={priority}
+              />
+            ) : (
+              <FramePlaceholder filename={expectedFilename} alt={image.alt} />
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

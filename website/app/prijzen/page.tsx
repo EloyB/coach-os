@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { Mono } from "@/components/ui/mono";
 import { SiteNav } from "@/components/site/site-nav";
 import { SiteFooter } from "@/components/site/site-footer";
@@ -10,6 +11,7 @@ import {
   PRICING_DISCLAIMER,
   PRICING_FAQ,
   PRICING_FAQ_HEADING,
+  PRICING_VISIBLE,
 } from "@/content/pricing";
 
 const SITE_URL = "https://coach-os.be";
@@ -79,6 +81,9 @@ function PricingPageJsonLd() {
 }
 
 export default function PrijzenPage() {
+  if (!PRICING_VISIBLE) {
+    notFound();
+  }
   return (
     <>
       <PricingPageJsonLd />

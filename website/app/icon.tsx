@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { LogoMarkSvg } from "@/components/site/logo-mark-svg";
 
 export const size = { width: 32, height: 32 };
 export const contentType = "image/png";
@@ -15,14 +16,10 @@ export default function Icon() {
           justifyContent: "center",
           background: "#D0FF14",
           borderRadius: 6,
-          color: "#161513",
-          fontSize: 22,
-          fontWeight: 800,
-          fontFamily: "ui-monospace, SFMono-Regular, monospace",
-          letterSpacing: -1,
         }}
       >
-        c/
+        {/* Heavier stroke + tighter mark so it stays legible at 32×32. */}
+        <LogoMarkSvg size={22} strokeWidth={11} />
       </div>
     ),
     { ...size },

@@ -1,3 +1,5 @@
+import { PRICING_VISIBLE } from "@/content/pricing";
+
 export interface NavLink {
   href: string;
   label: string;
@@ -7,7 +9,7 @@ export const NAV_LINKS: NavLink[] = [
   { href: "/#voor-wie", label: "Voor wie" },
   { href: "/#hoe-het-werkt", label: "Hoe het werkt" },
   { href: "/#features", label: "Features" },
-  { href: "/prijzen", label: "Prijzen" },
+  ...(PRICING_VISIBLE ? [{ href: "/prijzen", label: "Prijzen" }] : []),
   { href: "/#faq", label: "FAQ" },
 ];
 

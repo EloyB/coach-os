@@ -48,9 +48,9 @@ Low effort, high impact. ~1-2 hours of work.
 
 ## Phase 1.5 — In-progress (added after initial Phase 1)
 
-- ✅ **Pricing page** (`/prijzen`) shipped with placeholder tiers + comparison table + pricing-specific FAQ. Page-level JSON-LD: `BreadcrumbList` + `FAQPage`.
-- ⏳ **`SoftwareApplication.offers`** in homepage JSON-LD is deliberately omitted while pricing is placeholder. Adding fake numbers to structured data would get them cached by Google/AI engines and cause embarrassment when real pricing lands. Wire in `offers` (priceCurrency `EUR`, one `Offer` per tier) once prices are final — see `website/components/site/json-ld.tsx`.
-- ⏳ **Pricing-specific keywords** to monitor in Search Console once live: `prijs lesplanning tennisclub`, `kost lesplanning software`, `tarieven trainersplanning`, `gratis proefperiode tennisclub software`.
+- 🚧 **Pricing surface hidden during pilot** — code for `/prijzen` page + homepage Pricing section is intact but gated behind a single `PRICING_VISIBLE` flag in `website/content/pricing.ts`. Currently `false` while pilot pricing is being negotiated. When tarifering is finalised: flip the flag (and update the placeholder numbers in `PRICING_TIERS`). Hidden surface affects: homepage section render, `/prijzen` page (returns 404), Prijzen nav link, sitemap entry.
+- ⏳ **`SoftwareApplication.offers`** in homepage JSON-LD is deliberately omitted while pricing is placeholder. Adding fake numbers to structured data would get them cached by Google/AI engines and cause embarrassment when real pricing lands. Wire in `offers` (priceCurrency `EUR`, one `Offer` per tier) once prices are final and `PRICING_VISIBLE = true` — see `website/components/site/json-ld.tsx`.
+- ⏳ **Pricing-specific keywords** to monitor in Search Console once pricing is public: `prijs lesplanning tennisclub`, `kost lesplanning software`, `tarieven trainersplanning`, `gratis proefperiode tennisclub software`.
 
 ## Phase 2 — Content depth (the actual moat)
 

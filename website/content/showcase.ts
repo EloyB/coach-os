@@ -57,6 +57,25 @@ export const SHOWCASE: ShowcaseItem[] = [
     },
   },
   {
+    id: "formulierbouwer",
+    icon: FormInput,
+    kicker: "FORMULIEREN",
+    heading: "Vraag exact wat je nodig hebt — niets meer.",
+    body: "Bouw per lesreeks een formulier uit tekstvelden, meerkeuze-opties en ja/nee-vragen. De antwoorden zie je direct bij de inschrijving in het overzicht.",
+    bullets: [
+      "Tekst, meerkeuze, ja/nee — drie blokken volstaan",
+      "Per lesreeks anders: junior-niveau hier, voorkeurstijd daar",
+      "Antwoorden zichtbaar op elke leerlingenrij",
+    ],
+    chrome: "dashboard",
+    image: {
+      src: "",
+      alt: "Formulierbouwer waarin een trainer velden toevoegt aan een inschrijfformulier voor een lesreeks.",
+      width: 1600,
+      height: 1000,
+    },
+  },
+  {
     id: "anonieme-inschrijving",
     icon: ClipboardList,
     kicker: "INSCHRIJVING",
@@ -90,25 +109,6 @@ export const SHOWCASE: ShowcaseItem[] = [
     image: {
       src: "",
       alt: "Planning-overzicht met leerlingen verdeeld over weekslots, met voorkeurmatch-indicatoren per groep.",
-      width: 1600,
-      height: 1000,
-    },
-  },
-  {
-    id: "formulierbouwer",
-    icon: FormInput,
-    kicker: "FORMULIEREN",
-    heading: "Vraag exact wat je nodig hebt — niets meer.",
-    body: "Bouw per lesreeks een formulier uit tekstvelden, meerkeuze-opties en ja/nee-vragen. De antwoorden zie je direct bij de inschrijving in het overzicht.",
-    bullets: [
-      "Tekst, meerkeuze, ja/nee — drie blokken volstaan",
-      "Per lesreeks anders: junior-niveau hier, voorkeurstijd daar",
-      "Antwoorden zichtbaar op elke leerlingenrij",
-    ],
-    chrome: "dashboard",
-    image: {
-      src: "",
-      alt: "Formulierbouwer waarin een trainer velden toevoegt aan een inschrijfformulier voor een lesreeks.",
       width: 1600,
       height: 1000,
     },

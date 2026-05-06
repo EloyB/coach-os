@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { LogoMarkSvg } from "@/components/site/logo-mark-svg";
 
 export const alt = "CoachOS — Lesplanning voor tennis- en padelclubs";
 export const size = { width: 1200, height: 630 };
@@ -30,14 +31,9 @@ export default function OpengraphImage() {
               height: 64,
               background: "#D0FF14",
               borderRadius: 12,
-              color: "#161513",
-              fontSize: 36,
-              fontWeight: 800,
-              fontFamily: "ui-monospace, SFMono-Regular, monospace",
-              letterSpacing: -2,
             }}
           >
-            c/
+            <LogoMarkSvg size={44} strokeWidth={8} />
           </div>
           <div
             style={{

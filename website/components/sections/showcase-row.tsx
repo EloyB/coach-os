@@ -2,7 +2,20 @@ import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Mono } from "@/components/ui/mono";
 import { ScreenshotFrame } from "@/components/site/screenshot-frame";
+import { AnimatedLessonWeekMock } from "@/components/sections/animated-lesson-week-mock";
+import { AnimatedFormBuilderMock } from "@/components/sections/animated-form-builder-mock";
+import { AnimatedEnrollmentMock } from "@/components/sections/animated-enrollment-mock";
+import { AnimatedPlanningMock } from "@/components/sections/animated-planning-mock";
 import type { ShowcaseItem } from "@/content/showcase";
+
+/** Per-item animated mocks. When a row has an entry here, it renders inside the
+ * frame chrome instead of using the static screenshot/placeholder. */
+const ANIMATED_MOCKS: Record<string, React.ReactNode> = {
+  lesreeksen: <AnimatedLessonWeekMock />,
+  formulierbouwer: <AnimatedFormBuilderMock />,
+  "anonieme-inschrijving": <AnimatedEnrollmentMock />,
+  planningsalgoritme: <AnimatedPlanningMock />,
+};
 
 interface ShowcaseRowProps {
   item: ShowcaseItem;
@@ -56,7 +69,9 @@ export function ShowcaseRow({ item, reverse = false }: ShowcaseRowProps) {
           chrome={item.chrome}
           image={item.image}
           expectedFilename={expectedFilename}
-        />
+        >
+          {ANIMATED_MOCKS[item.id]}
+        </ScreenshotFrame>
       </div>
     </div>
   );

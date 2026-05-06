@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { LogoMarkSvg } from "@/components/site/logo-mark-svg";
 
 export const size = { width: 180, height: 180 };
 export const contentType = "image/png";
@@ -25,14 +26,9 @@ export default function AppleIcon() {
             height: 132,
             background: "#D0FF14",
             borderRadius: 28,
-            color: "#161513",
-            fontSize: 88,
-            fontWeight: 800,
-            fontFamily: "ui-monospace, SFMono-Regular, monospace",
-            letterSpacing: -4,
           }}
         >
-          c/
+          <LogoMarkSvg size={92} strokeWidth={7} />
         </div>
       </div>
     ),
