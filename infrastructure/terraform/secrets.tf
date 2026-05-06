@@ -33,12 +33,12 @@ locals {
     # The CoachOS app is served on app.<domain_name> (the apex hosts the
     # marketing website). CORS origin and confirmation redirect URL must
     # therefore both target the app subdomain.
-    "Frontend__Origin"                   = "https://app.${var.domain_name}"
-    "App__ConfirmationBaseUrl"           = "https://app.${var.domain_name}/confirmation"
-    "Email__SmtpHost"                    = "smtp.tem.scw.cloud"
-    "Email__SmtpPort"                    = "587"
-    "Email__FromAddress"                 = var.smtp_from_address
-    "Email__FromName"                    = "CoachOS"
+    "Frontend__Origin"         = "https://app.${var.domain_name}"
+    "App__ConfirmationBaseUrl" = "https://app.${var.domain_name}/confirmation"
+    "Email__SmtpHost"          = "smtp.tem.scw.cloud"
+    "Email__SmtpPort"          = "587"
+    "Email__FromAddress"       = var.smtp_from_address
+    "Email__FromName"          = "CoachOS"
     # Email__Username and Email__Password come from Scaleway TEM after domain
     # verification. Set them manually via `scw secret secret-version create`
     # or re-run `tofu apply` after filling in the `tem_smtp_*` variables.
