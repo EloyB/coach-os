@@ -46,6 +46,8 @@ jobs:
           context: ./website
           file: ./website/Dockerfile.prod
           push: true
+          build-args: |
+            NEXT_PUBLIC_APP_URL=https://app.coach-os.be
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
