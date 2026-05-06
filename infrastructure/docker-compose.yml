@@ -134,6 +134,12 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
+      # Webroot for Let's Encrypt http-01 challenges. Certbot writes
+      # /.well-known/acme-challenge/<token> into this dir on the host;
+      # nginx's apex/app vhosts serve those files via the matching
+      # `location /.well-known/acme-challenge/` block. Required for
+      # `certbot --webroot` (used by cert-expand and auto-renew).
+      - /var/www/certbot:/var/www/certbot:ro
 
     depends_on:
       - api
