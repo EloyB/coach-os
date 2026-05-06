@@ -22,10 +22,18 @@ public class PlanningService(
             return Result<PlanningOverviewDto>.Fail(
                 new Error(ErrorCodes.NotFound, "Lessenreeks niet gevonden."));
 
-        // Protect manual edits: after the first generate the status flips to Planning.
-        // Re-running then would wipe admin tweaks — require an explicit force flag.
-        if (series.PlanningStatus == PlanningStatus.Planning && !force)
+        // Hergenereren is alleen automatisch toegestaan vóór de eerste bevestigingsronde.
+        // Zodra de planning naar Planning/AwaitingConfirmation/Scheduled is gegaan,
+        // mag een onbedoelde call (UI refresh, dubbele klik, race) niet meer per
+        // ongeluk de planning hergenereren — dat zou bestaande Confirmed assignments
+        // dupliceren. Admin kan nog steeds expliciet hergenereren via force=true.
+        if ((series.PlanningStatus is PlanningStatus.Planning
+                                   or PlanningStatus.AwaitingConfirmation
+                                   or PlanningStatus.Scheduled)
+            && !force)
+        {
             return await GetPlanningOverviewAsync(seriesId, organizationId, ct);
+        }
 
         var enrollments = await enrollmentRepo.GetBySeriesAsync(seriesId, organizationId, ct);
         var activeEnrollments = enrollments
@@ -41,11 +49,18 @@ public class PlanningService(
 
         var prefsByEnrollment = PlanningProposalBuilder.BuildPreferencesLookup(preferences);
 
-        // On force-regenerate, preserve manually locked assignments: exclude their
-        // units from the algorithm and reduce the affected slots' remaining capacity.
+        // Lock = "deze plek staat vast, niet aanraken bij hergenerate":
+        //   1. Manueel locked Proposed assignments (admin heeft slot vastgezet)
+        //   2. AwaitingConfirmation / Confirmed assignments — deze zijn al verstuurd
+        //      naar leerlingen of bevestigd; opnieuw inplannen veroorzaakt duplicates.
+        // Declined wordt bewust NIET gelockt — anders blokkeert een geweigerd slot
+        // permanent voor die leerling.
         var existingAssignments = await scheduleAssignmentRepo.GetBySeriesAsync(seriesId, organizationId, ct);
         var lockedAssignments = existingAssignments
-            .Where(a => a.IsLocked && a.Status == ScheduleAssignmentStatus.Proposed)
+            .Where(a =>
+                (a.IsLocked && a.Status == ScheduleAssignmentStatus.Proposed)
+                || a.Status == ScheduleAssignmentStatus.AwaitingConfirmation
+                || a.Status == ScheduleAssignmentStatus.Confirmed)
             .ToList();
 
         var lockedGroupIds = lockedAssignments

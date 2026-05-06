@@ -43,5 +43,16 @@ public class ScheduleAssignmentConfiguration : IEntityTypeConfiguration<Schedule
 
         builder.HasIndex(a => new { a.LessonSerieId, a.WeeklyTemplateEntryId });
         builder.HasIndex(a => a.OrganizationId);
+
+        // Voorkom dat dezelfde leerling 2× op hetzelfde slot binnen dezelfde reeks
+        // terechtkomt. (Eén leerling kan wél meerdere DIFFERENT slots hebben —
+        // daarom is WeeklyTemplateEntryId onderdeel van de key.)
+        builder.HasIndex(a => new { a.LessonSerieId, a.WeeklyTemplateEntryId, a.EnrollmentId })
+            .IsUnique()
+            .HasFilter("\"EnrollmentId\" IS NOT NULL");
+
+        builder.HasIndex(a => new { a.LessonSerieId, a.WeeklyTemplateEntryId, a.EnrollmentGroupId })
+            .IsUnique()
+            .HasFilter("\"EnrollmentGroupId\" IS NOT NULL");
     }
 }
