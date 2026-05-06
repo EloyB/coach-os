@@ -1,0 +1,57 @@
+name: TLS — Expand Let's Encrypt cert
+
+# Manual one-shot workflow. Run this once after the new DNS records for
+# app.coach-os.be have propagated and nginx is serving the new vhost on
+# port 80 (so the webroot challenge can be answered). Subsequent automatic
+# renewals (via the systemd timer on the VPS) will keep all SANs covered;
+# no further manual runs required unless we add another hostname.
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Run in --dry-run mode (no actual cert change)"
+        required: true
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+jobs:
+  expand:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Run certbot --expand on VPS
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          DRY_RUN: ${{ github.event.inputs.dry_run }}
+        with:
+          host: ${{ secrets.VPS_IP }}
+          username: root
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: 22
+          envs: DRY_RUN
+          script: |
+            set -euo pipefail
+
+            DRY_FLAG=""
+            if [ "$DRY_RUN" = "true" ]; then
+              DRY_FLAG="--dry-run"
+              echo "▶ dry-run mode"
+            fi
+
+            certbot certonly \
+              --webroot -w /var/www/certbot \
+              --expand --non-interactive --agree-tos \
+              -m admin@coach-os.be \
+              -d coach-os.be -d www.coach-os.be -d app.coach-os.be \
+              $DRY_FLAG
+
+            if [ "$DRY_RUN" != "true" ]; then
+              docker exec coach-os-nginx nginx -s reload
+              certbot certificates
+            fi

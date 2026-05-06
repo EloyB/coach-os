@@ -1,0 +1,9 @@
+node_modules/
+.next/
+.git/
+.gitignore
+.env*
+**/.DS_Store
+**/*.md
+Dockerfile
+.dockerignore
