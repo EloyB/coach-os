@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -13,31 +13,68 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://coachos.nl"),
+  metadataBase: new URL("https://coach-os.be"),
   title: {
     default: "CoachOS — Lesplanning voor tennis- en padelclubs",
     template: "%s · CoachOS",
   },
   description:
-    "Lesreeksen, inschrijvingen en betalingen voor tennis- en padelclubs in de Benelux. Eén systeem, zonder accounts voor leerlingen.",
+    "Lesplanning voor tennis- en padelclubs in Nederland en België. Lesreeksen, anonieme inschrijvingen, automatische scheduling en magic-link bevestiging.",
+  applicationName: "CoachOS",
+  authors: [{ name: "CoachOS" }],
+  keywords: [
+    "lesplanning tennisclub",
+    "lesplanning padelclub",
+    "tennisles inschrijven",
+    "padel lesreeksen",
+    "ledenadministratie tennisclub",
+    "trainersplanning",
+    "sportclub software Benelux",
+  ],
+  category: "business",
   openGraph: {
     type: "website",
     locale: "nl_BE",
-    url: "https://coachos.nl",
+    alternateLocale: ["nl_NL"],
+    url: "https://coach-os.be",
     title: "CoachOS — Lesplanning voor tennis- en padelclubs",
     description:
-      "Een planning die zichzelf bevestigt. Lesreeksen, anonieme inschrijvingen en automatische scheduling.",
+      "Een planning die zichzelf bevestigt. Lesreeksen, anonieme inschrijvingen en automatische scheduling voor tennis- en padelclubs in de Benelux.",
     siteName: "CoachOS",
   },
   twitter: {
     card: "summary_large_image",
-    title: "CoachOS",
+    title: "CoachOS — Lesplanning voor tennis- en padelclubs",
     description:
-      "Lesplanning voor tennis- en padelclubs in de Benelux.",
+      "Lesplanning voor tennis- en padelclubs in Nederland en België.",
   },
   alternates: {
-    canonical: "https://coachos.nl",
+    canonical: "https://coach-os.be",
+    languages: {
+      "nl-BE": "https://coach-os.be",
+      "nl-NL": "https://coach-os.be",
+      "x-default": "https://coach-os.be",
+    },
   },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  formatDetection: {
+    email: false,
+    telephone: false,
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#2D5016",
+  colorScheme: "light",
 };
 
 export default function RootLayout({

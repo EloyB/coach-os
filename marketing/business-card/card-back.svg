@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="85mm" height="55mm" viewBox="0 0 1020 660">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&amp;family=JetBrains+Mono:wght@500;600;700&amp;display=swap');
+      .sans { font-family: 'Inter', system-ui, sans-serif; }
+      .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+    </style>
+  </defs>
+
+  <!-- Background paper -->
+  <rect width="1020" height="660" fill="#fdfcf9"/>
+
+  <!-- Lime vertical accent strip on right edge -->
+  <rect x="970" y="0" width="50" height="660" fill="#D0FF14"/>
+
+  <!-- Top: small monogram + wordmark -->
+  <rect x="60" y="60" width="50" height="50" rx="7" fill="#161513"/>
+  <g stroke="#D0FF14" stroke-width="3" fill="none" stroke-linecap="round">
+    <circle cx="85" cy="85" r="12"/>
+    <path d="M 75 85 C 78 80, 82 80, 85 85 C 88 90, 92 90, 95 85"/>
+  </g>
+  <text x="125" y="98" class="sans" font-weight="700" font-size="28" fill="#161513" letter-spacing="-0.5">Coach<tspan fill="#2D5016">OS</tspan></text>
+
+  <!-- Slash label / role -->
+  <text x="60" y="290" class="mono" font-weight="700" font-size="22" fill="#2D5016" letter-spacing="3">/FOUNDER</text>
+
+  <!-- Name -->
+  <text x="60" y="380" class="sans" font-weight="800" font-size="68" fill="#161513" letter-spacing="-2">Eloy Boone</text>
+
+  <!-- Tagline under name -->
+  <text x="60" y="425" class="sans" font-weight="500" font-size="22" fill="#4a4741">
+    Lesplanning voor tennis- en padelclubs
+  </text>
+
+  <!-- Divider -->
+  <line x1="60" y1="500" x2="930" y2="500" stroke="#e7e4dc" stroke-width="2"/>
+
+  <!-- Contact block -->
+  <text x="60" y="555" class="mono" font-weight="600" font-size="18" fill="#8a867e" letter-spacing="2.5">CONTACT</text>
+  <text x="60" y="615" class="sans" font-weight="600" font-size="28" fill="#161513">hallo@coach-os.be</text>
+
+  <!-- Website right-aligned -->
+  <text x="930" y="555" class="mono" font-weight="600" font-size="18" fill="#8a867e" letter-spacing="2.5" text-anchor="end">WEB</text>
+  <text x="930" y="615" class="mono" font-weight="700" font-size="26" fill="#161513" text-anchor="end">coach-os.be</text>
+</svg>

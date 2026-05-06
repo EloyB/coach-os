@@ -1,0 +1,28 @@
+{
+  "name": "coachos-video",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "start": "remotion studio",
+    "render": "remotion render MainVideo out/coachos.mp4",
+    "render:problem": "remotion render Problem out/problem.mp4",
+    "render:transition": "remotion render Transition out/transition.mp4",
+    "render:planning": "remotion render Planning out/planning.mp4",
+    "render:enrollments": "remotion render Enrollments out/enrollments.mp4",
+    "render:form": "remotion render EnrollmentForm out/form.mp4",
+    "render:payments": "remotion render Payments out/payments.mp4",
+    "render:closing": "remotion render Closing out/closing.mp4",
+    "upgrade": "remotion upgrade"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.0",
+    "@remotion/transitions": "^4.0.457",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "remotion": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "typescript": "^5.5.0"
+  }
+}

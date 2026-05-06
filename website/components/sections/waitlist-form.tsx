@@ -52,7 +52,7 @@ export function WaitlistForm() {
       if (!res.ok) throw new Error("submit failed");
       router.push("/bedankt?type=waitlist");
     } catch {
-      setError("Inschrijven lukte niet — probeer het opnieuw.");
+      setError("Aanvraag versturen lukte niet — probeer het opnieuw.");
       setSubmitting(false);
     }
   }
@@ -123,7 +123,7 @@ export function WaitlistForm() {
           disabled={submitting}
           className="inline-flex h-11 items-center gap-2 rounded-md bg-tennis-lime px-5 text-sm font-semibold text-ink transition-colors hover:bg-tennis-lime/90 disabled:opacity-50"
         >
-          {submitting ? "Inschrijven…" : CTA_SECTION.waitlist.submit}
+          {submitting ? "Versturen…" : CTA_SECTION.waitlist.submit}
           <ArrowRight className="h-4 w-4" />
         </button>
       </form>

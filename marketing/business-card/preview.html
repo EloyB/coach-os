@@ -1,0 +1,596 @@
+<!doctype html>
+<html lang="nl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CoachOS · Business card</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --ink: #161513;
+        --ink-2: #4a4741;
+        --ink-3: #8a867e;
+        --paper: #fdfcf9;
+        --canvas: #f5f4f1;
+        --rule: #e7e4dc;
+        --tennis-green: #2d5016;
+        --tennis-lime: #d0ff14;
+        --card-w: 170mm; /* 2× actual size for screen preview */
+        --card-h: 110mm;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html,
+      body {
+        background: var(--canvas);
+        color: var(--ink);
+        font-family: "Inter", system-ui, sans-serif;
+      }
+      body {
+        min-height: 100vh;
+        padding: 48px 32px 80px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      header {
+        max-width: 1100px;
+        width: 100%;
+        margin-bottom: 32px;
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 24px;
+        flex-wrap: wrap;
+      }
+      .eyebrow {
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-size: 11px;
+        letter-spacing: 0.18em;
+        color: var(--ink-3);
+        text-transform: uppercase;
+      }
+      h1 {
+        font-size: 28px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        margin-top: 6px;
+      }
+      .hint {
+        font-size: 13px;
+        color: var(--ink-2);
+      }
+      .hint kbd {
+        background: var(--paper);
+        border: 1px solid var(--rule);
+        border-radius: 4px;
+        padding: 2px 6px;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 11px;
+      }
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(2, var(--card-w));
+        gap: 32px;
+        justify-content: center;
+      }
+      .card-wrap {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .card-label {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 11px;
+        letter-spacing: 0.18em;
+        color: var(--ink-3);
+        text-transform: uppercase;
+      }
+      .card {
+        width: var(--card-w);
+        height: var(--card-h);
+        border-radius: 6px;
+        overflow: hidden;
+        box-shadow:
+          0 1px 0 rgba(0, 0, 0, 0.04),
+          0 24px 48px -16px rgba(0, 0, 0, 0.18),
+          0 8px 16px -8px rgba(0, 0, 0, 0.12);
+      }
+      .card svg {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+      .editor {
+        max-width: 1100px;
+        width: 100%;
+        margin-bottom: 32px;
+        background: var(--paper);
+        border: 1px solid var(--rule);
+        border-radius: 10px;
+        padding: 18px 22px;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px 18px;
+      }
+      .editor-title {
+        grid-column: 1 / -1;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 11px;
+        letter-spacing: 0.18em;
+        color: var(--ink-3);
+        text-transform: uppercase;
+        font-weight: 600;
+      }
+      .field {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .field label {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 10px;
+        letter-spacing: 0.12em;
+        color: var(--ink-3);
+        text-transform: uppercase;
+        font-weight: 600;
+      }
+      .field input {
+        height: 36px;
+        padding: 0 12px;
+        background: white;
+        border: 1px solid var(--rule);
+        border-radius: 6px;
+        font-family: inherit;
+        font-size: 13px;
+        color: var(--ink);
+      }
+      .field input:focus {
+        outline: none;
+        border-color: var(--tennis-green);
+        box-shadow: 0 0 0 3px rgba(45, 80, 22, 0.08);
+      }
+      .presets {
+        grid-column: 1 / -1;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      .presets-label {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 10px;
+        letter-spacing: 0.12em;
+        color: var(--ink-3);
+        text-transform: uppercase;
+        font-weight: 600;
+        margin-right: 4px;
+      }
+      .preset {
+        font-family: inherit;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 6px 12px;
+        background: white;
+        border: 1px solid var(--rule);
+        border-radius: 999px;
+        cursor: pointer;
+        color: var(--ink-2);
+      }
+      .preset:hover {
+        background: var(--canvas);
+        border-color: var(--ink-3);
+      }
+      .actions {
+        margin-top: 36px;
+        display: flex;
+        gap: 12px;
+        align-items: center;
+      }
+      button.print {
+        font-family: inherit;
+        font-size: 14px;
+        font-weight: 600;
+        background: var(--ink);
+        color: white;
+        border: 0;
+        height: 40px;
+        padding: 0 18px;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+      button.print:hover {
+        background: #000;
+      }
+      .meta {
+        font-size: 12px;
+        color: var(--ink-3);
+        font-family: "JetBrains Mono", monospace;
+      }
+
+      @media (max-width: 900px) {
+        :root {
+          --card-w: 85mm;
+          --card-h: 55mm;
+        }
+        .cards {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      /* Print at exact 85x55mm, one card per page */
+      @media print {
+        @page {
+          size: 85mm 55mm;
+          margin: 0;
+        }
+        html,
+        body {
+          background: white;
+          padding: 0;
+        }
+        header,
+        .editor,
+        .actions,
+        .card-label {
+          display: none !important;
+        }
+        .cards {
+          display: block;
+        }
+        .card-wrap {
+          page-break-after: always;
+          margin: 0;
+        }
+        .card-wrap:last-child {
+          page-break-after: auto;
+        }
+        .card {
+          width: 85mm;
+          height: 55mm;
+          border-radius: 0;
+          box-shadow: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div>
+        <div class="eyebrow">CoachOS / Visitekaart</div>
+        <h1>Business card preview</h1>
+      </div>
+      <div class="hint">
+        Print exact 85×55mm: <kbd>⌘P</kbd> → No margins → Save as PDF
+      </div>
+    </header>
+
+    <section class="editor">
+      <div class="editor-title">Kaartgegevens</div>
+      <div class="field">
+        <label for="in-role">Rol</label>
+        <input id="in-role" type="text" placeholder="FOUNDER" autocomplete="off" />
+      </div>
+      <div class="field">
+        <label for="in-name">Naam</label>
+        <input id="in-name" type="text" placeholder="Eloy Boone" autocomplete="off" />
+      </div>
+      <div class="field">
+        <label for="in-email">E-mail</label>
+        <input id="in-email" type="email" placeholder="naam@coach-os.be" autocomplete="off" />
+      </div>
+      <div class="presets">
+        <span class="presets-label">Team</span>
+      </div>
+    </section>
+
+    <div class="cards">
+      <div class="card-wrap">
+        <div class="card-label">Voorkant</div>
+        <div class="card">
+          <!-- FRONT -->
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 1020 660"
+            preserveAspectRatio="xMidYMid meet"
+          >
+            <rect width="1020" height="660" fill="#161513" />
+
+            <g opacity="0.07" stroke="#ffffff" fill="none">
+              <rect x="80" y="80" width="860" height="500" stroke-width="2" />
+              <line x1="510" y1="80" x2="510" y2="580" stroke-width="2.5" />
+              <line x1="240" y1="80" x2="240" y2="580" stroke-width="1" />
+              <line x1="780" y1="80" x2="780" y2="580" stroke-width="1" />
+              <line x1="240" y1="330" x2="780" y2="330" stroke-width="1" />
+              <line x1="505" y1="80" x2="515" y2="80" stroke-width="2.5" />
+              <line x1="505" y1="580" x2="515" y2="580" stroke-width="2.5" />
+              <circle
+                cx="850"
+                cy="130"
+                r="80"
+                stroke-width="1"
+                stroke-opacity="0.6"
+              />
+              <circle
+                cx="850"
+                cy="130"
+                r="50"
+                stroke-width="1"
+                stroke-opacity="0.6"
+              />
+              <circle
+                cx="80"
+                cy="330"
+                r="6"
+                fill="#ffffff"
+                fill-opacity="0.7"
+                stroke="none"
+              />
+              <circle
+                cx="940"
+                cy="330"
+                r="6"
+                fill="#ffffff"
+                fill-opacity="0.7"
+                stroke="none"
+              />
+            </g>
+
+            <rect
+              x="60"
+              y="60"
+              width="108"
+              height="108"
+              rx="14"
+              fill="#D0FF14"
+            />
+            <g
+              stroke="#161513"
+              stroke-width="7"
+              fill="none"
+              stroke-linecap="round"
+            >
+              <circle cx="114" cy="114" r="28" />
+              <path
+                d="M 88 114 C 96 102, 104 102, 114 114 C 124 126, 132 126, 140 114"
+              />
+            </g>
+
+            <text
+              x="60"
+              y="510"
+              font-family="'Inter', system-ui, sans-serif"
+              font-weight="800"
+              font-size="92"
+              fill="#ffffff"
+              letter-spacing="-2.5"
+            >
+              Coach
+              <tspan fill="#D0FF14">OS</tspan>
+            </text>
+            <text
+              x="64"
+              y="568"
+              font-family="'Inter', system-ui, sans-serif"
+              font-weight="600"
+              font-size="30"
+              fill="#D0FF14"
+              letter-spacing="-0.2"
+            >
+              Lesplanning voor tennis- en padelclubs
+            </text>
+
+            <rect x="0" y="640" width="1020" height="20" fill="#D0FF14" />
+          </svg>
+        </div>
+      </div>
+
+      <div class="card-wrap">
+        <div class="card-label">Achterkant</div>
+        <div class="card">
+          <!-- BACK -->
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 1020 660"
+            preserveAspectRatio="xMidYMid meet"
+          >
+            <rect width="1020" height="660" fill="#fdfcf9" />
+            <rect x="970" y="0" width="50" height="660" fill="#D0FF14" />
+
+            <rect x="60" y="60" width="50" height="50" rx="7" fill="#161513" />
+            <g
+              stroke="#D0FF14"
+              stroke-width="3"
+              fill="none"
+              stroke-linecap="round"
+            >
+              <circle cx="85" cy="85" r="12" />
+              <path d="M 75 85 C 78 80, 82 80, 85 85 C 88 90, 92 90, 95 85" />
+            </g>
+            <text
+              x="125"
+              y="98"
+              font-family="'Inter', system-ui, sans-serif"
+              font-weight="700"
+              font-size="28"
+              fill="#161513"
+              letter-spacing="-0.5"
+            >
+              Coach
+              <tspan fill="#2D5016">OS</tspan>
+            </text>
+
+            <text
+              id="bc-role"
+              x="60"
+              y="290"
+              font-family="'JetBrains Mono', monospace"
+              font-weight="700"
+              font-size="22"
+              fill="#2D5016"
+              letter-spacing="3"
+            >
+              /FOUNDER
+            </text>
+
+            <text
+              id="bc-name"
+              x="60"
+              y="380"
+              font-family="'Inter', system-ui, sans-serif"
+              font-weight="800"
+              font-size="68"
+              fill="#161513"
+              letter-spacing="-2"
+            >
+              Eloy Boone
+            </text>
+
+            <line
+              x1="60"
+              y1="500"
+              x2="930"
+              y2="500"
+              stroke="#e7e4dc"
+              stroke-width="2"
+            />
+
+            <text
+              x="60"
+              y="555"
+              font-family="'JetBrains Mono', monospace"
+              font-weight="600"
+              font-size="18"
+              fill="#8a867e"
+              letter-spacing="2.5"
+            >
+              CONTACT
+            </text>
+            <text
+              id="bc-email"
+              x="60"
+              y="615"
+              font-family="'Inter', system-ui, sans-serif"
+              font-weight="600"
+              font-size="28"
+              fill="#161513"
+            >
+              eloy@coach-os.be
+            </text>
+
+            <text
+              x="930"
+              y="555"
+              font-family="'JetBrains Mono', monospace"
+              font-weight="600"
+              font-size="18"
+              fill="#8a867e"
+              letter-spacing="2.5"
+              text-anchor="end"
+            >
+              WEB
+            </text>
+            <text
+              x="930"
+              y="615"
+              font-family="'JetBrains Mono', monospace"
+              font-weight="700"
+              font-size="26"
+              fill="#161513"
+              text-anchor="end"
+            >
+              coach-os.be
+            </text>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="print" onclick="window.print()">
+        Print / PDF exporteren
+      </button>
+      <span class="meta">85 × 55 mm · 300dpi-ready</span>
+    </div>
+
+    <script>
+      (function () {
+        // Voeg hier teamleden toe voor één-klik presets:
+        // { role: "COACH", name: "Voornaam Achternaam", email: "naam@coach-os.be" }
+        const TEAM = [
+          { role: "FOUNDER", name: "Eloy Boone", email: "eloy@coach-os.be" },
+        ];
+
+        const DEFAULTS = TEAM[0];
+        const STORAGE_KEY = "coachos-bc-data";
+
+        const inputs = {
+          role: document.getElementById("in-role"),
+          name: document.getElementById("in-name"),
+          email: document.getElementById("in-email"),
+        };
+        const targets = {
+          role: document.getElementById("bc-role"),
+          name: document.getElementById("bc-name"),
+          email: document.getElementById("bc-email"),
+        };
+
+        function render() {
+          const role = (inputs.role.value || DEFAULTS.role).trim().toUpperCase();
+          const name = (inputs.name.value || DEFAULTS.name).trim();
+          const email = (inputs.email.value || DEFAULTS.email).trim();
+          targets.role.textContent = "/" + role;
+          targets.name.textContent = name;
+          targets.email.textContent = email;
+          try {
+            localStorage.setItem(
+              STORAGE_KEY,
+              JSON.stringify({ role: inputs.role.value, name: inputs.name.value, email: inputs.email.value })
+            );
+          } catch (e) {}
+        }
+
+        function loadSaved() {
+          try {
+            const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+            if (typeof saved.role === "string") inputs.role.value = saved.role;
+            if (typeof saved.name === "string") inputs.name.value = saved.name;
+            if (typeof saved.email === "string") inputs.email.value = saved.email;
+          } catch (e) {}
+        }
+
+        function applyMember(member) {
+          inputs.role.value = member.role;
+          inputs.name.value = member.name;
+          inputs.email.value = member.email;
+          render();
+        }
+
+        Object.values(inputs).forEach((input) => {
+          input.addEventListener("input", render);
+        });
+
+        const presetsContainer = document.querySelector(".presets");
+        TEAM.forEach((member) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "preset";
+          btn.textContent = member.name;
+          btn.addEventListener("click", () => applyMember(member));
+          presetsContainer.appendChild(btn);
+        });
+
+        loadSaved();
+        render();
+      })();
+    </script>
+  </body>
+</html>

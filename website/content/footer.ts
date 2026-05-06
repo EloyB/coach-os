@@ -12,8 +12,8 @@ export const FOOTER = {
     {
       heading: "Bedrijf",
       links: [
+        { href: "#contact", label: "Boek een demo" },
         { href: "#contact", label: "Neem contact op" },
-        { href: "#contact", label: "Op de wachtlijst" },
       ],
     },
     {

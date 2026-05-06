@@ -1,15 +1,15 @@
 export const CTA_SECTION = {
   heading: "Klaar om je lesplanning te automatiseren?",
-  sub: "Zet jezelf op de wachtlijst voor vroege toegang, of neem direct contact op voor een persoonlijk gesprek.",
+  sub: "Plan een korte demo in waarin we CoachOS laten zien voor jouw situatie, of stel je vraag direct via het contactformulier.",
   tabs: {
-    waitlist: "Op de wachtlijst",
+    waitlist: "Boek een demo",
     contact: "Neem contact op",
   },
   waitlist: {
-    title: "Vroege toegang",
-    body: "Geef je e-mail door en we sturen je een berichtje zodra CoachOS open gaat voor jouw type organisatie.",
-    submit: "Inschrijven",
-    success: "Bedankt — je staat op de wachtlijst.",
+    title: "Boek een demo",
+    body: "Laat je e-mail achter en we plannen een korte demo in waarin we je live laten zien hoe CoachOS werkt voor jouw type organisatie.",
+    submit: "Demo aanvragen",
+    success: "Bedankt — we plannen je demo in.",
     fields: {
       email: "E-mailadres",
       role: "Wat doe je?",

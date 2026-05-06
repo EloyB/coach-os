@@ -21,7 +21,7 @@ export default async function BedanktPage({ searchParams }: PageProps) {
     ? CTA_SECTION.waitlist.success
     : CTA_SECTION.contact.success;
   const body = isWaitlist
-    ? "We laten van ons horen zodra CoachOS open gaat voor jouw type organisatie."
+    ? "We nemen contact op om een tijdstip te prikken voor je demo — meestal binnen één werkdag."
     : "Een van ons leest je bericht en antwoordt binnen één werkdag.";
 
   return (
@@ -31,7 +31,7 @@ export default async function BedanktPage({ searchParams }: PageProps) {
           <Check className="h-6 w-6 text-tennis-green" strokeWidth={3} />
         </div>
         <Mono className="mt-6 block text-[11px] tracking-[0.18em] text-ink-3">
-          {isWaitlist ? "WACHTLIJST" : "BERICHT ONTVANGEN"}
+          {isWaitlist ? "DEMO AANGEVRAAGD" : "BERICHT ONTVANGEN"}
         </Mono>
         <h1 className="mt-3 text-2xl font-bold tracking-tight">{heading}</h1>
         <p className="mt-3 text-sm leading-relaxed text-ink-2">{body}</p>

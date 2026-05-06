@@ -9,6 +9,6 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ["/api/", "/bedankt"],
       },
     ],
-    sitemap: "https://coachos.nl/sitemap.xml",
+    sitemap: "https://coach-os.be/sitemap.xml",
   };
 }

@@ -10,7 +10,7 @@ export const FAQ: FaqEntry[] = [
   },
   {
     q: "Wat kost CoachOS?",
-    a: "We finaliseren onze tarifering nog. Op de wachtlijst zetten of contact opnemen geeft je vroege toegang en prijs-info zodra die rond is.",
+    a: "We finaliseren onze tarifering nog. Boek een demo of neem contact op — dan krijg je prijs-info zodra die rond is, met vroege-toegang voorrang.",
   },
   {
     q: "In welke talen is CoachOS beschikbaar?",
