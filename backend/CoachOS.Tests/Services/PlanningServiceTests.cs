@@ -99,6 +99,106 @@ public class PlanningServiceTests
         _seriesRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.AtLeastOnce);
     }
 
+    // ── Guard tegen onbedoelde regenerate (Bug 1) ────────────────────────────
+
+    [Test]
+    public async Task GenerateProposalAsync_AwaitingConfirmation_NoForce_DoesNotRegenerate()
+    {
+        var series = BuildSeries(withSlots: true);
+        series.PlanningStatus = PlanningStatus.AwaitingConfirmation;
+
+        _seriesRepo.Setup(r => r.GetByIdAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+        // GetPlanningOverviewAsync wordt aangeroepen — minimal stubs
+        _enrollmentRepo.Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Enrollment>());
+        _groupRepo.Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<EnrollmentGroup>());
+        _prefRepo.Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<TimeSlotPreference>());
+        _assignmentRepo.Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ScheduleAssignment>());
+
+        var result = await _service.GenerateProposalAsync(SeriesId, OrgId, force: false);
+
+        result.IsSuccess.Should().BeTrue();
+        _assignmentRepo.Verify(r => r.RemoveProposedBySeriesAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _assignmentRepo.Verify(r => r.AddRangeAsync(It.IsAny<IEnumerable<ScheduleAssignment>>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task GenerateProposalAsync_Scheduled_NoForce_DoesNotRegenerate()
+    {
+        var series = BuildSeries(withSlots: true);
+        series.PlanningStatus = PlanningStatus.Scheduled;
+
+        _seriesRepo.Setup(r => r.GetByIdAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+        _enrollmentRepo.Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Enrollment>());
+        _groupRepo.Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<EnrollmentGroup>());
+        _prefRepo.Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<TimeSlotPreference>());
+        _assignmentRepo.Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ScheduleAssignment>());
+
+        var result = await _service.GenerateProposalAsync(SeriesId, OrgId, force: false);
+
+        result.IsSuccess.Should().BeTrue();
+        _assignmentRepo.Verify(r => r.RemoveProposedBySeriesAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _assignmentRepo.Verify(r => r.AddRangeAsync(It.IsAny<IEnumerable<ScheduleAssignment>>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task GenerateProposalAsync_Force_ConfirmedAssignmentTreatedAsLock_NotDuplicated()
+    {
+        // Series in AwaitingConfirmation; Anna heeft een Confirmed ScheduleAssignment
+        // op slot 1; Bob heeft alleen een enrollment, geen assignment. force=true.
+        // Verwacht: Anna's enrollment wordt gelockt (algoritme krijgt enkel Bob).
+        var series = BuildSeries(withSlots: true);
+        series.PlanningStatus = PlanningStatus.AwaitingConfirmation;
+
+        var anna = BuildEnrollment("Anna");
+        var bob = BuildEnrollment("Bob");
+        var enrollments = new List<Enrollment> { anna, bob };
+
+        var confirmedForAnna = new ScheduleAssignment
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = OrgId,
+            LessonSerieId = SeriesId,
+            WeeklyTemplateEntryId = SlotId,
+            EnrollmentId = anna.Id,
+            Status = ScheduleAssignmentStatus.Confirmed,
+            IsLocked = false,
+        };
+
+        _seriesRepo.Setup(r => r.GetByIdAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+        _enrollmentRepo.Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(enrollments);
+        _groupRepo.Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<EnrollmentGroup>());
+        _prefRepo.Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<TimeSlotPreference>());
+        _assignmentRepo.Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ScheduleAssignment> { confirmedForAnna });
+
+        IEnumerable<ScheduleAssignment>? captured = null;
+        _assignmentRepo
+            .Setup(r => r.AddRangeAsync(It.IsAny<IEnumerable<ScheduleAssignment>>(), It.IsAny<CancellationToken>()))
+            .Callback<IEnumerable<ScheduleAssignment>, CancellationToken>((a, _) => captured = a.ToList())
+            .Returns(Task.CompletedTask);
+
+        var result = await _service.GenerateProposalAsync(SeriesId, OrgId, force: true);
+
+        result.IsSuccess.Should().BeTrue();
+        captured.Should().NotBeNull();
+        // Geen nieuwe Proposed voor Anna (zou een duplicate worden t.o.v. haar Confirmed)
+        captured!.Should().NotContain(a => a.EnrollmentId == anna.Id);
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     internal static LessonSerie BuildSeries(bool withSlots, Guid? seriesId = null, Guid? orgId = null, Guid? slotId = null)

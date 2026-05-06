@@ -50,7 +50,12 @@ public class EmailService(
         int dayOfWeek, string startTime, string endTime, string? courtName,
         string confirmationUrl, CancellationToken ct = default)
     {
-        var dayName = DaysNl[Math.Clamp(dayOfWeek, 0, 6)];
+        // dayOfWeek arriveert in EU-conventie (0 = maandag, 6 = zondag) vanuit
+        // WeeklyTemplateEntry. DaysNl is .NET-conventie (0 = zondag). Converteren
+        // voor we indexeren — anders krijgt dinsdag bv. "maandag" in de mail.
+        int safeEu = Math.Clamp(dayOfWeek, 0, 6);
+        int netIndex = (safeEu + 1) % 7;
+        var dayName = DaysNl[netIndex];
         var courtLine = string.IsNullOrWhiteSpace(courtName) ? string.Empty : $"Baan: {courtName}";
 
         var html = renderer.Render("schedule-confirmation", new Dictionary<string, string>
