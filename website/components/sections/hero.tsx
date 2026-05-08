@@ -35,16 +35,6 @@ export function Hero() {
               {HERO.primaryCta.label}
               <ArrowRight className="h-4 w-4" />
             </a>
-            <a
-              href={HERO.secondaryCta.href}
-              className="inline-flex h-11 items-center rounded-md border border-white/20 px-5 text-sm font-semibold text-white transition-colors hover:bg-white/[.06]"
-            >
-              {HERO.secondaryCta.label}
-            </a>
-          </div>
-
-          <div className="mt-10 lg:mt-auto lg:pt-10">
-            <StatStrip items={[...HERO.proof.items]} />
           </div>
         </InkHeroCard>
 

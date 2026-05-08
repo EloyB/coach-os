@@ -57,7 +57,7 @@ export default function OpengraphImage() {
               fontFamily: "ui-monospace, SFMono-Regular, monospace",
             }}
           >
-            LESPLANNING / BENELUX
+            LESPLANNING
           </div>
           <div
             style={{

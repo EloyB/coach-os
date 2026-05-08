@@ -1,26 +1,18 @@
-"use client";
-
-import { useState } from "react";
+import { ArrowUpRight, Mail, Phone } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { Mono } from "@/components/ui/mono";
-import { ContactForm } from "@/components/sections/contact-form";
-import { WaitlistForm } from "@/components/sections/waitlist-form";
 import { CTA_SECTION } from "@/content/cta";
 import { PILOT, PILOT_AVAILABLE_SEATS } from "@/content/pilot";
-import { cn } from "@/lib/utils";
-
-type Tab = "waitlist" | "contact";
 
 export function FinalCta() {
-  const [tab, setTab] = useState<Tab>("waitlist");
-
-  const active = tab === "waitlist" ? CTA_SECTION.waitlist : CTA_SECTION.contact;
+  const { call, email } = CTA_SECTION.tiles;
 
   return (
     <section id="contact" className="border-b border-rule">
       <div className="mx-auto max-w-5xl px-6 py-20 md:py-28">
         <div className="max-w-2xl">
           <Mono className="text-[11px] tracking-[0.18em] text-ink-3">
-            START
+            CONTACT
           </Mono>
           <h2 className="mt-3 text-3xl font-bold tracking-tight md:text-4xl">
             {CTA_SECTION.heading}
@@ -35,63 +27,67 @@ export function FinalCta() {
           ) : null}
         </div>
 
-        <div className="mt-10 overflow-hidden rounded-2xl border border-rule bg-paper">
-          <div
-            role="tablist"
-            aria-label="Inschrijven of contact"
-            className="flex border-b border-rule bg-canvas/50"
-          >
-            <TabButton
-              label={CTA_SECTION.tabs.waitlist}
-              active={tab === "waitlist"}
-              onClick={() => setTab("waitlist")}
-            />
-            <TabButton
-              label={CTA_SECTION.tabs.contact}
-              active={tab === "contact"}
-              onClick={() => setTab("contact")}
-            />
-          </div>
-
-          <div className="grid gap-10 p-8 md:grid-cols-[1fr_1.2fr] md:p-12">
-            <div>
-              <h3 className="text-xl font-bold tracking-tight">
-                {active.title}
-              </h3>
-              <p className="mt-3 text-sm leading-relaxed text-ink-2">
-                {active.body}
-              </p>
-            </div>
-            <div>
-              {tab === "waitlist" ? <WaitlistForm /> : <ContactForm />}
-            </div>
-          </div>
+        <div className="mt-10 grid gap-4 md:grid-cols-2">
+          <ContactTile
+            icon={Phone}
+            label={call.label}
+            value={call.value}
+            href={call.href}
+            hint={call.hint}
+          />
+          <ContactTile
+            icon={Mail}
+            label={email.label}
+            value={email.value}
+            href={email.href}
+            hint={email.hint}
+          />
         </div>
       </div>
     </section>
   );
 }
 
-interface TabButtonProps {
+interface ContactTileProps {
+  icon: LucideIcon;
   label: string;
-  active: boolean;
-  onClick: () => void;
+  value: string;
+  href: string;
+  hint: string;
 }
 
-function TabButton({ label, active, onClick }: TabButtonProps) {
+function ContactTile({
+  icon: Icon,
+  label,
+  value,
+  href,
+  hint,
+}: ContactTileProps) {
   return (
-    <button
-      role="tab"
-      aria-selected={active}
-      onClick={onClick}
-      className={cn(
-        "flex-1 px-6 py-4 text-sm font-semibold transition-colors",
-        active
-          ? "bg-paper text-ink"
-          : "text-ink-3 hover:text-ink-2",
-      )}
+    <a
+      href={href}
+      className="group relative flex flex-col gap-6 rounded-2xl border border-rule bg-paper p-7 transition-colors hover:border-tennis-green hover:bg-tennis-green/5 md:p-9"
     >
-      {label}
-    </button>
+      <div className="flex items-start justify-between">
+        <span className="inline-flex h-11 w-11 items-center justify-center rounded-lg bg-tennis-green text-tennis-lime">
+          <Icon className="h-5 w-5" strokeWidth={2.2} />
+        </span>
+        <ArrowUpRight
+          className="h-5 w-5 text-ink-3 transition-all group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-tennis-green"
+          strokeWidth={2.2}
+        />
+      </div>
+
+      <div>
+        <Mono className="text-[10px] tracking-[0.18em] text-ink-3">
+          {label.toUpperCase()}
+        </Mono>
+        <div className="mt-1 break-all text-xl font-bold tracking-tight text-ink md:text-2xl">
+          {value}
+        </div>
+      </div>
+
+      <div className="text-sm text-ink-3">{hint}</div>
+    </a>
   );
 }

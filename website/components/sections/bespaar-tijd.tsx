@@ -31,9 +31,9 @@ export function BespaarTijd() {
                 <Mono className="block text-3xl font-extrabold tracking-tight text-tennis-lime md:text-4xl">
                   {stat.value}
                 </Mono>
-                <p className="mt-2 text-sm leading-relaxed text-white/75">
+                <Mono className="mt-3 block text-[11px] font-bold uppercase tracking-[0.18em] text-white/60">
                   {stat.label}
-                </p>
+                </Mono>
               </div>
             ))}
           </div>

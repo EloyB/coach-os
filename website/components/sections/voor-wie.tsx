@@ -1,4 +1,5 @@
-import { Check } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, Check } from "lucide-react";
 import { Mono } from "@/components/ui/mono";
 import { AUDIENCES, AUDIENCES_HEADING, AUDIENCES_SUB } from "@/content/audiences";
 
@@ -16,16 +17,23 @@ export function VoorWie() {
           <p className="mt-3 text-base text-ink-2">{AUDIENCES_SUB}</p>
         </div>
 
-        <div className="mt-12 grid gap-5 md:grid-cols-2">
+        <div className="mt-12 grid gap-5 md:grid-cols-3">
           {AUDIENCES.map((audience) => {
             const Icon = audience.icon;
             return (
-              <div
-                key={audience.title}
-                className="group rounded-xl border border-rule bg-paper p-7 transition-colors hover:border-ink/20"
+              <Link
+                key={audience.slug}
+                href={`/${audience.slug}`}
+                className="group flex flex-col rounded-xl border border-rule bg-paper p-7 transition-colors hover:border-tennis-green/40"
               >
-                <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-tennis-lime/15 text-tennis-green">
-                  <Icon className="h-5 w-5" strokeWidth={2.2} />
+                <div className="flex items-start justify-between">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-tennis-lime/15 text-tennis-green">
+                    <Icon className="h-5 w-5" strokeWidth={2.2} />
+                  </div>
+                  <ArrowRight
+                    className="h-5 w-5 text-ink-3 transition-all group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-tennis-green"
+                    strokeWidth={2.2}
+                  />
                 </div>
                 <h3 className="mt-5 text-xl font-bold tracking-tight">
                   {audience.title}
@@ -42,7 +50,11 @@ export function VoorWie() {
                     </li>
                   ))}
                 </ul>
-              </div>
+                <span className="mt-6 inline-flex items-center gap-1 text-xs font-semibold text-tennis-green">
+                  Lees meer
+                  <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+                </span>
+              </Link>
             );
           })}
         </div>

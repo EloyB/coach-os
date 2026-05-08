@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "CoachOS — Lesplanning voor tennis- en padelclubs",
     short_name: "CoachOS",
     description:
-      "Lesreeksen, inschrijvingen en betalingen voor tennis- en padelclubs in de Benelux.",
+      "Lesplanning, inschrijvingen en betalingen voor tennis- en padelclubs.",
     start_url: "/",
     display: "standalone",
     background_color: "#fdfcf9",

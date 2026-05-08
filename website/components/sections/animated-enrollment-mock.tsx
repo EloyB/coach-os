@@ -71,6 +71,26 @@ const STEPS: Step[] = [
 
 const STEP_DURATIONS_MS = [900, 500, 500, 600, 700, 500, 500, 600, 350, 800, 0];
 
+/**
+ * Per-step vertical scroll offset (in px). Negative values slide the form
+ * upward inside the phone canvas to reveal content lower down. Tuned for
+ * the 9:19 aspect ratio + ~604px content height — tweak any value if a
+ * step doesn't end with the focal element comfortably in view.
+ */
+const SCROLL_OFFSETS_PX = [
+  0,    // 0: scaffold appears
+  0,    // 1: Voornaam typed
+  -10,  // 2: Achternaam (slight drift)
+  -25,  // 3: E-mail (cursor reaches third field)
+  -55,  // 4: Solo selected (Inschrijvingstype centered)
+  -90,  // 5: slot 1 (Beschikbaarheid in view)
+  -100, // 6: slot 2
+  -110, // 7: slot 3
+  -135, // 8: submit pulses (button at bottom of viewport)
+  -135, // 9: submitting
+  -135, // 10: submitted (form fades; success card replaces it)
+];
+
 const containerVariants: Variants = {
   hidden: {},
   visible: { transition: { delayChildren: 0.05, staggerChildren: 0.07 } },
@@ -107,38 +127,59 @@ export function AnimatedEnrollmentMock() {
 
   const animate = prefersReducedMotion || inView ? "visible" : "hidden";
 
+  const scrollOffset = prefersReducedMotion
+    ? SCROLL_OFFSETS_PX[SCROLL_OFFSETS_PX.length - 1]
+    : SCROLL_OFFSETS_PX[stepIndex] ?? 0;
+
   return (
     <motion.div
       ref={ref}
-      className="relative bg-[#FAFAF8] px-3.5 pb-4 pt-7 text-ink"
+      // 9:19 aspect ratio mirrors a real phone screen; overflow-hidden clips
+      // the form so it appears to scroll inside the phone instead of
+      // stretching the frame's height.
+      className="relative aspect-[9/19] overflow-hidden bg-[#FAFAF8] text-ink"
       initial={prefersReducedMotion ? "visible" : "hidden"}
       animate={animate}
       variants={containerVariants}
     >
-      {/* Reserve height so the form↔success swap doesn't reflow the row. */}
-      <div className="min-h-[460px]">
-        <AnimatePresence mode="wait" initial={false}>
-          {effectiveStep.submit === "submitted" ? (
-            <SuccessCard key="success" />
-          ) : (
-            <FormBody key="form" step={effectiveStep} />
-          )}
-        </AnimatePresence>
-      </div>
+      <AnimatePresence mode="wait" initial={false}>
+        {effectiveStep.submit === "submitted" ? (
+          <SuccessCard key="success" />
+        ) : (
+          <FormBody
+            key="form"
+            step={effectiveStep}
+            scrollOffset={scrollOffset}
+          />
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
 
-function FormBody({ step }: { step: Step }) {
+function FormBody({
+  step,
+  scrollOffset,
+}: {
+  step: Step;
+  scrollOffset: number;
+}) {
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      exit={{ opacity: 0, scale: 0.98 }}
+      exit={{ opacity: 0 }}
       transition={{ duration: 0.25 }}
-      className="space-y-4"
+      className="absolute inset-x-0 top-0"
     >
-      {/* Series header card */}
+      {/* Translation layer — slides upward as the animation progresses to
+       * reveal content below, simulating a user scrolling the form. */}
+      <motion.div
+        animate={{ y: scrollOffset }}
+        transition={{ type: "spring", stiffness: 80, damping: 22 }}
+        className="space-y-4 px-3.5 pb-4 pt-7"
+      >
+        {/* Series header card */}
       <motion.div
         variants={fadeUp}
         className="rounded-lg border border-rule bg-paper p-3"
@@ -209,8 +250,9 @@ function FormBody({ step }: { step: Step }) {
         </div>
       </motion.div>
 
-      <motion.div variants={fadeUp}>
-        <SubmitButton state={step.submit} />
+        <motion.div variants={fadeUp}>
+          <SubmitButton state={step.submit} />
+        </motion.div>
       </motion.div>
     </motion.div>
   );
@@ -441,7 +483,7 @@ function SuccessCard() {
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0 }}
       transition={{ type: "spring", stiffness: 220, damping: 24 }}
-      className="flex h-full min-h-[460px] flex-col items-center justify-center px-4 text-center"
+      className="absolute inset-0 flex flex-col items-center justify-center bg-[#FAFAF8] px-4 text-center"
     >
       <motion.div
         initial={{ scale: 0, rotate: -15 }}

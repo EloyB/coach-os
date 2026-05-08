@@ -277,15 +277,39 @@
       <div class="editor-title">Kaartgegevens</div>
       <div class="field">
         <label for="in-role">Rol</label>
-        <input id="in-role" type="text" placeholder="FOUNDER" autocomplete="off" />
+        <input
+          id="in-role"
+          type="text"
+          placeholder="FOUNDER"
+          autocomplete="off"
+        />
       </div>
       <div class="field">
         <label for="in-name">Naam</label>
-        <input id="in-name" type="text" placeholder="Eloy Boone" autocomplete="off" />
+        <input
+          id="in-name"
+          type="text"
+          placeholder="Eloy Boone"
+          autocomplete="off"
+        />
       </div>
       <div class="field">
         <label for="in-email">E-mail</label>
-        <input id="in-email" type="email" placeholder="naam@coach-os.be" autocomplete="off" />
+        <input
+          id="in-email"
+          type="email"
+          placeholder="naam@coach-os.be"
+          autocomplete="off"
+        />
+      </div>
+      <div class="field">
+        <label for="in-phone">Telefoon</label>
+        <input
+          id="in-phone"
+          type="tel"
+          placeholder="+32 478 77 44 97"
+          autocomplete="off"
+        />
       </div>
       <div class="presets">
         <span class="presets-label">Team</span>
@@ -345,8 +369,8 @@
             </g>
 
             <rect
-              x="60"
-              y="60"
+              x="80"
+              y="80"
               width="108"
               height="108"
               rx="14"
@@ -358,14 +382,14 @@
               fill="none"
               stroke-linecap="round"
             >
-              <circle cx="114" cy="114" r="28" />
+              <circle cx="134" cy="134" r="28" />
               <path
-                d="M 88 114 C 96 102, 104 102, 114 114 C 124 126, 132 126, 140 114"
+                d="M 108 134 C 116 122, 124 122, 134 134 C 144 146, 152 146, 160 134"
               />
             </g>
 
             <text
-              x="60"
+              x="80"
               y="510"
               font-family="'Inter', system-ui, sans-serif"
               font-weight="800"
@@ -377,7 +401,7 @@
               <tspan fill="#D0FF14">OS</tspan>
             </text>
             <text
-              x="64"
+              x="84"
               y="568"
               font-family="'Inter', system-ui, sans-serif"
               font-weight="600"
@@ -385,7 +409,7 @@
               fill="#D0FF14"
               letter-spacing="-0.2"
             >
-              Lesplanning voor tennis- en padelclubs
+              Lesplanning, eindelijk eenvoudig.
             </text>
 
             <rect x="0" y="640" width="1020" height="20" fill="#D0FF14" />
@@ -405,19 +429,19 @@
             <rect width="1020" height="660" fill="#fdfcf9" />
             <rect x="970" y="0" width="50" height="660" fill="#D0FF14" />
 
-            <rect x="60" y="60" width="50" height="50" rx="7" fill="#161513" />
+            <rect x="80" y="80" width="50" height="50" rx="7" fill="#161513" />
             <g
               stroke="#D0FF14"
               stroke-width="3"
               fill="none"
               stroke-linecap="round"
             >
-              <circle cx="85" cy="85" r="12" />
-              <path d="M 75 85 C 78 80, 82 80, 85 85 C 88 90, 92 90, 95 85" />
+              <circle cx="105" cy="105" r="12" />
+              <path d="M 95 105 C 98 100, 102 100, 105 105 C 108 110, 112 110, 115 105" />
             </g>
             <text
-              x="125"
-              y="98"
+              x="145"
+              y="118"
               font-family="'Inter', system-ui, sans-serif"
               font-weight="700"
               font-size="28"
@@ -430,8 +454,8 @@
 
             <text
               id="bc-role"
-              x="60"
-              y="290"
+              x="80"
+              y="270"
               font-family="'JetBrains Mono', monospace"
               font-weight="700"
               font-size="22"
@@ -443,8 +467,8 @@
 
             <text
               id="bc-name"
-              x="60"
-              y="380"
+              x="80"
+              y="350"
               font-family="'Inter', system-ui, sans-serif"
               font-weight="800"
               font-size="68"
@@ -455,17 +479,17 @@
             </text>
 
             <line
-              x1="60"
-              y1="500"
-              x2="930"
-              y2="500"
+              x1="80"
+              y1="445"
+              x2="910"
+              y2="445"
               stroke="#e7e4dc"
               stroke-width="2"
             />
 
             <text
-              x="60"
-              y="555"
+              x="80"
+              y="490"
               font-family="'JetBrains Mono', monospace"
               font-weight="600"
               font-size="18"
@@ -476,8 +500,8 @@
             </text>
             <text
               id="bc-email"
-              x="60"
-              y="615"
+              x="80"
+              y="535"
               font-family="'Inter', system-ui, sans-serif"
               font-weight="600"
               font-size="28"
@@ -485,10 +509,21 @@
             >
               eloy@coach-os.be
             </text>
+            <text
+              id="bc-phone"
+              x="80"
+              y="575"
+              font-family="'JetBrains Mono', monospace"
+              font-weight="600"
+              font-size="22"
+              fill="#161513"
+            >
+              +32 478 77 44 97
+            </text>
 
             <text
-              x="930"
-              y="555"
+              x="910"
+              y="490"
               font-family="'JetBrains Mono', monospace"
               font-weight="600"
               font-size="18"
@@ -499,8 +534,8 @@
               WEB
             </text>
             <text
-              x="930"
-              y="615"
+              x="910"
+              y="535"
               font-family="'JetBrains Mono', monospace"
               font-weight="700"
               font-size="26"
@@ -524,9 +559,14 @@
     <script>
       (function () {
         // Voeg hier teamleden toe voor één-klik presets:
-        // { role: "COACH", name: "Voornaam Achternaam", email: "naam@coach-os.be" }
+        // { role: "COACH", name: "Voornaam Achternaam", email: "naam@coach-os.be", phone: "+32 ..." }
         const TEAM = [
-          { role: "FOUNDER", name: "Eloy Boone", email: "eloy@coach-os.be" },
+          {
+            role: "FOUNDER",
+            name: "Eloy Boone",
+            email: "eloy@coach-os.be",
+            phone: "+32 478 77 44 97",
+          },
         ];
 
         const DEFAULTS = TEAM[0];
@@ -536,24 +576,35 @@
           role: document.getElementById("in-role"),
           name: document.getElementById("in-name"),
           email: document.getElementById("in-email"),
+          phone: document.getElementById("in-phone"),
         };
         const targets = {
           role: document.getElementById("bc-role"),
           name: document.getElementById("bc-name"),
           email: document.getElementById("bc-email"),
+          phone: document.getElementById("bc-phone"),
         };
 
         function render() {
-          const role = (inputs.role.value || DEFAULTS.role).trim().toUpperCase();
+          const role = (inputs.role.value || DEFAULTS.role)
+            .trim()
+            .toUpperCase();
           const name = (inputs.name.value || DEFAULTS.name).trim();
           const email = (inputs.email.value || DEFAULTS.email).trim();
+          const phone = (inputs.phone.value || DEFAULTS.phone).trim();
           targets.role.textContent = "/" + role;
           targets.name.textContent = name;
           targets.email.textContent = email;
+          targets.phone.textContent = phone;
           try {
             localStorage.setItem(
               STORAGE_KEY,
-              JSON.stringify({ role: inputs.role.value, name: inputs.name.value, email: inputs.email.value })
+              JSON.stringify({
+                role: inputs.role.value,
+                name: inputs.name.value,
+                email: inputs.email.value,
+                phone: inputs.phone.value,
+              }),
             );
           } catch (e) {}
         }
@@ -563,7 +614,10 @@
             const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
             if (typeof saved.role === "string") inputs.role.value = saved.role;
             if (typeof saved.name === "string") inputs.name.value = saved.name;
-            if (typeof saved.email === "string") inputs.email.value = saved.email;
+            if (typeof saved.email === "string")
+              inputs.email.value = saved.email;
+            if (typeof saved.phone === "string")
+              inputs.phone.value = saved.phone;
           } catch (e) {}
         }
 
@@ -571,6 +625,7 @@
           inputs.role.value = member.role;
           inputs.name.value = member.name;
           inputs.email.value = member.email;
+          inputs.phone.value = member.phone;
           render();
         }
 

@@ -1,12 +1,13 @@
 export const FOOTER = {
-  tagline: "Lesplanning voor tennis- en padelclubs in de Benelux.",
+  tagline: "Lesplanning, eindelijk eenvoudig.",
   columns: [
     {
       heading: "Product",
       links: [
-        { href: "#hoe-het-werkt", label: "Hoe het werkt" },
-        { href: "#features", label: "Features" },
-        { href: "#faq", label: "FAQ" },
+        { href: "/#hoe-het-werkt", label: "Hoe het werkt" },
+        { href: "/#features", label: "Features" },
+        { href: "/blog", label: "Blog" },
+        { href: "/#faq", label: "FAQ" },
       ],
     },
     {

@@ -27,7 +27,7 @@ export const PILOT_BANNER = {
 export const PILOT_KICKER = "PILOT PROGRAMMA";
 export const PILOT_HEADING = "Word één van onze eerste vijf clubs";
 export const PILOT_SUB =
-  "We zoeken vijf clubs of zelfstandige trainers in de Benelux die mee bouwen aan CoachOS. Jouw feedback bepaalt waar we als eerste op inzetten — en jij krijgt er meer dan een plek voor terug.";
+  "We zoeken vijf clubs of zelfstandige trainers die mee bouwen aan CoachOS. Jouw feedback bepaalt waar we als eerste op inzetten — en jij krijgt er meer dan een plek voor terug.";
 
 export interface PilotBenefit {
   title: string;

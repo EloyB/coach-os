@@ -1,6 +1,30 @@
+import { SITE } from "@/content/meta";
+
 export const CTA_SECTION = {
   heading: "Klaar om je lesplanning te automatiseren?",
-  sub: "Plan een korte demo in waarin we CoachOS laten zien voor jouw situatie, of stel je vraag direct via het contactformulier.",
+  sub: "Bel of mail rechtstreeks — we plannen een korte demo in en beantwoorden je vragen.",
+  tiles: {
+    call: {
+      label: "Bel ons",
+      value: SITE.contactPhone.display,
+      href: `tel:${SITE.contactPhone.href}`,
+      hint: "Ma–zo · 9.00–21.00",
+    },
+    email: {
+      label: "Stuur een e-mail",
+      value: SITE.contactEmail,
+      href: `mailto:${SITE.contactEmail}`,
+      hint: "Reactie binnen één werkdag",
+    },
+  },
+
+  // ─────────────────────────────────────────────────────────
+  // Preserved legacy copy for the (currently unused) waitlist +
+  // contact form components. Kept so the form files still
+  // type-check; flip the FinalCta back to the tabbed form layout
+  // by re-importing WaitlistForm / ContactForm if you ever want
+  // forms back.
+  // ─────────────────────────────────────────────────────────
   tabs: {
     waitlist: "Boek een demo",
     contact: "Neem contact op",

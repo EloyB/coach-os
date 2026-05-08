@@ -10,36 +10,37 @@
   <!-- Background paper -->
   <rect width="1020" height="660" fill="#fdfcf9"/>
 
-  <!-- Lime vertical accent strip on right edge -->
+  <!-- Lime vertical accent strip on right edge (intentional bleed) -->
   <rect x="970" y="0" width="50" height="660" fill="#D0FF14"/>
 
-  <!-- Top: small monogram + wordmark -->
-  <rect x="60" y="60" width="50" height="50" rx="7" fill="#161513"/>
+  <!-- Top: small monogram + wordmark (margin: 80 from top + left) -->
+  <rect x="80" y="80" width="50" height="50" rx="7" fill="#161513"/>
   <g stroke="#D0FF14" stroke-width="3" fill="none" stroke-linecap="round">
-    <circle cx="85" cy="85" r="12"/>
-    <path d="M 75 85 C 78 80, 82 80, 85 85 C 88 90, 92 90, 95 85"/>
+    <circle cx="105" cy="105" r="12"/>
+    <path d="M 95 105 C 98 100, 102 100, 105 105 C 108 110, 112 110, 115 105"/>
   </g>
-  <text x="125" y="98" class="sans" font-weight="700" font-size="28" fill="#161513" letter-spacing="-0.5">Coach<tspan fill="#2D5016">OS</tspan></text>
+  <text x="145" y="118" class="sans" font-weight="700" font-size="28" fill="#161513" letter-spacing="-0.5">Coach<tspan fill="#2D5016">OS</tspan></text>
 
   <!-- Slash label / role -->
-  <text x="60" y="290" class="mono" font-weight="700" font-size="22" fill="#2D5016" letter-spacing="3">/FOUNDER</text>
+  <text x="80" y="270" class="mono" font-weight="700" font-size="22" fill="#2D5016" letter-spacing="3">/FOUNDER</text>
 
   <!-- Name -->
-  <text x="60" y="380" class="sans" font-weight="800" font-size="68" fill="#161513" letter-spacing="-2">Eloy Boone</text>
+  <text x="80" y="350" class="sans" font-weight="800" font-size="68" fill="#161513" letter-spacing="-2">Eloy Boone</text>
 
   <!-- Tagline under name -->
-  <text x="60" y="425" class="sans" font-weight="500" font-size="22" fill="#4a4741">
-    Lesplanning voor tennis- en padelclubs
+  <text x="80" y="395" class="sans" font-weight="500" font-size="22" fill="#4a4741">
+    Lesplanning, eindelijk eenvoudig.
   </text>
 
   <!-- Divider -->
-  <line x1="60" y1="500" x2="930" y2="500" stroke="#e7e4dc" stroke-width="2"/>
+  <line x1="80" y1="445" x2="910" y2="445" stroke="#e7e4dc" stroke-width="2"/>
 
-  <!-- Contact block -->
-  <text x="60" y="555" class="mono" font-weight="600" font-size="18" fill="#8a867e" letter-spacing="2.5">CONTACT</text>
-  <text x="60" y="615" class="sans" font-weight="600" font-size="28" fill="#161513">hallo@coach-os.be</text>
+  <!-- Contact block (left column) — phone descender now ~581, leaving ~80 to bottom -->
+  <text x="80" y="490" class="mono" font-weight="600" font-size="18" fill="#8a867e" letter-spacing="2.5">CONTACT</text>
+  <text x="80" y="535" class="sans" font-weight="600" font-size="28" fill="#161513">hallo@coach-os.be</text>
+  <text x="80" y="575" class="mono" font-weight="600" font-size="22" fill="#161513">+32 478 77 44 97</text>
 
-  <!-- Website right-aligned -->
-  <text x="930" y="555" class="mono" font-weight="600" font-size="18" fill="#8a867e" letter-spacing="2.5" text-anchor="end">WEB</text>
-  <text x="930" y="615" class="mono" font-weight="700" font-size="26" fill="#161513" text-anchor="end">coach-os.be</text>
+  <!-- Website right-aligned (right column) -->
+  <text x="910" y="490" class="mono" font-weight="600" font-size="18" fill="#8a867e" letter-spacing="2.5" text-anchor="end">WEB</text>
+  <text x="910" y="535" class="mono" font-weight="700" font-size="26" fill="#161513" text-anchor="end">coach-os.be</text>
 </svg>

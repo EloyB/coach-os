@@ -2,20 +2,22 @@
 
 > Living document. Phase 1 ships in branch `onepager-website-setup`. Phases 2-4 are roadmap.
 
-## Domain
+## Domain & market direction
 
-**Primary domain: `coach-os.be`** (Belgium TLD, Benelux-first positioning).
+**Primary domain: `coach-os.be`** (Belgium TLD — chosen for early NL+BE pilot footprint, not as a positioning signal).
 
 - Canonical URL: `https://coach-os.be`
-- Contact email: `hallo@coach-os.be`
+- Contact email: `info@coach-os.be`
 - OG locale: `nl_BE` primary, `nl_NL` alternate
 - Hreflang: `nl-BE`, `nl-NL`, `x-default` — all point to the same URL
 
-If a future plan involves a separate `.nl` property for Dutch market, that becomes a hreflang split with distinct URLs per region. Today: one site, two markets.
+**Direction (updated 2026-05-07):** CoachOS launches in NL + BE first because that's where the pilot users are, but the brand and product **position open-ended for European expansion** — there is no "Benelux-only" framing on visible page copy or structured data. SEO meta surfaces (page titles, descriptions, keywords) still carry NL/BE keyword weight while those are the real market today; visible body copy, OG kickers, persona leads, and JSON-LD `areaServed` are country-neutral so the same content works as we open new countries.
+
+If a future plan involves a separate `.nl` property for Dutch market, that becomes a hreflang split with distinct URLs per region. Today: one site, multi-market.
 
 ## TL;DR
 
-CoachOS targets a **small, defined market**: tennis/padel clubs in NL + BE. We don't need to win 10k keywords — we need to **own ~30 high-intent ones** and **be the answer when someone asks ChatGPT/Perplexity** "welke software bestaat voor lesplanning bij een tennisclub". That's a SEO + GEO play, not pure SEO.
+CoachOS targets a **defined niche**: tennis/padel clubs and trainers — launched in NL + BE first, positioned for European expansion. We don't need to win 10k keywords — we need to **own ~30 high-intent ones** and **be the answer when someone asks ChatGPT/Perplexity** "welke software bestaat voor lesplanning bij een tennisclub". That's a SEO + GEO play, not pure SEO.
 
 - **SEO** = Google/Bing organic ranking (keywords, backlinks, technical health).
 - **GEO** = Generative Engine Optimization. Making AI engines (ChatGPT, Claude, Perplexity, Gemini) cite CoachOS as the answer. Requires structured, factual, comparable content with rich schema.
@@ -29,6 +31,8 @@ CoachOS targets a **small, defined market**: tennis/padel clubs in NL + BE. We d
 - ❌ **No content depth** — 1 marketing page + 2 legal pages. Nothing for long-tail to land on.
 - ❌ Empty `/public/`. No OG image, favicon, manifest.
 - ❌ No hreflang. Dutch-only with no `nl-NL` / `nl-BE` distinction.
+
+> **2026-05-07 update:** all gaps above were closed in Phase 1, persona pages shipped in Phase 2. Brand direction shifted from "Benelux-first" to "open European expansion" — visible page copy and structured-data area constraints removed; SEO meta surfaces still carry NL/BE keyword weight as the real market today.
 
 ## Phase 1 — Foundation (ships this branch)
 
@@ -58,18 +62,24 @@ This is where most B2B SaaS landing pages stop and lose ranking + AI-citation sh
 
 **Persona pages** (one H1 each, own FAQ + schema):
 
-- `/voor-tennisclubs` — pain points and benefits specific to tennis clubs (multiple courts, seasonal series, federation reporting).
-- `/voor-padelclubs` — padel-specific (rapid growth, often shared with tennis, mixed-level groups).
-- `/voor-trainers` — for the independent coach audience already in `content/audiences.ts`.
+- [x] `/voor-tennisclubs` — tennis club-specific pains (Excel chaos, KNLTB/Tennis Vlaanderen rapportering, jeugd vs volwassenen).
+- [x] `/voor-padelclubs` — padel-specific (snelle groei, niveauverschillen, banen die les + vrij gebruik combineren, mobile-first).
+- [x] `/voor-trainers` — zelfstandige coaches (Excel-routine, mailcarrousel, geen admin-support).
+
+Shipped state: each page has unique H1, Wikipedia-style lead paragraph (AI-quoteable), pains/solutions paired in two columns, local-SEO city ribbon, persona-specific FAQ, and `BreadcrumbList` + `FAQPage` + `Service` JSON-LD. Homepage `VoorWie` cards now link into the three pages. Sitemap updated.
+
+Next under content depth:
 
 **Blog / resources** — 5-10 cornerstone articles in Dutch:
 
-- "Hoe plan je een lesseizoen voor je tennisclub" — ranks for the literal query
-- "GDPR voor sportverenigingen: wat moet je regelen voor lesinschrijvingen"
-- "Wat kost lesplanning-software in 2026" — comparison-style, cites pricing
-- "Lesplanning in Excel: waarom het schaalt tot ~50 leden en wat daarna"
-- "Magic-link bevestigingen: waarom leerlingen geen account meer hoeven"
-- "Anonieme inschrijving: AVG-conform leerlingen onboarden"
+- [x] "Hoe plan je een lesseizoen voor je tennisclub" — ranks for the literal query
+- [x] "Anonieme inschrijving: AVG-conform leerlingen onboarden"
+- [ ] "GDPR voor sportverenigingen: wat moet je regelen voor lesinschrijvingen"
+- [ ] "Wat kost lesplanning-software in 2026" — comparison-style, cites pricing (write when `PRICING_VISIBLE` flips on)
+- [ ] "Lesplanning in Excel: waarom het schaalt tot ~50 leden en wat daarna"
+- [ ] "Magic-link bevestigingen: waarom leerlingen geen account meer hoeven"
+
+**Blog infra shipped (2026-05-07):** `/blog` index + `/blog/[slug]` static-prerendered routes; structured-content posts in `content/blog/posts/`; `BlogPosting` + `BreadcrumbList` + optional `FAQPage` JSON-LD per article; `Blog` aggregate schema on the index; footer link in the Product column; sitemap auto-iterates `ALL_POSTS`. Each post has lead paragraph (Wikipedia-style opener for AI quoting), tagged sections with paragraphs/bullets/callouts, optional FAQ, and related-post linking. Articles pull double duty: rank long-tail in Google + get cited verbatim by ChatGPT/Perplexity.
 
 **Comparison pages** (later, when competitors are confirmed):
 
@@ -82,14 +92,19 @@ This is where most B2B SaaS landing pages stop and lose ranking + AI-citation sh
 
 AI engines cite content that is:
 
-1. **Factually structured.** Lead paragraphs that read like Wikipedia: *"CoachOS is een lesplanningsysteem voor tennis- en padelclubs in Nederland en België. Het ondersteunt lesreeksen, anonieme inschrijvingen, automatische scheduling en magic-link bevestigingen."* Don't bury the definition.
-2. **Listed and comparable.** Bullet lists of features, pricing tables, "wel/niet" comparisons. AI loves clean, parseable structure.
-3. **FAQ-rich.** Expand FAQ from 7 to 15-20 questions covering pricing, GDPR, integrations, migrations, multi-club, federation reporting.
-4. **Mentioned elsewhere.** AI engines weigh third-party mentions heavily:
+1. **Factually structured.** ✅ Lead paragraphs across the homepage, persona pages, and blog posts all open Wikipedia-style. Definition first, no buried lede.
+2. **Listed and comparable.** ✅ "Excel vs CoachOS" comparison section shipped on the homepage (2026-05-07). Six recurring lesplanning-taken, each with a side-by-side before/after card. AI-quoteable copy, inline visual contrast (✗/✓), no schema needed — the structured prose itself is the GEO play. *Note: positioned between FeatureGrid and BespaarTijd as a homepage section. If it clutters the page, candidate to lift into a dedicated `/excel-vs-coachos` blog post or comparison page.*
+3. **FAQ-rich.** ✅ Homepage FAQ expanded from 7 → 17 questions (2026-05-07). Each persona page has its own 4-Q FAQ; each blog post has 4-5 Q. Cumulative `FAQPage` schema across the site is now substantial.
+4. **Mentioned elsewhere.** Operational outreach, not code:
    - Capterra NL, GetApp, G2, Software Advice
    - Emerce, Frankwatching guest posts
    - Tennisnet, KNLTB / Tennis Vlaanderen partner directories
    - Padel-specific media (Padelmagazine, etc.)
+
+**AI-engine infrastructure (shipped 2026-05-07):**
+
+- ✅ `/llms.txt` route — emerging convention from [llmstxt.org](https://llmstxt.org); generated dynamically from `ALL_PERSONAS` and `POSTS_BY_DATE` so it auto-updates as content ships. Major AI engines (Anthropic, OpenAI, Perplexity) read this when they encounter the domain.
+- ✅ `robots.txt` — explicit allow for 12 AI crawlers (GPTBot, ChatGPT-User, OAI-SearchBot, ClaudeBot, anthropic-ai, PerplexityBot, Perplexity-User, Google-Extended, CCBot, Applebot-Extended, Bytespider, DuckAssistBot). Removes the risk of default-deny on bots that respect named user-agents.
 
 **Concrete GEO checklist for each new page:**
 
@@ -100,12 +115,18 @@ AI engines cite content that is:
 - `BreadcrumbList` schema
 - Internal link to homepage and at least one persona page
 
-## Phase 4 — Local SEO
+## Phase 4 — Geographic SEO (per-market playbook)
 
-- `Organization` schema with address + region
-- Mention concrete cities/regions naturally in audience pages: "tennisclubs in Amsterdam, Antwerpen, Rotterdam, Gent, Den Haag, Brussel"
+While the brand positions for European expansion, organic traffic today comes from NL + BE — that's where geo-tactics get applied **first**. The same playbook is then repeatable per new country.
+
+**Today (NL + BE):**
+
+- `Organization` schema with address + region (added once a registered entity exists)
 - Once live: Google Business Profile (NL or BE entity)
 - KvK / KBO listing visible on legal pages
+- City mentions in landing copy where Search Console shows local intent (e.g., "tennisclubs in Amsterdam, Antwerpen, Rotterdam, Gent, Den Haag, Brussel"). *Note (2026-05-07):* the persona pages currently have **no city ribbon** — removed when the open-market direction was set, since pinning visible copy to specific Benelux cities contradicts the expansion stance. When SEO data justifies it, re-introduce city mentions on a per-page basis (e.g., a Belgium-only landing page or a regional comparison post), not on persona pages that should travel.
+
+**When expanding to a new country:** replicate the same surfaces — local entity in `Organization` schema, country-specific Google Business Profile, regional registry (KvK / KBO / Companies House / etc.), city mentions in country-targeted pages — without changing the persona pages or homepage messaging.
 
 ## Keyword targets (working list — refine when search-console data comes in)
 

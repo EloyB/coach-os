@@ -119,14 +119,14 @@ function SeatCounter({
                 isTaken ? "text-tennis-lime" : "text-ink-3",
               )}
             >
-              {isTaken ? "VERGEVEN" : "VRIJ"}
+              {isTaken ? "BEZET" : "VRIJ"}
             </Mono>
           </div>
         ))}
       </div>
       <p className="mt-3 text-sm text-ink-2">
         <span className="font-semibold text-ink">
-          {taken} van {total} plekken vergeven
+          {taken} van {total} plekken bezet
         </span>{" "}
         · nog {available} {available === 1 ? "plek" : "plekken"} beschikbaar.
       </p>

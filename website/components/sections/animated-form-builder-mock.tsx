@@ -52,13 +52,6 @@ const CUSTOM_FIELDS: CustomField[] = [
     type: "yesno",
     required: false,
   },
-  {
-    id: "times",
-    label: "Voorkeurstijden",
-    type: "multi",
-    required: true,
-    options: ["Maandag 18u", "Woensdag 14u", "Zaterdag 10u"],
-  },
 ];
 
 type SaveState = "idle" | "saving" | "saved";
@@ -76,13 +69,11 @@ const STEPS: Step[] = [
   { visibleCount: 1, save: "idle" },
   { visibleCount: 1, save: "idle", highlightAdd: true },
   { visibleCount: 2, save: "idle" },
-  { visibleCount: 2, save: "idle", highlightAdd: true },
-  { visibleCount: 3, save: "idle" },
-  { visibleCount: 3, save: "saving" },
-  { visibleCount: 3, save: "saved" },
+  { visibleCount: 2, save: "saving" },
+  { visibleCount: 2, save: "saved" },
 ];
 
-const STEP_DURATIONS_MS = [1000, 350, 1100, 350, 1300, 350, 1300, 1000, 2200];
+const STEP_DURATIONS_MS = [850, 300, 900, 300, 1100, 850, 1900];
 
 const containerVariants: Variants = {
   hidden: {},

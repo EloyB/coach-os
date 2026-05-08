@@ -10,7 +10,7 @@
   <!-- Background -->
   <rect width="1020" height="660" fill="#161513"/>
 
-  <!-- Subtle court pattern (white at low opacity) -->
+  <!-- Subtle court pattern (white at low opacity) — already inset 80 -->
   <g opacity="0.07" stroke="#ffffff" fill="none">
     <rect x="80" y="80" width="860" height="500" stroke-width="2"/>
     <line x1="510" y1="80" x2="510" y2="580" stroke-width="2.5"/>
@@ -25,24 +25,24 @@
     <circle cx="940" cy="330" r="6" fill="#ffffff" fill-opacity="0.7" stroke="none"/>
   </g>
 
-  <!-- Eyebrow top-right -->
-  <text x="960" y="100" class="mono" font-size="22" fill="#D0FF14" letter-spacing="3.6" text-anchor="end">
-    LESPLANNING / BENELUX
+  <!-- Eyebrow top-right (margin: 80 from top, 80 from right) -->
+  <text x="940" y="120" class="mono" font-size="22" fill="#D0FF14" letter-spacing="3.6" text-anchor="end">
+    LESPLANNING
   </text>
 
-  <!-- Logo monogram top-left -->
-  <rect x="60" y="60" width="108" height="108" rx="14" fill="#D0FF14"/>
+  <!-- Logo monogram top-left (margin: 80 from top + left) -->
+  <rect x="80" y="80" width="108" height="108" rx="14" fill="#D0FF14"/>
   <g stroke="#161513" stroke-width="7" fill="none" stroke-linecap="round">
-    <circle cx="114" cy="114" r="28"/>
-    <path d="M 88 114 C 96 102, 104 102, 114 114 C 124 126, 132 126, 140 114"/>
+    <circle cx="134" cy="134" r="28"/>
+    <path d="M 108 134 C 116 122, 124 122, 134 134 C 144 146, 152 146, 160 134"/>
   </g>
 
-  <!-- Wordmark + tagline bottom-left -->
-  <text x="60" y="510" class="sans" font-weight="800" font-size="92" fill="#ffffff" letter-spacing="-2.5">Coach<tspan fill="#D0FF14">OS</tspan></text>
-  <text x="64" y="568" class="sans" font-weight="600" font-size="30" fill="#D0FF14" letter-spacing="-0.2">
-    Een planning die zichzelf bevestigt.
+  <!-- Wordmark + tagline bottom-left (margin: 80 from left) -->
+  <text x="80" y="510" class="sans" font-weight="800" font-size="92" fill="#ffffff" letter-spacing="-2.5">Coach<tspan fill="#D0FF14">OS</tspan></text>
+  <text x="84" y="568" class="sans" font-weight="600" font-size="30" fill="#D0FF14" letter-spacing="-0.2">
+    Lesplanning, eindelijk eenvoudig.
   </text>
 
-  <!-- Lime accent strip bottom edge -->
+  <!-- Lime accent strip bottom edge (intentional bleed) -->
   <rect x="0" y="640" width="1020" height="20" fill="#D0FF14"/>
 </svg>

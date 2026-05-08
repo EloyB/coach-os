@@ -7,6 +7,7 @@ import { VoorWie } from "@/components/sections/voor-wie";
 import { HoeHetWerkt } from "@/components/sections/hoe-het-werkt";
 import { FeatureShowcase } from "@/components/sections/feature-showcase";
 import { FeatureGrid } from "@/components/sections/feature-grid";
+import { ExcelComparison } from "@/components/sections/excel-comparison";
 import { BespaarTijd } from "@/components/sections/bespaar-tijd";
 import { Pricing } from "@/components/sections/pricing";
 import { PilotProgram } from "@/components/sections/pilot-program";
@@ -26,6 +27,7 @@ export default function Page() {
         <HoeHetWerkt />
         <FeatureShowcase />
         <FeatureGrid />
+        <ExcelComparison />
         <BespaarTijd />
         {PRICING_VISIBLE ? <Pricing /> : null}
         <PilotProgram />

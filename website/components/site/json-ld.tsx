@@ -27,11 +27,7 @@ export function HomepageJsonLd() {
     logo: `${SITE_URL}/icon`,
     email: SITE.contactEmail,
     description:
-      "Lesplanningsysteem voor tennis- en padelclubs in Nederland en België. Lesreeksen, anonieme inschrijvingen, automatische scheduling en magic-link bevestigingen.",
-    areaServed: [
-      { "@type": "Country", name: "Netherlands" },
-      { "@type": "Country", name: "Belgium" },
-    ],
+      "Lesplanningsysteem voor tennis- en padelclubs. Lesreeksen, anonieme inschrijvingen, automatische scheduling en magic-link bevestigingen.",
     contactPoint: {
       "@type": "ContactPoint",
       contactType: "customer support",
@@ -66,7 +62,7 @@ export function HomepageJsonLd() {
     publisher: { "@id": `${SITE_URL}/#organization` },
     audience: {
       "@type": "Audience",
-      audienceType: "Tennis- en padelclubs, hoofdtrainers en zelfstandige coaches in de Benelux",
+      audienceType: "Tennis- en padelclubs, hoofdtrainers en zelfstandige coaches",
     },
     featureList: FEATURES.map((f) => `${f.title} — ${f.body}`),
   };

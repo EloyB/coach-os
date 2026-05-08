@@ -70,6 +70,16 @@ export const metadata: Metadata = {
     email: false,
     telephone: false,
   },
+  // Search engine ownership verification. Set the env vars in your hosting
+  // dashboard (Vercel → Project → Settings → Environment Variables) when
+  // you create the GSC + Bing Webmaster Tools properties — no code change
+  // needed afterward. Undefined values are silently omitted by Next.js.
+  verification: {
+    google: process.env.GOOGLE_SITE_VERIFICATION,
+    other: process.env.BING_SITE_VERIFICATION
+      ? { "msvalidate.01": process.env.BING_SITE_VERIFICATION }
+      : undefined,
+  },
 };
 
 export const viewport: Viewport = {
