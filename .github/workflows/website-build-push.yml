@@ -1,21 +1,18 @@
-name: Frontend — Build, Push & Deploy
+name: Website — Build, Push & Deploy
 
 on:
   push:
     branches: [main]
     paths:
-      - 'frontend/**'
-      - '!frontend/Dockerfile'        # local-dev Dockerfile only
-      - '!frontend/e2e/**'
-      - '!frontend/**/*.md'
-      - '!frontend/playwright.config.ts'
-      - '.github/workflows/frontend-build-push.yml'
+      - 'website/**'
+      - '!website/**/*.md'
+      - '.github/workflows/website-build-push.yml'
   workflow_dispatch:
 
 env:
   REGISTRY: rg.fr-par.scw.cloud
   NAMESPACE: coach-os
-  IMAGE_NAME: frontend
+  IMAGE_NAME: website
 
 jobs:
   build-and-push:
@@ -46,11 +43,11 @@ jobs:
       - name: Build and push (using Dockerfile.prod)
         uses: docker/build-push-action@v5
         with:
-          context: ./frontend
-          file: ./frontend/Dockerfile.prod
+          context: ./website
+          file: ./website/Dockerfile.prod
           push: true
           build-args: |
-            NEXT_PUBLIC_API_URL=https://app.coach-os.be/api
+            NEXT_PUBLIC_APP_URL=https://app.coach-os.be
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
@@ -67,7 +64,7 @@ jobs:
       - name: Wait for registry propagation
         run: sleep 15
 
-      - name: Pull new image and restart frontend on VPS
+      - name: Pull new image and restart website on VPS
         uses: appleboy/ssh-action@v1.0.3
         env:
           SCW_SECRET_KEY: ${{ secrets.SCALEWAY_SECRET_KEY }}
@@ -83,9 +80,9 @@ jobs:
             echo "$SCW_SECRET_KEY" | docker login rg.fr-par.scw.cloud -u nologin --password-stdin
             docker image prune -f
             for i in 1 2 3; do
-              if docker compose pull frontend; then break; fi
+              if docker compose pull website; then break; fi
               [ $i -lt 3 ] && sleep 10 || exit 1
             done
-            docker compose up -d --no-deps --force-recreate frontend
+            docker compose up -d --no-deps --force-recreate website
             sleep 5
-            docker compose ps frontend
+            docker compose ps website

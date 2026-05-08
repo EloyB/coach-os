@@ -21,10 +21,11 @@ services:
       SCW_ACCESS_KEY: ${SCW_ACCESS_KEY}
       SCW_SECRET_KEY: ${SCW_SECRET_KEY}
       SCW_REGION: ${SCW_REGION:-fr-par}
-      App__FrontendBaseUrl: https://coach-os.be
-      App__ConfirmationBaseUrl: https://coach-os.be/confirmation
-      App__StudentMagicLinkBaseUrl: https://coach-os.be/auth/magic
-      App__StandaloneLessonInvitationBaseUrl: https://coach-os.be/invitation
+      # The CoachOS app lives on app.coach-os.be (apex hosts the marketing site).
+      App__FrontendBaseUrl: https://app.coach-os.be
+      App__ConfirmationBaseUrl: https://app.coach-os.be/confirmation
+      App__StudentMagicLinkBaseUrl: https://app.coach-os.be/auth/magic
+      App__StandaloneLessonInvitationBaseUrl: https://app.coach-os.be/invitation
 
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/health"]
@@ -49,6 +50,30 @@ services:
 
     # Next.js redirects '/' to a locale-prefixed path (307), which wget --spider
     # treats as an error. Use node to treat anything < 500 as healthy.
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/', r => process.exit(r.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    networks:
+      - coach-os-network
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Marketing website served on coach-os.be (apex + www).
+  # Pure SSR Next.js — has its own /api/contact and /api/waitlist server routes,
+  # no calls to the CoachOS backend.
+  website:
+    image: ${REGISTRY_ENDPOINT}/website:latest
+    container_name: coach-os-website
+    restart: unless-stopped
+
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/', r => process.exit(r.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))"]
       interval: 30s
@@ -109,10 +134,17 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
+      # Webroot for Let's Encrypt http-01 challenges. Certbot writes
+      # /.well-known/acme-challenge/<token> into this dir on the host;
+      # nginx's apex/app vhosts serve those files via the matching
+      # `location /.well-known/acme-challenge/` block. Required for
+      # `certbot --webroot` (used by cert-expand and auto-renew).
+      - /var/www/certbot:/var/www/certbot:ro
 
     depends_on:
       - api
       - frontend
+      - website
       - dozzle
 
     networks:
