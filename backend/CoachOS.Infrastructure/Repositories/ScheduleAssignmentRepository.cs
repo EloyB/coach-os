@@ -74,6 +74,17 @@ public class ScheduleAssignmentRepository(ApplicationDbContext context) : ISched
             .ExecuteDeleteAsync(ct);
     }
 
+    public async Task SetProposedToAwaitingConfirmationAsync(Guid lessonSerieId, Guid organizationId, CancellationToken ct = default)
+    {
+        await context.ScheduleAssignments
+            .Where(a => a.LessonSerieId == lessonSerieId
+                && a.OrganizationId == organizationId
+                && a.Status == ScheduleAssignmentStatus.Proposed)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(a => a.Status, ScheduleAssignmentStatus.AwaitingConfirmation)
+                .SetProperty(a => a.UpdatedAt, DateTime.UtcNow), ct);
+    }
+
     public async Task SaveChangesAsync(CancellationToken ct = default)
     {
         await context.SaveChangesAsync(ct);

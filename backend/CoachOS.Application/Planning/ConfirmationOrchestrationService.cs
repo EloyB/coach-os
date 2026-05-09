@@ -73,6 +73,7 @@ public class ConfirmationOrchestrationService(
         await lessonSeriesRepo.BeginTransactionAsync(ct);
         try
         {
+            await scheduleAssignmentRepo.SetProposedToAwaitingConfirmationAsync(seriesId, organizationId, ct);
             await tokenRepo.AddRangeAsync(tokens, ct);
             series.PlanningStatus = PlanningStatus.AwaitingConfirmation;
             await lessonSeriesRepo.SaveChangesAsync(ct);

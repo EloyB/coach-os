@@ -11,7 +11,7 @@ public class ConfirmScheduleEndpoint : IEndpoint
             async (Guid id, IConfirmationOrchestrationService service, HttpContext ctx, CancellationToken ct) =>
             {
                 var result = await service.ConfirmScheduleAsync(id, ctx.GetOrganizationId(), ct);
-                return result.IsSuccess ? Results.Ok() : result.ToErrorResult();
+                return result.IsSuccess ? Results.Ok(true) : result.ToErrorResult();
             })
         .RequireAuthorization(policy => policy.RequireRole("Admin"))
         .WithTags("Planning");
