@@ -183,10 +183,51 @@ public class DashboardService(
             .Select(kv => new WeekMetricDto { Week = kv.Key, Value = kv.Value })
             .ToList();
 
-        // OccupancyPct: stub as 0 for now
-        List<WeekMetricDto> occupancy = lessonCounts.Keys
-            .Select(week => new WeekMetricDto { Week = week, Value = 0 })
+        // OccupancyPct: enrolled / maxRegistrations for series active in each week
+        IReadOnlyList<LessonSerieEntity> allSeries =
+            await lessonSeriesRepo.GetByOrganizationAsync(organizationId, ct: ct);
+        List<LessonSerieEntity> metricalSeries = allSeries
+            .Where(s => s.IsActive && s.MaxRegistrations.HasValue && s.MaxRegistrations.Value > 0)
             .ToList();
+
+        List<WeekMetricDto> occupancy;
+        if (metricalSeries.Count > 0)
+        {
+            List<Guid> seriesIds = metricalSeries.Select(s => s.Id).ToList();
+            Dictionary<Guid, int> enrollmentCounts =
+                await enrollmentRepo.CountActiveBySeriesIdsAsync(seriesIds, ct);
+
+            DateOnly today = DateOnly.FromDateTime(DateTime.UtcNow);
+            int dayOfWeekOffset = ((int)today.DayOfWeek + 6) % 7;
+            DateOnly currentWeekStart = today.AddDays(-dayOfWeekOffset);
+
+            occupancy = [];
+            for (int i = 0; i < weeks; i++)
+            {
+                DateOnly weekStart = currentWeekStart.AddDays(-7 * (weeks - 1 - i));
+                DateOnly weekEnd = weekStart.AddDays(6);
+                int isoYear = System.Globalization.ISOWeek.GetYear(weekStart.ToDateTime(TimeOnly.MinValue));
+                int isoWeek = System.Globalization.ISOWeek.GetWeekOfYear(weekStart.ToDateTime(TimeOnly.MinValue));
+                string weekLabel = $"{isoYear}-W{isoWeek:D2}";
+
+                List<LessonSerieEntity> weekSeries = metricalSeries
+                    .Where(s => s.StartDate <= weekEnd && s.EndDate >= weekStart)
+                    .ToList();
+
+                int totalEnrolled = weekSeries.Sum(s => enrollmentCounts.GetValueOrDefault(s.Id, 0));
+                int totalCapacity = weekSeries.Sum(s => s.MaxRegistrations!.Value);
+                int pct = totalCapacity > 0
+                    ? (int)Math.Round((double)totalEnrolled / totalCapacity * 100)
+                    : 0;
+                occupancy.Add(new WeekMetricDto { Week = weekLabel, Value = pct });
+            }
+        }
+        else
+        {
+            occupancy = lessonCounts.Keys
+                .Select(week => new WeekMetricDto { Week = week, Value = 0 })
+                .ToList();
+        }
 
         // OutstandingCents: stub as 0 for now
         List<WeekMetricDto> outstanding = lessonCounts.Keys
