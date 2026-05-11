@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import sys
+import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
@@ -48,21 +49,29 @@ class ApiClient:
             headers["Authorization"] = f"Bearer {self.token}"
 
         data = json.dumps(body).encode("utf-8") if body is not None else None
-        req = urllib.request.Request(
-            f"{self.base}{path}", data=data, method=method, headers=headers)
 
-        try:
-            with urllib.request.urlopen(req, timeout=30) as resp:
-                raw = resp.read().decode("utf-8")
-                return json.loads(raw) if raw else None
-        except urllib.error.HTTPError as e:
-            err_body = e.read().decode("utf-8", errors="replace")
-            print(f"  ERROR {e.code} on {method} {path}: {err_body}",
-                  file=sys.stderr)
-            return None
-        except urllib.error.URLError as e:
-            print(f"  ERROR on {method} {path}: {e.reason}", file=sys.stderr)
-            return None
+        for attempt in range(3):
+            req = urllib.request.Request(
+                f"{self.base}{path}", data=data, method=method, headers=headers)
+            try:
+                with urllib.request.urlopen(req, timeout=30) as resp:
+                    raw = resp.read().decode("utf-8")
+                    return json.loads(raw) if raw else None
+            except urllib.error.HTTPError as e:
+                if e.code == 429 and attempt < 2:
+                    print(f"  Rate limited on {method} {path} "
+                          f"— waiting 62s before retry {attempt + 2}/3...",
+                          file=sys.stderr)
+                    time.sleep(62)
+                    continue
+                err_body = e.read().decode("utf-8", errors="replace")
+                print(f"  ERROR {e.code} on {method} {path}: {err_body}",
+                      file=sys.stderr)
+                return None
+            except urllib.error.URLError as e:
+                print(f"  ERROR on {method} {path}: {e.reason}", file=sys.stderr)
+                return None
+        return None
 
 
 # ── Date helpers ─────────────────────────────────────────────────────────────
@@ -174,7 +183,7 @@ def invite_trainers_and_pick_id(api: ApiClient, trainers: list[dict],
 def create_simple_series(api: ApiClient, series_specs: list[dict],
                          club_ids: list[str], trainer_id: str,
                          today: date, deadline_iso: str) -> list[str]:
-    print("\n4. Creating lesson series...")
+    print("\n4. Creating lesson series (with full lesson schedules)...")
     if not club_ids:
         print("   No clubs created - skipping series.")
         return []
@@ -185,7 +194,7 @@ def create_simple_series(api: ApiClient, series_specs: list[dict],
         start = today + timedelta(days=spec["startOffsetDays"])
         end = add_months(today, spec["endOffsetMonths"])
         template = template_with_trainer(spec["weeklyTemplate"], trainer_id)
-        first_slot = template[0]
+        lessons = generate_lessons_from_template(spec["weeklyTemplate"], start, end, trainer_id)
 
         body = {
             "trainerId": trainer_id,
@@ -199,41 +208,13 @@ def create_simple_series(api: ApiClient, series_specs: list[dict],
             "registrationDeadline": deadline_iso,
             "maxRegistrations": spec["maxRegistrations"],
             "weeklyTemplate": template,
-            "lessons": [{
-                "trainerId": trainer_id,
-                "date": iso_date(start),
-                "startTime": first_slot["startTime"],
-                "endTime": first_slot["endTime"],
-                "courtName": first_slot["courtName"],
-                "maxStudents": first_slot["maxStudents"],
-            }],
+            "lessons": lessons,
         }
         sid = strip_quotes(api.post("/lessonseries", body))
         if sid:
             ids.append(sid)
-            print(f"   Created: {spec['name']}")
+            print(f"   Created: {spec['name']} ({len(lessons)} lessons)")
     return ids
-
-
-def add_extra_lessons(api: ApiClient, series_ids: list[str], cfg: dict,
-                      trainer_id: str, today: date) -> None:
-    print("\n5. Adding lessons to series...")
-    courts = cfg["courts"]
-    starts = cfg["startTimes"]
-    ends = cfg["endTimes"]
-    for sid in series_ids:
-        for week in range(cfg["weeks"]):
-            lesson_date = today + timedelta(days=week * 7 + 1)
-            i = week % len(courts)
-            api.post(f"/lessonseries/{sid}/lessons", {
-                "trainerId": trainer_id,
-                "date": iso_date(lesson_date),
-                "startTime": starts[i % len(starts)],
-                "endTime": ends[i % len(ends)],
-                "courtName": courts[i],
-                "maxStudents": 4,
-            })
-        print(f"   Added {cfg['weeks']} lessons to series")
 
 
 def simple_enrollments(api: ApiClient, students: list[dict],
@@ -367,8 +348,11 @@ def generate_and_confirm_planning(api: ApiClient, planning_series_id: str) -> No
         return
 
     print("   Confirming planning (locks schedule, creates student confirmation tokens)...")
-    api.post(f"/lessonseries/{planning_series_id}/planning/confirm", {})
-    print("   Done.")
+    confirmed = api.post(f"/lessonseries/{planning_series_id}/planning/confirm", {})
+    if confirmed is None:
+        print("   WARNING: confirm returned an error (see stderr).", file=sys.stderr)
+    else:
+        print("   Done.")
 
 
 def planning_enrollments(api: ApiClient, planning_series_id: str,
@@ -401,10 +385,15 @@ def planning_enrollments(api: ApiClient, planning_series_id: str,
             body["groupMembers"] = [
                 {**m, "responses": []} for m in e["groupMembers"]
             ]
-        api.post(f"/public/lessonseries/{planning_series_id}/enroll",
-                 body, auth=False)
+        result = api.post(f"/public/lessonseries/{planning_series_id}/enroll",
+                          body, auth=False)
         label = e.get("label") or e["studentName"]
-        print(f"   {label}")
+        member_count = len(body.get("groupMembers", []))
+        students = member_count + 1 if member_count else 1
+        if result is not None:
+            print(f"   OK  {label} ({students} student(s))")
+        else:
+            print(f"   ERR {label} — enrollment failed (see stderr)", file=sys.stderr)
 
 
 # ── Main ─────────────────────────────────────────────────────────────────────
@@ -431,8 +420,6 @@ def main() -> int:
 
     simple_ids = create_simple_series(
         api, data["simpleSeries"], club_ids, trainer_id, today, deadline_iso)
-    add_extra_lessons(api, simple_ids, data["additionalLessonsPerSimpleSeries"],
-                      trainer_id, today)
     simple_enrollments(api, data["simpleEnrollments"], simple_ids)
 
     planning_id = create_planning_series(

@@ -24,5 +24,7 @@ public interface IScheduleAssignmentRepository
 
     Task RemoveProposedBySeriesAsync(Guid lessonSerieId, Guid organizationId, CancellationToken ct = default);
 
+    Task SetProposedToAwaitingConfirmationAsync(Guid lessonSerieId, Guid organizationId, CancellationToken ct = default);
+
     Task SaveChangesAsync(CancellationToken ct = default);
 }

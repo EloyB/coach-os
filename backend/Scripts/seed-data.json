@@ -76,16 +76,30 @@
     "endTimes":   ["10:00", "12:00", "15:00", "17:00"]
   },
   "simpleEnrollments": [
-    { "studentName": "Emma Claes",       "studentEmail": "emma.claes@gmail.com",      "studentPhone": "+32471234567", "seriesIndex": 0 },
-    { "studentName": "Lucas Peeters",    "studentEmail": "lucas.peeters@hotmail.com", "studentPhone": "+32472345678", "seriesIndex": 1 },
-    { "studentName": "Lotte Van Damme",  "studentEmail": "lotte.vd@outlook.com",      "studentPhone": "+32473456789", "seriesIndex": 2 },
-    { "studentName": "Noah Willems",     "studentEmail": "noah.w@gmail.com",          "studentPhone": "+32474567890", "seriesIndex": 0 },
-    { "studentName": "Julie Maes",       "studentEmail": "julie.maes@yahoo.com",      "studentPhone": "+32475678901", "seriesIndex": 1 },
-    { "studentName": "Axel Dubois",      "studentEmail": "axel.dubois@gmail.com",     "studentPhone": "+32476789012", "seriesIndex": 2 },
-    { "studentName": "Sarah Jacobs",     "studentEmail": "sarah.j@hotmail.com",       "studentPhone": "+32477890123", "seriesIndex": 0 },
-    { "studentName": "Thomas Hermans",   "studentEmail": "thomas.h@outlook.com",      "studentPhone": "+32478901234", "seriesIndex": 1 },
-    { "studentName": "Marie Lambert",    "studentEmail": "marie.lambert@gmail.com",   "studentPhone": "+32479012345", "seriesIndex": 2 },
-    { "studentName": "Bram Wouters",     "studentEmail": "bram.wouters@hotmail.com",  "studentPhone": "+32470123456", "seriesIndex": 0 }
+    { "studentName": "Emma Claes",         "studentEmail": "emma.claes@gmail.com",        "studentPhone": "+32471234567", "seriesIndex": 0 },
+    { "studentName": "Noah Willems",       "studentEmail": "noah.w@gmail.com",            "studentPhone": "+32474567890", "seriesIndex": 0 },
+    { "studentName": "Sarah Jacobs",       "studentEmail": "sarah.j@hotmail.com",         "studentPhone": "+32477890123", "seriesIndex": 0 },
+    { "studentName": "Bram Wouters",       "studentEmail": "bram.wouters@hotmail.com",    "studentPhone": "+32470123456", "seriesIndex": 0 },
+    { "studentName": "Hanne Declercq",     "studentEmail": "hanne.d@gmail.com",           "studentPhone": "+32471100001", "seriesIndex": 0 },
+    { "studentName": "Ruben Smeets",       "studentEmail": "ruben.smeets@hotmail.com",    "studentPhone": "+32471100002", "seriesIndex": 0 },
+    { "studentName": "Elien Bogaert",      "studentEmail": "elien.b@outlook.com",         "studentPhone": "+32471100003", "seriesIndex": 0 },
+    { "studentName": "Ward Janssen",       "studentEmail": "ward.janssen@gmail.com",      "studentPhone": "+32471100004", "seriesIndex": 0 },
+    { "studentName": "Fien Lemmens",       "studentEmail": "fien.l@gmail.com",            "studentPhone": "+32471100005", "seriesIndex": 0 },
+    { "studentName": "Lucas Peeters",      "studentEmail": "lucas.peeters@hotmail.com",   "studentPhone": "+32472345678", "seriesIndex": 1 },
+    { "studentName": "Julie Maes",         "studentEmail": "julie.maes@yahoo.com",        "studentPhone": "+32475678901", "seriesIndex": 1 },
+    { "studentName": "Thomas Hermans",     "studentEmail": "thomas.h@outlook.com",        "studentPhone": "+32478901234", "seriesIndex": 1 },
+    { "studentName": "Amber Pieters",      "studentEmail": "amber.p@gmail.com",           "studentPhone": "+32471200001", "seriesIndex": 1 },
+    { "studentName": "Sander Verbeke",     "studentEmail": "sander.v@hotmail.com",        "studentPhone": "+32471200002", "seriesIndex": 1 },
+    { "studentName": "Nathalie Goossens",  "studentEmail": "nathalie.g@outlook.com",      "studentPhone": "+32471200003", "seriesIndex": 1 },
+    { "studentName": "Lotte Van Damme",    "studentEmail": "lotte.vd@outlook.com",        "studentPhone": "+32473456789", "seriesIndex": 2 },
+    { "studentName": "Axel Dubois",        "studentEmail": "axel.dubois@gmail.com",       "studentPhone": "+32476789012", "seriesIndex": 2 },
+    { "studentName": "Marie Lambert",      "studentEmail": "marie.lambert@gmail.com",     "studentPhone": "+32479012345", "seriesIndex": 2 },
+    { "studentName": "Dries Hermans",      "studentEmail": "dries.h@gmail.com",           "studentPhone": "+32471300001", "seriesIndex": 2 },
+    { "studentName": "Charlotte Baert",    "studentEmail": "charlotte.b@hotmail.com",     "studentPhone": "+32471300002", "seriesIndex": 2 },
+    { "studentName": "Raf Aerts",          "studentEmail": "raf.aerts@outlook.com",       "studentPhone": "+32471300003", "seriesIndex": 2 },
+    { "studentName": "Tine Claes",         "studentEmail": "tine.claes@gmail.com",        "studentPhone": "+32471300004", "seriesIndex": 2 },
+    { "studentName": "Jonas Nijs",         "studentEmail": "jonas.nijs@telenet.be",       "studentPhone": "+32471300005", "seriesIndex": 2 },
+    { "studentName": "Sofie Willems",      "studentEmail": "sofie.willems@proximus.be",   "studentPhone": "+32471300006", "seriesIndex": 2 }
   ],
   "planningSeries": {
     "name": "Zomerlessen 2026",
@@ -155,22 +169,22 @@
       "slotPreferences": [1, 1, 1, 2, 2, 1, 1, 1, 2, 2, 1]
     },
     {
-      "label": "Sarah Dubois (solo, exclusive, Thu+Sat only)",
+      "label": "Sarah Dubois (solo, exclusive, Thu+Sat only — low overlap)",
       "studentName": "Sarah Dubois", "studentEmail": "sarah.dubois@uzleuven.be", "studentPhone": "+32471990011",
       "enrollmentType": "solo", "isOpenToGrouping": false,
       "slotPreferences": [3, 3, 3, 3, 3, 3, 2, 1, 2, 1, 1]
     },
     {
-      "label": "Kevin Mertens (solo, exclusive, ALL unavailable = CONFLICT)",
-      "studentName": "Kevin Mertens", "studentEmail": "kevin.m@proximus.be", "studentPhone": "+32476001122",
-      "enrollmentType": "solo", "isOpenToGrouping": false,
-      "slotPreferences": [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+      "label": "Kevin Goossens (solo, open, Tue evenings — auto-merge candidate with Noor)",
+      "studentName": "Kevin Goossens", "studentEmail": "kevin.g@proximus.be", "studentPhone": "+32476001122",
+      "enrollmentType": "solo", "isOpenToGrouping": true,
+      "slotPreferences": [1, 1, 2, 3, 3, 3, 2, 3, 3, 3, 3]
     },
     {
-      "label": "Ines Claes (solo, open, NO preferences = CONFLICT)",
+      "label": "Ines Claes (solo, open, Sat morning)",
       "studentName": "Ines Claes", "studentEmail": "ines.claes@hotmail.com", "studentPhone": "+32479112233",
       "enrollmentType": "solo", "isOpenToGrouping": true,
-      "slotPreferences": []
+      "slotPreferences": [3, 3, 3, 3, 3, 3, 3, 3, 1, 1, 2]
     },
     {
       "label": "Jules Van Damme (solo, open, Saturday only)",

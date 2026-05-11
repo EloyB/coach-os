@@ -147,7 +147,8 @@ Als seed faalt: drift in DTO/validator/migratie → eerst `seed-data.json` + `se
 ## Working Style
 
 - Ask clarifying questions one at a time — never list multiple questions at once.
-- Never run `git commit`, `git push`, or create PRs. The user handles all version control.
+- Never run `git push` or create PRs. The user handles pushing and PR creation.
+- `git commit` is allowed — make logical, atomic commits with clear conventional-commit messages.
 
 ## graphify
 
