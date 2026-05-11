@@ -11,13 +11,13 @@ export const ANONIEME_INSCHRIJVING_AVG: BlogPost = {
   readMinutes: 5,
   category: "GIDS · AVG",
   tags: ["AVG", "GDPR", "anonieme inschrijving", "privacy", "magic link"],
-  lead: "Anonieme inschrijving betekent dat een leerling zich kan inschrijven voor een lesreeks zonder een account aan te maken: alleen naam en e-mailadres volstaan, en bevestiging gebeurt via een tijdelijke magic-link in plaats van een wachtwoord. Voor sportclubs is dit niet alleen gebruiksvriendelijker — het is ook de meest AVG-conforme manier om leerlinggegevens te onboarden, omdat je per definitie minder data verzamelt dan strikt nodig.",
+  lead: "Anonieme inschrijving betekent dat een leerling zich kan inschrijven voor een lessenreeks zonder een account aan te maken: alleen naam en e-mailadres volstaan, en bevestiging gebeurt via een tijdelijke magic-link in plaats van een wachtwoord. Voor sportclubs is dit niet alleen gebruiksvriendelijker — het is ook de meest AVG-conforme manier om leerlinggegevens te onboarden, omdat je per definitie minder data verzamelt dan strikt nodig.",
   sections: [
     {
       heading: "Wat 'anonieme inschrijving' juridisch betekent",
       paragraphs: [
         "Strikt genomen is een inschrijving met naam en e-mailadres niet anoniem — die data identificeren een persoon en vallen onder de AVG. De term 'anonieme inschrijving' wordt in de praktijk gebruikt om aan te duiden dat de leerling geen permanent account hoeft aan te maken: geen profielpagina, geen wachtwoord, geen tracking.",
-        "Het verschil zit in de hoeveelheid data en de bewaartermijn. Een account-gebaseerd systeem houdt typisch een persistent profiel bij dat blijft bestaan ongeacht of de leerling nog actief is. Een anonieme inschrijving verzamelt alleen wat nodig is voor één specifieke lesreeks, en de data verlopen samen met die reeks.",
+        "Het verschil zit in de hoeveelheid data en de bewaartermijn. Een account-gebaseerd systeem houdt typisch een persistent profiel bij dat blijft bestaan ongeacht of de leerling nog actief is. Een anonieme inschrijving verzamelt alleen wat nodig is voor één specifieke lessenreeks, en de data verlopen samen met die reeks.",
       ],
     },
     {
@@ -34,15 +34,15 @@ export const ANONIEME_INSCHRIJVING_AVG: BlogPost = {
     {
       heading: "Welke gegevens mag je verzamelen?",
       paragraphs: [
-        "Voor lesplanning is dit het minimum: voornaam, achternaam, e-mailadres en de antwoorden op je inschrijfformulier (niveau, voorkeurstijden, eventueel een opmerking). Telefoon mag, maar alleen als je het echt gebruikt voor lesgerelateerde communicatie — niet 'voor de zekerheid'.",
-        "Wat absoluut niet thuishoort in een inschrijfformulier: rijksregisternummer, geboortedatum (tenzij relevant voor leeftijdsgroepen), betaalgegevens (die horen bij de betaalprovider, niet in jouw database), of medische info (tenzij specifiek noodzakelijk en met aparte toestemming).",
+        "Voor lessenplanning is dit het minimum: voornaam, achternaam, e-mailadres en de antwoorden op je inschrijvingsformulier (niveau, voorkeurstijden, eventueel een opmerking). Telefoon mag, maar alleen als je het echt gebruikt voor lesgerelateerde communicatie — niet 'voor de zekerheid'.",
+        "Wat absoluut niet thuishoort in een inschrijvingsformulier: rijksregisternummer, geboortedatum (tenzij relevant voor leeftijdsgroepen), betaalgegevens (die horen bij de betaalprovider, niet in jouw database), of medische info (tenzij specifiek noodzakelijk en met aparte toestemming).",
       ],
       bullets: [
         "Voornaam + achternaam: ✅ noodzakelijk",
         "E-mailadres: ✅ noodzakelijk voor bevestigingen en lescommunicatie",
         "Telefoonnummer: ⚠️ alleen als je het ook echt gebruikt",
         "Geboortedatum: ⚠️ enkel voor leeftijdsgebonden niveaus, niet 'standaard'",
-        "Adres: ❌ niet nodig voor lesplanning",
+        "Adres: ❌ niet nodig voor lessenplanning",
         "Rijksregister of BSN: ❌ verboden zonder wettelijke grondslag",
       ],
     },
@@ -56,8 +56,8 @@ export const ANONIEME_INSCHRIJVING_AVG: BlogPost = {
     {
       heading: "Bewaartermijnen — hoe lang mag je inschrijfdata houden?",
       paragraphs: [
-        "Er is geen vaste wettelijke termijn voor inschrijfgegevens van een sportclub, maar de AVG vraagt om een 'gerechtvaardigd doel' voor de bewaartermijn. Voor lesplanning is dat: het lopende seizoen plus één seizoen erna voor opvolging (heeft de leerling zich opnieuw ingeschreven, levert de groepering inzichten op voor volgend jaar).",
-        "Praktische richtlijn: bewaar inschrijfgegevens 14 maanden na het einde van de lesreeks. Daarna automatisch geanonimiseerd of verwijderd. Boekhoudkundige verplichtingen (factuurdata, betalingen) kunnen langer bewaard blijven, maar daarvoor heb je een aparte wettelijke grondslag.",
+        "Er is geen vaste wettelijke termijn voor inschrijfgegevens van een sportclub, maar de AVG vraagt om een 'gerechtvaardigd doel' voor de bewaartermijn. Voor lessenplanning is dat: het lopende seizoen plus één seizoen erna voor opvolging (heeft de leerling zich opnieuw ingeschreven, levert de groepering inzichten op voor volgend jaar).",
+        "Praktische richtlijn: bewaar inschrijfgegevens 14 maanden na het einde van de lessenreeks. Daarna automatisch geanonimiseerd of verwijderd. Boekhoudkundige verplichtingen (factuurdata, betalingen) kunnen langer bewaard blijven, maar daarvoor heb je een aparte wettelijke grondslag.",
       ],
       callout: {
         tone: "tip",
@@ -79,7 +79,7 @@ export const ANONIEME_INSCHRIJVING_AVG: BlogPost = {
     },
     {
       q: "Hoe lang mag ik inschrijfdata bewaren?",
-      a: "Geen vaste wettelijke termijn voor de inschrijfgegevens zelf. Praktische richtlijn: 14 maanden na het einde van de lesreeks, daarna anonimiseren of verwijderen. Factuurdata mogen 7 jaar bewaard blijven (boekhoudplicht).",
+      a: "Geen vaste wettelijke termijn voor de inschrijfgegevens zelf. Praktische richtlijn: 14 maanden na het einde van de lessenreeks, daarna anonimiseren of verwijderen. Factuurdata mogen 7 jaar bewaard blijven (boekhoudplicht).",
     },
     {
       q: "Wat als ouders inschrijven voor hun kinderen onder de 16?",

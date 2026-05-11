@@ -7,7 +7,7 @@ const PAGE_URL = `${SITE_URL}/blog`;
 export const metadata: Metadata = {
   title: "Blog · CoachOS",
   description:
-    "Gidsen en achtergronden over lesplanning voor tennis- en padelclubs: AVG-conform inschrijven, seizoensplanning, magic-link bevestigingen.",
+    "Gidsen en achtergronden over lessenplanning voor tennis- en padelclubs: AVG-conform inschrijven, seizoensplanning, magic-link bevestigingen.",
   alternates: {
     canonical: PAGE_URL,
     languages: {
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     url: PAGE_URL,
     title: "Blog · CoachOS",
     description:
-      "Praktische gidsen over lesplanning voor tennis- en padelclubs.",
+      "Praktische gidsen over lessenplanning voor tennis- en padelclubs.",
     siteName: "CoachOS",
   },
 };

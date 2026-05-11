@@ -17,7 +17,7 @@ export const AUDIENCES: Audience[] = [
     title: "Tennisclubs",
     body: "Van eerste inschrijving tot laatste les van het seizoen — één dashboard voor je hele club.",
     bullets: [
-      "Lesreeksen voor jeugd en volwassenen",
+      "Lessenreeksen voor jeugd en volwassenen",
       "Onbeperkt aantal banen en trainers",
       "Magic-link bevestigingen per leerling",
     ],
@@ -47,6 +47,6 @@ export const AUDIENCES: Audience[] = [
   },
 ];
 
-export const AUDIENCES_HEADING = "Voor wie is CoachOS gemaakt?";
+export const AUDIENCES_HEADING = "Voor alle tennis- en padeltrainers?";
 export const AUDIENCES_SUB =
-  "Of je nu een club met tien trainers runt of solo lesgeeft — CoachOS schaalt mee.";
+  "Of je nu een club met 10 trainers runt of solo lesgeeft — CoachOS doet het werk.";

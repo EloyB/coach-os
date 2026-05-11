@@ -11,7 +11,7 @@ export interface FaqEntry {
 export const FAQ: FaqEntry[] = [
   {
     q: "Wat is CoachOS?",
-    a: "CoachOS is een lesplanningsysteem voor tennis- en padelclubs. Trainers stellen een lesreeks één keer in, leerlingen schrijven zich anoniem in via een publieke link, en een planningsalgoritme verdeelt iedereen automatisch over slots op niveau en voorkeur — zonder accounts, zonder Excel, zonder mailcarrousel.",
+    a: "CoachOS is een lessenplanningsysteem voor tennis- en padelclubs. Trainers stellen een lessenreeks één keer in, leerlingen schrijven zich anoniem in via een publieke link, en een planningsalgoritme verdeelt iedereen automatisch over slots op niveau en voorkeur — zonder accounts, zonder Excel, zonder mailcarrousel.",
   },
   {
     q: "Voor welke sporten is CoachOS gemaakt?",
@@ -19,7 +19,7 @@ export const FAQ: FaqEntry[] = [
   },
   {
     q: "Hoe lang duurt het om te starten met CoachOS?",
-    a: "Een lesreeks instellen duurt ongeveer tien minuten. Een hele seizoensplanning ronden — inschrijvingen verzamelen, algoritme draaien, bevestigingen versturen — duurt voor de meeste clubs één middag. Geen voorafgaande training of consultancy nodig.",
+    a: "Een lessenreeks instellen duurt ongeveer tien minuten. Een hele seizoensplanning ronden — inschrijvingen verzamelen, algoritme draaien, bevestigingen versturen — duurt voor de meeste clubs één middag. Geen voorafgaande training of consultancy nodig.",
   },
   {
     q: "Moeten mijn leerlingen een account aanmaken?",
@@ -51,23 +51,23 @@ export const FAQ: FaqEntry[] = [
   },
   {
     q: "Wat doen jullie met de gegevens van leerlingen?",
-    a: "Alleen wat strikt nodig is voor lesplanning. Geen tracking, geen advertentie-doeleinden, geen verkoop aan derden. We werken AVG-conform met dataverwerkers binnen de EU.",
+    a: "Alleen wat strikt nodig is voor lessenplanning. Geen tracking, geen advertentie-doeleinden, geen verkoop aan derden. We werken AVG-conform met dataverwerkers binnen de EU.",
   },
   {
     q: "Welke integraties zijn beschikbaar?",
     a: "Vandaag: e-mailbevestiging via magic-link en Mollie-betalingen (Bancontact + iDEAL). Specifieke integraties — boekhouding, kassa-systemen, agenda-apps — bouwen we op aanvraag tijdens pilot.",
   },
   {
-    q: "Kan ik mijn eigen formulier-vragen stellen per lesreeks?",
-    a: "Ja. Per lesreeks bouw je een formulier op uit tekstvelden, meerkeuze-opties en ja/nee-vragen. De antwoorden zie je direct bij de inschrijving.",
+    q: "Kan ik mijn eigen formulier-vragen stellen per lessenreeks?",
+    a: "Ja. Per lessenreeks bouw je een formulier op uit tekstvelden, meerkeuze-opties en ja/nee-vragen. De antwoorden zie je direct bij de inschrijving.",
   },
   {
     q: "Wie heeft toegang tot de data binnen mijn club?",
-    a: "Je bepaalt zelf rollen. Admins zien alle lesreeksen en leerlingen; trainers zien enkel hun eigen reeksen; leerlingen zien alleen hun eigen inschrijving via magic-link. Geen 'iedereen ziet alles'-modus.",
+    a: "Je bepaalt zelf rollen. Admins zien alle lessenreeksen en leerlingen; trainers zien enkel hun eigen reeksen; leerlingen zien alleen hun eigen inschrijving via magic-link. Geen 'iedereen ziet alles'-modus.",
   },
   {
     q: "Wat is het verschil met een algemene clubadministratie-tool?",
-    a: "Algemene clubadministratie-tools doen ledenbeheer en boekhouding voor de hele club. CoachOS focust specifiek op de lessenkant: lesreeksen, inschrijvingen per reeks, niveau-indeling en seizoensplanning. We integreren met of zitten naast bestaande administratie-software, niet als vervanging.",
+    a: "Algemene clubadministratie-tools doen ledenbeheer en boekhouding voor de hele club. CoachOS focust specifiek op de lessenkant: lessenreeksen, inschrijvingen per reeks, niveau-indeling en seizoensplanning. We integreren met of zitten naast bestaande administratie-software, niet als vervanging.",
   },
 ];
 

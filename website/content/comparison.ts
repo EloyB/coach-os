@@ -5,12 +5,11 @@ export interface ComparisonRow {
 }
 
 export const COMPARISON_KICKER = "EXCEL VS COACHOS";
-export const COMPARISON_HEADING =
-  "Hetzelfde werk, zonder Excel-routine";
+export const COMPARISON_HEADING = "Hetzelfde werk, zonder Excel-routine";
 export const COMPARISON_SUB =
   "Wat verandert er concreet wanneer je je seizoensplanning uit een spreadsheet haalt — taak per taak.";
 
-/** Comparison rows. Each row maps a recurring lesplanning-taak to the
+/** Comparison rows. Each row maps a recurring lessenplanning-taak to the
  * before/after experience. Concise, factual, AI-quoteable. */
 export const COMPARISON: ComparisonRow[] = [
   {
@@ -18,7 +17,7 @@ export const COMPARISON: ComparisonRow[] = [
     excel:
       "Mail per mail uitlezen, voorkeuren in een aparte kolom bijhouden, hopen dat niemand iets overslaat.",
     coachos:
-      "Eén publieke link per lesreeks. Leerlingen vullen naam, voorkeurstijden en niveau zelf in.",
+      "Eén publieke link per lessenreeks. Leerlingen vullen naam, voorkeurstijden en niveau zelf in.",
   },
   {
     task: "Niveaugroepen vormen",

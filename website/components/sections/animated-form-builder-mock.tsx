@@ -105,10 +105,7 @@ const pillVariant: Variants = {
   },
 };
 
-const TYPE_META: Record<
-  FieldType,
-  { label: string; Icon: LucideIcon }
-> = {
+const TYPE_META: Record<FieldType, { label: string; Icon: LucideIcon }> = {
   text: { label: "Vrije tekst", Icon: TypeIcon },
   multi: { label: "Meerkeuze", Icon: ListChecks },
   yesno: { label: "Ja/Nee", Icon: ToggleLeft },
@@ -157,7 +154,9 @@ export function AnimatedFormBuilderMock() {
         <div className="flex h-6 w-6 items-center justify-center rounded-md bg-tennis-green/10">
           <ClipboardList className="h-3.5 w-3.5 text-tennis-green" />
         </div>
-        <h3 className="text-sm font-bold tracking-tight">Inschrijfformulier</h3>
+        <h3 className="text-sm font-bold tracking-tight">
+          Inschrijvingsformulier
+        </h3>
       </motion.div>
 
       {/* Vaste velden */}
@@ -267,7 +266,10 @@ function FieldCard({ field }: { field: CustomField }) {
                   exit={{ scale: 0, opacity: 0 }}
                   transition={{ type: "spring", stiffness: 500, damping: 22 }}
                 >
-                  <Check className="h-2.5 w-2.5 text-tennis-lime" strokeWidth={4} />
+                  <Check
+                    className="h-2.5 w-2.5 text-tennis-lime"
+                    strokeWidth={4}
+                  />
                 </motion.span>
               ) : null}
             </AnimatePresence>
@@ -313,7 +315,14 @@ function AddFieldButton({ highlight }: { highlight: boolean }) {
     <motion.div
       animate={
         highlight
-          ? { scale: [1, 1.04, 1], boxShadow: ["0 0 0 0 rgba(45,80,22,0)", "0 0 0 4px rgba(45,80,22,0.18)", "0 0 0 0 rgba(45,80,22,0)"] }
+          ? {
+              scale: [1, 1.04, 1],
+              boxShadow: [
+                "0 0 0 0 rgba(45,80,22,0)",
+                "0 0 0 4px rgba(45,80,22,0.18)",
+                "0 0 0 0 rgba(45,80,22,0)",
+              ],
+            }
           : { scale: 1, boxShadow: "0 0 0 0 rgba(45,80,22,0)" }
       }
       transition={{ duration: 0.35 }}
@@ -334,8 +343,8 @@ function SaveButton({ state }: { state: SaveState }) {
         state === "saved"
           ? "bg-tennis-green text-tennis-lime"
           : state === "saving"
-          ? "bg-tennis-green/70 text-paper"
-          : "bg-tennis-green text-paper"
+            ? "bg-tennis-green/70 text-paper"
+            : "bg-tennis-green text-paper"
       }`}
     >
       <AnimatePresence mode="wait" initial={false}>

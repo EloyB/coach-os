@@ -17,7 +17,7 @@ export function GET() {
   lines.push("# CoachOS");
   lines.push("");
   lines.push(
-    "> Lesplanningsysteem voor tennis- en padelclubs. Trainers stellen een lesreeks één keer in, leerlingen schrijven zich anoniem in via een publieke link, en een planningsalgoritme verdeelt iedereen automatisch over slots op niveau en voorkeur. Geen accounts voor leerlingen, geen Excel, geen mailcarrousel.",
+    "> Lessenplanningsysteem voor tennis- en padelclubs. Trainers stellen een lessenreeks één keer in, leerlingen schrijven zich anoniem in via een publieke link, en een planningsalgoritme verdeelt iedereen automatisch over slots op niveau en voorkeur. Geen accounts voor leerlingen, geen Excel, geen mailcarrousel.",
   );
   lines.push("");
   lines.push(
@@ -38,13 +38,13 @@ export function GET() {
   lines.push("");
   lines.push(`- [Homepage](${SITE_URL}/): Overzicht van alle features.`);
   lines.push(
-    "- Lesreeksen — terugkerende lesperiodes die je één keer instelt; lessen worden automatisch gegenereerd over de hele periode.",
+    "- Lessenreeksen — terugkerende lesperiodes die je één keer instelt; lessen worden automatisch gegenereerd over de hele periode.",
   );
   lines.push(
     "- Anonieme inschrijvingen — leerlingen schrijven zich in via een publieke link met enkel naam en e-mailadres; geen account vereist.",
   );
   lines.push(
-    "- Formulierbouwer — per lesreeks aangepaste vragen (vrije tekst, meerkeuze, ja/nee).",
+    "- Formulierbouwer — per lessenreeks aangepaste vragen (vrije tekst, meerkeuze, ja/nee).",
   );
   lines.push(
     "- Planningsalgoritme — verdeelt leerlingen automatisch over slots op basis van niveau, voorkeurstijden en groepsverbanden.",
@@ -77,9 +77,7 @@ export function GET() {
   lines.push("## Contact");
   lines.push("");
   lines.push(`- Email: ${SITE.contactEmail}`);
-  lines.push(
-    `- Telefoon: ${SITE.contactPhone.display} (ma–zo, 09.00–21.00)`,
-  );
+  lines.push(`- Telefoon: ${SITE.contactPhone.display} (ma–zo, 09.00–21.00)`);
   lines.push(`- Website: ${SITE_URL}`);
   lines.push("");
 

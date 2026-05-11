@@ -18,9 +18,9 @@ const SITE_URL = "https://coach-os.be";
 const PAGE_URL = `${SITE_URL}/prijzen`;
 
 export const metadata: Metadata = {
-  title: "Prijzen — lesplanning vanaf €19/maand",
+  title: "Prijzen — lessenplanning vanaf €19/maand",
   description:
-    "Tarieven voor CoachOS — lesplanning voor tennis- en padelclubs. Starter, Club en Federatie. Maandelijks opzegbaar, geen verborgen kosten per leerling.",
+    "Tarieven voor CoachOS — lessenplanning voor tennis- en padelclubs. Starter, Club en Federatie. Maandelijks opzegbaar, geen verborgen kosten per leerling.",
   alternates: {
     canonical: PAGE_URL,
     languages: {
@@ -36,7 +36,7 @@ export const metadata: Metadata = {
     url: PAGE_URL,
     title: "Prijzen — CoachOS",
     description:
-      "Tarieven voor CoachOS, lesplanning voor tennis- en padelclubs. Vanaf €19/maand. Maandelijks opzegbaar.",
+      "Tarieven voor CoachOS, lessenplanning voor tennis- en padelclubs. Vanaf €19/maand. Maandelijks opzegbaar.",
     siteName: "CoachOS",
   },
 };
@@ -95,13 +95,12 @@ export default function PrijzenPage() {
               TARIEVEN
             </Mono>
             <h1 className="mt-3 max-w-3xl text-4xl font-bold leading-[1.05] tracking-tight md:text-5xl">
-              Eerlijke tarieven voor lesplanning — geen verborgen kosten per
+              Eerlijke tarieven voor lessenplanning — geen verborgen kosten per
               leerling.
             </h1>
             <p className="mt-5 max-w-2xl text-lg leading-relaxed text-ink-2">
-              Drie abonnementen voor zelfstandige coaches, clubs en
-              federaties. Maandelijks opzegbaar, alle features inbegrepen op
-              elk niveau.
+              Drie abonnementen voor zelfstandige coaches, clubs en federaties.
+              Maandelijks opzegbaar, alle features inbegrepen op elk niveau.
             </p>
             <p className="mt-6 inline-flex items-center rounded-md border border-warn/30 bg-warn/10 px-3 py-1.5 text-xs font-medium text-ink-2">
               <span className="mr-2 inline-block h-1.5 w-1.5 rounded-full bg-warn" />

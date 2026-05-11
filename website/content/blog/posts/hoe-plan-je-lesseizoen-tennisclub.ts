@@ -3,14 +3,13 @@ import type { BlogPost } from "@/content/blog/types";
 export const HOE_PLAN_JE_LESSEIZOEN_TENNISCLUB: BlogPost = {
   slug: "hoe-plan-je-lesseizoen-tennisclub",
   title: "Hoe plan je een lesseizoen voor je tennisclub",
-  metaTitle:
-    "Hoe plan je een lesseizoen voor je tennisclub · CoachOS",
+  metaTitle: "Hoe plan je een lesseizoen voor je tennisclub · CoachOS",
   metaDescription:
     "Praktische gids om een lesseizoen op te zetten voor je tennisclub: kalender, niveaus, inschrijvingen en planning — zonder Excel en zonder mailcarrousel.",
   publishedAt: "2026-05-07",
   readMinutes: 6,
   category: "GIDS · LESPLANNING",
-  tags: ["lesplanning", "tennisclub", "seizoen", "praktische gids"],
+  tags: ["lessenplanning", "tennisclub", "seizoen", "praktische gids"],
   lead: "Een tennisseizoen plannen begint niet bij het verdelen van leerlingen, maar bij een degelijke kalender en een duidelijk groeperingskader. Wie die twee in orde heeft, plant een heel seizoen in één middag — wie ze overslaat, blijft het hele seizoen brandjes blussen. Deze gids loopt stap voor stap door wat een tennisclub nodig heeft om de planning werkbaar én voorspelbaar te maken.",
   sections: [
     {
@@ -44,7 +43,7 @@ export const HOE_PLAN_JE_LESSEIZOEN_TENNISCLUB: BlogPost = {
       heading: "3. Verzamel inschrijvingen — niet via mail",
       paragraphs: [
         "De grootste tijdvreter is niet het plannen zelf, maar het mailverkeer dat eraan voorafgaat. Voorkeurstijden, niveaus, betaalbevestigingen — als al die info via tien losse mails binnenkomt, ben je een week kwijt aan het rangschikken.",
-        "Werk in plaats daarvan met één publieke inschrijflink per lesreeks. Leerlingen vullen zelf in welke tijdslots ze kunnen, wat hun niveau is, en of ze een vaste partner of groep willen behouden. Eén link, één formulier, één centrale lijst — niemand mailt nog.",
+        "Werk in plaats daarvan met één publieke inschrijflink per lessenreeks. Leerlingen vullen zelf in welke tijdslots ze kunnen, wat hun niveau is, en of ze een vaste partner of groep willen behouden. Eén link, één formulier, één centrale lijst — niemand mailt nog.",
       ],
       bullets: [
         "Naam, voornaam, e-mailadres (en telefoon als je dat nodig hebt)",

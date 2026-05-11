@@ -11,7 +11,7 @@ import type { ShowcaseItem } from "@/content/showcase";
 /** Per-item animated mocks. When a row has an entry here, it renders inside the
  * frame chrome instead of using the static screenshot/placeholder. */
 const ANIMATED_MOCKS: Record<string, React.ReactNode> = {
-  lesreeksen: <AnimatedLessonWeekMock />,
+  lessenreeksen: <AnimatedLessonWeekMock />,
   formulierbouwer: <AnimatedFormBuilderMock />,
   "anonieme-inschrijving": <AnimatedEnrollmentMock />,
   planningsalgoritme: <AnimatedPlanningMock />,

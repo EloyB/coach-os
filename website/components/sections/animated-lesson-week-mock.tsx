@@ -26,7 +26,12 @@ const BASE_DAYS: Day[] = [
     day: "MAA",
     date: "06",
     slots: [
-      { time: "16:00", level: "Beginner", capacity: "4 / 4", status: "confirmed" },
+      {
+        time: "16:00",
+        level: "Beginner",
+        capacity: "4 / 4",
+        status: "confirmed",
+      },
       { time: "17:00", level: "Junior", capacity: "3 / 4", status: "pending" },
       { time: "18:00", level: "Comp.", capacity: "2 / 4", status: "open" },
     ],
@@ -36,7 +41,12 @@ const BASE_DAYS: Day[] = [
     date: "08",
     slots: [
       { time: "14:00", level: "Mini", capacity: "6 / 6", status: "confirmed" },
-      { time: "15:00", level: "Beginner", capacity: "4 / 4", status: "confirmed" },
+      {
+        time: "15:00",
+        level: "Beginner",
+        capacity: "4 / 4",
+        status: "confirmed",
+      },
       // The slot we drive through the live loop:
       { time: "16:00", level: "Junior", capacity: "1 / 4", status: "open" },
     ],
@@ -45,8 +55,18 @@ const BASE_DAYS: Day[] = [
     day: "ZAT",
     date: "11",
     slots: [
-      { time: "09:00", level: "Volwassen", capacity: "4 / 4", status: "confirmed" },
-      { time: "10:00", level: "Volwassen", capacity: "3 / 4", status: "pending" },
+      {
+        time: "09:00",
+        level: "Volwassen",
+        capacity: "4 / 4",
+        status: "confirmed",
+      },
+      {
+        time: "10:00",
+        level: "Volwassen",
+        capacity: "3 / 4",
+        status: "pending",
+      },
     ],
   },
 ];
@@ -55,7 +75,11 @@ const BASE_DAYS: Day[] = [
  * Indices into the loop slot. Each step is one frame of the live loop —
  * a new enrollment ticks capacity up, eventually flipping status.
  */
-const LOOP_STEPS: Array<{ capacity: string; status: SlotStatus; confirmed: number }> = [
+const LOOP_STEPS: Array<{
+  capacity: string;
+  status: SlotStatus;
+  confirmed: number;
+}> = [
   { capacity: "1 / 4", status: "open", confirmed: 34 },
   { capacity: "2 / 4", status: "pending", confirmed: 35 },
   { capacity: "3 / 4", status: "pending", confirmed: 36 },
@@ -156,7 +180,7 @@ export function AnimatedLessonWeekMock() {
         className="flex items-center justify-between"
       >
         <Mono className="text-[10px] tracking-[0.12em] text-ink-3">
-          WEEK 23 / TC LEUVEN
+          WEEK 23 / TC COACHOS
         </Mono>
         <span className="inline-flex items-center gap-1.5 rounded-full bg-canvas px-2.5 py-1 text-[10px] font-semibold text-ink-2">
           <motion.span
@@ -176,11 +200,11 @@ export function AnimatedLessonWeekMock() {
         variants={fadeUp}
         className="mt-3 text-lg font-bold tracking-tight"
       >
-        Junior lente-reeks
+        Voorjaarslessen
       </motion.h3>
       <motion.div variants={fadeUp}>
         <Mono className="text-xs text-ink-3">
-          12 lessen · 6 trainers · 38 leerlingen
+          12 lessen · 6 trainers · 48 leerlingen
         </Mono>
       </motion.div>
 
@@ -204,7 +228,10 @@ export function AnimatedLessonWeekMock() {
               className="flex-1 space-y-1.5"
             >
               {day.slots.map((slot) => (
-                <motion.div key={`${day.day}-${slot.time}`} variants={slotVariants}>
+                <motion.div
+                  key={`${day.day}-${slot.time}`}
+                  variants={slotVariants}
+                >
                   <SlotRow slot={slot} />
                 </motion.div>
               ))}
@@ -223,7 +250,7 @@ export function AnimatedLessonWeekMock() {
           </Mono>
           <div className="flex items-baseline gap-1.5 text-base font-extrabold text-tennis-lime">
             <AnimatedNumber value={current.confirmed} />
-            <span>/ 38</span>
+            <span>/ 48</span>
           </div>
         </div>
         <div className="text-right">
@@ -231,7 +258,7 @@ export function AnimatedLessonWeekMock() {
             WACHT
           </Mono>
           <div className="text-base font-extrabold">
-            <AnimatedNumber value={38 - current.confirmed} />
+            <AnimatedNumber value={48 - current.confirmed} />
           </div>
         </div>
       </motion.div>
@@ -244,8 +271,8 @@ function SlotRow({ slot }: { slot: Slot }) {
     slot.status === "confirmed"
       ? "border-l-tennis-green"
       : slot.status === "pending"
-      ? "border-l-warn"
-      : "border-l-ink-3/40";
+        ? "border-l-warn"
+        : "border-l-ink-3/40";
 
   return (
     <motion.div

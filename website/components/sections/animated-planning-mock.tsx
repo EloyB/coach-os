@@ -8,12 +8,7 @@ import {
   useReducedMotion,
 } from "motion/react";
 import type { Variants } from "motion/react";
-import {
-  ArrowRight,
-  CalendarDays,
-  Loader2,
-  Sparkles,
-} from "lucide-react";
+import { ArrowRight, CalendarDays, Loader2, Sparkles } from "lucide-react";
 import { Mono } from "@/components/ui/mono";
 
 interface Student {
@@ -77,7 +72,10 @@ const SLOTS: Slot[] = [
 ];
 
 /** Calendar grouped by day for rendering. */
-const SLOTS_BY_DAY: { day: string; slots: { slotIdx: number; slot: Slot }[] }[] = [
+const SLOTS_BY_DAY: {
+  day: string;
+  slots: { slotIdx: number; slot: Slot }[];
+}[] = [
   { day: "Maandag", slots: [] },
   { day: "Woensdag", slots: [] },
   { day: "Zaterdag", slots: [] },
@@ -193,10 +191,13 @@ function EnrollmentsScene({ pulseButton }: { pulseButton: boolean }) {
       variants={containerVariants}
       className="space-y-4"
     >
-      <motion.div variants={fadeUp} className="flex items-center justify-between">
+      <motion.div
+        variants={fadeUp}
+        className="flex items-center justify-between"
+      >
         <div>
           <Mono className="text-[10px] tracking-[0.12em] text-ink-3">
-            JUNIOR LENTE-REEKS
+            VOORJAARSLESSEN
           </Mono>
           <h3 className="mt-0.5 text-base font-bold tracking-tight">
             8 inschrijvingen
@@ -231,9 +232,7 @@ function EnrollmentsScene({ pulseButton }: { pulseButton: boolean }) {
                   {s.id}@example.be
                 </div>
               </div>
-              <Mono className="text-[9px] tracking-tight text-ink-3">
-                Solo
-              </Mono>
+              <Mono className="text-[9px] tracking-tight text-ink-3">Solo</Mono>
             </motion.div>
           ))}
         </motion.div>
@@ -323,7 +322,7 @@ function CalendarScene({
       <div className="flex items-center justify-between">
         <div>
           <Mono className="text-[10px] tracking-[0.12em] text-ink-3">
-            JUNIOR LENTE-REEKS · WEEK 23
+            VOORJAARSLESSEN · WEEK 23
           </Mono>
           <h3 className="mt-0.5 text-base font-bold tracking-tight">
             Voorgestelde planning
@@ -387,7 +386,9 @@ function SlotCard({ slot, filled }: { slot: Slot; filled: boolean }) {
       layout
       animate={{
         borderColor: filled ? "#86A36F" : "#e7e4dc",
-        backgroundColor: filled ? "rgba(45,80,22,0.04)" : "rgba(245,244,241,0.5)",
+        backgroundColor: filled
+          ? "rgba(45,80,22,0.04)"
+          : "rgba(245,244,241,0.5)",
       }}
       transition={{ duration: 0.3 }}
       className="rounded-lg border bg-paper p-2.5"
@@ -454,13 +455,7 @@ function SlotCard({ slot, filled }: { slot: Slot; filled: boolean }) {
 // Avatar
 // ─────────────────────────────────────────────────────────
 
-function Avatar({
-  student,
-  size,
-}: {
-  student: Student;
-  size: number;
-}) {
+function Avatar({ student, size }: { student: Student; size: number }) {
   return (
     <span
       style={{

@@ -20,11 +20,11 @@ export function BlogIndex() {
               BLOG
             </Mono>
             <h1 className="mt-3 text-4xl font-bold leading-[1.05] tracking-tight md:text-5xl">
-              Gidsen, achtergronden en meningen over lesplanning
+              Gidsen, achtergronden en meningen over lessenplanning
             </h1>
             <p className="mt-5 max-w-2xl text-lg leading-relaxed text-ink-2">
-              Hoe je een seizoen plant zonder Excel, wat de AVG-eisen zijn
-              voor een tennisclub, en waarom magic-link bevestigingen
+              Hoe je een seizoen plant zonder Excel, wat de AVG-eisen zijn voor
+              een tennisclub, en waarom magic-link bevestigingen
               gebruiksvriendelijker zijn dan accounts. Praktische gidsen voor
               clubs en trainers.
             </p>
@@ -83,7 +83,7 @@ function BlogIndexJsonLd() {
     "@id": `${SITE_URL}/blog`,
     name: "CoachOS Blog",
     description:
-      "Gidsen en achtergronden over lesplanning voor tennis- en padelclubs.",
+      "Gidsen en achtergronden over lessenplanning voor tennis- en padelclubs.",
     inLanguage: "nl",
     publisher: { "@id": `${SITE_URL}/#organization` },
     blogPost: POSTS_BY_DATE.map((p) => ({
@@ -100,7 +100,12 @@ function BlogIndexJsonLd() {
     "@type": "BreadcrumbList",
     itemListElement: [
       { "@type": "ListItem", position: 1, name: "Home", item: SITE_URL },
-      { "@type": "ListItem", position: 2, name: "Blog", item: `${SITE_URL}/blog` },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Blog",
+        item: `${SITE_URL}/blog`,
+      },
     ],
   };
 

@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1080" viewBox="0 0 1080 1080">
+  <defs>
+    <style>
+      .sans { font-family: 'Poppins', 'Inter', system-ui, sans-serif; }
+      .mono { font-family: 'DejaVu Sans Mono', 'JetBrains Mono', ui-monospace, monospace; }
+    </style>
+  </defs>
+
+  <rect width="1080" height="1080" fill="#161513"/>
+
+  <g opacity="0.07" stroke="#ffffff" fill="none">
+    <rect x="90" y="90" width="900" height="850" stroke-width="2.5"/>
+    <line x1="540" y1="90" x2="540" y2="940" stroke-width="3"/>
+    <line x1="285" y1="90" x2="285" y2="940" stroke-width="1.2"/>
+    <line x1="795" y1="90" x2="795" y2="940" stroke-width="1.2"/>
+    <line x1="285" y1="515" x2="795" y2="515" stroke-width="1.2"/>
+    <line x1="533" y1="90" x2="547" y2="90" stroke-width="3"/>
+    <line x1="533" y1="940" x2="547" y2="940" stroke-width="3"/>
+    <circle cx="900" cy="175" r="92" stroke-width="1.2" stroke-opacity="0.7"/>
+    <circle cx="900" cy="175" r="58" stroke-width="1.2" stroke-opacity="0.7"/>
+    <circle cx="90" cy="515" r="7" fill="#ffffff" fill-opacity="0.7" stroke="none"/>
+    <circle cx="990" cy="515" r="7" fill="#ffffff" fill-opacity="0.7" stroke="none"/>
+  </g>
+
+  <rect x="80" y="80" width="100" height="100" rx="13" fill="#D0FF14"/>
+  <g stroke="#161513" stroke-width="6.5" fill="none" stroke-linecap="round">
+    <circle cx="130" cy="130" r="26"/>
+    <path d="M 105 130 C 113 119, 122 119, 130 130 C 138 141, 147 141, 155 130"/>
+  </g>
+
+  <text x="80" y="390" class="sans" font-weight="800" font-size="74" fill="#ffffff" letter-spacing="-2.5">Lesplanning,</text>
+  <text x="80" y="470" class="sans" font-weight="800" font-size="74" fill="#ffffff" letter-spacing="-2.5">inschrijvingen en</text>
+  <text x="80" y="550" class="sans" font-weight="800" font-size="74" fill="#ffffff" letter-spacing="-2.5">betalingen — één</text>
+  <text x="80" y="630" class="sans" font-weight="800" font-size="74" fill="#ffffff" letter-spacing="-2.5">systeem<tspan fill="#D0FF14">.</tspan></text>
+
+  <text x="80" y="710" class="sans" font-weight="600" font-size="32" fill="#D0FF14" letter-spacing="-0.4">Lesplanning, eindelijk eenvoudig.</text>
+
+  <text x="80" y="785" class="sans" font-weight="500" font-size="24" fill="#ffffff" fill-opacity="0.7">Stop met heen-en-weer mailen over beschikbaarheid.</text>
+  <text x="80" y="822" class="sans" font-weight="500" font-size="24" fill="#ffffff" fill-opacity="0.7">Stel je lessenreeks één keer in, deel de link, en CoachOS plant de rest.</text>
+
+  <rect x="0" y="1032" width="1080" height="48" fill="#D0FF14"/>
+</svg>

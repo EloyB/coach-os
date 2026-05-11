@@ -17,8 +17,8 @@ export interface Feature {
 export const FEATURES: Feature[] = [
   {
     icon: CalendarRange,
-    title: "Lesreeksen",
-    body: "Stel een terugkerende reeks één keer in. Lessen worden automatisch gegenereerd over de hele periode.",
+    title: "Lessenreeksen",
+    body: "Stel een lessenreeks één keer in en laat je agenda automatisch gegenereerd worden.",
   },
   {
     icon: ClipboardList,
@@ -28,7 +28,7 @@ export const FEATURES: Feature[] = [
   {
     icon: FormInput,
     title: "Formulierbouwer",
-    body: "Voeg per lesreeks eigen vragen toe: tekstvelden, meerkeuze, voorkeurstijden. Verzamel exact wat je nodig hebt.",
+    body: "Voeg per lessenreeks eigen vragen toe: tekstvelden, meerkeuze, voorkeurstijden. Verzamel exact wat je nodig hebt.",
   },
   {
     icon: BrainCircuit,
@@ -47,6 +47,7 @@ export const FEATURES: Feature[] = [
   },
 ];
 
-export const FEATURES_HEADING = "Alles wat je nodig hebt om een lesseizoen te runnen";
+export const FEATURES_HEADING =
+  "Alles wat je nodig hebt om een lesseizoen te runnen";
 export const FEATURES_SUB =
   "Geen losse tools, geen koppelingen onderhouden, geen Excel meer.";

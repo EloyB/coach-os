@@ -15,18 +15,18 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL("https://coach-os.be"),
   title: {
-    default: "CoachOS — Lesplanning voor tennis- en padelclubs",
+    default: "CoachOS — Lessenplanning voor tennis- en padelclubs",
     template: "%s · CoachOS",
   },
   description:
-    "Lesplanning voor tennis- en padelclubs in Nederland en België. Lesreeksen, anonieme inschrijvingen, automatische scheduling en magic-link bevestiging.",
+    "Lessenplanning voor tennis- en padelclubs in Nederland en België. Lessenreeksen, anonieme inschrijvingen, automatische scheduling en magic-link bevestiging.",
   applicationName: "CoachOS",
   authors: [{ name: "CoachOS" }],
   keywords: [
-    "lesplanning tennisclub",
-    "lesplanning padelclub",
+    "lessenplanning tennisclub",
+    "lessenplanning padelclub",
     "tennisles inschrijven",
-    "padel lesreeksen",
+    "padel lessenreeksen",
     "ledenadministratie tennisclub",
     "trainersplanning",
     "sportclub software Benelux",
@@ -37,16 +37,16 @@ export const metadata: Metadata = {
     locale: "nl_BE",
     alternateLocale: ["nl_NL"],
     url: "https://coach-os.be",
-    title: "CoachOS — Lesplanning voor tennis- en padelclubs",
+    title: "CoachOS — Lessenplanning voor tennis- en padelclubs",
     description:
-      "Een planning die zichzelf bevestigt. Lesreeksen, anonieme inschrijvingen en automatische scheduling voor tennis- en padelclubs in de Benelux.",
+      "Een planning die zichzelf bevestigt. Lessenreeksen, anonieme inschrijvingen en automatische scheduling voor tennis- en padelclubs in de Benelux.",
     siteName: "CoachOS",
   },
   twitter: {
     card: "summary_large_image",
-    title: "CoachOS — Lesplanning voor tennis- en padelclubs",
+    title: "CoachOS — Lessenplanning voor tennis- en padelclubs",
     description:
-      "Lesplanning voor tennis- en padelclubs in Nederland en België.",
+      "Lessenplanning voor tennis- en padelclubs in Nederland en België.",
   },
   alternates: {
     canonical: "https://coach-os.be",

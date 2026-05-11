@@ -8,14 +8,7 @@ import {
   useReducedMotion,
 } from "motion/react";
 import type { Variants } from "motion/react";
-import {
-  Check,
-  CheckCircle2,
-  Loader2,
-  User,
-  Users,
-  X,
-} from "lucide-react";
+import { Check, CheckCircle2, Loader2, User, Users, X } from "lucide-react";
 import { Mono } from "@/components/ui/mono";
 
 type Pref = "preferred" | "available" | "unavailable";
@@ -60,13 +53,13 @@ const STEPS: Step[] = [
   { fieldsFilled: 1, typeSelected: false, slotsChosen: 0, submit: "idle" }, // 1: Voornaam
   { fieldsFilled: 2, typeSelected: false, slotsChosen: 0, submit: "idle" }, // 2: Achternaam
   { fieldsFilled: 3, typeSelected: false, slotsChosen: 0, submit: "idle" }, // 3: Email
-  { fieldsFilled: 3, typeSelected: true,  slotsChosen: 0, submit: "idle" }, // 4: Solo
-  { fieldsFilled: 3, typeSelected: true,  slotsChosen: 1, submit: "idle" }, // 5: slot 1
-  { fieldsFilled: 3, typeSelected: true,  slotsChosen: 2, submit: "idle" }, // 6: slot 2
-  { fieldsFilled: 3, typeSelected: true,  slotsChosen: 3, submit: "idle" }, // 7: slot 3
-  { fieldsFilled: 3, typeSelected: true,  slotsChosen: 3, submit: "pulse" }, // 8: pulse
-  { fieldsFilled: 3, typeSelected: true,  slotsChosen: 3, submit: "submitting" }, // 9
-  { fieldsFilled: 3, typeSelected: true,  slotsChosen: 3, submit: "submitted" }, // 10: success
+  { fieldsFilled: 3, typeSelected: true, slotsChosen: 0, submit: "idle" }, // 4: Solo
+  { fieldsFilled: 3, typeSelected: true, slotsChosen: 1, submit: "idle" }, // 5: slot 1
+  { fieldsFilled: 3, typeSelected: true, slotsChosen: 2, submit: "idle" }, // 6: slot 2
+  { fieldsFilled: 3, typeSelected: true, slotsChosen: 3, submit: "idle" }, // 7: slot 3
+  { fieldsFilled: 3, typeSelected: true, slotsChosen: 3, submit: "pulse" }, // 8: pulse
+  { fieldsFilled: 3, typeSelected: true, slotsChosen: 3, submit: "submitting" }, // 9
+  { fieldsFilled: 3, typeSelected: true, slotsChosen: 3, submit: "submitted" }, // 10: success
 ];
 
 const STEP_DURATIONS_MS = [900, 500, 500, 600, 700, 500, 500, 600, 350, 800, 0];
@@ -78,12 +71,12 @@ const STEP_DURATIONS_MS = [900, 500, 500, 600, 700, 500, 500, 600, 350, 800, 0];
  * step doesn't end with the focal element comfortably in view.
  */
 const SCROLL_OFFSETS_PX = [
-  0,    // 0: scaffold appears
-  0,    // 1: Voornaam typed
-  -10,  // 2: Achternaam (slight drift)
-  -25,  // 3: E-mail (cursor reaches third field)
-  -55,  // 4: Solo selected (Inschrijvingstype centered)
-  -90,  // 5: slot 1 (Beschikbaarheid in view)
+  0, // 0: scaffold appears
+  0, // 1: Voornaam typed
+  -10, // 2: Achternaam (slight drift)
+  -25, // 3: E-mail (cursor reaches third field)
+  -55, // 4: Solo selected (Inschrijvingstype centered)
+  -90, // 5: slot 1 (Beschikbaarheid in view)
   -100, // 6: slot 2
   -110, // 7: slot 3
   -135, // 8: submit pulses (button at bottom of viewport)
@@ -129,7 +122,7 @@ export function AnimatedEnrollmentMock() {
 
   const scrollOffset = prefersReducedMotion
     ? SCROLL_OFFSETS_PX[SCROLL_OFFSETS_PX.length - 1]
-    : SCROLL_OFFSETS_PX[stepIndex] ?? 0;
+    : (SCROLL_OFFSETS_PX[stepIndex] ?? 0);
 
   return (
     <motion.div
@@ -180,75 +173,75 @@ function FormBody({
         className="space-y-4 px-3.5 pb-4 pt-7"
       >
         {/* Series header card */}
-      <motion.div
-        variants={fadeUp}
-        className="rounded-lg border border-rule bg-paper p-3"
-      >
-        <div className="flex items-center gap-1.5">
-          <span className="inline-flex items-center rounded-full bg-tennis-lime/40 px-2 py-0.5 text-[9px] font-bold tracking-wide text-tennis-green">
-            JUNIOR
-          </span>
-          <Mono className="text-[9px] tracking-[0.12em] text-ink-3">
-            TC LEUVEN
+        <motion.div
+          variants={fadeUp}
+          className="rounded-lg border border-rule bg-paper p-3"
+        >
+          <div className="flex items-center gap-1.5">
+            <span className="inline-flex items-center rounded-full bg-tennis-lime/40 px-2 py-0.5 text-[9px] font-bold tracking-wide text-tennis-green">
+              JUNIOR
+            </span>
+            <Mono className="text-[9px] tracking-[0.12em] text-ink-3">
+              TC COACHOS
+            </Mono>
+          </div>
+          <h4 className="mt-1.5 text-[13px] font-bold leading-tight tracking-tight">
+            Voorjaarslessen
+          </h4>
+          <p className="mt-0.5 text-[10px] leading-snug text-ink-3">
+            12 lessen · spel & techniek 12-15j
+          </p>
+        </motion.div>
+
+        {/* Persoonlijke gegevens */}
+        <motion.div variants={fadeUp}>
+          <Mono className="text-[9px] tracking-[0.14em] text-ink-3">
+            PERSOONLIJKE GEGEVENS
           </Mono>
-        </div>
-        <h4 className="mt-1.5 text-[13px] font-bold leading-tight tracking-tight">
-          Junior lente-reeks
-        </h4>
-        <p className="mt-0.5 text-[10px] leading-snug text-ink-3">
-          12 lessen · spel & techniek 12-15j
-        </p>
-      </motion.div>
+          <div className="mt-1.5 space-y-2">
+            {FIELDS.map((field, i) => (
+              <FieldInput
+                key={field.id}
+                label={field.label}
+                value={field.value}
+                filled={step.fieldsFilled > i}
+                focused={step.fieldsFilled === i}
+              />
+            ))}
+          </div>
+        </motion.div>
 
-      {/* Persoonlijke gegevens */}
-      <motion.div variants={fadeUp}>
-        <Mono className="text-[9px] tracking-[0.14em] text-ink-3">
-          PERSOONLIJKE GEGEVENS
-        </Mono>
-        <div className="mt-1.5 space-y-2">
-          {FIELDS.map((field, i) => (
-            <FieldInput
-              key={field.id}
-              label={field.label}
-              value={field.value}
-              filled={step.fieldsFilled > i}
-              focused={step.fieldsFilled === i}
+        {/* Inschrijvingstype */}
+        <motion.div variants={fadeUp}>
+          <Mono className="text-[9px] tracking-[0.14em] text-ink-3">
+            INSCHRIJVINGSTYPE
+          </Mono>
+          <div className="mt-1.5 grid grid-cols-2 gap-1.5">
+            <TypeCard
+              icon={User}
+              title="Solo"
+              sub="Mezelf"
+              selected={step.typeSelected}
             />
-          ))}
-        </div>
-      </motion.div>
+            <TypeCard icon={Users} title="Groep" sub="Meer" selected={false} />
+          </div>
+        </motion.div>
 
-      {/* Inschrijvingstype */}
-      <motion.div variants={fadeUp}>
-        <Mono className="text-[9px] tracking-[0.14em] text-ink-3">
-          INSCHRIJVINGSTYPE
-        </Mono>
-        <div className="mt-1.5 grid grid-cols-2 gap-1.5">
-          <TypeCard
-            icon={User}
-            title="Solo"
-            sub="Mezelf"
-            selected={step.typeSelected}
-          />
-          <TypeCard icon={Users} title="Groep" sub="Meer" selected={false} />
-        </div>
-      </motion.div>
-
-      {/* Beschikbaarheid */}
-      <motion.div variants={fadeUp}>
-        <Mono className="text-[9px] tracking-[0.14em] text-ink-3">
-          BESCHIKBAARHEID
-        </Mono>
-        <div className="mt-1.5 space-y-1.5">
-          {SLOTS.map((slot, i) => (
-            <SlotRow
-              key={slot.id}
-              slot={slot}
-              chosen={step.slotsChosen > i ? slot.pick : null}
-            />
-          ))}
-        </div>
-      </motion.div>
+        {/* Beschikbaarheid */}
+        <motion.div variants={fadeUp}>
+          <Mono className="text-[9px] tracking-[0.14em] text-ink-3">
+            BESCHIKBAARHEID
+          </Mono>
+          <div className="mt-1.5 space-y-1.5">
+            {SLOTS.map((slot, i) => (
+              <SlotRow
+                key={slot.id}
+                slot={slot}
+                chosen={step.slotsChosen > i ? slot.pick : null}
+              />
+            ))}
+          </div>
+        </motion.div>
 
         <motion.div variants={fadeUp}>
           <SubmitButton state={step.submit} />
@@ -271,16 +264,10 @@ function FieldInput({
 }) {
   return (
     <div>
-      <label className="block text-[9px] font-medium text-ink-3">
-        {label}
-      </label>
+      <label className="block text-[9px] font-medium text-ink-3">{label}</label>
       <motion.div
         animate={{
-          borderColor: focused
-            ? "#2D5016"
-            : filled
-            ? "#e7e4dc"
-            : "#e7e4dc",
+          borderColor: focused ? "#2D5016" : filled ? "#e7e4dc" : "#e7e4dc",
           boxShadow: focused
             ? "0 0 0 2px rgba(45,80,22,0.15)"
             : "0 0 0 0 rgba(45,80,22,0)",
@@ -338,9 +325,7 @@ function TypeCard({
     >
       <Icon
         className={
-          selected
-            ? "h-3.5 w-3.5 text-tennis-green"
-            : "h-3.5 w-3.5 text-ink-3"
+          selected ? "h-3.5 w-3.5 text-tennis-green" : "h-3.5 w-3.5 text-ink-3"
         }
       />
       <div className="mt-1 text-[11px] font-semibold leading-tight">
@@ -365,13 +350,7 @@ function TypeCard({
   );
 }
 
-function SlotRow({
-  slot,
-  chosen,
-}: {
-  slot: SlotDef;
-  chosen: Pref | null;
-}) {
+function SlotRow({ slot, chosen }: { slot: SlotDef; chosen: Pref | null }) {
   return (
     <div className="flex items-center justify-between rounded-md border border-rule bg-paper px-2 py-1.5">
       <div className="min-w-0">
@@ -396,8 +375,8 @@ function PrefDot({ kind, active }: { kind: Pref; active: boolean }) {
     kind === "preferred"
       ? "#2D5016"
       : kind === "available"
-      ? "#3B82F6"
-      : "#8a867e";
+        ? "#3B82F6"
+        : "#8a867e";
 
   return (
     <motion.span
@@ -496,10 +475,7 @@ function SuccessCard() {
         }}
         className="flex h-14 w-14 items-center justify-center rounded-full bg-tennis-green"
       >
-        <CheckCircle2
-          className="h-8 w-8 text-tennis-lime"
-          strokeWidth={2.2}
-        />
+        <CheckCircle2 className="h-8 w-8 text-tennis-lime" strokeWidth={2.2} />
       </motion.div>
       <h4 className="mt-4 text-base font-bold tracking-tight">Ingeschreven!</h4>
       <p className="mt-1.5 max-w-[180px] text-[11px] leading-snug text-ink-2">

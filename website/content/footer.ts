@@ -1,12 +1,12 @@
 export const FOOTER = {
-  tagline: "Lesplanning, eindelijk eenvoudig.",
+  tagline: "Lessenplanning, eindelijk eenvoudig.",
   columns: [
     {
       heading: "Product",
       links: [
         { href: "/#hoe-het-werkt", label: "Hoe het werkt" },
         { href: "/#features", label: "Features" },
-        { href: "/blog", label: "Blog" },
+        // { href: "/blog", label: "Blog" },
         { href: "/#faq", label: "FAQ" },
       ],
     },

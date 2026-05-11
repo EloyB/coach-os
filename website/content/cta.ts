@@ -1,7 +1,7 @@
 import { SITE } from "@/content/meta";
 
 export const CTA_SECTION = {
-  heading: "Klaar om je lesplanning te automatiseren?",
+  heading: "Klaar om je lessenplanning te automatiseren?",
   sub: "Bel of mail rechtstreeks — we plannen een korte demo in en beantwoorden je vragen.",
   tiles: {
     call: {

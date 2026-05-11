@@ -69,7 +69,7 @@ export const PRICING_TIERS: PricingTier[] = [
       "Tot 10 trainers",
       "Onbeperkt aantal leerlingen",
       "1 club of locatie",
-      "Formulierbouwer per lesreeks",
+      "Formulierbouwer per lessenreeks",
       "Planningsalgoritme",
       "Mollie betalingen (op de roadmap)",
       "Prioritaire ondersteuning",
@@ -118,7 +118,11 @@ export const PRICING_COMPARE: CompareGroup[] = [
       },
       {
         feature: "Actieve leerlingen",
-        values: { starter: "Tot 50", club: "Onbeperkt", federatie: "Onbeperkt" },
+        values: {
+          starter: "Tot 50",
+          club: "Onbeperkt",
+          federatie: "Onbeperkt",
+        },
       },
       {
         feature: "Clubs / locaties",
@@ -127,10 +131,10 @@ export const PRICING_COMPARE: CompareGroup[] = [
     ],
   },
   {
-    label: "Lesplanning",
+    label: "Lessenplanning",
     rows: [
       {
-        feature: "Lesreeksen aanmaken",
+        feature: "Lessenreeksen aanmaken",
         values: { starter: true, club: true, federatie: true },
       },
       {
@@ -142,7 +146,7 @@ export const PRICING_COMPARE: CompareGroup[] = [
         values: { starter: true, club: true, federatie: true },
       },
       {
-        feature: "Formulierbouwer per lesreeks",
+        feature: "Formulierbouwer per lessenreeks",
         values: { starter: false, club: true, federatie: true },
       },
       {
@@ -160,7 +164,11 @@ export const PRICING_COMPARE: CompareGroup[] = [
       },
       {
         feature: "Mollie (Bancontact + iDEAL)",
-        values: { starter: false, club: "Op de roadmap", federatie: "Op de roadmap" },
+        values: {
+          starter: false,
+          club: "Op de roadmap",
+          federatie: "Op de roadmap",
+        },
       },
       {
         feature: "Aangepaste betaalafspraken",
