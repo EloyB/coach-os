@@ -1,6 +1,7 @@
 using CoachOS.Application.Auth;
 using CoachOS.Application.Configuration;
 using CoachOS.Application.StudentAuth;
+using CoachOS.Application.SuperAdmin;
 using CoachOS.Application.Trainers;
 using CoachOS.Domain.Interfaces;
 using CoachOS.Infrastructure.Email;
@@ -57,6 +58,8 @@ public static class DependencyInjection
 
         services.AddScoped<TokenService>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<ISuperAdminService, SuperAdminService>();
+        services.AddHostedService<SuperAdminBootstrapHostedService>();
         services.AddScoped<ITrainerService, TrainerService>();
         services.AddScoped<IUserLookupService, UserLookupService>();
         services.AddSingleton<IMjmlTemplateRenderer, MjmlTemplateRenderer>();
