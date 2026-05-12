@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
+import { useQueryClient } from "@tanstack/react-query";
 import * as z from "zod";
 import axios from "axios";
 
@@ -24,6 +25,7 @@ type FormValues = z.infer<typeof schema>;
 export default function NewAdminPage() {
   const t = useTranslations("superAdmin");
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [apiErrors, setApiErrors] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
@@ -47,6 +49,9 @@ export default function NewAdminPage() {
     setApiErrors([]);
     try {
       await createAdmin(values);
+      // Een nieuwe org+admin verschijnt in beide lijsten (admins + organizations) én
+      // beïnvloedt de dashboard-stats — invalidate alles onder de super-admin namespace.
+      await queryClient.invalidateQueries({ queryKey: ["super-admin"] });
       router.push("/super-admin/admins");
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.data) {
