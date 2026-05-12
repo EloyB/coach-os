@@ -56,6 +56,7 @@ export default function AdminsPage() {
                 <th className="px-4 py-3 text-left">{t("colName")}</th>
                 <th className="px-4 py-3 text-left">{t("colEmail")}</th>
                 <th className="px-4 py-3 text-left">{t("colOrganization")}</th>
+                <th className="px-4 py-3 text-left">{t("colEarlyBird")}</th>
                 <th className="px-4 py-3 text-left">{t("colStatus")}</th>
                 <th className="px-4 py-3 text-right">{t("colActions")}</th>
               </tr>
@@ -63,7 +64,7 @@ export default function AdminsPage() {
             <tbody>
               {admins?.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-ink-3">
+                  <td colSpan={6} className="px-4 py-8 text-center text-ink-3">
                     {t("adminsEmpty")}
                   </td>
                 </tr>
@@ -104,9 +105,8 @@ function AdminRow({
   busy: boolean;
 }) {
   const t = useTranslations("superAdmin");
-  const orgs = admin.organizations
-    .map((o) => `${o.organizationName}${o.isEarlyBird ? " ★" : ""}`)
-    .join(", ");
+  const orgs = admin.organizations.map((o) => o.organizationName).join(", ");
+  const isEarlyBird = admin.organizations.some((o) => o.isEarlyBird);
 
   let statusLabel: string;
   let statusClass: string;
@@ -128,6 +128,15 @@ function AdminRow({
       </td>
       <td className="px-4 py-3 text-ink-2">{admin.email}</td>
       <td className="px-4 py-3 text-ink-2">{orgs || "—"}</td>
+      <td className="px-4 py-3">
+        {isEarlyBird ? (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-tennis-lime/30 text-tennis-green">
+            ★ {t("earlyBirdYes")}
+          </span>
+        ) : (
+          <span className="text-xs text-ink-3">{t("earlyBirdNo")}</span>
+        )}
+      </td>
       <td className="px-4 py-3">
         <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${statusClass}`}>
           {statusLabel}
