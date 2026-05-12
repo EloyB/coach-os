@@ -18,5 +18,8 @@ public class ApplicationUserConfiguration : IEntityTypeConfiguration<Application
 
         // Computed column wordt niet opgeslagen
         builder.Ignore(u => u.FullName);
+
+        builder.HasIndex(u => u.IsSuperAdmin)
+            .HasFilter("\"IsSuperAdmin\" = TRUE");
     }
 }

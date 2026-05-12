@@ -3,6 +3,7 @@ using System;
 using CoachOS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CoachOS.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260512094507_AddSuperAdminAndEarlyBird")]
+    partial class AddSuperAdminAndEarlyBird
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -601,34 +604,6 @@ namespace CoachOS.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("OrganizationMemberships");
-                });
-
-            modelBuilder.Entity("CoachOS.Domain.Entities.OrganizationSettings", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<bool>("AdminsActAsTrainers")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(true);
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("OrganizationId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("OrganizationId")
-                        .IsUnique();
-
-                    b.ToTable("OrganizationSettings");
                 });
 
             modelBuilder.Entity("CoachOS.Domain.Entities.Payment", b =>
@@ -1397,17 +1372,6 @@ namespace CoachOS.Infrastructure.Migrations
                     b.Navigation("Organization");
                 });
 
-            modelBuilder.Entity("CoachOS.Domain.Entities.OrganizationSettings", b =>
-                {
-                    b.HasOne("CoachOS.Domain.Entities.Organization", "Organization")
-                        .WithOne("Settings")
-                        .HasForeignKey("CoachOS.Domain.Entities.OrganizationSettings", "OrganizationId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Organization");
-                });
-
             modelBuilder.Entity("CoachOS.Domain.Entities.Payment", b =>
                 {
                     b.HasOne("CoachOS.Domain.Entities.Enrollment", "Enrollment")
@@ -1666,8 +1630,6 @@ namespace CoachOS.Infrastructure.Migrations
             modelBuilder.Entity("CoachOS.Domain.Entities.Organization", b =>
                 {
                     b.Navigation("LessonSeries");
-
-                    b.Navigation("Settings");
 
                     b.Navigation("Subscription");
                 });
