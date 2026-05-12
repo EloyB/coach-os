@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using CoachOS.API.Auth;
 
 namespace CoachOS.API.Extensions;
 
@@ -6,7 +7,7 @@ public static class HttpContextExtensions
 {
     public static Guid GetOrganizationId(this HttpContext context)
     {
-        var claim = context.User.FindFirst("organizationId");
+        var claim = context.User.FindFirst(CoachOsClaims.OrganizationId);
         if (claim is null || !Guid.TryParse(claim.Value, out var orgId))
             throw new UnauthorizedAccessException("Missing or invalid organizationId claim.");
         return orgId;
@@ -22,6 +23,9 @@ public static class HttpContextExtensions
 
     public static bool IsTrainer(this HttpContext context) =>
         context.User.IsInRole("Trainer");
+
+    public static bool IsSuperAdmin(this HttpContext context) =>
+        context.User.FindFirst(CoachOsClaims.IsSuperAdmin)?.Value == "true";
 
     public static string GetEmail(this HttpContext context)
     {

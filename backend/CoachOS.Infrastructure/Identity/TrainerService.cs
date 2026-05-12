@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using CoachOS.Application.Auth;
 using CoachOS.Application.Auth.DTOs;
 using CoachOS.Application.Trainers;
 using CoachOS.Application.Trainers.DTOs;
@@ -14,9 +15,9 @@ namespace CoachOS.Infrastructure.Identity;
 
 public class TrainerService(
     UserManager<ApplicationUser> userManager,
-    TokenService tokenService,
     IEmailService emailService,
     ApplicationDbContext context,
+    IAuthService authService,
     IOrganizationSettingsRepository settingsRepo)
     : ITrainerService
 {
@@ -112,97 +113,14 @@ public class TrainerService(
         return Result<Guid>.Ok(user.Id);
     }
 
-    public async Task<Result<AuthResponseDto>> AcceptInviteAsync(
+    public Task<Result<AuthResponseDto>> AcceptInviteAsync(
         string token,
         string password,
         CancellationToken ct = default)
-    {
-        var hashedToken = HashToken(token);
-        var user = await userManager.Users
-            .FirstOrDefaultAsync(u => u.InviteToken == hashedToken, ct);
-
-        if (user is null)
-            return Result<AuthResponseDto>.Fail("Ongeldige uitnodigingslink");
-
-        if (user.InviteTokenExpiry is null || user.InviteTokenExpiry < DateTime.UtcNow)
-            return Result<AuthResponseDto>.Fail("Uitnodigingslink is verlopen");
-
-        // Hele accept-flow in één transactie: password reset, user activation
-        // en membership activation moeten atomair gebeuren. Zonder transactie
-        // kon een fout halverwege een account met nieuw wachtwoord maar
-        // inactieve membership achterlaten.
-        await using var tx = await context.Database.BeginTransactionAsync(ct);
-
-        var resetToken = await userManager.GeneratePasswordResetTokenAsync(user);
-        var result = await userManager.ResetPasswordAsync(user, resetToken, password);
-        if (!result.Succeeded)
-        {
-            await tx.RollbackAsync(ct);
-            return Result<AuthResponseDto>.Fail(result.Errors.Select(e => e.Description));
-        }
-
-        user.IsActive = true;
-        user.InviteToken = null;
-        user.InviteTokenExpiry = null;
-        user.UpdatedAt = DateTime.UtcNow;
-        var updateResult = await userManager.UpdateAsync(user);
-        if (!updateResult.Succeeded)
-        {
-            await tx.RollbackAsync(ct);
-            return Result<AuthResponseDto>.Fail(updateResult.Errors.Select(e => e.Description));
-        }
-
-        // Activeer het bijbehorende (pending) membership. Een nieuwe user heeft
-        // bij acceptatie per definitie exact één pending membership — we checken
-        // dit expliciet om te voorkomen dat we bij toekomstige flow-uitbreidingen
-        // per ongeluk de verkeerde membership activeren.
-        var pendings = await context.OrganizationMemberships
-            .Include(m => m.Organization)
-            .Where(m => m.UserId == user.Id && !m.IsActive)
-            .ToListAsync(ct);
-
-        if (pendings.Count == 0)
-        {
-            await tx.RollbackAsync(ct);
-            return Result<AuthResponseDto>.Fail("Geen openstaande uitnodiging gevonden");
-        }
-
-        if (pendings.Count > 1)
-        {
-            await tx.RollbackAsync(ct);
-            return Result<AuthResponseDto>.Fail("Meerdere openstaande uitnodigingen gevonden — neem contact op met support");
-        }
-
-        var pending = pendings[0];
-
-        pending.IsActive = true;
-        await context.SaveChangesAsync(ct);
-        await tx.CommitAsync(ct);
-
-        (var jwtToken, var expiresAt) = tokenService.GenerateToken(user, pending);
-
-        return Result<AuthResponseDto>.Ok(new AuthResponseDto
-        {
-            Token = jwtToken,
-            ExpiresAt = expiresAt,
-            UserId = user.Id,
-            Email = user.Email!,
-            FirstName = user.FirstName,
-            LastName = user.LastName,
-            OrganizationId = pending.OrganizationId,
-            Role = pending.Role.ToString(),
-            Memberships =
-            [
-                new OrganizationMembershipDto
-                {
-                    OrganizationId = pending.OrganizationId,
-                    OrganizationName = pending.Organization?.Name ?? string.Empty,
-                    Role = pending.Role.ToString(),
-                    IsActive = true
-                }
-            ]
-        });
-    }
+        // Delegeren naar AuthService — accept-invite logica is generiek (trainer of admin
+        // membership), het zit niet inherent in TrainerService thuis. Endpoint blijft
+        // beschikbaar onder /trainers/accept-invite voor backward compat.
+        => authService.AcceptInviteAsync(token, password, ct);
 
     public async Task<Result<List<TrainerDto>>> GetTrainersAsync(
         Guid organizationId,

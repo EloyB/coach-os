@@ -1,4 +1,5 @@
 using System.Text;
+using CoachOS.API.Auth;
 using System.Threading.RateLimiting;
 using CoachOS.Infrastructure.Persistence;
 using LodeKennes.Extensions.Scaleway.SecretManager;
@@ -89,7 +90,15 @@ public static class ConfigurationExtensions
                     };
                 });
 
-            services.AddAuthorization();
+            services.AddAuthorization(options =>
+            {
+                // System-level super admin: enkel users met de IsSuperAdmin claim.
+                // Tokens met deze policy bevatten GEEN organizationId — super admins
+                // opereren los van organisaties (zie issue #91, Option C).
+                options.AddPolicy(AuthorizationPolicies.SuperAdmin, policy =>
+                    policy.RequireAuthenticatedUser()
+                          .RequireClaim(CoachOsClaims.IsSuperAdmin, "true"));
+            });
 
             return services;
         }

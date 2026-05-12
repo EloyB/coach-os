@@ -158,6 +158,37 @@ public class AuthService(
         }
 
         var memberships = await LoadActiveMembershipsAsync(user.Id, cancellationToken);
+
+        // Option C invariant: een super admin opereert los van orgs en mag GEEN
+        // memberships hebben. Als die toch bestaan (data corruptie / handmatige
+        // inserts) is de veilige fallback: weigeren tot het rechtgezet is.
+        if (user.IsSuperAdmin && memberships.Count > 0)
+        {
+            logger.LogError(
+                "Invariant geschonden: super-admin {Email} (UserId: {UserId}) heeft {Count} memberships. Login geweigerd.",
+                MaskEmail(email), user.Id, memberships.Count);
+            return Result<AuthResponseDto>.Fail("Accountconfiguratie ongeldig. Contacteer de beheerder.");
+        }
+
+        if (user.IsSuperAdmin)
+        {
+            logger.LogInformation("Succesvolle super-admin login: {Email} (UserId: {UserId})", email, user.Id);
+            (var saToken, var saExpiresAt) = tokenService.GenerateSuperAdminToken(user);
+            return Result<AuthResponseDto>.Ok(new AuthResponseDto
+            {
+                Token = saToken,
+                ExpiresAt = saExpiresAt,
+                UserId = user.Id,
+                Email = user.Email!,
+                FirstName = user.FirstName,
+                LastName = user.LastName,
+                OrganizationId = null,
+                Role = "SuperAdmin",
+                Memberships = [],
+                IsSuperAdmin = true
+            });
+        }
+
         if (memberships.Count == 0)
         {
             logger.LogWarning("Login zonder actieve memberships: {Email} (UserId: {UserId})", MaskEmail(email), user.Id);
@@ -222,6 +253,92 @@ public class AuthService(
 
         logger.LogInformation("Wachtwoord-reset e-mail verstuurd naar {Email}", MaskEmail(email));
         return Result.Ok();
+    }
+
+    public async Task<Result<AuthResponseDto>> AcceptInviteAsync(
+        string token,
+        string password,
+        CancellationToken cancellationToken = default)
+    {
+        var hashedToken = HashToken(token);
+        var user = await userManager.Users.FirstOrDefaultAsync(u => u.InviteToken == hashedToken, cancellationToken);
+
+        if (user is null)
+            return Result<AuthResponseDto>.Fail("Ongeldige uitnodigingslink");
+        if (user.InviteTokenExpiry is null || user.InviteTokenExpiry < DateTime.UtcNow)
+            return Result<AuthResponseDto>.Fail("Uitnodigingslink is verlopen");
+
+        await using var tx = await context.Database.BeginTransactionAsync(cancellationToken);
+
+        var resetToken = await userManager.GeneratePasswordResetTokenAsync(user);
+        var resetResult = await userManager.ResetPasswordAsync(user, resetToken, password);
+        if (!resetResult.Succeeded)
+        {
+            await tx.RollbackAsync(cancellationToken);
+            return Result<AuthResponseDto>.Fail(resetResult.Errors.Select(e => e.Description));
+        }
+
+        user.IsActive = true;
+        user.InviteToken = null;
+        user.InviteTokenExpiry = null;
+        user.UpdatedAt = DateTime.UtcNow;
+        var updateResult = await userManager.UpdateAsync(user);
+        if (!updateResult.Succeeded)
+        {
+            await tx.RollbackAsync(cancellationToken);
+            return Result<AuthResponseDto>.Fail(updateResult.Errors.Select(e => e.Description));
+        }
+
+        var pendings = await context.OrganizationMemberships
+            .Include(m => m.Organization)
+            .Where(m => m.UserId == user.Id && !m.IsActive)
+            .ToListAsync(cancellationToken);
+
+        if (pendings.Count == 0)
+        {
+            await tx.RollbackAsync(cancellationToken);
+            return Result<AuthResponseDto>.Fail("Geen openstaande uitnodiging gevonden");
+        }
+        if (pendings.Count > 1)
+        {
+            await tx.RollbackAsync(cancellationToken);
+            return Result<AuthResponseDto>.Fail("Meerdere openstaande uitnodigingen gevonden — neem contact op met support");
+        }
+
+        var pending = pendings[0];
+        pending.IsActive = true;
+        await context.SaveChangesAsync(cancellationToken);
+        await tx.CommitAsync(cancellationToken);
+
+        (var jwtToken, var expiresAt) = tokenService.GenerateToken(user, pending);
+
+        return Result<AuthResponseDto>.Ok(new AuthResponseDto
+        {
+            Token = jwtToken,
+            ExpiresAt = expiresAt,
+            UserId = user.Id,
+            Email = user.Email!,
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+            OrganizationId = pending.OrganizationId,
+            Role = pending.Role.ToString(),
+            Memberships =
+            [
+                new OrganizationMembershipDto
+                {
+                    OrganizationId = pending.OrganizationId,
+                    OrganizationName = pending.Organization?.Name ?? string.Empty,
+                    Role = pending.Role.ToString(),
+                    IsActive = true
+                }
+            ]
+        });
+    }
+
+    private static string HashToken(string token)
+    {
+        var bytes = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(token));
+        return Convert.ToHexStringLower(bytes);
     }
 
     public async Task<Result> ResetPasswordAsync(

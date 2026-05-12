@@ -17,4 +17,11 @@ public class AuthResponseDto
 
     /// <summary>Alle (actieve) memberships van de user — nodig voor de org-switcher.</summary>
     public List<OrganizationMembershipDto> Memberships { get; set; } = [];
+
+    /// <summary>
+    /// True als deze sessie een system-level super-admin token is. In dat geval is
+    /// <see cref="OrganizationId"/> null, <see cref="Role"/> = "SuperAdmin", en is
+    /// <see cref="Memberships"/> leeg (Option C: super admins hebben geen memberships).
+    /// </summary>
+    public bool IsSuperAdmin { get; set; }
 }
