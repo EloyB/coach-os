@@ -59,3 +59,20 @@ resource "scaleway_secret_version" "app" {
   secret_id = scaleway_secret.app[each.key].id
   data      = each.value
 }
+
+# ── Manually-filled secrets ──────────────────────────────────────────────────
+# These secrets are created by Terraform but their value MUST be filled in
+# manually via the Scaleway console (or `scw secret secret-version create`).
+# Reason: they reference identities (e-mail, person) that should never live in
+# version control.
+
+# SuperAdmin__Email — promoot bij API-startup de bijbehorende user tot system-level
+# super admin (zie SuperAdminBootstrapHostedService). Vul deze waarde manueel in
+# zodat de e-mail van de eerste super admin niet in git terechtkomt.
+resource "scaleway_secret" "super_admin_email" {
+  project_id  = var.scw_project_id
+  region      = var.scw_region
+  name        = "SuperAdmin__Email"
+  description = "E-mail van de eerste system-level super admin — manueel ingevuld"
+  tags        = ["coach-os", "manual"]
+}
