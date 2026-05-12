@@ -414,9 +414,9 @@ def main() -> int:
         print("0. Bootstrapping super admin...")
         result = api.post("/dev/super-admin/bootstrap", sa, auth=False)
         if result is None:
-            print("   ⚠ Super admin bootstrap mislukt (dev-only endpoint niet bereikbaar?).")
+            print("   [!] Super admin bootstrap mislukt (dev-only endpoint niet bereikbaar?).")
         else:
-            print(f"   ✓ Super admin: {sa['email']}")
+            print(f"   [OK] Super admin: {sa['email']}")
 
     auth = authenticate(api, data["admin"])
     if auth is None:
