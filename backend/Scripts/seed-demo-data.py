@@ -177,7 +177,15 @@ def invite_trainers_and_pick_id(api: ApiClient, trainers: list[dict],
     trainer_list = api.get("/trainers") or []
     active = [t for t in trainer_list if t.get("isActive")]
     print(f"   Active trainers: {len(active)}")
-    return active[0]["id"] if active else fallback_user_id
+    if active:
+        return active[0]["id"]
+
+    # Fallback: in dev SMTP-loos draait niemand accept-invite door, dus alle
+    # uitgenodigde trainers blijven pending (IsActive=false). De admin moet
+    # dan zichzelf opvoeren als trainer zodat lesson-series toewijzing slaagt.
+    print("   No active invitees yet; promoting admin as trainer.")
+    api.post("/trainers/me")
+    return fallback_user_id
 
 
 def create_simple_series(api: ApiClient, series_specs: list[dict],

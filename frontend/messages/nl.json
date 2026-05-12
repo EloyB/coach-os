@@ -422,7 +422,10 @@
     "removing": "Verwijderen...",
     "reassignAndRemove": "Toewijzen & verwijderen",
     "processing": "Bezig...",
-    "status": "Status"
+    "status": "Status",
+    "addMeAsTrainer": "Voeg mij toe als trainer",
+    "removeMeAsTrainer": "Verwijder mij als trainer",
+    "adminBadge": "Beheerder"
   },
   "auth": {
     "login": "Inloggen",

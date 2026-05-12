@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -21,8 +21,11 @@ import {
   reassignTrainerSeries,
   removeTrainer,
   resendTrainerInvite,
+  addSelfAsTrainer,
+  removeSelfAsTrainer,
   TrainerDto,
 } from "@/lib/api/trainers";
+import { getAuthUser, type AuthUser } from "@/lib/auth";
 import { getAxiosErrorMessages } from "@/lib/utils/api-errors";
 import {
   AlertDialog,
@@ -319,12 +322,27 @@ type RemoveDialogState =
 export default function TrainersPage() {
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [removeDialog, setRemoveDialog] = useState<RemoveDialogState>({ type: "none" });
+  const [user, setUser] = useState<AuthUser | null>(null);
   const queryClient = useQueryClient();
   const t = useTranslations("trainers");
+
+  useEffect(() => {
+    setUser(getAuthUser());
+  }, []);
 
   const { data: trainers, isLoading } = useQuery({
     queryKey: ["trainers"],
     queryFn: getTrainers,
+  });
+
+  const addSelfMutation = useMutation({
+    mutationFn: addSelfAsTrainer,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["trainers"] }),
+  });
+
+  const removeSelfMutation = useMutation({
+    mutationFn: removeSelfAsTrainer,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["trainers"] }),
   });
 
   const deactivateMutation = useMutation({
@@ -371,6 +389,10 @@ export default function TrainersPage() {
   const activeCount = active.length;
   const invitedCount = invited.length;
 
+  const isAdmin = user?.role === "Admin";
+  const currentUserIsTrainer = trainers?.some((tr) => tr.id === user?.userId) ?? false;
+  const showAddMeButton = isAdmin && !currentUserIsTrainer && !isLoading;
+
   return (
     <>
       {/* Header */}
@@ -384,12 +406,23 @@ export default function TrainersPage() {
           </h1>
         </div>
         {!showInviteForm && (
-          <button
-            onClick={() => setShowInviteForm(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-ink text-white text-[11.5px] font-semibold rounded-md cursor-pointer"
-          >
-            + {t("invite")}
-          </button>
+          <div className="flex items-center gap-2">
+            {showAddMeButton && (
+              <button
+                onClick={() => addSelfMutation.mutate()}
+                disabled={addSelfMutation.isPending}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-paper border border-rule text-ink text-[11.5px] font-semibold rounded-md cursor-pointer hover:bg-canvas transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                + {t("addMeAsTrainer")}
+              </button>
+            )}
+            <button
+              onClick={() => setShowInviteForm(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-ink text-white text-[11.5px] font-semibold rounded-md cursor-pointer"
+            >
+              + {t("invite")}
+            </button>
+          </div>
         )}
       </div>
 
@@ -432,6 +465,7 @@ export default function TrainersPage() {
             const initials = `${tr.firstName[0] ?? ""}${tr.lastName[0] ?? ""}`.toUpperCase();
             const isInvited = !tr.isActive && tr.invitePending;
             const isDeactivatedState = !tr.isActive && !tr.invitePending;
+            const isSelfAdmin = isAdmin && tr.id === user?.userId;
             const cap = capacityLabel(tr.currentWeekHoursBooked, tr.weeklyCapacityHours, t);
             const loadPct = tr.weeklyCapacityHours > 0
               ? Math.min(100, Math.round((tr.currentWeekHoursBooked / tr.weeklyCapacityHours) * 100))
@@ -444,23 +478,30 @@ export default function TrainersPage() {
                     <span className="text-tennis-lime font-bold text-[13px]">{initials}</span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-center">
-                      <p className="text-[13.5px] font-bold text-ink m-0">
+                    <div className="flex justify-between items-center gap-2">
+                      <p className="text-[13.5px] font-bold text-ink m-0 truncate">
                         {tr.firstName} {tr.lastName}
                       </p>
-                      {isInvited ? (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 font-semibold">
-                          {t("invitedLabel")}
-                        </span>
-                      ) : isDeactivatedState ? (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-50 text-red-600 font-semibold">
-                          {t("inactiveLabel")}
-                        </span>
-                      ) : (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-tennis-green/10 text-tennis-green font-semibold">
-                          {t("activeLabel")}
-                        </span>
-                      )}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {isSelfAdmin && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-tennis-lime/30 text-tennis-green font-semibold">
+                            {t("adminBadge")}
+                          </span>
+                        )}
+                        {isInvited ? (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 font-semibold">
+                            {t("invitedLabel")}
+                          </span>
+                        ) : isDeactivatedState ? (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-50 text-red-600 font-semibold">
+                            {t("inactiveLabel")}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-tennis-green/10 text-tennis-green font-semibold">
+                            {t("activeLabel")}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <p className="text-[11px] text-ink-3 font-mono mt-0.5 m-0">{tr.email}</p>
                   </div>
@@ -501,22 +542,35 @@ export default function TrainersPage() {
                         )}
                       </div>
                       <div className="flex gap-1 justify-end items-end">
-                        <button
-                          onClick={() => deactivateMutation.mutate(tr.id)}
-                          disabled={deactivateMutation.isPending}
-                          title={t("deactivate")}
-                          className="opacity-0 group-hover:opacity-100 p-1.5 rounded text-ink-3 hover:text-amber-500 hover:bg-amber-50 transition-all"
-                        >
-                          <UserX size={14} />
-                        </button>
-                        {tr.lessonSeriesCount === 0 && (
+                        {isSelfAdmin ? (
                           <button
-                            onClick={() => handleRemoveClick(tr)}
-                            title={t("remove")}
+                            onClick={() => removeSelfMutation.mutate()}
+                            disabled={removeSelfMutation.isPending}
+                            title={t("removeMeAsTrainer")}
                             className="opacity-0 group-hover:opacity-100 p-1.5 rounded text-ink-3 hover:text-red-500 hover:bg-red-50 transition-all"
                           >
                             <Trash2 size={14} />
                           </button>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => deactivateMutation.mutate(tr.id)}
+                              disabled={deactivateMutation.isPending}
+                              title={t("deactivate")}
+                              className="opacity-0 group-hover:opacity-100 p-1.5 rounded text-ink-3 hover:text-amber-500 hover:bg-amber-50 transition-all"
+                            >
+                              <UserX size={14} />
+                            </button>
+                            {tr.lessonSeriesCount === 0 && (
+                              <button
+                                onClick={() => handleRemoveClick(tr)}
+                                title={t("remove")}
+                                className="opacity-0 group-hover:opacity-100 p-1.5 rounded text-ink-3 hover:text-red-500 hover:bg-red-50 transition-all"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            )}
+                          </>
                         )}
                       </div>
                     </div>

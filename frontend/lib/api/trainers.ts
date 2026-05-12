@@ -59,3 +59,12 @@ export async function removeTrainer(id: string): Promise<void> {
 export async function resendTrainerInvite(id: string): Promise<void> {
   await apiClient.post(`/trainers/${id}/resend-invite`);
 }
+
+export async function addSelfAsTrainer(): Promise<TrainerDto> {
+  const { data } = await apiClient.post<TrainerDto>("/trainers/me");
+  return data;
+}
+
+export async function removeSelfAsTrainer(): Promise<void> {
+  await apiClient.delete("/trainers/me");
+}

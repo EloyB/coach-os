@@ -14,6 +14,7 @@ public class OrganizationMembershipConfiguration : IEntityTypeConfiguration<Orga
         builder.Property(m => m.OrganizationId).IsRequired();
         builder.Property(m => m.Role).IsRequired();
         builder.Property(m => m.IsActive).IsRequired();
+        builder.Property(m => m.IsTrainer).IsRequired().HasDefaultValue(false);
         builder.Property(m => m.JoinedAt).IsRequired();
 
         builder.HasOne(m => m.Organization)
@@ -24,5 +25,6 @@ public class OrganizationMembershipConfiguration : IEntityTypeConfiguration<Orga
         builder.HasIndex(m => new { m.UserId, m.OrganizationId }).IsUnique();
         builder.HasIndex(m => m.OrganizationId);
         builder.HasIndex(m => m.UserId);
+        builder.HasIndex(m => new { m.OrganizationId, m.IsTrainer });
     }
 }

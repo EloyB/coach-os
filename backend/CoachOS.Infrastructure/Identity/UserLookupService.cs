@@ -46,12 +46,15 @@ public class UserLookupService(ApplicationDbContext context) : IUserLookupServic
 
     public async Task<bool> IsActiveTrainerAsync(Guid trainerId, Guid organizationId, CancellationToken ct = default)
     {
-        // Tenant-scoped membership check.
+        // Tenant-scoped membership check. IsTrainer is de enige bron van waarheid:
+        // - Trainer-memberships hebben IsTrainer altijd true (gezet bij invite).
+        // - Admin-memberships zijn pas IsTrainer=true nadat de admin zichzelf
+        //   heeft toegevoegd via POST /trainers/me.
         return await context.OrganizationMemberships
             .AsNoTracking()
             .AnyAsync(m => m.UserId == trainerId
                 && m.OrganizationId == organizationId
-                && (m.Role == UserRole.Trainer || m.Role == UserRole.Admin)
+                && m.IsTrainer
                 && m.IsActive, ct);
     }
 

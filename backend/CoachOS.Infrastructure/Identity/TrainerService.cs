@@ -51,6 +51,7 @@ public class TrainerService(
                         OrganizationId = organizationId,
                         Role = UserRole.Trainer,
                         IsActive = true,
+                        IsTrainer = true,
                         JoinedAt = DateTime.UtcNow
                     });
                 }
@@ -58,6 +59,7 @@ public class TrainerService(
                 {
                     existingMembership.IsActive = true;
                     existingMembership.Role = UserRole.Trainer;
+                    existingMembership.IsTrainer = true;
                 }
                 await context.SaveChangesAsync(ct);
 
@@ -101,6 +103,7 @@ public class TrainerService(
             OrganizationId = organizationId,
             Role = UserRole.Trainer,
             IsActive = false, // wordt actief bij AcceptInvite
+            IsTrainer = true,
             JoinedAt = DateTime.UtcNow
         });
         await context.SaveChangesAsync(ct);
@@ -207,14 +210,16 @@ public class TrainerService(
         Guid organizationId,
         CancellationToken ct = default)
     {
-        // Trainers zijn alle memberships (Trainer-rol) in deze org, via join met users.
-        // Pending invites (m.IsActive == false, u.InviteToken != null) blijven meekomen
-        // zodat de admin uitstaande uitnodigingen ziet en kan opnieuw versturen.
+        // Trainers zijn alle memberships waar IsTrainer = true in deze org.
+        // Daar vallen "echte" trainers (Role=Trainer) én admins onder die zichzelf
+        // hebben opgegeven via "Voeg mij toe als trainer". Pending invites
+        // (m.IsActive == false, u.InviteToken != null) blijven meekomen zodat
+        // de admin uitstaande uitnodigingen ziet en kan opnieuw versturen.
         var query =
             from m in context.OrganizationMemberships.AsNoTracking()
             join u in context.Users.AsNoTracking() on m.UserId equals u.Id
             where m.OrganizationId == organizationId
-                  && m.Role == UserRole.Trainer
+                  && m.IsTrainer
             orderby u.FirstName, u.LastName
             select new TrainerDto
             {
@@ -397,6 +402,101 @@ public class TrainerService(
             .Where(l => l.TrainerId == fromTrainerId && l.OrganizationId == organizationId)
             .ExecuteUpdateAsync(s => s.SetProperty(l => l.TrainerId, toTrainerId), ct);
 
+        return Result.Ok();
+    }
+
+    public async Task<Result<TrainerDto>> AddSelfAsTrainerAsync(
+        Guid userId,
+        Guid organizationId,
+        CancellationToken ct = default)
+    {
+        OrganizationMembership? membership = await context.OrganizationMemberships
+            .FirstOrDefaultAsync(m => m.UserId == userId && m.OrganizationId == organizationId, ct);
+
+        if (membership is null || !membership.IsActive)
+            return Result<TrainerDto>.Fail(
+                new Error(ErrorCodes.NotFound, "Geen actief lidmaatschap gevonden in deze organisatie."));
+
+        if (membership.Role != UserRole.Admin)
+            return Result<TrainerDto>.Fail(
+                new Error(ErrorCodes.Validation, "Alleen een beheerder kan zichzelf als trainer toevoegen."));
+
+        if (!membership.IsTrainer)
+        {
+            membership.IsTrainer = true;
+            await context.SaveChangesAsync(ct);
+        }
+
+        ApplicationUser? user = await context.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == userId, ct);
+
+        if (user is null)
+            return Result<TrainerDto>.Fail(new Error(ErrorCodes.NotFound, "Gebruiker niet gevonden."));
+
+        DateOnly today = DateOnly.FromDateTime(DateTime.UtcNow);
+        int dayOffset = ((int)today.DayOfWeek + 6) % 7; // Monday=0
+        DateOnly weekStart = today.AddDays(-dayOffset);
+        DateOnly weekEnd = weekStart.AddDays(6);
+
+        List<(TimeOnly Start, TimeOnly End)> weekLessons = await context.Lessons
+            .AsNoTracking()
+            .Where(l => l.OrganizationId == organizationId
+                && l.TrainerId == userId
+                && l.Date >= weekStart && l.Date <= weekEnd
+                && !l.IsCancelled)
+            .Select(l => new ValueTuple<TimeOnly, TimeOnly>(l.StartTime, l.EndTime))
+            .ToListAsync(ct);
+
+        decimal hoursBooked = weekLessons.Sum(l => (decimal)(l.End - l.Start).TotalHours);
+
+        int seriesCount = await context.LessonSeries
+            .AsNoTracking()
+            .CountAsync(ls => ls.OrganizationId == organizationId
+                && ls.IsActive
+                && ls.Lessons.Any(l => l.TrainerId == userId), ct);
+
+        TrainerDto dto = new()
+        {
+            Id = user.Id,
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+            Email = user.Email ?? string.Empty,
+            IsActive = user.IsActive,
+            InvitePending = user.InviteToken != null,
+            CreatedAt = user.CreatedAt,
+            LessonSeriesCount = seriesCount,
+            CurrentWeekHoursBooked = hoursBooked,
+            WeeklyCapacityHours = 16,
+        };
+
+        return Result<TrainerDto>.Ok(dto);
+    }
+
+    public async Task<Result> RemoveSelfAsTrainerAsync(
+        Guid userId,
+        Guid organizationId,
+        CancellationToken ct = default)
+    {
+        OrganizationMembership? membership = await context.OrganizationMemberships
+            .FirstOrDefaultAsync(m => m.UserId == userId && m.OrganizationId == organizationId, ct);
+
+        if (membership is null)
+            return Result.Fail(new Error(ErrorCodes.NotFound, "Geen lidmaatschap gevonden in deze organisatie."));
+
+        if (membership.Role != UserRole.Admin || !membership.IsTrainer)
+            return Result.Fail(new Error(ErrorCodes.Validation, "Je staat niet in de trainerlijst."));
+
+        int lessonCount = await context.Lessons
+            .CountAsync(l => l.TrainerId == userId && l.OrganizationId == organizationId, ct);
+
+        if (lessonCount > 0)
+            return Result.Fail(new Error(
+                ErrorCodes.Validation,
+                $"Je hebt nog {lessonCount} les(sen) toegewezen. Wijs deze eerst toe aan een andere trainer."));
+
+        membership.IsTrainer = false;
+        await context.SaveChangesAsync(ct);
         return Result.Ok();
     }
 

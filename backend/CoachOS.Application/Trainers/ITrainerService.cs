@@ -44,4 +44,24 @@ public interface ITrainerService
         Guid toTrainerId,
         Guid organizationId,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Markeert het Admin-membership van de huidige user als IsTrainer = true,
+    /// zodat de admin in de trainerlijst en lesson-pickers verschijnt zonder
+    /// een aparte invite-flow te hoeven doorlopen. Idempotent.
+    /// </summary>
+    Task<Result<TrainerDto>> AddSelfAsTrainerAsync(
+        Guid userId,
+        Guid organizationId,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Verwijdert de admin uit de trainerlijst (IsTrainer = false). Faalt als
+    /// er nog lessen aan deze admin zijn toegewezen — wijs die eerst toe aan
+    /// een andere trainer (zelfde regel als RemoveAsync).
+    /// </summary>
+    Task<Result> RemoveSelfAsTrainerAsync(
+        Guid userId,
+        Guid organizationId,
+        CancellationToken ct = default);
 }

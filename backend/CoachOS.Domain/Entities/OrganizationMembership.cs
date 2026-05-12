@@ -18,6 +18,12 @@ public class OrganizationMembership : BaseEntity
 
     public bool IsActive { get; set; } = true;
 
+    /// <summary>
+    /// True wanneer deze user lessen mag krijgen toegewezen in deze org.
+    /// Voor Role=Trainer altijd true. Voor Role=Admin opt-in via "Voeg mij toe als trainer".
+    /// </summary>
+    public bool IsTrainer { get; set; }
+
     public DateTime JoinedAt { get; set; }
 
     public Organization Organization { get; set; } = null!;
