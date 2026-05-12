@@ -9,16 +9,8 @@ import * as z from "zod";
 import axios from "axios";
 
 import { createAdmin } from "@/lib/api/super-admin";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { inputClass } from "@/lib/styles";
+import { FieldError } from "@/components/forms/field-error";
 
 const schema = z.object({
   organizationName: z.string().min(1).max(200),
@@ -32,10 +24,14 @@ type FormValues = z.infer<typeof schema>;
 export default function NewAdminPage() {
   const t = useTranslations("superAdmin");
   const router = useRouter();
-  const [errors, setErrors] = useState<string[]>([]);
+  const [apiErrors, setApiErrors] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
-  const form = useForm<FormValues>({
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       organizationName: "",
@@ -48,18 +44,18 @@ export default function NewAdminPage() {
 
   async function onSubmit(values: FormValues) {
     setSubmitting(true);
-    setErrors([]);
+    setApiErrors([]);
     try {
       await createAdmin(values);
       router.push("/super-admin/admins");
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.data) {
         const data = error.response.data;
-        if (Array.isArray(data)) setErrors(data);
-        else if (typeof data === "string") setErrors([data]);
-        else setErrors([t("createError")]);
+        if (Array.isArray(data)) setApiErrors(data);
+        else if (typeof data === "string") setApiErrors([data]);
+        else setApiErrors([t("createError")]);
       } else {
-        setErrors([t("createError")]);
+        setApiErrors([t("createError")]);
       }
     } finally {
       setSubmitting(false);
@@ -73,92 +69,94 @@ export default function NewAdminPage() {
         <p className="text-sm text-ink-3 mt-1">{t("createSubtitle")}</p>
       </div>
 
-      {errors.length > 0 && (
-        <div className="rounded-lg bg-red-50 border border-red-100 px-4 py-3">
-          {errors.map((err, i) => (
-            <p key={i} className="text-sm text-red-700">{err}</p>
-          ))}
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        {apiErrors.length > 0 && (
+          <div className="bg-red-50 border border-red-100 rounded-lg px-4 py-3 text-sm text-red-600">
+            {apiErrors.map((e, i) => (
+              <p key={i}>{e}</p>
+            ))}
+          </div>
+        )}
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            {t("fieldOrganization")} <span className="text-red-400">*</span>
+          </label>
+          <input
+            {...register("organizationName")}
+            type="text"
+            placeholder="TC Brederode"
+            className={inputClass}
+          />
+          <FieldError message={errors.organizationName?.message} />
         </div>
-      )}
 
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <FormField
-            control={form.control}
-            name="organizationName"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t("fieldOrganization")}</FormLabel>
-                <FormControl>
-                  <Input {...field} placeholder="TC Brederode" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <div className="grid grid-cols-2 gap-3">
-            <FormField
-              control={form.control}
-              name="firstName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t("fieldFirstName")}</FormLabel>
-                  <FormControl><Input {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              {t("fieldFirstName")} <span className="text-red-400">*</span>
+            </label>
+            <input
+              {...register("firstName")}
+              type="text"
+              placeholder="Jan"
+              className={inputClass}
             />
-            <FormField
-              control={form.control}
-              name="lastName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t("fieldLastName")}</FormLabel>
-                  <FormControl><Input {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <FieldError message={errors.firstName?.message} />
           </div>
-          <FormField
-            control={form.control}
-            name="email"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t("fieldEmail")}</FormLabel>
-                <FormControl><Input {...field} type="email" /></FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="isEarlyBird"
-            render={({ field }) => (
-              <FormItem className="flex items-center gap-2 space-y-0">
-                <FormControl>
-                  <input
-                    type="checkbox"
-                    checked={field.value}
-                    onChange={(e) => field.onChange(e.target.checked)}
-                    className="h-4 w-4"
-                  />
-                </FormControl>
-                <FormLabel className="!mt-0">{t("fieldEarlyBird")}</FormLabel>
-              </FormItem>
-            )}
-          />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              {t("fieldLastName")} <span className="text-red-400">*</span>
+            </label>
+            <input
+              {...register("lastName")}
+              type="text"
+              placeholder="Janssen"
+              className={inputClass}
+            />
+            <FieldError message={errors.lastName?.message} />
+          </div>
+        </div>
 
-          <div className="flex gap-2 pt-2">
-            <Button type="submit" disabled={submitting} className="bg-tennis-green hover:bg-tennis-green/90 text-white">
-              {submitting ? t("submitting") : t("createSubmit")}
-            </Button>
-            <Button type="button" variant="outline" onClick={() => router.back()}>
-              {t("cancel")}
-            </Button>
-          </div>
-        </form>
-      </Form>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            {t("fieldEmail")} <span className="text-red-400">*</span>
+          </label>
+          <input
+            {...register("email")}
+            type="email"
+            placeholder="jan@tennisclub.be"
+            className={inputClass}
+          />
+          <FieldError message={errors.email?.message} />
+        </div>
+
+        <label className="flex items-center gap-2.5 pt-1 cursor-pointer select-none">
+          <input
+            {...register("isEarlyBird")}
+            type="checkbox"
+            className="h-4 w-4 rounded border-gray-300 text-tennis-green focus:ring-tennis-green/30"
+          />
+          <span className="text-sm text-gray-700">{t("fieldEarlyBird")}</span>
+        </label>
+
+        <div className="flex items-center gap-3 pt-2">
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="flex-1 px-4 py-2.5 border border-gray-200 text-sm font-medium text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            {t("cancel")}
+          </button>
+          <button
+            type="submit"
+            disabled={submitting}
+            className="flex-1 px-4 py-2.5 bg-tennis-green text-white text-sm font-semibold rounded-lg hover:bg-tennis-green/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {submitting ? t("submitting") : t("createSubmit")}
+          </button>
+        </div>
+      </form>
     </div>
   );
 }
