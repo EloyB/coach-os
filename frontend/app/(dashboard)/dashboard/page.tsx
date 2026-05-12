@@ -26,14 +26,14 @@ function formatTime(timeStr: string): string {
   return timeStr.substring(0, 5);
 }
 
-function severityBorderColor(severity: string): string {
+function severityDotColor(severity: string): string {
   switch (severity) {
     case "urgent":
-      return "border-l-red-500";
+      return "bg-red-500";
     case "warn":
-      return "border-l-amber-400";
+      return "bg-amber-400";
     default:
-      return "border-l-blue-300";
+      return "bg-blue-300";
   }
 }
 
@@ -47,12 +47,14 @@ function InboxItem({ item }: { item: InboxItemDto }) {
   const t = useTranslations("dashboard");
 
   return (
-    <div
-      className={`flex items-center justify-between px-4 py-3 border-l-4 ${severityBorderColor(item.severity)} bg-paper rounded-lg`}
-    >
+    <div className="flex items-center justify-between px-4 py-3 bg-paper border border-rule rounded-lg">
       <div className="min-w-0 flex-1">
-        <p className="text-[12.5px] font-semibold text-ink truncate">
-          {item.title}
+        <p className="text-[12.5px] font-semibold text-ink truncate flex items-center gap-2">
+          <span
+            aria-hidden
+            className={`inline-block w-2 h-2 rounded-full shrink-0 ${severityDotColor(item.severity)}`}
+          />
+          <span className="truncate">{item.title}</span>
         </p>
         <p className="text-[11px] text-ink-3 truncate mt-0.5">{item.body}</p>
         {item.meta && (

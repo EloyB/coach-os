@@ -180,7 +180,7 @@ export function DashboardSidebar() {
               href={href}
               className={`flex items-center gap-[11px] px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors ${
                 active
-                  ? "bg-tennis-lime/[.12] text-white shadow-[inset_2px_0_0_#D0FF14]"
+                  ? "bg-tennis-lime/[.12] text-white"
                   : "text-white/70 hover:text-white hover:bg-white/10"
               }`}
             >

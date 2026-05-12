@@ -41,7 +41,7 @@ export const PILOT_BENEFITS: PilotBenefit[] = [
   },
   {
     title: "Lifetime korting",
-    body: "Wanneer pricing publiek wordt, behoud je 50% korting op je tarief — zolang je klant blijft.",
+    body: "Wanneer pricing publiek wordt, behoud je 25% korting op je tarief — zolang je klant blijft.",
   },
   {
     title: "Directe lijn naar de founder",

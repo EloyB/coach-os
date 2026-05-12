@@ -1,0 +1,25 @@
+{
+  "name": "coachos-animations",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Remotion-based MP4 animations for CoachOS Instagram carousels",
+  "scripts": {
+    "studio": "remotion studio",
+    "render:auto-planner": "remotion render src/index.ts AutoPlanner out/auto-planner.mp4 --codec=h264",
+    "render:create-lessenreeks": "remotion render src/index.ts CreateLesreeks out/create-lessenreeks.mp4 --codec=h264",
+    "render:enrollment-form": "remotion render src/index.ts EnrollmentForm out/enrollment-form.mp4 --codec=h264",
+    "render:student-enrollment": "remotion render src/index.ts StudentEnrollment out/student-enrollment.mp4 --codec=h264",
+    "render:all": "npm run render:auto-planner && npm run render:create-lessenreeks && npm run render:enrollment-form && npm run render:student-enrollment"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.260",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "remotion": "^4.0.260"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "typescript": "^5.6.3"
+  }
+}
