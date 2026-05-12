@@ -6,7 +6,7 @@
  */
 export const PILOT = {
   totalSeats: 5,
-  takenSeats: 3,
+  takenSeats: 4,
 } as const;
 
 /** Hoeveel plekken nog vrij zijn — afgeleid, niet handmatig in te stellen. */
