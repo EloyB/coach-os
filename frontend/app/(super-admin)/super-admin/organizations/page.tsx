@@ -19,7 +19,12 @@ export default function OrganizationsPage() {
   const toggleEarlyBird = useMutation({
     mutationFn: ({ id, value }: { id: string; value: boolean }) =>
       setOrganizationEarlyBird(id, value),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["super-admin", "organizations"] }),
+    onSuccess: () => {
+      // Early-bird zit ook in de admins-lijst (kolom + sterretje) — invalidate beide
+      // zodat de waarde meteen klopt zodra je naar de andere tab gaat.
+      queryClient.invalidateQueries({ queryKey: ["super-admin", "organizations"] });
+      queryClient.invalidateQueries({ queryKey: ["super-admin", "admins"] });
+    },
   });
 
   return (
