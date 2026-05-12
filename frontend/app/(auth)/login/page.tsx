@@ -301,15 +301,6 @@ function LoginForm() {
             {t("magicLink")}
           </Button>
 
-          <p className="mt-5 text-center text-[11.5px] text-ink-3">
-            {t("noAccount")}{" "}
-            <Link
-              href="/register"
-              className="text-ink font-bold border-b border-tennis-lime"
-            >
-              {t("noAccountCta")}
-            </Link>
-          </p>
         </div>
       </div>
     </div>
