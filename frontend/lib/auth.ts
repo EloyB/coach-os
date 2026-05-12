@@ -2,6 +2,7 @@ const TOKEN_KEY = 'token';
 const USER_KEY = 'auth_user';
 const AUTH_COOKIE = 'has_token';
 const ROLE_COOKIE = 'user_role';
+const SUPER_ADMIN_COOKIE = 'has_super_admin';
 
 export interface OrganizationMembershipInfo {
   organizationId: string;
@@ -18,10 +19,15 @@ export interface AuthUser {
   organizationId?: string | null;
   role: string;
   memberships?: OrganizationMembershipInfo[];
+  isSuperAdmin?: boolean;
 }
 
 export function isStudent(): boolean {
   return getAuthUser()?.role === "Student";
+}
+
+export function isSuperAdmin(): boolean {
+  return getAuthUser()?.isSuperAdmin === true;
 }
 
 export function getToken(): string | null {
@@ -33,6 +39,15 @@ export function setToken(token: string): void {
   if (typeof window === 'undefined') return;
   localStorage.setItem(TOKEN_KEY, token);
   document.cookie = `${AUTH_COOKIE}=1; path=/; SameSite=Lax`;
+}
+
+export function setSuperAdminCookie(value: boolean): void {
+  if (typeof window === 'undefined') return;
+  if (value) {
+    document.cookie = `${SUPER_ADMIN_COOKIE}=1; path=/; SameSite=Lax`;
+  } else {
+    document.cookie = `${SUPER_ADMIN_COOKIE}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+  }
 }
 
 export function removeToken(): void {
@@ -72,6 +87,7 @@ export function clearAuth(): void {
   removeAuthUser();
   document.cookie = `${AUTH_COOKIE}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
   document.cookie = `${ROLE_COOKIE}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+  document.cookie = `${SUPER_ADMIN_COOKIE}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
 }
 
 export function isAuthenticated(): boolean {

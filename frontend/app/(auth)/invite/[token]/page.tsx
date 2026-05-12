@@ -6,8 +6,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 
-import { acceptInvite } from "@/lib/api/trainers";
-import { setToken, setAuthUser } from "@/lib/auth";
+import { acceptInvite } from "@/lib/api/auth";
+import { setToken, setAuthUser, setSuperAdminCookie } from "@/lib/auth";
 import { getAxiosErrorMessages } from "@/lib/utils/api-errors";
 import { CourtPattern } from "@/components/ui/court-pattern";
 import { TennisBallIcon } from "@/components/ui/tennis-ball-icon";
@@ -60,6 +60,7 @@ export default function InvitePage({
     try {
       const response = await acceptInvite({ token, password: data.password });
       setToken(response.token);
+      setSuperAdminCookie(response.isSuperAdmin === true);
       setAuthUser({
         userId: response.userId,
         email: response.email,
@@ -68,8 +69,9 @@ export default function InvitePage({
         organizationId: response.organizationId,
         role: response.role,
         memberships: response.memberships,
+        isSuperAdmin: response.isSuperAdmin,
       });
-      router.push("/dashboard");
+      router.push(response.isSuperAdmin ? "/super-admin/dashboard" : "/dashboard");
     } catch (error) {
       setErrors(
         getAxiosErrorMessages(error, "Er ging iets mis. Probeer het opnieuw.")

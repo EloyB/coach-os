@@ -10,7 +10,7 @@ import * as z from "zod";
 import axios from "axios";
 
 import { login } from "@/lib/api/auth";
-import { setToken, setAuthUser } from "@/lib/auth";
+import { setToken, setAuthUser, setSuperAdminCookie } from "@/lib/auth";
 import { CourtLines } from "@/components/ui/court-lines";
 import { LogoMark } from "@/components/ui/logo-mark";
 import { Mono } from "@/components/ui/mono";
@@ -77,6 +77,7 @@ function LoginForm() {
     try {
       const response = await login(data);
       setToken(response.token);
+      setSuperAdminCookie(response.isSuperAdmin === true);
       setAuthUser({
         userId: response.userId,
         email: response.email,
@@ -85,12 +86,10 @@ function LoginForm() {
         organizationId: response.organizationId,
         role: response.role,
         memberships: response.memberships,
+        isSuperAdmin: response.isSuperAdmin,
       });
-      if (redirectTo) {
-        router.push(redirectTo);
-      } else {
-        router.push("/dashboard");
-      }
+      const landing = response.isSuperAdmin ? "/super-admin/dashboard" : "/dashboard";
+      router.push(redirectTo ?? landing);
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.data) {
         const data = error.response.data;
