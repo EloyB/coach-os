@@ -27,6 +27,7 @@ import {
 } from "@/lib/api/tennisClubs";
 import { FieldError } from "@/components/forms/field-error";
 import { inputClass } from "@/lib/styles";
+import { OrganizationSection } from "./organization-section";
 
 // ─── Form Schema ──────────────────────────────────────────────────────────────
 
@@ -150,6 +151,9 @@ export default function SettingsPage() {
           Beheer de basisinstellingen van je organisatie.
         </p>
       </div>
+
+      {/* Organisatie-instellingen */}
+      <OrganizationSection />
 
       {/* Tennisclubs section */}
       <div className="bg-white rounded-xl shadow-sm shadow-gray-100 overflow-hidden">

@@ -84,6 +84,18 @@
     "lessons_count": "{count} lesmomenten",
     "per_series": "per reeks"
   },
+  "organizationSettings": {
+    "sectionTitle": "Organisatie",
+    "sectionSubtitle": "Algemene instellingen voor deze tennisschool",
+    "adminsActAsTrainersLabel": "Beheerder telt als trainer",
+    "adminsActAsTrainersHelp": "Wanneer ingeschakeld verschijn je als beheerder automatisch in de trainerlijst en kunnen lessen aan jou worden toegewezen. Schakel uit als je puur administratief werkt.",
+    "saved": "Opgeslagen",
+    "saveError": "Opslaan mislukt — probeer opnieuw",
+    "toggleOffConfirmTitle": "Beheerder uit trainerlijst halen?",
+    "toggleOffConfirmBody": "Je hebt nog {count} openstaande les(sen) aan jezelf toegewezen. Deze blijven gewoon bestaan, maar je kan geen nieuwe lessen meer ontvangen tot je de instelling weer aanzet. Wil je toch doorgaan?",
+    "toggleOffConfirm": "Ja, uitschakelen",
+    "toggleOffCancel": "Annuleren"
+  },
   "tennisClubs": {
     "title": "Tennisclubs",
     "name": "Naam",
@@ -384,6 +396,8 @@
   },
   "trainers": {
     "title": "Trainers",
+    "adminBadge": "Beheerder",
+    "manageViaSettings": "Beheer via Instellingen",
     "invite": "Uitnodigen",
     "inviteTitle": "Trainer uitnodigen",
     "inviteSent": "Uitnodiging verzonden",

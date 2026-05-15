@@ -7,6 +7,14 @@ public interface ILessonRepository
     Task<Lesson?> GetByIdAsync(Guid lessonId, Guid seriesId, Guid organizationId, CancellationToken ct = default);
     Task<Lesson?> GetByIdWithEnrollmentsAsync(Guid lessonId, Guid seriesId, Guid organizationId, CancellationToken ct = default);
     Task<int> CountBySeriesIdAsync(Guid seriesId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Telt actieve (niet-gecancelde) lessen vanaf <paramref name="fromDate"/>
+    /// waarvan de trainer de gegeven user is, binnen de organisatie.
+    /// Gebruikt om de admin te waarschuwen vóór toggle-off van AdminsActAsTrainers.
+    /// </summary>
+    Task<int> CountUpcomingForTrainerAsync(
+        Guid trainerId, Guid organizationId, DateOnly fromDate, CancellationToken ct = default);
     Task<Dictionary<Guid, int>> GetLessonCountsBySeriesIdsAsync(IEnumerable<Guid> seriesIds, CancellationToken ct = default);
     Task<List<Lesson>> GetUpcomingByOrganizationAsync(Guid organizationId, DateOnly fromDate, int limit, CancellationToken ct = default);
     Task<int> CountByOrganizationAndDateRangeAsync(Guid organizationId, DateOnly from, DateOnly to, CancellationToken ct = default);

@@ -43,6 +43,7 @@ public class ApplicationDbContext(
     public DbSet<OrganizationMembership> OrganizationMemberships { get; set; } = null!;
     public DbSet<RescheduleRequest> RescheduleRequests { get; set; } = null!;
     public DbSet<LessonInvitation> LessonInvitations { get; set; } = null!;
+    public DbSet<OrganizationSettings> OrganizationSettings { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -67,6 +68,7 @@ public class ApplicationDbContext(
         builder.ApplyConfiguration(new OrganizationMembershipConfiguration());
         builder.ApplyConfiguration(new RescheduleRequestConfiguration());
         builder.ApplyConfiguration(new LessonInvitationConfiguration());
+        builder.ApplyConfiguration(new OrganizationSettingsConfiguration());
 
         ApplyTenantFilters(builder);
     }
@@ -104,6 +106,8 @@ public class ApplicationDbContext(
         builder.Entity<RescheduleRequest>().HasQueryFilter(e =>
             _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
         builder.Entity<LessonInvitation>().HasQueryFilter(e =>
+            _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
+        builder.Entity<OrganizationSettings>().HasQueryFilter(e =>
             _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
     }
 

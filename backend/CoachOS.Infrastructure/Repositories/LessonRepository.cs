@@ -35,6 +35,17 @@ public class LessonRepository(ApplicationDbContext context) : ILessonRepository
             .CountAsync(l => l.LessonSerieId == seriesId, ct);
     }
 
+    public async Task<int> CountUpcomingForTrainerAsync(
+        Guid trainerId, Guid organizationId, DateOnly fromDate, CancellationToken ct = default)
+    {
+        return await context.Lessons
+            .AsNoTracking()
+            .CountAsync(l => l.TrainerId == trainerId
+                && l.OrganizationId == organizationId
+                && l.Date >= fromDate
+                && !l.IsCancelled, ct);
+    }
+
     public async Task<Dictionary<Guid, int>> GetLessonCountsBySeriesIdsAsync(
         IEnumerable<Guid> seriesIds, CancellationToken ct = default)
     {

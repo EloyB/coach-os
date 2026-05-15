@@ -53,6 +53,17 @@ public class AuthService(
             };
 
             context.Organizations.Add(organization);
+
+            // Initialiseer org-settings met defaults zodat de FE bij eerste GET geen lazy
+            // provisioning hoeft te triggeren. AdminsActAsTrainers default true: een
+            // tennisschool draait typisch op de admin-coach combinatie.
+            context.OrganizationSettings.Add(new Domain.Entities.OrganizationSettings
+            {
+                Id = Guid.NewGuid(),
+                OrganizationId = organization.Id,
+                AdminsActAsTrainers = true,
+            });
+
             await context.SaveChangesAsync(cancellationToken);
 
             ApplicationUser user = new()

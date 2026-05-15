@@ -16,7 +16,8 @@ public class TrainerService(
     UserManager<ApplicationUser> userManager,
     TokenService tokenService,
     IEmailService emailService,
-    ApplicationDbContext context)
+    ApplicationDbContext context,
+    IOrganizationSettingsRepository settingsRepo)
     : ITrainerService
 {
     public async Task<Result<Guid>> InviteAsync(
@@ -210,11 +211,17 @@ public class TrainerService(
         // Trainers zijn alle memberships (Trainer-rol) in deze org, via join met users.
         // Pending invites (m.IsActive == false, u.InviteToken != null) blijven meekomen
         // zodat de admin uitstaande uitnodigingen ziet en kan opnieuw versturen.
+        // Admin verschijnt mee in de lijst wanneer de org-setting AdminsActAsTrainers
+        // aanstaat (default true; zet uit op /dashboard/settings voor zuiver-administratieve admins).
+        Domain.Entities.OrganizationSettings? settings =
+            await settingsRepo.GetByOrganizationReadOnlyAsync(organizationId, ct);
+        bool includeAdmins = settings?.AdminsActAsTrainers ?? true;
+
         var query =
             from m in context.OrganizationMemberships.AsNoTracking()
             join u in context.Users.AsNoTracking() on m.UserId equals u.Id
             where m.OrganizationId == organizationId
-                  && m.Role == UserRole.Trainer
+                  && (m.Role == UserRole.Trainer || (includeAdmins && m.Role == UserRole.Admin))
             orderby u.FirstName, u.LastName
             select new TrainerDto
             {

@@ -1,6 +1,7 @@
 const TOKEN_KEY = 'token';
 const USER_KEY = 'auth_user';
 const AUTH_COOKIE = 'has_token';
+const ROLE_COOKIE = 'user_role';
 
 export interface OrganizationMembershipInfo {
   organizationId: string;
@@ -54,17 +55,23 @@ export function getAuthUser(): AuthUser | null {
 export function setAuthUser(user: AuthUser): void {
   if (typeof window === 'undefined') return;
   localStorage.setItem(USER_KEY, JSON.stringify(user));
+  // Spiegel de rol in een cookie zodat de Next-middleware role-based redirects
+  // kan doen zonder localStorage te kunnen lezen. NIET security-kritisch — de
+  // backend blijft de uiteindelijke autoriteit (RequireRole/RequireAuthorization).
+  document.cookie = `${ROLE_COOKIE}=${encodeURIComponent(user.role)}; path=/; SameSite=Lax`;
 }
 
 export function removeAuthUser(): void {
   if (typeof window === 'undefined') return;
   localStorage.removeItem(USER_KEY);
+  document.cookie = `${ROLE_COOKIE}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
 }
 
 export function clearAuth(): void {
   removeToken();
   removeAuthUser();
   document.cookie = `${AUTH_COOKIE}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+  document.cookie = `${ROLE_COOKIE}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
 }
 
 export function isAuthenticated(): boolean {
