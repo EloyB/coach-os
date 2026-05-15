@@ -406,6 +406,18 @@ def main() -> int:
     print(f"API: {api_base}\n")
 
     api = ApiClient(api_base)
+
+    # Bootstrap super admin via dev-only endpoint (alleen beschikbaar in Development).
+    # Idempotent: als de user al bestaat wordt enkel de IsSuperAdmin flag gezet.
+    if "superAdmin" in data:
+        sa = data["superAdmin"]
+        print("0. Bootstrapping super admin...")
+        result = api.post("/dev/super-admin/bootstrap", sa, auth=False)
+        if result is None:
+            print("   [!] Super admin bootstrap mislukt (dev-only endpoint niet bereikbaar?).")
+        else:
+            print(f"   [OK] Super admin: {sa['email']}")
+
     auth = authenticate(api, data["admin"])
     if auth is None:
         return 1
@@ -438,6 +450,9 @@ def main() -> int:
     print("Login credentials:")
     print(f"  Email:    {data['admin']['email']}")
     print(f"  Password: {data['admin']['password']}")
+    if "superAdmin" in data:
+        print(f"\n  Super admin: {data['superAdmin']['email']}")
+        print(f"  Password:    {data['superAdmin']['password']}")
     if "secondOrg" in data:
         print(f"\n  Second org admin: {data['secondOrg']['admin']['email']}")
         print(f"  Jan is lid van beide orgs - org-switcher zichtbaar in topbar")

@@ -44,4 +44,14 @@ public interface IAuthService
         string token,
         string newPassword,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Accepteert een invite-token: zet wachtwoord, activeert user + pending membership,
+    /// en geeft een ingelogde sessie terug. Generiek voor zowel trainer- als admin-invites
+    /// (de membership-rol bepaalt waar de user naar landt).
+    /// </summary>
+    Task<Result<AuthResponseDto>> AcceptInviteAsync(
+        string token,
+        string password,
+        CancellationToken cancellationToken = default);
 }

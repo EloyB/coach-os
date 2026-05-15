@@ -79,6 +79,39 @@ public sealed class TokenService(IConfiguration configuration)
             IsActive = true
         });
 
+    /// <summary>
+    /// Mint een system-level super-admin JWT. Bevat <c>isSuperAdmin=true</c> en GEEN
+    /// <c>organizationId</c> claim — defense in depth: een super-admin token kan
+    /// nooit als gewone org-admin functioneren in een specifieke tenant (issue #91, Option C).
+    /// </summary>
+    public (string Token, DateTime ExpiresAt) GenerateSuperAdminToken(ApplicationUser user)
+    {
+        (var key, var issuer, var audience, var expiryMinutes) = ReadJwtConfig();
+
+        SymmetricSecurityKey securityKey = new(Encoding.UTF8.GetBytes(key));
+        SigningCredentials credentials = new(securityKey, SecurityAlgorithms.HmacSha256);
+
+        Claim[] claims =
+        [
+            new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+            new(JwtRegisteredClaimNames.Email, user.Email!),
+            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new(ClaimTypes.Role, "SuperAdmin"),
+            new("isSuperAdmin", "true")
+        ];
+
+        var expiresAt = DateTime.UtcNow.AddMinutes(expiryMinutes);
+
+        JwtSecurityToken token = new(
+            issuer: issuer,
+            audience: audience,
+            claims: claims,
+            expires: expiresAt,
+            signingCredentials: credentials);
+
+        return (new JwtSecurityTokenHandler().WriteToken(token), expiresAt);
+    }
+
     private (string Key, string Issuer, string Audience, int ExpiryMinutes) ReadJwtConfig()
     {
         // Scaleway Secret Manager literal names hebben voorrang, colon-vorm is fallback voor local dev.

@@ -13,6 +13,13 @@ public class ApplicationUser : Microsoft.AspNetCore.Identity.IdentityUser<Guid>
     public string LastName { get; set; } = string.Empty;
     public bool IsActive { get; set; } = true;
 
+    /// <summary>
+    /// System-level super admin capability. Een super admin opereert los van organisaties
+    /// (Option C in #91): mag GEEN <see cref="Domain.Entities.OrganizationMembership"/> hebben.
+    /// Wordt enkel gezet via de bootstrap-service of door een bestaande super admin.
+    /// </summary>
+    public bool IsSuperAdmin { get; set; }
+
     /// <summary>Geboortedatum - verplicht voor GDPR bij minderjarigen.</summary>
     public DateOnly? DateOfBirth { get; set; }
 

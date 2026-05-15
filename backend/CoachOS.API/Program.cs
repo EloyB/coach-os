@@ -80,6 +80,7 @@ try
     app.UseRateLimiter();
     app.UseAuthentication();
     app.UseAuthorization();
+    app.UseMiddleware<UserActiveValidationMiddleware>();
     app.UseMiddleware<TenantContextMiddleware>();
     app.UseMiddleware<OrganizationValidationMiddleware>();
     app.MapAllEndpoints();

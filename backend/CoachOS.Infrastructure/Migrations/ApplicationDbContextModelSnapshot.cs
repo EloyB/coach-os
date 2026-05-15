@@ -533,6 +533,9 @@ namespace CoachOS.Infrastructure.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("IsEarlyBird")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("LogoUrl")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
@@ -1004,6 +1007,9 @@ namespace CoachOS.Infrastructure.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("IsSuperAdmin")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("LastName")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -1046,6 +1052,9 @@ namespace CoachOS.Infrastructure.Migrations
                         .HasColumnType("character varying(256)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("IsSuperAdmin")
+                        .HasFilter("\"IsSuperAdmin\" = TRUE");
 
                     b.HasIndex("NormalizedEmail")
                         .HasDatabaseName("EmailIndex");

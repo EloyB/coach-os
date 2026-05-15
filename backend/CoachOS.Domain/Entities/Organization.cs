@@ -17,6 +17,12 @@ public class Organization : BaseEntity
     public bool IsActive { get; set; } = true;
     public string? LogoUrl { get; set; }
 
+    /// <summary>
+    /// Early-bird klant: krijgt een lifetime-discount op de subscription.
+    /// Enkel toggle-baar door een super admin via het super-admin panel (#91).
+    /// </summary>
+    public bool IsEarlyBird { get; set; }
+
     // Navigation properties
     public ICollection<LessonSerie> LessonSeries { get; set; } = new List<LessonSerie>();
     public Subscription? Subscription { get; set; }

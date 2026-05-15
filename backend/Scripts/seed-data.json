@@ -1,4 +1,10 @@
 {
+  "superAdmin": {
+    "email": "lorenzcleymans@gmail.com",
+    "password": "SuperDemo1234!",
+    "firstName": "Lorenz",
+    "lastName": "Super-Admin"
+  },
   "admin": {
     "organizationName": "TC De Aces",
     "firstName": "Jan",

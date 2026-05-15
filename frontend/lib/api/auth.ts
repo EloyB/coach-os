@@ -17,6 +17,17 @@ export interface AuthResponse {
   organizationId: string | null;
   role: string;
   memberships: OrganizationMembershipInfo[];
+  isSuperAdmin?: boolean;
+}
+
+export interface AcceptInviteRequest {
+  token: string;
+  password: string;
+}
+
+export async function acceptInvite(request: AcceptInviteRequest): Promise<AuthResponse> {
+  const { data } = await apiClient.post<AuthResponse>('/auth/accept-invite', request);
+  return data;
 }
 
 export interface RegisterStudentRequest {

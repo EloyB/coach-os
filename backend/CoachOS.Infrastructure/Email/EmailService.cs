@@ -30,6 +30,20 @@ public class EmailService(
             $"Je bent uitgenodigd als trainer bij CoachOS", html, ct);
     }
 
+    public async Task SendAdminInviteAsync(
+        string toEmail, string firstName, string organizationName, string inviteUrl, CancellationToken ct = default)
+    {
+        var html = renderer.Render("admin-invite", new Dictionary<string, string>
+        {
+            ["firstName"] = firstName,
+            ["organizationName"] = organizationName,
+            ["inviteUrl"] = inviteUrl,
+            ["year"] = DateTime.UtcNow.Year.ToString(),
+        });
+        await SendAsync(toEmail, firstName,
+            $"Je bent uitgenodigd als beheerder van {organizationName}", html, ct);
+    }
+
     public async Task SendEnrollmentConfirmationAsync(
         string studentEmail, string studentName, string seriesName, string trainerName,
         CancellationToken ct = default)

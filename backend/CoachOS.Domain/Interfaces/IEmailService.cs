@@ -4,6 +4,8 @@ public interface IEmailService
 {
     Task SendTrainerInviteAsync(string toEmail, string firstName, string inviteUrl, CancellationToken ct = default);
 
+    Task SendAdminInviteAsync(string toEmail, string firstName, string organizationName, string inviteUrl, CancellationToken ct = default);
+
     Task SendEnrollmentConfirmationAsync(
         string studentEmail,
         string studentName,
