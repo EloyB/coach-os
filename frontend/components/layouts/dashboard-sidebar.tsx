@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { LogOut, ChevronRight, Check } from "lucide-react";
 import { CourtLines } from "@/components/ui/court-lines";
+import { LogoMark } from "@/components/ui/logo-mark";
 import { Mono } from "@/components/ui/mono";
 import { navItems } from "@/lib/nav-items";
 import { switchOrganization } from "@/lib/api/auth";
@@ -77,14 +78,10 @@ export function DashboardSidebar() {
     <aside className="hidden lg:flex flex-col w-56 bg-tennis-green relative shrink-0">
       <CourtLines opacity={0.05} />
 
-      {/* Logo + c/ monogram */}
+      {/* Logo */}
       <div className="relative z-10 px-[18px] pt-5 pb-[18px]">
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-md bg-tennis-lime grid place-items-center">
-            <Mono className="text-tennis-green font-extrabold text-[13px]">
-              c/
-            </Mono>
-          </div>
+          <LogoMark />
           <span className="text-white font-bold text-[15.5px] tracking-tight">
             CoachOS
           </span>

@@ -28,7 +28,7 @@ apiClient.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    // Show toast for all non-401 errors
+    // Show toast for all non-401/403 errors
     if (typeof window !== 'undefined' && error.response) {
       const status = error.response.status;
       const data = error.response.data;
@@ -44,7 +44,9 @@ apiClient.interceptors.response.use(
         message = data.title;
       }
 
-      if (status >= 400 && status < 500) {
+      if (status === 403) {
+        // Skip toast: access-control is being refined, don't alarm the user.
+      } else if (status >= 400 && status < 500) {
         toast.error(message);
       } else if (status >= 500) {
         toast.error('Serverfout — probeer het later opnieuw.');

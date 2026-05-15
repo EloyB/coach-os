@@ -19,6 +19,7 @@ import type {
   AssignmentDetailsDto,
   AvailableSlotDto,
 } from "@/lib/api/confirmation";
+import { LogoMark } from "@/components/ui/logo-mark";
 import { Mono } from "@/components/ui/mono";
 import { SlashLabel } from "@/components/ui/slash-label";
 import { InkHeroCard } from "@/components/ui/ink-hero-card";
@@ -399,9 +400,12 @@ function Shell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-paper overflow-auto">
       <div className="max-w-[520px] mx-auto px-4 py-7">
         <div className="flex items-center gap-2 mb-[18px]">
-          <div className="w-[26px] h-[26px] rounded-md bg-tennis-green grid place-items-center">
-            <Mono className="text-tennis-lime font-extrabold text-[11px]">c/</Mono>
-          </div>
+          <LogoMark
+            variant="green"
+            className="h-[26px] w-[26px]"
+            markPx={18}
+            markStroke={11}
+          />
           <span className="text-sm font-bold text-ink">CoachOS</span>
         </div>
         {children}

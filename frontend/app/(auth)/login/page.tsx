@@ -12,6 +12,7 @@ import axios from "axios";
 import { login } from "@/lib/api/auth";
 import { setToken, setAuthUser } from "@/lib/auth";
 import { CourtLines } from "@/components/ui/court-lines";
+import { LogoMark } from "@/components/ui/logo-mark";
 import { Mono } from "@/components/ui/mono";
 import { SlashLabel } from "@/components/ui/slash-label";
 import {
@@ -122,9 +123,7 @@ function LoginForm() {
 
         {/* Logo + version */}
         <div className="relative z-10 flex items-center gap-2.5">
-          <div className="w-[30px] h-[30px] rounded-md bg-tennis-lime grid place-items-center">
-            <Mono className="text-ink font-extrabold text-[13px]">c/</Mono>
-          </div>
+          <LogoMark className="h-[30px] w-[30px]" markPx={22} />
           <span className="text-white font-bold text-base">CoachOS</span>
           <Mono className="ml-auto text-[10.5px] text-[#8a8377]">
             {t("heroVersion")}
@@ -173,9 +172,7 @@ function LoginForm() {
         <div className="w-full max-w-[340px]">
           {/* Mobile logo */}
           <div className="flex items-center gap-2 mb-10 lg:hidden">
-            <div className="w-7 h-7 rounded-md bg-tennis-green grid place-items-center">
-              <Mono className="text-tennis-lime font-extrabold text-[12px]">c/</Mono>
-            </div>
+            <LogoMark variant="green" />
             <span className="text-ink text-xl font-bold">CoachOS</span>
           </div>
 
