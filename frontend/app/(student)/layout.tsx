@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 
 import { clearAuth, getAuthUser } from "@/lib/auth";
-import { Mono } from "@/components/ui/mono";
+import { LogoMark } from "@/components/ui/logo-mark";
 
 export default function StudentLayout({
   children,
@@ -35,9 +35,7 @@ export default function StudentLayout({
     <div className="min-h-screen bg-canvas flex flex-col">
       <header className="bg-paper border-b border-rule px-6 py-[18px] flex items-center justify-between">
         <Link href="/student/lessons" className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-md bg-tennis-green grid place-items-center">
-            <Mono className="text-tennis-lime font-extrabold text-[13px]">c/</Mono>
-          </div>
+          <LogoMark variant="green" />
           <span className="text-ink font-bold text-[13px]">CoachOS</span>
         </Link>
         <div className="flex items-center gap-3 text-xs text-ink-3">
