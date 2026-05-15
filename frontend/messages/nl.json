@@ -84,6 +84,14 @@
     "lessons_count": "{count} lesmomenten",
     "per_series": "per reeks"
   },
+  "organizationSettings": {
+    "sectionTitle": "Organisatie",
+    "sectionSubtitle": "Algemene instellingen voor deze tennisschool",
+    "adminsActAsTrainersLabel": "Beheerder telt als trainer",
+    "adminsActAsTrainersHelp": "Wanneer ingeschakeld verschijn je als beheerder automatisch in de trainerlijst en kunnen lessen aan jou worden toegewezen. Schakel uit als je puur administratief werkt.",
+    "saveSuccess": "Instellingen opgeslagen",
+    "saveError": "Opslaan mislukt — probeer opnieuw"
+  },
   "tennisClubs": {
     "title": "Tennisclubs",
     "name": "Naam",

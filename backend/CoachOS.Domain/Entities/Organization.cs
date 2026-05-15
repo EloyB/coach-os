@@ -20,4 +20,5 @@ public class Organization : BaseEntity
     // Navigation properties
     public ICollection<LessonSerie> LessonSeries { get; set; } = new List<LessonSerie>();
     public Subscription? Subscription { get; set; }
+    public OrganizationSettings? Settings { get; set; }
 }

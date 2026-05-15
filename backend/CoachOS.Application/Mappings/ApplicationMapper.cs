@@ -1,5 +1,6 @@
 using CoachOS.Application.Enrollments.DTOs;
 using CoachOS.Application.LessonSerie.DTOs;
+using CoachOS.Application.OrganizationSettings.DTOs;
 using CoachOS.Application.StandaloneLessons.DTOs;
 using CoachOS.Application.TennisClubs.DTOs;
 using CoachOS.Domain.Entities;
@@ -145,6 +146,11 @@ public partial class ApplicationMapper
             Name = club.Name,
             Address = club.Address,
         };
+    }
+
+    public OrganizationSettingsDto ToOrganizationSettingsDto(Domain.Entities.OrganizationSettings settings)
+    {
+        return new OrganizationSettingsDto(settings.AdminsActAsTrainers);
     }
 
     public InvitationDto ToInvitationDto(LessonInvitation invitation)

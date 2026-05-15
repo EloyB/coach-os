@@ -51,5 +51,6 @@ export const navItems = [
     href: "/dashboard/settings",
     icon: Settings,
     exact: false,
+    adminOnly: true,
   },
 ];
