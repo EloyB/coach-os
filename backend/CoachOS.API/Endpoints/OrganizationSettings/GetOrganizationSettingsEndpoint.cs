@@ -14,7 +14,8 @@ public class GetOrganizationSettingsEndpoint : IEndpoint
             HttpContext ctx,
             CancellationToken ct) =>
         {
-            Result<OrganizationSettingsDto> result = await service.GetAsync(ctx.GetOrganizationId(), ct);
+            Result<OrganizationSettingsDto> result = await service.GetAsync(
+                ctx.GetOrganizationId(), ctx.GetUserId(), ct);
             return result.IsSuccess ? Results.Ok(result.Value) : result.ToErrorResult();
         })
         .RequireAuthorization(policy => policy.RequireRole("Admin"))

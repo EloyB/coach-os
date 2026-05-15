@@ -148,9 +148,13 @@ public partial class ApplicationMapper
         };
     }
 
-    public OrganizationSettingsDto ToOrganizationSettingsDto(Domain.Entities.OrganizationSettings settings)
+    public OrganizationSettingsDto ToOrganizationSettingsDto(
+        Domain.Entities.OrganizationSettings settings,
+        int currentUserUpcomingLessonsAsTrainer)
     {
-        return new OrganizationSettingsDto(settings.AdminsActAsTrainers);
+        return new OrganizationSettingsDto(
+            settings.AdminsActAsTrainers,
+            currentUserUpcomingLessonsAsTrainer);
     }
 
     public InvitationDto ToInvitationDto(LessonInvitation invitation)

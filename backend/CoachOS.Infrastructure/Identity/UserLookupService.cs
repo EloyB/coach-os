@@ -33,7 +33,7 @@ public class UserLookupService(
     {
         // Tenant-scoped via OrganizationMembership ipv de legacy user.OrganizationId.
         // Admin telt alleen mee als trainer wanneer de org-setting AdminsActAsTrainers aanstaat.
-        bool adminsCount = await AdminsActAsTrainersAsync(organizationId, ct);
+        bool includeAdmins = await AdminsActAsTrainersAsync(organizationId, ct);
 
         var query =
             from m in context.OrganizationMemberships.AsNoTracking()
@@ -41,7 +41,7 @@ public class UserLookupService(
             where m.OrganizationId == organizationId
                   && m.IsActive
                   && u.IsActive
-                  && (m.Role == UserRole.Trainer || (adminsCount && m.Role == UserRole.Admin))
+                  && (m.Role == UserRole.Trainer || (includeAdmins && m.Role == UserRole.Admin))
             orderby u.FirstName, u.LastName
             select new { u.Id, u.FirstName, u.LastName };
 
@@ -53,13 +53,13 @@ public class UserLookupService(
     {
         // Tenant-scoped membership check. Admin telt alleen mee als trainer wanneer de
         // org-setting AdminsActAsTrainers aanstaat.
-        bool adminsCount = await AdminsActAsTrainersAsync(organizationId, ct);
+        bool includeAdmins = await AdminsActAsTrainersAsync(organizationId, ct);
 
         return await context.OrganizationMemberships
             .AsNoTracking()
             .AnyAsync(m => m.UserId == trainerId
                 && m.OrganizationId == organizationId
-                && (m.Role == UserRole.Trainer || (adminsCount && m.Role == UserRole.Admin))
+                && (m.Role == UserRole.Trainer || (includeAdmins && m.Role == UserRole.Admin))
                 && m.IsActive, ct);
     }
 

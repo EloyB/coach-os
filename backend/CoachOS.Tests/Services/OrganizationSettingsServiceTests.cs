@@ -13,17 +13,24 @@ namespace CoachOS.Tests.Services;
 public class OrganizationSettingsServiceTests
 {
     private Mock<IOrganizationSettingsRepository> _repo = null!;
+    private Mock<ILessonRepository> _lessonRepo = null!;
     private ApplicationMapper _mapper = null!;
     private OrganizationSettingsService _sut = null!;
 
     private static readonly Guid OrgId = Guid.NewGuid();
+    private static readonly Guid UserId = Guid.NewGuid();
 
     [SetUp]
     public void SetUp()
     {
         _repo = new Mock<IOrganizationSettingsRepository>();
+        _lessonRepo = new Mock<ILessonRepository>();
+        _lessonRepo
+            .Setup(r => r.CountUpcomingForTrainerAsync(
+                It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(0);
         _mapper = new ApplicationMapper();
-        _sut = new OrganizationSettingsService(_repo.Object, _mapper);
+        _sut = new OrganizationSettingsService(_repo.Object, _lessonRepo.Object, _mapper);
     }
 
     [Test]
@@ -38,7 +45,7 @@ public class OrganizationSettingsServiceTests
         _repo.Setup(r => r.GetByOrganizationAsync(OrgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(existing);
 
-        var result = await _sut.GetAsync(OrgId);
+        var result = await _sut.GetAsync(OrgId, UserId);
 
         result.IsSuccess.Should().BeTrue();
         result.Value!.AdminsActAsTrainers.Should().BeFalse();
@@ -51,7 +58,7 @@ public class OrganizationSettingsServiceTests
         _repo.Setup(r => r.GetByOrganizationAsync(OrgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((OrganizationSettings?)null);
 
-        var result = await _sut.GetAsync(OrgId);
+        var result = await _sut.GetAsync(OrgId, UserId);
 
         result.IsSuccess.Should().BeTrue();
         result.Value!.AdminsActAsTrainers.Should().BeTrue();
@@ -75,12 +82,34 @@ public class OrganizationSettingsServiceTests
 
         UpdateOrganizationSettingsRequest request = new(AdminsActAsTrainers: false);
 
-        var result = await _sut.UpdateAsync(OrgId, request);
+        var result = await _sut.UpdateAsync(OrgId, UserId, request);
 
         result.IsSuccess.Should().BeTrue();
         result.Value!.AdminsActAsTrainers.Should().BeFalse();
         existing.AdminsActAsTrainers.Should().BeFalse();
         _repo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task GetAsync_IncludesUpcomingLessonCountForCurrentUser()
+    {
+        OrganizationSettings existing = new()
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = OrgId,
+            AdminsActAsTrainers = true,
+        };
+        _repo.Setup(r => r.GetByOrganizationAsync(OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existing);
+        _lessonRepo
+            .Setup(r => r.CountUpcomingForTrainerAsync(
+                UserId, OrgId, It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(7);
+
+        var result = await _sut.GetAsync(OrgId, UserId);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.CurrentUserUpcomingLessonsAsTrainer.Should().Be(7);
     }
 
     [Test]
@@ -91,7 +120,7 @@ public class OrganizationSettingsServiceTests
 
         UpdateOrganizationSettingsRequest request = new(AdminsActAsTrainers: false);
 
-        var result = await _sut.UpdateAsync(OrgId, request);
+        var result = await _sut.UpdateAsync(OrgId, UserId, request);
 
         result.IsSuccess.Should().BeTrue();
         result.Value!.AdminsActAsTrainers.Should().BeFalse();

@@ -2,6 +2,7 @@ import apiClient from "@/lib/api-client";
 
 export interface OrganizationSettingsDto {
   adminsActAsTrainers: boolean;
+  currentUserUpcomingLessonsAsTrainer: number;
 }
 
 export interface UpdateOrganizationSettingsRequest {

@@ -17,7 +17,7 @@ public class UpdateOrganizationSettingsEndpoint : IEndpoint
             CancellationToken ct) =>
         {
             Result<OrganizationSettingsDto> result = await service.UpdateAsync(
-                ctx.GetOrganizationId(), request, ct);
+                ctx.GetOrganizationId(), ctx.GetUserId(), request, ct);
             return result.IsSuccess ? Results.Ok(result.Value) : result.ToErrorResult();
         })
         .RequireAuthorization(policy => policy.RequireRole("Admin"))
