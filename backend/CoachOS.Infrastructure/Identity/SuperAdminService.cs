@@ -49,6 +49,18 @@ public class SuperAdminService(
                 IsEarlyBird = request.IsEarlyBird
             };
             context.Organizations.Add(organization);
+
+            // Initialiseer org-settings met defaults — zelfde patroon als AuthService.RegisterAsync.
+            // Voorkomt dat een GET /organization/settings vanuit de FE eerst een lazy
+            // provisioning trip moet doen, en houdt het bestaan van settings expliciet
+            // aan de creatie-transactie gekoppeld.
+            context.OrganizationSettings.Add(new Domain.Entities.OrganizationSettings
+            {
+                Id = Guid.NewGuid(),
+                OrganizationId = organization.Id,
+                AdminsActAsTrainers = true,
+            });
+
             await context.SaveChangesAsync(ct);
 
             var inviteToken = Guid.NewGuid().ToString("N");
