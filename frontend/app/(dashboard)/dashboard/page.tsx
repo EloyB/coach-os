@@ -38,7 +38,12 @@ function severityDotColor(severity: string): string {
 }
 
 function inboxItemHref(item: InboxItemDto): string {
-  if (item.refType === "Series") return `/dashboard/lessons/${item.refId}`;
+  if (item.type === "confirmation_pending") {
+    return `/dashboard/lessons/${item.refId}/planning`;
+  }
+  if (item.type === "series_underbooked") {
+    return `/dashboard/lessons/${item.refId}#enrollments`;
+  }
   if (item.refType === "Student") return `/dashboard/lessons/${item.refId}`;
   return `/dashboard/lessons/${item.refId}`;
 }
