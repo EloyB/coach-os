@@ -3,6 +3,7 @@ import { AutoPlanner } from './compositions/AutoPlanner';
 import { CreateLesreeks } from './compositions/CreateLesreeks';
 import { EnrollmentForm } from './compositions/EnrollmentForm';
 import { StudentEnrollment } from './compositions/StudentEnrollment';
+import { FeatureCarouselFull } from './compositions/FeatureCarouselFull';
 
 // Each composition is one animated clip.
 // Add new compositions here as we build them.
@@ -41,6 +42,14 @@ export const Root: React.FC = () => {
         id="StudentEnrollment"
         component={StudentEnrollment}
         durationInFrames={300}
+        fps={30}
+        width={1080}
+        height={1080}
+      />
+      <Composition
+        id="FeatureCarouselFull"
+        component={FeatureCarouselFull}
+        durationInFrames={1290}
         fps={30}
         width={1080}
         height={1080}

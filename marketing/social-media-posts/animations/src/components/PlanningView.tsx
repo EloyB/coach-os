@@ -146,25 +146,182 @@ export const LessonSeriesDetailHeader: React.FC<DetailHeaderProps> = ({
         Plan lessen
       </button>
     </div>
-    {/* placeholder rows simulating the rest of the detail page */}
+    <EnrollmentList />
+  </div>
+);
+
+// ── Enrollment list (shown on the detail page before "Plan lessen") ────
+
+interface Enrollment {
+  name: string;
+  level: Level;
+  date: string;
+}
+
+const ENROLLMENTS: Enrollment[] = [
+  { name: 'Sven Janssens',    level: 'beginner',     date: '12 mrt' },
+  { name: 'Marit De Smet',    level: 'beginner',     date: '12 mrt' },
+  { name: 'Tom Vermeulen',    level: 'intermediate', date: '13 mrt' },
+  { name: 'Eva Hendrickx',    level: 'intermediate', date: '13 mrt' },
+  { name: 'Lars Peeters',     level: 'expert',       date: '14 mrt' },
+  { name: 'Lieve Goossens',   level: 'expert',       date: '14 mrt' },
+  { name: 'Wout Maes',        level: 'beginner',     date: '15 mrt' },
+  { name: 'Anke Verbeke',     level: 'beginner',     date: '15 mrt' },
+];
+const TOTAL_ENROLLMENTS = 12; // matches the "12 inschrijvingen" subtitle
+const HIDDEN_ROWS = TOTAL_ENROLLMENTS - ENROLLMENTS.length;
+
+const LEVEL_LABEL: Record<Level, string> = {
+  beginner: 'beginner',
+  intermediate: 'gevorderd',
+  expert: 'expert',
+};
+
+const initialsOf = (name: string) =>
+  name
+    .split(' ')
+    .map((part) => part[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+
+const EnrollmentList: React.FC = () => (
+  <div
+    style={{
+      marginTop: 22,
+      background: COLORS.white,
+      borderRadius: 12,
+      border: `1px solid ${COLORS.rule}`,
+      boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+      overflow: 'hidden',
+    }}
+  >
+    {/* Card header */}
     <div
       style={{
-        marginTop: 22,
-        background: COLORS.white,
-        borderRadius: 12,
-        border: `1px solid ${COLORS.rule}`,
-        boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-        padding: 18,
         display: 'flex',
-        flexDirection: 'column',
-        gap: 10,
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '14px 18px',
+        borderBottom: `1px solid ${COLORS.rule}`,
+        fontFamily: FONTS.sans,
       }}
     >
-      <div style={{ height: 12, width: '40%', background: '#eeebe2', borderRadius: 4 }} />
-      <div style={{ height: 10, width: '70%', background: '#f1ede4', borderRadius: 4 }} />
-      <div style={{ height: 10, width: '55%', background: '#f1ede4', borderRadius: 4 }} />
-      <div style={{ height: 10, width: '62%', background: '#f1ede4', borderRadius: 4 }} />
+      <span style={{ fontSize: 13, fontWeight: 600, color: COLORS.ink, letterSpacing: -0.2 }}>
+        Inschrijvingen
+      </span>
+      <span
+        style={{
+          fontFamily: FONTS.mono,
+          fontSize: 11,
+          color: COLORS.ink3,
+          letterSpacing: '0.05em',
+        }}
+      >
+        {TOTAL_ENROLLMENTS} / 24 plekken
+      </span>
     </div>
+
+    {/* Enrollment rows */}
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      {ENROLLMENTS.map((enr, i) => (
+        <div
+          key={enr.name}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            padding: '10px 18px',
+            borderTop: i === 0 ? 'none' : `1px solid ${COLORS.rule}`,
+            fontFamily: FONTS.sans,
+          }}
+        >
+          {/* Avatar */}
+          <div
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: '50%',
+              background: COLORS.tennisGreen,
+              color: COLORS.tennisLime,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 10.5,
+              fontWeight: 700,
+              letterSpacing: 0.3,
+              flexShrink: 0,
+            }}
+          >
+            {initialsOf(enr.name)}
+          </div>
+
+          {/* Name */}
+          <span style={{ flex: 1, fontSize: 12.5, color: COLORS.ink, fontWeight: 500 }}>
+            {enr.name}
+          </span>
+
+          {/* Level chip */}
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 5,
+              padding: '3px 8px',
+              borderRadius: 999,
+              background: COLORS.canvas,
+              fontSize: 10.5,
+              fontWeight: 500,
+              color: COLORS.ink2,
+            }}
+          >
+            <span
+              style={{
+                width: 7,
+                height: 7,
+                borderRadius: '50%',
+                background: LEVEL_COLORS[enr.level],
+                flexShrink: 0,
+              }}
+            />
+            {LEVEL_LABEL[enr.level]}
+          </span>
+
+          {/* Date */}
+          <span
+            style={{
+              fontFamily: FONTS.mono,
+              fontSize: 10.5,
+              color: COLORS.ink3,
+              letterSpacing: '0.02em',
+              minWidth: 52,
+              textAlign: 'right',
+            }}
+          >
+            {enr.date}
+          </span>
+        </div>
+      ))}
+    </div>
+
+    {/* "+N meer" footer hint */}
+    {HIDDEN_ROWS > 0 && (
+      <div
+        style={{
+          padding: '10px 18px',
+          borderTop: `1px solid ${COLORS.rule}`,
+          background: COLORS.canvas,
+          textAlign: 'center',
+          fontFamily: FONTS.mono,
+          fontSize: 10.5,
+          color: COLORS.ink3,
+          letterSpacing: '0.05em',
+        }}
+      >
+        + {HIDDEN_ROWS} meer
+      </div>
+    )}
   </div>
 );
 

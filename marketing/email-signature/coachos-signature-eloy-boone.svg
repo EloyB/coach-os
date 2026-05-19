@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 240" width="540" height="240" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI','Helvetica Neue',Helvetica,Arial,sans-serif">
+  <title>CoachOS — Eloy Boone</title>
+  <!-- Background -->
+  <rect width="540" height="240" fill="#161513"/>
+  
+    <g stroke="#fff" stroke-opacity="0.07" fill="none" stroke-linecap="round">
+      <rect x="36" y="24" width="468" height="192" stroke-width="1.5"/>
+      <line x1="270" y1="24" x2="270" y2="216" stroke-width="2"/>
+      <line x1="145.8" y1="24" x2="145.8" y2="216" stroke-width="0.8"/>
+      <line x1="394.2" y1="24" x2="394.2" y2="216" stroke-width="0.8"/>
+      <line x1="145.8" y1="120" x2="394.2" y2="120" stroke-width="0.8"/>
+      <line x1="266" y1="24" x2="274" y2="24" stroke-width="2"/>
+      <line x1="266" y1="216" x2="274" y2="216" stroke-width="2"/>
+      <circle cx="490" cy="52.8" r="28" stroke-width="0.8"/>
+      <circle cx="490" cy="52.8" r="16" stroke-width="0.8"/>
+    </g>
+  <!-- Lime accent strip (right edge) -->
+  <rect x="534" y="0" width="6" height="240" fill="#D0FF14"/>
+
+  <!-- Logo tile (22, 20) 40×40 -->
+  <rect x="22" y="20" width="40" height="40" rx="7" fill="#D0FF14"/>
+  <g transform="translate(28 26) scale(0.2593)" stroke="#161513" stroke-width="7" fill="none" stroke-linecap="round">
+    <circle cx="54" cy="54" r="28"/>
+    <path d="M 28 54 C 36 42, 44 42, 54 54 C 64 66, 72 66, 80 54"/>
+  </g>
+
+  <!-- Wordmark CoachOS -->
+  <text x="70" y="47" font-size="20" font-weight="700" fill="#ffffff" letter-spacing="-0.4">Coach<tspan fill="#D0FF14">OS</tspan></text>
+
+  <!-- Slash role -->
+  <text x="22" y="87" font-family="ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,monospace" font-size="11" font-weight="700" fill="#D0FF14" letter-spacing="2.4">/FOUNDER</text>
+
+  <!-- Name -->
+  <text x="22" y="117" font-size="24" font-weight="800" fill="#ffffff" letter-spacing="-0.5">Eloy Boone</text>
+
+  <!-- Tagline -->
+  <text x="22" y="137" font-size="13" font-weight="500" fill="#A8A195">Lesplanning, eindelijk eenvoudig.</text>
+
+  <!-- Divider -->
+  <line x1="22" y1="154" x2="518" y2="154" stroke="#2A2826" stroke-width="1"/>
+
+  <!-- CONTACT column -->
+  <text x="22" y="174" font-family="ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,monospace" font-size="10" font-weight="700" fill="#8A8377" letter-spacing="2.2">CONTACT</text>
+  <text x="22" y="193" font-size="13" font-weight="600" fill="#E9E4DB">eloy@coach-os.be</text>
+  <text x="22" y="208" font-family="ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,monospace" font-size="12" font-weight="600" fill="#E9E4DB">+32 478 77 44 97</text>
+
+  <!-- WEB column -->
+  <text x="320" y="174" font-family="ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,monospace" font-size="10" font-weight="700" fill="#8A8377" letter-spacing="2.2">WEB</text>
+  <text x="320" y="193" font-family="ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,monospace" font-size="13" font-weight="700" fill="#E9E4DB">coach-os.be</text>
+</svg>

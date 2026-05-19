@@ -5,10 +5,11 @@
   "description": "Remotion-based MP4 animations for CoachOS Instagram carousels",
   "scripts": {
     "studio": "remotion studio",
-    "render:auto-planner": "remotion render src/index.ts AutoPlanner out/auto-planner.mp4 --codec=h264",
-    "render:create-lessenreeks": "remotion render src/index.ts CreateLesreeks out/create-lessenreeks.mp4 --codec=h264",
-    "render:enrollment-form": "remotion render src/index.ts EnrollmentForm out/enrollment-form.mp4 --codec=h264",
-    "render:student-enrollment": "remotion render src/index.ts StudentEnrollment out/student-enrollment.mp4 --codec=h264",
+    "render:auto-planner": "remotion render src/index.ts AutoPlanner out/auto-planner.mp4 --codec=h264 --scale=2",
+    "render:create-lessenreeks": "remotion render src/index.ts CreateLesreeks out/create-lessenreeks.mp4 --codec=h264 --scale=2",
+    "render:enrollment-form": "remotion render src/index.ts EnrollmentForm out/enrollment-form.mp4 --codec=h264 --scale=2",
+    "render:student-enrollment": "remotion render src/index.ts StudentEnrollment out/student-enrollment.mp4 --codec=h264 --scale=2",
+    "render:feature-carousel-full": "remotion render src/index.ts FeatureCarouselFull out/feature-carousel-full.mp4 --codec=h264 --scale=2",
     "render:all": "npm run render:auto-planner && npm run render:create-lessenreeks && npm run render:enrollment-form && npm run render:student-enrollment"
   },
   "dependencies": {

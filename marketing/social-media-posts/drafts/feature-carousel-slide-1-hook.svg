@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1080" viewBox="0 0 1080 1080">
+  <defs>
+    <style>
+      .sans { font-family: 'Poppins', 'Inter', system-ui, sans-serif; }
+      .mono { font-family: 'DejaVu Sans Mono', 'JetBrains Mono', ui-monospace, monospace; }
+    </style>
+  </defs>
+
+  <!-- Ink background -->
+  <rect width="1080" height="1080" fill="#161513"/>
+
+  <!-- Court pattern (white at 7% opacity) -->
+  <g opacity="0.07" stroke="#ffffff" fill="none">
+    <rect x="90" y="90" width="900" height="850" stroke-width="2.5"/>
+    <line x1="540" y1="90" x2="540" y2="940" stroke-width="3"/>
+    <line x1="285" y1="90" x2="285" y2="940" stroke-width="1.2"/>
+    <line x1="795" y1="90" x2="795" y2="940" stroke-width="1.2"/>
+    <line x1="285" y1="515" x2="795" y2="515" stroke-width="1.2"/>
+    <line x1="533" y1="90" x2="547" y2="90" stroke-width="3"/>
+    <line x1="533" y1="940" x2="547" y2="940" stroke-width="3"/>
+    <circle cx="900" cy="175" r="92" stroke-width="1.2" stroke-opacity="0.7"/>
+    <circle cx="900" cy="175" r="58" stroke-width="1.2" stroke-opacity="0.7"/>
+    <circle cx="90" cy="515" r="7" fill="#ffffff" fill-opacity="0.7" stroke="none"/>
+    <circle cx="990" cy="515" r="7" fill="#ffffff" fill-opacity="0.7" stroke="none"/>
+  </g>
+
+  <!-- Lime monogram tile (top-left) -->
+  <rect x="80" y="80" width="120" height="120" rx="16" fill="#D0FF14"/>
+  <g stroke="#161513" stroke-width="8" fill="none" stroke-linecap="round">
+    <circle cx="140" cy="140" r="32"/>
+    <path d="M 110 140 C 119 127, 128 127, 140 140 C 152 153, 161 153, 170 140"/>
+  </g>
+
+  <!-- Slide indicator (top-right) -->
+  <text x="1000" y="130" class="mono" font-size="22" font-weight="700" fill="#D0FF14" letter-spacing="4.5" text-anchor="end">01 / 05</text>
+
+  <!-- Eyebrow (mono lime, above hero) -->
+  <text x="80" y="430" class="mono" font-size="26" font-weight="700" fill="#D0FF14" letter-spacing="5">/RONDLEIDING</text>
+
+  <!-- Hero — two lines, white with a lime accent on "OS" -->
+  <text x="80" y="585" class="sans" font-weight="800" font-size="140" fill="#ffffff" letter-spacing="-5">Wat kan</text>
+  <text x="80" y="745" class="sans" font-weight="800" font-size="140" fill="#ffffff" letter-spacing="-5">Coach<tspan fill="#D0FF14">OS</tspan>?</text>
+
+  <!-- Lime divider -->
+  <line x1="80" y1="835" x2="1000" y2="835" stroke="#D0FF14" stroke-width="1" stroke-opacity="0.4"/>
+
+  <!-- Subtitle (lime) + SWIPE callout (mono white) -->
+  <text x="86" y="910" class="sans" font-weight="600" font-size="30" fill="#D0FF14" letter-spacing="-0.3">Een lessenreeks in 4 stappen</text>
+  <text x="1000" y="910" class="mono" font-size="24" font-weight="700" fill="#ffffff" letter-spacing="4" text-anchor="end">SWIPE &#8594;</text>
+
+  <!-- Lime accent strip (bottom bleed) -->
+  <rect x="0" y="1032" width="1080" height="48" fill="#D0FF14"/>
+</svg>
