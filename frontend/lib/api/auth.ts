@@ -30,6 +30,17 @@ export async function acceptInvite(request: AcceptInviteRequest): Promise<AuthRe
   return data;
 }
 
+export interface InviteValidation {
+  firstName: string;
+}
+
+export async function validateInvite(token: string): Promise<InviteValidation> {
+  const { data } = await apiClient.get<InviteValidation>(
+    `/auth/invite/${encodeURIComponent(token)}/validate`
+  );
+  return data;
+}
+
 export interface RegisterStudentRequest {
   firstName: string;
   lastName: string;

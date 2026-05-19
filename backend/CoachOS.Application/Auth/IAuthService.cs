@@ -54,4 +54,13 @@ public interface IAuthService
         string token,
         string password,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Valideert een invite-token zonder het te consumeren. Gebruikt door de FE
+    /// om bij page-load te checken of de link nog geldig is — voorkomt dat een
+    /// reeds geaccepteerde invite alsnog het formulier toont.
+    /// </summary>
+    Task<Result<InviteValidationDto>> ValidateInviteTokenAsync(
+        string token,
+        CancellationToken cancellationToken = default);
 }
