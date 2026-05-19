@@ -335,6 +335,26 @@ public class AuthService(
         });
     }
 
+    public async Task<Result<InviteValidationDto>> ValidateInviteTokenAsync(
+        string token,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+            return Result<InviteValidationDto>.Fail("Ongeldige uitnodigingslink");
+
+        var hashedToken = HashToken(token);
+        var user = await userManager.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.InviteToken == hashedToken, cancellationToken);
+
+        if (user is null)
+            return Result<InviteValidationDto>.Fail("Ongeldige uitnodigingslink");
+        if (user.InviteTokenExpiry is null || user.InviteTokenExpiry < DateTime.UtcNow)
+            return Result<InviteValidationDto>.Fail("Uitnodigingslink is verlopen");
+
+        return Result<InviteValidationDto>.Ok(new InviteValidationDto(user.FirstName));
+    }
+
     private static string HashToken(string token)
     {
         var bytes = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(token));
