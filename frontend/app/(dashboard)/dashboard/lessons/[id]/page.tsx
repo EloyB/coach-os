@@ -1312,7 +1312,10 @@ function EnrollmentsSection({ seriesId }: { seriesId: string }) {
   );
 
   return (
-    <div className="bg-white rounded-xl shadow-sm shadow-gray-100 overflow-hidden">
+    <div
+      id="enrollments"
+      className="bg-white rounded-xl shadow-sm shadow-gray-100 overflow-hidden scroll-mt-20"
+    >
       <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <h2 className="text-sm font-semibold text-gray-800">
