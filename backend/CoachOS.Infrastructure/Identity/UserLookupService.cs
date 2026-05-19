@@ -76,10 +76,12 @@ public class UserLookupService(
 
     public async Task<int> CountActiveTrainersAsync(Guid organizationId, CancellationToken ct = default)
     {
+        var includeAdmins = await AdminsActAsTrainersAsync(organizationId, ct);
+
         return await context.OrganizationMemberships
             .AsNoTracking()
             .CountAsync(m => m.OrganizationId == organizationId
-                && m.Role == UserRole.Trainer
+                && (m.Role == UserRole.Trainer || (includeAdmins && m.Role == UserRole.Admin))
                 && m.IsActive, ct);
     }
 

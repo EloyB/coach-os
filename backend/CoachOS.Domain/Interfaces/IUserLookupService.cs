@@ -8,9 +8,9 @@ public interface IUserLookupService
     Task<bool> IsActiveTrainerAsync(Guid trainerId, Guid organizationId, CancellationToken ct = default);
 
     /// <summary>
-    /// Telt actieve memberships in deze organisatie met uitsluitend rol Trainer.
-    /// Admins tellen hier NIET mee, ook al kunnen ze zelf lesgeven — voor dashboard-
-    /// statistieken willen we enkel de "echte" trainers.
+    /// Telt actieve trainer-memberships in deze organisatie.
+    /// Admins tellen mee wanneer AdminsActAsTrainers aan staat, zodat het dashboard-
+    /// cijfer overeenkomt met de trainerslijst die aan de admin getoond wordt.
     /// </summary>
     Task<int> CountActiveTrainersAsync(Guid organizationId, CancellationToken ct = default);
     Task<Dictionary<Guid, (string FullName, string Email)>> GetUserNamesAndEmailsByIdsAsync(IEnumerable<Guid> ids, CancellationToken ct = default);
