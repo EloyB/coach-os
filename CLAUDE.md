@@ -14,6 +14,12 @@ docker-compose up -d                          # PostgreSQL + pgAdmin
 cd backend/CoachOS.API && dotnet run          # API on http://localhost:5142
 cd frontend && bun dev                        # Frontend on http://localhost:5317
 
+# Mollie OAuth lokaal testen (optioneel)
+# Vul MOLLIE_CLIENT_ID + MOLLIE_CLIENT_SECRET in .env (zie .env.example);
+# rebuild dan de backend container zodat de env vars in worden gepikt:
+#   docker-compose up -d --build backend
+# Mollie heeft localhost:5142/api/oauth/mollie/callback al als redirect URI.
+
 # Build
 cd backend && dotnet build CoachOS.slnx
 cd frontend && bun run build

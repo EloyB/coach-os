@@ -45,6 +45,13 @@ services:
       Email__FromName: "CoachOS"
       Email__Username: ""
       Email__Password: ""
+      # Mollie Connect — leeg laten betekent dat de "Verbind met Mollie"-knop
+      # een duidelijke "niet geconfigureerd"-fout teruggeeft. Voor lokaal
+      # testen: zet MOLLIE_CLIENT_ID en MOLLIE_CLIENT_SECRET in .env (zie
+      # .env.example). Mollie heeft localhost:5142/api/oauth/mollie/callback
+      # al als redirect URI geregistreerd voor de Coach OS OAuth app.
+      Mollie__ClientId: "${MOLLIE_CLIENT_ID:-}"
+      Mollie__ClientSecret: "${MOLLIE_CLIENT_SECRET:-}"
     depends_on:
       postgres:
         condition: service_healthy
