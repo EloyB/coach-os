@@ -470,7 +470,30 @@ export default function EnrollPage() {
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <Users className="w-4 h-4 text-gray-400 shrink-0" />
-              <span>{series.enrollmentCount} {t("enrolled").toLowerCase()}</span>
+              {series.maxRegistrations ? (
+                <span>
+                  {t("enrolledOfMax", {
+                    enrolled: series.enrollmentCount,
+                    max: series.maxRegistrations,
+                  })}
+                  {" — "}
+                  <span
+                    className={
+                      series.enrollmentCount >= series.maxRegistrations
+                        ? "text-red-600 font-medium"
+                        : series.enrollmentCount / series.maxRegistrations >= 0.8
+                          ? "text-amber-600 font-medium"
+                          : "text-tennis-green font-medium"
+                    }
+                  >
+                    {t("spotsLeft", {
+                      count: Math.max(0, series.maxRegistrations - series.enrollmentCount),
+                    })}
+                  </span>
+                </span>
+              ) : (
+                <span>{series.enrollmentCount} {t("enrolled").toLowerCase()}</span>
+              )}
             </div>
           </div>
         </div>

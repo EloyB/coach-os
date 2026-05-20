@@ -10,16 +10,25 @@
     "search": "Zoeken"
   },
   "orgSwitcher": {
-    "title": "Wissel van organisatie"
+    "title": "Wissel van organisatie",
+    "label": "Organisatie",
+    "organizationFallback": "Organisatie"
+  },
+  "notFound": {
+    "title": "Pagina niet gevonden",
+    "subtitle": "404",
+    "description": "We konden de pagina die je zocht niet vinden. Mogelijk is hij verplaatst of bestaat hij niet meer.",
+    "backToDashboard": "Terug naar dashboard",
+    "backToHome": "Terug naar home"
   },
   "dashboard": {
     "title": "Vandaag",
     "newLesson": "Nieuwe les",
-    "statLessonsToday": "lessen vandaag",
+    "statLessonsToday": "{count, plural, =0 {lessen vandaag} one {les vandaag} other {lessen vandaag}}",
     "statThisWeek": "deze week",
-    "statEnrollments": "inschrijvingen",
-    "statTrainers": "trainers",
-    "statSeries": "reeksen",
+    "statEnrollments": "{count, plural, =0 {inschrijvingen} one {inschrijving} other {inschrijvingen}}",
+    "statTrainers": "{count, plural, =0 {trainers} one {trainer} other {trainers}}",
+    "statSeries": "{count, plural, =0 {reeksen} one {reeks} other {reeksen}}",
     "priorityEmpty": "Alles onder controle",
     "priorityEmptyDesc": "Bevestigingen, betalingen en bezetting — alles is in orde.",
     "priorityLabel": "/vraagt-actie",
@@ -53,7 +62,7 @@
     "indoor": "Overdekt"
   },
   "lessonSeries": {
-    "title": "Lessen",
+    "title": "Lesreeksen",
     "subtitle": "Beheer je lesreeksen en lesmomenten",
     "create": "Nieuwe lesreeks",
     "empty": "Nog geen lesreeksen",
@@ -110,6 +119,8 @@
   "enrollments": {
     "title": "Inschrijvingen",
     "enrolled": "Ingeschreven",
+    "spotsLeft": "{count, plural, =0 {Volzet} one {Nog 1 plek vrij} other {Nog # plekken vrij}}",
+    "enrolledOfMax": "{enrolled} van {max} ingeschreven",
     "status_confirmed": "Bevestigd",
     "status_cancelled": "Geannuleerd",
     "enroll_success_title": "Ingeschreven!",
@@ -225,8 +236,13 @@
     "conflicts": "Conflicten",
     "enrollments": "inschrijvingen",
     "timeSlots": "tijdsloten",
+    "timeSlotsCount": "{count, plural, =0 {0 tijdsloten} one {1 tijdslot} other {# tijdsloten}}",
+    "enrollmentsCount": "{count, plural, =0 {0 inschrijvingen} one {1 inschrijving} other {# inschrijvingen}}",
+    "spotsCount": "{count, plural, =0 {0 plaatsen} one {1 plaats} other {# plaatsen}}",
     "spots": "plaatsen",
     "noFittingSlot": "Geen passend tijdslot",
+    "noSlotCapacity": "Geen plek meer in passende slots",
+    "noSlotsAvailable": "Geen tijdslot ingesteld",
     "multipleOptions": "Meerdere opties",
     "assignManually": "Handmatig toewijzen",
     "groups": "Groepen",
@@ -427,6 +443,7 @@
     "invitePending": "Uitnodiging verzonden",
     "deactivate": "Deactiveer",
     "remove": "Verwijder",
+    "revokeInvite": "Uitnodiging intrekken",
     "removeTitle": "Trainer verwijderen",
     "removeConfirm": "Weet je zeker dat je {name} wilt verwijderen? Dit kan niet ongedaan worden gemaakt.",
     "removeHasSeries": "{name} heeft {count} lesreeks(en). Wijs deze toe aan een andere trainer voor je verwijdert.",

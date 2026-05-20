@@ -11,6 +11,7 @@ import { Mono } from "@/components/ui/mono";
 import { navItems } from "@/lib/nav-items";
 import { switchOrganization } from "@/lib/api/auth";
 import { getAuthUser, setAuthUser, setToken, clearAuth, type AuthUser } from "@/lib/auth";
+import { getInitials } from "@/lib/utils/initials";
 
 export function DashboardSidebar() {
   const pathname = usePathname();
@@ -71,7 +72,7 @@ export function DashboardSidebar() {
     ? `${user.firstName} ${user.lastName}`.trim() || "Coach"
     : "Coach";
   const initials = user
-    ? `${user.firstName?.[0] ?? ""}${user.lastName?.[0] ?? ""}`.toUpperCase() || "C"
+    ? getInitials(user.firstName, user.lastName)
     : "C";
 
   return (
@@ -87,12 +88,12 @@ export function DashboardSidebar() {
           </span>
         </div>
 
-        {/* Club switcher */}
+        {/* Organisation switcher */}
         {user?.memberships && user.memberships.length > 0 && (() => {
           const activeName =
             user.memberships.find((m) => m.organizationId === user.organizationId)
-              ?.organizationName ?? "Club";
-          const monogram = (activeName[0] ?? "C").toUpperCase();
+              ?.organizationName ?? tSwitcher("organizationFallback");
+          const monogram = getInitials(activeName) || "C";
           const canSwitch = user.memberships.length > 1;
 
           const tileClass =
@@ -106,7 +107,7 @@ export function DashboardSidebar() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[10px] text-white/50 uppercase tracking-[0.08em] m-0">
-                  Club
+                  {tSwitcher("label")}
                 </p>
                 <p className="text-[11.5px] font-semibold text-white m-0 truncate">
                   {activeName}
