@@ -94,20 +94,8 @@ export async function saveEnrollmentForm(seriesId: string, fields: SaveFormField
   return data;
 }
 
-export interface SubmitEnrollmentResponse {
-  enrollmentId: string;
-  /** Mollie hosted-checkout URL voor Immediate-betaling; afwezig bij gratis reeksen of Deferred mode. */
-  checkoutUrl: string | null;
-}
-
-export async function submitEnrollment(
-  seriesId: string,
-  request: SubmitEnrollmentRequest,
-): Promise<SubmitEnrollmentResponse> {
-  const { data } = await apiClient.post<SubmitEnrollmentResponse>(
-    `/public/lessonseries/${seriesId}/enroll`,
-    request,
-  );
+export async function submitEnrollment(seriesId: string, request: SubmitEnrollmentRequest): Promise<string> {
+  const { data } = await apiClient.post<string>(`/public/lessonseries/${seriesId}/enroll`, request);
   return data;
 }
 

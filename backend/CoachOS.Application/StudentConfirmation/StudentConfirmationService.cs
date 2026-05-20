@@ -14,6 +14,7 @@ public class StudentConfirmationService(
     IScheduleAssignmentRepository assignmentRepo,
     ILessonSerieRepository seriesRepo,
     IPaymentRepository paymentRepo,
+    Payments.IPaymentService paymentService,
     ILogger<StudentConfirmationService> logger) : IStudentConfirmationService
 {
     public async Task<Result<AssignmentDetailsDto>> GetByTokenAsync(
@@ -41,10 +42,6 @@ public class StudentConfirmationService(
                 new Error(ErrorCodes.Validation, "Deze bevestiging is al verwerkt."));
 
         var method = (PaymentMethod)request.PaymentMethod;
-        if (method == PaymentMethod.Online)
-            return Result<ConfirmResultDto>.Fail(
-                new Error(ErrorCodes.Validation, "Online betaling is nog niet beschikbaar."));
-
         var assignment = token.ScheduleAssignment;
         var groupSize = assignment.EnrollmentGroupId.HasValue && assignment.EnrollmentGroup is not null
             ? assignment.EnrollmentGroup.Members.Count
@@ -62,28 +59,55 @@ public class StudentConfirmationService(
             return Result<ConfirmResultDto>.Fail(
                 new Error(ErrorCodes.Validation, "Deze bevestiging is al verwerkt."));
 
-        // Cash: mark paid immediately, create Payment(Paid, Cash)
-        Payment payment = new()
-        {
-            OrganizationId = token.OrganizationId,
-            EnrollmentId = token.EnrollmentId,
-            Amount = series.Price * groupSize,
-            Status = PaymentStatus.Paid,
-            Method = PaymentMethod.Cash,
-            PaidAt = DateTime.UtcNow,
-            Description = $"Cash — {series.Name}",
-        };
-        await paymentRepo.AddAsync(payment, ct);
-
         assignment.Status = ScheduleAssignmentStatus.Confirmed;
 
-        ConfirmEnrollmentStatuses(assignment);
+        if (method == PaymentMethod.Cash)
+        {
+            // Cash: meteen als betaald markeren, geen Mollie roundtrip.
+            Payment cashPayment = new()
+            {
+                OrganizationId = token.OrganizationId,
+                EnrollmentId = token.EnrollmentId,
+                Amount = series.Price * groupSize,
+                Status = PaymentStatus.Paid,
+                Method = PaymentMethod.Cash,
+                PaidAt = DateTime.UtcNow,
+                Description = $"Cash — {series.Name}",
+            };
+            await paymentRepo.AddAsync(cashPayment, ct);
+
+            ConfirmEnrollmentStatuses(assignment, EnrollmentStatus.Confirmed);
+            await paymentRepo.SaveChangesAsync(ct);
+
+            await TryFinalizeSeriesAsync(assignment.LessonSerieId, token.OrganizationId, ct);
+            return Result<ConfirmResultDto>.Ok(new ConfirmResultDto { IsConfirmed = true });
+        }
+
+        // Online: enrollment(s) op PendingPayment zetten en Mollie payment maken.
+        // De webhook (of de status-poll vanuit de thank-you-page) flipt enrollment
+        // naar Confirmed bij geslaagde betaling.
+        ConfirmEnrollmentStatuses(assignment, EnrollmentStatus.PendingPayment);
         await paymentRepo.SaveChangesAsync(ct);
 
-        // If this was the last pending token for the series, flip series to Scheduled.
-        await TryFinalizeSeriesAsync(assignment.LessonSerieId, token.OrganizationId, ct);
+        var paymentResult = await paymentService.CreatePaymentForEnrollmentAsync(token.EnrollmentId, ct);
+        if (!paymentResult.IsSuccess)
+        {
+            // Mollie call faalde — bevestiging blijft staan (planning is vast)
+            // maar de student kan vooralsnog niet betalen. Admin kan via de
+            // payments-overview (PR #6) handmatig een betaal-link forceren.
+            logger.LogError(
+                "Mollie payment creation faalde voor enrollment {EnrollmentId} bij online confirm: {Errors}",
+                token.EnrollmentId,
+                string.Join(", ", paymentResult.Errors.Select(e => e.Message)));
+            return Result<ConfirmResultDto>.Fail(paymentResult.Errors);
+        }
 
-        return Result<ConfirmResultDto>.Ok(new ConfirmResultDto { IsConfirmed = true });
+        await TryFinalizeSeriesAsync(assignment.LessonSerieId, token.OrganizationId, ct);
+        return Result<ConfirmResultDto>.Ok(new ConfirmResultDto
+        {
+            IsConfirmed = true,
+            CheckoutUrl = paymentResult.Value!.CheckoutUrl,
+        });
     }
 
     public async Task<Result<List<AvailableSlotDto>>> DeclineAsync(
@@ -132,10 +156,6 @@ public class StudentConfirmationService(
                 new Error(ErrorCodes.Validation, "Kies eerst 'Afwijzen' voordat je een ander tijdslot kiest."));
 
         var method = (PaymentMethod)request.PaymentMethod;
-        if (method == PaymentMethod.Online)
-            return Result<ConfirmResultDto>.Fail(
-                new Error(ErrorCodes.Validation, "Online betaling is nog niet beschikbaar."));
-
         var oldAssignment = token.ScheduleAssignment;
         var series = await seriesRepo.GetByIdAsync(oldAssignment.LessonSerieId, token.OrganizationId, ct);
         if (series is null)
@@ -188,24 +208,47 @@ public class StudentConfirmationService(
         };
         await assignmentRepo.AddRangeAsync([newAssignment], ct);
 
-        Payment payment = new()
+        if (method == PaymentMethod.Cash)
         {
-            OrganizationId = token.OrganizationId,
-            EnrollmentId = token.EnrollmentId,
-            Amount = series.Price * groupSize,
-            Status = PaymentStatus.Paid,
-            Method = PaymentMethod.Cash,
-            PaidAt = DateTime.UtcNow,
-            Description = $"Cash (alternatief) — {series.Name}",
-        };
-        await paymentRepo.AddAsync(payment, ct);
+            Payment cashPayment = new()
+            {
+                OrganizationId = token.OrganizationId,
+                EnrollmentId = token.EnrollmentId,
+                Amount = series.Price * groupSize,
+                Status = PaymentStatus.Paid,
+                Method = PaymentMethod.Cash,
+                PaidAt = DateTime.UtcNow,
+                Description = $"Cash (alternatief) — {series.Name}",
+            };
+            await paymentRepo.AddAsync(cashPayment, ct);
 
-        ConfirmEnrollmentStatuses(oldAssignment);
+            ConfirmEnrollmentStatuses(oldAssignment, EnrollmentStatus.Confirmed);
+            await paymentRepo.SaveChangesAsync(ct);
+
+            await TryFinalizeSeriesAsync(oldAssignment.LessonSerieId, token.OrganizationId, ct);
+            return Result<ConfirmResultDto>.Ok(new ConfirmResultDto { IsConfirmed = true });
+        }
+
+        // Online: zelfde flow als ConfirmAsync — PendingPayment + Mollie checkout.
+        ConfirmEnrollmentStatuses(oldAssignment, EnrollmentStatus.PendingPayment);
         await paymentRepo.SaveChangesAsync(ct);
 
-        await TryFinalizeSeriesAsync(oldAssignment.LessonSerieId, token.OrganizationId, ct);
+        var paymentResult = await paymentService.CreatePaymentForEnrollmentAsync(token.EnrollmentId, ct);
+        if (!paymentResult.IsSuccess)
+        {
+            logger.LogError(
+                "Mollie payment creation faalde voor enrollment {EnrollmentId} bij pick-alternative online: {Errors}",
+                token.EnrollmentId,
+                string.Join(", ", paymentResult.Errors.Select(e => e.Message)));
+            return Result<ConfirmResultDto>.Fail(paymentResult.Errors);
+        }
 
-        return Result<ConfirmResultDto>.Ok(new ConfirmResultDto { IsConfirmed = true });
+        await TryFinalizeSeriesAsync(oldAssignment.LessonSerieId, token.OrganizationId, ct);
+        return Result<ConfirmResultDto>.Ok(new ConfirmResultDto
+        {
+            IsConfirmed = true,
+            CheckoutUrl = paymentResult.Value!.CheckoutUrl,
+        });
     }
 
     public async Task<Result<string>> GenerateCalendarAsync(
@@ -417,16 +460,16 @@ public class StudentConfirmationService(
         }
     }
 
-    private static void ConfirmEnrollmentStatuses(ScheduleAssignment assignment)
+    private static void ConfirmEnrollmentStatuses(ScheduleAssignment assignment, EnrollmentStatus newStatus)
     {
         if (assignment.EnrollmentGroupId.HasValue && assignment.EnrollmentGroup is not null)
         {
             foreach (var member in assignment.EnrollmentGroup.Members)
-                member.Status = EnrollmentStatus.Confirmed;
+                member.Status = newStatus;
         }
         else if (assignment.Enrollment is not null)
         {
-            assignment.Enrollment.Status = EnrollmentStatus.Confirmed;
+            assignment.Enrollment.Status = newStatus;
         }
     }
 

@@ -72,6 +72,9 @@ export default function ConfirmationPage({
   const [availableSlots, setAvailableSlots] = useState<AvailableSlotDto[]>([]);
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
   const [movedSlotLabel, setMovedSlotLabel] = useState("");
+  // 1 = Online (Mollie), 2 = Cash. Default Cash zodat clubs zonder Mollie-
+  // koppeling de bestaande flow blijven krijgen.
+  const [paymentMethod, setPaymentMethod] = useState<1 | 2>(2);
 
   useEffect(() => {
     async function load() {
@@ -93,7 +96,12 @@ export default function ConfirmationPage({
     setSubmitting(true);
     setSubmitError(null);
     try {
-      const result = await confirmAssignment(token, 2, window.location.origin + "/confirmation/done");
+      const result = await confirmAssignment(token, paymentMethod, window.location.origin + "/confirmation/done");
+      // Online → BE creëerde een Mollie payment; redirect naar de checkout URL.
+      if (result.checkoutUrl) {
+        window.location.href = result.checkoutUrl;
+        return;
+      }
       if (result.isConfirmed) setStep("success");
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
@@ -124,7 +132,11 @@ export default function ConfirmationPage({
     setSubmitError(null);
     try {
       const slot = availableSlots.find((s) => s.weeklyTemplateEntryId === selectedSlotId);
-      const result = await pickAlternativeSlot(token, selectedSlotId, 2, window.location.origin + "/confirmation/done");
+      const result = await pickAlternativeSlot(token, selectedSlotId, paymentMethod, window.location.origin + "/confirmation/done");
+      if (result.checkoutUrl) {
+        window.location.href = result.checkoutUrl;
+        return;
+      }
       if (result.isConfirmed) {
         setMovedSlotLabel(slot ? `${DAY_NAMES[slot.dayOfWeek]} ${slot.startTime}` : "");
         setStep("moved");
@@ -325,12 +337,43 @@ export default function ConfirmationPage({
           <div className="px-6 pb-[18px]">
             <SlashLabel className="mb-2.5">/betaal</SlashLabel>
             <div className="space-y-2">
-              <label className="flex items-center gap-3 p-3.5 border-2 border-tennis-green bg-tennis-green/[.04] rounded-[10px] cursor-pointer">
-                <div className="w-4 h-4 rounded-full border-[5px] border-tennis-green bg-white" />
+              <button
+                type="button"
+                onClick={() => setPaymentMethod(2)}
+                className={`w-full flex items-center gap-3 p-3.5 border-2 rounded-[10px] text-left transition-colors ${
+                  paymentMethod === 2
+                    ? "border-tennis-green bg-tennis-green/[.04]"
+                    : "border-rule bg-white hover:border-gray-300"
+                }`}
+              >
+                <div
+                  className={`w-4 h-4 rounded-full border-[5px] bg-white ${
+                    paymentMethod === 2 ? "border-tennis-green" : "border-gray-300"
+                  }`}
+                />
                 <div className="flex-1">
                   <div className="text-[13px] font-semibold text-ink">{t("cash")}</div>
                 </div>
-              </label>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPaymentMethod(1)}
+                className={`w-full flex items-center gap-3 p-3.5 border-2 rounded-[10px] text-left transition-colors ${
+                  paymentMethod === 1
+                    ? "border-tennis-green bg-tennis-green/[.04]"
+                    : "border-rule bg-white hover:border-gray-300"
+                }`}
+              >
+                <div
+                  className={`w-4 h-4 rounded-full border-[5px] bg-white ${
+                    paymentMethod === 1 ? "border-tennis-green" : "border-gray-300"
+                  }`}
+                />
+                <div className="flex-1">
+                  <div className="text-[13px] font-semibold text-ink">{t("online")}</div>
+                  <div className="text-[11px] text-gray-500 mt-0.5">{t("onlineHelp")}</div>
+                </div>
+              </button>
             </div>
           </div>
         )}

@@ -17,7 +17,7 @@ public interface IEnrollmentService
     Task<Result<Guid>> SaveFormAsync(
         Guid lessonSeriesId, Guid organizationId, SaveEnrollmentFormRequest request, CancellationToken ct = default);
 
-    Task<Result<SubmitEnrollmentResponse>> SubmitEnrollmentAsync(
+    Task<Result<Guid>> SubmitEnrollmentAsync(
         Guid lessonSeriesId, SubmitEnrollmentRequest request, CancellationToken ct = default);
 
     Task<Result<List<PublicTimeSlotDto>>> GetPublicTimeSlotsAsync(

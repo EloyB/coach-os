@@ -19,7 +19,6 @@ public class EnrollmentService(
     ITimeSlotPreferenceRepository timeSlotPreferenceRepo,
     IUserLookupService userLookup,
     IEmailService emailService,
-    Payments.IPaymentService paymentService,
     ApplicationMapper mapper,
     ILogger<EnrollmentService> logger) : IEnrollmentService
 {
@@ -189,17 +188,17 @@ public class EnrollmentService(
         return Result<Guid>.Ok(form.Id);
     }
 
-    public async Task<Result<SubmitEnrollmentResponse>> SubmitEnrollmentAsync(
+    public async Task<Result<Guid>> SubmitEnrollmentAsync(
         Guid lessonSeriesId, SubmitEnrollmentRequest request, CancellationToken ct = default)
     {
         // 1. Load active lesson series
         var series = await lessonSeriesRepo.GetByIdPublicAsync(lessonSeriesId, ct);
         if (series is null)
-            return Result<SubmitEnrollmentResponse>.Fail(new Error(ErrorCodes.NotFound, "Lessenreeks niet gevonden."));
+            return Result<Guid>.Fail(new Error(ErrorCodes.NotFound, "Lessenreeks niet gevonden."));
 
         // 2. Registration deadline check
         if (DateTime.UtcNow > series.RegistrationDeadline)
-            return Result<SubmitEnrollmentResponse>.Fail(
+            return Result<Guid>.Fail(
                 new Error(ErrorCodes.Validation, "De inschrijvingsdeadline is verstreken."));
 
         // 3. Load enrollment form with fields (may be null)
@@ -214,7 +213,7 @@ public class EnrollmentService(
             foreach (var response in request.Responses)
             {
                 if (!formFieldIds.Contains(response.FormFieldId))
-                    return Result<SubmitEnrollmentResponse>.Fail(
+                    return Result<Guid>.Fail(
                         new Error(ErrorCodes.Validation, "Ongeldig formulierveld."));
             }
 
@@ -229,7 +228,7 @@ public class EnrollmentService(
                     r.FormFieldId == requiredField.Id && !string.IsNullOrWhiteSpace(r.Value));
 
                 if (!hasResponse)
-                    return Result<SubmitEnrollmentResponse>.Fail(
+                    return Result<Guid>.Fail(
                         new Error(ErrorCodes.Validation, $"Veld '{requiredField.Label}' is verplicht."));
             }
         }
@@ -237,15 +236,6 @@ public class EnrollmentService(
         var groupSize = request.EnrollmentType == "group" && request.GroupMembers is not null
             ? request.GroupMembers.Count + 1
             : 1;
-
-        // Bepaal vooraf of deze reeks Immediate payment vereist; de waarde
-        // wordt zowel binnen de transactie (initialStatus) als erna (email skip
-        // + payment trigger) gebruikt.
-        bool requiresImmediatePayment =
-            series.PaymentMode == PaymentMode.Immediate && series.Price > 0m;
-        EnrollmentStatus initialStatus = requiresImmediatePayment
-            ? EnrollmentStatus.PendingPayment
-            : EnrollmentStatus.Pending;
 
         // 5. Begin SERIALIZABLE transaction: capacity + duplicate checks moeten ATOMIC zijn
         //    met de insert, anders kunnen twee parallelle submitters beide de check passeren
@@ -261,7 +251,7 @@ public class EnrollmentService(
                 if (activeCount + groupSize > series.MaxRegistrations.Value)
                 {
                     await enrollmentRepo.RollbackTransactionAsync(ct);
-                    return Result<SubmitEnrollmentResponse>.Fail(
+                    return Result<Guid>.Fail(
                         new Error(ErrorCodes.Conflict, "Deze lessenreeks is volzet."));
                 }
             }
@@ -271,14 +261,13 @@ public class EnrollmentService(
             if (isDuplicate)
             {
                 await enrollmentRepo.RollbackTransactionAsync(ct);
-                return Result<SubmitEnrollmentResponse>.Fail(
+                return Result<Guid>.Fail(
                     new Error(ErrorCodes.Conflict, "Je bent al ingeschreven voor deze lessenreeks."));
             }
 
-        // 8. Create enrollment.
-        // Immediate-payment reeksen blijven op PendingPayment tot de Mollie
-        // webhook bevestigt dat het geld binnen is; pas dan zet PaymentService
-        // de status op Confirmed en stuurt de bevestigingsmail.
+        // 8. Create enrollment. Status blijft Pending tot de student via de
+        //    confirmation-mail bevestigt — Mollie payment wordt dan getriggerd
+        //    door StudentConfirmationService, niet hier.
         enrollment = new()
         {
             OrganizationId = series.OrganizationId,
@@ -286,7 +275,7 @@ public class EnrollmentService(
             StudentName = request.StudentName,
             StudentEmail = request.StudentEmail,
             StudentPhone = request.StudentPhone,
-            Status = initialStatus,
+            Status = EnrollmentStatus.Pending,
             EnrolledAt = DateTime.UtcNow,
             IsOpenToGrouping = request.IsOpenToGrouping,
         };
@@ -339,9 +328,7 @@ public class EnrollmentService(
                     StudentName = member.StudentName,
                     StudentEmail = member.StudentEmail,
                     StudentPhone = member.StudentPhone,
-                    // Groepsleden volgen de leader: PendingPayment tot één
-                    // betaling (door de leader) binnen is, daarna allemaal Confirmed.
-                    Status = initialStatus,
+                    Status = EnrollmentStatus.Pending,
                     EnrolledAt = DateTime.UtcNow,
                     EnrollmentGroupId = group.Id,
                 };
@@ -388,15 +375,10 @@ public class EnrollmentService(
         {
             await enrollmentRepo.RollbackTransactionAsync(ct);
             logger.LogError(ex, "Inschrijving mislukt voor reeks {SeriesId}", lessonSeriesId);
-            return Result<SubmitEnrollmentResponse>.Fail(new Error(ErrorCodes.Unexpected, "Inschrijving mislukt. Probeer het opnieuw."));
+            return Result<Guid>.Fail(new Error(ErrorCodes.Unexpected, "Inschrijving mislukt. Probeer het opnieuw."));
         }
 
-        // 13. Send notification emails (fire-and-forget in try/catch).
-        // Skip de e-mails voor Immediate-mode: de bevestigingsmail wordt door
-        // PaymentService verzonden zodra de Mollie webhook bevestigt dat de
-        // betaling geslaagd is. Anders krijgen leerlingen een "je bent
-        // ingeschreven"-mail terwijl de betaling nog niet binnen is.
-        if (!requiresImmediatePayment)
+        // 13. Send notification emails (fire-and-forget in try/catch)
         try
         {
             var firstTrainerId = series.Lessons
@@ -467,30 +449,7 @@ public class EnrollmentService(
             logger.LogError(ex, "E-mailnotificatie mislukt voor inschrijving {EnrollmentId}", enrollment.Id);
         }
 
-        // 14. Immediate-mode: creëer Mollie payment NA de transactie-commit.
-        //     Faalt de payment creation (bv. club niet aan Mollie gekoppeld),
-        //     dan blijft de enrollment in PendingPayment staan — admin kan dan
-        //     de status of betaal-link manueel afhandelen via de payments
-        //     overview (PR #6). De rest van de inschrijving (form responses,
-        //     groepering, preferences) is veilig opgeslagen.
-        string? checkoutUrl = null;
-        if (requiresImmediatePayment)
-        {
-            var paymentResult = await paymentService.CreatePaymentForEnrollmentAsync(enrollment.Id, ct);
-            if (paymentResult.IsSuccess)
-            {
-                checkoutUrl = paymentResult.Value!.CheckoutUrl;
-            }
-            else
-            {
-                logger.LogError(
-                    "Mollie payment creation faalde voor inschrijving {EnrollmentId}: {Errors}",
-                    enrollment.Id,
-                    string.Join(", ", paymentResult.Errors.Select(e => e.Message)));
-            }
-        }
-
-        return Result<SubmitEnrollmentResponse>.Ok(new SubmitEnrollmentResponse(enrollment.Id, checkoutUrl));
+        return Result<Guid>.Ok(enrollment.Id);
     }
 
     public async Task<Result<List<PublicTimeSlotDto>>> GetPublicTimeSlotsAsync(
