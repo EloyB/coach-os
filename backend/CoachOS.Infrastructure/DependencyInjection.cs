@@ -1,14 +1,18 @@
 using CoachOS.Application.Auth;
 using CoachOS.Application.Configuration;
+using CoachOS.Application.MollieConnect;
 using CoachOS.Application.StudentAuth;
 using CoachOS.Application.SuperAdmin;
 using CoachOS.Application.Trainers;
 using CoachOS.Domain.Interfaces;
 using CoachOS.Infrastructure.Email;
 using CoachOS.Infrastructure.Identity;
+using CoachOS.Infrastructure.Mollie;
 using CoachOS.Infrastructure.MultiTenancy;
 using CoachOS.Infrastructure.Persistence;
 using CoachOS.Infrastructure.Repositories;
+using CoachOS.Infrastructure.Security;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -52,6 +56,26 @@ public static class DependencyInjection
 
         services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.Section));
         services.Configure<AppOptions>(configuration.GetSection(AppOptions.Section));
+        services.Configure<MollieOptions>(configuration.GetSection(MollieOptions.Section));
+
+        // TimeProvider is in .NET 8+ ingebouwd; testen kunnen FakeTimeProvider injecteren.
+        services.AddSingleton(TimeProvider.System);
+
+        // DataProtection sleutels persisteren naar disk zodat container-restarts
+        // bestaande versleutelde Mollie tokens niet onleesbaar maken. Path is
+        // configureerbaar via DataProtection:KeyDirectory; default is een vaste
+        // map die in productie via een persistent volume gemount moet worden.
+        string keyDirectory = configuration["DataProtection:KeyDirectory"]
+                              ?? configuration["DataProtection__KeyDirectory"]
+                              ?? Path.Combine(Path.GetTempPath(), "coachos-data-protection-keys");
+        Directory.CreateDirectory(keyDirectory);
+        services.AddDataProtection()
+            .SetApplicationName("CoachOS")
+            .PersistKeysToFileSystem(new DirectoryInfo(keyDirectory));
+
+        services.AddHttpClient<IMollieClient, MollieClient>();
+        services.AddScoped<ITokenProtector, DataProtectionTokenProtector>();
+        services.AddScoped<IMollieConnectService, MollieConnectService>();
 
         services.AddScoped<TenantContext>();
         services.AddScoped<ITenantContext>(sp => sp.GetRequiredService<TenantContext>());
@@ -80,6 +104,7 @@ public static class DependencyInjection
         services.AddScoped<ILessonInvitationRepository, LessonInvitationRepository>();
         services.AddScoped<IOrganizationSettingsRepository, OrganizationSettingsRepository>();
         services.AddScoped<IMollieConnectionRepository, MollieConnectionRepository>();
+        services.AddScoped<IOAuthStateRepository, OAuthStateRepository>();
 
         return services;
     }

@@ -31,6 +31,7 @@ public static class ResultExtensions
             ErrorCodes.Forbidden => StatusCodes.Status403Forbidden,
             ErrorCodes.Conflict => StatusCodes.Status409Conflict,
             ErrorCodes.Unexpected => StatusCodes.Status500InternalServerError,
+            ErrorCodes.ExternalService => StatusCodes.Status502BadGateway,
             _ => StatusCodes.Status400BadRequest,
         };
     }
