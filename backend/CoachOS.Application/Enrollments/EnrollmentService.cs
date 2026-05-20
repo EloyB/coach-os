@@ -241,9 +241,9 @@ public class EnrollmentService(
         //    met de insert, anders kunnen twee parallelle submitters beide de check passeren
         //    en samen MaxRegistrations overschrijden of een duplicate email creëren.
         Enrollment enrollment;
-        await enrollmentRepo.BeginTransactionAsync(IsolationLevel.Serializable, ct);
         try
         {
+            await enrollmentRepo.BeginTransactionAsync(IsolationLevel.Serializable, ct);
             // 6. Capacity check INSIDE transaction (accounts for group size)
             if (series.MaxRegistrations.HasValue)
             {
