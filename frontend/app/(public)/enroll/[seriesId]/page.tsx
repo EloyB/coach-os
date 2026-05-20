@@ -244,7 +244,7 @@ export default function EnrollPage() {
         })
       );
 
-      await submitEnrollment(seriesId, {
+      const response = await submitEnrollment(seriesId, {
         studentName: `${firstName.trim()} ${lastName.trim()}`,
         studentEmail: email.trim(),
         studentPhone: phone.trim() || undefined,
@@ -262,6 +262,14 @@ export default function EnrollPage() {
               }))
             : undefined,
       });
+
+      // Immediate-payment reeksen → direct door naar Mollie checkout (Mollie
+      // redirect daarna terug naar /enrollment/thank-you, ge­ïmplementeerd in
+      // PR #5). Andere reeksen blijven op de bevestigingsstate.
+      if (response.checkoutUrl) {
+        window.location.href = response.checkoutUrl;
+        return;
+      }
       setSubmitted(true);
     } catch {
       setSubmitError(t("form_error"));

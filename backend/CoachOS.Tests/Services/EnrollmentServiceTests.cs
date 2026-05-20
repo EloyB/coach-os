@@ -22,6 +22,7 @@ public class EnrollmentServiceTests
     private Mock<ITimeSlotPreferenceRepository> _timeSlotPreferenceRepo = null!;
     private Mock<IUserLookupService> _userLookup = null!;
     private Mock<IEmailService> _emailService = null!;
+    private Mock<CoachOS.Application.Payments.IPaymentService> _paymentService = null!;
     private ApplicationMapper _mapper = null!;
     private Mock<ILogger<EnrollmentService>> _logger = null!;
     private EnrollmentService _service = null!;
@@ -40,6 +41,14 @@ public class EnrollmentServiceTests
         _timeSlotPreferenceRepo = new Mock<ITimeSlotPreferenceRepository>();
         _userLookup = new Mock<IUserLookupService>();
         _emailService = new Mock<IEmailService>();
+        _paymentService = new Mock<CoachOS.Application.Payments.IPaymentService>();
+        // Default: doe alsof er geen Mollie-koppeling is. Bestaande tests verifiëren
+        // de enrollment-flow, niet de payment-creatie — door fail terug te geven
+        // blijft de enrollment in PendingPayment maar de assertions slagen verder.
+        _paymentService
+            .Setup(p => p.CreatePaymentForEnrollmentAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CoachOS.Domain.Models.Result<CoachOS.Application.Payments.DTOs.CreatePaymentResultDto>
+                .Fail(new CoachOS.Domain.Models.Error(CoachOS.Domain.Models.ErrorCodes.NotFound, "geen mollie koppeling")));
         _mapper = new ApplicationMapper();
         _logger = new Mock<ILogger<EnrollmentService>>();
 
@@ -51,6 +60,7 @@ public class EnrollmentServiceTests
             _timeSlotPreferenceRepo.Object,
             _userLookup.Object,
             _emailService.Object,
+            _paymentService.Object,
             _mapper,
             _logger.Object);
     }

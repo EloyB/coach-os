@@ -3,9 +3,8 @@ using CoachOS.Domain.Models;
 namespace CoachOS.Domain.Interfaces;
 
 /// <summary>
-/// Mollie REST API wrapper. Hier zijn enkel de calls nodig voor OAuth onboarding
-/// (PR #2). Payment-gerelateerde calls (<c>CreatePaymentAsync</c>,
-/// <c>GetPaymentAsync</c>) komen in PR #4.
+/// Mollie REST API wrapper. Bevat de OAuth onboarding calls (PR #2) en de
+/// payment lifecycle calls (PR #4).
 /// </summary>
 public interface IMollieClient
 {
@@ -29,6 +28,24 @@ public interface IMollieClient
     Task<Result> RevokeRefreshTokenAsync(
         string refreshToken,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Creëert een Mollie payment op het account van de met OAuth gekoppelde organisatie.
+    /// <paramref name="accessToken"/> is de Bearer token van die organisatie.
+    /// </summary>
+    Task<Result<MolliePaymentCreatedResponse>> CreatePaymentAsync(
+        string accessToken,
+        MolliePaymentRequest request,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Haalt de authoritative status van een payment op (<c>GET /v2/payments/{id}</c>).
+    /// Webhook-handler én polling-endpoints gebruiken deze om de Payment-rij bij te werken.
+    /// </summary>
+    Task<Result<MolliePaymentSnapshot>> GetPaymentAsync(
+        string accessToken,
+        string paymentId,
+        CancellationToken ct = default);
 }
 
 /// <summary>Antwoord van Mollie's <c>POST /oauth2/tokens</c>.</summary>
@@ -43,3 +60,37 @@ public sealed record MollieTokenResponse(
 public sealed record MollieOrganizationInfo(
     string Id,
     string Name);
+
+/// <summary>
+/// Request voor <c>POST /v2/payments</c>. Bedragen worden naar strings in het door
+/// Mollie verwachte formaat (<c>"50.00"</c>) geserialiseerd door <see cref="IMollieClient"/>.
+/// </summary>
+public sealed record MolliePaymentRequest(
+    decimal Amount,
+    string Currency,
+    string Description,
+    string RedirectUrl,
+    string? WebhookUrl,
+    decimal? ApplicationFee,
+    string? ApplicationFeeDescription,
+    IReadOnlyDictionary<string, string>? Metadata);
+
+/// <summary>Resultaat van een succesvolle payment creation.</summary>
+public sealed record MolliePaymentCreatedResponse(
+    string Id,
+    string Status,
+    string CheckoutUrl);
+
+/// <summary>
+/// Snapshot van <c>GET /v2/payments/{id}</c>. <see cref="Status"/> matcht Mollie's
+/// statussen (<c>open</c>, <c>pending</c>, <c>authorized</c>, <c>paid</c>,
+/// <c>canceled</c>, <c>expired</c>, <c>failed</c>).
+/// </summary>
+public sealed record MolliePaymentSnapshot(
+    string Id,
+    string Status,
+    decimal Amount,
+    string Currency,
+    DateTime? PaidAt,
+    string? Method,
+    string? FailureReason);

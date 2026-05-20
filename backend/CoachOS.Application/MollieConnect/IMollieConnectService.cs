@@ -31,4 +31,12 @@ public interface IMollieConnectService
 
     /// <summary>Read-only status-check; gebruikt door de admin settings-pagina.</summary>
     Task<Result<MollieConnectionStatusDto>> GetStatusAsync(Guid organizationId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Geeft een geldig (niet-verlopen) access token voor de gegeven org. Vernieuwt
+    /// het token proactief wanneer het binnen 5 minuten verloopt en slaat de
+    /// nieuwe versleutelde tokens op. Returneert <c>NotFound</c> als de org niet
+    /// aan Mollie is gekoppeld.
+    /// </summary>
+    Task<Result<string>> GetValidAccessTokenAsync(Guid organizationId, CancellationToken ct = default);
 }

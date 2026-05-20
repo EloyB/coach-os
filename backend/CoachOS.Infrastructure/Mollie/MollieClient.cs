@@ -127,6 +127,141 @@ public class MollieClient(
         }
     }
 
+    public async Task<Result<MolliePaymentCreatedResponse>> CreatePaymentAsync(
+        string accessToken,
+        MolliePaymentRequest paymentRequest,
+        CancellationToken ct = default)
+    {
+        using HttpRequestMessage request = new(HttpMethod.Post, $"{_options.ApiBaseUrl}/v2/payments");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+        object payload = BuildPaymentPayload(paymentRequest);
+        request.Content = JsonContent.Create(payload);
+
+        try
+        {
+            using HttpResponseMessage response = await httpClient.SendAsync(request, ct);
+            if (!response.IsSuccessStatusCode)
+            {
+                string body = await response.Content.ReadAsStringAsync(ct);
+                logger.LogWarning("Mollie POST /v2/payments gaf {Status}: {Body}", (int)response.StatusCode, body);
+                return Result<MolliePaymentCreatedResponse>.Fail(new Error(
+                    ErrorCodes.ExternalService,
+                    "Kon de Mollie betaling niet aanmaken."));
+            }
+
+            MolliePaymentApiResponse? payload2 = await response.Content.ReadFromJsonAsync<MolliePaymentApiResponse>(JsonOptions, ct);
+            if (payload2 is null || string.IsNullOrEmpty(payload2.Id))
+            {
+                return Result<MolliePaymentCreatedResponse>.Fail(new Error(
+                    ErrorCodes.ExternalService,
+                    "Mollie gaf een leeg payment-antwoord."));
+            }
+
+            string? checkoutUrl = payload2.Links?.Checkout?.Href;
+            if (string.IsNullOrEmpty(checkoutUrl))
+            {
+                return Result<MolliePaymentCreatedResponse>.Fail(new Error(
+                    ErrorCodes.ExternalService,
+                    "Mollie payment-antwoord mist checkout URL."));
+            }
+
+            return Result<MolliePaymentCreatedResponse>.Ok(new MolliePaymentCreatedResponse(
+                payload2.Id,
+                payload2.Status ?? "open",
+                checkoutUrl));
+        }
+        catch (HttpRequestException ex)
+        {
+            logger.LogError(ex, "Netwerkfout bij Mollie POST /v2/payments");
+            return Result<MolliePaymentCreatedResponse>.Fail(new Error(
+                ErrorCodes.ExternalService,
+                "Kon Mollie niet bereiken."));
+        }
+    }
+
+    public async Task<Result<MolliePaymentSnapshot>> GetPaymentAsync(
+        string accessToken,
+        string paymentId,
+        CancellationToken ct = default)
+    {
+        using HttpRequestMessage request = new(HttpMethod.Get, $"{_options.ApiBaseUrl}/v2/payments/{paymentId}");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+        try
+        {
+            using HttpResponseMessage response = await httpClient.SendAsync(request, ct);
+            if (!response.IsSuccessStatusCode)
+            {
+                string body = await response.Content.ReadAsStringAsync(ct);
+                logger.LogWarning("Mollie GET /v2/payments/{Id} gaf {Status}: {Body}", paymentId, (int)response.StatusCode, body);
+                return Result<MolliePaymentSnapshot>.Fail(new Error(
+                    ErrorCodes.ExternalService,
+                    "Kon Mollie payment status niet ophalen."));
+            }
+
+            MolliePaymentApiResponse? payload = await response.Content.ReadFromJsonAsync<MolliePaymentApiResponse>(JsonOptions, ct);
+            if (payload is null || string.IsNullOrEmpty(payload.Id))
+            {
+                return Result<MolliePaymentSnapshot>.Fail(new Error(
+                    ErrorCodes.ExternalService,
+                    "Mollie gaf een leeg payment-antwoord."));
+            }
+
+            decimal amount = decimal.TryParse(payload.Amount?.Value, System.Globalization.CultureInfo.InvariantCulture, out decimal a) ? a : 0m;
+            string currency = payload.Amount?.Currency ?? "EUR";
+
+            return Result<MolliePaymentSnapshot>.Ok(new MolliePaymentSnapshot(
+                payload.Id,
+                payload.Status ?? "open",
+                amount,
+                currency,
+                payload.PaidAt,
+                payload.Method,
+                payload.Details?.FailureReason));
+        }
+        catch (HttpRequestException ex)
+        {
+            logger.LogError(ex, "Netwerkfout bij Mollie GET /v2/payments/{Id}", paymentId);
+            return Result<MolliePaymentSnapshot>.Fail(new Error(
+                ErrorCodes.ExternalService,
+                "Kon Mollie niet bereiken."));
+        }
+    }
+
+    private static object BuildPaymentPayload(MolliePaymentRequest req)
+    {
+        Dictionary<string, object?> payload = new()
+        {
+            ["amount"] = new { value = FormatAmount(req.Amount), currency = req.Currency },
+            ["description"] = req.Description,
+            ["redirectUrl"] = req.RedirectUrl,
+        };
+        if (!string.IsNullOrEmpty(req.WebhookUrl))
+        {
+            payload["webhookUrl"] = req.WebhookUrl;
+        }
+        if (req.ApplicationFee is { } fee && fee > 0m)
+        {
+            payload["applicationFee"] = new
+            {
+                amount = new { value = FormatAmount(fee), currency = req.Currency },
+                description = req.ApplicationFeeDescription ?? "CoachOS platform fee",
+            };
+        }
+        if (req.Metadata is { Count: > 0 })
+        {
+            payload["metadata"] = req.Metadata;
+        }
+        return payload;
+    }
+
+    private static string FormatAmount(decimal amount)
+    {
+        // Mollie vereist string-formaat met 2 decimalen en . als separator, ongeacht culture.
+        return amount.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
+    }
+
     private async Task<Result<MollieTokenResponse>> PostTokenAsync(
         IReadOnlyDictionary<string, string> form,
         CancellationToken ct)
@@ -189,4 +324,26 @@ public class MollieClient(
     private sealed record MollieOrganizationPayload(
         [property: JsonPropertyName("id")] string Id,
         [property: JsonPropertyName("name")] string? Name);
+
+    private sealed record MolliePaymentApiResponse(
+        [property: JsonPropertyName("id")] string Id,
+        [property: JsonPropertyName("status")] string? Status,
+        [property: JsonPropertyName("amount")] MollieAmount? Amount,
+        [property: JsonPropertyName("method")] string? Method,
+        [property: JsonPropertyName("paidAt")] DateTime? PaidAt,
+        [property: JsonPropertyName("details")] MolliePaymentDetails? Details,
+        [property: JsonPropertyName("_links")] MolliePaymentLinks? Links);
+
+    private sealed record MollieAmount(
+        [property: JsonPropertyName("value")] string? Value,
+        [property: JsonPropertyName("currency")] string? Currency);
+
+    private sealed record MolliePaymentDetails(
+        [property: JsonPropertyName("failureReason")] string? FailureReason);
+
+    private sealed record MolliePaymentLinks(
+        [property: JsonPropertyName("checkout")] MollieLinkHref? Checkout);
+
+    private sealed record MollieLinkHref(
+        [property: JsonPropertyName("href")] string? Href);
 }

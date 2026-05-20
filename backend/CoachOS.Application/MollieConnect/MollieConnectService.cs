@@ -172,6 +172,66 @@ public class MollieConnectService(
             connection.ConnectedAt));
     }
 
+    public async Task<Result<string>> GetValidAccessTokenAsync(
+        Guid organizationId,
+        CancellationToken ct = default)
+    {
+        MollieConnection? connection = await connections.GetByOrganizationAsync(organizationId, ct);
+        if (connection is null)
+        {
+            return Result<string>.Fail(new Error(
+                ErrorCodes.NotFound,
+                "Deze club is niet aan Mollie gekoppeld."));
+        }
+
+        DateTime utcNow = timeProvider.GetUtcNow().UtcDateTime;
+        // Refresh wanneer token al verlopen is OF binnen 5 minuten verloopt;
+        // marge dekt netwerklatentie + Mollie API rate limiting.
+        bool needsRefresh = connection.AccessTokenExpiresAt <= utcNow.AddMinutes(5);
+
+        if (!needsRefresh)
+        {
+            try
+            {
+                return Result<string>.Ok(protector.Unprotect(connection.AccessTokenEncrypted));
+            }
+            catch (CryptographicException ex)
+            {
+                logger.LogError(ex, "Access token voor org {OrgId} kon niet worden ontsleuteld.", organizationId);
+                return Result<string>.Fail(new Error(
+                    ErrorCodes.ExternalService,
+                    "Mollie-koppeling is beschadigd; koppel opnieuw via instellingen."));
+            }
+        }
+
+        string refreshToken;
+        try
+        {
+            refreshToken = protector.Unprotect(connection.RefreshTokenEncrypted);
+        }
+        catch (CryptographicException ex)
+        {
+            logger.LogError(ex, "Refresh token voor org {OrgId} kon niet worden ontsleuteld.", organizationId);
+            return Result<string>.Fail(new Error(
+                ErrorCodes.ExternalService,
+                "Mollie-koppeling is beschadigd; koppel opnieuw via instellingen."));
+        }
+
+        Result<MollieTokenResponse> refreshed = await mollieClient.RefreshTokenAsync(refreshToken, ct);
+        if (!refreshed.IsSuccess)
+        {
+            return Result<string>.Fail(refreshed.Errors);
+        }
+
+        MollieTokenResponse tokens = refreshed.Value!;
+        connection.AccessTokenEncrypted = protector.Protect(tokens.AccessToken);
+        connection.RefreshTokenEncrypted = protector.Protect(tokens.RefreshToken);
+        connection.AccessTokenExpiresAt = utcNow.AddSeconds(tokens.ExpiresInSeconds);
+        await connections.SaveChangesAsync(ct);
+
+        return Result<string>.Ok(tokens.AccessToken);
+    }
+
     private string BuildAuthorizationUrl(string state, string redirectUri)
     {
         // Mollie verwacht space-separated scopes in de scope query param.
