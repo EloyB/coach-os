@@ -13,7 +13,7 @@ public interface IPaymentService
     /// naartoe redirect.
     /// </summary>
     Task<Result<CreatePaymentResultDto>> CreatePaymentForEnrollmentAsync(
-        Guid enrollmentId, CancellationToken ct = default);
+        Guid enrollmentId, Guid organizationId, CancellationToken ct = default);
 
     /// <summary>
     /// Idempotent webhook handler. Roep aan met de Mollie payment ID; de service

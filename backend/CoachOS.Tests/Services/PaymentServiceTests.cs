@@ -71,7 +71,7 @@ public class PaymentServiceTests
     {
         ArrangeEnrollment(price: 0m);
 
-        Result<CreatePaymentResultDto> result = await _sut.CreatePaymentForEnrollmentAsync(EnrollmentId);
+        Result<CreatePaymentResultDto> result = await _sut.CreatePaymentForEnrollmentAsync(EnrollmentId, OrgId);
 
         result.IsSuccess.Should().BeFalse();
         result.Errors[0].Code.Should().Be(ErrorCodes.Validation);
@@ -86,7 +86,7 @@ public class PaymentServiceTests
         _connect.Setup(c => c.GetValidAccessTokenAsync(OrgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result<string>.Fail(new Error(ErrorCodes.NotFound, "niet gekoppeld")));
 
-        Result<CreatePaymentResultDto> result = await _sut.CreatePaymentForEnrollmentAsync(EnrollmentId);
+        Result<CreatePaymentResultDto> result = await _sut.CreatePaymentForEnrollmentAsync(EnrollmentId, OrgId);
 
         result.IsSuccess.Should().BeFalse();
         result.Errors[0].Code.Should().Be(ErrorCodes.NotFound);
@@ -107,7 +107,7 @@ public class PaymentServiceTests
             .Callback<Payment, CancellationToken>((p, _) => saved = p)
             .Returns(Task.CompletedTask);
 
-        Result<CreatePaymentResultDto> result = await _sut.CreatePaymentForEnrollmentAsync(EnrollmentId);
+        Result<CreatePaymentResultDto> result = await _sut.CreatePaymentForEnrollmentAsync(EnrollmentId, OrgId);
 
         result.IsSuccess.Should().BeTrue();
         result.Value!.CheckoutUrl.Should().Be("https://www.mollie.com/checkout/xxx");
@@ -144,7 +144,7 @@ public class PaymentServiceTests
             .Callback<Payment, CancellationToken>((p, _) => saved = p)
             .Returns(Task.CompletedTask);
 
-        Result<CreatePaymentResultDto> result = await _sut.CreatePaymentForEnrollmentAsync(EnrollmentId);
+        Result<CreatePaymentResultDto> result = await _sut.CreatePaymentForEnrollmentAsync(EnrollmentId, OrgId);
 
         result.IsSuccess.Should().BeTrue();
         captured.Should().NotBeNull();

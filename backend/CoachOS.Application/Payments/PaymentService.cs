@@ -33,11 +33,9 @@ public class PaymentService(
     private readonly AppOptions _app = appOptions.Value;
 
     public async Task<Result<CreatePaymentResultDto>> CreatePaymentForEnrollmentAsync(
-        Guid enrollmentId, CancellationToken ct = default)
+        Guid enrollmentId, Guid organizationId, CancellationToken ct = default)
     {
-        // Tenant filter is loose; geen tenant context nodig hier (kan vanuit
-        // SubmitEnrollmentAsync of vanuit een admin-resend triggeren).
-        EnrollmentEntity? enrollment = await enrollments.GetByIdAsync(enrollmentId, Guid.Empty, ct);
+        EnrollmentEntity? enrollment = await enrollments.GetByIdAsync(enrollmentId, organizationId, ct);
         if (enrollment is null)
         {
             return Result<CreatePaymentResultDto>.Fail(

@@ -89,7 +89,8 @@ public class StudentConfirmationService(
         ConfirmEnrollmentStatuses(assignment, EnrollmentStatus.PendingPayment);
         await paymentRepo.SaveChangesAsync(ct);
 
-        var paymentResult = await paymentService.CreatePaymentForEnrollmentAsync(token.EnrollmentId, ct);
+        var paymentResult = await paymentService.CreatePaymentForEnrollmentAsync(
+            token.EnrollmentId, token.OrganizationId, ct);
         if (!paymentResult.IsSuccess)
         {
             // Mollie call faalde — bevestiging blijft staan (planning is vast)
@@ -233,7 +234,8 @@ public class StudentConfirmationService(
         ConfirmEnrollmentStatuses(oldAssignment, EnrollmentStatus.PendingPayment);
         await paymentRepo.SaveChangesAsync(ct);
 
-        var paymentResult = await paymentService.CreatePaymentForEnrollmentAsync(token.EnrollmentId, ct);
+        var paymentResult = await paymentService.CreatePaymentForEnrollmentAsync(
+            token.EnrollmentId, token.OrganizationId, ct);
         if (!paymentResult.IsSuccess)
         {
             logger.LogError(
