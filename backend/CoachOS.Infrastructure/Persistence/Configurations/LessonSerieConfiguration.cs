@@ -20,6 +20,10 @@ public class LessonSerieConfiguration : IEntityTypeConfiguration<LessonSerie>
         builder.Property(ls => ls.Price)
             .HasPrecision(10, 2);
 
+        builder.Property(ls => ls.PaymentMode)
+            .IsRequired()
+            .HasDefaultValue(Domain.Enums.PaymentMode.Immediate);
+
         builder.HasOne(ls => ls.Organization)
             .WithMany(o => o.LessonSeries)
             .HasForeignKey(ls => ls.OrganizationId)

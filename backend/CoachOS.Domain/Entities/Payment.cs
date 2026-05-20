@@ -21,6 +21,19 @@ public class Payment : BaseEntity
     public DateTime? PaidAt { get; set; }
     public string? Description { get; set; }
 
+    /// <summary>ISO 4217 currency code; default <c>EUR</c>. Kolom-default geldt voor seed/scripts.</summary>
+    public string Currency { get; set; } = "EUR";
+
+    /// <summary>
+    /// Snapshot van het platform-commissiebedrag (in EUR) op het moment van Mollie payment creation.
+    /// Bewaard zodat een latere wijziging van <c>OrganizationSettings.PlatformFeePercentage</c>
+    /// historische audits niet verstoort. <c>null</c> wanneer geen commissie is toegepast.
+    /// </summary>
+    public decimal? PlatformFee { get; set; }
+
+    /// <summary>Reden van mislukking zoals teruggegeven door Mollie (voor admin overview).</summary>
+    public string? FailureReason { get; set; }
+
     // Navigation properties
     public Organization Organization { get; set; } = null!;
     public Enrollment Enrollment { get; set; } = null!;

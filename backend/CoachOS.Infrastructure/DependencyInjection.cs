@@ -79,6 +79,7 @@ public static class DependencyInjection
         services.AddScoped<IRescheduleRequestRepository, RescheduleRequestRepository>();
         services.AddScoped<ILessonInvitationRepository, LessonInvitationRepository>();
         services.AddScoped<IOrganizationSettingsRepository, OrganizationSettingsRepository>();
+        services.AddScoped<IMollieConnectionRepository, MollieConnectionRepository>();
 
         return services;
     }
