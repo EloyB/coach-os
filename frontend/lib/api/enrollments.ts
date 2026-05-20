@@ -13,6 +13,7 @@ export interface PublicLessonSeriesDto {
   durationMinutes: number;
   tennisClubName: string;
   enrollmentCount: number;
+  maxRegistrations: number | null;
   lessons: LessonDto[];
 }
 

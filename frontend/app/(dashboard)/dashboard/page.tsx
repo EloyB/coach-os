@@ -147,7 +147,7 @@ export default function DashboardPage() {
   const statItems = [
     {
       value: String(summary?.lessonsTodayCount ?? 0),
-      label: t("statLessonsToday"),
+      label: t("statLessonsToday", { count: summary?.lessonsTodayCount ?? 0 }),
       color: "text-tennis-lime",
     },
     {
@@ -156,15 +156,15 @@ export default function DashboardPage() {
     },
     {
       value: `${summary?.totalEnrollmentCount ?? 0}`,
-      label: t("statEnrollments"),
+      label: t("statEnrollments", { count: summary?.totalEnrollmentCount ?? 0 }),
     },
     {
       value: String(summary?.activeTrainerCount ?? 0),
-      label: t("statTrainers"),
+      label: t("statTrainers", { count: summary?.activeTrainerCount ?? 0 }),
     },
     {
       value: String(summary?.activeSeriesCount ?? 0),
-      label: t("statSeries"),
+      label: t("statSeries", { count: summary?.activeSeriesCount ?? 0 }),
     },
   ];
 

@@ -70,7 +70,7 @@ import { FieldError } from "@/components/forms/field-error";
 import { DatePicker } from "@/components/ui/date-picker";
 import { NativeSelect } from "@/components/ui/native-select";
 import { inputClass } from "@/lib/styles";
-import { formatDateShort } from "@/lib/date-utils";
+import { formatDateShort, formatDateNL } from "@/lib/date-utils";
 import { enrollmentStatusStyles } from "@/lib/status-styles";
 import { Badge } from "@/components/ui/badge";
 
@@ -758,10 +758,20 @@ function LessonWeekView({
   trainers: TrainerDto[];
   seriesId: string;
 }) {
-  const [weekIndex, setWeekIndex] = useState(0);
+  const weeks = computeWeeks(startDate, endDate);
+  const initialWeekIndex = (() => {
+    if (lessons.length === 0) return 0;
+    const firstLessonDate = lessons
+      .map((l) => l.date)
+      .sort()[0];
+    const idx = weeks.findIndex(
+      (w) => firstLessonDate >= w.startDate && firstLessonDate <= w.endDate,
+    );
+    return idx === -1 ? 0 : idx;
+  })();
+  const [weekIndex, setWeekIndex] = useState(initialWeekIndex);
   const [editingLesson, setEditingLesson] = useState<LessonDto | null>(null);
   const queryClient = useQueryClient();
-  const weeks = computeWeeks(startDate, endDate);
   const currentWeek = weeks[weekIndex];
 
   if (!currentWeek) return null;
@@ -1479,7 +1489,7 @@ export default function LessonSeriesDetailPage({
                     </span>
                     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#F5F4F1] text-xs text-gray-600">
                       <CalendarDays size={11} className="text-tennis-green" />
-                      {series.startDate} – {series.endDate}
+                      {formatDateNL(series.startDate)} – {formatDateNL(series.endDate)}
                     </span>
                     {series.tennisClubName && (
                       <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#F5F4F1] text-xs text-gray-600">

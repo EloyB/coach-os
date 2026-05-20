@@ -24,6 +24,7 @@ import {
   TrainerDto,
 } from "@/lib/api/trainers";
 import { getAxiosErrorMessages } from "@/lib/utils/api-errors";
+import { getInitials } from "@/lib/utils/initials";
 import { getAuthUser, type AuthUser } from "@/lib/auth";
 import {
   AlertDialog,
@@ -435,7 +436,7 @@ export default function TrainersPage() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
           {allTrainers.map((tr) => {
-            const initials = `${tr.firstName[0] ?? ""}${tr.lastName[0] ?? ""}`.toUpperCase();
+            const initials = getInitials(tr.firstName, tr.lastName);
             const isInvited = !tr.isActive && tr.invitePending;
             const isDeactivatedState = !tr.isActive && !tr.invitePending;
             // De eigen admin verschijnt alleen in deze lijst zolang AdminsActAsTrainers
@@ -548,13 +549,22 @@ export default function TrainersPage() {
                 {isInvited && (
                   <div className="mt-3 px-3 py-2.5 bg-amber-50/60 rounded-lg border border-dashed border-amber-200 flex justify-between items-center">
                     <p className="text-[11px] text-amber-800 m-0">{t("invitePending")}</p>
-                    <button
-                      onClick={() => resendMutation.mutate(tr.id)}
-                      disabled={resendMutation.isPending}
-                      className="px-2.5 py-1 bg-white border border-amber-300 rounded text-[10.5px] text-amber-800 font-semibold disabled:opacity-50"
-                    >
-                      {resendMutation.isPending ? t("resending") : t("resend")}
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => resendMutation.mutate(tr.id)}
+                        disabled={resendMutation.isPending}
+                        className="px-2.5 py-1 bg-white border border-amber-300 rounded text-[10.5px] text-amber-800 font-semibold disabled:opacity-50"
+                      >
+                        {resendMutation.isPending ? t("resending") : t("resend")}
+                      </button>
+                      <button
+                        onClick={() => handleRemoveClick(tr)}
+                        title={t("revokeInvite")}
+                        className="p-1.5 rounded text-amber-700 hover:text-red-500 hover:bg-red-50 transition-all"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </div>
                 )}
 
