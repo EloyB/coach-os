@@ -1,4 +1,5 @@
 using CoachOS.Domain.Common;
+using CoachOS.Domain.Enums;
 
 namespace CoachOS.Domain.Entities;
 
@@ -16,6 +17,21 @@ public class OrganizationSettings : BaseEntity
     /// admin-coach combinatie. Zet op false wanneer de admin puur administratief is.
     /// </summary>
     public bool AdminsActAsTrainers { get; set; } = true;
+
+    /// <summary>
+    /// Default <see cref="PaymentMode"/> die voorgeselecteerd wordt op nieuwe lesreeksen.
+    /// Admins kunnen per lesreeks afwijken.
+    /// </summary>
+    public PaymentMode DefaultPaymentMode { get; set; } = PaymentMode.Immediate;
+
+    /// <summary>
+    /// Platform-commissie als percentage (0–100, met 2 decimalen, bv. 2.50 = 2,5%).
+    /// Wordt enkel via super-admin gewijzigd; toegepast bij elke Mollie payment creation.
+    /// </summary>
+    public decimal PlatformFeePercentage { get; set; }
+
+    /// <summary>ISO 4217 currency code voor betalingen; default <c>EUR</c>.</summary>
+    public string PaymentCurrency { get; set; } = "EUR";
 
     public Organization Organization { get; set; } = null!;
 }

@@ -24,6 +24,13 @@ public class LessonSerie : BaseEntity
     public int? MaxRegistrations { get; set; }
     public PlanningStatus PlanningStatus { get; set; } = PlanningStatus.Enrollment;
 
+    /// <summary>
+    /// Wanneer de leerling moet betalen voor deze reeks. <see cref="PaymentMode.Immediate"/>
+    /// stuurt direct door naar Mollie checkout; <see cref="PaymentMode.Deferred"/> verstuurt
+    /// een betaal-link per mail.
+    /// </summary>
+    public PaymentMode PaymentMode { get; set; } = PaymentMode.Immediate;
+
     public Guid TennisClubId { get; set; }
 
     // Navigation properties

@@ -26,6 +26,17 @@ public class PaymentConfiguration : IEntityTypeConfiguration<Payment>
         builder.Property(p => p.Description)
             .HasMaxLength(500);
 
+        builder.Property(p => p.Currency)
+            .IsRequired()
+            .HasMaxLength(3)
+            .HasDefaultValue("EUR");
+
+        builder.Property(p => p.PlatformFee)
+            .HasPrecision(10, 2);
+
+        builder.Property(p => p.FailureReason)
+            .HasMaxLength(500);
+
         builder.HasOne(p => p.Organization)
             .WithMany()
             .HasForeignKey(p => p.OrganizationId)
@@ -38,6 +49,10 @@ public class PaymentConfiguration : IEntityTypeConfiguration<Payment>
 
         builder.HasIndex(p => p.OrganizationId);
         builder.HasIndex(p => p.EnrollmentId);
-        builder.HasIndex(p => p.MolliePaymentId);
+
+        // Unique index voor webhook-lookup, alleen waar MolliePaymentId niet null is.
+        builder.HasIndex(p => p.MolliePaymentId)
+            .IsUnique()
+            .HasFilter("\"MolliePaymentId\" IS NOT NULL");
     }
 }
