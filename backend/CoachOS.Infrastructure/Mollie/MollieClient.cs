@@ -265,12 +265,19 @@ public class MollieClient(
             decimal amount = decimal.TryParse(payload.Amount?.Value, System.Globalization.CultureInfo.InvariantCulture, out decimal a) ? a : 0m;
             string currency = payload.Amount?.Currency ?? "EUR";
 
+            // Mollie levert datums met timezone-offset; System.Text.Json zet Kind
+            // op Local. Postgres TimestampTZ kolommen accepteren alleen UTC, dus
+            // expliciet converteren voordat we het opslaan.
+            DateTime? paidAtUtc = payload.PaidAt.HasValue
+                ? DateTime.SpecifyKind(payload.PaidAt.Value.ToUniversalTime(), DateTimeKind.Utc)
+                : null;
+
             return Result<MolliePaymentSnapshot>.Ok(new MolliePaymentSnapshot(
                 payload.Id,
                 payload.Status ?? "open",
                 amount,
                 currency,
-                payload.PaidAt,
+                paidAtUtc,
                 payload.Method,
                 payload.Details?.FailureReason));
         }
