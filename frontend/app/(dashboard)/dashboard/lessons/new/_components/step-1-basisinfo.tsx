@@ -21,12 +21,24 @@ import type { Step1Data } from "../_types";
 
 const schema = z
   .object({
-    name: z.string().min(1, "Naam is verplicht").max(200),
-    price: z.number().min(0, "Prijs mag niet negatief zijn"),
+    name: z
+      .string()
+      .min(1, "Naam is verplicht")
+      .max(100, "Naam mag maximaal 100 karakters zijn")
+      .refine((v) => !/[<>]|&#|javascript:|on\w+\s*=/i.test(v), {
+        message: "Naam mag geen HTML of scripttekens bevatten",
+      }),
+    price: z
+      .number({ message: "Prijs is verplicht" })
+      .min(0, "Prijs mag niet negatief zijn")
+      .max(100000, "Prijs is onrealistisch hoog"),
     tennisClubId: z.string().min(1, "Tennisclub is verplicht"),
     startDate: z.string().min(1, "Startdatum is verplicht"),
     endDate: z.string().min(1, "Einddatum is verplicht"),
-    maxRegistrations: z.number().min(1, "Minimaal 1 inschrijving toestaan"),
+    maxRegistrations: z
+      .number({ message: "Maximum inschrijvingen is verplicht" })
+      .min(1, "Minimaal 1 inschrijving toestaan")
+      .max(500, "Maximum is 500 inschrijvingen"),
     registrationDeadline: z.string().min(1, "Inschrijfdeadline is verplicht"),
   })
   .refine((d) => !d.startDate || !d.endDate || d.endDate >= d.startDate, {
@@ -81,6 +93,7 @@ export function Step1Basisinfo({ defaultValues, onNext }: Step1Props) {
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
+    mode: "onBlur",
     defaultValues: defaultValues ?? { price: 0, maxRegistrations: 0 },
   });
 
@@ -93,6 +106,7 @@ export function Step1Basisinfo({ defaultValues, onNext }: Step1Props) {
           <input
             {...register("name")}
             type="text"
+            maxLength={100}
             placeholder={t("namePlaceholder")}
             className={inputClass}
           />
@@ -124,6 +138,7 @@ export function Step1Basisinfo({ defaultValues, onNext }: Step1Props) {
             {...register("maxRegistrations", { valueAsNumber: true })}
             type="number"
             min={1}
+            max={500}
             className={inputClass}
           />
           <FieldError message={errors.maxRegistrations?.message} />

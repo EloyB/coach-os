@@ -466,8 +466,9 @@ export default function PlanningPage({
           {t("legendAutoGrouped")}
         </div>
         <div className="ml-auto text-xs text-gray-400">
-          {totalEnrollments} {t("enrollments")} · {totalSlots} {t("timeSlots")}{" "}
-          · {totalCapacity} {t("spots")}
+          {t("enrollmentsCount", { count: totalEnrollments })} ·{" "}
+          {t("timeSlotsCount", { count: totalSlots })} ·{" "}
+          {t("spotsCount", { count: totalCapacity })}
         </div>
       </div>
 
@@ -897,15 +898,37 @@ export default function PlanningPage({
 
                 {/* Unassigned solos */}
                 {unassignedSolos.map((enrollment) => {
-                  const hasPreferred = Object.values(
-                    enrollment.preferences
-                  ).some((p) => p === "Preferred" || p === "Available");
+                  const availableSlotIds = Object.entries(enrollment.preferences)
+                    .filter(([, p]) => p === "Preferred" || p === "Available")
+                    .map(([id]) => id);
+                  const hasPreferred = availableSlotIds.length > 0;
+                  const allAvailableAreFull = hasPreferred && availableSlotIds.every((slotId) => {
+                    const slot = planning.timeSlots.find((s) => s.id === slotId);
+                    if (!slot) return true;
+                    const count = (assignmentsBySlot.get(slot.id) ?? []).reduce((acc, a) => {
+                      if (a.enrollmentId) return acc + 1;
+                      if (a.groupId) {
+                        const g = groupMap.get(a.groupId);
+                        return acc + (g?.memberEnrollmentIds.length ?? 0);
+                      }
+                      return acc;
+                    }, 0);
+                    return count >= slot.maxCapacity;
+                  });
+                  const noSlotsConfigured = planning.timeSlots.length === 0;
+                  const reasonText = noSlotsConfigured
+                    ? t("noSlotsAvailable")
+                    : allAvailableAreFull
+                      ? t("noSlotCapacity")
+                      : hasPreferred
+                        ? t("multipleOptions")
+                        : t("noFittingSlot");
 
                   return (
                     <div
                       key={enrollment.id}
                       className={`border rounded-lg p-3 ${
-                        hasPreferred
+                        hasPreferred && !allAvailableAreFull
                           ? "border-amber-200 bg-amber-50/50"
                           : "border-red-200 bg-red-50/50"
                       }`}
@@ -913,7 +936,7 @@ export default function PlanningPage({
                       <div className="flex items-center gap-2 mb-2">
                         <div
                           className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
-                            hasPreferred
+                            hasPreferred && !allAvailableAreFull
                               ? "bg-amber-100 text-amber-700"
                               : "bg-red-100 text-red-700"
                           }`}
@@ -926,14 +949,12 @@ export default function PlanningPage({
                           </div>
                           <div
                             className={`text-[10px] ${
-                              hasPreferred
+                              hasPreferred && !allAvailableAreFull
                                 ? "text-amber-600"
                                 : "text-red-600"
                             }`}
                           >
-                            {hasPreferred
-                              ? t("multipleOptions")
-                              : t("noFittingSlot")}
+                            {reasonText}
                           </div>
                         </div>
 

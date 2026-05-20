@@ -86,6 +86,10 @@ public class TennisClubServiceTests
         };
 
         _tennisClubRepo
+            .Setup(r => r.NameExistsAsync(request.Name, OrgId, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        _tennisClubRepo
             .Setup(r => r.AddAsync(It.IsAny<TennisClub>(), It.IsAny<CancellationToken>()))
             .Callback<TennisClub, CancellationToken>((c, _) => c.Id = Guid.NewGuid())
             .Returns(Task.CompletedTask);
@@ -99,6 +103,26 @@ public class TennisClubServiceTests
                 It.Is<TennisClub>(c => c.Name == "TC Nieuwe Club" && c.OrganizationId == OrgId),
                 It.IsAny<CancellationToken>()),
             Times.Once);
+    }
+
+    [Test]
+    public async Task CreateAsync_ReturnsConflict_WhenNameAlreadyExists()
+    {
+        CreateTennisClubRequest request = new()
+        {
+            Name = "TC De Aces",
+            Address = "Nieuwstraat 5",
+        };
+
+        _tennisClubRepo
+            .Setup(r => r.NameExistsAsync(request.Name, OrgId, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var result = await _service.CreateAsync(OrgId, request);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.Conflict);
+        _tennisClubRepo.Verify(r => r.AddAsync(It.IsAny<TennisClub>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     // ── DeleteAsync ───────────────────────────────────────────────────────────

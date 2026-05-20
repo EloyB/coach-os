@@ -29,7 +29,8 @@ public static class ResultExtensions
             ErrorCodes.NotFound => StatusCodes.Status404NotFound,
             ErrorCodes.Unauthorized => StatusCodes.Status401Unauthorized,
             ErrorCodes.Forbidden => StatusCodes.Status403Forbidden,
-            ErrorCodes.Conflict => StatusCodes.Status400BadRequest,
+            ErrorCodes.Conflict => StatusCodes.Status409Conflict,
+            ErrorCodes.Unexpected => StatusCodes.Status500InternalServerError,
             _ => StatusCodes.Status400BadRequest,
         };
     }
