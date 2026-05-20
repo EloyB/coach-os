@@ -29,6 +29,13 @@ WORKDIR /app
 COPY --from=build --chown=app:app /app .
 RUN chown app:app /app
 
+# DataProtection keystore. Mollie OAuth tokens are encrypted at rest with keys
+# stored here; container restarts must not invalidate them. In production a
+# named docker volume is mounted on this path (see infrastructure/docker-compose.yml).
+# Pre-creating the dir with app ownership ensures the non-root user can write
+# when docker creates an empty named volume on first start.
+RUN mkdir -p /data-protection-keys && chown app:app /data-protection-keys
+
 USER app
 
 ENV ASPNETCORE_URLS=http://+:5142

@@ -26,6 +26,13 @@ services:
       App__ConfirmationBaseUrl: https://app.coach-os.be/confirmation
       App__StudentMagicLinkBaseUrl: https://app.coach-os.be/auth/magic
       App__StandaloneLessonInvitationBaseUrl: https://app.coach-os.be/invitation
+      # DataProtection keystore directory. Backed by the data_protection_keys
+      # named volume below so encrypted Mollie OAuth tokens survive container
+      # restarts. Path matches the chown in backend/Dockerfile.
+      DataProtection__KeyDirectory: /data-protection-keys
+
+    volumes:
+      - data_protection_keys:/data-protection-keys
 
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/health"]
@@ -159,3 +166,11 @@ services:
 networks:
   coach-os-network:
     driver: bridge
+
+volumes:
+  # Persistent DataProtection keystore. Mollie OAuth tokens are encrypted at
+  # rest with keys stored here; loss of this volume invalidates every active
+  # club's Mollie connection (they would each need to re-authorize). Back this
+  # up with the same cadence as critical app state.
+  data_protection_keys:
+    driver: local
