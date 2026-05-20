@@ -234,9 +234,12 @@ public class MollieClient(
     public async Task<Result<MolliePaymentSnapshot>> GetPaymentAsync(
         string accessToken,
         string paymentId,
+        bool testmode,
         CancellationToken ct = default)
     {
-        using HttpRequestMessage request = new(HttpMethod.Get, $"{_options.ApiBaseUrl}/v2/payments/{paymentId}");
+        string url = $"{_options.ApiBaseUrl}/v2/payments/{paymentId}";
+        if (testmode) url += "?testmode=true";
+        using HttpRequestMessage request = new(HttpMethod.Get, url);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
 
         try

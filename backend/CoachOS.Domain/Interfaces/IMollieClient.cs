@@ -45,6 +45,7 @@ public interface IMollieClient
     Task<Result<MolliePaymentSnapshot>> GetPaymentAsync(
         string accessToken,
         string paymentId,
+        bool testmode,
         CancellationToken ct = default);
 
     /// <summary>

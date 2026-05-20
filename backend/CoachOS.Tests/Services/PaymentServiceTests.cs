@@ -164,7 +164,7 @@ public class PaymentServiceTests
         Result result = await _sut.SyncPaymentFromMollieAsync("nope");
 
         result.IsSuccess.Should().BeTrue();
-        _mollie.Verify(m => m.GetPaymentAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+        _mollie.Verify(m => m.GetPaymentAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -185,7 +185,7 @@ public class PaymentServiceTests
         Result result = await _sut.SyncPaymentFromMollieAsync(MolliePaymentId);
 
         result.IsSuccess.Should().BeTrue();
-        _mollie.Verify(m => m.GetPaymentAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+        _mollie.Verify(m => m.GetPaymentAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()),
             Times.Never);
         _payments.Verify(p => p.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -215,7 +215,7 @@ public class PaymentServiceTests
             .ReturnsAsync(payment);
         _connect.Setup(c => c.GetValidAccessTokenAsync(OrgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result<string>.Ok("access-token"));
-        _mollie.Setup(m => m.GetPaymentAsync("access-token", MolliePaymentId, It.IsAny<CancellationToken>()))
+        _mollie.Setup(m => m.GetPaymentAsync("access-token", MolliePaymentId, It.IsAny<bool>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result<MolliePaymentSnapshot>.Ok(new MolliePaymentSnapshot(
                 MolliePaymentId, "paid", 50m, "EUR", DateTime.UtcNow, "bancontact", null)));
         _enrollments.Setup(e => e.GetByIdAsync(EnrollmentId, OrgId, It.IsAny<CancellationToken>()))
@@ -249,7 +249,7 @@ public class PaymentServiceTests
             .ReturnsAsync(payment);
         _connect.Setup(c => c.GetValidAccessTokenAsync(OrgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result<string>.Ok("access-token"));
-        _mollie.Setup(m => m.GetPaymentAsync("access-token", MolliePaymentId, It.IsAny<CancellationToken>()))
+        _mollie.Setup(m => m.GetPaymentAsync("access-token", MolliePaymentId, It.IsAny<bool>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result<MolliePaymentSnapshot>.Ok(new MolliePaymentSnapshot(
                 MolliePaymentId, "failed", 50m, "EUR", null, null, "insufficient_funds")));
 

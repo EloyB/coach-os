@@ -167,7 +167,7 @@ public class PaymentService(
         }
 
         Result<MolliePaymentSnapshot> snapshotResult = await mollieClient.GetPaymentAsync(
-            tokenResult.Value!, molliePaymentId, ct);
+            tokenResult.Value!, molliePaymentId, _mollie.UseTestMode, ct);
         if (!snapshotResult.IsSuccess)
         {
             return Result.Fail(snapshotResult.Errors);
