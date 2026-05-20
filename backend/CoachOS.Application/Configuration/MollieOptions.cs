@@ -44,4 +44,10 @@ public class MollieOptions
     /// Defaults dekken alles wat CoachOS nodig heeft voor onboarding + payments.
     /// </summary>
     public string Scopes { get; set; } = "payments.read payments.write organizations.read profiles.read profiles.write onboarding.read";
+
+    /// <summary>
+    /// Forceer Mollie test mode op alle payments. Default <c>false</c> → live mode.
+    /// Lokaal dev: zet <c>Mollie__UseTestMode=true</c> in <c>.env</c>.
+    /// </summary>
+    public bool UseTestMode { get; set; }
 }

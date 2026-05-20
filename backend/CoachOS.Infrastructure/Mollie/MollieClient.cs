@@ -180,6 +180,57 @@ public class MollieClient(
         }
     }
 
+    public async Task<Result<string>> GetFirstProfileIdAsync(
+        string accessToken,
+        CancellationToken ct = default)
+    {
+        // Mollie heeft per-mode aparte profiles; we vragen beide modi op en
+        // pakken het eerste actieve resultaat. testmode=true query bedekt
+        // lokaal dev waar de organisatie nog geen live profile heeft.
+        foreach (string suffix in new[] { "?limit=1", "?limit=1&testmode=true" })
+        {
+            using HttpRequestMessage request = new(HttpMethod.Get, $"{_options.ApiBaseUrl}/v2/profiles{suffix}");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+            try
+            {
+                using HttpResponseMessage response = await httpClient.SendAsync(request, ct);
+                if (!response.IsSuccessStatusCode)
+                {
+                    string body = await response.Content.ReadAsStringAsync(ct);
+                    logger.LogWarning("Mollie GET /v2/profiles{Suffix} gaf {Status}: {Body}",
+                        suffix, (int)response.StatusCode, body);
+                    continue;
+                }
+
+                using System.IO.Stream stream = await response.Content.ReadAsStreamAsync(ct);
+                using System.Text.Json.JsonDocument doc = await System.Text.Json.JsonDocument.ParseAsync(stream, default, ct);
+                if (!doc.RootElement.TryGetProperty("_embedded", out var embedded)) continue;
+                if (!embedded.TryGetProperty("profiles", out var profiles)) continue;
+                foreach (var profile in profiles.EnumerateArray())
+                {
+                    if (profile.TryGetProperty("id", out var idProp))
+                    {
+                        string? id = idProp.GetString();
+                        if (!string.IsNullOrEmpty(id))
+                        {
+                            return Result<string>.Ok(id);
+                        }
+                    }
+                }
+            }
+            catch (HttpRequestException ex)
+            {
+                logger.LogError(ex, "Netwerkfout bij Mollie GET /v2/profiles");
+                return Result<string>.Fail(new Error(ErrorCodes.ExternalService, "Kon Mollie niet bereiken."));
+            }
+        }
+
+        return Result<string>.Fail(new Error(
+            ErrorCodes.ExternalService,
+            "Geen Mollie website-profile gevonden — maak er één aan in het Mollie dashboard."));
+    }
+
     public async Task<Result<MolliePaymentSnapshot>> GetPaymentAsync(
         string accessToken,
         string paymentId,
@@ -252,6 +303,17 @@ public class MollieClient(
         if (req.Metadata is { Count: > 0 })
         {
             payload["metadata"] = req.Metadata;
+        }
+        if (!string.IsNullOrEmpty(req.ProfileId))
+        {
+            payload["profileId"] = req.ProfileId;
+        }
+        if (req.Testmode == true)
+        {
+            // In Connect-context (OAuth) gaan payments default naar live mode.
+            // Lokaal dev (Mollie account in test mode) moet expliciet testmode
+            // forceren — geconfigureerd via Mollie:UseTestMode in PaymentService.
+            payload["testmode"] = true;
         }
         return payload;
     }

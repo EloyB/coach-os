@@ -46,6 +46,16 @@ public interface IMollieClient
         string accessToken,
         string paymentId,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Haalt het eerste actieve website-profile op voor de gekoppelde organisatie
+    /// (<c>GET /v2/profiles?limit=1</c>). Mollie eist een <c>profileId</c> bij
+    /// elke payment in Connect-context; deze call laat ons de eerste vinden zonder
+    /// dat de club iets manueel in het Mollie dashboard hoeft te doen.
+    /// </summary>
+    Task<Result<string>> GetFirstProfileIdAsync(
+        string accessToken,
+        CancellationToken ct = default);
 }
 
 /// <summary>Antwoord van Mollie's <c>POST /oauth2/tokens</c>.</summary>
@@ -73,7 +83,11 @@ public sealed record MolliePaymentRequest(
     string? WebhookUrl,
     decimal? ApplicationFee,
     string? ApplicationFeeDescription,
-    IReadOnlyDictionary<string, string>? Metadata);
+    IReadOnlyDictionary<string, string>? Metadata,
+    /// <summary>Mollie website-profile-id; verplicht in Connect-context.</summary>
+    string? ProfileId,
+    /// <summary>Forceer test mode (lokaal dev); <c>null</c> = volg account default.</summary>
+    bool? Testmode);
 
 /// <summary>Resultaat van een succesvolle payment creation.</summary>
 public sealed record MolliePaymentCreatedResponse(

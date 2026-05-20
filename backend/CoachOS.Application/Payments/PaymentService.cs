@@ -80,6 +80,14 @@ public class PaymentService(
             return Result<CreatePaymentResultDto>.Fail(tokenResult.Errors);
         }
 
+        // Mollie Connect eist profileId op elke payment. Voor nu fetchen we het
+        // eerste profile per call — issue #127 cachet dit op MollieConnection.
+        Result<string> profileResult = await mollieClient.GetFirstProfileIdAsync(tokenResult.Value!, ct);
+        if (!profileResult.IsSuccess)
+        {
+            return Result<CreatePaymentResultDto>.Fail(profileResult.Errors);
+        }
+
         string redirectUrl = BuildRedirectUrl(enrollmentId);
         string? webhookUrl = BuildWebhookUrl();
 
@@ -96,7 +104,9 @@ public class PaymentService(
                 ["enrollmentId"] = enrollmentId.ToString(),
                 ["organizationId"] = enrollment.OrganizationId.ToString(),
                 ["lessonSerieId"] = series.Id.ToString(),
-            });
+            },
+            ProfileId: profileResult.Value,
+            Testmode: _mollie.UseTestMode ? true : null);
 
         Result<MolliePaymentCreatedResponse> createResult = await mollieClient.CreatePaymentAsync(
             tokenResult.Value!, paymentRequest, ct);

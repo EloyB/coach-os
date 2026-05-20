@@ -265,6 +265,9 @@ public class PaymentServiceTests
 
     private void ArrangeEnrollment(decimal price)
     {
+        _mollie.Setup(m => m.GetFirstProfileIdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<string>.Ok("pfl_test"));
+
         Enrollment enrollment = new()
         {
             Id = EnrollmentId,
