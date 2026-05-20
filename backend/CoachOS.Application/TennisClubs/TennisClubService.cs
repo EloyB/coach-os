@@ -27,6 +27,10 @@ public class TennisClubService(
     public async Task<Result<Guid>> CreateAsync(
         Guid organizationId, CreateTennisClubRequest request, CancellationToken ct = default)
     {
+        var nameTaken = await tennisClubRepo.NameExistsAsync(request.Name, organizationId, null, ct);
+        if (nameTaken)
+            return Result<Guid>.Fail(new Error(ErrorCodes.Conflict, "Er bestaat al een tennisclub met deze naam."));
+
         TennisClub club = new()
         {
             OrganizationId = organizationId,
@@ -49,7 +53,13 @@ public class TennisClubService(
             return Result<TennisClubDto>.Fail(new Error(ErrorCodes.NotFound, "Tennisclub niet gevonden."));
 
         if (request.Name is not null)
+        {
+            var nameTaken = await tennisClubRepo.NameExistsAsync(request.Name, organizationId, id, ct);
+            if (nameTaken)
+                return Result<TennisClubDto>.Fail(new Error(ErrorCodes.Conflict, "Er bestaat al een tennisclub met deze naam."));
+
             club.Name = request.Name;
+        }
 
         if (request.Address is not null)
             club.Address = request.Address;

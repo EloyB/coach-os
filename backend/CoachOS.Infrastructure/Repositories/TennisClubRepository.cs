@@ -45,4 +45,15 @@ public class TennisClubRepository(ApplicationDbContext context) : ITennisClubRep
             .AsNoTracking()
             .AnyAsync(tc => tc.Id == id && tc.OrganizationId == organizationId, ct);
     }
+
+    public async Task<bool> NameExistsAsync(string name, Guid organizationId, Guid? excludeId, CancellationToken ct = default)
+    {
+        var normalized = name.Trim().ToLower();
+        return await context.TennisClubs
+            .AsNoTracking()
+            .AnyAsync(tc =>
+                tc.OrganizationId == organizationId &&
+                tc.Name.ToLower() == normalized &&
+                (!excludeId.HasValue || tc.Id != excludeId.Value), ct);
+    }
 }
