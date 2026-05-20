@@ -37,11 +37,11 @@ export interface PilotBenefit {
 export const PILOT_BENEFITS: PilotBenefit[] = [
   {
     title: "Gratis tijdens de pilot",
-    body: "Geen kosten zolang we in pilotfase zitten. Niet voor de set-up, niet per seizoen, niet per leerling.",
+    body: "Geen kosten zolang we in de pilotfase zitten. Niet voor de set-up, niet per seizoen, niet per leerling.",
   },
   {
     title: "Lifetime korting",
-    body: "Wanneer pricing publiek wordt, behoud je 25% korting op je tarief — zolang je klant blijft.",
+    body: "Wanneer de pricing publiek wordt, behoud je 25% korting op je tarief zolang je klant blijft.",
   },
   {
     title: "Directe lijn naar de founder",

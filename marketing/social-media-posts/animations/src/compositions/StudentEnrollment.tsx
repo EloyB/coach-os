@@ -152,7 +152,7 @@ export const StudentEnrollment: React.FC = () => {
   const activeField = getActiveField(frame);
 
   return (
-    <BrandFrame step="03 / 04" title="Speler inschrijven">
+    <BrandFrame step="04 / 05" title="Speler inschrijven">
       <PhoneFrame entryFrame={0}>
         {/* Stack screens at the same position; toggle via opacity. */}
         <div style={{ position: 'relative', flex: 1, display: 'flex', overflow: 'hidden' }}>

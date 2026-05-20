@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CoachOS · Signature builder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --ink: #161513;
+    --ink-2: #4a4741;
+    --ink-3: #8a867e;
+    --paper: #fdfcf9;
+    --canvas: #f5f4f1;
+    --rule: #e7e4dc;
+    --tennis-green: #2d5016;
+    --tennis-lime: #d0ff14;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--canvas);
+    color: var(--ink);
+    font-family: "Inter", system-ui, sans-serif;
+  }
+  body {
+    min-height: 100vh;
+    padding: 40px 32px 80px;
+  }
+  header {
+    max-width: 1120px;
+    margin: 0 auto 28px;
+  }
+  .eyebrow {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    color: var(--ink-3);
+    text-transform: uppercase;
+  }
+  h1 {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin-top: 6px;
+  }
+  .hint {
+    font-size: 13px;
+    color: var(--ink-2);
+    margin-top: 8px;
+    max-width: 60ch;
+    line-height: 1.5;
+  }
+  main {
+    max-width: 1120px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 360px 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+  @media (max-width: 880px) {
+    main { grid-template-columns: 1fr; }
+  }
+
+  /* Form */
+  .form {
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+    padding: 22px;
+  }
+  .form h2 {
+    font-size: 11.5px;
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: 16px;
+  }
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+  .field label {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--ink-2);
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    letter-spacing: 0.04em;
+  }
+  .field input {
+    font: inherit;
+    font-size: 13.5px;
+    color: var(--ink);
+    background: #fff;
+    border: 1px solid var(--rule);
+    border-radius: 7px;
+    padding: 9px 11px;
+    transition: border-color 0.12s ease, box-shadow 0.12s ease;
+  }
+  .field input:focus {
+    outline: 0;
+    border-color: var(--tennis-green);
+    box-shadow: 0 0 0 3px rgba(45, 80, 22, 0.12);
+  }
+  .field .help {
+    font-size: 11px;
+    color: var(--ink-3);
+    margin-top: 2px;
+  }
+
+  /* Preview */
+  .preview-pane {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .preview-label {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    color: var(--ink-3);
+    text-transform: uppercase;
+  }
+  .preview-frame {
+    background: #ffffff;
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+    padding: 32px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03), 0 10px 30px rgba(22, 21, 19, 0.06);
+    overflow: auto;
+  }
+  #signature-host { display: inline-block; }
+
+  /* Actions */
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .actions button {
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--rule);
+    background: var(--paper);
+    color: var(--ink);
+    cursor: pointer;
+    transition: background 0.12s ease, border-color 0.12s ease;
+  }
+  .actions button:hover {
+    background: #fff;
+    border-color: var(--ink-3);
+  }
+  .actions button.primary {
+    background: var(--ink);
+    color: #fff;
+    border-color: var(--ink);
+  }
+  .actions button.primary:hover {
+    background: var(--tennis-green);
+    border-color: var(--tennis-green);
+  }
+  .status {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 11px;
+    color: var(--tennis-green);
+    min-height: 14px;
+    letter-spacing: 0.04em;
+  }
+  .status.muted { color: var(--ink-3); }
+</style>
+</head>
+<body>
+  <header>
+    <span class="eyebrow">/marketing/email-signature</span>
+    <h1>Signature builder</h1>
+    <p class="hint">
+      Vul de gegevens in — de live preview rechts werkt direct bij. Klik
+      <em>Download SVG</em> voor een statisch beeld of <em>Kopieer HTML</em>
+      om in een mailclient te plakken.
+    </p>
+  </header>
+
+  <main>
+    <section class="form">
+      <h2>Gegevens</h2>
+
+      <div class="field">
+        <label for="f-name">Volledige naam</label>
+        <input id="f-name" type="text" value="Eloy Boone" autocomplete="off" />
+      </div>
+
+      <div class="field">
+        <label for="f-role">Rol</label>
+        <input id="f-role" type="text" value="FOUNDER" autocomplete="off" />
+        <span class="help">Wordt UPPERCASE getoond na de slash.</span>
+      </div>
+
+      <div class="field">
+        <label for="f-email">E-mail</label>
+        <input id="f-email" type="email" value="eloy@coach-os.be" autocomplete="off" />
+      </div>
+
+      <div class="field">
+        <label for="f-phone">Telefoon (optioneel)</label>
+        <input id="f-phone" type="text" value="+32 478 77 44 97" autocomplete="off" />
+        <span class="help">Laat leeg om weg te laten.</span>
+      </div>
+
+      <div class="field">
+        <label for="f-website">Website</label>
+        <input id="f-website" type="text" value="coach-os.be" autocomplete="off" />
+      </div>
+
+      <div class="field">
+        <label for="f-tagline">Tagline</label>
+        <input id="f-tagline" type="text" value="Lesplanning, eindelijk eenvoudig." autocomplete="off" />
+      </div>
+    </section>
+
+    <section class="preview-pane">
+      <span class="preview-label">Live preview</span>
+      <div class="preview-frame">
+        <div id="signature-host"></div>
+      </div>
+
+      <div class="actions">
+        <button id="btn-svg" class="primary" type="button">Download SVG</button>
+        <button id="btn-html" type="button">Kopieer HTML</button>
+        <button id="btn-svg-copy" type="button">Kopieer SVG</button>
+      </div>
+      <p id="status" class="status muted">&nbsp;</p>
+    </section>
+  </main>
+
+<script>
+(function () {
+  "use strict";
+
+  // ── State ───────────────────────────────────────────────────────────
+  const fields = {
+    name: document.getElementById("f-name"),
+    role: document.getElementById("f-role"),
+    email: document.getElementById("f-email"),
+    phone: document.getElementById("f-phone"),
+    website: document.getElementById("f-website"),
+    tagline: document.getElementById("f-tagline"),
+  };
+  const host = document.getElementById("signature-host");
+  const status = document.getElementById("status");
+
+  // Court-pattern SVG inlined as base64 — identical to signature.html.
+  const COURT_PATTERN_B64 = "PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCA2MDAgMjAwJyBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSd4TWlkWU1pZCBzbGljZSc+PGcgc3Ryb2tlPScjZmZmJyBzdHJva2Utb3BhY2l0eT0nLjA3JyBmaWxsPSdub25lJyBzdHJva2UtbGluZWNhcD0ncm91bmQnPjxyZWN0IHg9JzQwJyB5PScyMCcgd2lkdGg9JzUyMCcgaGVpZ2h0PScxNjAnIHN0cm9rZS13aWR0aD0nMS41Jy8+PGxpbmUgeDE9JzMwMCcgeTE9JzIwJyB4Mj0nMzAwJyB5Mj0nMTgwJyBzdHJva2Utd2lkdGg9JzInLz48bGluZSB4MT0nMTYwJyB5MT0nMjAnIHgyPScxNjAnIHkyPScxODAnIHN0cm9rZS13aWR0aD0nLjgnLz48bGluZSB4MT0nNDQwJyB5MT0nMjAnIHgyPSc0NDAnIHkyPScxODAnIHN0cm9rZS13aWR0aD0nLjgnLz48bGluZSB4MT0nMTYwJyB5MT0nMTAwJyB4Mj0nNDQwJyB5Mj0nMTAwJyBzdHJva2Utd2lkdGg9Jy44Jy8+PGxpbmUgeDE9JzI5NicgeTE9JzIwJyB4Mj0nMzA0JyB5Mj0nMjAnIHN0cm9rZS13aWR0aD0nMicvPjxsaW5lIHgxPScyOTYnIHkxPScxODAnIHgyPSczMDQnIHkyPScxODAnIHN0cm9rZS13aWR0aD0nMicvPjxjaXJjbGUgY3g9JzU0MCcgY3k9JzUwJyByPScyOCcgc3Ryb2tlLXdpZHRoPScuOCcvPjxjaXJjbGUgY3g9JzU0MCcgY3k9JzUwJyByPScxNicgc3Ryb2tlLXdpZHRoPScuOCcvPjwvZz48L3N2Zz4K";
+
+  const SANS = "-apple-system,BlinkMacSystemFont,'Segoe UI','Helvetica Neue',Helvetica,Arial,sans-serif";
+  const MONO = "ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,monospace";
+
+  // ── Helpers ─────────────────────────────────────────────────────────
+  function escAttr(s) {
+    return String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+  function escText(s) {
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+  function phoneE164(displayPhone) {
+    return String(displayPhone || "").replace(/[^\d+]/g, "");
+  }
+  function readData() {
+    const role = (fields.role.value || "").trim().toUpperCase();
+    return {
+      name: (fields.name.value || "").trim(),
+      role,
+      email: (fields.email.value || "").trim(),
+      phone: (fields.phone.value || "").trim(),
+      website: (fields.website.value || "coach-os.be").trim(),
+      tagline: (fields.tagline.value || "").trim(),
+    };
+  }
+
+  // ── HTML signature ──────────────────────────────────────────────────
+  // Returns the email-signature HTML for paste into mail clients.
+  function buildHTML(d) {
+    const websiteUrl = d.website.match(/^https?:/i) ? d.website : "https://" + d.website;
+    const websiteLabel = d.website.replace(/^https?:\/\//, "");
+    const phoneRow = d.phone
+      ? `              <div style="font-family:${MONO}; font-size:12px; font-weight:600; color:#E9E4DB; line-height:1.5;">
+                <a href="tel:${escAttr(phoneE164(d.phone))}" style="color:#E9E4DB; text-decoration:none;">${escText(d.phone)}</a>
+              </div>`
+      : "";
+
+    return `<table cellpadding="0" cellspacing="0" border="0" role="presentation" style="border-collapse:collapse; background:#161513; font-family:${SANS}; color:#ffffff;">
+  <tr>
+    <td valign="top" bgcolor="#161513" style="padding:20px 24px 20px 22px; vertical-align:top; background-color:#161513; background-image:url(data:image/svg+xml;base64,${COURT_PATTERN_B64}); background-repeat:no-repeat; background-position:center; background-size:cover;">
+      <table cellpadding="0" cellspacing="0" border="0" role="presentation" style="border-collapse:collapse;">
+        <tr>
+          <td align="center" valign="middle" width="40" height="40" style="width:40px; height:40px; background:#D0FF14; border-radius:7px; text-align:center; vertical-align:middle; line-height:0; font-size:0;">
+            <a href="${escAttr(websiteUrl)}" style="text-decoration:none; border:0; display:inline-block; line-height:0;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 108 108" style="display:block;" aria-label="CoachOS">
+                <g stroke="#161513" stroke-width="7" fill="none" stroke-linecap="round">
+                  <circle cx="54" cy="54" r="28"/>
+                  <path d="M 28 54 C 36 42, 44 42, 54 54 C 64 66, 72 66, 80 54"/>
+                </g>
+              </svg>
+            </a>
+          </td>
+          <td valign="middle" style="vertical-align:middle; padding-left:8px; font-size:20px; font-weight:700; color:#ffffff; letter-spacing:-0.02em; line-height:1;">
+            Coach<span style="color:#D0FF14;">OS</span>
+          </td>
+        </tr>
+        <tr>
+          <td colspan="2" style="padding:18px 0 0 0; font-family:${MONO}; font-size:11px; font-weight:700; color:#D0FF14; letter-spacing:0.22em; line-height:1;">
+            /${escText(d.role)}
+          </td>
+        </tr>
+        <tr>
+          <td colspan="2" style="padding:8px 0 0 0; font-size:24px; font-weight:800; color:#ffffff; letter-spacing:-0.02em; line-height:1.1;">
+            ${escText(d.name)}
+          </td>
+        </tr>
+        <tr>
+          <td colspan="2" style="padding:4px 0 0 0; font-size:13px; font-weight:500; color:#A8A195; line-height:1.4;">
+            ${escText(d.tagline)}
+          </td>
+        </tr>
+        <tr>
+          <td colspan="2" style="padding:14px 0 12px 0;">
+            <table cellpadding="0" cellspacing="0" border="0" role="presentation" style="border-collapse:collapse; width:100%;">
+              <tr><td style="height:1px; line-height:1px; background:#2A2826; font-size:0;">&nbsp;</td></tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td colspan="2">
+            <table cellpadding="0" cellspacing="0" border="0" role="presentation" style="border-collapse:collapse;">
+              <tr>
+                <td valign="top" style="vertical-align:top; padding:0 36px 0 0;">
+                  <div style="font-family:${MONO}; font-size:10px; font-weight:700; color:#8A8377; letter-spacing:0.22em; line-height:1; margin-bottom:6px;">CONTACT</div>
+                  <div style="font-size:13px; font-weight:600; color:#E9E4DB; line-height:1.45;">
+                    <a href="mailto:${escAttr(d.email)}" style="color:#E9E4DB; text-decoration:none;">${escText(d.email)}</a>
+                  </div>
+${phoneRow}
+                </td>
+                <td valign="top" style="vertical-align:top;">
+                  <div style="font-family:${MONO}; font-size:10px; font-weight:700; color:#8A8377; letter-spacing:0.22em; line-height:1; margin-bottom:6px;">WEB</div>
+                  <div style="font-family:${MONO}; font-size:13px; font-weight:700; color:#E9E4DB; line-height:1.45;">
+                    <a href="${escAttr(websiteUrl)}" style="color:#E9E4DB; text-decoration:none;">${escText(websiteLabel)}</a>
+                  </div>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </td>
+    <td bgcolor="#D0FF14" style="width:6px; background:#D0FF14; font-size:0; line-height:0;">&nbsp;</td>
+  </tr>
+</table>`;
+  }
+
+  // ── SVG signature ───────────────────────────────────────────────────
+  // Returns a standalone SVG of the signature (vector image, fixed layout).
+  function buildSVG(d) {
+    const W = 540;
+    const HAS_PHONE = !!d.phone;
+    const H = HAS_PHONE ? 240 : 222;
+    const websiteLabel = d.website.replace(/^https?:\/\//, "");
+
+    // Decoded court-pattern lines (re-emitted scaled to canvas).
+    // viewBox of the source pattern is 0 0 600 200 with xMidYMid slice; we
+    // re-emit so the SVG stays a single self-contained document.
+    const COURT = `
+    <g stroke="#fff" stroke-opacity="0.07" fill="none" stroke-linecap="round">
+      <rect x="36" y="${H * 0.10}" width="${W - 72}" height="${H * 0.80}" stroke-width="1.5"/>
+      <line x1="${W * 0.5}" y1="${H * 0.10}" x2="${W * 0.5}" y2="${H * 0.90}" stroke-width="2"/>
+      <line x1="${W * 0.27}" y1="${H * 0.10}" x2="${W * 0.27}" y2="${H * 0.90}" stroke-width="0.8"/>
+      <line x1="${W * 0.73}" y1="${H * 0.10}" x2="${W * 0.73}" y2="${H * 0.90}" stroke-width="0.8"/>
+      <line x1="${W * 0.27}" y1="${H * 0.5}" x2="${W * 0.73}" y2="${H * 0.5}" stroke-width="0.8"/>
+      <line x1="${W * 0.5 - 4}" y1="${H * 0.10}" x2="${W * 0.5 + 4}" y2="${H * 0.10}" stroke-width="2"/>
+      <line x1="${W * 0.5 - 4}" y1="${H * 0.90}" x2="${W * 0.5 + 4}" y2="${H * 0.90}" stroke-width="2"/>
+      <circle cx="${W - 50}" cy="${H * 0.22}" r="28" stroke-width="0.8"/>
+      <circle cx="${W - 50}" cy="${H * 0.22}" r="16" stroke-width="0.8"/>
+    </g>`;
+
+    // Text positions (baselines)
+    const wordmarkY = 47;       // vertically centered with the 40×40 logo tile (y 20-60)
+    const slashY    = 87;       // padding 18 after logo row, font 11
+    const nameY     = 117;      // padding 8 after slash, font 24
+    const taglineY  = 137;      // padding 4 after name, font 13
+    const dividerY  = 154;      // padding 14 after tagline
+    const contactY  = 174;      // padding 12 after divider, font 10
+    const emailY    = 193;      // padding 6 after eyebrow, font 13
+    const phoneY    = 208;      // padding 2 after email, font 12
+    const WEB_X     = 320;
+
+    const phoneText = HAS_PHONE
+      ? `  <text x="22" y="${phoneY}" font-family="${escAttr(MONO)}" font-size="12" font-weight="600" fill="#E9E4DB">${escText(d.phone)}</text>`
+      : "";
+
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" font-family="${escAttr(SANS)}">
+  <title>CoachOS — ${escText(d.name)}</title>
+  <!-- Background -->
+  <rect width="${W}" height="${H}" fill="#161513"/>
+  ${COURT}
+  <!-- Lime accent strip (right edge) -->
+  <rect x="${W - 6}" y="0" width="6" height="${H}" fill="#D0FF14"/>
+
+  <!-- Logo tile (22, 20) 40×40 -->
+  <rect x="22" y="20" width="40" height="40" rx="7" fill="#D0FF14"/>
+  <g transform="translate(28 26) scale(0.2593)" stroke="#161513" stroke-width="7" fill="none" stroke-linecap="round">
+    <circle cx="54" cy="54" r="28"/>
+    <path d="M 28 54 C 36 42, 44 42, 54 54 C 64 66, 72 66, 80 54"/>
+  </g>
+
+  <!-- Wordmark CoachOS -->
+  <text x="70" y="${wordmarkY}" font-size="20" font-weight="700" fill="#ffffff" letter-spacing="-0.4">Coach<tspan fill="#D0FF14">OS</tspan></text>
+
+  <!-- Slash role -->
+  <text x="22" y="${slashY}" font-family="${escAttr(MONO)}" font-size="11" font-weight="700" fill="#D0FF14" letter-spacing="2.4">/${escText(d.role)}</text>
+
+  <!-- Name -->
+  <text x="22" y="${nameY}" font-size="24" font-weight="800" fill="#ffffff" letter-spacing="-0.5">${escText(d.name)}</text>
+
+  <!-- Tagline -->
+  <text x="22" y="${taglineY}" font-size="13" font-weight="500" fill="#A8A195">${escText(d.tagline)}</text>
+
+  <!-- Divider -->
+  <line x1="22" y1="${dividerY}" x2="${W - 22}" y2="${dividerY}" stroke="#2A2826" stroke-width="1"/>
+
+  <!-- CONTACT column -->
+  <text x="22" y="${contactY}" font-family="${escAttr(MONO)}" font-size="10" font-weight="700" fill="#8A8377" letter-spacing="2.2">CONTACT</text>
+  <text x="22" y="${emailY}" font-size="13" font-weight="600" fill="#E9E4DB">${escText(d.email)}</text>
+${phoneText}
+
+  <!-- WEB column -->
+  <text x="${WEB_X}" y="${contactY}" font-family="${escAttr(MONO)}" font-size="10" font-weight="700" fill="#8A8377" letter-spacing="2.2">WEB</text>
+  <text x="${WEB_X}" y="${emailY}" font-family="${escAttr(MONO)}" font-size="13" font-weight="700" fill="#E9E4DB">${escText(websiteLabel)}</text>
+</svg>`;
+  }
+
+  // ── Render preview ──────────────────────────────────────────────────
+  function render() {
+    host.innerHTML = buildHTML(readData());
+  }
+
+  // ── Actions ─────────────────────────────────────────────────────────
+  function flashStatus(msg, isError) {
+    status.textContent = msg;
+    status.classList.toggle("muted", false);
+    status.style.color = isError ? "#b91c1c" : "var(--tennis-green)";
+    clearTimeout(flashStatus._t);
+    flashStatus._t = setTimeout(() => {
+      status.textContent = " ";
+      status.classList.add("muted");
+    }, 2400);
+  }
+
+  function safeFilename(name) {
+    return (name || "coachos").toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "coachos";
+  }
+
+  function downloadSVG() {
+    const data = readData();
+    const svg = buildSVG(data);
+    const blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `coachos-signature-${safeFilename(data.name)}.svg`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    flashStatus("SVG gedownload.");
+  }
+
+  async function copyHTML() {
+    const html = buildHTML(readData());
+    // Write BOTH text/html (so pasting into Gmail/Outlook renders the
+    // signature) AND text/plain (so pasting into plain-text fields yields
+    // the raw markup). Falls back to writeText if ClipboardItem is missing.
+    try {
+      if (typeof ClipboardItem !== "undefined" && navigator.clipboard.write) {
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            "text/html": new Blob([html], { type: "text/html" }),
+            "text/plain": new Blob([html], { type: "text/plain" }),
+          }),
+        ]);
+      } else {
+        await navigator.clipboard.writeText(html);
+      }
+      flashStatus("HTML naar klembord gekopieerd — plak in je mailclient.");
+    } catch (err) {
+      flashStatus("Kopiëren mislukt — gebruik Download.", true);
+    }
+  }
+
+  async function copySVG() {
+    try {
+      await navigator.clipboard.writeText(buildSVG(readData()));
+      flashStatus("SVG naar klembord gekopieerd.");
+    } catch (err) {
+      flashStatus("Kopiëren mislukt — gebruik Download.", true);
+    }
+  }
+
+  // ── Wire up ─────────────────────────────────────────────────────────
+  Object.values(fields).forEach((el) => el.addEventListener("input", render));
+  document.getElementById("btn-svg").addEventListener("click", downloadSVG);
+  document.getElementById("btn-html").addEventListener("click", copyHTML);
+  document.getElementById("btn-svg-copy").addEventListener("click", copySVG);
+
+  render();
+})();
+</script>
+</body>
+</html>

@@ -513,7 +513,18 @@
     "newPassword": "Nieuw wachtwoord",
     "resetPasswordButton": "Wachtwoord instellen",
     "resetPasswordSuccess": "Je wachtwoord is succesvol gewijzigd. Je kunt nu inloggen.",
-    "resetPasswordError": "Reset mislukt. De link is mogelijk verlopen. Vraag een nieuwe reset-link aan."
+    "resetPasswordError": "Reset mislukt. De link is mogelijk verlopen. Vraag een nieuwe reset-link aan.",
+    "inviteEyebrow": "/trainer uitnodiging",
+    "inviteHeroLine1": "Welkom bij",
+    "inviteHeroLine2": "CoachOS",
+    "inviteTagline": "Stel je wachtwoord in en begin direct met het beheren van je lessen.",
+    "inviteFeature1": "Plan je lessen eenvoudig",
+    "inviteFeature2": "Beheer leerlingen en inschrijvingen",
+    "inviteFeature3": "Overzicht van al je lesreeksen",
+    "inviteFormTitle": "Stel wachtwoord in",
+    "inviteFormSub": "Kies een wachtwoord om je account te activeren.",
+    "inviteSubmit": "Account activeren",
+    "inviteSubmitting": "Activeren..."
   },
   "studentAuth": {
     "title": "Inloggen als leerling",

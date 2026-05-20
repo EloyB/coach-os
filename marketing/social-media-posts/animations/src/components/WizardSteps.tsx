@@ -671,7 +671,7 @@ export const StepValidatie: React.FC<StepValidatieProps> = ({ buttonPressed }) =
             fontFamily: FONTS.sans,
           }}
         >
-          Lesreeks aanmaken
+          Lessenreeks aanmaken
         </button>
       </div>
     </>

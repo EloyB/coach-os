@@ -221,7 +221,7 @@ export const AutoPlanner: React.FC = () => {
   });
 
   return (
-    <BrandFrame step="04 / 04" title="Automatisch plannen">
+    <BrandFrame step="05 / 05" title="Automatisch plannen">
       <AppWindow entryFrame={0}>
         <SidebarMock />
         <div

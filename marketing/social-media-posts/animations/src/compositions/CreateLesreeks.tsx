@@ -207,11 +207,11 @@ export const CreateLesreeks: React.FC = () => {
   const charsTyped = Math.max(0, Math.floor(interpolate(frame, [38, 60], [0, NAME_FULL.length], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })));
   const nameValue = NAME_FULL.slice(0, charsTyped);
 
-  // Price: ticks 0..49 between frames 66..74
-  const priceValue = frame < 66 ? null : Math.round(interpolate(frame, [66, 74], [0, 49], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }));
+  // Price: ticks 0..150 between frames 66..74
+  const priceValue = frame < 66 ? null : Math.round(interpolate(frame, [66, 74], [0, 150], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }));
 
   // Max: ticks 0..15 between frames 76..82
-  const maxValue = frame < 76 ? null : Math.round(interpolate(frame, [76, 82], [0, 15], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }));
+  const maxValue = frame < 76 ? null : Math.round(interpolate(frame, [76, 82], [0, 120], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }));
 
   // Club: dropdown open 87..98; selected at 98
   const showClubDropdown = frame >= 87 && frame < 98;
@@ -285,7 +285,7 @@ export const CreateLesreeks: React.FC = () => {
     interpolate(frame, [262, 270], [1, 0.55], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
 
   return (
-    <BrandFrame step="01 / 04" title="Lesreeks aanmaken">
+    <BrandFrame step="02 / 05" title="Lessenreeks aanmaken">
       <AppWindow entryFrame={0}>
         <SidebarMock />
 

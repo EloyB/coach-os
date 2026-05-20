@@ -270,7 +270,7 @@ export const LessonsListPopulated: React.FC<ListPopulatedProps> = ({ glowProgres
             01 mrt → 30 mei
           </span>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <span style={{ fontSize: 11, fontFamily: FONTS.mono, color: COLORS.ink3 }}>0 / 15</span>
+            <span style={{ fontSize: 11, fontFamily: FONTS.mono, color: COLORS.ink3 }}>0 / 120</span>
             <div
               style={{
                 height: 4,
@@ -291,7 +291,7 @@ export const LessonsListPopulated: React.FC<ListPopulatedProps> = ({ glowProgres
               fontFamily: FONTS.sans,
             }}
           >
-            €49
+            €150
           </span>
           <span
             style={{

@@ -59,7 +59,7 @@ export const SHOWCASE: ShowcaseItem[] = [
     id: "formulierbouwer",
     icon: FormInput,
     kicker: "FORMULIEREN",
-    heading: "Vraag exact wat je nodig hebt — niets meer.",
+    heading: "Vraag exact wat je nodig hebt.",
     body: "Bouw per lessenreeks een formulier uit tekstvelden, meerkeuze-opties en ja/nee-vragen. De antwoorden zie je direct bij de inschrijving in het overzicht.",
     bullets: [
       "Personaliseer je formulier: tekst, meerkeuze, ja/nee",

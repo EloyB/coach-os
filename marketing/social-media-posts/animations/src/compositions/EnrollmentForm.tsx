@@ -202,7 +202,7 @@ export const EnrollmentForm: React.FC = () => {
   });
 
   return (
-    <BrandFrame step="02 / 04" title="Inschrijfformulier delen">
+    <BrandFrame step="03 / 05" title="Inschrijfformulier delen">
       {/* App window fades out as the share reveal takes over */}
       <div style={{ position: 'absolute', inset: 0, opacity: appOpacity }}>
         <AppWindow entryFrame={0}>

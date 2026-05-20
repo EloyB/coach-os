@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CoachOS · Email signature preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --ink: #161513;
+    --ink-2: #4a4741;
+    --ink-3: #8a867e;
+    --paper: #fdfcf9;
+    --canvas: #f5f4f1;
+    --rule: #e7e4dc;
+    --tennis-green: #2d5016;
+    --tennis-lime: #d0ff14;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--canvas);
+    color: var(--ink);
+    font-family: "Inter", system-ui, sans-serif;
+  }
+  body {
+    min-height: 100vh;
+    padding: 48px 32px 80px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  header {
+    max-width: 720px;
+    width: 100%;
+    margin-bottom: 32px;
+  }
+  .eyebrow {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    color: var(--ink-3);
+    text-transform: uppercase;
+  }
+  h1 {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin-top: 6px;
+  }
+  .hint {
+    font-size: 13px;
+    color: var(--ink-2);
+    margin-top: 8px;
+    max-width: 60ch;
+    line-height: 1.5;
+  }
+  .hint code {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-size: 11.5px;
+  }
+
+  /* Faux email window */
+  .mail {
+    width: 100%;
+    max-width: 720px;
+    background: #ffffff;
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03), 0 10px 30px rgba(22, 21, 19, 0.06);
+    margin-bottom: 24px;
+  }
+  .mail-bar {
+    background: var(--canvas);
+    border-bottom: 1px solid var(--rule);
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--rule);
+  }
+  .dot.r { background: #ff6157; }
+  .dot.y { background: #ffbd2e; }
+  .dot.g { background: #28c941; }
+  .mail-subject {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 11px;
+    color: var(--ink-3);
+    letter-spacing: 0.06em;
+    margin-left: 8px;
+  }
+  .mail-meta {
+    padding: 16px 24px 0;
+    color: var(--ink-2);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .mail-meta b { color: var(--ink); font-weight: 600; }
+  .mail-body {
+    padding: 16px 24px 24px;
+    color: var(--ink);
+    font-size: 14px;
+    line-height: 1.55;
+  }
+  .mail-body p { margin: 0 0 12px 0; }
+  hr.email-rule {
+    border: 0;
+    border-top: 1px solid var(--rule);
+    margin: 18px 0 16px;
+  }
+
+  /* Variant tag above each mail */
+  .variants {
+    max-width: 720px;
+    width: 100%;
+    display: flex;
+    gap: 10px;
+    margin-bottom: 12px;
+    margin-top: 8px;
+  }
+  .variant-tag {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 10.5px;
+    color: var(--ink-3);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 99px;
+  }
+</style>
+</head>
+<body>
+  <header>
+    <span class="eyebrow">/marketing/email-signature</span>
+    <h1>CoachOS email signature</h1>
+    <p class="hint">
+      Ontwerp afgeleid van de business card FRONT: ink-achtergrond met een
+      zachte tennis-court pattern, lime monogram, slash-role in lime, en de
+      lime-strip op de rechterrand. Bron-HTML staat in <code>signature.html</code>;
+      vervang de <code>{{PLACEHOLDERS}}</code> en plak in je mailclient.
+    </p>
+  </header>
+
+  <div class="variants">
+    <span class="variant-tag">Voorbeeld 1 — admin met telefoon</span>
+  </div>
+
+  <!-- ─── Sample mail 1 ─────────────────────────────────────────── -->
+  <div class="mail">
+    <div class="mail-bar">
+      <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+      <span class="mail-subject">Re: Nieuwe lesreeks Q3</span>
+    </div>
+    <div class="mail-meta">
+      <div><b>Aan:</b> sara@tcdeaces.be</div>
+      <div><b>Van:</b> Eloy Boone &lt;eloy@coach-os.be&gt;</div>
+    </div>
+    <div class="mail-body">
+      <p>Hi Sara,</p>
+      <p>
+        Top, ik heb de tijdslots klaargezet — je kunt vanaf maandag inschrijven
+        en de planning autopilot doet de rest. Laat het me weten als je nog iets
+        wil aanpassen.
+      </p>
+      <p>Groet,<br/>Eloy</p>
+
+      <hr class="email-rule" />
+
+      <!-- ── BEGIN signature snippet (mirrors signature.html) ─── -->
+      <table cellpadding="0" cellspacing="0" border="0" role="presentation"
+             style="border-collapse:collapse; background:#161513; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Helvetica Neue',Helvetica,Arial,sans-serif; color:#ffffff;">
+        <tr>
+          <td valign="top" bgcolor="#161513" style="padding:20px 24px 20px 22px; vertical-align:top; background-color:#161513; background-image:url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCA2MDAgMjAwJyBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSd4TWlkWU1pZCBzbGljZSc+PGcgc3Ryb2tlPScjZmZmJyBzdHJva2Utb3BhY2l0eT0nLjA3JyBmaWxsPSdub25lJyBzdHJva2UtbGluZWNhcD0ncm91bmQnPjxyZWN0IHg9JzQwJyB5PScyMCcgd2lkdGg9JzUyMCcgaGVpZ2h0PScxNjAnIHN0cm9rZS13aWR0aD0nMS41Jy8+PGxpbmUgeDE9JzMwMCcgeTE9JzIwJyB4Mj0nMzAwJyB5Mj0nMTgwJyBzdHJva2Utd2lkdGg9JzInLz48bGluZSB4MT0nMTYwJyB5MT0nMjAnIHgyPScxNjAnIHkyPScxODAnIHN0cm9rZS13aWR0aD0nLjgnLz48bGluZSB4MT0nNDQwJyB5MT0nMjAnIHgyPSc0NDAnIHkyPScxODAnIHN0cm9rZS13aWR0aD0nLjgnLz48bGluZSB4MT0nMTYwJyB5MT0nMTAwJyB4Mj0nNDQwJyB5Mj0nMTAwJyBzdHJva2Utd2lkdGg9Jy44Jy8+PGxpbmUgeDE9JzI5NicgeTE9JzIwJyB4Mj0nMzA0JyB5Mj0nMjAnIHN0cm9rZS13aWR0aD0nMicvPjxsaW5lIHgxPScyOTYnIHkxPScxODAnIHgyPSczMDQnIHkyPScxODAnIHN0cm9rZS13aWR0aD0nMicvPjxjaXJjbGUgY3g9JzU0MCcgY3k9JzUwJyByPScyOCcgc3Ryb2tlLXdpZHRoPScuOCcvPjxjaXJjbGUgY3g9JzU0MCcgY3k9JzUwJyByPScxNicgc3Ryb2tlLXdpZHRoPScuOCcvPjwvZz48L3N2Zz4K); background-repeat:no-repeat; background-position:center; background-size:cover;">
+            <table cellpadding="0" cellspacing="0" border="0" role="presentation" style="border-collapse:collapse;">
+              <tr>
+                <td align="center" valign="middle" width="40" height="40" style="width:40px; height:40px; background:#D0FF14; border-radius:7px; text-align:center; vertical-align:middle; line-height:0; font-size:0;">
+                  <a href="https://coach-os.be" style="text-decoration:none; border:0; display:inline-block; line-height:0;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 108 108" style="display:block;" aria-label="CoachOS">
+                      <g stroke="#161513" stroke-width="7" fill="none" stroke-linecap="round">
+                        <circle cx="54" cy="54" r="28"/>
+                        <path d="M 28 54 C 36 42, 44 42, 54 54 C 64 66, 72 66, 80 54"/>
+                      </g>
+                    </svg>
+                  </a>
+                </td>
+                <td valign="middle" style="vertical-align:middle; padding-left:8px; font-size:20px; font-weight:700; color:#ffffff; letter-spacing:-0.02em; line-height:1;">
+                  Coach<span style="color:#D0FF14;">OS</span>
+                </td>
+              </tr>
+              <tr>
+                <td colspan="2" style="padding:18px 0 0 0; font-family:ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,monospace; font-size:11px; font-weight:700; color:#D0FF14; letter-spacing:0.22em; line-height:1;">
+                  /FOUNDER
+                </td>
+              </tr>
+              <tr>
+                <td colspan="2" style="padding:8px 0 0 0; font-size:24px; font-weight:800; color:#ffffff; letter-spacing:-0.02em; line-height:1.1;">
+                  Eloy Boone
+                </td>
+              </tr>
+              <tr>
+                <td colspan="2" style="padding:4px 0 0 0; font-size:13px; font-weight:500; color:#A8A195; line-height:1.4;">
+                  Lesplanning, eindelijk eenvoudig.
+                </td>
+              </tr>
+              <tr>
+                <td colspan="2" style="padding:14px 0 12px 0;">
+                  <table cellpadding="0" cellspacing="0" border="0" role="presentation" style="border-collapse:collapse; width:100%;">
+                    <tr><td style="height:1px; line-height:1px; background:#2A2826; font-size:0;">&nbsp;</td></tr>
+                  </table>
+                </td>
+              </tr>
+              <tr>
+                <td colspan="2">
+                  <table cellpadding="0" cellspacing="0" border="0" role="presentation" style="border-collapse:collapse;">
+                    <tr>
+                      <td valign="top" style="vertical-align:top; padding:0 36px 0 0;">
+                        <div style="font-family:ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,monospace; font-size:10px; font-weight:700; color:#8A8377; letter-spacing:0.22em; line-height:1; margin-bottom:6px;">CONTACT</div>
+                        <div style="font-size:13px; font-weight:600; color:#E9E4DB; line-height:1.45;">
+                          <a href="mailto:eloy@coach-os.be" style="color:#E9E4DB; text-decoration:none;">eloy@coach-os.be</a>
+                        </div>
+                        <div style="font-family:ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,monospace; font-size:12px; font-weight:600; color:#E9E4DB; line-height:1.5;">
+                          <a href="tel:+32478774497" style="color:#E9E4DB; text-decoration:none;">+32 478 77 44 97</a>
+                        </div>
+                      </td>
+                      <td valign="top" style="vertical-align:top;">
+                        <div style="font-family:ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,monospace; font-size:10px; font-weight:700; color:#8A8377; letter-spacing:0.22em; line-height:1; margin-bottom:6px;">WEB</div>
+                        <div style="font-family:ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,monospace; font-size:13px; font-weight:700; color:#E9E4DB; line-height:1.45;">
+                          <a href="https://coach-os.be" style="color:#E9E4DB; text-decoration:none;">coach-os.be</a>
+                        </div>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </td>
+          <td bgcolor="#D0FF14" style="width:6px; background:#D0FF14; font-size:0; line-height:0;">&nbsp;</td>
+        </tr>
+      </table>
+      <!-- ── END signature snippet ──────────────────────────────── -->
+    </div>
+  </div>
+
+  <div class="variants">
+    <span class="variant-tag">Voorbeeld 2 — trainer (zonder telefoon)</span>
+  </div>
+
+  <!-- ─── Sample mail 2 ─────────────────────────────────────────── -->
+  <div class="mail">
+    <div class="mail-bar">
+      <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+      <span class="mail-subject">Trainingsschema week 23</span>
+    </div>
+    <div class="mail-meta">
+      <div><b>Aan:</b> ouders@tcdeaces.be</div>
+      <div><b>Van:</b> Lorenz De Smet &lt;lorenz@coach-os.be&gt;</div>
+    </div>
+    <div class="mail-body">
+      <p>Beste ouders,</p>
+      <p>
+        In bijlage vind je het schema voor de komende week. Bij vragen mag je
+        me altijd mailen.
+      </p>
+      <p>Sportieve groet,<br/>Lorenz</p>
+
+      <hr class="email-rule" />
+
+      <table cellpadding="0" cellspacing="0" border="0" role="presentation"
+             style="border-collapse:collapse; background:#161513; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Helvetica Neue',Helvetica,Arial,sans-serif; color:#ffffff;">
+        <tr>
+          <td valign="top" bgcolor="#161513" style="padding:20px 24px 20px 22px; vertical-align:top; background-color:#161513; background-image:url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCA2MDAgMjAwJyBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSd4TWlkWU1pZCBzbGljZSc+PGcgc3Ryb2tlPScjZmZmJyBzdHJva2Utb3BhY2l0eT0nLjA3JyBmaWxsPSdub25lJyBzdHJva2UtbGluZWNhcD0ncm91bmQnPjxyZWN0IHg9JzQwJyB5PScyMCcgd2lkdGg9JzUyMCcgaGVpZ2h0PScxNjAnIHN0cm9rZS13aWR0aD0nMS41Jy8+PGxpbmUgeDE9JzMwMCcgeTE9JzIwJyB4Mj0nMzAwJyB5Mj0nMTgwJyBzdHJva2Utd2lkdGg9JzInLz48bGluZSB4MT0nMTYwJyB5MT0nMjAnIHgyPScxNjAnIHkyPScxODAnIHN0cm9rZS13aWR0aD0nLjgnLz48bGluZSB4MT0nNDQwJyB5MT0nMjAnIHgyPSc0NDAnIHkyPScxODAnIHN0cm9rZS13aWR0aD0nLjgnLz48bGluZSB4MT0nMTYwJyB5MT0nMTAwJyB4Mj0nNDQwJyB5Mj0nMTAwJyBzdHJva2Utd2lkdGg9Jy44Jy8+PGxpbmUgeDE9JzI5NicgeTE9JzIwJyB4Mj0nMzA0JyB5Mj0nMjAnIHN0cm9rZS13aWR0aD0nMicvPjxsaW5lIHgxPScyOTYnIHkxPScxODAnIHgyPSczMDQnIHkyPScxODAnIHN0cm9rZS13aWR0aD0nMicvPjxjaXJjbGUgY3g9JzU0MCcgY3k9JzUwJyByPScyOCcgc3Ryb2tlLXdpZHRoPScuOCcvPjxjaXJjbGUgY3g9JzU0MCcgY3k9JzUwJyByPScxNicgc3Ryb2tlLXdpZHRoPScuOCcvPjwvZz48L3N2Zz4K); background-repeat:no-repeat; background-position:center; background-size:cover;">
+            <table cellpadding="0" cellspacing="0" border="0" role="presentation" style="border-collapse:collapse;">
+              <tr>
+                <td align="center" valign="middle" width="40" height="40" style="width:40px; height:40px; background:#D0FF14; border-radius:7px; text-align:center; vertical-align:middle; line-height:0; font-size:0;">
+                  <a href="https://coach-os.be" style="text-decoration:none; border:0; display:inline-block; line-height:0;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 108 108" style="display:block;" aria-label="CoachOS">
+                      <g stroke="#161513" stroke-width="7" fill="none" stroke-linecap="round">
+                        <circle cx="54" cy="54" r="28"/>
+                        <path d="M 28 54 C 36 42, 44 42, 54 54 C 64 66, 72 66, 80 54"/>
+                      </g>
+                    </svg>
+                  </a>
+                </td>
+                <td valign="middle" style="vertical-align:middle; padding-left:8px; font-size:20px; font-weight:700; color:#ffffff; letter-spacing:-0.02em; line-height:1;">
+                  Coach<span style="color:#D0FF14;">OS</span>
+                </td>
+              </tr>
+              <tr>
+                <td colspan="2" style="padding:18px 0 0 0; font-family:ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,monospace; font-size:11px; font-weight:700; color:#D0FF14; letter-spacing:0.22em; line-height:1;">
+                  /HOOFDTRAINER
+                </td>
+              </tr>
+              <tr>
+                <td colspan="2" style="padding:8px 0 0 0; font-size:24px; font-weight:800; color:#ffffff; letter-spacing:-0.02em; line-height:1.1;">
+                  Lorenz De Smet
+                </td>
+              </tr>
+              <tr>
+                <td colspan="2" style="padding:4px 0 0 0; font-size:13px; font-weight:500; color:#A8A195; line-height:1.4;">
+                  Lesplanning, eindelijk eenvoudig.
+                </td>
+              </tr>
+              <tr>
+                <td colspan="2" style="padding:14px 0 12px 0;">
+                  <table cellpadding="0" cellspacing="0" border="0" role="presentation" style="border-collapse:collapse; width:100%;">
+                    <tr><td style="height:1px; line-height:1px; background:#2A2826; font-size:0;">&nbsp;</td></tr>
+                  </table>
+                </td>
+              </tr>
+              <tr>
+                <td colspan="2">
+                  <table cellpadding="0" cellspacing="0" border="0" role="presentation" style="border-collapse:collapse;">
+                    <tr>
+                      <td valign="top" style="vertical-align:top; padding:0 36px 0 0;">
+                        <div style="font-family:ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,monospace; font-size:10px; font-weight:700; color:#8A8377; letter-spacing:0.22em; line-height:1; margin-bottom:6px;">CONTACT</div>
+                        <div style="font-size:13px; font-weight:600; color:#E9E4DB; line-height:1.45;">
+                          <a href="mailto:lorenz@coach-os.be" style="color:#E9E4DB; text-decoration:none;">lorenz@coach-os.be</a>
+                        </div>
+                      </td>
+                      <td valign="top" style="vertical-align:top;">
+                        <div style="font-family:ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,monospace; font-size:10px; font-weight:700; color:#8A8377; letter-spacing:0.22em; line-height:1; margin-bottom:6px;">WEB</div>
+                        <div style="font-family:ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,monospace; font-size:13px; font-weight:700; color:#E9E4DB; line-height:1.45;">
+                          <a href="https://coach-os.be" style="color:#E9E4DB; text-decoration:none;">coach-os.be</a>
+                        </div>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </td>
+          <td bgcolor="#D0FF14" style="width:6px; background:#D0FF14; font-size:0; line-height:0;">&nbsp;</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+</body>
+</html>
