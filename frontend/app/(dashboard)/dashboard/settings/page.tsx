@@ -28,6 +28,7 @@ import {
 import { FieldError } from "@/components/forms/field-error";
 import { inputClass } from "@/lib/styles";
 import { OrganizationSection } from "./organization-section";
+import { MollieSection } from "./mollie-section";
 
 // ─── Form Schema ──────────────────────────────────────────────────────────────
 
@@ -154,6 +155,9 @@ export default function SettingsPage() {
 
       {/* Organisatie-instellingen */}
       <OrganizationSection />
+
+      {/* Mollie online betalingen */}
+      <MollieSection />
 
       {/* Tennisclubs section */}
       <div className="bg-white rounded-xl shadow-sm shadow-gray-100 overflow-hidden">
