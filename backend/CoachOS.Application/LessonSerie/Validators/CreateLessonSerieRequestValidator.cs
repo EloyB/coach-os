@@ -1,3 +1,4 @@
+using CoachOS.Application.Common;
 using CoachOS.Application.LessonSerie.DTOs;
 using FluentValidation;
 
@@ -12,17 +13,20 @@ public class CreateLessonSerieRequestValidator : AbstractValidator<CreateLessonS
 
         RuleFor(x => x.Name)
             .NotEmpty().WithMessage("Naam is verplicht.")
-            .MaximumLength(200).WithMessage("Naam mag maximaal 200 karakters zijn.");
+            .MaximumLength(100).WithMessage("Naam mag maximaal 100 karakters zijn.")
+            .Must(InputSanitizer.IsFreeOfHtml).WithMessage("Naam mag geen HTML of scripttekens bevatten.");
 
         RuleFor(x => x.Level)
             .InclusiveBetween(1, 5).WithMessage("Niveau moet tussen 1 en 5 liggen.")
             .When(x => x.Level.HasValue);
 
         RuleFor(x => x.Price)
-            .GreaterThanOrEqualTo(0).WithMessage("Prijs mag niet negatief zijn.");
+            .GreaterThanOrEqualTo(0).WithMessage("Prijs mag niet negatief zijn.")
+            .LessThanOrEqualTo(100000m).WithMessage("Prijs is onrealistisch hoog.");
 
         RuleFor(x => x.MaxRegistrations)
             .GreaterThan(0).WithMessage("Maximum aantal inschrijvingen moet groter dan 0 zijn.")
+            .LessThanOrEqualTo(500).WithMessage("Maximum aantal inschrijvingen mag niet meer dan 500 zijn.")
             .When(x => x.MaxRegistrations.HasValue);
 
         RuleFor(x => x.StartDate)

@@ -1,4 +1,5 @@
 using CoachOS.Application.Enrollments.DTOs;
+using CoachOS.Application.Common;
 using FluentValidation;
 
 namespace CoachOS.Application.Enrollments.Validators;
@@ -9,11 +10,18 @@ public class SubmitEnrollmentRequestValidator : AbstractValidator<SubmitEnrollme
     {
         RuleFor(x => x.StudentName)
             .NotEmpty().WithMessage("Naam is verplicht")
-            .MaximumLength(200).WithMessage("Naam mag maximaal 200 karakters zijn");
+            .MaximumLength(200).WithMessage("Naam mag maximaal 200 karakters zijn")
+            .Must(InputSanitizer.IsFreeOfHtml).WithMessage("Naam mag geen HTML of scripttekens bevatten");
 
         RuleFor(x => x.StudentEmail)
             .NotEmpty().WithMessage("E-mailadres is verplicht")
+            .MaximumLength(254).WithMessage("E-mailadres is te lang")
             .EmailAddress().WithMessage("Ongeldig e-mailadres");
+
+        RuleFor(x => x.StudentPhone)
+            .MaximumLength(30).WithMessage("Telefoonnummer is te lang")
+            .Must(InputSanitizer.IsFreeOfHtmlNullable).WithMessage("Telefoonnummer mag geen HTML of scripttekens bevatten")
+            .When(x => !string.IsNullOrEmpty(x.StudentPhone));
 
         RuleForEach(x => x.Responses).ChildRules(r =>
         {
@@ -48,11 +56,18 @@ public class SubmitEnrollmentRequestValidator : AbstractValidator<SubmitEnrollme
             {
                 m.RuleFor(v => v.StudentName)
                     .NotEmpty().WithMessage("Naam is verplicht")
-                    .MaximumLength(200).WithMessage("Naam mag maximaal 200 karakters zijn");
+                    .MaximumLength(200).WithMessage("Naam mag maximaal 200 karakters zijn")
+                    .Must(InputSanitizer.IsFreeOfHtml).WithMessage("Naam mag geen HTML of scripttekens bevatten");
 
                 m.RuleFor(v => v.StudentEmail)
                     .NotEmpty().WithMessage("E-mailadres is verplicht")
+                    .MaximumLength(254).WithMessage("E-mailadres is te lang")
                     .EmailAddress().WithMessage("Ongeldig e-mailadres");
+
+                m.RuleFor(v => v.StudentPhone)
+                    .MaximumLength(30).WithMessage("Telefoonnummer is te lang")
+                    .Must(InputSanitizer.IsFreeOfHtmlNullable).WithMessage("Telefoonnummer mag geen HTML of scripttekens bevatten")
+                    .When(v => !string.IsNullOrEmpty(v.StudentPhone));
             });
         });
     }
