@@ -24,5 +24,9 @@ public class TennisClubConfiguration : IEntityTypeConfiguration<TennisClub>
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(tc => tc.OrganizationId);
+
+        builder.HasIndex(tc => new { tc.OrganizationId, tc.Name })
+            .IsUnique()
+            .HasDatabaseName("IX_TennisClubs_OrganizationId_Name");
     }
 }
