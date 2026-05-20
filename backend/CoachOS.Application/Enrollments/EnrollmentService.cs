@@ -530,7 +530,9 @@ public class EnrollmentService(
         var groupsById = groups.ToDictionary(g => g.Id);
 
         var dtos = enrollments
-            .Where(e => e.Status == EnrollmentStatus.Confirmed || e.Status == EnrollmentStatus.Pending)
+            .Where(e => e.Status == EnrollmentStatus.Confirmed
+                || e.Status == EnrollmentStatus.Pending
+                || e.Status == EnrollmentStatus.PendingPayment)
             .Select(e =>
             {
                 var enrollmentPrefs = prefsByEnrollment.GetValueOrDefault(e.Id, []);

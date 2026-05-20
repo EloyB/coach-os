@@ -49,7 +49,7 @@ public class EnrollmentRepository(ApplicationDbContext context) : IEnrollmentRep
             .AnyAsync(e =>
                 e.LessonSerieId == lessonSeriesId &&
                 e.StudentEmail.ToLower() == normalized &&
-                (e.Status == EnrollmentStatus.Confirmed || e.Status == EnrollmentStatus.Pending), ct);
+                (e.Status == EnrollmentStatus.Confirmed || e.Status == EnrollmentStatus.Pending || e.Status == EnrollmentStatus.PendingPayment), ct);
     }
 
     public async Task<int> CountActiveBySeriesAsync(Guid lessonSeriesId, CancellationToken ct = default)
@@ -58,7 +58,7 @@ public class EnrollmentRepository(ApplicationDbContext context) : IEnrollmentRep
             .AsNoTracking()
             .CountAsync(e =>
                 e.LessonSerieId == lessonSeriesId &&
-                (e.Status == EnrollmentStatus.Confirmed || e.Status == EnrollmentStatus.Pending), ct);
+                (e.Status == EnrollmentStatus.Confirmed || e.Status == EnrollmentStatus.Pending || e.Status == EnrollmentStatus.PendingPayment), ct);
     }
 
     public async Task<Dictionary<Guid, int>> CountActiveBySeriesIdsAsync(
@@ -70,7 +70,7 @@ public class EnrollmentRepository(ApplicationDbContext context) : IEnrollmentRep
             .Where(e =>
                 e.LessonSerieId.HasValue &&
                 ids.Contains(e.LessonSerieId.Value) &&
-                (e.Status == EnrollmentStatus.Confirmed || e.Status == EnrollmentStatus.Pending))
+                (e.Status == EnrollmentStatus.Confirmed || e.Status == EnrollmentStatus.Pending || e.Status == EnrollmentStatus.PendingPayment))
             .GroupBy(e => e.LessonSerieId!.Value)
             .ToDictionaryAsync(g => g.Key, g => g.Count(), ct);
     }
@@ -81,7 +81,7 @@ public class EnrollmentRepository(ApplicationDbContext context) : IEnrollmentRep
             .AsNoTracking()
             .CountAsync(e =>
                 e.OrganizationId == organizationId &&
-                (e.Status == EnrollmentStatus.Confirmed || e.Status == EnrollmentStatus.Pending), ct);
+                (e.Status == EnrollmentStatus.Confirmed || e.Status == EnrollmentStatus.Pending || e.Status == EnrollmentStatus.PendingPayment), ct);
     }
 
     public async Task AddAsync(Enrollment enrollment, CancellationToken ct = default)

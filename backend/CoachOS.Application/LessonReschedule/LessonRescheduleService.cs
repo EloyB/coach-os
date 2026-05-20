@@ -121,7 +121,7 @@ public class LessonRescheduleService(
                 oldLesson.LessonSerieId.Value, organizationId, ct);
             foreach (Enrollment e in enrollments)
             {
-                if (e.Status is EnrollmentStatus.Pending or EnrollmentStatus.Confirmed)
+                if (e.Status is EnrollmentStatus.Pending or EnrollmentStatus.Confirmed or EnrollmentStatus.PendingPayment)
                     recipients.Add((e.StudentEmail, e.StudentName));
             }
         }

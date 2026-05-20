@@ -300,7 +300,9 @@ public class LessonSerieService(
                 await enrollmentRepo.GetBySeriesAsync(lesson.LessonSerieId.Value, organizationId, ct);
 
             List<Domain.Entities.Enrollment> activeEnrollments = enrollments
-                .Where(e => e.Status is Domain.Enums.EnrollmentStatus.Pending or Domain.Enums.EnrollmentStatus.Confirmed)
+                .Where(e => e.Status is Domain.Enums.EnrollmentStatus.Pending
+                    or Domain.Enums.EnrollmentStatus.Confirmed
+                    or Domain.Enums.EnrollmentStatus.PendingPayment)
                 .ToList();
 
             foreach (Domain.Entities.Enrollment enrollment in activeEnrollments)
