@@ -42,6 +42,11 @@ locals {
     # Email__Username and Email__Password come from Scaleway TEM after domain
     # verification. Set them manually via `scw secret secret-version create`
     # or re-run `tofu apply` after filling in the `tem_smtp_*` variables.
+
+    # Mollie Connect — base URL where Mollie sends webhooks back to the API.
+    # The actual webhook path is /api/webhooks/mollie (handled by the API).
+    # ClientId and ClientSecret are manually filled (see resources below).
+    "Mollie__WebhookBaseUrl" = "https://app.${var.domain_name}"
   }
 }
 
@@ -75,4 +80,27 @@ resource "scaleway_secret" "super_admin_email" {
   name        = "SuperAdmin__Email"
   description = "E-mail van de eerste system-level super admin — manueel ingevuld"
   tags        = ["coach-os", "manual"]
+}
+
+# Mollie Connect OAuth credentials — manueel ingevuld na het aanmaken van het
+# Mollie partner-account en het activeren van Mollie Connect in het Mollie
+# dashboard. De redirect URI die in het Mollie dashboard moet worden ingesteld
+# is `https://app.<domain_name>/api/oauth/mollie/callback`.
+# Vul de waarden in via:
+#   scw secret secret-version create <secret_id> data=<value>
+# of via de Scaleway console.
+resource "scaleway_secret" "mollie_client_id" {
+  project_id  = var.scw_project_id
+  region      = var.scw_region
+  name        = "Mollie__ClientId"
+  description = "Mollie Connect OAuth client id — manueel ingevuld na Mollie onboarding"
+  tags        = ["coach-os", "manual", "mollie"]
+}
+
+resource "scaleway_secret" "mollie_client_secret" {
+  project_id  = var.scw_project_id
+  region      = var.scw_region
+  name        = "Mollie__ClientSecret"
+  description = "Mollie Connect OAuth client secret — manueel ingevuld na Mollie onboarding"
+  tags        = ["coach-os", "manual", "mollie"]
 }
