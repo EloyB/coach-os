@@ -79,3 +79,13 @@ setup (see `infrastructure/SECRETS.md`).
   manually (or extend this Terraform with `scaleway_iam_api_key` + tag)
 - Let's Encrypt SSL — handled inside the VPS by `bootstrap-vps.sh` via certbot
 - GitHub Actions secrets — set them in the GitHub UI per `SECRETS.md`
+- **Mollie Connect OAuth credentials** — after `tofu apply` lege secrets
+  `Mollie__ClientId` en `Mollie__ClientSecret` aanmaakt, vul je deze manueel in
+  na het aanmaken van het Mollie partner-account en het activeren van Mollie
+  Connect. Redirect URI in Mollie dashboard: `https://app.coach-os.be/api/oauth/mollie/callback`
+  (+ `http://localhost:5142/api/oauth/mollie/callback` voor dev).
+  Vul in via:
+  ```powershell
+  scw secret secret-version create <secret_id> data=<value>
+  ```
+  Of via de Scaleway console.
