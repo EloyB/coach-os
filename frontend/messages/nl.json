@@ -128,6 +128,19 @@
     "startError": "Kon de Mollie-koppeling niet starten",
     "disconnectError": "Ontkoppelen mislukt — probeer opnieuw"
   },
+  "paymentThankYou": {
+    "pendingTitle": "Even geduld — we wachten op de bevestiging",
+    "pendingBody": "We controleren elke paar seconden of je betaling binnen is. Sluit dit venster niet, dit kan tot een minuut duren.",
+    "paidTitle": "Betaling ontvangen",
+    "paidBody": "Bedankt — je inschrijving is bevestigd. Een bevestigingsmail is onderweg naar je inbox.",
+    "failedTitle": "Betaling niet voltooid",
+    "failedBody": "We konden je betaling niet bevestigen. Heb je geannuleerd of liep er iets mis, dan kan je opnieuw proberen.",
+    "retryButton": "Opnieuw betalen",
+    "missingParam": "Geen inschrijvings-ID gevonden in de URL.",
+    "loadError": "Kon de betaalstatus niet ophalen — probeer opnieuw.",
+    "amountLabel": "Bedrag",
+    "reasonLabel": "Reden"
+  },
   "tennisClubs": {
     "title": "Tennisclubs",
     "name": "Naam",
@@ -303,7 +316,8 @@
     "decline": "Afwijzen",
     "paymentMethod": "Betaalmethode",
     "cash": "Cash — betaal aan de club",
-    "online": "Online",
+    "online": "Online betalen (Mollie)",
+    "onlineHelp": "iDEAL, Bancontact, kaart — direct na bevestigen",
     "onlineComingSoon": "binnenkort beschikbaar",
     "confirmSlot": "Plek bevestigen",
     "confirming": "Bevestigen...",

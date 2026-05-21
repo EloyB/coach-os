@@ -52,6 +52,15 @@ services:
       # al als redirect URI geregistreerd voor de Coach OS OAuth app.
       Mollie__ClientId: "${MOLLIE_CLIENT_ID:-}"
       Mollie__ClientSecret: "${MOLLIE_CLIENT_SECRET:-}"
+      # Lokaal dev gebruikt Mollie's test mode (test cards, geen echt geld);
+      # productie laat dit op false zodat live payments doorgaan.
+      Mollie__UseTestMode: "true"
+      # DataProtection keystore in een named volume zodat tokens rebuilds overleven.
+      # Zonder dit worden bestaande Mollie-tokens in de DB onleesbaar bij elke
+      # `docker-compose up --build backend` (keys liggen anders in /tmp).
+      DataProtection__KeyDirectory: "/data-protection-keys"
+    volumes:
+      - dataprotection_keys:/data-protection-keys
     depends_on:
       postgres:
         condition: service_healthy
@@ -121,3 +130,4 @@ services:
 volumes:
   postgres_data:
   pgadmin_data:
+  dataprotection_keys:

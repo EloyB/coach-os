@@ -37,7 +37,10 @@ public class PlanningService(
 
         var enrollments = await enrollmentRepo.GetBySeriesAsync(seriesId, organizationId, ct);
         var activeEnrollments = enrollments
-            .Where(e => e.Status is EnrollmentStatus.Confirmed or EnrollmentStatus.Pending)
+            // PendingPayment telt mee als actief — die enrollment IS aangemaakt en
+            // wacht alleen op de Mollie webhook. Excluderen zou betekenen dat de
+            // hele planning leeg blijft tot iedereen betaald heeft.
+            .Where(e => e.Status is EnrollmentStatus.Confirmed or EnrollmentStatus.Pending or EnrollmentStatus.PendingPayment)
             .ToList();
         var groups = await enrollmentGroupRepo.GetBySeriesAsync(seriesId, organizationId, ct);
         var preferences = await timeSlotPreferenceRepo.GetBySeriesAsync(seriesId, organizationId, ct);
@@ -126,7 +129,10 @@ public class PlanningService(
         var preferences = await timeSlotPreferenceRepo.GetBySeriesAsync(seriesId, organizationId, ct);
 
         var activeEnrollments = enrollments
-            .Where(e => e.Status is EnrollmentStatus.Confirmed or EnrollmentStatus.Pending)
+            // PendingPayment telt mee als actief — die enrollment IS aangemaakt en
+            // wacht alleen op de Mollie webhook. Excluderen zou betekenen dat de
+            // hele planning leeg blijft tot iedereen betaald heeft.
+            .Where(e => e.Status is EnrollmentStatus.Confirmed or EnrollmentStatus.Pending or EnrollmentStatus.PendingPayment)
             .ToList();
 
         var prefsRawByEnrollment = PlanningProposalBuilder.BuildPreferencesLookup(preferences);

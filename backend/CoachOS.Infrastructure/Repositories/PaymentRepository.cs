@@ -34,6 +34,26 @@ public class PaymentRepository(ApplicationDbContext context) : IPaymentRepositor
                 g => g.OrderByDescending(r => r.CreatedAt).First().Status);
     }
 
+    public async Task<Payment?> GetByMolliePaymentIdAsync(
+        string molliePaymentId, CancellationToken ct = default)
+    {
+        // Webhook heeft geen tenant-context; tenant query filter is "loose" en
+        // staat anonieme reads toe wanneer er geen tenant is ingesteld (zie
+        // ApplicationDbContext.ApplyTenantFilters).
+        return await context.Payments
+            .FirstOrDefaultAsync(p => p.MolliePaymentId == molliePaymentId, ct);
+    }
+
+    public async Task<Payment?> GetLatestByEnrollmentIdAsync(
+        Guid enrollmentId, CancellationToken ct = default)
+    {
+        return await context.Payments
+            .AsNoTracking()
+            .Where(p => p.EnrollmentId == enrollmentId)
+            .OrderByDescending(p => p.CreatedAt)
+            .FirstOrDefaultAsync(ct);
+    }
+
     public async Task SaveChangesAsync(CancellationToken ct = default)
         => await context.SaveChangesAsync(ct);
 }

@@ -1,0 +1,297 @@
+using CoachOS.Application.Configuration;
+using CoachOS.Application.MollieConnect;
+using CoachOS.Application.Payments;
+using CoachOS.Application.Payments.DTOs;
+using CoachOS.Domain.Entities;
+using CoachOS.Domain.Enums;
+using CoachOS.Domain.Interfaces;
+using CoachOS.Domain.Models;
+using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using Moq;
+using NUnit.Framework;
+
+namespace CoachOS.Tests.Services;
+
+[TestFixture]
+public class PaymentServiceTests
+{
+    private Mock<IPaymentRepository> _payments = null!;
+    private Mock<IEnrollmentRepository> _enrollments = null!;
+    private Mock<ILessonSerieRepository> _lessonSeries = null!;
+    private Mock<IOrganizationSettingsRepository> _orgSettings = null!;
+    private Mock<IMollieClient> _mollie = null!;
+    private Mock<IMollieConnectService> _connect = null!;
+    private Mock<IEmailService> _email = null!;
+    private PaymentService _sut = null!;
+
+    private static readonly Guid OrgId = Guid.NewGuid();
+    private static readonly Guid EnrollmentId = Guid.NewGuid();
+    private static readonly Guid SeriesId = Guid.NewGuid();
+    private const string MolliePaymentId = "tr_test_123";
+
+    [SetUp]
+    public void SetUp()
+    {
+        _payments = new Mock<IPaymentRepository>();
+        _enrollments = new Mock<IEnrollmentRepository>();
+        _lessonSeries = new Mock<ILessonSerieRepository>();
+        _orgSettings = new Mock<IOrganizationSettingsRepository>();
+        _mollie = new Mock<IMollieClient>();
+        _connect = new Mock<IMollieConnectService>();
+        _email = new Mock<IEmailService>();
+
+        IOptions<MollieOptions> mollieOptions = Options.Create(new MollieOptions
+        {
+            WebhookBaseUrl = "https://app.example",
+        });
+        IOptions<AppOptions> appOptions = Options.Create(new AppOptions
+        {
+            FrontendBaseUrl = "https://app.example",
+        });
+
+        _sut = new PaymentService(
+            _payments.Object,
+            _enrollments.Object,
+            _lessonSeries.Object,
+            _orgSettings.Object,
+            _mollie.Object,
+            _connect.Object,
+            _email.Object,
+            mollieOptions,
+            appOptions,
+            NullLogger<PaymentService>.Instance);
+    }
+
+    // ── CreatePaymentForEnrollmentAsync ──────────────────────────────────────
+
+    [Test]
+    public async Task CreatePayment_ZeroPriceSeries_FailsValidation()
+    {
+        ArrangeEnrollment(price: 0m);
+
+        Result<CreatePaymentResultDto> result = await _sut.CreatePaymentForEnrollmentAsync(EnrollmentId, OrgId);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.Validation);
+        _mollie.Verify(m => m.CreatePaymentAsync(It.IsAny<string>(), It.IsAny<MolliePaymentRequest>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Test]
+    public async Task CreatePayment_NoMollieConnection_PropagatesError()
+    {
+        ArrangeEnrollment(price: 50m);
+        _connect.Setup(c => c.GetValidAccessTokenAsync(OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<string>.Fail(new Error(ErrorCodes.NotFound, "niet gekoppeld")));
+
+        Result<CreatePaymentResultDto> result = await _sut.CreatePaymentForEnrollmentAsync(EnrollmentId, OrgId);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.NotFound);
+    }
+
+    [Test]
+    public async Task CreatePayment_HappyPath_SavesPaymentAndReturnsCheckoutUrl()
+    {
+        ArrangeEnrollment(price: 50m);
+        _connect.Setup(c => c.GetValidAccessTokenAsync(OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<string>.Ok("access-token"));
+        _mollie.Setup(m => m.CreatePaymentAsync("access-token", It.IsAny<MolliePaymentRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<MolliePaymentCreatedResponse>.Ok(new MolliePaymentCreatedResponse(
+                "tr_xxx", "open", "https://www.mollie.com/checkout/xxx")));
+
+        Payment? saved = null;
+        _payments.Setup(p => p.AddAsync(It.IsAny<Payment>(), It.IsAny<CancellationToken>()))
+            .Callback<Payment, CancellationToken>((p, _) => saved = p)
+            .Returns(Task.CompletedTask);
+
+        Result<CreatePaymentResultDto> result = await _sut.CreatePaymentForEnrollmentAsync(EnrollmentId, OrgId);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.CheckoutUrl.Should().Be("https://www.mollie.com/checkout/xxx");
+        saved.Should().NotBeNull();
+        saved!.Amount.Should().Be(50m);
+        saved.Currency.Should().Be("EUR");
+        saved.MolliePaymentId.Should().Be("tr_xxx");
+        saved.Status.Should().Be(PaymentStatus.Pending);
+        saved.PlatformFee.Should().BeNull();
+    }
+
+    [Test]
+    public async Task CreatePayment_WithPlatformFee_PassesApplicationFeeAndStoresSnapshot()
+    {
+        ArrangeEnrollment(price: 100m);
+        _orgSettings.Setup(o => o.GetByOrganizationReadOnlyAsync(OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new OrganizationSettings
+            {
+                OrganizationId = OrgId,
+                PlatformFeePercentage = 2.5m,
+                PaymentCurrency = "EUR",
+            });
+        _connect.Setup(c => c.GetValidAccessTokenAsync(OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<string>.Ok("access-token"));
+
+        MolliePaymentRequest? captured = null;
+        _mollie.Setup(m => m.CreatePaymentAsync("access-token", It.IsAny<MolliePaymentRequest>(), It.IsAny<CancellationToken>()))
+            .Callback<string, MolliePaymentRequest, CancellationToken>((_, r, _2) => captured = r)
+            .ReturnsAsync(Result<MolliePaymentCreatedResponse>.Ok(new MolliePaymentCreatedResponse(
+                "tr_y", "open", "https://checkout")));
+
+        Payment? saved = null;
+        _payments.Setup(p => p.AddAsync(It.IsAny<Payment>(), It.IsAny<CancellationToken>()))
+            .Callback<Payment, CancellationToken>((p, _) => saved = p)
+            .Returns(Task.CompletedTask);
+
+        Result<CreatePaymentResultDto> result = await _sut.CreatePaymentForEnrollmentAsync(EnrollmentId, OrgId);
+
+        result.IsSuccess.Should().BeTrue();
+        captured.Should().NotBeNull();
+        captured!.ApplicationFee.Should().Be(2.50m);
+        captured.WebhookUrl.Should().Be("https://app.example/api/webhooks/mollie");
+        saved!.PlatformFee.Should().Be(2.50m);
+    }
+
+    // ── SyncPaymentFromMollieAsync ────────────────────────────────────────────
+
+    [Test]
+    public async Task Sync_UnknownPaymentId_ReturnsOkAndDoesNothing()
+    {
+        _payments.Setup(p => p.GetByMolliePaymentIdAsync("nope", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Payment?)null);
+
+        Result result = await _sut.SyncPaymentFromMollieAsync("nope");
+
+        result.IsSuccess.Should().BeTrue();
+        _mollie.Verify(m => m.GetPaymentAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Test]
+    public async Task Sync_AlreadyPaid_IsIdempotentNoop()
+    {
+        Payment existing = new()
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = OrgId,
+            EnrollmentId = EnrollmentId,
+            Status = PaymentStatus.Paid,
+            MolliePaymentId = MolliePaymentId,
+        };
+        _payments.Setup(p => p.GetByMolliePaymentIdAsync(MolliePaymentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existing);
+
+        Result result = await _sut.SyncPaymentFromMollieAsync(MolliePaymentId);
+
+        result.IsSuccess.Should().BeTrue();
+        _mollie.Verify(m => m.GetPaymentAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+        _payments.Verify(p => p.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task Sync_PaidTransition_UpdatesPaymentAndConfirmsEnrollment()
+    {
+        Payment payment = new()
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = OrgId,
+            EnrollmentId = EnrollmentId,
+            Status = PaymentStatus.Pending,
+            MolliePaymentId = MolliePaymentId,
+            Amount = 50m,
+        };
+        Enrollment enrollment = new()
+        {
+            Id = EnrollmentId,
+            OrganizationId = OrgId,
+            LessonSerieId = SeriesId,
+            StudentEmail = "student@example.com",
+            StudentName = "Test Student",
+            Status = EnrollmentStatus.PendingPayment,
+        };
+        _payments.Setup(p => p.GetByMolliePaymentIdAsync(MolliePaymentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(payment);
+        _connect.Setup(c => c.GetValidAccessTokenAsync(OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<string>.Ok("access-token"));
+        _mollie.Setup(m => m.GetPaymentAsync("access-token", MolliePaymentId, It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<MolliePaymentSnapshot>.Ok(new MolliePaymentSnapshot(
+                MolliePaymentId, "paid", 50m, "EUR", DateTime.UtcNow, "bancontact", null)));
+        _enrollments.Setup(e => e.GetByIdAsync(EnrollmentId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(enrollment);
+        _lessonSeries.Setup(l => l.GetByIdPublicAsync(SeriesId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new LessonSerie { Id = SeriesId, Name = "Voorjaar 2026" });
+
+        Result result = await _sut.SyncPaymentFromMollieAsync(MolliePaymentId);
+
+        result.IsSuccess.Should().BeTrue();
+        payment.Status.Should().Be(PaymentStatus.Paid);
+        payment.PaidAt.Should().NotBeNull();
+        enrollment.Status.Should().Be(EnrollmentStatus.Confirmed);
+        _email.Verify(e => e.SendEnrollmentConfirmationAsync(
+            "student@example.com", "Test Student", "Voorjaar 2026", string.Empty, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Test]
+    public async Task Sync_FailedTransition_UpdatesPaymentDoesNotConfirm()
+    {
+        Payment payment = new()
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = OrgId,
+            EnrollmentId = EnrollmentId,
+            Status = PaymentStatus.Pending,
+            MolliePaymentId = MolliePaymentId,
+        };
+        _payments.Setup(p => p.GetByMolliePaymentIdAsync(MolliePaymentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(payment);
+        _connect.Setup(c => c.GetValidAccessTokenAsync(OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<string>.Ok("access-token"));
+        _mollie.Setup(m => m.GetPaymentAsync("access-token", MolliePaymentId, It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<MolliePaymentSnapshot>.Ok(new MolliePaymentSnapshot(
+                MolliePaymentId, "failed", 50m, "EUR", null, null, "insufficient_funds")));
+
+        Result result = await _sut.SyncPaymentFromMollieAsync(MolliePaymentId);
+
+        result.IsSuccess.Should().BeTrue();
+        payment.Status.Should().Be(PaymentStatus.Failed);
+        payment.FailureReason.Should().Be("insufficient_funds");
+        _enrollments.Verify(e => e.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
+    private void ArrangeEnrollment(decimal price)
+    {
+        _mollie.Setup(m => m.GetFirstProfileIdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<string>.Ok("pfl_test"));
+
+        Enrollment enrollment = new()
+        {
+            Id = EnrollmentId,
+            OrganizationId = OrgId,
+            LessonSerieId = SeriesId,
+            StudentEmail = "x@y.com",
+            StudentName = "X",
+        };
+        _enrollments.Setup(e => e.GetByIdAsync(EnrollmentId, It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(enrollment);
+        _lessonSeries.Setup(l => l.GetByIdPublicAsync(SeriesId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new LessonSerie
+            {
+                Id = SeriesId,
+                Name = "Test Reeks",
+                Price = price,
+                OrganizationId = OrgId,
+            });
+        _orgSettings.Setup(o => o.GetByOrganizationReadOnlyAsync(OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new OrganizationSettings
+            {
+                OrganizationId = OrgId,
+                PlatformFeePercentage = 0m,
+                PaymentCurrency = "EUR",
+            });
+    }
+}

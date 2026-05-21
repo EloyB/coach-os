@@ -265,7 +265,9 @@ public class EnrollmentService(
                     new Error(ErrorCodes.Conflict, "Je bent al ingeschreven voor deze lessenreeks."));
             }
 
-        // 8. Create enrollment
+        // 8. Create enrollment. Status blijft Pending tot de student via de
+        //    confirmation-mail bevestigt — Mollie payment wordt dan getriggerd
+        //    door StudentConfirmationService, niet hier.
         enrollment = new()
         {
             OrganizationId = series.OrganizationId,
@@ -487,7 +489,9 @@ public class EnrollmentService(
         var groupsById = groups.ToDictionary(g => g.Id);
 
         var dtos = enrollments
-            .Where(e => e.Status == EnrollmentStatus.Confirmed || e.Status == EnrollmentStatus.Pending)
+            .Where(e => e.Status == EnrollmentStatus.Confirmed
+                || e.Status == EnrollmentStatus.Pending
+                || e.Status == EnrollmentStatus.PendingPayment)
             .Select(e =>
             {
                 var enrollmentPrefs = prefsByEnrollment.GetValueOrDefault(e.Id, []);

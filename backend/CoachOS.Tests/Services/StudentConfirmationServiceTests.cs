@@ -28,6 +28,7 @@ public class StudentConfirmationServiceTests
     private Mock<IScheduleAssignmentRepository> _assignmentRepo = null!;
     private Mock<ILessonSerieRepository> _seriesRepo = null!;
     private Mock<IPaymentRepository> _paymentRepo = null!;
+    private Mock<CoachOS.Application.Payments.IPaymentService> _paymentService = null!;
     private Mock<ILogger<StudentConfirmationService>> _logger = null!;
     private StudentConfirmationService _sut = null!;
 
@@ -42,6 +43,7 @@ public class StudentConfirmationServiceTests
         _assignmentRepo = new Mock<IScheduleAssignmentRepository>();
         _seriesRepo = new Mock<ILessonSerieRepository>();
         _paymentRepo = new Mock<IPaymentRepository>();
+        _paymentService = new Mock<CoachOS.Application.Payments.IPaymentService>();
         _logger = new Mock<ILogger<StudentConfirmationService>>();
 
         _sut = new StudentConfirmationService(
@@ -49,6 +51,7 @@ public class StudentConfirmationServiceTests
             _assignmentRepo.Object,
             _seriesRepo.Object,
             _paymentRepo.Object,
+            _paymentService.Object,
             _logger.Object);
     }
 
