@@ -64,7 +64,7 @@ This is where most B2B SaaS landing pages stop and lose ranking + AI-citation sh
 
 - [x] `/voor-tennisclubs` — tennis club-specific pains (Excel chaos, KNLTB/Tennis Vlaanderen rapportering, jeugd vs volwassenen).
 - [x] `/voor-padelclubs` — padel-specific (snelle groei, niveauverschillen, banen die les + vrij gebruik combineren, mobile-first).
-- [x] `/voor-trainers` — zelfstandige coaches (Excel-routine, mailcarrousel, geen admin-support).
+- [x] `/voor-trainers` — zelfstandige coaches (Excel-routine, oneindig veel mails, geen admin-support).
 
 Shipped state: each page has unique H1, Wikipedia-style lead paragraph (AI-quoteable), pains/solutions paired in two columns, local-SEO city ribbon, persona-specific FAQ, and `BreadcrumbList` + `FAQPage` + `Service` JSON-LD. Homepage `VoorWie` cards now link into the three pages. Sitemap updated.
 
@@ -93,7 +93,7 @@ Next under content depth:
 AI engines cite content that is:
 
 1. **Factually structured.** ✅ Lead paragraphs across the homepage, persona pages, and blog posts all open Wikipedia-style. Definition first, no buried lede.
-2. **Listed and comparable.** ✅ "Excel vs CoachOS" comparison section shipped on the homepage (2026-05-07). Six recurring lesplanning-taken, each with a side-by-side before/after card. AI-quoteable copy, inline visual contrast (✗/✓), no schema needed — the structured prose itself is the GEO play. *Note: positioned between FeatureGrid and BespaarTijd as a homepage section. If it clutters the page, candidate to lift into a dedicated `/excel-vs-coachos` blog post or comparison page.*
+2. **Listed and comparable.** ✅ "Excel vs CoachOS" comparison section shipped on the homepage (2026-05-07). Six recurring lesplanning-taken, each with a side-by-side before/after card. AI-quoteable copy, inline visual contrast (✗/✓), no schema needed — the structured prose itself is the GEO play. _Note: positioned between FeatureGrid and BespaarTijd as a homepage section. If it clutters the page, candidate to lift into a dedicated `/excel-vs-coachos` blog post or comparison page._
 3. **FAQ-rich.** ✅ Homepage FAQ expanded from 7 → 17 questions (2026-05-07). Each persona page has its own 4-Q FAQ; each blog post has 4-5 Q. Cumulative `FAQPage` schema across the site is now substantial.
 4. **Mentioned elsewhere.** Operational outreach, not code:
    - Capterra NL, GetApp, G2, Software Advice
@@ -124,7 +124,7 @@ While the brand positions for European expansion, organic traffic today comes fr
 - `Organization` schema with address + region (added once a registered entity exists)
 - Once live: Google Business Profile (NL or BE entity)
 - KvK / KBO listing visible on legal pages
-- City mentions in landing copy where Search Console shows local intent (e.g., "tennisclubs in Amsterdam, Antwerpen, Rotterdam, Gent, Den Haag, Brussel"). *Note (2026-05-07):* the persona pages currently have **no city ribbon** — removed when the open-market direction was set, since pinning visible copy to specific Benelux cities contradicts the expansion stance. When SEO data justifies it, re-introduce city mentions on a per-page basis (e.g., a Belgium-only landing page or a regional comparison post), not on persona pages that should travel.
+- City mentions in landing copy where Search Console shows local intent (e.g., "tennisclubs in Amsterdam, Antwerpen, Rotterdam, Gent, Den Haag, Brussel"). _Note (2026-05-07):_ the persona pages currently have **no city ribbon** — removed when the open-market direction was set, since pinning visible copy to specific Benelux cities contradicts the expansion stance. When SEO data justifies it, re-introduce city mentions on a per-page basis (e.g., a Belgium-only landing page or a regional comparison post), not on persona pages that should travel.
 
 **When expanding to a new country:** replicate the same surfaces — local entity in `Organization` schema, country-specific Google Business Profile, regional registry (KvK / KBO / Companies House / etc.), city mentions in country-targeted pages — without changing the persona pages or homepage messaging.
 

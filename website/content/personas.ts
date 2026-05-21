@@ -44,7 +44,7 @@ export const TENNIS_CLUBS_PERSONA: Persona = {
     "Software voor lessenplanning bij tennisclubs in de Benelux. Lessenreeksen, anonieme inschrijvingen en automatische groepering — geen Excel meer.",
   kicker: "VOOR TENNISCLUBS",
   h1: "Lessenplanning voor tennisclubs",
-  lead: "CoachOS is een lessenplanningsysteem voor tennisclubs. Beheer lessenreeksen, verzamel inschrijvingen via een publieke link en laat het algoritme leerlingen op niveau verdelen — zonder Excel-sheets, zonder accounts voor leden, zonder mailcarrousel.",
+  lead: "CoachOS is een lessenplanningsysteem voor tennisclubs. Beheer lessenreeksen, verzamel inschrijvingen via een publieke link en laat het algoritme leerlingen op niveau verdelen — zonder Excel-sheets, zonder accounts voor leden, zonder oneindig veel mails.",
   pains: [
     {
       title: "Excel-sheets die elk seizoen opnieuw uit elkaar vallen",
@@ -91,10 +91,6 @@ export const TENNIS_CLUBS_PERSONA: Persona = {
       a: "Ja. Per lessenreeks stel je niveau, leeftijd en groepsgrootte in. Het algoritme houdt rekening met alle drie bij het verdelen van leerlingen over slots.",
     },
     {
-      q: "Hoe zit het met federatie-rapportering (KNLTB, Tennis Vlaanderen)?",
-      a: "Federatie-rapportering naar KNLTB en Tennis Vlaanderen staat op de roadmap voor de eerste release. Tijdens de pilot helpen we periodiek handmatig bij de rapportering uit je leerling- en lessenreeksoverzicht.",
-    },
-    {
       q: "Kan ik tussentijds een nieuwe trainer toevoegen?",
       a: "Ja. Een bestaande clubadmin nodigt nieuwe trainers uit per e-mail. De trainer ziet enkel zijn eigen lessenreeksen — multi-club rollen en rechten zijn ingebouwd.",
     },
@@ -121,12 +117,7 @@ export const PADEL_CLUBS_PERSONA: Persona = {
     },
     {
       title: "Niveauverschillen tussen beginners en gevorderde spelers",
-      body: "Een complete beginner aanmelden naast een ervaren A-speler levert frustratie aan beide kanten — maar handmatig schiften is niet schaalbaar.",
-    },
-    {
-      title:
-        "Banen die zowel vrij geboekt als voor lessenreeksen gebruikt worden",
-      body: "Wanneer is welke baan vrij? Wie heeft les en wie speelt vrij? Geen overzicht zonder vier tabs open te hebben.",
+      body: "Een complete beginner aanmelden naast een ervaren speler levert frustratie aan beide kanten. Handmatig schiften is niet schaalbaar.",
     },
     {
       title: "Spelers die liefst op de gsm inschrijven",
@@ -143,12 +134,8 @@ export const PADEL_CLUBS_PERSONA: Persona = {
       body: "Niveau, voorkeurstijd en groepsverbanden worden samen meegenomen. Beginners blijven bij beginners, gevorderden bij gevorderden.",
     },
     {
-      title: "Centraal overzicht per baan en per slot",
-      body: "Eén dashboard toont welke baan op welk moment voor lessenreeks gebruikt wordt — geen conflicten meer met vrij geboekte tijden.",
-    },
-    {
       title: "Mobiel-vriendelijke inschrijfflow zonder app",
-      body: "De publieke inschrijflink werkt vlot op elke gsm. Geen download, geen account, geen wachtwoord — alleen naam en e-mail.",
+      body: "De inschrijflink werkt vlot op elke gsm. Geen download, geen account, geen wachtwoord — alleen naam en e-mail.",
     },
   ],
   faq: [
@@ -158,7 +145,7 @@ export const PADEL_CLUBS_PERSONA: Persona = {
     },
     {
       q: "Hoe gaat dit met snelle groei van mijn club?",
-      a: "Geen limiet op leerlingen of inschrijvingen per lessenreeks. Het Federatie-abonnement biedt extra ondersteuning voor multi-locatie clubs.",
+      a: "Geen limiet op leerlingen of inschrijvingen per lessenreeks. Het school-abonnement biedt extra ondersteuning voor multi-locatie clubs.",
     },
     {
       q: "Kunnen mijn spelers zonder app of account inschrijven?",
@@ -183,11 +170,11 @@ export const TRAINERS_PERSONA: Persona = {
     "Voor zelfstandige tennis- en padeltrainers — automatiseer inschrijvingen, planning en bevestigingen. Eén tool, geen Excel, gratis tijdens pilot.",
   kicker: "VOOR TRAINERS",
   h1: "Lessenplanning voor trainers",
-  lead: "CoachOS is een lessenplanningsysteem gemaakt voor trainers en hoofdtrainers in tennis en padel. Stel een lessenreeks één keer in, deel een publieke inschrijflink, en laat het algoritme de planning maken — terwijl jij op de baan staat in plaats van achter de laptop.",
+  lead: "CoachOS is een lessenplanningsysteem gemaakt voor trainers en hoofdtrainers in tennis en padel. Stel een lessenreeks in, deel de inschrijflink, en laat het algoritme de planning maken terwijl jij op de baan staat in plaats van achter de laptop.",
   pains: [
     {
       title: "Elke maandag opnieuw lijstjes maken in Excel",
-      body: "Een nieuwe seizoensplanning is altijd een avond achter de laptop met copy-paste en formules die ergens stiekem breken.",
+      body: "Een nieuwe seizoensplanning is altijd een avond achter de laptop met talloze Excel-sheets en gegevens.",
     },
     {
       title: "Eindeloos heen-en-weer mailen over voorkeurstijden",
@@ -199,25 +186,25 @@ export const TRAINERS_PERSONA: Persona = {
     },
     {
       title: "Geen tijd voor administratie naast lesgeven",
-      body: "Lesgeven is je vak. Administratie is wat je doet ná de lessen — als er nog energie over is.",
+      body: "Lesgeven is je vak. Administratie is wat je doet ná de lessen, als er nog energie over is.",
     },
   ],
   solutions: [
     {
-      title: "Eén lessenreeks volstaat voor het hele seizoen",
+      title: "Eén lessenreeks kan volstaan voor het hele seizoen",
       body: "Maandagen, woensdagavonden of zaterdagochtenden — elk ritme. Lessen genereren automatisch.",
     },
     {
-      title: "Inschrijfflow vervangt mailcarrousel volledig",
+      title: "Inschrijfflow vervangt de oneindig veel mails volledig",
       body: "Je deelt één link. Leerlingen vullen alles in. Hun voorkeuren komen direct binnen, gekoppeld aan de juiste reeks.",
     },
     {
       title: "Algoritme groepeert op voorkeur en niveau",
-      body: "Niveau, voorkeurstijd, groepsverbanden — alles in één run. Aanpassingen achteraf blijven bewaard wanneer je opnieuw plant.",
+      body: "Planning op niveau, voorkeurstijd en groepsverbanden. Aanpassingen achteraf blijven bewaard wanneer je opnieuw plant.",
     },
     {
       title: "Inschrijving → planning → bevestiging → betaling, één tool",
-      body: "Geen export-import tussen vier verschillende apps. Eén dashboard, één login, één plek om de seizoenstatus te zien.",
+      body: "Geen export-import tussen vier verschillende apps. Eén dashboard, één login, één plek om de lessenstatus te zien.",
     },
   ],
   faq: [
