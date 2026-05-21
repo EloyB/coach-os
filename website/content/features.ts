@@ -18,12 +18,12 @@ export const FEATURES: Feature[] = [
   {
     icon: CalendarRange,
     title: "Lessenreeksen",
-    body: "Stel een lessenreeks één keer in en laat je agenda automatisch gegenereerd worden.",
+    body: "Plan een lessenreeks op jouw maat. Kies je tijdslots, trainers en speelniveau.",
   },
   {
     icon: ClipboardList,
     title: "Anonieme inschrijving",
-    body: "Leerlingen schrijven zich in via een publieke link — geen account, geen wachtwoord, geen drempel.",
+    body: "Leerlingen schrijven zich in via een publieke link. Geen account, geen wachtwoord, geen drempel.",
   },
   {
     icon: FormInput,
@@ -33,12 +33,12 @@ export const FEATURES: Feature[] = [
   {
     icon: BrainCircuit,
     title: "Planningsalgoritme",
-    body: "Verdeelt leerlingen automatisch over weekslots op basis van hun voorkeuren en groepsverbanden. Handmatige aanpassingen blijven bewaard.",
+    body: "Verdeel leerlingen automatisch over de tijdslots op basis van hun voorkeuren en groepsverbanden. Handmatige aanpassingen blijven bewaard.",
   },
   {
     icon: MailCheck,
-    title: "Bevestiging via magic link",
-    body: "Leerlingen bevestigen hun lestijd met één klik in een e-mail. Geen telefoontjes, geen WhatsApp-discussies.",
+    title: "Bevestiging via een link",
+    body: "Leerlingen bevestigen hun lestijd met één klik in een e-mail. Geen telefoontjes of Whatsapps nodig.",
   },
   {
     icon: CreditCard,
