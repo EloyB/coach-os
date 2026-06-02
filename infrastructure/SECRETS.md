@@ -53,6 +53,11 @@ TEM only issues SMTP credentials after DKIM/SPF DNS verification has propagated.
 | `Email__FromName` | ✓ Terraform | `CoachOS` |
 | `Email__Username` | **manual** | After Scaleway TEM verifies the domain, generate API key with `TransactionalEmail` permission, copy to a new secret version |
 | `Email__Password` | **manual** | The secret half of the same API key |
+| `Mollie__WebhookBaseUrl` | ✓ Terraform | `https://app.<domain_name>` |
+| `Mollie__ClientId` | **manual** | From my.mollie.com → Developers → OAuth applications |
+| `Mollie__ClientSecret` | **manual** | Same place, shown once on creation |
+| `Mollie__RedirectUri` | **manual** | `https://app.<domain_name>/api/oauth/mollie/callback` — must match Mollie dashboard exactly |
+| `SuperAdmin__Email` | **manual** | Email of the first system-level super admin (promoted at API startup) |
 
 ### Manual TEM creds setup
 
