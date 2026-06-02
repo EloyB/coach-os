@@ -104,3 +104,19 @@ resource "scaleway_secret" "mollie_client_secret" {
   description = "Mollie Connect OAuth client secret — manueel ingevuld na Mollie onboarding"
   tags        = ["coach-os", "manual", "mollie"]
 }
+
+# Mollie__RedirectUri — overschrijft de runtime-afgeleide redirect URI
+# (HttpContext.Request.Scheme + Host). Nodig achter de nginx-proxy omdat
+# ASP.NET anders `http://` ziet ipv `https://` en Mollie de redirect exact
+# matcht. Vul in via Scaleway console of:
+#   scw secret secret-version create <secret_id> \
+#     data="https://app.<domain_name>/api/oauth/mollie/callback"
+# De waarde MOET letterlijk overeenkomen met wat in het Mollie dashboard
+# als redirect URI staat geregistreerd.
+resource "scaleway_secret" "mollie_redirect_uri" {
+  project_id  = var.scw_project_id
+  region      = var.scw_region
+  name        = "Mollie__RedirectUri"
+  description = "Mollie Connect OAuth redirect URI — manueel ingevuld, moet exact matchen met Mollie dashboard"
+  tags        = ["coach-os", "manual", "mollie"]
+}
