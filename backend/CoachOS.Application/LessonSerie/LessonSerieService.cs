@@ -95,9 +95,12 @@ public class LessonSerieService(
         if (trainerError is not null)
             return Result<Guid>.Fail(trainerError);
 
-        // Reject duplicate weekly template entries (same day + time + court = same slot)
-        List<(int DayOfWeek, string StartTime, string EndTime, string CourtName)> duplicates = request.WeeklyTemplate
-            .GroupBy(t => (t.DayOfWeek, t.StartTime, t.EndTime, CourtName: t.CourtName ?? ""))
+        // Reject duplicate weekly template entries (same day + start time + court = same slot).
+        // The key MUST match the unique index IX_WeeklyTemplateEntries_LessonSerieId_DayOfWeek_StartTime_CourtName
+        // (which does NOT include EndTime); otherwise a same-start/different-end collision slips past this guard
+        // and surfaces as a raw DbUpdateException → HTTP 500 instead of this clean validation error.
+        var duplicates = request.WeeklyTemplate
+            .GroupBy(t => (t.DayOfWeek, t.StartTime, CourtName: t.CourtName ?? ""))
             .Where(g => g.Count() > 1)
             .Select(g => g.Key)
             .ToList();
@@ -105,8 +108,8 @@ public class LessonSerieService(
         if (duplicates.Count > 0)
         {
             string[] dayNames = ["ma", "di", "wo", "do", "vr", "za", "zo"];
-            string slots = string.Join(", ", duplicates.Select(d =>
-                $"{dayNames[d.DayOfWeek]} {d.StartTime}–{d.EndTime}" + (d.CourtName != "" ? $" ({d.CourtName})" : "")));
+            var slots = string.Join(", ", duplicates.Select(d =>
+                $"{dayNames[d.DayOfWeek]} {d.StartTime}" + (d.CourtName != "" ? $" ({d.CourtName})" : "")));
             return Result<Guid>.Fail(new Error(ErrorCodes.Validation,
                 $"Dubbele tijdsloten in weekindeling: {slots}. Verwijder de duplicaten."));
         }
