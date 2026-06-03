@@ -20,6 +20,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CoachOS.API\CoachOS.API.csproj" />
     <ProjectReference Include="..\CoachOS.Application\CoachOS.Application.csproj" />
     <ProjectReference Include="..\CoachOS.Infrastructure\CoachOS.Infrastructure.csproj" />
   </ItemGroup>

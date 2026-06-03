@@ -23,4 +23,8 @@
     <ProjectReference Include="..\CoachOS.Infrastructure\CoachOS.Infrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="CoachOS.Tests" />
+  </ItemGroup>
+
 </Project>
