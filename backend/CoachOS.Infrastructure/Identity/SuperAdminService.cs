@@ -54,11 +54,14 @@ public class SuperAdminService(
             // Voorkomt dat een GET /organization/settings vanuit de FE eerst een lazy
             // provisioning trip moet doen, en houdt het bestaan van settings expliciet
             // aan de creatie-transactie gekoppeld.
+            // OnboardingStartedAt stempelen we ook hier: een door super-admin aangemaakte org
+            // is even "nieuw" als een self-registered org en moet dezelfde onboarding zien.
             context.OrganizationSettings.Add(new Domain.Entities.OrganizationSettings
             {
                 Id = Guid.NewGuid(),
                 OrganizationId = organization.Id,
                 AdminsActAsTrainers = true,
+                OnboardingStartedAt = DateTime.UtcNow,
             });
 
             await context.SaveChangesAsync(ct);

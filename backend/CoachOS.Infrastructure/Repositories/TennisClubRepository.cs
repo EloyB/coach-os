@@ -56,4 +56,11 @@ public class TennisClubRepository(ApplicationDbContext context) : ITennisClubRep
                 tc.Name.ToLower() == normalized &&
                 (!excludeId.HasValue || tc.Id != excludeId.Value), ct);
     }
+
+    public async Task<bool> AnyByOrganizationAsync(Guid organizationId, CancellationToken ct = default)
+    {
+        return await context.TennisClubs
+            .AsNoTracking()
+            .AnyAsync(tc => tc.OrganizationId == organizationId, ct);
+    }
 }

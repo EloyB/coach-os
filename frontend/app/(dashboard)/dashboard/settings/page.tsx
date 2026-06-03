@@ -124,6 +124,8 @@ export default function SettingsPage() {
     mutationFn: createTennisClub,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tennisClubs"] });
+      // Eerste club toevoegen voltooit de "club" onboarding-stap — checklist meteen verversen.
+      queryClient.invalidateQueries({ queryKey: ["onboarding"] });
       reset();
     },
   });

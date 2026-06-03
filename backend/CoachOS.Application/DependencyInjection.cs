@@ -4,6 +4,7 @@ using CoachOS.Application.Enrollments;
 using CoachOS.Application.LessonReschedule;
 using CoachOS.Application.LessonSerie;
 using CoachOS.Application.Mappings;
+using CoachOS.Application.Onboarding;
 using CoachOS.Application.OrganizationSettings;
 using CoachOS.Application.Payments;
 using CoachOS.Application.Planning;
@@ -38,6 +39,7 @@ public static class DependencyInjection
         services.AddScoped<IStandaloneLessonService, StandaloneLessonService>();
         services.AddScoped<IInvitationPublicService, InvitationPublicService>();
         services.AddScoped<IOrganizationSettingsService, OrganizationSettingsService>();
+        services.AddScoped<IOnboardingService, OnboardingService>();
         services.AddScoped<IPaymentService, PaymentService>();
 
         return services;

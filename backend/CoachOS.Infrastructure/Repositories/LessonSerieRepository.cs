@@ -100,4 +100,11 @@ public class LessonSerieRepository(ApplicationDbContext context) : ILessonSerieR
             .AsNoTracking()
             .AnyAsync(ls => ls.TennisClubId == tennisClubId, ct);
     }
+
+    public async Task<bool> AnyByOrganizationAsync(Guid organizationId, CancellationToken ct = default)
+    {
+        return await context.LessonSeries
+            .AsNoTracking()
+            .AnyAsync(ls => ls.OrganizationId == organizationId, ct);
+    }
 }

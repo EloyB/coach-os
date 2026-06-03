@@ -46,6 +46,8 @@ export function MollieSection() {
     if (value === "connected") {
       toast.success(t("toastConnected"));
       queryClient.invalidateQueries({ queryKey: ["mollieConnection"] });
+      // Net Mollie verbonden tijdens onboarding — checklist meteen verversen.
+      queryClient.invalidateQueries({ queryKey: ["onboarding"] });
     } else if (value === "error") {
       toast.error(t("toastError"));
     }
