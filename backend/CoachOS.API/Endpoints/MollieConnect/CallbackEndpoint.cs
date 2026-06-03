@@ -20,6 +20,7 @@ public class CallbackEndpoint : IEndpoint
             string? error,
             IMollieConnectService service,
             IOptions<AppOptions> appOptions,
+            IOptions<MollieOptions> mollieOptions,
             HttpContext ctx,
             CancellationToken ct) =>
         {
@@ -36,7 +37,7 @@ public class CallbackEndpoint : IEndpoint
                 return Results.Redirect($"{settingsUrl}?mollie=error");
             }
 
-            string redirectUri = StartConnectEndpoint.BuildRedirectUri(ctx);
+            string redirectUri = StartConnectEndpoint.BuildRedirectUri(ctx, mollieOptions.Value);
             Result<Guid> result = await service.HandleCallbackAsync(code, state, redirectUri, ct);
 
             string queryValue = result.IsSuccess ? "connected" : "error";

@@ -1,7 +1,9 @@
 using CoachOS.API.Extensions;
+using CoachOS.Application.Configuration;
 using CoachOS.Application.MollieConnect;
 using CoachOS.Application.MollieConnect.DTOs;
 using CoachOS.Domain.Models;
+using Microsoft.Extensions.Options;
 
 namespace CoachOS.API.Endpoints.MollieConnect;
 
@@ -15,10 +17,11 @@ public class StartConnectEndpoint : IEndpoint
     {
         app.MapPost("/mollie-connect/start", async (
             IMollieConnectService service,
+            IOptions<MollieOptions> mollieOptions,
             HttpContext ctx,
             CancellationToken ct) =>
         {
-            string redirectUri = BuildRedirectUri(ctx);
+            string redirectUri = BuildRedirectUri(ctx, mollieOptions.Value);
             Result<StartConnectResponse> result = await service.StartAsync(
                 ctx.GetOrganizationId(), redirectUri, ct);
             return result.IsSuccess ? Results.Ok(result.Value) : result.ToErrorResult();
@@ -28,12 +31,20 @@ public class StartConnectEndpoint : IEndpoint
     }
 
     /// <summary>
-    /// Bouwt de redirect URI consistent op basis van de inkomende request, zodat
-    /// dev (localhost) en prod (app.coach-os.be) hetzelfde codepad delen. De URL
-    /// moet exact matchen met wat in het Mollie dashboard is geregistreerd.
+    /// Bepaalt de redirect URI die zowel in de OAuth-autorisatie als in de
+    /// token-exchange wordt meegestuurd. Wanneer <see cref="MollieOptions.RedirectUri"/>
+    /// is geconfigureerd (prod-secret) wordt die exact gebruikt — dit garandeert een
+    /// match met het Mollie dashboard ongeacht het scheme dat een reverse proxy
+    /// doorgeeft. Is hij leeg (lokaal dev), dan wordt hij afgeleid van de inkomende
+    /// request (<c>{scheme}://{host}/api/oauth/mollie/callback</c>).
     /// </summary>
-    internal static string BuildRedirectUri(HttpContext ctx)
+    internal static string BuildRedirectUri(HttpContext ctx, MollieOptions options)
     {
+        if (!string.IsNullOrWhiteSpace(options.RedirectUri))
+        {
+            return options.RedirectUri;
+        }
+
         return $"{ctx.Request.Scheme}://{ctx.Request.Host}/api/oauth/mollie/callback";
     }
 }
