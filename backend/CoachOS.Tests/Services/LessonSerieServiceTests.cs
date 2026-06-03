@@ -702,6 +702,101 @@ public class LessonSerieServiceTests
     }
 
     [Test]
+    public async Task CreateAsync_ReturnsValidation_WhenWeeklyTemplateHasExactDuplicateSlot()
+    {
+        CreateLessonSerieRequest request = new()
+        {
+            Name = "Dubbele slot",
+            Price = 100m,
+            StartDate = "2026-06-01",
+            EndDate = "2026-08-31",
+            TennisClubId = ClubId,
+            WeeklyTemplate =
+            [
+                new WeeklyTemplateEntryRequest { DayOfWeek = 0, StartTime = "10:00", EndTime = "11:00", TrainerId = TrainerId, CourtName = "Baan 1", MaxStudents = 4 },
+                new WeeklyTemplateEntryRequest { DayOfWeek = 0, StartTime = "10:00", EndTime = "11:00", TrainerId = TrainerId, CourtName = "Baan 1", MaxStudents = 4 },
+            ],
+        };
+
+        _tennisClubRepo
+            .Setup(r => r.ExistsAsync(ClubId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var result = await _service.CreateAsync(OrgId, request);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.Validation);
+        _lessonSeriesRepo.Verify(r => r.AddAsync(It.IsAny<LessonSerie>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    // Regression (issue #140): two slots on the same day/start/court with DIFFERENT end times used to
+    // slip past the duplicate guard (which keyed on EndTime) and hit the unique index
+    // IX_WeeklyTemplateEntries_LessonSerieId_DayOfWeek_StartTime_CourtName → DbUpdateException → HTTP 500.
+    // The guard must now reject it cleanly, matching the index (no EndTime in the key).
+    [Test]
+    public async Task CreateAsync_ReturnsValidation_WhenSlotsShareDayStartAndCourtButDifferentEnd()
+    {
+        CreateLessonSerieRequest request = new()
+        {
+            Name = "Zelfde start, andere eindtijd",
+            Price = 100m,
+            StartDate = "2026-06-01",
+            EndDate = "2026-08-31",
+            TennisClubId = ClubId,
+            WeeklyTemplate =
+            [
+                new WeeklyTemplateEntryRequest { DayOfWeek = 0, StartTime = "10:00", EndTime = "11:00", TrainerId = TrainerId, CourtName = "Baan 1", MaxStudents = 4 },
+                new WeeklyTemplateEntryRequest { DayOfWeek = 0, StartTime = "10:00", EndTime = "12:00", TrainerId = TrainerId, CourtName = "Baan 1", MaxStudents = 4 },
+            ],
+        };
+
+        _tennisClubRepo
+            .Setup(r => r.ExistsAsync(ClubId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var result = await _service.CreateAsync(OrgId, request);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.Validation);
+        _lessonSeriesRepo.Verify(r => r.AddAsync(It.IsAny<LessonSerie>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task CreateAsync_Succeeds_WhenSlotsShareDayAndStartButDifferentCourt()
+    {
+        CreateLessonSerieRequest request = new()
+        {
+            Name = "Parallelle banen",
+            Price = 100m,
+            StartDate = "2026-06-01",
+            EndDate = "2026-08-31",
+            TennisClubId = ClubId,
+            WeeklyTemplate =
+            [
+                new WeeklyTemplateEntryRequest { DayOfWeek = 0, StartTime = "10:00", EndTime = "11:00", TrainerId = TrainerId, CourtName = "Baan 1", MaxStudents = 4 },
+                new WeeklyTemplateEntryRequest { DayOfWeek = 0, StartTime = "10:00", EndTime = "11:00", TrainerId = TrainerId, CourtName = "Baan 2", MaxStudents = 4 },
+            ],
+            Lessons =
+            [
+                new CreateLessonRequest { TrainerId = TrainerId, Date = "2026-06-01", StartTime = "10:00", EndTime = "11:00", CourtName = "Baan 1", MaxStudents = 4 },
+            ],
+        };
+
+        _tennisClubRepo
+            .Setup(r => r.ExistsAsync(ClubId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        _lessonSeriesRepo
+            .Setup(r => r.AddAsync(It.IsAny<LessonSerie>(), It.IsAny<CancellationToken>()))
+            .Callback<LessonSerie, CancellationToken>((s, _) => s.Id = Guid.NewGuid())
+            .Returns(Task.CompletedTask);
+
+        var result = await _service.CreateAsync(OrgId, request);
+
+        result.IsSuccess.Should().BeTrue();
+        _lessonSeriesRepo.Verify(r => r.AddAsync(It.IsAny<LessonSerie>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
     public async Task CreateAsync_PersistsMaxStudentsOnLesson()
     {
         LessonSerie? captured = null;
