@@ -653,5 +653,52 @@
     "orgsEmpty": "Nog geen organisaties.",
     "earlyBirdYes": "Ja",
     "earlyBirdNo": "Nee"
+  },
+  "onboarding": {
+    "welcomeTitle": "Welkom bij CoachOS, {firstName}",
+    "welcomeTitleFallback": "Welkom bij CoachOS",
+    "welcomeBody": "Laten we je organisatie klaarstomen in vier korte stappen.",
+    "welcomeCta": "Aan de slag",
+    "checklistTitle": "Aan de slag",
+    "checklistSubtitle": "{done} van {total} stappen voltooid",
+    "dismiss": "Sluiten",
+    "completedBadge": "Voltooid",
+    "celebrationTitle": "Je organisatie is klaar voor inschrijvingen!",
+    "celebrationBody": "Vanaf nu kunnen leerlingen zich inschrijven en betalen.",
+    "celebrationCta": "Sluiten",
+    "step": {
+      "mollie": {
+        "title": "Verbind Mollie",
+        "description": "Koppel een Mollie-account zodat leerlingen betalingen kunnen voltooien.",
+        "cta": "Verbinden"
+      },
+      "club": {
+        "title": "Voeg een tennisclub toe",
+        "description": "Lesreeksen vinden plaats bij een tennisclub. Voeg er minstens één toe.",
+        "cta": "Toevoegen"
+      },
+      "trainerMode": {
+        "title": "Kies je trainer-setup",
+        "description": "Werk je alleen, of met meerdere trainers?",
+        "cta": "Kiezen"
+      },
+      "series": {
+        "title": "Maak je eerste lesreeks",
+        "description": "Plan een reeks lessen en open de inschrijving.",
+        "cta": "Aanmaken"
+      }
+    },
+    "trainerDialog": {
+      "title": "Hoe wil je werken?",
+      "description": "We passen je organisatie hierop aan. Je kan dit later wijzigen in Instellingen.",
+      "solo": "Ik ben de enige trainer",
+      "team": "Ik werk met meerdere trainers",
+      "subQuestionTitle": "Coach je zelf ook lessen?",
+      "subQuestionDescription": "Bij \"Ja\" verschijn je in je eigen trainerlijst zodat je lessen kan toewijzen. Bij \"Nee\" blijf je puur administratief.",
+      "yes": "Ja, ik coach zelf ook",
+      "no": "Nee, ik beheer enkel",
+      "back": "Terug",
+      "saving": "Opslaan..."
+    }
   }
 }

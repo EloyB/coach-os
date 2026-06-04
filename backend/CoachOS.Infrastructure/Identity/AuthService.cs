@@ -57,11 +57,14 @@ public class AuthService(
             // Initialiseer org-settings met defaults zodat de FE bij eerste GET geen lazy
             // provisioning hoeft te triggeren. AdminsActAsTrainers default true: een
             // tennisschool draait typisch op de admin-coach combinatie.
+            // OnboardingStartedAt wordt *alleen hier* gezet — niet in OrganizationSettingsService.
+            // GetOrCreateAsync — zodat pre-existing orgs NULL houden en de checklist niet zien.
             context.OrganizationSettings.Add(new Domain.Entities.OrganizationSettings
             {
                 Id = Guid.NewGuid(),
                 OrganizationId = organization.Id,
                 AdminsActAsTrainers = true,
+                OnboardingStartedAt = DateTime.UtcNow,
             });
 
             await context.SaveChangesAsync(cancellationToken);

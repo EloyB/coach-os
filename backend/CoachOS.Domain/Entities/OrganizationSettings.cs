@@ -33,5 +33,25 @@ public class OrganizationSettings : BaseEntity
     /// <summary>ISO 4217 currency code voor betalingen; default <c>EUR</c>.</summary>
     public string PaymentCurrency { get; set; } = "EUR";
 
+    /// <summary>
+    /// Zet enkel bij <c>AuthService.RegisterAsync</c> wanneer een nieuwe organisatie wordt aangemaakt.
+    /// NULL voor pre-existing orgs (die zien de onboarding niet) en voor lazy-geprovisioneerde rijen.
+    /// Bepaalt samen met <see cref="OnboardingDismissedAt"/> of de checklist op /dashboard zichtbaar is.
+    /// </summary>
+    public DateTime? OnboardingStartedAt { get; set; }
+
+    /// <summary>
+    /// Gezet wanneer de admin de onboarding-checklist sluit (handmatig of via celebration state).
+    /// Eenmaal gevuld verschijnt de kaart niet meer terug — ook niet als er stappen incompleet zouden raken.
+    /// </summary>
+    public DateTime? OnboardingDismissedAt { get; set; }
+
+    /// <summary>
+    /// Gezet zodra de admin expliciet kiest tussen solo/team in de trainer-setup stap.
+    /// Onafhankelijk van <see cref="AdminsActAsTrainers"/>: een team-admin die zelf ook coacht
+    /// heeft <c>AdminsActAsTrainers=true</c>; een puur administratieve team-admin heeft het op false.
+    /// </summary>
+    public DateTime? TrainerModeChosenAt { get; set; }
+
     public Organization Organization { get; set; } = null!;
 }

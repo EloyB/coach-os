@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { Plus, Clock, Calendar } from "lucide-react";
@@ -16,6 +16,10 @@ import {
 } from "@/lib/api/dashboard";
 import type { InboxItemDto, InboxResponse } from "@/lib/api/dashboard";
 import { useTranslations } from "next-intl";
+import { OnboardingChecklist } from "@/components/dashboard/onboarding/onboarding-checklist";
+import { WelcomeModal } from "@/components/dashboard/onboarding/welcome-modal";
+import { getAuthUser } from "@/lib/auth";
+import { getOnboardingState } from "@/lib/api/onboarding";
 
 function formatDate(dateStr: string): string {
   const [year, month, day] = dateStr.split("-");
@@ -129,6 +133,22 @@ function InboxSection({ inbox }: { inbox: InboxResponse | undefined }) {
 
 export default function DashboardPage() {
   const t = useTranslations("dashboard");
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // getAuthUser leest localStorage en mag pas na mount draaien om SSR-hydration mismatches
+  // te vermijden. Tot dan houden we isAdmin op false zodat de checklist niets rendert.
+  useEffect(() => {
+    setIsAdmin(getAuthUser()?.role === "Admin");
+  }, []);
+
+  // Vooruit ophalen zodat de WelcomeModal direct kan beslissen of hij open mag.
+  const { data: onboarding } = useQuery({
+    queryKey: ["onboarding", "state"],
+    queryFn: getOnboardingState,
+    enabled: isAdmin,
+    staleTime: 30_000,
+  });
+
   const { data: summary, isLoading } = useQuery({
     queryKey: ["dashboard"],
     queryFn: getDashboardSummary,
@@ -196,6 +216,10 @@ export default function DashboardPage() {
           {t("newLesson")}
         </Link>
       </div>
+
+      {/* First-time admin onboarding — auto-hides voor non-admins en bestaande orgs. */}
+      <OnboardingChecklist enabled={isAdmin} />
+      <WelcomeModal shouldShow={isAdmin && (onboarding?.shouldShow ?? false)} />
 
       {/* Dark hero stat strip */}
       {isLoading ? (

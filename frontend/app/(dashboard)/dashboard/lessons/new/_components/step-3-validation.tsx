@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { ChevronLeft, Pencil } from "lucide-react";
 import { createLessonSeriesWizard } from "@/lib/api/lessonSeries";
@@ -87,9 +87,14 @@ export function Step3Validation({
 
   const weeks = computeWeeks(step1Data.startDate, step1Data.endDate);
 
+  const queryClient = useQueryClient();
   const mutation = useMutation({
     mutationFn: createLessonSeriesWizard,
-    onSuccess: () => router.push("/dashboard/lessons"),
+    onSuccess: () => {
+      // Eerste lesreeks voltooit de "series" onboarding-stap.
+      queryClient.invalidateQueries({ queryKey: ["onboarding"] });
+      router.push("/dashboard/lessons");
+    },
   });
 
   function getSlotsForWeek(week: WeekInfo): WizardSlot[] {
