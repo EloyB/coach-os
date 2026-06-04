@@ -4,7 +4,9 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -62,7 +64,7 @@ export function EditWeekDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="mt-2">
+        <DialogBody className="mt-2">
           <WeekTemplateBuilder
             slots={slots}
             onChange={setSlots}
@@ -73,9 +75,9 @@ export function EditWeekDialog({
             seriesEndDate={seriesEndDate}
             removeOnly
           />
-        </div>
+        </DialogBody>
 
-        <div className="flex gap-3 pt-4 border-t border-gray-100">
+        <DialogFooter className="gap-3 border-t border-gray-100 pt-4 sm:justify-stretch">
           <button
             type="button"
             onClick={onClose}
@@ -93,7 +95,7 @@ export function EditWeekDialog({
           >
             {t("saveWeek")}
           </button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
