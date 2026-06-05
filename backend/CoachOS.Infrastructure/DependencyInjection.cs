@@ -1,11 +1,13 @@
 using CoachOS.Application.Auth;
 using CoachOS.Application.Configuration;
+using CoachOS.Application.Export;
 using CoachOS.Application.MollieConnect;
 using CoachOS.Application.StudentAuth;
 using CoachOS.Application.SuperAdmin;
 using CoachOS.Application.Trainers;
 using CoachOS.Domain.Interfaces;
 using CoachOS.Infrastructure.Email;
+using CoachOS.Infrastructure.Export;
 using CoachOS.Infrastructure.Identity;
 using CoachOS.Infrastructure.Mollie;
 using CoachOS.Infrastructure.MultiTenancy;
@@ -88,6 +90,7 @@ public static class DependencyInjection
         services.AddScoped<IUserLookupService, UserLookupService>();
         services.AddSingleton<IMjmlTemplateRenderer, MjmlTemplateRenderer>();
         services.AddScoped<IEmailService, EmailService>();
+        services.AddSingleton<IPlanningWorkbookBuilder, ClosedXmlPlanningWorkbookBuilder>();
         services.AddScoped<ILessonSerieRepository, LessonSerieRepository>();
         services.AddScoped<ILessonRepository, LessonRepository>();
         services.AddScoped<ITennisClubRepository, TennisClubRepository>();

@@ -84,6 +84,13 @@ export async function getLessonSeriesById(id: string): Promise<LessonSeriesDto> 
   return data;
 }
 
+export async function exportSeriePlanning(seriesId: string): Promise<Blob> {
+  const { data } = await apiClient.get(`/lessonseries/${seriesId}/planning/export`, {
+    responseType: "blob",
+  });
+  return data;
+}
+
 export async function createLessonSeries(request: CreateLessonSeriesRequest): Promise<string> {
   const { data } = await apiClient.post<string>("/lessonseries", request);
   return data;
