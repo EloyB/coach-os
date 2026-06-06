@@ -1,6 +1,7 @@
 using System.Reflection;
 using CoachOS.Application.Dashboard;
 using CoachOS.Application.Enrollments;
+using CoachOS.Application.Export;
 using CoachOS.Application.LessonReschedule;
 using CoachOS.Application.LessonSerie;
 using CoachOS.Application.Mappings;
@@ -41,6 +42,7 @@ public static class DependencyInjection
         services.AddScoped<IOrganizationSettingsService, OrganizationSettingsService>();
         services.AddScoped<IOnboardingService, OnboardingService>();
         services.AddScoped<IPaymentService, PaymentService>();
+        services.AddScoped<IPlanningExportService, PlanningExportService>();
 
         return services;
     }

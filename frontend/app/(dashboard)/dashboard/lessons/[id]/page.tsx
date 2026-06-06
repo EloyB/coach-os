@@ -29,6 +29,7 @@ import {
   CheckCircle2,
   ClipboardList,
   MoreVertical,
+  Download,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -52,8 +53,10 @@ import {
   getLessonSeriesById,
   updateLessonSeries,
   deleteLessonSeries,
+  exportSeriePlanning,
   LessonDto,
 } from "@/lib/api/lessonSeries";
+import { downloadBlob } from "@/lib/download";
 import {
   getLessonSeriesEnrollments,
   getEnrollmentForm,
@@ -1433,6 +1436,17 @@ export default function LessonSeriesDetailPage({
     },
   });
 
+  const exportMutation = useMutation({
+    mutationFn: () => exportSeriePlanning(id),
+    onSuccess: (blob) => {
+      downloadBlob(blob, `${series?.name ?? "lessenreeks"}-planning.xlsx`);
+      toast.success("Planning geëxporteerd");
+    },
+    onError: () => {
+      toast.error("Kon de planning niet exporteren");
+    },
+  });
+
   return (
     <>
       {/* Back */}
@@ -1510,6 +1524,14 @@ export default function LessonSeriesDetailPage({
                     <CalendarDays size={12} />
                     Plan lessen
                   </Link>
+                  <button
+                    onClick={() => exportMutation.mutate()}
+                    disabled={exportMutation.isPending}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    <Download size={12} />
+                    {exportMutation.isPending ? "Exporteren…" : "Exporteer naar Excel"}
+                  </button>
                   <button
                     onClick={() => setEditing(true)}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
