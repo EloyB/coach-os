@@ -419,6 +419,7 @@ function EditTrainerDialog({
               type="number"
               min={1}
               max={80}
+              step={1}
               className={inputClass}
             />
             <p className="text-[11px] text-gray-400 mt-1">{t("weeklyCapacityHint")}</p>
