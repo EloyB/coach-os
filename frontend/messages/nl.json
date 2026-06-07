@@ -490,7 +490,17 @@
     "removing": "Verwijderen...",
     "reassignAndRemove": "Toewijzen & verwijderen",
     "processing": "Bezig...",
-    "status": "Status"
+    "status": "Status",
+    "edit": "Bewerken",
+    "editTitle": "Trainer bewerken",
+    "weeklyCapacity": "Weekcapaciteit (uur)",
+    "weeklyCapacityHint": "Maximaal aantal lesuren per week voor deze club (1–80).",
+    "notes": "Interne notitie",
+    "notesPlaceholder": "Alleen zichtbaar voor het beheer — bijv. beschikbaarheid of afspraken.",
+    "notesIndicator": "Heeft een interne notitie",
+    "save": "Opslaan",
+    "saving": "Opslaan...",
+    "editError": "Wijziging kon niet worden opgeslagen"
   },
   "auth": {
     "login": "Inloggen",
