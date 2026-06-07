@@ -11,6 +11,7 @@ export interface TrainerDto {
   lessonSeriesCount: number;
   currentWeekHoursBooked: number;
   weeklyCapacityHours: number;
+  notes: string | null;
   createdAt: string;
 }
 
@@ -18,6 +19,13 @@ export interface InviteTrainerRequest {
   firstName: string;
   lastName: string;
   email: string;
+}
+
+export interface UpdateTrainerRequest {
+  firstName: string;
+  lastName: string;
+  weeklyCapacityHours: number;
+  notes: string | null;
 }
 
 export interface AcceptInviteRequest {
@@ -37,6 +45,13 @@ export function isAssignableTrainer(t: TrainerDto): boolean {
 export async function inviteTrainer(req: InviteTrainerRequest): Promise<string> {
   const { data } = await apiClient.post<string>("/trainers/invite", req);
   return data;
+}
+
+export async function updateTrainer(
+  id: string,
+  req: UpdateTrainerRequest,
+): Promise<void> {
+  await apiClient.put(`/trainers/${id}`, req);
 }
 
 export async function acceptInvite(req: AcceptInviteRequest): Promise<AuthResponse> {
