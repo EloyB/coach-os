@@ -152,7 +152,8 @@ public class TrainerService(
                 CreatedAt = u.CreatedAt,
                 LessonSeriesCount = context.LessonSeries
                     .Count(ls => ls.Lessons.Any(l => l.TrainerId == u.Id) && ls.OrganizationId == organizationId && ls.IsActive),
-                WeeklyCapacityHours = 16,
+                WeeklyCapacityHours = m.WeeklyCapacityHours,
+                Notes = m.Notes,
             };
 
         List<TrainerDto> trainers = await query.ToListAsync(ct);
