@@ -12,6 +12,8 @@ import {
   Trash2,
   Mail,
   X,
+  Pencil,
+  StickyNote,
 } from "lucide-react";
 import { Mono } from "@/components/ui/mono";
 import {
@@ -603,8 +605,17 @@ export default function TrainersPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-center">
-                      <p className="text-[13.5px] font-bold text-ink m-0">
+                      <p className="text-[13.5px] font-bold text-ink m-0 flex items-center gap-1.5">
                         {tr.firstName} {tr.lastName}
+                        {tr.notes && tr.notes.trim() && (
+                          <StickyNote
+                            size={12}
+                            className="text-amber-500 shrink-0"
+                            aria-label={t("notesIndicator")}
+                          >
+                            <title>{tr.notes}</title>
+                          </StickyNote>
+                        )}
                       </p>
                       {isSelfAdmin ? (
                         <span className="text-[10px] px-2 py-0.5 rounded-full bg-tennis-lime/30 text-tennis-green font-semibold">
@@ -670,6 +681,13 @@ export default function TrainersPage() {
                         ) : (
                           <>
                             <button
+                              onClick={() => setEditTrainer(tr)}
+                              title={t("edit")}
+                              className="opacity-0 group-hover:opacity-100 p-1.5 rounded text-ink-3 hover:text-tennis-green hover:bg-tennis-green/10 transition-all"
+                            >
+                              <Pencil size={14} />
+                            </button>
+                            <button
                               onClick={() => deactivateMutation.mutate(tr.id)}
                               disabled={deactivateMutation.isPending}
                               title={t("deactivate")}
@@ -698,6 +716,13 @@ export default function TrainersPage() {
                     <p className="text-[11px] text-amber-800 m-0">{t("invitePending")}</p>
                     <div className="flex items-center gap-1.5">
                       <button
+                        onClick={() => setEditTrainer(tr)}
+                        title={t("edit")}
+                        className="p-1.5 rounded text-amber-700 hover:text-tennis-green hover:bg-tennis-green/10 transition-all"
+                      >
+                        <Pencil size={14} />
+                      </button>
+                      <button
                         onClick={() => resendMutation.mutate(tr.id)}
                         disabled={resendMutation.isPending}
                         className="px-2.5 py-1 bg-white border border-amber-300 rounded text-[10.5px] text-amber-800 font-semibold disabled:opacity-50"
@@ -717,6 +742,13 @@ export default function TrainersPage() {
 
                 {isDeactivatedState && (
                   <div className="mt-3 flex gap-1 justify-end">
+                    <button
+                      onClick={() => setEditTrainer(tr)}
+                      title={t("edit")}
+                      className="p-1.5 rounded text-ink-3 hover:text-tennis-green hover:bg-tennis-green/10 transition-all"
+                    >
+                      <Pencil size={14} />
+                    </button>
                     <button
                       onClick={() => handleRemoveClick(tr)}
                       title={t("remove")}
