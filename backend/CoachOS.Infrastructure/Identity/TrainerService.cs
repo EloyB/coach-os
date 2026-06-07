@@ -190,6 +190,42 @@ public class TrainerService(
         return Result<List<TrainerDto>>.Ok(trainers);
     }
 
+    public async Task<Result> UpdateAsync(
+        Guid trainerId,
+        Guid organizationId,
+        UpdateTrainerRequest request,
+        CancellationToken ct = default)
+    {
+        // Capaciteit + notitie zijn per club → op het membership.
+        // Werkt voor Trainer- én Admin-rol zodat meecoachende admins en
+        // openstaande uitnodigingen (IsActive == false) ook bewerkbaar zijn.
+        OrganizationMembership? membership = await context.OrganizationMemberships
+            .FirstOrDefaultAsync(m => m.UserId == trainerId
+                && m.OrganizationId == organizationId
+                && (m.Role == UserRole.Trainer || m.Role == UserRole.Admin), ct);
+
+        if (membership is null)
+            return Result.Fail(new Error(ErrorCodes.NotFound, "Trainer niet gevonden in deze organisatie."));
+
+        // Naam is globaal → op de user. Alleen FirstName/LastName (geen
+        // Identity-gevoelige velden), dus rechtstreeks via context.Users zodat
+        // membership + user in één SaveChanges/transactie meegaan. UpdatedAt
+        // wordt automatisch gestempeld in SaveChangesAsync.
+        ApplicationUser? user = await context.Users
+            .FirstOrDefaultAsync(u => u.Id == trainerId, ct);
+
+        if (user is null)
+            return Result.Fail(new Error(ErrorCodes.NotFound, "Gebruiker niet gevonden."));
+
+        membership.WeeklyCapacityHours = request.WeeklyCapacityHours;
+        membership.Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim();
+        user.FirstName = request.FirstName.Trim();
+        user.LastName = request.LastName.Trim();
+
+        await context.SaveChangesAsync(ct);
+        return Result.Ok();
+    }
+
     public async Task<Result> ResendInviteAsync(
         Guid trainerId,
         Guid organizationId,
