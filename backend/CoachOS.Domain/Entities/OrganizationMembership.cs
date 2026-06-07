@@ -18,6 +18,17 @@ public class OrganizationMembership : BaseEntity
 
     public bool IsActive { get; set; } = true;
 
+    /// <summary>
+    /// Maximale weekcapaciteit (uren) van deze trainer voor déze club.
+    /// Voedt de noemer van de weekbelasting-balk. Per club instelbaar.
+    /// </summary>
+    public int WeeklyCapacityHours { get; set; } = 16;
+
+    /// <summary>
+    /// Interne notitie voor het clubbeheer — niet zichtbaar voor de trainer of leerlingen.
+    /// </summary>
+    public string? Notes { get; set; }
+
     public DateTime JoinedAt { get; set; }
 
     public Organization Organization { get; set; } = null!;
