@@ -117,13 +117,17 @@ certbot renew --dry-run
 
 | Item | Cost |
 |---|---|
-| VPS (Stardust S1, 1 vCPU / 1 GB RAM) | ~€4 |
+| VPS (PRO2-XXS, 2 vCPU / 8 GB RAM) | ~€41 |
 | Reserved IP | ~€1 |
 | Managed Postgres (DB-DEV-S, 10 GB) | ~€12 |
 | Container Registry (storage-billed) | ~€0–2 |
 | Transactional Email (~1k mails/mo) | ~€0–1 |
 | Secret Manager (~10 secrets) | ~€0 |
 | Object Storage (TF state, <1 GB) | ~€0 |
-| **Total** | **~€18–20** |
+| Domain (coach-os.be, ~€7/yr) | ~€0.60 |
+| **Total** | **~€55** |
 
-Bump VPS to DEV1-S (~€11) once you're past ~10 active organizations.
+The VPS was bumped from STARDUST1-S (1 GB RAM, ~€4) to PRO2-XXS (8 GB) because
+1 GB couldn't hold all 6 containers (.NET API + 2x Next.js SSR + nginx + dozzle).
+Next scaling concern is Postgres: `DB-DEV-S` is single-node — enable HA
+(`is_ha_cluster = true`, ~2x DB cost) before onboarding paying customers.

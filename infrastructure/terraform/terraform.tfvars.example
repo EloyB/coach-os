@@ -12,8 +12,9 @@ domain_name = "coach-os.be"
 # Then paste the contents of ~/.ssh/coach-os-gha.pub here:
 ssh_public_key = "ssh-ed25519 AAAA... gha-deploy@coach-os"
 
-# Cheapest viable defaults; bump these only if metrics demand it.
-vps_instance_type = "STARDUST1-S"
+# Current prod sizing. PRO2-XXS (2 vCPU / 8 GB) — STARDUST1-S (1 GB) ran out
+# of RAM with all 6 containers. Drop to DEV1-S only if the workload shrinks.
+vps_instance_type = "PRO2-XXS"
 vps_image         = "ubuntu_jammy"
 db_node_type      = "DB-DEV-S"
 db_volume_size_gb = 10

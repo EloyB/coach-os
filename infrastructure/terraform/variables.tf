@@ -32,9 +32,9 @@ variable "ssh_public_key" {
 }
 
 variable "vps_instance_type" {
-  description = "Scaleway instance commercial type. Stardust S1 (STARDUST1-S) is cheapest (~€4/mo, 1 vCPU, 1 GB); upgrade to DEV1-S/PRO2-XXS if needed."
+  description = "Scaleway instance commercial type. PRO2-XXS (2 vCPU, 8 GB, ~€41/mo) is the current prod size — STARDUST1-S (1 GB) ran out of RAM with all 6 containers. Drop to DEV1-S (2 vCPU, 2 GB, ~€7/mo) only if the workload shrinks."
   type        = string
-  default     = "STARDUST1-S"
+  default     = "PRO2-XXS"
 }
 
 variable "vps_image" {
