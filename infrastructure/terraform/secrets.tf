@@ -13,8 +13,8 @@ resource "random_password" "jwt_key" {
 
 locals {
   db_connection_string = join(";", [
-    "Host=${scaleway_rdb_instance.coach_os.endpoint_ip}",
-    "Port=${scaleway_rdb_instance.coach_os.endpoint_port}",
+    "Host=${scaleway_rdb_instance.coach_os.load_balancer.0.ip}",
+    "Port=${scaleway_rdb_instance.coach_os.load_balancer.0.port}",
     "Database=${scaleway_rdb_database.coach_os.name}",
     "Username=${scaleway_rdb_instance.coach_os.user_name}",
     "Password=${random_password.db.result}",

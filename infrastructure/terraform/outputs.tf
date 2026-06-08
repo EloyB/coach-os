@@ -18,13 +18,13 @@ output "registry_endpoint" {
 
 output "db_host" {
   description = "Managed Postgres host."
-  value       = scaleway_rdb_instance.coach_os.endpoint_ip
+  value       = scaleway_rdb_instance.coach_os.load_balancer.0.ip
   sensitive   = true
 }
 
 output "db_port" {
   description = "Managed Postgres port."
-  value       = scaleway_rdb_instance.coach_os.endpoint_port
+  value       = scaleway_rdb_instance.coach_os.load_balancer.0.port
 }
 
 output "db_name" {
