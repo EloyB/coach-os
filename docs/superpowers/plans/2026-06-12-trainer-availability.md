@@ -4,7 +4,7 @@
 
 **Goal:** Admin kan per trainer vaste beschikbaarheden vastleggen (club × weekdag × tijdvak); die info voorfiltert/markeert de trainerkeuze bij reeks-setup en signaleert dubbelboekingen.
 
-**Architecture:** Nieuwe `TrainerAvailability` entiteit volgens het standaard CoachOS-recept (entity → config → migratie → repository → DTOs/validator → mapper → service → endpoints), plus een beheer-dialog op de trainerspagina en een beschikbaarheids-badge + soft warning in de reeks-wizard (`SlotDialog`). Geen wijziging aan het scheduling-algoritme (dat plant leerlingen, geen trainers).
+**Architecture:** Nieuwe `TrainerAvailability` entiteit volgens het standaard CoachOS-recept (entity → config → migratie → repository → DTOs/validator → mapper → service → endpoints), plus een beheer-dialog op de trainerspagina en een beschikbaarheids-badge + soft warning in de reeks-wizard (defaults-kaart van stap 2 + `SlotEditPopover`). Geen wijziging aan het scheduling-algoritme (dat plant leerlingen, geen trainers).
 
 **Tech Stack:** .NET 10 minimal API (Clean Architecture + service pattern, `Result<T>`), EF Core + PostgreSQL, xUnit + NSubstitute + FluentAssertions, Next.js 15 + React Query + react-hook-form/Zod + next-intl.
 
@@ -1334,93 +1334,73 @@ git commit -m "feat(trainer-availability): add availability management dialog on
 
 ---
 
-## Taak 9: Integratie in de reeks-wizard (SlotDialog)
+## Taak 9: Integratie in de reeks-wizard (defaults-kaart + slot-popover)
 
 **Files:**
-- Modify: `frontend/app/(dashboard)/dashboard/lessons/new/_components/slot-dialog.tsx`
+- Modify: `frontend/app/(dashboard)/dashboard/lessons/new/page.tsx` (prop doorgeven, `Step2Planning` rond regel 151)
 - Modify: `frontend/app/(dashboard)/dashboard/lessons/new/_components/step-2-planning.tsx`
-- Mogelijk modify: `frontend/app/(dashboard)/dashboard/lessons/new/page.tsx` (props doorgeven)
+- Modify: `frontend/app/(dashboard)/dashboard/lessons/new/_components/calendar-week-view.tsx` (prop doorgeven)
+- Modify: `frontend/app/(dashboard)/dashboard/lessons/new/_components/slot-edit-popover.tsx`
+
+**Hoe de wizard werkt (lees dit eerst):** stap 2 is een kalender (`CalendarWeekView`) waarop de admin slots *tekent*. Rechts staat een **standaardwaarden-kaart** met o.a. een trainer-dropdown — trainer is **optioneel** (`WizardSlot.trainerId: string | null`, optie "Geen"). Nieuw getekende slots krijgen de defaults mee. Individuele slots bewerk je via `SlotEditPopover` (popover naast het slot). `SlotDialog`/`WeekTemplateBuilder` worden enkel gebruikt voor week-uitzonderingen in stap 3 (`EditWeekDialog`) — die blijven **buiten scope** in deze taak.
 
 **Gedrag (bewust simpel gehouden voor v1):**
-- Een trainer is "beschikbaar" voor een slot als er een beschikbaarheid bestaat met dezelfde `tennisClubId` + `dayOfWeek` (tijden worden in v1 níet vergeleken — dat vermijdt flikkerende warnings terwijl de gebruiker tijden intikt).
-- Beschikbare trainers worden bovenaan de dropdown gesorteerd met een groen "beschikbaar"-badge.
-- Soft warning (geen blokkering) wanneer de gekozen trainer wél beschikbaarheden heeft vastgelegd maar níet voor deze club+dag. Trainers zonder enige vastgelegde beschikbaarheid krijgen geen badge en geen warning (onbekend ≠ onbeschikbaar).
+- **Defaults-kaart** (geen dag-context): trainers met een beschikbaarheid voor *deze club* (eender welke dag) krijgen een groen "✓ beschikbaar"-badge en staan bovenaan. Geen warning hier.
+- **SlotEditPopover** (dag bekend via `slot.dayOfWeek`): badge + sortering op exacte club+dag-match; amber **soft warning** (geen blokkering) wanneer de gekozen trainer wél beschikbaarheden heeft vastgelegd maar níet voor deze club+dag.
+- Tijden worden in v1 níet vergeleken (vermijdt flikkerende warnings tijdens het typen).
+- Trainers zonder enige vastgelegde beschikbaarheid krijgen geen badge en geen warning (onbekend ≠ onbeschikbaar). De optie "Geen" blijft gewoon werken — geen badge/warning.
 
-- [ ] **Step 1: Haal beschikbaarheden op in `step-2-planning.tsx`**
+- [ ] **Step 1: Geef `tennisClubId` door aan `Step2Planning`**
+
+De wizard-state bevat `tennisClubId` via `Step1Data` (zie `frontend/app/(dashboard)/dashboard/lessons/new/_types.ts:31`). Breid de props van `Step2Planning` uit:
+
+```tsx
+interface Step2Props {
+  slots: WizardSlot[];
+  tennisClubId: string;
+  onNext: (slots: WizardSlot[]) => void;
+  onBack: () => void;
+}
+```
+
+En geef in `new/page.tsx` (rond regel 151) de club door vanuit de wizard-state (check de exacte naam van de state-variabele die de stap-1-data bevat):
+
+```tsx
+<Step2Planning
+  /* …bestaande props… */
+  tennisClubId={wizardData.tennisClubId}
+/>
+```
+
+- [ ] **Step 2: Badge + sortering in de defaults-kaart (`step-2-planning.tsx`)**
 
 Naast de bestaande trainers-query (regel ~34):
 
 ```tsx
 import { getTrainerAvailabilities } from "@/lib/api/trainerAvailabilities";
 
-const { data: trainerAvailabilities = [] } = useQuery({
+const { data: availabilities = [] } = useQuery({
   queryKey: ["trainerAvailabilities"],
   queryFn: getTrainerAvailabilities,
 });
-```
 
-`step-2-planning.tsx` moet ook de gekozen club kennen. De wizard-state bevat `tennisClubId` (zie `frontend/app/(dashboard)/dashboard/lessons/new/_types.ts:31`, ingevuld in stap 1). Controleer de props van `Step2Planning` in `new/page.tsx`: als de step-1-data (of `tennisClubId`) nog niet wordt doorgegeven, voeg een prop `tennisClubId: string` toe aan `Step2Planning` en geef die door vanuit de wizard-state in `new/page.tsx`.
-
-Geef vervolgens beide door aan `SlotDialog` (en laat de bestaande props ongemoeid):
-
-```tsx
-<SlotDialog
-  /* …bestaande props… */
-  tennisClubId={tennisClubId}
-  availabilities={trainerAvailabilities}
-/>
-```
-
-- [ ] **Step 2: Pas `slot-dialog.tsx` aan**
-
-1. Imports + props uitbreiden:
-
-```tsx
-import type { TrainerAvailabilityDto } from "@/lib/api/trainerAvailabilities";
-
-interface SlotDialogProps {
-  open: boolean;
-  dayOfWeek: number;
-  trainers: TrainerDto[];
-  tennisClubId?: string;
-  availabilities?: TrainerAvailabilityDto[];
-  defaultStartTime?: string;
-  defaultEndTime?: string;
-  onSave: (slot: Omit<WizardSlot, "id">) => void;
-  onClose: () => void;
-}
-```
-
-2. In de component-body (na de `useForm`-destructuring, voeg `watch` toe aan de destructuring):
-
-```tsx
-const selectedTrainerId = watch("trainerId");
-
-const availableTrainerIds = new Set(
-  (availabilities ?? [])
-    .filter((a) => a.tennisClubId === tennisClubId && a.dayOfWeek === dayOfWeek)
+const clubTrainerIds = new Set(
+  availabilities
+    .filter((a) => a.tennisClubId === tennisClubId)
     .map((a) => a.trainerId)
 );
-const trainersWithKnownAvailability = new Set(
-  (availabilities ?? []).map((a) => a.trainerId)
+const sortedAssignableTrainers = [...assignableTrainers].sort(
+  (a, b) => Number(clubTrainerIds.has(b.id)) - Number(clubTrainerIds.has(a.id))
 );
-const sortedTrainers = [...trainers].sort(
-  (a, b) =>
-    Number(availableTrainerIds.has(b.id)) - Number(availableTrainerIds.has(a.id))
-);
-const showUnavailableWarning =
-  !!selectedTrainerId &&
-  trainersWithKnownAvailability.has(selectedTrainerId) &&
-  !availableTrainerIds.has(selectedTrainerId);
 ```
 
-3. In de trainer-`SelectContent`: vervang `trainers.map` door `sortedTrainers.map` en voeg de badge toe:
+Vervang in de trainer-`SelectContent` (regel ~117) `assignableTrainers.map` door `sortedAssignableTrainers.map` en voeg de badge toe (de "Geen"-optie erboven blijft ongewijzigd):
 
 ```tsx
-{sortedTrainers.map((tr) => (
+{sortedAssignableTrainers.map((tr) => (
   <SelectItem key={tr.id} value={tr.id}>
     {tr.firstName} {tr.lastName}
-    {availableTrainerIds.has(tr.id) && (
+    {clubTrainerIds.has(tr.id) && (
       <span className="ml-2 text-xs text-tennis-green">
         ✓ {t("availableBadge")}
       </span>
@@ -1429,31 +1409,85 @@ const showUnavailableWarning =
 ))}
 ```
 
-4. Onder de `<FieldError message={errors.trainerId?.message} />` van de trainer:
+- [ ] **Step 3: Geef `tennisClubId` door via `calendar-week-view.tsx`**
+
+Voeg `tennisClubId: string` toe aan de props-interface van `CalendarWeekView`, geef hem mee vanuit `Step2Planning` (`<CalendarWeekView … tennisClubId={tennisClubId} />`), en geef hem in `calendar-week-view.tsx` door aan `<SlotEditPopover … tennisClubId={tennisClubId} />` (regel ~392).
+
+- [ ] **Step 4: Badge + soft warning in `slot-edit-popover.tsx`**
+
+1. Props uitbreiden:
+
+```tsx
+interface SlotEditPopoverProps {
+  slot: WizardSlot;
+  anchorRef: HTMLElement;
+  tennisClubId: string;
+  onSave: (updated: WizardSlot) => void;
+  onClose: () => void;
+}
+```
+
+2. Naast de bestaande trainers-query (regel ~38) — de popover fetcht zelf, React Query dedupliceert op de cache key:
+
+```tsx
+import { getTrainerAvailabilities } from "@/lib/api/trainerAvailabilities";
+
+const { data: availabilities = [] } = useQuery({
+  queryKey: ["trainerAvailabilities"],
+  queryFn: getTrainerAvailabilities,
+});
+
+const availableTrainerIds = new Set(
+  availabilities
+    .filter(
+      (a) => a.tennisClubId === tennisClubId && a.dayOfWeek === slot.dayOfWeek
+    )
+    .map((a) => a.trainerId)
+);
+const trainersWithKnownAvailability = new Set(
+  availabilities.map((a) => a.trainerId)
+);
+const sortedAssignableTrainers = [...assignableTrainers].sort(
+  (a, b) =>
+    Number(availableTrainerIds.has(b.id)) - Number(availableTrainerIds.has(a.id))
+);
+const showUnavailableWarning =
+  trainerId !== "none" &&
+  trainersWithKnownAvailability.has(trainerId) &&
+  !availableTrainerIds.has(trainerId);
+```
+
+(`trainerId` is de bestaande local state op regel ~44.)
+
+3. In de trainer-`SelectContent` van de popover: vervang `assignableTrainers.map` door `sortedAssignableTrainers.map` met dezelfde badge als in Step 2 (`availableTrainerIds.has(tr.id)` als conditie). De "Geen"-optie blijft bovenaan staan zoals ze is.
+
+4. Direct onder de trainer-select:
 
 ```tsx
 {showUnavailableWarning && (
-  <p className="mt-1 text-xs text-amber-600">
+  <p className="mt-1 text-[11px] text-amber-600">
     {t("trainerNotAvailableWarning")}
   </p>
 )}
 ```
 
-- [ ] **Step 3: Build + handmatige verificatie**
+- [ ] **Step 5: Build + handmatige verificatie**
 
 Run: `cd frontend && bun run build`
 Expected: build slaagt.
 
-Handmatig: maak in de wizard een nieuwe reeks aan voor een club waarvoor je in Taak 8 een beschikbaarheid hebt vastgelegd. Open de slot-dialog op die weekdag:
-- Beschikbare trainer staat bovenaan met groene badge.
-- Kies een trainer mét vastgelegde beschikbaarheden maar op een andere dag/club → amber warning verschijnt, opslaan blijft mogelijk.
+Handmatig: maak in de wizard een nieuwe reeks aan voor een club waarvoor je in Taak 8 een beschikbaarheid hebt vastgelegd:
+- Defaults-kaart rechts: trainer met beschikbaarheid bij deze club staat bovenaan met groene badge.
+- Teken een slot op de dag van de beschikbaarheid en open de popover → zelfde trainer heeft badge.
+- Kies in de popover een trainer mét vastgelegde beschikbaarheden maar op een andere dag/club → amber warning verschijnt, opslaan blijft mogelijk.
+- Kies "Geen" → geen badge, geen warning; slot opslaan zonder trainer werkt zoals voorheen.
 - Trainer zonder enige beschikbaarheid → geen badge, geen warning.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add "frontend/app/(dashboard)/dashboard/lessons/new/"
-git commit -m "feat(trainer-availability): badge and soft warning in series wizard slot dialog"
+git commit -m "feat(trainer-availability): badge and soft warning in series wizard defaults card and slot popover"
 ```
 
 ---
@@ -1514,7 +1548,7 @@ git commit -m "chore(seed): add trainer availabilities to demo seed"
 
 - **Trainer-self-service** (trainers geven zelf beschikbaarheid in): fase 2.
 - **Tijd-matching in de wizard-warning** (nu enkel club + dag): kan later verfijnd worden.
-- **`slot-edit-popover.tsx`** (trainer wijzigen op bestaand slot) en **standalone lessons**: zelfde badge/warning kan later toegevoegd worden.
+- **`SlotDialog`/`WeekTemplateBuilder`** (week-uitzonderingen in stap 3 via `EditWeekDialog`) en **standalone lessons**: zelfde badge/warning kan later toegevoegd worden.
 - **Harde blokkering** bij niet-beschikbare trainer: bewust soft — de admin beslist.
 - **Update-endpoint** (PUT): verwijderen + opnieuw toevoegen volstaat voor v1 (YAGNI).
 - **Scheduling-algoritme**: blijft ongewijzigd; het plant leerlingen, geen trainers.
