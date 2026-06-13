@@ -28,6 +28,7 @@ public static class DependencyInjection
         services.AddScoped<ApplicationMapper>();
 
         services.AddScoped<ICampService, CampService>();
+        services.AddScoped<ICampEnrollmentService, CampEnrollmentService>();
         services.AddScoped<IDashboardService, DashboardService>();
         services.AddScoped<ILessonSerieService, LessonSerieService>();
         services.AddScoped<ITennisClubService, TennisClubService>();
