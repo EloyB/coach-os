@@ -135,12 +135,16 @@ export function Step2Planning({
                   </SelectItem>
                   {sortedAssignableTrainers.map((tr) => (
                     <SelectItem key={tr.id} value={tr.id}>
-                      {tr.firstName} {tr.lastName}
-                      {clubTrainerIds.has(tr.id) && (
-                        <span className="ml-2 text-xs text-tennis-green">
-                          {"✓"} {t("availableBadge")}
-                        </span>
-                      )}
+                      <span className="inline-flex items-center gap-1.5">
+                        {clubTrainerIds.has(tr.id) && (
+                          <span
+                            className="h-1.5 w-1.5 shrink-0 rounded-full bg-tennis-green"
+                            title={t("availableBadge")}
+                            aria-label={t("availableBadge")}
+                          />
+                        )}
+                        {tr.firstName} {tr.lastName}
+                      </span>
                     </SelectItem>
                   ))}
                 </SelectContent>
