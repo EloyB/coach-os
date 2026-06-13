@@ -460,7 +460,7 @@
     "availabilityUntil": "Tot",
     "availabilityDelete": "Verwijderen",
     "availabilitySaving": "Opslaan...",
-    "availabilityClubPlaceholder": "Kies een club",
+    "availabilityAnyClub": "Alle clubs",
     "availabilityError": "Er ging iets mis. Probeer het opnieuw.",
     "title": "Trainers",
     "adminBadge": "Beheerder",

@@ -83,10 +83,9 @@ export function TrainerAvailabilityDialog({
   });
 
   function handleAdd() {
-    if (!clubId) return;
     createMutation.mutate({
       trainerId: trainer.id,
-      tennisClubId: clubId,
+      tennisClubId: clubId || null,
       dayOfWeek,
       startTime,
       endTime,
@@ -115,8 +114,8 @@ export function TrainerAvailabilityDialog({
               className="flex items-center justify-between rounded-lg border border-gray-200 px-3 py-2 text-sm"
             >
               <span>
-                {a.tennisClubName}, {DAY_NAMES_FULL[a.dayOfWeek]}{" "}
-                {a.startTime} tot {a.endTime}
+                {a.tennisClubName ?? t("availabilityAnyClub")},{" "}
+                {DAY_NAMES_FULL[a.dayOfWeek]} {a.startTime} tot {a.endTime}
               </span>
               <button
                 type="button"
@@ -142,7 +141,7 @@ export function TrainerAvailabilityDialog({
                 value={clubId}
                 onChange={(e) => setClubId(e.target.value)}
               >
-                <option value="">{t("availabilityClubPlaceholder")}</option>
+                <option value="">{t("availabilityAnyClub")}</option>
                 {clubs.map((club) => (
                   <option key={club.id} value={club.id}>
                     {club.name}
@@ -200,7 +199,7 @@ export function TrainerAvailabilityDialog({
           <button
             type="button"
             onClick={handleAdd}
-            disabled={createMutation.isPending || !clubId}
+            disabled={createMutation.isPending}
             className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-tennis-green rounded-lg hover:bg-tennis-green/90 transition-colors disabled:opacity-50"
           >
             <Plus className="h-4 w-4" />

@@ -3,8 +3,10 @@ import apiClient from "@/lib/api-client";
 export interface TrainerAvailabilityDto {
   id: string;
   trainerId: string;
-  tennisClubId: string;
-  tennisClubName: string;
+  /** null = beschikbaar bij eender welke club */
+  tennisClubId: string | null;
+  /** null wanneer de beschikbaarheid voor eender welke club geldt */
+  tennisClubName: string | null;
   /** 0 = maandag ... 6 = zondag */
   dayOfWeek: number;
   /** "HH:mm" */
@@ -15,7 +17,8 @@ export interface TrainerAvailabilityDto {
 
 export interface CreateTrainerAvailabilityRequest {
   trainerId: string;
-  tennisClubId: string;
+  /** null = beschikbaar bij eender welke club */
+  tennisClubId: string | null;
   dayOfWeek: number;
   startTime: string;
   endTime: string;

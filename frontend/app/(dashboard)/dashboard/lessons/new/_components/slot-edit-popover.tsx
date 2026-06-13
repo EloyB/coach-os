@@ -70,8 +70,11 @@ export function SlotEditPopover({
 
   const availableTrainerIds = new Set(
     availabilities
+      // null club = beschikbaar bij eender welke club -> matcht deze club ook.
       .filter(
-        (a) => a.tennisClubId === tennisClubId && a.dayOfWeek === slot.dayOfWeek
+        (a) =>
+          (a.tennisClubId === null || a.tennisClubId === tennisClubId) &&
+          a.dayOfWeek === slot.dayOfWeek
       )
       .map((a) => a.trainerId)
   );

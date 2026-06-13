@@ -47,7 +47,8 @@ export function Step2Planning({
 
   const clubTrainerIds = new Set(
     availabilities
-      .filter((a) => a.tennisClubId === tennisClubId)
+      // null club = beschikbaar bij eender welke club -> matcht deze club ook.
+      .filter((a) => a.tennisClubId === null || a.tennisClubId === tennisClubId)
       .map((a) => a.trainerId)
   );
   const sortedAssignableTrainers = [...assignableTrainers].sort(
