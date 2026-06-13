@@ -17,12 +17,14 @@ import {
 } from "@/components/ui/select";
 import { LESSON_LEVELS } from "@/lib/api/lessonSeries";
 import { getTrainers, isAssignableTrainer } from "@/lib/api/trainers";
+import { getTrainerAvailabilities } from "@/lib/api/trainerAvailabilities";
 import { inputClass } from "@/lib/styles";
 import type { WizardSlot } from "../_types";
 
 interface SlotEditPopoverProps {
   slot: WizardSlot;
   anchorRef: HTMLElement;
+  tennisClubId: string;
   onSave: (updated: WizardSlot) => void;
   onClose: () => void;
 }
@@ -30,6 +32,7 @@ interface SlotEditPopoverProps {
 export function SlotEditPopover({
   slot,
   anchorRef,
+  tennisClubId,
   onSave,
   onClose,
 }: SlotEditPopoverProps) {
@@ -40,6 +43,11 @@ export function SlotEditPopover({
     queryFn: getTrainers,
   });
   const assignableTrainers = trainers.filter(isAssignableTrainer);
+
+  const { data: availabilities = [] } = useQuery({
+    queryKey: ["trainerAvailabilities"],
+    queryFn: getTrainerAvailabilities,
+  });
 
   const [trainerId, setTrainerId] = useState(slot.trainerId ?? "none");
   const [startTime, setStartTime] = useState(slot.startTime);
@@ -59,6 +67,26 @@ export function SlotEditPopover({
     setMaxStudents(slot.maxStudents);
     setLevel(slot.level !== null ? String(slot.level) : "none");
   }, [slot.id]);
+
+  const availableTrainerIds = new Set(
+    availabilities
+      .filter(
+        (a) => a.tennisClubId === tennisClubId && a.dayOfWeek === slot.dayOfWeek
+      )
+      .map((a) => a.trainerId)
+  );
+  const trainersWithKnownAvailability = new Set(
+    availabilities.map((a) => a.trainerId)
+  );
+  const sortedAssignableTrainers = [...assignableTrainers].sort(
+    (a, b) =>
+      Number(availableTrainerIds.has(b.id)) -
+      Number(availableTrainerIds.has(a.id))
+  );
+  const showUnavailableWarning =
+    trainerId !== "none" &&
+    trainersWithKnownAvailability.has(trainerId) &&
+    !availableTrainerIds.has(trainerId);
 
   function handleSave() {
     const trainer = trainers.find((tr) => tr.id === trainerId);
@@ -130,13 +158,23 @@ export function SlotEditPopover({
               <SelectItem value="none">
                 <span className="text-gray-400">{t("nonePicker")}</span>
               </SelectItem>
-              {assignableTrainers.map((tr) => (
+              {sortedAssignableTrainers.map((tr) => (
                 <SelectItem key={tr.id} value={tr.id}>
                   {tr.firstName} {tr.lastName}
+                  {availableTrainerIds.has(tr.id) && (
+                    <span className="ml-2 text-xs text-tennis-green">
+                      {"✓"} {t("availableBadge")}
+                    </span>
+                  )}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+          {showUnavailableWarning && (
+            <p className="mt-1 text-[11px] text-amber-600">
+              {t("trainerNotAvailableWarning")}
+            </p>
+          )}
         </div>
 
         {/* Court name */}
