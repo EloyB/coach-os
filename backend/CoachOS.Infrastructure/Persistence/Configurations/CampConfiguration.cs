@@ -27,6 +27,8 @@ public class CampConfiguration : IEntityTypeConfiguration<Camp>
             .HasForeignKey(c => c.TennisClubId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        // Restrict is bewust (projectregel: nooit cascade; spiegelt EnrollmentFormConfiguration):
+        // een toekomstige camp-delete moet het formulier dus eerst zelf verwijderen.
         builder.HasOne(c => c.EnrollmentForm)
             .WithOne(f => f.Camp)
             .HasForeignKey<CampEnrollmentForm>(f => f.CampId)

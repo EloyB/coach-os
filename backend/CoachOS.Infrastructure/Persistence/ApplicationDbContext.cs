@@ -52,6 +52,12 @@ public class ApplicationDbContext(
     public DbSet<CampEnrollment> CampEnrollments { get; set; } = null!;
     public DbSet<CampEnrollmentGroup> CampEnrollmentGroups { get; set; } = null!;
     public DbSet<CampEnrollmentForm> CampEnrollmentForms { get; set; } = null!;
+
+    // CampFormField en CampFormResponse hebben bewust GEEN tenant query filter:
+    // ze dragen zelf geen OrganizationId. Tenant-isolatie loopt via hun parent
+    // (CampFormField → CampEnrollmentForm.OrganizationId,
+    //  CampFormResponse → CampEnrollment.OrganizationId). Zelfde patroon als
+    // de bestaande FormField/FormResponse — zie ook ApplyTenantFilters().
     public DbSet<CampFormField> CampFormFields { get; set; } = null!;
     public DbSet<CampFormResponse> CampFormResponses { get; set; } = null!;
 
@@ -145,6 +151,11 @@ public class ApplicationDbContext(
             _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
         builder.Entity<CampEnrollmentForm>().HasQueryFilter(e =>
             _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
+
+        // Bewust GEEN filter voor CampFormField en CampFormResponse: deze entities
+        // hebben geen eigen OrganizationId en zijn tenant-geïsoleerd via hun parent
+        // (CampEnrollmentForm.OrganizationId resp. CampEnrollment.OrganizationId).
+        // Zelfde patroon als FormField/FormResponse hierboven.
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

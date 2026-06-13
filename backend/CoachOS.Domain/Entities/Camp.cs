@@ -23,6 +23,11 @@ public class Camp : BaseEntity
 
     public DateOnly StartDate { get; set; }
     public DateOnly EndDate { get; set; }
+
+    /// <summary>
+    /// Uiterste inschrijfdatum. Opgeslagen als UTC (zelfde conventie als
+    /// <c>LessonSerie.RegistrationDeadline</c>); services zetten <c>DateTimeKind.Utc</c>.
+    /// </summary>
     public DateTime RegistrationDeadline { get; set; }
 
     /// <summary>Max. aantal deelnemers; null = onbeperkt.</summary>
