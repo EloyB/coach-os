@@ -38,7 +38,7 @@ public class CampEnrollmentServiceTests
             _payments.Object, _email.Object, NullLogger<CampEnrollmentService>.Instance);
     }
 
-    private Camp Camp(decimal price) => new()
+    private Camp BuildCamp(decimal price) => new()
     {
         Id = _campId, OrganizationId = _orgId, Name = "Paaskamp", Price = price,
         StartDate = new DateOnly(2026, 4, 14), EndDate = new DateOnly(2026, 4, 16),
@@ -52,7 +52,7 @@ public class CampEnrollmentServiceTests
 
     private void Happy(decimal price)
     {
-        _camps.Setup(r => r.GetByIdPublicAsync(_campId, It.IsAny<CancellationToken>())).ReturnsAsync(Camp(price));
+        _camps.Setup(r => r.GetByIdPublicAsync(_campId, It.IsAny<CancellationToken>())).ReturnsAsync(BuildCamp(price));
         _forms.Setup(r => r.GetByCampIdReadOnlyAsync(_campId, It.IsAny<CancellationToken>())).ReturnsAsync((CampEnrollmentForm?)null);
         _enrollments.Setup(r => r.CountActiveByCampAsync(_campId, It.IsAny<CancellationToken>())).ReturnsAsync(0);
         _enrollments.Setup(r => r.IsDuplicateAsync(_campId, "emma@example.com", It.IsAny<CancellationToken>())).ReturnsAsync(false);
@@ -89,7 +89,7 @@ public class CampEnrollmentServiceTests
     [Test]
     public async Task Submit_DeadlinePassed_ReturnsValidation()
     {
-        Camp camp = Camp(120m);
+        Camp camp = BuildCamp(120m);
         camp.RegistrationDeadline = DateTime.UtcNow.AddDays(-1);
         _camps.Setup(r => r.GetByIdPublicAsync(_campId, It.IsAny<CancellationToken>())).ReturnsAsync(camp);
 
@@ -107,5 +107,30 @@ public class CampEnrollmentServiceTests
         Result<SubmitCampEnrollmentResultDto> result = await _sut.SubmitAsync(_campId, Req(), CancellationToken.None);
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().Contain(e => e.Code == ErrorCodes.Conflict);
+    }
+
+    [Test]
+    public async Task Submit_GroupMemberAlreadyEnrolled_ReturnsConflict()
+    {
+        _camps.Setup(r => r.GetByIdPublicAsync(_campId, It.IsAny<CancellationToken>())).ReturnsAsync(BuildCamp(120m));
+        _forms.Setup(r => r.GetByCampIdReadOnlyAsync(_campId, It.IsAny<CancellationToken>())).ReturnsAsync((CampEnrollmentForm?)null);
+        _enrollments.Setup(r => r.CountActiveByCampAsync(_campId, It.IsAny<CancellationToken>())).ReturnsAsync(0);
+        _enrollments.Setup(r => r.IsDuplicateAsync(_campId, "emma@example.com", It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        _enrollments.Setup(r => r.IsDuplicateAsync(_campId, "lars@example.com", It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
+        SubmitCampEnrollmentRequest req = new()
+        {
+            ParticipantName = "Emma", ParticipantEmail = "emma@example.com", EnrollmentType = "group",
+            GroupMembers = new List<CampGroupMemberDto>
+            {
+                new() { ParticipantName = "Lars", ParticipantEmail = "lars@example.com" },
+            },
+        };
+
+        Result<SubmitCampEnrollmentResultDto> result = await _sut.SubmitAsync(_campId, req, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.Code == ErrorCodes.Conflict);
+        _payments.Verify(p => p.CreatePaymentForCampEnrollmentAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }

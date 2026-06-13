@@ -79,6 +79,16 @@ public class CampEnrollmentService(
             ? request.GroupMembers.Count + 1
             : 1;
 
+        // In-request duplicate check (cheap, no race concern): leader + members must have unique emails.
+        if (request.EnrollmentType == "group" && request.GroupMembers is { Count: > 0 })
+        {
+            List<string> emails = new() { request.ParticipantEmail.Trim().ToLowerInvariant() };
+            emails.AddRange(request.GroupMembers.Select(m => m.ParticipantEmail.Trim().ToLowerInvariant()));
+            if (emails.Count != emails.Distinct().Count())
+                return Result<SubmitCampEnrollmentResultDto>.Fail(
+                    new Error(ErrorCodes.Conflict, "Een e-mailadres komt meerdere keren voor in deze inschrijving."));
+        }
+
         bool isPaid = camp.Price > 0m;
         EnrollmentStatus initialStatus = isPaid ? EnrollmentStatus.PendingPayment : EnrollmentStatus.Confirmed;
 
@@ -102,6 +112,19 @@ public class CampEnrollmentService(
             {
                 await enrollments.RollbackTransactionAsync(ct);
                 return Result<SubmitCampEnrollmentResultDto>.Fail(new Error(ErrorCodes.Conflict, "Je bent al ingeschreven voor dit kamp."));
+            }
+
+            if (request.EnrollmentType == "group" && request.GroupMembers is { Count: > 0 })
+            {
+                foreach (CampGroupMemberDto member in request.GroupMembers)
+                {
+                    bool memberDuplicate = await enrollments.IsDuplicateAsync(campId, member.ParticipantEmail, ct);
+                    if (memberDuplicate)
+                    {
+                        await enrollments.RollbackTransactionAsync(ct);
+                        return Result<SubmitCampEnrollmentResultDto>.Fail(new Error(ErrorCodes.Conflict, "Een van de groepsleden is al ingeschreven voor dit kamp."));
+                    }
+                }
             }
 
             enrollment = new CampEnrollment
@@ -181,7 +204,9 @@ public class CampEnrollmentService(
                 enrollment.Id, camp.OrganizationId, ct);
             if (!paymentResult.IsSuccess)
             {
-                // Inschrijving staat al (PendingPayment); betaling kan later opnieuw via de mail/Mollie.
+                // De inschrijving is al gepersisteerd als PendingPayment; dit is een herstelbare toestand
+                // (de speler kan later alsnog betalen via de Mollie-link zodra die wel lukt, of de admin
+                // kan opvolgen). v1 geeft de betaalfout terug aan de caller.
                 logger.LogError("Mollie payment-creatie faalde voor kampinschrijving {Id}", enrollment.Id);
                 return Result<SubmitCampEnrollmentResultDto>.Fail(paymentResult.Errors);
             }
@@ -220,10 +245,14 @@ public class CampEnrollmentService(
         return name;
     }
 
-    private static List<string>? DeserializeOptions(string? json)
+    private List<string>? DeserializeOptions(string? json)
     {
         if (string.IsNullOrEmpty(json)) return null;
         try { return JsonSerializer.Deserialize<List<string>>(json); }
-        catch (JsonException) { return null; }
+        catch (JsonException ex)
+        {
+            logger.LogWarning(ex, "Ongeldige JSON in kamp-formulierveld opties: {Json}", json);
+            return null;
+        }
     }
 }
