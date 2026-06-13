@@ -196,18 +196,23 @@ def create_trainer_availabilities(api: ApiClient, club_ids: list[str]) -> None:
         print("   No active trainers - skipping availabilities.")
         return
 
+    # clubIndex None = club-loze beschikbaarheid (geldt voor eender welke club).
     plans = [
         {"dayOfWeek": 0, "clubIndex": 0, "startTime": "17:00", "endTime": "21:00"},
-        {"dayOfWeek": 2, "clubIndex": 1, "startTime": "18:00", "endTime": "22:00"},
+        {"dayOfWeek": 2, "clubIndex": None, "startTime": "18:00", "endTime": "22:00"},
     ]
 
     created = 0
     for trainer in active:
         for plan in plans:
-            club_idx = min(plan["clubIndex"], len(club_ids) - 1)
+            if plan["clubIndex"] is None:
+                tennis_club_id = None
+            else:
+                club_idx = min(plan["clubIndex"], len(club_ids) - 1)
+                tennis_club_id = club_ids[club_idx]
             body = {
                 "trainerId": trainer["id"],
-                "tennisClubId": club_ids[club_idx],
+                "tennisClubId": tennis_club_id,
                 "dayOfWeek": plan["dayOfWeek"],
                 "startTime": plan["startTime"],
                 "endTime": plan["endTime"],
