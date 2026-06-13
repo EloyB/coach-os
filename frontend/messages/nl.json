@@ -553,7 +553,16 @@
     "paymentPaid": "Betaald",
     "paymentFailed": "Betaling mislukt",
     "loadDetailError": "Kan kamp niet laden.",
-    "requiredField": "Dit veld is verplicht"
+    "requiredField": "Dit veld is verplicht",
+    "formFixedFields": "Vaste velden (altijd zichtbaar)",
+    "formNoCustomFields": "Nog geen aangepaste velden. Klik 'Veld toevoegen' om te beginnen.",
+    "formFieldLabelPlaceholder": "Veldlabel, bijv. 'Telefoonnummer'",
+    "formFieldRequired": "Verplicht",
+    "formOptionPlaceholder": "Optie {index}",
+    "formAddOption": "Optie toevoegen",
+    "formAddField": "Veld toevoegen",
+    "formSave": "Formulier opslaan",
+    "formSaved": "Opgeslagen"
   },
   "invitations": {
     "loading": "Laden...",
