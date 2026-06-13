@@ -2,69 +2,70 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { ChevronLeft } from "lucide-react";
-import { createCamp, type CreateCampRequest } from "@/lib/api/camps";
-import { getTennisClubs } from "@/lib/api/tennisClubs";
-import { getTrainers } from "@/lib/api/trainers";
-import { getAxiosErrorMessages } from "@/lib/utils/api-errors";
-import { CampForm } from "../_components/camp-form";
+import { CampStepIndicator } from "./_components/camp-step-indicator";
+import { Step1Basis } from "./_components/step-1-basis";
+import { Step2Days } from "./_components/step-2-days";
+import { Step3Review } from "./_components/step-3-review";
+import type { CampStep1Data, CampDayDraft } from "./_types";
 
 export default function NewCampPage() {
   const t = useTranslations("camps");
-  const router = useRouter();
-  const queryClient = useQueryClient();
-  const [errorMessages, setErrorMessages] = useState<string[]>([]);
 
-  const { data: clubs = [] } = useQuery({
-    queryKey: ["tennisClubs"],
-    queryFn: getTennisClubs,
-  });
-  const { data: trainers = [] } = useQuery({
-    queryKey: ["trainers"],
-    queryFn: getTrainers,
-  });
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step1Data, setStep1Data] = useState<CampStep1Data | null>(null);
+  const [days, setDays] = useState<CampDayDraft[]>([]);
 
-  const mutation = useMutation({
-    mutationFn: (req: CreateCampRequest) => createCamp(req),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["camps"] });
-      router.push("/dashboard/camps");
-    },
-    onError: (error) => {
-      setErrorMessages(getAxiosErrorMessages(error, t("saveError")));
-    },
-  });
+  function handleStep1Next(data: CampStep1Data) {
+    setStep1Data(data);
+    setStep(2);
+  }
 
   return (
-    <div className="max-w-3xl">
+    <div className="max-w-2xl mx-auto">
+      {/* Back */}
       <Link
         href="/dashboard/camps"
-        className="inline-flex items-center gap-1 text-xs text-ink-3 hover:text-ink-2 mb-4"
+        className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 transition-colors mb-6"
       >
-        <ChevronLeft size={14} />
+        <ChevronLeft size={15} />
         {t("back")}
       </Link>
 
-      <div className="mb-5">
-        <h1 className="text-lg font-bold text-ink tracking-tight">
+      {/* Page title */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
           {t("createTitle")}
         </h1>
-        <p className="text-sm text-ink-3 mt-0.5">{t("createSubtitle")}</p>
+        <p className="text-gray-400 text-sm mt-1">{t("createSubtitle")}</p>
       </div>
 
-      <CampForm
-        clubs={clubs}
-        trainers={trainers}
-        onSubmit={(req) => {
-          setErrorMessages([]);
-          mutation.mutate(req);
-        }}
-        submitting={mutation.isPending}
-        errorMessages={errorMessages}
-      />
+      {/* Step indicator */}
+      <CampStepIndicator currentStep={step} />
+
+      {/* Steps */}
+      {step === 1 && (
+        <Step1Basis defaultValues={step1Data} onNext={handleStep1Next} />
+      )}
+
+      {step === 2 && step1Data && (
+        <Step2Days
+          step1Data={step1Data}
+          days={days}
+          onChange={setDays}
+          onBack={() => setStep(1)}
+          onNext={() => setStep(3)}
+        />
+      )}
+
+      {step === 3 && step1Data && (
+        <Step3Review
+          step1Data={step1Data}
+          days={days}
+          onBack={() => setStep(2)}
+        />
+      )}
     </div>
   );
 }

@@ -563,7 +563,15 @@
     "formAddOption": "Optie toevoegen",
     "formAddField": "Veld toevoegen",
     "formSave": "Formulier opslaan",
-    "formSaved": "Opgeslagen"
+    "formSaved": "Opgeslagen",
+    "wizardStep1": "Basis",
+    "wizardStep2": "Dagen & trainers",
+    "wizardStep3": "Controle",
+    "wizardBack": "Terug",
+    "wizardSubmit": "Kamp aanmaken",
+    "editAction": "Bewerken",
+    "close": "Sluiten",
+    "dangerZoneDesc": "Dit verwijdert het kamp inclusief alle dagen en trainers permanent. Dit is niet mogelijk als er actieve inschrijvingen zijn."
   },
   "invitations": {
     "loading": "Laden...",
@@ -762,14 +770,12 @@
     "navDashboard": "Dashboard",
     "navAdmins": "Beheerders",
     "navOrganizations": "Organisaties",
-
     "dashboardTitle": "Super-admin overzicht",
     "dashboardSubtitle": "Beheer beheerders, organisaties en early-bird statussen.",
     "statAdmins": "Beheerders",
     "statPendingInvites": "Openstaande uitnodigingen",
     "statOrganizations": "Organisaties",
     "statEarlyBirds": "Early birds",
-
     "adminsTitle": "Beheerders",
     "adminsSubtitle": "Alle beheerders over alle organisaties.",
     "adminsCreate": "Nieuwe beheerder",
@@ -788,7 +794,6 @@
     "actionDisable": "Deactiveren",
     "actionEnable": "Activeren",
     "actionResend": "Opnieuw versturen",
-
     "createTitle": "Nieuwe beheerder aanmaken",
     "createSubtitle": "Maakt een nieuwe organisatie aan en stuurt een uitnodigingsmail naar de beheerder.",
     "fieldOrganization": "Naam organisatie",
@@ -800,7 +805,6 @@
     "submitting": "Bezig...",
     "createError": "Aanmaken mislukt. Controleer de gegevens en probeer opnieuw.",
     "cancel": "Annuleren",
-
     "orgsTitle": "Organisaties",
     "orgsSubtitle": "Alle organisaties op het platform.",
     "orgsEmpty": "Nog geen organisaties.",
