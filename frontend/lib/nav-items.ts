@@ -6,6 +6,7 @@ import {
   GraduationCap,
   Settings,
   Ticket,
+  Tent,
 } from "lucide-react";
 
 export const navItems = [
@@ -31,6 +32,12 @@ export const navItems = [
     label: "Losse lessen",
     href: "/dashboard/standalone-lessons",
     icon: Ticket,
+    exact: false,
+  },
+  {
+    label: "Kampen",
+    href: "/dashboard/camps",
+    icon: Tent,
     exact: false,
   },
   // {
