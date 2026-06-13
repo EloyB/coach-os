@@ -24,5 +24,11 @@ public interface IPaymentRepository
     /// </summary>
     Task<Payment?> GetLatestByEnrollmentIdAsync(Guid enrollmentId, CancellationToken ct = default);
 
+    /// <summary>
+    /// Meest recente payment voor een kamp-inschrijving (op CreatedAt desc).
+    /// Gebruikt door de publieke thank-you-page status polling.
+    /// </summary>
+    Task<Payment?> GetLatestByCampEnrollmentIdAsync(Guid campEnrollmentId, CancellationToken ct = default);
+
     Task SaveChangesAsync(CancellationToken ct = default);
 }
