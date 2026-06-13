@@ -481,6 +481,7 @@
     "removeTrainer": "Trainer verwijderen",
     "selectTrainer": "Selecteer trainer",
     "noTrainers": "Geen actieve trainers - nodig eerst een trainer uit.",
+    "noTrainersOnDay": "Geen trainers toegewezen",
     "trainerStartTime": "Van",
     "trainerEndTime": "Tot",
     "noDays": "Nog geen dagen toegevoegd.",
