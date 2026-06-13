@@ -14,6 +14,7 @@ using CoachOS.Application.StandaloneLessons;
 using CoachOS.Application.StudentConfirmation;
 using CoachOS.Application.Students;
 using CoachOS.Application.TennisClubs;
+using CoachOS.Application.TrainerAvailabilities;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -29,6 +30,7 @@ public static class DependencyInjection
         services.AddScoped<IDashboardService, DashboardService>();
         services.AddScoped<ILessonSerieService, LessonSerieService>();
         services.AddScoped<ITennisClubService, TennisClubService>();
+        services.AddScoped<ITrainerAvailabilityService, TrainerAvailabilityService>();
         services.AddScoped<IEnrollmentService, EnrollmentService>();
         services.AddScoped<IPlanningService, PlanningService>();
         services.AddScoped<IAssignmentService, AssignmentService>();
