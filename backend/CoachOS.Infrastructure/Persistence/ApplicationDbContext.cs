@@ -46,6 +46,7 @@ public class ApplicationDbContext(
     public DbSet<OrganizationSettings> OrganizationSettings { get; set; } = null!;
     public DbSet<MollieConnection> MollieConnections { get; set; } = null!;
     public DbSet<OAuthState> OAuthStates { get; set; } = null!;
+    public DbSet<TrainerAvailability> TrainerAvailabilities { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -73,6 +74,7 @@ public class ApplicationDbContext(
         builder.ApplyConfiguration(new OrganizationSettingsConfiguration());
         builder.ApplyConfiguration(new MollieConnectionConfiguration());
         builder.ApplyConfiguration(new OAuthStateConfiguration());
+        builder.ApplyConfiguration(new TrainerAvailabilityConfiguration());
 
         ApplyTenantFilters(builder);
     }
@@ -116,6 +118,8 @@ public class ApplicationDbContext(
         builder.Entity<MollieConnection>().HasQueryFilter(e =>
             _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
         builder.Entity<OAuthState>().HasQueryFilter(e =>
+            _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
+        builder.Entity<TrainerAvailability>().HasQueryFilter(e =>
             _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
     }
 
