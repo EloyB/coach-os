@@ -24,6 +24,7 @@ public class CampEnrollmentRepository(ApplicationDbContext context) : ICampEnrol
             .IgnoreQueryFilters()
             .Include(e => e.Group!)
                 .ThenInclude(g => g.Members)
+            .Include(e => e.Camp)
             .FirstOrDefaultAsync(e => e.Id == id, ct);
     }
 

@@ -428,7 +428,8 @@ public class PaymentService(
                 ? enrollment.Group.Members.ToList()
                 : [enrollment];
 
-        CampEntity? camp = await camps.GetByIdPublicAsync(enrollment.CampId, ct);
+        // enrollment.Camp komt mee uit GetByIdWithGroupAsync (niet IsActive-gefilterd),
+        // zodat een gedeactiveerd kamp toch echte naam + data in de mail toont.
         foreach (CampEnrollmentEntity e in toConfirm)
         {
             if (e.Status == EnrollmentStatus.Confirmed) continue;
@@ -442,9 +443,9 @@ public class PaymentService(
             await emailService.SendCampEnrollmentConfirmedAsync(
                 enrollment.ParticipantEmail,
                 enrollment.ParticipantName,
-                camp?.Name ?? string.Empty,
-                camp?.StartDate ?? default,
-                camp?.EndDate ?? default,
+                enrollment.Camp?.Name ?? string.Empty,
+                enrollment.Camp?.StartDate ?? default,
+                enrollment.Camp?.EndDate ?? default,
                 ct);
         }
         catch (Exception ex)
