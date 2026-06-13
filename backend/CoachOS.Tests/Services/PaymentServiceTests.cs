@@ -20,6 +20,8 @@ public class PaymentServiceTests
     private Mock<IPaymentRepository> _payments = null!;
     private Mock<IEnrollmentRepository> _enrollments = null!;
     private Mock<ILessonSerieRepository> _lessonSeries = null!;
+    private Mock<ICampRepository> _camps = null!;
+    private Mock<ICampEnrollmentRepository> _campEnrollments = null!;
     private Mock<IOrganizationSettingsRepository> _orgSettings = null!;
     private Mock<IMollieClient> _mollie = null!;
     private Mock<IMollieConnectService> _connect = null!;
@@ -37,6 +39,8 @@ public class PaymentServiceTests
         _payments = new Mock<IPaymentRepository>();
         _enrollments = new Mock<IEnrollmentRepository>();
         _lessonSeries = new Mock<ILessonSerieRepository>();
+        _camps = new Mock<ICampRepository>();
+        _campEnrollments = new Mock<ICampEnrollmentRepository>();
         _orgSettings = new Mock<IOrganizationSettingsRepository>();
         _mollie = new Mock<IMollieClient>();
         _connect = new Mock<IMollieConnectService>();
@@ -55,6 +59,8 @@ public class PaymentServiceTests
             _payments.Object,
             _enrollments.Object,
             _lessonSeries.Object,
+            _camps.Object,
+            _campEnrollments.Object,
             _orgSettings.Object,
             _mollie.Object,
             _connect.Object,

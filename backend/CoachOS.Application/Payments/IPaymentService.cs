@@ -32,4 +32,21 @@ public interface IPaymentService
     /// </summary>
     Task<Result<PaymentStatusDto>> GetPaymentStatusForEnrollmentAsync(
         Guid enrollmentId, bool syncFromMollie, CancellationToken ct = default);
+
+    /// <summary>
+    /// Creëert een Mollie payment voor een bestaande kamp-inschrijving. Het bedrag
+    /// is <c>camp.Price × aantal deelnemers</c> (groep = leider + leden, solo = 1).
+    /// Bij succes returnt een <see cref="CreatePaymentResultDto.CheckoutUrl"/> waar
+    /// de FE de deelnemer naartoe redirect.
+    /// </summary>
+    Task<Result<CreatePaymentResultDto>> CreatePaymentForCampEnrollmentAsync(
+        Guid campEnrollmentId, Guid organizationId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Publieke status-poll voor de kamp-thank-you-page. Mirror van
+    /// <see cref="GetPaymentStatusForEnrollmentAsync"/> maar op basis van de
+    /// kamp-inschrijving.
+    /// </summary>
+    Task<Result<PaymentStatusDto>> GetPaymentStatusForCampEnrollmentAsync(
+        Guid campEnrollmentId, bool syncFromMollie, CancellationToken ct = default);
 }
