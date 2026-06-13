@@ -492,33 +492,10 @@ def create_camps(api: ApiClient, club_ids: list[str], trainer_id: str,
             print(f"   ERR {label} - camp enrollment failed (see stderr)",
                   file=sys.stderr)
 
-    if paid_id:
-        enroll(paid_id, "Paaskamp - Sanne (solo)", {
-            "participantName": "Sanne Maes",
-            "participantEmail": "sanne.maes@example.com",
-            "participantPhone": "+32470111222",
-            "responses": [],
-            "enrollmentType": "solo",
-        })
-        enroll(paid_id, "Paaskamp - Lars (solo)", {
-            "participantName": "Lars Peeters",
-            "participantEmail": "lars.peeters@example.com",
-            "participantPhone": "+32470333444",
-            "responses": [],
-            "enrollmentType": "solo",
-        })
-        enroll(paid_id, "Paaskamp - De Vries (groep van 2)", {
-            "participantName": "Tom de Vries",
-            "participantEmail": "tom.devries@example.com",
-            "participantPhone": "+32470555666",
-            "enrollmentType": "group",
-            "groupMembers": [
-                {"participantName": "Eva de Vries",
-                 "participantEmail": "eva.devries@example.com",
-                 "responses": []},
-            ],
-            "responses": [],
-        })
+    # Betaalde camp: inschrijven triggert direct een Mollie-betaling. In de seed
+    # is er geen Mollie-koppeling, dus inschrijvingen zouden falen en orphan
+    # PendingPayment-rijen achterlaten. De betaalde camp wordt wel aangemaakt
+    # (voor de beheer-UI demo); inschrijvingen seeden we enkel op het gratis kamp.
 
     if free_id:
         enroll(free_id, "Gratis kamp - Noor (solo)", {
