@@ -33,11 +33,19 @@ public class CreateTrainerAvailabilityRequestValidatorTests
     }
 
     [Test]
+    public void Validate_NullTennisClubId_Passes()
+    {
+        // Null = beschikbaar bij eender welke club -> toegestaan.
+        ValidationResult result = _validator.Validate(Valid() with { TennisClubId = null });
+        result.IsValid.Should().BeTrue();
+    }
+
+    [Test]
     public void Validate_EmptyTennisClubId_Fails()
     {
         ValidationResult result = _validator.Validate(Valid() with { TennisClubId = Guid.Empty });
         result.IsValid.Should().BeFalse();
-        result.Errors.Should().Contain(e => e.ErrorMessage == "Club is verplicht");
+        result.Errors.Should().Contain(e => e.ErrorMessage == "Ongeldige club");
     }
 
     [TestCase(-1)]

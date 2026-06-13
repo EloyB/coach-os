@@ -20,9 +20,13 @@ public class TrainerAvailabilityService(
 
     public async Task<Result<Guid>> CreateAsync(Guid organizationId, CreateTrainerAvailabilityRequest request, CancellationToken ct = default)
     {
-        bool clubExists = await clubRepo.ExistsAsync(request.TennisClubId, organizationId, ct);
-        if (!clubExists)
-            return Result<Guid>.Fail(new Error(ErrorCodes.NotFound, "Club niet gevonden"));
+        // Club is optioneel (null = eender welke club). Alleen valideren wanneer opgegeven.
+        if (request.TennisClubId.HasValue)
+        {
+            bool clubExists = await clubRepo.ExistsAsync(request.TennisClubId.Value, organizationId, ct);
+            if (!clubExists)
+                return Result<Guid>.Fail(new Error(ErrorCodes.NotFound, "Club niet gevonden"));
+        }
 
         bool isActiveTrainer = await userLookup.IsActiveTrainerAsync(request.TrainerId, organizationId, ct);
         if (!isActiveTrainer)

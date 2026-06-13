@@ -67,6 +67,21 @@ public class TrainerAvailabilityServiceTests
     }
 
     [Test]
+    public async Task CreateAsync_NoClub_SkipsClubCheckAndSucceeds()
+    {
+        SetupHappyPath();
+        CreateTrainerAvailabilityRequest request = ValidRequest() with { TennisClubId = null };
+
+        Result<Guid> result = await _sut.CreateAsync(_orgId, request, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        _clubRepo.Verify(r => r.ExistsAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _repo.Verify(r => r.AddAsync(
+            It.Is<TrainerAvailability>(a => a.TennisClubId == null && a.TrainerId == _trainerId),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
     public async Task CreateAsync_ClubNotInOrganization_ReturnsNotFound()
     {
         SetupHappyPath();

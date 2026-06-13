@@ -189,7 +189,7 @@ public partial class ApplicationMapper
             availability.Id,
             availability.TrainerId,
             availability.TennisClubId,
-            availability.TennisClub?.Name ?? string.Empty,
+            availability.TennisClub?.Name,
             availability.DayOfWeek,
             availability.StartTime.ToString("HH\\:mm"),
             availability.EndTime.ToString("HH\\:mm"));

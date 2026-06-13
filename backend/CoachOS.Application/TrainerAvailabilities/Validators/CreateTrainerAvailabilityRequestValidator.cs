@@ -13,8 +13,11 @@ public class CreateTrainerAvailabilityRequestValidator : AbstractValidator<Creat
         RuleFor(x => x.TrainerId)
             .NotEmpty().WithMessage("Trainer is verplicht");
 
+        // TennisClubId is optioneel: null = beschikbaar bij eender welke club.
+        // Als er wel een waarde wordt meegegeven mag die niet Guid.Empty zijn.
         RuleFor(x => x.TennisClubId)
-            .NotEmpty().WithMessage("Club is verplicht");
+            .NotEqual(Guid.Empty).WithMessage("Ongeldige club")
+            .When(x => x.TennisClubId.HasValue);
 
         RuleFor(x => x.DayOfWeek)
             .InclusiveBetween(0, 6).WithMessage("Ongeldige weekdag");

@@ -17,7 +17,11 @@ public class TrainerAvailability : BaseEntity
     /// </summary>
     public Guid TrainerId { get; set; }
 
-    public Guid TennisClubId { get; set; }
+    /// <summary>
+    /// Optioneel. Null betekent "beschikbaar bij eender welke club" - dan hoeft
+    /// de admin niet per club een aparte beschikbaarheid aan te maken.
+    /// </summary>
+    public Guid? TennisClubId { get; set; }
 
     /// <summary>0 = maandag ... 6 = zondag (zelfde conventie als WeeklyTemplateEntry).</summary>
     public int DayOfWeek { get; set; }
@@ -30,5 +34,7 @@ public class TrainerAvailability : BaseEntity
 
     // Navigation properties
     public Organization Organization { get; set; } = null!;
-    public TennisClub TennisClub { get; set; } = null!;
+
+    /// <summary>Null wanneer de beschikbaarheid voor eender welke club geldt.</summary>
+    public TennisClub? TennisClub { get; set; }
 }
