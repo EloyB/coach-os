@@ -8,7 +8,6 @@ import { useTranslations } from "next-intl";
 import { Trash2, Plus, Clock } from "lucide-react";
 import { NativeSelect } from "@/components/ui/native-select";
 import { inputClass } from "@/lib/styles";
-import { LESSON_LEVELS } from "@/lib/api/lessonSeries";
 import { isAssignableTrainer, type TrainerDto } from "@/lib/api/trainers";
 import type { TennisClubDto } from "@/lib/api/tennisClubs";
 import type { CampDetailDto, CreateCampRequest } from "@/lib/api/camps";
@@ -51,30 +50,11 @@ function buildDays(start: string, end: string, existing: DayDraft[]): DayDraft[]
 
 function formatDayHeading(iso: string): string {
   const date = new Date(iso + "T00:00:00");
-  const days = [
-    "zondag",
-    "maandag",
-    "dinsdag",
-    "woensdag",
-    "donderdag",
-    "vrijdag",
-    "zaterdag",
-  ];
-  const months = [
-    "januari",
-    "februari",
-    "maart",
-    "april",
-    "mei",
-    "juni",
-    "juli",
-    "augustus",
-    "september",
-    "oktober",
-    "november",
-    "december",
-  ];
-  return `${days[date.getDay()]} ${date.getDate()} ${months[date.getMonth()]}`;
+  return new Intl.DateTimeFormat("nl-BE", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).format(date);
 }
 
 /** Clamp a HH:mm value into [min, max] (lexicographic compare works for HH:mm). */
@@ -148,7 +128,7 @@ export function CampForm({
   const {
     register,
     handleSubmit,
-    watch,
+    getValues,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -170,9 +150,6 @@ export function CampForm({
   const [days, setDays] = useState<DayDraft[]>(
     initial ? detailToDays(initial) : [],
   );
-
-  const startDate = watch("startDate");
-  const endDate = watch("endDate");
 
   function regenerateDays(start: string, end: string) {
     setDays((prev) => buildDays(start, end, prev));
@@ -328,11 +305,9 @@ export function CampForm({
               })}
             >
               <option value="">{t("levelNone")}</option>
-              {Object.entries(LESSON_LEVELS).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
+              <option value="1">{t("level1")}</option>
+              <option value="2">{t("level2")}</option>
+              <option value="3">{t("level3")}</option>
             </NativeSelect>
           </div>
 
@@ -383,7 +358,8 @@ export function CampForm({
                 type="date"
                 className={inputClass}
                 {...register("startDate", {
-                  onChange: (e) => regenerateDays(e.target.value, endDate),
+                  onChange: (e) =>
+                    regenerateDays(e.target.value, getValues("endDate")),
                 })}
               />
               {errors.startDate && (
@@ -398,7 +374,8 @@ export function CampForm({
                 type="date"
                 className={inputClass}
                 {...register("endDate", {
-                  onChange: (e) => regenerateDays(startDate, e.target.value),
+                  onChange: (e) =>
+                    regenerateDays(getValues("startDate"), e.target.value),
                 })}
               />
               {errors.endDate && (

@@ -172,7 +172,7 @@ function EnrollmentsSection({ campId }: { campId: string }) {
       </div>
 
       {isLoading ? (
-        <div className="p-5 text-xs text-ink-3">{t("saving")}</div>
+        <div className="p-5 text-xs text-ink-3">{t("enrollmentsLoading")}</div>
       ) : enrollments.length === 0 ? (
         <p className="p-5 text-xs text-ink-3">{t("enrollmentsEmpty")}</p>
       ) : (
@@ -198,6 +198,7 @@ export default function CampDetailPage({
   const router = useRouter();
   const queryClient = useQueryClient();
   const [errorMessages, setErrorMessages] = useState<string[]>([]);
+  const [deleteErrors, setDeleteErrors] = useState<string[]>([]);
 
   const {
     data: camp,
@@ -233,6 +234,9 @@ export default function CampDetailPage({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["camps"] });
       router.push("/dashboard/camps");
+    },
+    onError: (error) => {
+      setDeleteErrors(getAxiosErrorMessages(error, t("deleteError")));
     },
   });
 
@@ -279,36 +283,48 @@ export default function CampDetailPage({
           <p className="text-sm text-ink-3 mt-0.5">{t("editSubtitle")}</p>
         </div>
 
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <button
-              type="button"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-red-200 text-red-600 text-xs font-semibold rounded-md hover:bg-red-50 transition-colors"
-            >
-              <Trash2 size={13} />
-              {t("delete")}
-            </button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>{t("deleteConfirmTitle")}</AlertDialogTitle>
-              <AlertDialogDescription>
-                {t("deleteConfirmDesc")}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>{t("deleteCancel")}</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={() => deleteMutation.mutate()}
-                className="bg-red-600 hover:bg-red-700"
+        <div className="flex flex-col items-end gap-1.5">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <button
+                type="button"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-red-200 text-red-600 text-xs font-semibold rounded-md hover:bg-red-50 transition-colors"
               >
-                {deleteMutation.isPending
-                  ? t("deleting")
-                  : t("deleteConfirm")}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+                <Trash2 size={13} />
+                {t("delete")}
+              </button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>{t("deleteConfirmTitle")}</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {t("deleteConfirmDesc")}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>{t("deleteCancel")}</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => {
+                    setDeleteErrors([]);
+                    deleteMutation.mutate();
+                  }}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  {deleteMutation.isPending
+                    ? t("deleting")
+                    : t("deleteConfirm")}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          {deleteErrors.length > 0 && (
+            <div className="text-right text-[11px] text-red-600 space-y-0.5">
+              {deleteErrors.map((msg, i) => (
+                <p key={i}>{msg}</p>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       <CampForm

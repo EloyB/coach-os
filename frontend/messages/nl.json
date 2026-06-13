@@ -501,6 +501,7 @@
     "enrollmentsTitle": "Inschrijvingen",
     "enrollmentsCount": "{count, plural, one {1 deelnemer} other {# deelnemers}}",
     "enrollmentsEmpty": "Nog geen inschrijvingen.",
+    "enrollmentsLoading": "Inschrijvingen laden...",
     "enrollmentName": "Naam",
     "enrollmentEmail": "E-mailadres",
     "enrollmentPhone": "Telefoonnummer",
