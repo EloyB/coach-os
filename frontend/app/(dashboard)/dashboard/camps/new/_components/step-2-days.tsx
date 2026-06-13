@@ -33,6 +33,9 @@ export function Step2Days({
   // Generate (or re-merge) the day list whenever the camp date range is known.
   useEffect(() => {
     onChange(buildDays(step1Data.startDate, step1Data.endDate, days));
+    // `days` is intentionally omitted from the deps: it is the parent state we
+    // are writing into, read at call-time only to preserve existing day data.
+    // Including it would re-run on every onChange and loop indefinitely.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step1Data.startDate, step1Data.endDate]);
 

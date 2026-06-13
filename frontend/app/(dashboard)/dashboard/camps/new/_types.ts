@@ -98,10 +98,10 @@ export function buildCampRequest(
     price: step1.price,
     startDate: step1.startDate,
     endDate: step1.endDate,
-    // Backend expects an ISO timestamp; the deadline is a date (start of day).
-    registrationDeadline: new Date(
-      step1.registrationDeadline + "T00:00:00",
-    ).toISOString(),
+    // Backend expects an ISO timestamp; the deadline is a date (UTC start of day).
+    // Append "Z" so it is parsed as UTC midnight instead of local time (which
+    // would shift the date by the UTC offset and land on the wrong day in CET).
+    registrationDeadline: step1.registrationDeadline + "T00:00:00Z",
     maxParticipants: step1.maxParticipants,
     days: days.map((d) => ({
       date: d.date,

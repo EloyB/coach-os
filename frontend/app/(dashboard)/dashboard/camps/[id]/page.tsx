@@ -337,6 +337,7 @@ export default function CampDetailPage({
 
               {!editing ? (
                 <button
+                  type="button"
                   onClick={() => setEditing(true)}
                   className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
                 >
@@ -345,6 +346,7 @@ export default function CampDetailPage({
                 </button>
               ) : (
                 <button
+                  type="button"
                   onClick={() => setEditing(false)}
                   className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-500 hover:bg-gray-50 transition-colors"
                 >
