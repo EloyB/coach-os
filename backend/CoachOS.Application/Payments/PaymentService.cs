@@ -167,6 +167,7 @@ public class PaymentService(
         }
 
         // Groepsinschrijving = leider + leden; solo = 1. De leider draagt de betaling.
+        // Group.Members includes the leader (the submit flow sets the leader's CampEnrollmentGroupId), so Count = total participants.
         int participantCount = enrollment.CampEnrollmentGroupId.HasValue && enrollment.Group is not null
             ? enrollment.Group.Members.Count
             : 1;
@@ -378,7 +379,7 @@ public class PaymentService(
         // Kamp-betalingen (CampEnrollmentId gezet) krijgen hun eigen confirm-flow.
         if (payment.CampEnrollmentId is { } campEnrollmentId)
         {
-            await ConfirmCampEnrollmentAfterPaymentAsync(campEnrollmentId, payment.OrganizationId, ct);
+            await ConfirmCampEnrollmentAfterPaymentAsync(campEnrollmentId, ct);
             return;
         }
 
@@ -415,7 +416,7 @@ public class PaymentService(
     }
 
     private async Task ConfirmCampEnrollmentAfterPaymentAsync(
-        Guid campEnrollmentId, Guid organizationId, CancellationToken ct)
+        Guid campEnrollmentId, CancellationToken ct)
     {
         // GetByIdWithGroupAsync is tracked → status-mutaties worden opgeslagen.
         CampEnrollmentEntity? enrollment = await campEnrollments.GetByIdWithGroupAsync(campEnrollmentId, ct);
@@ -430,12 +431,14 @@ public class PaymentService(
         CampEntity? camp = await camps.GetByIdPublicAsync(enrollment.CampId, ct);
         foreach (CampEnrollmentEntity e in toConfirm)
         {
+            if (e.Status == EnrollmentStatus.Confirmed) continue;
             e.Status = EnrollmentStatus.Confirmed;
         }
         await campEnrollments.SaveChangesAsync(ct);
 
         try
         {
+            // MVP: only the leader (the payer/contact) gets the confirmation email; per-member notification is out of scope for v1.
             await emailService.SendCampEnrollmentConfirmedAsync(
                 enrollment.ParticipantEmail,
                 enrollment.ParticipantName,
