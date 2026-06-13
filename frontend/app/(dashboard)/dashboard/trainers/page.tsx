@@ -12,17 +12,21 @@ import {
   Trash2,
   Mail,
   X,
+  Pencil,
+  StickyNote,
 } from "lucide-react";
 import { Mono } from "@/components/ui/mono";
 import {
   getTrainers,
   inviteTrainer,
+  updateTrainer,
   deactivateTrainer,
   reassignTrainerSeries,
   removeTrainer,
   resendTrainerInvite,
   TrainerDto,
 } from "@/lib/api/trainers";
+import { Textarea } from "@/components/ui/textarea";
 import { getAxiosErrorMessages } from "@/lib/utils/api-errors";
 import { getInitials } from "@/lib/utils/initials";
 import { getAuthUser, type AuthUser } from "@/lib/auth";
@@ -56,6 +60,19 @@ const inviteSchema = z.object({
 });
 
 type InviteFormValues = z.infer<typeof inviteSchema>;
+
+const editSchema = z.object({
+  firstName: z.string().min(1, "Voornaam is verplicht").max(100),
+  lastName: z.string().min(1, "Achternaam is verplicht").max(100),
+  weeklyCapacityHours: z
+    .number({ message: "Vul een aantal uur in" })
+    .int()
+    .min(1, "Minimaal 1 uur")
+    .max(80, "Maximaal 80 uur"),
+  notes: z.string().max(1000, "Maximaal 1000 karakters").optional(),
+});
+
+type EditFormValues = z.infer<typeof editSchema>;
 
 // ─── Capacity label helper ────────────────────────────────────────────────────
 
@@ -311,6 +328,138 @@ function InviteForm({ onClose }: { onClose: () => void }) {
   );
 }
 
+// ─── Edit dialog ───────────────────────────────────────────────────────────────
+
+function EditTrainerDialog({
+  trainer,
+  onClose,
+}: {
+  trainer: TrainerDto;
+  onClose: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const [apiErrors, setApiErrors] = useState<string[]>([]);
+  const t = useTranslations("trainers");
+  const tCommon = useTranslations("common");
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<EditFormValues>({
+    resolver: zodResolver(editSchema),
+    defaultValues: {
+      firstName: trainer.firstName,
+      lastName: trainer.lastName,
+      weeklyCapacityHours: trainer.weeklyCapacityHours,
+      notes: trainer.notes ?? "",
+    },
+  });
+
+  const mutation = useMutation({
+    mutationFn: (values: EditFormValues) =>
+      updateTrainer(trainer.id, {
+        firstName: values.firstName,
+        lastName: values.lastName,
+        weeklyCapacityHours: values.weeklyCapacityHours,
+        notes: values.notes && values.notes.trim() ? values.notes : null,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["trainers"] });
+      onClose();
+    },
+    onError: (err) => {
+      setApiErrors(getAxiosErrorMessages(err, t("editError")));
+    },
+  });
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{t("editTitle")}</DialogTitle>
+        </DialogHeader>
+
+        <form
+          onSubmit={handleSubmit((d) => {
+            setApiErrors([]);
+            mutation.mutate(d);
+          })}
+          className="space-y-4"
+        >
+          {apiErrors.length > 0 && (
+            <div className="bg-red-50 border border-red-100 rounded-lg px-4 py-3 text-sm text-red-600">
+              {apiErrors.map((e, i) => <p key={i}>{e}</p>)}
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                {t("firstName")} <span className="text-red-400">*</span>
+              </label>
+              <input {...register("firstName")} type="text" className={inputClass} />
+              <FieldError message={errors.firstName?.message} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                {t("lastName")} <span className="text-red-400">*</span>
+              </label>
+              <input {...register("lastName")} type="text" className={inputClass} />
+              <FieldError message={errors.lastName?.message} />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              {t("weeklyCapacity")} <span className="text-red-400">*</span>
+            </label>
+            <input
+              {...register("weeklyCapacityHours", { valueAsNumber: true })}
+              type="number"
+              min={1}
+              max={80}
+              step={1}
+              className={inputClass}
+            />
+            <p className="text-[11px] text-gray-400 mt-1">{t("weeklyCapacityHint")}</p>
+            <FieldError message={errors.weeklyCapacityHours?.message} />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              {t("notes")}
+            </label>
+            <Textarea
+              {...register("notes")}
+              rows={3}
+              placeholder={t("notesPlaceholder")}
+            />
+            <FieldError message={errors.notes?.message} />
+          </div>
+
+          <div className="flex items-center gap-3 pt-1">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-4 py-2.5 border border-gray-200 text-sm font-medium text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              {tCommon("cancel")}
+            </button>
+            <button
+              type="submit"
+              disabled={mutation.isPending}
+              className="flex-1 px-4 py-2.5 bg-tennis-green text-white text-sm font-semibold rounded-lg hover:bg-tennis-green/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {mutation.isPending ? t("saving") : t("save")}
+            </button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 type RemoveDialogState =
@@ -321,6 +470,7 @@ type RemoveDialogState =
 export default function TrainersPage() {
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [removeDialog, setRemoveDialog] = useState<RemoveDialogState>({ type: "none" });
+  const [editTrainer, setEditTrainer] = useState<TrainerDto | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
   const queryClient = useQueryClient();
   const t = useTranslations("trainers");
@@ -456,8 +606,17 @@ export default function TrainersPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-center">
-                      <p className="text-[13.5px] font-bold text-ink m-0">
+                      <p className="text-[13.5px] font-bold text-ink m-0 flex items-center gap-1.5">
                         {tr.firstName} {tr.lastName}
+                        {tr.notes && tr.notes.trim() && (
+                          <StickyNote
+                            size={12}
+                            className="text-amber-500 shrink-0"
+                            aria-label={t("notesIndicator")}
+                          >
+                            <title>{tr.notes}</title>
+                          </StickyNote>
+                        )}
                       </p>
                       {isSelfAdmin ? (
                         <span className="text-[10px] px-2 py-0.5 rounded-full bg-tennis-lime/30 text-tennis-green font-semibold">
@@ -523,6 +682,13 @@ export default function TrainersPage() {
                         ) : (
                           <>
                             <button
+                              onClick={() => setEditTrainer(tr)}
+                              title={t("edit")}
+                              className="opacity-0 group-hover:opacity-100 p-1.5 rounded text-ink-3 hover:text-tennis-green hover:bg-tennis-green/10 transition-all"
+                            >
+                              <Pencil size={14} />
+                            </button>
+                            <button
                               onClick={() => deactivateMutation.mutate(tr.id)}
                               disabled={deactivateMutation.isPending}
                               title={t("deactivate")}
@@ -551,6 +717,13 @@ export default function TrainersPage() {
                     <p className="text-[11px] text-amber-800 m-0">{t("invitePending")}</p>
                     <div className="flex items-center gap-1.5">
                       <button
+                        onClick={() => setEditTrainer(tr)}
+                        title={t("edit")}
+                        className="p-1.5 rounded text-amber-700 hover:text-tennis-green hover:bg-tennis-green/10 transition-all"
+                      >
+                        <Pencil size={14} />
+                      </button>
+                      <button
                         onClick={() => resendMutation.mutate(tr.id)}
                         disabled={resendMutation.isPending}
                         className="px-2.5 py-1 bg-white border border-amber-300 rounded text-[10.5px] text-amber-800 font-semibold disabled:opacity-50"
@@ -570,6 +743,13 @@ export default function TrainersPage() {
 
                 {isDeactivatedState && (
                   <div className="mt-3 flex gap-1 justify-end">
+                    <button
+                      onClick={() => setEditTrainer(tr)}
+                      title={t("edit")}
+                      className="p-1.5 rounded text-ink-3 hover:text-tennis-green hover:bg-tennis-green/10 transition-all"
+                    >
+                      <Pencil size={14} />
+                    </button>
                     <button
                       onClick={() => handleRemoveClick(tr)}
                       title={t("remove")}
@@ -606,6 +786,12 @@ export default function TrainersPage() {
             })
           }
           isProcessing={reassignAndRemoveMutation.isPending}
+        />
+      )}
+      {editTrainer && (
+        <EditTrainerDialog
+          trainer={editTrainer}
+          onClose={() => setEditTrainer(null)}
         />
       )}
     </>

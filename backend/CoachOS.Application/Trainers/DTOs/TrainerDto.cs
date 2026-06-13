@@ -11,5 +11,6 @@ public class TrainerDto
     public int LessonSeriesCount { get; set; }
     public decimal CurrentWeekHoursBooked { get; set; }
     public int WeeklyCapacityHours { get; set; }
+    public string? Notes { get; set; }
     public DateTime CreatedAt { get; set; }
 }

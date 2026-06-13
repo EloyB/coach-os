@@ -14,6 +14,8 @@ public class OrganizationMembershipConfiguration : IEntityTypeConfiguration<Orga
         builder.Property(m => m.OrganizationId).IsRequired();
         builder.Property(m => m.Role).IsRequired();
         builder.Property(m => m.IsActive).IsRequired();
+        builder.Property(m => m.WeeklyCapacityHours).IsRequired().HasDefaultValue(16);
+        builder.Property(m => m.Notes).HasMaxLength(1000);
         builder.Property(m => m.JoinedAt).IsRequired();
 
         builder.HasOne(m => m.Organization)
