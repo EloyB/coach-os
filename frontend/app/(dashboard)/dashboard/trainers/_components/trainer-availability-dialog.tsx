@@ -70,14 +70,16 @@ export function TrainerAvailabilityDialog({
       setErrorMessages([]);
       queryClient.invalidateQueries({ queryKey: ["trainerAvailabilities"] });
     },
-    onError: (error) => setErrorMessages(getAxiosErrorMessages(error)),
+    onError: (error) =>
+      setErrorMessages(getAxiosErrorMessages(error, t("availabilityError"))),
   });
 
   const deleteMutation = useMutation({
     mutationFn: deleteTrainerAvailability,
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ["trainerAvailabilities"] }),
-    onError: (error) => setErrorMessages(getAxiosErrorMessages(error)),
+    onError: (error) =>
+      setErrorMessages(getAxiosErrorMessages(error, t("availabilityError"))),
   });
 
   function handleAdd() {

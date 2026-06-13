@@ -461,6 +461,7 @@
     "availabilityDelete": "Verwijderen",
     "availabilitySaving": "Opslaan...",
     "availabilityClubPlaceholder": "Kies een club",
+    "availabilityError": "Er ging iets mis. Probeer het opnieuw.",
     "title": "Trainers",
     "adminBadge": "Beheerder",
     "manageViaSettings": "Beheer via Instellingen",
