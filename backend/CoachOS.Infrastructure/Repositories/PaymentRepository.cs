@@ -23,8 +23,8 @@ public class PaymentRepository(ApplicationDbContext context) : IPaymentRepositor
 
         var rows = await context.Payments
             .AsNoTracking()
-            .Where(p => ids.Contains(p.EnrollmentId))
-            .Select(p => new { p.EnrollmentId, p.Status, p.CreatedAt })
+            .Where(p => p.EnrollmentId != null && ids.Contains(p.EnrollmentId.Value))
+            .Select(p => new { EnrollmentId = p.EnrollmentId!.Value, p.Status, p.CreatedAt })
             .ToListAsync(ct);
 
         return rows

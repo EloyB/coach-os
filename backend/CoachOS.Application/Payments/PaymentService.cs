@@ -237,8 +237,12 @@ public class PaymentService(
 
     private async Task ConfirmEnrollmentAfterPaymentAsync(PaymentEntity payment, CancellationToken ct)
     {
+        // Camp-betalingen (CampEnrollmentId gezet, EnrollmentId null) krijgen hun
+        // eigen confirm-flow in een latere taak. Hier alleen reeks-inschrijvingen.
+        if (payment.EnrollmentId is not { } enrollmentId) return;
+
         EnrollmentEntity? enrollment = await enrollments.GetByIdAsync(
-            payment.EnrollmentId, payment.OrganizationId, ct);
+            enrollmentId, payment.OrganizationId, ct);
         if (enrollment is null) return;
 
         enrollment.Status = EnrollmentStatus.Confirmed;
