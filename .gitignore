@@ -38,3 +38,6 @@ graphify-out/
 .graphify_python
 __pycache__/
 *.pyc
+
+# Superpowers brainstorm mockups (local only)
+.superpowers/
