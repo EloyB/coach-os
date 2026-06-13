@@ -470,6 +470,8 @@
     "fieldIsActiveHint": "Concepten zijn niet zichtbaar voor inschrijvers.",
     "daysTitle": "Dagen & trainers",
     "daysDescription": "Voeg per kampdag een datum, kampuren en de aanwezige trainers toe.",
+    "daysSaved": "Dagen en trainers opgeslagen.",
+    "cancel": "Annuleren",
     "addDay": "Dag toevoegen",
     "removeDay": "Dag verwijderen",
     "dayDate": "Datum",

@@ -10,7 +10,6 @@ import {
   campBasisSchema,
   type CampBasisFormValues,
 } from "../new/_components/camp-basis-fields";
-import { CampDaysEditor } from "../new/_components/camp-days-editor";
 import {
   buildCampRequest,
   buildDays,
@@ -19,7 +18,6 @@ import {
   type CampDayDraft,
 } from "../new/_types";
 import { getTennisClubs } from "@/lib/api/tennisClubs";
-import { getTrainers } from "@/lib/api/trainers";
 import { updateCamp, type CampDetailDto } from "@/lib/api/camps";
 import { getAxiosErrorMessages } from "@/lib/utils/api-errors";
 
@@ -38,10 +36,6 @@ export function CampEditForm({ camp, onCancel, onSaved }: CampEditFormProps) {
   const { data: clubs = [], isLoading: clubsLoading } = useQuery({
     queryKey: ["tennisClubs"],
     queryFn: getTennisClubs,
-  });
-  const { data: trainers = [] } = useQuery({
-    queryKey: ["trainers"],
-    queryFn: getTrainers,
   });
 
   const {
@@ -119,8 +113,6 @@ export function CampEditForm({ camp, onCancel, onSaved }: CampEditFormProps) {
           endDate: getValues("endDate"),
         })}
       />
-
-      <CampDaysEditor days={days} onChange={setDays} trainers={trainers} />
 
       {errorMessages.length > 0 && (
         <div className="bg-red-50 border border-red-100 rounded-xl p-4 text-sm text-red-600 space-y-1">

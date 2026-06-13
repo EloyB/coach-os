@@ -42,9 +42,9 @@ import {
 } from "@/lib/api/camps";
 import { getAxiosErrorMessages } from "@/lib/utils/api-errors";
 import { formatDateNL } from "@/lib/date-utils";
-import { formatDayHeading } from "../new/_types";
 import { CampFormBuilder } from "../_components/camp-form-builder";
 import { CampEditForm } from "../_components/camp-edit-form";
+import { CampDaysCard } from "../_components/camp-days-card";
 
 // ─── Enrollment status badges ─────────────────────────────────────────────────
 
@@ -246,68 +246,6 @@ function InfoCard({ camp }: { camp: CampDetailDto }) {
   );
 }
 
-// ─── Days & trainers (read-only) ──────────────────────────────────────────────
-
-function DaysTrainersCard({ camp }: { camp: CampDetailDto }) {
-  const t = useTranslations("camps");
-  const days = [...camp.days].sort((a, b) => a.date.localeCompare(b.date));
-
-  if (days.length === 0) return null;
-
-  return (
-    <div className="bg-white rounded-xl shadow-sm shadow-gray-100 p-6">
-      <div className="flex items-center gap-2.5 mb-4">
-        <div className="w-6 h-6 rounded-md bg-tennis-green/10 flex items-center justify-center">
-          <CalendarDays size={13} className="text-tennis-green" />
-        </div>
-        <h2 className="text-sm font-semibold text-gray-900">{t("daysTitle")}</h2>
-      </div>
-
-      <div className="space-y-3">
-        {days.map((day) => (
-          <div
-            key={day.id}
-            className="rounded-lg border border-gray-100 bg-[#FAFAF8] px-4 py-3"
-          >
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-sm font-medium text-gray-900 capitalize">
-                {formatDayHeading(day.date)}
-              </span>
-              <span className="inline-flex items-center gap-1 text-xs text-gray-600">
-                <Clock size={11} className="text-tennis-green" />
-                {day.startTime} - {day.endTime}
-              </span>
-            </div>
-
-            <div className="mt-2.5 flex flex-wrap gap-1.5">
-              {day.trainers.length === 0 ? (
-                <span className="text-xs text-gray-400">
-                  {t("noTrainersOnDay")}
-                </span>
-              ) : (
-                day.trainers.map((tr) => (
-                  <span
-                    key={tr.trainerId}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white border border-gray-100 text-xs text-gray-700"
-                  >
-                    <GraduationCap size={11} className="text-tennis-green" />
-                    <span className="font-medium text-gray-900">
-                      {tr.trainerName}
-                    </span>
-                    <span className="text-gray-400">
-                      {tr.startTime}-{tr.endTime}
-                    </span>
-                  </span>
-                ))
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function CampDetailPage({
@@ -428,8 +366,13 @@ export default function CampDetailPage({
             )}
           </div>
 
-          {/* ── Section 2: Days & trainers (read-only) ── */}
-          {!editing && <DaysTrainersCard camp={camp} />}
+          {/* ── Section 2: Days & trainers (editable) ── */}
+          <CampDaysCard
+            key={`${camp.id}:${camp.days
+              .map((d) => `${d.date}|${d.startTime}|${d.endTime}|${d.trainers.length}`)
+              .join(",")}`}
+            camp={camp}
+          />
 
           {/* ── Section 3: Form builder ── */}
           <CampFormBuilder campId={id} />
