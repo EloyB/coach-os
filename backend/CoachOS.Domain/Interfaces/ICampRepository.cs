@@ -17,5 +17,9 @@ public interface ICampRepository
 
     Task AddAsync(Camp camp, CancellationToken ct = default);
     void Remove(Camp camp);
+
+    /// <summary>Verwijdert dagen + hun trainerassignments (Restrict FK: geen auto-cascade).</summary>
+    void RemoveDays(IEnumerable<CampDay> days);
+
     Task SaveChangesAsync(CancellationToken ct = default);
 }

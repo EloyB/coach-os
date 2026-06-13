@@ -82,4 +82,62 @@ public class CampServiceTests
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().Contain(e => e.Code == ErrorCodes.NotFound);
     }
+
+    [Test]
+    public async Task UpdateAsync_ReplacesDays_RemovesOldDaysAndSavesOnce()
+    {
+        Happy();
+        Guid campId = Guid.NewGuid();
+
+        // Bestaand kamp met 2 dagen, elk met een trainerassignment (tracked).
+        Camp existing = new()
+        {
+            Id = campId,
+            OrganizationId = _orgId,
+            TennisClubId = _clubId,
+            Name = "Oud kamp",
+            StartDate = new DateOnly(2026, 4, 14),
+            EndDate = new DateOnly(2026, 4, 16),
+        };
+        for (int i = 0; i < 2; i++)
+        {
+            CampDay day = new()
+            {
+                Id = Guid.NewGuid(),
+                OrganizationId = _orgId,
+                CampId = campId,
+                Date = new DateOnly(2026, 4, 14 + i),
+                StartTime = new TimeOnly(9, 0),
+                EndTime = new TimeOnly(16, 0),
+            };
+            day.TrainerAssignments.Add(new CampDayTrainer
+            {
+                Id = Guid.NewGuid(),
+                OrganizationId = _orgId,
+                TrainerId = _trainerId,
+                StartTime = new TimeOnly(9, 0),
+                EndTime = new TimeOnly(12, 0),
+            });
+            existing.Days.Add(day);
+        }
+
+        _camps.Setup(r => r.GetByIdWithDetailsAsync(campId, _orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existing);
+
+        UpdateCampRequest request = new(
+            "Nieuw kamp", null, _clubId, null, 150m, "2026-05-01", "2026-05-02",
+            new DateTime(2026, 4, 20, 0, 0, 0, DateTimeKind.Utc), 25, true,
+            new List<CreateCampDayRequest>
+            {
+                new("2026-05-01", "10:00", "15:00", new List<CreateCampDayTrainerRequest> { new(_trainerId, "10:00", "13:00") }),
+            });
+
+        Result result = await _sut.UpdateAsync(campId, _orgId, request, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        _camps.Verify(r => r.RemoveDays(It.Is<IEnumerable<CampDay>>(d => d.Count() == 2)), Times.Once);
+        _camps.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        existing.Days.Should().HaveCount(1);
+        existing.Days.First().Date.Should().Be(new DateOnly(2026, 5, 1));
+    }
 }

@@ -39,6 +39,13 @@ public class CampRepository(ApplicationDbContext db) : ICampRepository
 
     public void Remove(Camp camp) => db.Camps.Remove(camp);
 
+    public void RemoveDays(IEnumerable<CampDay> days)
+    {
+        List<CampDay> dayList = days.ToList();
+        db.CampDayTrainers.RemoveRange(dayList.SelectMany(d => d.TrainerAssignments));
+        db.CampDays.RemoveRange(dayList);
+    }
+
     public async Task SaveChangesAsync(CancellationToken ct = default)
         => await db.SaveChangesAsync(ct);
 }

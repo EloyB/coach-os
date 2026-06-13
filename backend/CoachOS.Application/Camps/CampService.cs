@@ -20,16 +20,12 @@ public class CampService(
     public async Task<Result<List<CampDto>>> GetAllAsync(Guid organizationId, CancellationToken ct = default)
     {
         IReadOnlyList<Camp> list = await camps.GetByOrganizationAsync(organizationId, ct);
-        List<CampDto> dtos = new();
-        foreach (Camp c in list)
-        {
-            int participants = await enrollments.CountActiveByCampAsync(c.Id, ct);
-            dtos.Add(new CampDto(
-                c.Id, c.Name, c.TennisClubId, c.TennisClub?.Name ?? string.Empty,
-                c.Level.HasValue ? (int)c.Level.Value : null, c.Price,
-                c.StartDate.ToString(DateFormat), c.EndDate.ToString(DateFormat),
-                c.MaxParticipants, participants, c.Days.Count, c.IsActive));
-        }
+        Dictionary<Guid, int> counts = await enrollments.CountActiveByCampsAsync(list.Select(c => c.Id), ct);
+        List<CampDto> dtos = list.Select(c => new CampDto(
+            c.Id, c.Name, c.TennisClubId, c.TennisClub?.Name ?? string.Empty,
+            c.Level.HasValue ? (int)c.Level.Value : null, c.Price,
+            c.StartDate.ToString(DateFormat), c.EndDate.ToString(DateFormat),
+            c.MaxParticipants, counts.GetValueOrDefault(c.Id, 0), c.Days.Count, c.IsActive)).ToList();
         return Result<List<CampDto>>.Ok(dtos);
     }
 
@@ -45,7 +41,8 @@ public class CampService(
         return Result<CampDetailDto>.Ok(new CampDetailDto(
             camp.Id, camp.Name, camp.Description, camp.TennisClubId, camp.TennisClub?.Name ?? string.Empty,
             camp.Level.HasValue ? (int)camp.Level.Value : null, camp.Price,
-            camp.StartDate.ToString(DateFormat), camp.EndDate.ToString(DateFormat), camp.RegistrationDeadline,
+            camp.StartDate.ToString(DateFormat), camp.EndDate.ToString(DateFormat),
+            DateTime.SpecifyKind(camp.RegistrationDeadline, DateTimeKind.Utc),
             camp.MaxParticipants, participants, camp.IsActive, days));
     }
 
@@ -80,6 +77,8 @@ public class CampService(
         camp.IsActive = request.IsActive;
 
         // Volledige vervanging van dagen + trainers (simpel; geen diff).
+        // Restrict FK: oude dagen/trainers expliciet als Deleted markeren — geen auto-cascade.
+        camps.RemoveDays(camp.Days.ToList());
         camp.Days.Clear();
         foreach (CampDay day in BuildDays(organizationId, request.Days))
             camp.Days.Add(day);

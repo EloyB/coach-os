@@ -36,6 +36,19 @@ public class CampEnrollmentRepository(ApplicationDbContext context) : ICampEnrol
                 (e.Status == EnrollmentStatus.Pending || e.Status == EnrollmentStatus.Confirmed || e.Status == EnrollmentStatus.PendingPayment), ct);
     }
 
+    public async Task<Dictionary<Guid, int>> CountActiveByCampsAsync(
+        IEnumerable<Guid> campIds, CancellationToken ct = default)
+    {
+        List<Guid> ids = campIds.ToList();
+        return await context.CampEnrollments
+            .AsNoTracking()
+            .Where(e =>
+                ids.Contains(e.CampId) &&
+                (e.Status == EnrollmentStatus.Pending || e.Status == EnrollmentStatus.Confirmed || e.Status == EnrollmentStatus.PendingPayment))
+            .GroupBy(e => e.CampId)
+            .ToDictionaryAsync(g => g.Key, g => g.Count(), ct);
+    }
+
     public async Task<bool> IsDuplicateAsync(
         Guid campId, string participantEmail, CancellationToken ct = default)
     {

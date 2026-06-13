@@ -13,6 +13,9 @@ public interface ICampEnrollmentRepository
     /// <summary>Deelnemers (rijen) met actieve status (Pending/Confirmed/PendingPayment) voor capaciteit.</summary>
     Task<int> CountActiveByCampAsync(Guid campId, CancellationToken ct = default);
 
+    /// <summary>Actieve deelnemertellingen per kamp in één query (vermijdt N+1 in lijst-overzicht).</summary>
+    Task<Dictionary<Guid, int>> CountActiveByCampsAsync(IEnumerable<Guid> campIds, CancellationToken ct = default);
+
     Task<bool> IsDuplicateAsync(Guid campId, string participantEmail, CancellationToken ct = default);
 
     Task<int> CountActiveByCampGroupsAsync(Guid campId, Guid organizationId, CancellationToken ct = default);
