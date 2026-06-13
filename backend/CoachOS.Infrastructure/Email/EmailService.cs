@@ -254,6 +254,39 @@ public class EmailService(
         await SendAsync(toEmail, firstName, "Wachtwoord opnieuw instellen — CoachOS", html, ct);
     }
 
+    public async Task SendCampEnrollmentPaymentLinkAsync(
+        string participantEmail, string participantName, string campName,
+        DateOnly startDate, DateOnly endDate, string checkoutUrl, CancellationToken ct = default)
+    {
+        string period = $"{startDate:dd/MM/yyyy} tot {endDate:dd/MM/yyyy}";
+        string html = renderer.Render("camp-enrollment-payment", new Dictionary<string, string>
+        {
+            ["participantName"] = participantName,
+            ["campName"] = campName,
+            ["period"] = period,
+            ["checkoutUrl"] = checkoutUrl,
+            ["year"] = DateTime.UtcNow.Year.ToString(),
+        });
+        await SendAsync(participantEmail, participantName,
+            $"Inschrijving ontvangen: {campName}", html, ct);
+    }
+
+    public async Task SendCampEnrollmentConfirmedAsync(
+        string participantEmail, string participantName, string campName,
+        DateOnly startDate, DateOnly endDate, CancellationToken ct = default)
+    {
+        string period = $"{startDate:dd/MM/yyyy} tot {endDate:dd/MM/yyyy}";
+        string html = renderer.Render("camp-enrollment-confirmed", new Dictionary<string, string>
+        {
+            ["participantName"] = participantName,
+            ["campName"] = campName,
+            ["period"] = period,
+            ["year"] = DateTime.UtcNow.Year.ToString(),
+        });
+        await SendAsync(participantEmail, participantName,
+            $"Inschrijving bevestigd: {campName}", html, ct);
+    }
+
     // ── Core send method (reused by all email types) ──────────────────────────
 
     private async Task SendAsync(

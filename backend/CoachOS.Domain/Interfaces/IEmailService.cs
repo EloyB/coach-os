@@ -79,4 +79,21 @@ public interface IEmailService
         string firstName,
         string resetUrl,
         CancellationToken ct = default);
+
+    Task SendCampEnrollmentPaymentLinkAsync(
+        string participantEmail,
+        string participantName,
+        string campName,
+        DateOnly startDate,
+        DateOnly endDate,
+        string checkoutUrl,
+        CancellationToken ct = default);
+
+    Task SendCampEnrollmentConfirmedAsync(
+        string participantEmail,
+        string participantName,
+        string campName,
+        DateOnly startDate,
+        DateOnly endDate,
+        CancellationToken ct = default);
 }
