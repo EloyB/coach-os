@@ -223,6 +223,13 @@ public class CampEnrollmentService(
 
         Result<MollieConnectionStatusDto> statusResult = await mollieConnect.GetStatusAsync(camp.OrganizationId, ct);
         bool onlineAvailable = statusResult.Value?.Connected ?? false;
+        if (!statusResult.IsSuccess)
+        {
+            logger.LogWarning(
+                "Kon Mollie-status niet ophalen voor org {OrgId}; online betaling wordt verborgen.",
+                camp.OrganizationId);
+            onlineAvailable = false;
+        }
 
         return Result<CampPaymentOptionsDto>.Ok(new CampPaymentOptionsDto(camp.Price, onlineAvailable));
     }
@@ -243,6 +250,11 @@ public class CampEnrollmentService(
         if (existing is not null && existing.Status is PaymentStatus.Pending or PaymentStatus.Paid)
             return Result<ChooseCampPaymentResultDto>.Fail(new Error(ErrorCodes.Conflict, "Er loopt al een betaling."));
 
+        // Expliciete guard: voorkom dat een onbekende int stilletjes als cash wordt
+        // afgehandeld door de (PaymentMethod)-cast. Alleen gedefinieerde waarden mogen door.
+        if (!Enum.IsDefined(typeof(PaymentMethod), method))
+            return Result<ChooseCampPaymentResultDto>.Fail(new Error(ErrorCodes.Validation, "Ongeldige betaalmethode."));
+
         PaymentMethod chosen = (PaymentMethod)method;
         if (chosen == PaymentMethod.Online)
         {
@@ -255,12 +267,18 @@ public class CampEnrollmentService(
                 new ChooseCampPaymentResultDto(paymentResult.Value!.CheckoutUrl));
         }
 
-        Result cashResult = await paymentService.RecordCampCashPaymentAsync(
-            campEnrollmentId, enrollment.OrganizationId, ct);
-        if (!cashResult.IsSuccess)
-            return Result<ChooseCampPaymentResultDto>.Fail(cashResult.Errors);
+        if (chosen == PaymentMethod.Cash)
+        {
+            Result cashResult = await paymentService.RecordCampCashPaymentAsync(
+                campEnrollmentId, enrollment.OrganizationId, ct);
+            if (!cashResult.IsSuccess)
+                return Result<ChooseCampPaymentResultDto>.Fail(cashResult.Errors);
 
-        return Result<ChooseCampPaymentResultDto>.Ok(new ChooseCampPaymentResultDto(null));
+            return Result<ChooseCampPaymentResultDto>.Ok(new ChooseCampPaymentResultDto(null));
+        }
+
+        // Gedefinieerd maar niet ondersteund als kamp-betaalkeuze.
+        return Result<ChooseCampPaymentResultDto>.Fail(new Error(ErrorCodes.Validation, "Ongeldige betaalmethode."));
     }
 
     private async Task SafeSendAsync(Func<Task> send, Guid enrollmentId)

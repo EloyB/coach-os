@@ -476,6 +476,11 @@ public class PaymentService(
         if (enrollment is null)
             return Result.Fail(new Error(ErrorCodes.NotFound, "Inschrijving niet gevonden."));
 
+        // Defense-in-depth: GetByIdWithGroupAsync is niet org-gescoped, dus controleer
+        // expliciet dat de inschrijving bij de aanroepende organisatie hoort.
+        if (enrollment.OrganizationId != organizationId)
+            return Result.Fail(new Error(ErrorCodes.NotFound, "Inschrijving niet gevonden."));
+
         CampEntity? camp = await camps.GetByIdPublicAsync(enrollment.CampId, ct);
         if (camp is null)
             return Result.Fail(new Error(ErrorCodes.NotFound, "Kamp niet gevonden."));
@@ -521,13 +526,24 @@ public class PaymentService(
             return Result.Fail(new Error(
                 ErrorCodes.NotFound, "Geen openstaande cash-betaling gevonden voor deze inschrijving."));
 
+        // Atomiciteit: de payment-mutatie wordt NIET apart opgeslagen. We muteren de
+        // (getrackte) payment, muteren daarna de enrollment(s) en laten één enkele
+        // SaveChangesAsync in ConfirmCampEnrollmentAndNotifyAsync beide wegschrijven.
+        // PaymentRepository én CampEnrollmentRepository delen dezelfde scoped
+        // ApplicationDbContext, dus die ene save flusht beide change-sets. Zo kan een
+        // crash niet langer een Paid-payment achterlaten met een PendingPayment-enrollment.
         payment.Status = PaymentStatus.Paid;
         payment.PaidAt = DateTime.UtcNow;
-        await payments.SaveChangesAsync(ct);
 
         CampEnrollmentEntity? enrollment = await campEnrollments.GetByIdWithGroupAsync(campEnrollmentId, ct);
-        if (enrollment is not null)
-            await ConfirmCampEnrollmentAndNotifyAsync(enrollment, ct);
+        if (enrollment is null)
+        {
+            // Geen enrollment om te bevestigen → toch de payment-mutatie persisteren.
+            await payments.SaveChangesAsync(ct);
+            return Result.Ok();
+        }
+
+        await ConfirmCampEnrollmentAndNotifyAsync(enrollment, ct);
 
         return Result.Ok();
     }
