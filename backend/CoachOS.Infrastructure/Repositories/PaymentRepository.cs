@@ -64,6 +64,42 @@ public class PaymentRepository(ApplicationDbContext context) : IPaymentRepositor
             .FirstOrDefaultAsync(ct);
     }
 
+    public async Task<Payment?> GetLatestPendingCashByCampEnrollmentIdAsync(
+        Guid campEnrollmentId, Guid organizationId, CancellationToken ct = default)
+    {
+        // Getrackt (geen AsNoTracking): de caller muteert Status/PaidAt en slaat op.
+        return await context.Payments
+            .Where(p => p.CampEnrollmentId == campEnrollmentId
+                && p.OrganizationId == organizationId
+                && p.Method == PaymentMethod.Cash
+                && p.Status == PaymentStatus.Pending)
+            .OrderByDescending(p => p.CreatedAt)
+            .FirstOrDefaultAsync(ct);
+    }
+
+    public async Task<Dictionary<Guid, (PaymentMethod? Method, PaymentStatus Status)>> GetLatestMethodAndStatusByCampEnrollmentIdsAsync(
+        IEnumerable<Guid> campEnrollmentIds, CancellationToken ct = default)
+    {
+        List<Guid> ids = campEnrollmentIds.Distinct().ToList();
+        if (ids.Count == 0) return new Dictionary<Guid, (PaymentMethod?, PaymentStatus)>();
+
+        var rows = await context.Payments
+            .AsNoTracking()
+            .Where(p => p.CampEnrollmentId != null && ids.Contains(p.CampEnrollmentId.Value))
+            .Select(p => new { CampEnrollmentId = p.CampEnrollmentId!.Value, p.Method, p.Status, p.CreatedAt })
+            .ToListAsync(ct);
+
+        return rows
+            .GroupBy(r => r.CampEnrollmentId)
+            .ToDictionary(
+                g => g.Key,
+                g =>
+                {
+                    var latest = g.OrderByDescending(r => r.CreatedAt).First();
+                    return (latest.Method, latest.Status);
+                });
+    }
+
     public async Task SaveChangesAsync(CancellationToken ct = default)
         => await context.SaveChangesAsync(ct);
 }

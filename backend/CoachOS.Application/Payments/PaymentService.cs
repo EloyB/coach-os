@@ -422,6 +422,18 @@ public class PaymentService(
         CampEnrollmentEntity? enrollment = await campEnrollments.GetByIdWithGroupAsync(campEnrollmentId, ct);
         if (enrollment is null) return;
 
+        await ConfirmCampEnrollmentAndNotifyAsync(enrollment, ct);
+    }
+
+    /// <summary>
+    /// Gedeelde confirm+email logica voor het webhook-pad (online) en het
+    /// admin-pad (cash markeren als betaald). Bevestigt de hele groep of de
+    /// solo-inschrijving en verstuurt één bevestigingsmail naar de leider/contact.
+    /// Verwacht een getrackt entity (uit <c>GetByIdWithGroupAsync</c>).
+    /// </summary>
+    private async Task ConfirmCampEnrollmentAndNotifyAsync(
+        CampEnrollmentEntity enrollment, CancellationToken ct)
+    {
         // Bevestig de hele groep (leider + leden) of de solo-inschrijving.
         List<CampEnrollmentEntity> toConfirm =
             enrollment.CampEnrollmentGroupId.HasValue && enrollment.Group is not null
@@ -453,8 +465,71 @@ public class PaymentService(
             // Email-fout mag het webhook-pad niet breken; loggen en doorgaan.
             logger.LogError(ex,
                 "Bevestigingsmail mislukt voor kampinschrijving {Id} na betaling.",
-                campEnrollmentId);
+                enrollment.Id);
         }
+    }
+
+    public async Task<Result> RecordCampCashPaymentAsync(
+        Guid campEnrollmentId, Guid organizationId, CancellationToken ct = default)
+    {
+        CampEnrollmentEntity? enrollment = await campEnrollments.GetByIdWithGroupAsync(campEnrollmentId, ct);
+        if (enrollment is null)
+            return Result.Fail(new Error(ErrorCodes.NotFound, "Inschrijving niet gevonden."));
+
+        CampEntity? camp = await camps.GetByIdPublicAsync(enrollment.CampId, ct);
+        if (camp is null)
+            return Result.Fail(new Error(ErrorCodes.NotFound, "Kamp niet gevonden."));
+
+        if (camp.Price <= 0m)
+            return Result.Fail(new Error(
+                ErrorCodes.Validation, "Dit kamp is gratis; een betaling is niet nodig."));
+
+        // Zelfde deelnemertelling als de online flow: groep = leider + leden, solo = 1.
+        int participantCount = enrollment.CampEnrollmentGroupId.HasValue && enrollment.Group is not null
+            ? enrollment.Group.Members.Count
+            : 1;
+        if (participantCount < 1) participantCount = 1;
+        decimal amount = camp.Price * participantCount;
+
+        OrganizationSettingsEntity? settings = await orgSettings
+            .GetByOrganizationReadOnlyAsync(enrollment.OrganizationId, ct);
+        string currency = settings?.PaymentCurrency ?? "EUR";
+
+        PaymentEntity payment = new()
+        {
+            OrganizationId = enrollment.OrganizationId,
+            CampEnrollmentId = campEnrollmentId,
+            Amount = amount,
+            Currency = currency,
+            Status = PaymentStatus.Pending,
+            Method = PaymentMethod.Cash,
+            Description = $"Cash - {camp.Name}",
+        };
+        await payments.AddAsync(payment, ct);
+        await payments.SaveChangesAsync(ct);
+
+        // Inschrijving blijft PendingPayment: de coach bevestigt de cash later.
+        return Result.Ok();
+    }
+
+    public async Task<Result> MarkCampCashPaidAsync(
+        Guid campEnrollmentId, Guid organizationId, CancellationToken ct = default)
+    {
+        PaymentEntity? payment = await payments.GetLatestPendingCashByCampEnrollmentIdAsync(
+            campEnrollmentId, organizationId, ct);
+        if (payment is null)
+            return Result.Fail(new Error(
+                ErrorCodes.NotFound, "Geen openstaande cash-betaling gevonden voor deze inschrijving."));
+
+        payment.Status = PaymentStatus.Paid;
+        payment.PaidAt = DateTime.UtcNow;
+        await payments.SaveChangesAsync(ct);
+
+        CampEnrollmentEntity? enrollment = await campEnrollments.GetByIdWithGroupAsync(campEnrollmentId, ct);
+        if (enrollment is not null)
+            await ConfirmCampEnrollmentAndNotifyAsync(enrollment, ct);
+
+        return Result.Ok();
     }
 
     private string BuildRedirectUrl(Guid enrollmentId)

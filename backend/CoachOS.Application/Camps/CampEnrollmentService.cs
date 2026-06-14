@@ -2,6 +2,8 @@ using System.Data;
 using System.Text.Json;
 using CoachOS.Application.Camps.DTOs;
 using CoachOS.Application.Common;
+using CoachOS.Application.MollieConnect;
+using CoachOS.Application.MollieConnect.DTOs;
 using CoachOS.Application.Payments;
 using CoachOS.Application.Payments.DTOs;
 using CoachOS.Domain.Entities;
@@ -17,6 +19,8 @@ public class CampEnrollmentService(
     ICampEnrollmentRepository enrollments,
     ICampEnrollmentFormRepository forms,
     IPaymentService paymentService,
+    IPaymentRepository payments,
+    IMollieConnectService mollieConnect,
     IEmailService emailService,
     ILogger<CampEnrollmentService> logger) : ICampEnrollmentService
 {
@@ -196,34 +200,67 @@ public class CampEnrollmentService(
             return Result<SubmitCampEnrollmentResultDto>.Fail(new Error(ErrorCodes.Unexpected, "Inschrijving mislukt. Probeer het opnieuw."));
         }
 
-        // Betaling + mails na commit.
-        string? checkoutUrl = null;
-        if (isPaid)
-        {
-            Result<CreatePaymentResultDto> paymentResult = await paymentService.CreatePaymentForCampEnrollmentAsync(
-                enrollment.Id, camp.OrganizationId, ct);
-            if (!paymentResult.IsSuccess)
-            {
-                // De inschrijving is al gepersisteerd als PendingPayment; dit is een herstelbare toestand
-                // (de speler kan later alsnog betalen via de Mollie-link zodra die wel lukt, of de admin
-                // kan opvolgen). v1 geeft de betaalfout terug aan de caller.
-                logger.LogError("Mollie payment-creatie faalde voor kampinschrijving {Id}", enrollment.Id);
-                return Result<SubmitCampEnrollmentResultDto>.Fail(paymentResult.Errors);
-            }
-            checkoutUrl = paymentResult.Value!.CheckoutUrl;
-
-            await SafeSendAsync(() => emailService.SendCampEnrollmentPaymentLinkAsync(
-                request.ParticipantEmail, request.ParticipantName, camp.Name,
-                camp.StartDate, camp.EndDate, checkoutUrl, ct), enrollment.Id);
-        }
-        else
+        // Mails na commit. Betaalde kampen maken hier GEEN payment aan: de deelnemer
+        // kiest zelf cash of online op de betaalpagina (ChoosePaymentAsync). Gratis
+        // kampen zijn direct bevestigd en krijgen meteen een bevestigingsmail.
+        if (!isPaid)
         {
             await SafeSendAsync(() => emailService.SendCampEnrollmentConfirmedAsync(
                 request.ParticipantEmail, request.ParticipantName, camp.Name,
                 camp.StartDate, camp.EndDate, ct), enrollment.Id);
         }
 
-        return Result<SubmitCampEnrollmentResultDto>.Ok(new SubmitCampEnrollmentResultDto(enrollment.Id, checkoutUrl));
+        return Result<SubmitCampEnrollmentResultDto>.Ok(
+            new SubmitCampEnrollmentResultDto(enrollment.Id, RequiresPayment: isPaid));
+    }
+
+    public async Task<Result<CampPaymentOptionsDto>> GetPaymentOptionsAsync(
+        Guid campId, CancellationToken ct = default)
+    {
+        Camp? camp = await camps.GetByIdPublicAsync(campId, ct);
+        if (camp is null)
+            return Result<CampPaymentOptionsDto>.Fail(new Error(ErrorCodes.NotFound, "Kamp niet gevonden."));
+
+        Result<MollieConnectionStatusDto> statusResult = await mollieConnect.GetStatusAsync(camp.OrganizationId, ct);
+        bool onlineAvailable = statusResult.Value?.Connected ?? false;
+
+        return Result<CampPaymentOptionsDto>.Ok(new CampPaymentOptionsDto(camp.Price, onlineAvailable));
+    }
+
+    public async Task<Result<ChooseCampPaymentResultDto>> ChoosePaymentAsync(
+        Guid campEnrollmentId, int method, CancellationToken ct = default)
+    {
+        CampEnrollment? enrollment = await enrollments.GetByIdWithGroupAsync(campEnrollmentId, ct);
+        if (enrollment is null)
+            return Result<ChooseCampPaymentResultDto>.Fail(new Error(ErrorCodes.NotFound, "Inschrijving niet gevonden."));
+
+        if (enrollment.Status == EnrollmentStatus.Confirmed)
+            return Result<ChooseCampPaymentResultDto>.Fail(new Error(ErrorCodes.Conflict, "Al bevestigd."));
+
+        // Voorkom dubbele betalingen: als er al een lopende (Pending) of geslaagde
+        // (Paid) betaling bestaat, weiger een nieuwe keuze. Failed mag opnieuw.
+        Payment? existing = await payments.GetLatestByCampEnrollmentIdAsync(campEnrollmentId, ct);
+        if (existing is not null && existing.Status is PaymentStatus.Pending or PaymentStatus.Paid)
+            return Result<ChooseCampPaymentResultDto>.Fail(new Error(ErrorCodes.Conflict, "Er loopt al een betaling."));
+
+        PaymentMethod chosen = (PaymentMethod)method;
+        if (chosen == PaymentMethod.Online)
+        {
+            Result<CreatePaymentResultDto> paymentResult = await paymentService.CreatePaymentForCampEnrollmentAsync(
+                campEnrollmentId, enrollment.OrganizationId, ct);
+            if (!paymentResult.IsSuccess)
+                return Result<ChooseCampPaymentResultDto>.Fail(paymentResult.Errors);
+
+            return Result<ChooseCampPaymentResultDto>.Ok(
+                new ChooseCampPaymentResultDto(paymentResult.Value!.CheckoutUrl));
+        }
+
+        Result cashResult = await paymentService.RecordCampCashPaymentAsync(
+            campEnrollmentId, enrollment.OrganizationId, ct);
+        if (!cashResult.IsSuccess)
+            return Result<ChooseCampPaymentResultDto>.Fail(cashResult.Errors);
+
+        return Result<ChooseCampPaymentResultDto>.Ok(new ChooseCampPaymentResultDto(null));
     }
 
     private async Task SafeSendAsync(Func<Task> send, Guid enrollmentId)

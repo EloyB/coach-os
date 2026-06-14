@@ -1,5 +1,7 @@
 using CoachOS.Application.Camps;
 using CoachOS.Application.Camps.DTOs;
+using CoachOS.Application.MollieConnect;
+using CoachOS.Application.MollieConnect.DTOs;
 using CoachOS.Application.Payments;
 using CoachOS.Application.Payments.DTOs;
 using CoachOS.Domain.Entities;
@@ -20,6 +22,8 @@ public class CampEnrollmentServiceTests
     private Mock<ICampEnrollmentRepository> _enrollments = null!;
     private Mock<ICampEnrollmentFormRepository> _forms = null!;
     private Mock<IPaymentService> _payments = null!;
+    private Mock<IPaymentRepository> _paymentRepo = null!;
+    private Mock<IMollieConnectService> _mollieConnect = null!;
     private Mock<IEmailService> _email = null!;
     private CampEnrollmentService _sut = null!;
 
@@ -33,9 +37,12 @@ public class CampEnrollmentServiceTests
         _enrollments = new Mock<ICampEnrollmentRepository>();
         _forms = new Mock<ICampEnrollmentFormRepository>();
         _payments = new Mock<IPaymentService>();
+        _paymentRepo = new Mock<IPaymentRepository>();
+        _mollieConnect = new Mock<IMollieConnectService>();
         _email = new Mock<IEmailService>();
         _sut = new CampEnrollmentService(_camps.Object, _enrollments.Object, _forms.Object,
-            _payments.Object, _email.Object, NullLogger<CampEnrollmentService>.Instance);
+            _payments.Object, _paymentRepo.Object, _mollieConnect.Object, _email.Object,
+            NullLogger<CampEnrollmentService>.Instance);
     }
 
     private Camp BuildCamp(decimal price) => new()
@@ -59,18 +66,21 @@ public class CampEnrollmentServiceTests
     }
 
     [Test]
-    public async Task Submit_PaidCamp_CreatesPendingPaymentAndReturnsCheckoutUrl()
+    public async Task Submit_PaidCamp_CreatesPendingPaymentEnrollmentWithoutPayment()
     {
         Happy(120m);
-        _payments.Setup(p => p.CreatePaymentForCampEnrollmentAsync(It.IsAny<Guid>(), _orgId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result<CreatePaymentResultDto>.Ok(new CreatePaymentResultDto(Guid.NewGuid(), "https://mollie/checkout/abc")));
 
         Result<SubmitCampEnrollmentResultDto> result = await _sut.SubmitAsync(_campId, Req(), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value!.CheckoutUrl.Should().Be("https://mollie/checkout/abc");
+        result.Value!.RequiresPayment.Should().BeTrue();
         _enrollments.Verify(r => r.AddAsync(It.Is<CampEnrollment>(e => e.Status == EnrollmentStatus.PendingPayment), It.IsAny<CancellationToken>()), Times.Once);
-        _payments.Verify(p => p.CreatePaymentForCampEnrollmentAsync(It.IsAny<Guid>(), _orgId, It.IsAny<CancellationToken>()), Times.Once);
+        // De betaling wordt nu pas op de betaalpagina aangemaakt (ChoosePaymentAsync),
+        // niet meer bij submit. En geen pay-link mail.
+        _payments.Verify(p => p.CreatePaymentForCampEnrollmentAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _email.Verify(e => e.SendCampEnrollmentPaymentLinkAsync(
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+            It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Test]
@@ -81,8 +91,94 @@ public class CampEnrollmentServiceTests
         Result<SubmitCampEnrollmentResultDto> result = await _sut.SubmitAsync(_campId, Req(), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value!.CheckoutUrl.Should().BeNull();
+        result.Value!.RequiresPayment.Should().BeFalse();
         _enrollments.Verify(r => r.AddAsync(It.Is<CampEnrollment>(e => e.Status == EnrollmentStatus.Confirmed), It.IsAny<CancellationToken>()), Times.Once);
+        _payments.Verify(p => p.CreatePaymentForCampEnrollmentAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _email.Verify(e => e.SendCampEnrollmentConfirmedAsync(
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+            It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    // ── ChoosePaymentAsync ───────────────────────────────────────────────────
+
+    private CampEnrollment BuildPendingEnrollment(Guid id) => new()
+    {
+        Id = id, OrganizationId = _orgId, CampId = _campId,
+        ParticipantName = "Emma", ParticipantEmail = "emma@example.com",
+        Status = EnrollmentStatus.PendingPayment,
+    };
+
+    [Test]
+    public async Task ChoosePayment_Cash_RecordsCashPaymentAndReturnsNullCheckoutUrl()
+    {
+        Guid enrollmentId = Guid.NewGuid();
+        _enrollments.Setup(r => r.GetByIdWithGroupAsync(enrollmentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(BuildPendingEnrollment(enrollmentId));
+        _paymentRepo.Setup(r => r.GetLatestByCampEnrollmentIdAsync(enrollmentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Payment?)null);
+        _payments.Setup(p => p.RecordCampCashPaymentAsync(enrollmentId, _orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok());
+
+        Result<ChooseCampPaymentResultDto> result = await _sut.ChoosePaymentAsync(
+            enrollmentId, (int)PaymentMethod.Cash, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.CheckoutUrl.Should().BeNull();
+        _payments.Verify(p => p.RecordCampCashPaymentAsync(enrollmentId, _orgId, It.IsAny<CancellationToken>()), Times.Once);
+        _payments.Verify(p => p.CreatePaymentForCampEnrollmentAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task ChoosePayment_Online_CreatesMolliePaymentAndReturnsCheckoutUrl()
+    {
+        Guid enrollmentId = Guid.NewGuid();
+        _enrollments.Setup(r => r.GetByIdWithGroupAsync(enrollmentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(BuildPendingEnrollment(enrollmentId));
+        _paymentRepo.Setup(r => r.GetLatestByCampEnrollmentIdAsync(enrollmentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Payment?)null);
+        _payments.Setup(p => p.CreatePaymentForCampEnrollmentAsync(enrollmentId, _orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<CreatePaymentResultDto>.Ok(new CreatePaymentResultDto(Guid.NewGuid(), "https://mollie/checkout/abc")));
+
+        Result<ChooseCampPaymentResultDto> result = await _sut.ChoosePaymentAsync(
+            enrollmentId, (int)PaymentMethod.Online, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.CheckoutUrl.Should().Be("https://mollie/checkout/abc");
+        _payments.Verify(p => p.CreatePaymentForCampEnrollmentAsync(enrollmentId, _orgId, It.IsAny<CancellationToken>()), Times.Once);
+        _payments.Verify(p => p.RecordCampCashPaymentAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task ChoosePayment_AlreadyConfirmed_ReturnsConflict()
+    {
+        Guid enrollmentId = Guid.NewGuid();
+        CampEnrollment confirmed = BuildPendingEnrollment(enrollmentId);
+        confirmed.Status = EnrollmentStatus.Confirmed;
+        _enrollments.Setup(r => r.GetByIdWithGroupAsync(enrollmentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(confirmed);
+
+        Result<ChooseCampPaymentResultDto> result = await _sut.ChoosePaymentAsync(
+            enrollmentId, (int)PaymentMethod.Cash, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.Code == ErrorCodes.Conflict);
+        _payments.Verify(p => p.RecordCampCashPaymentAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task ChoosePayment_ExistingPendingPayment_ReturnsConflict()
+    {
+        Guid enrollmentId = Guid.NewGuid();
+        _enrollments.Setup(r => r.GetByIdWithGroupAsync(enrollmentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(BuildPendingEnrollment(enrollmentId));
+        _paymentRepo.Setup(r => r.GetLatestByCampEnrollmentIdAsync(enrollmentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Payment { Id = Guid.NewGuid(), Status = PaymentStatus.Pending });
+
+        Result<ChooseCampPaymentResultDto> result = await _sut.ChoosePaymentAsync(
+            enrollmentId, (int)PaymentMethod.Online, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.Code == ErrorCodes.Conflict);
         _payments.Verify(p => p.CreatePaymentForCampEnrollmentAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 

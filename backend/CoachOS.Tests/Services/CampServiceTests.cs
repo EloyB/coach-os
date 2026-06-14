@@ -1,5 +1,6 @@
 using CoachOS.Application.Camps;
 using CoachOS.Application.Camps.DTOs;
+using CoachOS.Application.Payments;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Interfaces;
 using CoachOS.Domain.Models;
@@ -17,6 +18,8 @@ public class CampServiceTests
     private Mock<ICampEnrollmentFormRepository> _forms = null!;
     private Mock<ITennisClubRepository> _clubs = null!;
     private Mock<IUserLookupService> _users = null!;
+    private Mock<IPaymentRepository> _payments = null!;
+    private Mock<IPaymentService> _paymentService = null!;
     private CampService _sut = null!;
 
     private readonly Guid _orgId = Guid.NewGuid();
@@ -31,7 +34,10 @@ public class CampServiceTests
         _forms = new Mock<ICampEnrollmentFormRepository>();
         _clubs = new Mock<ITennisClubRepository>();
         _users = new Mock<IUserLookupService>();
-        _sut = new CampService(_camps.Object, _enrollments.Object, _forms.Object, _clubs.Object, _users.Object);
+        _payments = new Mock<IPaymentRepository>();
+        _paymentService = new Mock<IPaymentService>();
+        _sut = new CampService(_camps.Object, _enrollments.Object, _forms.Object, _clubs.Object,
+            _users.Object, _payments.Object, _paymentService.Object);
     }
 
     private CreateCampRequest Request() => new(

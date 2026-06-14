@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using CoachOS.Application.Camps.DTOs;
+using CoachOS.Application.Payments;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
 using CoachOS.Domain.Interfaces;
@@ -13,7 +14,9 @@ public class CampService(
     ICampEnrollmentRepository enrollments,
     ICampEnrollmentFormRepository forms,
     ITennisClubRepository clubs,
-    IUserLookupService users) : ICampService
+    IUserLookupService users,
+    IPaymentRepository payments,
+    IPaymentService paymentService) : ICampService
 {
     private const string DateFormat = "yyyy-MM-dd";
 
@@ -177,12 +180,31 @@ public class CampService(
         if (!exists) return Result<List<CampEnrollmentDto>>.Fail(new Error(ErrorCodes.NotFound, "Kamp niet gevonden."));
 
         List<CampEnrollment> rows = await enrollments.GetByCampWithResponsesAsync(campId, organizationId, ct);
-        List<CampEnrollmentDto> dtos = rows.Select(e => new CampEnrollmentDto(
-            e.Id, e.ParticipantName, e.ParticipantEmail, e.ParticipantPhone,
-            e.Status.ToString(), e.EnrolledAt, e.Group?.Name,
-            e.FormResponses.Select(r => new CampEnrollmentResponseItemDto(
-                r.CampFormField?.Label ?? string.Empty, r.Value)).ToList())).ToList();
+
+        Dictionary<Guid, (PaymentMethod? Method, PaymentStatus Status)> paymentInfo =
+            await payments.GetLatestMethodAndStatusByCampEnrollmentIdsAsync(rows.Select(e => e.Id), ct);
+
+        List<CampEnrollmentDto> dtos = rows.Select(e =>
+        {
+            (PaymentMethod? Method, PaymentStatus Status)? info =
+                paymentInfo.TryGetValue(e.Id, out (PaymentMethod? Method, PaymentStatus Status) p) ? p : null;
+            return new CampEnrollmentDto(
+                e.Id, e.ParticipantName, e.ParticipantEmail, e.ParticipantPhone,
+                e.Status.ToString(), e.EnrolledAt, e.Group?.Name,
+                e.FormResponses.Select(r => new CampEnrollmentResponseItemDto(
+                    r.CampFormField?.Label ?? string.Empty, r.Value)).ToList(),
+                info?.Method?.ToString(), info?.Status.ToString());
+        }).ToList();
         return Result<List<CampEnrollmentDto>>.Ok(dtos);
+    }
+
+    public async Task<Result> MarkEnrollmentCashPaidAsync(
+        Guid campId, Guid campEnrollmentId, Guid organizationId, CancellationToken ct = default)
+    {
+        bool exists = await camps.ExistsAsync(campId, organizationId, ct);
+        if (!exists) return Result.Fail(new Error(ErrorCodes.NotFound, "Kamp niet gevonden."));
+
+        return await paymentService.MarkCampCashPaidAsync(campEnrollmentId, organizationId, ct);
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
