@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -43,9 +43,11 @@ import {
 } from "@/lib/api/camps";
 import { getAxiosErrorMessages } from "@/lib/utils/api-errors";
 import { formatDateNL } from "@/lib/date-utils";
+import { getAuthUser } from "@/lib/auth";
 import { CampFormBuilder } from "../_components/camp-form-builder";
 import { CampEditForm } from "../_components/camp-edit-form";
 import { CampDaysCard } from "../_components/camp-days-card";
+import { CampDaysReadOnlyCard } from "../_components/camp-days-readonly-card";
 
 // ─── Enrollment status badges ─────────────────────────────────────────────────
 
@@ -349,6 +351,11 @@ export default function CampDetailPage({
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [deleteErrors, setDeleteErrors] = useState<string[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    setIsAdmin(getAuthUser()?.role === "Admin");
+  }, []);
 
   const {
     data: camp,
@@ -426,28 +433,29 @@ export default function CampDetailPage({
                 {!editing && <InfoCard camp={camp} />}
               </div>
 
-              {!editing ? (
-                <button
-                  type="button"
-                  onClick={() => setEditing(true)}
-                  className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
-                >
-                  <Pencil size={12} />
-                  {t("editAction")}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setEditing(false)}
-                  className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-500 hover:bg-gray-50 transition-colors"
-                >
-                  <X size={12} />
-                  {t("close")}
-                </button>
-              )}
+              {isAdmin &&
+                (!editing ? (
+                  <button
+                    type="button"
+                    onClick={() => setEditing(true)}
+                    className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+                  >
+                    <Pencil size={12} />
+                    {t("editAction")}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setEditing(false)}
+                    className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-500 hover:bg-gray-50 transition-colors"
+                  >
+                    <X size={12} />
+                    {t("close")}
+                  </button>
+                ))}
             </div>
 
-            {editing && (
+            {isAdmin && editing && (
               <CampEditForm
                 camp={camp}
                 onCancel={() => setEditing(false)}
@@ -456,21 +464,26 @@ export default function CampDetailPage({
             )}
           </div>
 
-          {/* ── Section 2: Days & trainers (editable) ── */}
-          <CampDaysCard
-            key={`${camp.id}:${camp.days
-              .map((d) => `${d.date}|${d.startTime}|${d.endTime}|${d.trainers.length}`)
-              .join(",")}`}
-            camp={camp}
-          />
+          {/* ── Section 2: Days & trainers ── */}
+          {isAdmin ? (
+            <CampDaysCard
+              key={`${camp.id}:${camp.days
+                .map((d) => `${d.date}|${d.startTime}|${d.endTime}|${d.trainers.length}`)
+                .join(",")}`}
+              camp={camp}
+            />
+          ) : (
+            <CampDaysReadOnlyCard camp={camp} />
+          )}
 
-          {/* ── Section 3: Form builder ── */}
-          <CampFormBuilder campId={id} />
+          {/* ── Section 3: Form builder (admin only) ── */}
+          {isAdmin && <CampFormBuilder campId={id} />}
 
           {/* ── Section 3: Enrollments ── */}
           <EnrollmentsSection campId={id} />
 
-          {/* ── Section 4: Danger zone ── */}
+          {/* ── Section 4: Danger zone (admin only) ── */}
+          {isAdmin && (
           <div className="border border-red-200 rounded-xl bg-red-50/30 p-5">
             <div className="flex items-start gap-3">
               <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center shrink-0 mt-0.5">
@@ -527,6 +540,7 @@ export default function CampDetailPage({
               </div>
             </div>
           </div>
+          )}
         </div>
       )}
     </>

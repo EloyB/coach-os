@@ -72,9 +72,12 @@ export function CampDaysEditor({ days, onChange, trainers }: CampDaysEditorProps
     );
   }
 
-  function trainerName(trainerId: string): string {
-    const tr = trainers.find((x) => x.id === trainerId);
-    return tr ? `${tr.firstName} ${tr.lastName}` : trainerId;
+  function trainerName(draft: { trainerId: string; trainerName?: string }): string {
+    const tr = trainers.find((x) => x.id === draft.trainerId);
+    if (tr) return `${tr.firstName} ${tr.lastName}`;
+    // Fall back to the server-resolved name carried in from the camp detail,
+    // so names render even when the trainers list is unavailable.
+    return draft.trainerName ?? draft.trainerId;
   }
 
   const timeInputCls =
@@ -144,7 +147,7 @@ export function CampDaysEditor({ days, onChange, trainers }: CampDaysEditorProps
                 {day.trainers.map((tr) => (
                   <div key={tr.trainerId} className="flex items-center gap-2.5">
                     <span className="flex-1 text-[13px] font-semibold text-gray-900">
-                      {trainerName(tr.trainerId)}
+                      {trainerName(tr)}
                     </span>
                     <input
                       type="time"

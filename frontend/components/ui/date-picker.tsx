@@ -19,6 +19,8 @@ interface DatePickerProps {
   className?: string;
   /** Disable the picker */
   disabled?: boolean;
+  /** Earliest selectable date (yyyy-MM-dd). Dates before this are disabled. */
+  minDate?: string;
 }
 
 export function DatePicker({
@@ -27,11 +29,16 @@ export function DatePicker({
   placeholder = "Kies een datum",
   className,
   disabled = false,
+  minDate,
 }: DatePickerProps) {
   const [open, setOpen] = useState(false);
 
   const selectedDate = value
     ? parse(value, "yyyy-MM-dd", new Date())
+    : undefined;
+
+  const minParsed = minDate
+    ? parse(minDate, "yyyy-MM-dd", new Date())
     : undefined;
 
   const displayText = selectedDate
@@ -71,7 +78,9 @@ export function DatePicker({
           mode="single"
           selected={selectedDate}
           onSelect={handleSelect}
-          defaultMonth={selectedDate}
+          defaultMonth={selectedDate ?? minParsed}
+          disabled={minParsed ? { before: minParsed } : undefined}
+          startMonth={minParsed}
         />
       </PopoverContent>
     </Popover>

@@ -69,6 +69,7 @@ import type {
 } from "@/lib/api/enrollments";
 
 import { getTennisClubs } from "@/lib/api/tennisClubs";
+import { getAuthUser } from "@/lib/auth";
 import { FieldError } from "@/components/forms/field-error";
 import { DatePicker } from "@/components/ui/date-picker";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -1413,6 +1414,11 @@ export default function LessonSeriesDetailPage({
   const router = useRouter();
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    setIsAdmin(getAuthUser()?.role === "Admin");
+  }, []);
 
   const {
     data: series,
@@ -1532,13 +1538,15 @@ export default function LessonSeriesDetailPage({
                     <Download size={12} />
                     {exportMutation.isPending ? "Exporteren…" : "Exporteer naar Excel"}
                   </button>
-                  <button
-                    onClick={() => setEditing(true)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
-                  >
-                    <Pencil size={12} />
-                    Bewerken
-                  </button>
+                  {isAdmin && (
+                    <button
+                      onClick={() => setEditing(true)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+                    >
+                      <Pencil size={12} />
+                      Bewerken
+                    </button>
+                  )}
                 </div>
               ) : (
                 <button
@@ -1551,7 +1559,7 @@ export default function LessonSeriesDetailPage({
               )}
             </div>
 
-            {editing && (
+            {isAdmin && editing && (
               <EditSeriesForm
                 seriesId={id}
                 defaultValues={{
@@ -1584,7 +1592,8 @@ export default function LessonSeriesDetailPage({
           {/* ── Section 5: Enrollments ── */}
           <EnrollmentsSection seriesId={id} />
 
-          {/* ── Section 6: Danger zone ── */}
+          {/* ── Section 6: Danger zone (admin only) ── */}
+          {isAdmin && (
           <div className="border border-red-200 rounded-xl bg-red-50/30 p-5">
             <div className="flex items-start gap-3">
               <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center shrink-0 mt-0.5">
@@ -1639,6 +1648,7 @@ export default function LessonSeriesDetailPage({
               </div>
             </div>
           </div>
+          )}
         </div>
       )}
     </>

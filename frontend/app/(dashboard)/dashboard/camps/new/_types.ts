@@ -18,6 +18,8 @@ export type CampTrainerDraft = {
   trainerId: string;
   startTime: string; // HH:mm
   endTime: string; // HH:mm
+  /** Server-resolved trainer name (from camp detail), used as display fallback. */
+  trainerName?: string;
 };
 
 export type CampDayDraft = {
@@ -68,6 +70,7 @@ export function detailToDays(detail: CampDetailDto): CampDayDraft[] {
       trainerId: tr.trainerId,
       startTime: tr.startTime,
       endTime: tr.endTime,
+      trainerName: tr.trainerName,
     })),
   }));
 }

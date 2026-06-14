@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import {
   Controller,
+  useWatch,
   type Control,
   type FieldErrors,
   type UseFormRegister,
@@ -101,6 +102,9 @@ export function CampBasisFields({
   getDates,
 }: CampBasisFieldsProps) {
   const t = useTranslations("camps");
+  // Reactive start-date value so the end-date picker disables earlier dates as
+  // soon as a start date is picked (getValues is not reactive on its own).
+  const watchedStartDate = useWatch({ control, name: "startDate" });
 
   return (
     <div className="space-y-5">
@@ -257,6 +261,7 @@ export function CampBasisFields({
             render={({ field }) => (
               <DatePicker
                 value={field.value}
+                minDate={watchedStartDate || undefined}
                 onChange={(v) => {
                   field.onChange(v);
                   onDateRangeChange?.(getDates().startDate, v);
