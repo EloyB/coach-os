@@ -87,9 +87,16 @@ function PaymentChoiceView({ campEnrollmentId, campId, t }: PaymentChoiceViewPro
     setSubmitting(method);
     try {
       const result = await chooseCampPayment(campEnrollmentId, method);
-      if (method === METHOD_ONLINE && result.checkoutUrl) {
-        // Online → doorsturen naar Mollie checkout.
-        window.location.href = result.checkoutUrl;
+      if (method === METHOD_ONLINE) {
+        if (result.checkoutUrl) {
+          // Online → doorsturen naar Mollie checkout.
+          window.location.href = result.checkoutUrl;
+          return;
+        }
+        // Online gekozen maar geen checkout-URL (bv. Mollie-storing) → toon fout,
+        // val niet door naar de cash-bevestiging.
+        setErrors([t("payError")]);
+        setSubmitting(null);
         return;
       }
       // Cash → checkoutUrl is null; toon bevestiging op de pagina.
