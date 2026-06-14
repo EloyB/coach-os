@@ -41,3 +41,6 @@ __pycache__/
 
 # Superpowers brainstorm mockups (local only)
 .superpowers/
+
+# Playwright MCP session artifacts (local only)
+.playwright-mcp/
