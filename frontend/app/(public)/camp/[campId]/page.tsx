@@ -235,9 +235,11 @@ export default function CampEnrollPage() {
             : undefined,
       });
 
-      if (result.checkoutUrl) {
-        // Betalend kamp → direct naar Mollie checkout.
-        window.location.href = result.checkoutUrl;
+      if (result.requiresPayment) {
+        // Betalend kamp → naar de betaalpagina om online of cash te kiezen.
+        router.push(
+          `/camp-enrollment/payment?campEnrollmentId=${result.campEnrollmentId}&campId=${campId}`
+        );
       } else {
         // Gratis kamp → meteen naar de bevestigingspagina.
         router.push(

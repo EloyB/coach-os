@@ -37,6 +37,7 @@ import {
   getCampById,
   deleteCamp,
   getCampEnrollments,
+  markCampEnrollmentCashPaid,
   type CampEnrollmentDto,
   type CampDetailDto,
 } from "@/lib/api/camps";
@@ -78,9 +79,67 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function EnrollmentRow({ enrollment }: { enrollment: CampEnrollmentDto }) {
+function PaymentBadge({
+  paymentMethod,
+  paymentStatus,
+}: {
+  paymentMethod: string | null;
+  paymentStatus: string | null;
+}) {
+  const t = useTranslations("camps");
+  if (!paymentMethod && !paymentStatus) return null;
+
+  let label: string;
+  let className: string;
+  if (paymentStatus === "Paid") {
+    label = t("paymentPaid");
+    className = "bg-tennis-green/10 text-tennis-green";
+  } else if (paymentMethod === "Cash") {
+    label = t("paymentCashPending");
+    className = "bg-amber-50 text-amber-700";
+  } else if (paymentMethod === "Online") {
+    label = t("paymentOnlinePending");
+    className = "bg-amber-50 text-amber-700";
+  } else {
+    label = t("paymentPending");
+    className = "bg-amber-50 text-amber-700";
+  }
+
+  return (
+    <span
+      className={`text-[10.5px] px-2 py-0.5 rounded-full font-semibold ${className}`}
+    >
+      {label}
+    </span>
+  );
+}
+
+function EnrollmentRow({
+  enrollment,
+  campId,
+}: {
+  enrollment: CampEnrollmentDto;
+  campId: string;
+}) {
+  const t = useTranslations("camps");
+  const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState(false);
+  const [markErrors, setMarkErrors] = useState<string[]>([]);
   const hasResponses = enrollment.formResponses.length > 0;
+
+  const isCashPending =
+    enrollment.paymentMethod === "Cash" && enrollment.paymentStatus === "Pending";
+
+  const markPaidMutation = useMutation({
+    mutationFn: () => markCampEnrollmentCashPaid(campId, enrollment.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["campEnrollments", campId] });
+      queryClient.invalidateQueries({ queryKey: ["camp", campId] });
+    },
+    onError: (error) => {
+      setMarkErrors(getAxiosErrorMessages(error, t("markPaidError")));
+    },
+  });
 
   return (
     <div className="border-b border-gray-100 last:border-b-0">
@@ -101,6 +160,10 @@ function EnrollmentRow({ enrollment }: { enrollment: CampEnrollmentDto }) {
           <span className="text-xs text-gray-400">
             {new Date(enrollment.enrolledAt).toLocaleDateString("nl-BE")}
           </span>
+          <PaymentBadge
+            paymentMethod={enrollment.paymentMethod}
+            paymentStatus={enrollment.paymentStatus}
+          />
           <StatusBadge status={enrollment.status} />
           {hasResponses &&
             (expanded ? (
@@ -110,6 +173,33 @@ function EnrollmentRow({ enrollment }: { enrollment: CampEnrollmentDto }) {
             ))}
         </div>
       </div>
+
+      {isCashPending && (
+        <div
+          className="px-5 pb-3"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            type="button"
+            onClick={() => {
+              setMarkErrors([]);
+              markPaidMutation.mutate();
+            }}
+            disabled={markPaidMutation.isPending}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-tennis-green text-white text-xs font-semibold hover:bg-tennis-green/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            <CheckCircle2 size={13} />
+            {markPaidMutation.isPending ? t("markingPaid") : t("markPaid")}
+          </button>
+          {markErrors.length > 0 && (
+            <div className="text-xs text-red-600 mt-2 space-y-0.5">
+              {markErrors.map((msg, i) => (
+                <p key={i}>{msg}</p>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {expanded && hasResponses && (
         <div className="px-5 pb-3">
@@ -185,7 +275,7 @@ function EnrollmentsSection({ campId }: { campId: string }) {
       ) : (
         <div>
           {enrollments.map((e) => (
-            <EnrollmentRow key={e.id} enrollment={e} />
+            <EnrollmentRow key={e.id} enrollment={e} campId={campId} />
           ))}
         </div>
       )}

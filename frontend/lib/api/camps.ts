@@ -132,7 +132,12 @@ export interface SubmitCampEnrollmentRequest {
 
 export interface SubmitCampEnrollmentResult {
   campEnrollmentId: string;
-  checkoutUrl: string | null;
+  requiresPayment: boolean;
+}
+
+export interface CampPaymentOptions {
+  price: number;
+  onlineAvailable: boolean;
 }
 
 export interface CampEnrollmentDto {
@@ -143,6 +148,8 @@ export interface CampEnrollmentDto {
   status: string;
   enrolledAt: string;
   groupName: string | null;
+  paymentMethod: string | null;
+  paymentStatus: string | null;
   formResponses: { fieldLabel: string; value: string }[];
 }
 
@@ -177,6 +184,12 @@ export async function getCampEnrollments(campId: string): Promise<CampEnrollment
   const { data } = await apiClient.get<CampEnrollmentDto[]>(`/camps/${campId}/enrollments`);
   return data;
 }
+export async function markCampEnrollmentCashPaid(
+  campId: string,
+  enrollmentId: string
+): Promise<void> {
+  await apiClient.post(`/camps/${campId}/enrollments/${enrollmentId}/mark-cash-paid`, {});
+}
 
 // ── Public ──
 export async function getPublicCamp(id: string): Promise<PublicCampDto> {
@@ -187,5 +200,18 @@ export async function submitCampEnrollment(
   campId: string, request: SubmitCampEnrollmentRequest
 ): Promise<SubmitCampEnrollmentResult> {
   const { data } = await apiClient.post<SubmitCampEnrollmentResult>(`/public/camps/${campId}/enroll`, request);
+  return data;
+}
+export async function getCampPaymentOptions(campId: string): Promise<CampPaymentOptions> {
+  const { data } = await apiClient.get<CampPaymentOptions>(`/public/camps/${campId}/payment-options`);
+  return data;
+}
+export async function chooseCampPayment(
+  campEnrollmentId: string, method: number
+): Promise<{ checkoutUrl: string | null }> {
+  const { data } = await apiClient.post<{ checkoutUrl: string | null }>(
+    `/public/camp-enrollments/${campEnrollmentId}/pay`,
+    { method }
+  );
   return data;
 }
