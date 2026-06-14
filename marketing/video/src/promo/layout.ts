@@ -48,14 +48,15 @@ export const LAYOUTS: Record<PromoFormat, PromoLayout> = {
 
 export const FPS = 30;
 
-// Scènelengtes in frames (~35s totaal).
+// Scènelengtes in frames (~40s totaal).
 export const PROMO_DURATIONS = {
-  hook: 120,
+  consolidation: 150,
   series: 180,
+  camp: 150,
   enroll: 180,
   planner: 240,
   payments: 180,
   outro: 150,
 } as const;
 
-export const PROMO_TOTAL = Object.values(PROMO_DURATIONS).reduce((a, b) => a + b, 0); // 1050
+export const PROMO_TOTAL = Object.values(PROMO_DURATIONS).reduce((a, b) => a + b, 0); // 1200

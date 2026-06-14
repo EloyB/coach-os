@@ -1,7 +1,8 @@
 import { Series } from 'remotion';
 import { PROMO_DURATIONS, type PromoFormat } from './layout';
-import { HookScene } from './scenes/HookScene';
+import { ConsolidationScene } from './scenes/ConsolidationScene';
 import { SeriesScene } from './scenes/SeriesScene';
+import { CampScene } from './scenes/CampScene';
 import { EnrollScene } from './scenes/EnrollScene';
 import { PlannerScene } from './scenes/PlannerScene';
 import { PaymentsScene } from './scenes/PaymentsScene';
@@ -11,11 +12,14 @@ import { OutroScene } from './scenes/OutroScene';
 
 export const Promo: React.FC<{ format: PromoFormat }> = ({ format }) => (
   <Series>
-    <Series.Sequence durationInFrames={PROMO_DURATIONS.hook}>
-      <HookScene format={format} />
+    <Series.Sequence durationInFrames={PROMO_DURATIONS.consolidation}>
+      <ConsolidationScene format={format} />
     </Series.Sequence>
     <Series.Sequence durationInFrames={PROMO_DURATIONS.series}>
       <SeriesScene format={format} />
+    </Series.Sequence>
+    <Series.Sequence durationInFrames={PROMO_DURATIONS.camp}>
+      <CampScene format={format} />
     </Series.Sequence>
     <Series.Sequence durationInFrames={PROMO_DURATIONS.enroll}>
       <EnrollScene format={format} />

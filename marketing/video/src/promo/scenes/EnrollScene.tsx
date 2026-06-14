@@ -45,7 +45,7 @@ export const EnrollScene: React.FC<{ format: PromoFormat }> = ({ format }) => {
   return (
     <SceneShell
       format={format}
-      tag="02 · INSCHRIJVEN"
+      tag="03 · INSCHRIJVEN"
       headline={['Spelers schrijven', 'zich in. Zonder account.']}
     >
       <div

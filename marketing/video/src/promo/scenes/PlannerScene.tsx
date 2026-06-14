@@ -93,7 +93,7 @@ export const PlannerScene: React.FC<{ format: PromoFormat }> = ({ format }) => {
   return (
     <SceneShell
       format={format}
-      tag="03 · AUTO-PLANNER"
+      tag="04 · AUTO-PLANNER"
       headline={['De planner', 'doet de puzzel.']}
     >
       <div style={{ position: 'relative' }}>

@@ -85,7 +85,7 @@ export const PaymentsScene: React.FC<{ format: PromoFormat }> = ({ format }) => 
   return (
     <SceneShell
       format={format}
-      tag="04 · BETALINGEN"
+      tag="05 · BETALINGEN"
       headline={['Betaald. Zonder', 'achternajagen.']}
     >
       <div style={{ position: 'relative' }}>
