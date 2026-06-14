@@ -1,5 +1,6 @@
 import {
   CalendarRange,
+  Tent,
   ClipboardList,
   FormInput,
   BrainCircuit,
@@ -19,6 +20,11 @@ export const FEATURES: Feature[] = [
     icon: CalendarRange,
     title: "Lessenreeksen",
     body: "Plan een lessenreeks op jouw maat. Kies je tijdslots, trainers en speelniveau.",
+  },
+  {
+    icon: Tent,
+    title: "Tenniskampen & stages",
+    body: "Organiseer meerdaagse kampen waarvoor spelers zich eenmalig inschrijven. Stel per dag de uren in, wijs trainers toe en laat deelnemers cash of online betalen.",
   },
   {
     icon: ClipboardList,
