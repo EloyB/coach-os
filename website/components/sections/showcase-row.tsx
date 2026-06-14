@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import { Mono } from "@/components/ui/mono";
 import { ScreenshotFrame } from "@/components/site/screenshot-frame";
 import { AnimatedLessonWeekMock } from "@/components/sections/animated-lesson-week-mock";
+import { AnimatedCampMock } from "@/components/sections/animated-camp-mock";
 import { AnimatedFormBuilderMock } from "@/components/sections/animated-form-builder-mock";
 import { AnimatedEnrollmentMock } from "@/components/sections/animated-enrollment-mock";
 import { AnimatedPlanningMock } from "@/components/sections/animated-planning-mock";
@@ -12,6 +13,7 @@ import type { ShowcaseItem } from "@/content/showcase";
  * frame chrome instead of using the static screenshot/placeholder. */
 const ANIMATED_MOCKS: Record<string, React.ReactNode> = {
   lessenreeksen: <AnimatedLessonWeekMock />,
+  tenniskampen: <AnimatedCampMock />,
   formulierbouwer: <AnimatedFormBuilderMock />,
   "anonieme-inschrijving": <AnimatedEnrollmentMock />,
   planningsalgoritme: <AnimatedPlanningMock />,
