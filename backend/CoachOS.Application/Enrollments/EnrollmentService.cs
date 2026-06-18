@@ -152,9 +152,15 @@ public class EnrollmentService(
         var order = 0;
         foreach (var dto in request.Fields)
         {
-            var optionsJson = dto.Type == (int)FormFieldType.MultipleChoice && dto.Options?.Count > 0
+            // MultipleChoice and AgeCategory both store their choices in Options.
+            var storesOptions = dto.Type == (int)FormFieldType.MultipleChoice
+                || dto.Type == (int)FormFieldType.AgeCategory;
+            var optionsJson = storesOptions && dto.Options?.Count > 0
                 ? JsonSerializer.Serialize(dto.Options)
                 : null;
+
+            // The age-category question is always mandatory, regardless of what the admin toggled.
+            var isRequired = dto.Type == (int)FormFieldType.AgeCategory || dto.IsRequired;
 
             if (dto.Id.HasValue)
             {
@@ -163,7 +169,7 @@ public class EnrollmentService(
                 {
                     existing.Label = dto.Label;
                     existing.Type = (FormFieldType)dto.Type;
-                    existing.IsRequired = dto.IsRequired;
+                    existing.IsRequired = isRequired;
                     existing.Order = order;
                     existing.Options = optionsJson;
                 }
@@ -175,7 +181,7 @@ public class EnrollmentService(
                     EnrollmentFormId = form.Id,
                     Label = dto.Label,
                     Type = (FormFieldType)dto.Type,
-                    IsRequired = dto.IsRequired,
+                    IsRequired = isRequired,
                     Order = order,
                     Options = optionsJson,
                 };

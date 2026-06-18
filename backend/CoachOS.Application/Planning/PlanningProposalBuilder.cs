@@ -68,7 +68,8 @@ internal static class PlanningProposalBuilder
                 StudentNames: memberEnrollments.Select(e => e.StudentName).ToList(),
                 Size: memberEnrollments.Count,
                 IsOpenToGrouping: leaderEnrollment?.IsOpenToGrouping ?? false,
-                Preferences: groupPrefs));
+                Preferences: groupPrefs,
+                AgeCategory: GetSharedAgeCategory(memberEnrollments)));
 
             foreach (var e in memberEnrollments)
                 groupedEnrollmentIds.Add(e.Id);
@@ -86,7 +87,8 @@ internal static class PlanningProposalBuilder
                 StudentNames: [enrollment.StudentName],
                 Size: 1,
                 IsOpenToGrouping: enrollment.IsOpenToGrouping,
-                Preferences: prefs));
+                Preferences: prefs,
+                AgeCategory: GetAgeCategory(enrollment)));
         }
 
         return (units, groupedEnrollmentIds);
@@ -142,6 +144,32 @@ internal static class PlanningProposalBuilder
         }
 
         return conflicts;
+    }
+
+    /// <summary>
+    /// The age-category bucket a student chose on the enrollment form, or null when the form
+    /// has no age-category field (or it was left unanswered). The matching algorithm treats
+    /// null as unconstrained.
+    /// </summary>
+    private static string? GetAgeCategory(Enrollment enrollment)
+        => enrollment.FormResponses
+            .FirstOrDefault(r => r.FormField?.Type == FormFieldType.AgeCategory)
+            ?.Value;
+
+    /// <summary>
+    /// The shared age bucket of a pre-formed group: the single bucket if every member agrees,
+    /// otherwise null. A mixed-age group is the user's explicit choice, so it stays unconstrained
+    /// rather than blocking the group.
+    /// </summary>
+    private static string? GetSharedAgeCategory(List<Enrollment> members)
+    {
+        var buckets = members
+            .Select(GetAgeCategory)
+            .Where(c => !string.IsNullOrEmpty(c))
+            .Distinct()
+            .ToList();
+
+        return buckets.Count == 1 ? buckets[0] : null;
     }
 
     private static Dictionary<Guid, SlotPreference> IntersectPreferences(
