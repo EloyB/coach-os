@@ -937,7 +937,11 @@ const FIELD_TYPES = [
   { value: 1, label: "Vrije tekst" },
   { value: 2, label: "Meerkeuze" },
   { value: 3, label: "Ja/Nee" },
+  { value: 4, label: "Leeftijdscategorie" },
 ];
+
+// Field types that carry a list of choices stored in `options`.
+const OPTION_FIELD_TYPES = [2, 4];
 
 interface DraftField extends SaveFormFieldRequest {
   _key: string;
@@ -979,9 +983,10 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
         id: f.id,
         label: f.label,
         type: f.type,
-        isRequired: f.isRequired,
+        // The age-category question is always mandatory (the server enforces this too).
+        isRequired: f.type === 4 ? true : f.isRequired,
         order: i,
-        options: f.type === 2 ? f.options : undefined,
+        options: OPTION_FIELD_TYPES.includes(f.type) ? f.options : undefined,
       }));
       return saveEnrollmentForm(seriesId, payload);
     },
@@ -1121,12 +1126,15 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
               <div className="flex items-center gap-2">
                 <NativeSelect
                   value={field.type}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const newType = parseInt(e.target.value);
                     updateField(field._key, {
-                      type: parseInt(e.target.value),
-                      options: undefined,
-                    })
-                  }
+                      type: newType,
+                      // Age categories start with two empty buckets; other types drop options.
+                      options: newType === 4 ? ["", ""] : undefined,
+                      isRequired: newType === 4 ? true : field.isRequired,
+                    });
+                  }}
                 >
                   {FIELD_TYPES.map((t) => (
                     <option key={t.value} value={t.value}>
@@ -1138,11 +1146,12 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
                 <label className="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer select-none">
                   <input
                     type="checkbox"
-                    checked={field.isRequired}
+                    checked={field.type === 4 ? true : field.isRequired}
+                    disabled={field.type === 4}
                     onChange={(e) =>
                       updateField(field._key, { isRequired: e.target.checked })
                     }
-                    className="accent-tennis-green"
+                    className="accent-tennis-green disabled:opacity-60"
                   />
                   Verplicht
                 </label>
@@ -1174,8 +1183,8 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
                 </div>
               </div>
 
-              {/* Options for MultipleChoice */}
-              {field.type === 2 && (
+              {/* Options for MultipleChoice and Age category buckets */}
+              {OPTION_FIELD_TYPES.includes(field.type) && (
                 <div className="space-y-2 pt-1 border-t border-gray-100">
                   {(field.options ?? []).map((opt, optIdx) => (
                     <div key={optIdx} className="flex items-center gap-2">

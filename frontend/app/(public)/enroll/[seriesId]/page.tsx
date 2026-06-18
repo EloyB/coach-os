@@ -43,6 +43,7 @@ import Link from "next/link";
 const FIELD_TYPE_TEXT = 1;
 const FIELD_TYPE_MULTIPLE_CHOICE = 2;
 const FIELD_TYPE_YES_NO = 3;
+const FIELD_TYPE_AGE_CATEGORY = 4;
 
 const PREF_AVAILABLE = 1;
 const PREF_PREFERRED = 2;
@@ -282,7 +283,11 @@ export default function EnrollPage() {
     const value = fieldValues[field.id] ?? "";
     const hasError = !!fieldErrors[field.id];
 
-    if (field.type === FIELD_TYPE_MULTIPLE_CHOICE && field.options) {
+    if (
+      (field.type === FIELD_TYPE_MULTIPLE_CHOICE ||
+        field.type === FIELD_TYPE_AGE_CATEGORY) &&
+      field.options
+    ) {
       return (
         <div key={field.id} className="space-y-1.5">
           <label className="block text-sm font-medium text-gray-700">
