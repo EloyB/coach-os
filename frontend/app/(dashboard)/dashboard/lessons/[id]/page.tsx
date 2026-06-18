@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm, Controller } from "react-hook-form";
@@ -934,11 +935,11 @@ function LessonWeekView({
 // ─── Form Builder Section ─────────────────────────────────────────────────────
 
 const FIELD_TYPES = [
-  { value: 1, label: "Vrije tekst" },
-  { value: 2, label: "Meerkeuze" },
-  { value: 3, label: "Ja/Nee" },
-  { value: 4, label: "Leeftijdscategorie" },
-];
+  { value: 1, labelKey: "type_text" },
+  { value: 2, labelKey: "type_multiple_choice" },
+  { value: 3, labelKey: "type_yes_no" },
+  { value: 4, labelKey: "type_age_category" },
+] as const;
 
 // Field types that carry a list of choices stored in `options`.
 const OPTION_FIELD_TYPES = [2, 4];
@@ -948,6 +949,7 @@ interface DraftField extends SaveFormFieldRequest {
 }
 
 function FormBuilderSection({ seriesId }: { seriesId: string }) {
+  const t = useTranslations("formBuilder");
   const queryClient = useQueryClient();
   const [fields, setFields] = useState<DraftField[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -1069,7 +1071,7 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
           <ClipboardList size={13} className="text-tennis-green" />
         </div>
         <h2 className="text-sm font-semibold text-gray-800">
-          Inschrijfformulier
+          {t("title")}
         </h2>
       </div>
 
@@ -1077,15 +1079,15 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
         {/* Predefined fields badge list */}
         <div>
           <p className="text-xs text-gray-400 mb-2">
-            Vaste velden (altijd zichtbaar)
+            {t("predefined_fields_hint")}
           </p>
           <div className="flex flex-wrap gap-2">
             {[
-              "Voornaam",
-              "Achternaam",
-              "E-mailadres",
-              "Inschrijvingstype",
-              "Beschikbaarheid",
+              t("pf_firstname"),
+              t("pf_lastname"),
+              t("pf_email"),
+              t("pf_enrollment_type"),
+              t("pf_availability"),
             ].map((f) => (
               <span
                 key={f}
@@ -1099,10 +1101,7 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
 
         {/* Custom fields */}
         {fields.length === 0 && (
-          <p className="text-xs text-gray-400 py-2">
-            Nog geen aangepaste velden. Klik &apos;Veld toevoegen&apos; om te
-            beginnen.
-          </p>
+          <p className="text-xs text-gray-400 py-2">{t("no_fields")}</p>
         )}
 
         <div className="space-y-3">
@@ -1114,7 +1113,7 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
               {/* Row 1: label (full width) */}
               <input
                 type="text"
-                placeholder="Veldlabel, bijv. 'Telefoonnummer'"
+                placeholder={t("field_label_placeholder")}
                 value={field.label}
                 onChange={(e) =>
                   updateField(field._key, { label: e.target.value })
@@ -1136,9 +1135,9 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
                     });
                   }}
                 >
-                  {FIELD_TYPES.map((t) => (
-                    <option key={t.value} value={t.value}>
-                      {t.label}
+                  {FIELD_TYPES.map((ft) => (
+                    <option key={ft.value} value={ft.value}>
+                      {t(ft.labelKey)}
                     </option>
                   ))}
                 </NativeSelect>
@@ -1153,7 +1152,7 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
                     }
                     className="accent-tennis-green disabled:opacity-60"
                   />
-                  Verplicht
+                  {t("field_required")}
                 </label>
 
                 <div className="flex items-center gap-1 ml-auto">
@@ -1190,7 +1189,7 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
                     <div key={optIdx} className="flex items-center gap-2">
                       <input
                         type="text"
-                        placeholder={`Optie ${optIdx + 1}`}
+                        placeholder={t("option_placeholder", { number: optIdx + 1 })}
                         value={opt}
                         onChange={(e) =>
                           updateOption(field._key, optIdx, e.target.value)
@@ -1212,7 +1211,7 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
                     className="flex items-center gap-1 text-xs text-tennis-green hover:underline"
                   >
                     <Plus size={11} />
-                    Optie toevoegen
+                    {t("add_option")}
                   </button>
                 </div>
               )}
@@ -1227,7 +1226,7 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
             className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 text-xs font-medium text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"
           >
             <Plus size={12} />
-            Veld toevoegen
+            {t("add_field")}
           </button>
           <button
             type="button"
@@ -1236,17 +1235,15 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
             className="flex items-center gap-1.5 px-4 py-2 bg-tennis-green text-white text-xs font-semibold rounded-lg hover:bg-tennis-green/90 transition-colors disabled:opacity-60"
           >
             {saveMutation.isPending
-              ? "Opslaan..."
+              ? t("saving")
               : saveMutation.isSuccess
-                ? "Opgeslagen ✓"
-                : "Formulier opslaan"}
+                ? `${t("saved")} ✓`
+                : t("save_form")}
           </button>
         </div>
 
         {saveMutation.isError && (
-          <p className="text-xs text-red-500">
-            Opslaan mislukt. Probeer opnieuw.
-          </p>
+          <p className="text-xs text-red-500">{t("save_error")}</p>
         )}
       </div>
     </div>
