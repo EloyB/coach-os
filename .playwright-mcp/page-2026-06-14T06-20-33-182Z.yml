@@ -1,0 +1,246 @@
+- generic:
+  - generic:
+    - complementary:
+      - img
+      - generic:
+        - generic:
+          - generic:
+            - img
+          - generic: CoachOS
+        - generic:
+          - button:
+            - generic:
+              - generic: T
+            - generic:
+              - paragraph: Organisatie
+              - paragraph: TC De Aces
+            - img
+      - navigation:
+        - paragraph: Werk
+        - link:
+          - /url: /dashboard
+          - img
+          - generic: Vandaag
+        - link:
+          - /url: /dashboard/lessons
+          - img
+          - generic: Lesreeksen
+        - link:
+          - /url: /dashboard/standalone-lessons
+          - img
+          - generic: Losse lessen
+        - link:
+          - /url: /dashboard/camps
+          - img
+          - generic: Kampen
+        - link:
+          - /url: /dashboard/trainers
+          - img
+          - generic: Trainers
+        - link:
+          - /url: /dashboard/settings
+          - img
+          - generic: Instellingen
+      - generic:
+        - generic:
+          - generic: JJ
+        - generic:
+          - paragraph: Jan Janssen
+          - paragraph: Beheerder
+        - button:
+          - img
+    - generic:
+      - banner:
+        - paragraph: ZO · 14 JUN 2026 · WEEK 24
+      - main:
+        - generic:
+          - generic:
+            - heading [level=1]: Vandaag
+          - link:
+            - /url: /dashboard/lessons/new
+            - img
+            - text: Nieuwe les
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - generic: Aan de slag
+                - paragraph: 2 van 4 stappen voltooid
+              - button: Sluiten
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - paragraph: Verbind Mollie
+                  - paragraph: Koppel een Mollie-account zodat leerlingen betalingen kunnen voltooien.
+              - link:
+                - /url: /dashboard/settings
+                - text: Verbinden
+                - img
+            - generic:
+              - generic:
+                - generic:
+                  - img
+                - generic:
+                  - paragraph: Voeg een tennisclub toe
+                  - paragraph: Lesreeksen vinden plaats bij een tennisclub. Voeg er minstens één toe.
+              - generic: Voltooid
+            - generic:
+              - generic:
+                - generic:
+                  - paragraph: Kies je trainer-setup
+                  - paragraph: Werk je alleen, of met meerdere trainers?
+              - button:
+                - text: Kiezen
+                - img
+            - generic:
+              - generic:
+                - generic:
+                  - img
+                - generic:
+                  - paragraph: Maak je eerste lesreeks
+                  - paragraph: Plan een reeks lessen en open de inschrijving.
+              - generic: Voltooid
+        - generic:
+          - generic:
+            - text: "0"
+            - generic: lessen vandaag
+          - generic:
+            - text: "3"
+            - generic: deze week
+          - generic:
+            - text: "38"
+            - generic: inschrijvingen
+          - generic:
+            - text: "2"
+            - generic: trainers
+          - generic:
+            - text: "4"
+            - generic: reeksen
+        - generic:
+          - generic:
+            - generic:
+              - paragraph: /vraagt-actie
+              - paragraph: 10 dingen om nu aan te pakken
+          - generic:
+            - generic:
+              - generic:
+                - paragraph:
+                  - generic: Bart Peeters
+                - paragraph: heeft nog niet bevestigd
+                - generic: 2d 12u resterend
+              - link:
+                - /url: /dashboard/lessons/019ec257-148f-76d7-a35a-5c4c6335a8da/planning
+                - text: Bekijk
+            - generic:
+              - generic:
+                - paragraph:
+                  - generic: Sofie De Boer
+                - paragraph: heeft nog niet bevestigd
+                - generic: 2d 12u resterend
+              - link:
+                - /url: /dashboard/lessons/019ec257-148f-76d7-a35a-5c4c6335a8da/planning
+                - text: Bekijk
+            - generic:
+              - generic:
+                - paragraph:
+                  - generic: Kevin Goossens
+                - paragraph: heeft nog niet bevestigd
+                - generic: 2d 12u resterend
+              - link:
+                - /url: /dashboard/lessons/019ec257-148f-76d7-a35a-5c4c6335a8da/planning
+                - text: Bekijk
+          - button: + 7 meer tonen
+        - generic:
+          - generic:
+            - generic:
+              - heading [level=2]: Komende lessen — 5
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - img
+                  - generic:
+                    - paragraph: Voorjaarslessen Beginners
+                    - paragraph: Jan Janssen · Baan 1
+                - generic:
+                  - text: 15/06/2026
+                  - paragraph:
+                    - img
+                    - generic: 09:00 – 10:00
+              - generic:
+                - generic:
+                  - generic:
+                    - img
+                  - generic:
+                    - paragraph: Zomerlessen 2026
+                    - paragraph: Jan Janssen · Baan 2
+                - generic:
+                  - text: 16/06/2026
+                  - paragraph:
+                    - img
+                    - generic: 18:00 – 19:00
+              - generic:
+                - generic:
+                  - generic:
+                    - img
+                  - generic:
+                    - paragraph: Zomerlessen 2026
+                    - paragraph: Jan Janssen · Baan 1
+                - generic:
+                  - text: 16/06/2026
+                  - paragraph:
+                    - img
+                    - generic: 18:00 – 19:00
+              - generic:
+                - generic:
+                  - generic:
+                    - img
+                  - generic:
+                    - paragraph: Zomerlessen 2026
+                    - paragraph: Jan Janssen · Baan 1
+                - generic:
+                  - text: 16/06/2026
+                  - paragraph:
+                    - img
+                    - generic: 19:00 – 20:00
+              - generic:
+                - generic:
+                  - generic:
+                    - img
+                  - generic:
+                    - paragraph: Competitietraining Gevorderd
+                    - paragraph: Jan Janssen · Baan 2
+                - generic:
+                  - text: 17/06/2026
+                  - paragraph:
+                    - img
+                    - generic: 10:30 – 12:00
+          - generic:
+            - generic:
+              - generic:
+                - paragraph: Lessen deze week
+                - paragraph: "3"
+                - paragraph: t.o.v. vorige week
+              - img
+            - generic:
+              - generic:
+                - paragraph: Bezettingsgraad
+                - paragraph: 48%
+                - paragraph: gemiddeld
+              - img
+            - generic:
+              - generic:
+                - paragraph: Openstaand
+                - paragraph: €0
+                - paragraph: te ontvangen
+              - img
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e55] [cursor=pointer]:
+    - img [ref=e56]
+  - alert
+  - dialog "Welkom bij CoachOS, Jan" [ref=e61]:
+    - generic [ref=e62]:
+      - heading "Welkom bij CoachOS, Jan" [level=2] [ref=e63]
+      - paragraph [ref=e64]: Laten we je organisatie klaarstomen in vier korte stappen.
+    - button "Aan de slag" [active] [ref=e66]

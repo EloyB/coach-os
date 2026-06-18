@@ -1,0 +1,102 @@
+<h2>Dagen &amp; trainers — twee layouts</h2>
+<p class="subtitle">Kamp "Paaskamp Gevorderden", 3 dagen. Hoe wil je per dag de uren én de aanwezige trainers invoeren? Klik je voorkeur aan.</p>
+
+<style>
+  .grid-mock { font-size: 13px; }
+  .daycard { border: 1px solid #e2e2dc; border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; background:#fff; }
+  .daycard .dayhead { font-weight: 700; color:#2D5016; margin-bottom: 8px; }
+  .timerow { display:flex; gap:8px; align-items:center; margin-bottom:10px; }
+  .timerow .t-in { border:1px solid #d8d8d2; border-radius:7px; padding:4px 8px; background:#faf9f6; min-width:62px; text-align:center; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; }
+  .chip { border:1px solid #cfe0c2; background:#f1f7ec; color:#2D5016; border-radius:999px; padding:3px 10px; font-size:12px; }
+  .chip.off { border:1px dashed #d8d8d2; background:#fafafa; color:#9a9a90; }
+  .chip .x { opacity:.5; margin-left:4px; }
+  .lbl { font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:#9a9a90; margin-bottom:4px; }
+
+  table.matrix { border-collapse: collapse; width:100%; }
+  table.matrix th, table.matrix td { border:1px solid #e2e2dc; padding:7px 8px; text-align:center; }
+  table.matrix th.trainer, table.matrix td.trainer { text-align:left; font-weight:600; color:#23303a; background:#faf9f6; white-space:nowrap; }
+  table.matrix thead th { background:#f1f7ec; color:#2D5016; font-size:12px; line-height:1.25; }
+  table.matrix thead .daytime { display:block; font-weight:400; color:#7a8a6a; font-size:11px; }
+  .tick { display:inline-block; width:18px; height:18px; border-radius:5px; background:#2D5016; color:#fff; line-height:18px; font-size:12px; }
+  .untick { display:inline-block; width:18px; height:18px; border-radius:5px; border:1px solid #d8d8d2; background:#fff; }
+  .timehdr { display:flex; gap:6px; justify-content:center; margin-top:4px; }
+  .timehdr .t-in { border:1px solid #d8d8d2; border-radius:6px; padding:2px 5px; background:#fff; font-size:11px; min-width:46px; }
+</style>
+
+<div class="cards">
+
+  <div class="card" data-choice="day-centric" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:14px; background:#fbfbf9;">
+      <div class="grid-mock">
+
+        <div class="daycard">
+          <div class="dayhead">Maandag 14 april</div>
+          <div class="lbl">Uren</div>
+          <div class="timerow"><span class="t-in">09:00</span><span>tot</span><span class="t-in">16:00</span></div>
+          <div class="lbl">Aanwezige trainers</div>
+          <div class="chips">
+            <span class="chip">Pieter Mertens<span class="x">×</span></span>
+            <span class="chip">Sophie De Vries<span class="x">×</span></span>
+            <span class="chip off">+ Jan Janssens</span>
+          </div>
+        </div>
+
+        <div class="daycard">
+          <div class="dayhead">Dinsdag 15 april</div>
+          <div class="timerow"><span class="t-in">09:00</span><span>tot</span><span class="t-in">16:00</span></div>
+          <div class="chips">
+            <span class="chip">Pieter Mertens<span class="x">×</span></span>
+            <span class="chip">Jan Janssens<span class="x">×</span></span>
+            <span class="chip off">+ Sophie De Vries</span>
+          </div>
+        </div>
+
+        <div class="daycard">
+          <div class="dayhead">Woensdag 16 april</div>
+          <div class="timerow"><span class="t-in">10:00</span><span>tot</span><span class="t-in">15:00</span></div>
+          <div class="chips">
+            <span class="chip">Sophie De Vries<span class="x">×</span></span>
+            <span class="chip off">+ Pieter Mertens</span>
+            <span class="chip off">+ Jan Janssens</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Dag-centrisch</h3>
+      <p>Eén kaart per dag: de uren én de aanwezige trainers (chips) staan samen. Uren en trainers per dag dicht bij elkaar; werkt fijn bij weinig dagen.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="matrix" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:14px; background:#fbfbf9;">
+      <div class="grid-mock">
+        <table class="matrix">
+          <thead>
+            <tr>
+              <th class="trainer">Trainer</th>
+              <th>ma 14/4<span class="timehdr"><span class="t-in">09:00</span><span class="t-in">16:00</span></span></th>
+              <th>di 15/4<span class="timehdr"><span class="t-in">09:00</span><span class="t-in">16:00</span></span></th>
+              <th>wo 16/4<span class="timehdr"><span class="t-in">10:00</span><span class="t-in">15:00</span></span></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td class="trainer">Pieter Mertens</td><td><span class="tick">✓</span></td><td><span class="tick">✓</span></td><td><span class="untick"></span></td></tr>
+            <tr><td class="trainer">Sophie De Vries</td><td><span class="tick">✓</span></td><td><span class="untick"></span></td><td><span class="tick">✓</span></td></tr>
+            <tr><td class="trainer">Jan Janssens</td><td><span class="untick"></span></td><td><span class="tick">✓</span></td><td><span class="untick"></span></td></tr>
+          </tbody>
+        </table>
+        <p style="font-size:11px; color:#9a9a90; margin-top:8px;">Uren per dag staan in de kolomkop. Trainers eerst kiezen → ze verschijnen als rij → vink de dagen aan.</p>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Trainer × dag-rooster</h3>
+      <p>Matrix: trainers als rijen, dagen als kolommen, vinkjes op de kruising. De daguren staan in de kolomkop. Compact overzicht bij veel trainers/dagen.</p>
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="margin-top:18px;">Beide bewaren dezelfde data (per dag: uren + welke trainers). Het verschil is puur de invoer-ervaring. Welke past beter? En klopt de rest (uren per dag aanpasbaar, trainer kan op een deel van de dagen staan)?</p>
