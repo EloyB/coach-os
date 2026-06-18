@@ -184,6 +184,52 @@ def invite_trainers_and_pick_id(api: ApiClient, trainers: list[dict],
     return active[0]["id"] if active else fallback_user_id
 
 
+def create_trainer_availabilities(api: ApiClient, club_ids: list[str]) -> None:
+    """Legt per actieve trainer een paar vaste beschikbaarheden vast (demo-data).
+    Club x weekdag x tijdvak. dayOfWeek: 0 = maandag ... 6 = zondag. De twee
+    slots staan op verschillende dagen zodat de per-trainer overlap-check niet
+    afgaat."""
+    print("\n3b. Creating trainer availabilities...")
+    if not club_ids:
+        print("   No clubs - skipping availabilities.")
+        return
+
+    trainer_list = api.get("/trainers") or []
+    active = [t for t in trainer_list if t.get("isActive")]
+    if not active:
+        print("   No active trainers - skipping availabilities.")
+        return
+
+    # clubIndex None = club-loze beschikbaarheid (geldt voor eender welke club).
+    plans = [
+        {"dayOfWeek": 0, "clubIndex": 0, "startTime": "17:00", "endTime": "21:00"},
+        {"dayOfWeek": 2, "clubIndex": None, "startTime": "18:00", "endTime": "22:00"},
+    ]
+
+    created = 0
+    for trainer in active:
+        for plan in plans:
+            if plan["clubIndex"] is None:
+                tennis_club_id = None
+            else:
+                club_idx = min(plan["clubIndex"], len(club_ids) - 1)
+                tennis_club_id = club_ids[club_idx]
+            body = {
+                "trainerId": trainer["id"],
+                "tennisClubId": tennis_club_id,
+                "dayOfWeek": plan["dayOfWeek"],
+                "startTime": plan["startTime"],
+                "endTime": plan["endTime"],
+            }
+            result = api.post("/trainer-availabilities", body)
+            if result is not None:
+                created += 1
+            else:
+                print(f"   ERR availability for {trainer.get('email')} failed "
+                      f"(see stderr)", file=sys.stderr)
+    print(f"   Created {created} availabilities for {len(active)} trainer(s)")
+
+
 def create_simple_series(api: ApiClient, series_specs: list[dict],
                          club_ids: list[str], trainer_id: str,
                          today: date, deadline_iso: str) -> list[str]:
@@ -557,6 +603,7 @@ def main() -> int:
     club_ids = create_clubs(api, data["clubs"])
     trainer_id = invite_trainers_and_pick_id(
         api, data["trainers"], auth["userId"])
+    create_trainer_availabilities(api, club_ids)
 
     simple_ids = create_simple_series(
         api, data["simpleSeries"], club_ids, trainer_id, today, deadline_iso)

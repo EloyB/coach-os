@@ -48,12 +48,14 @@ interface CalendarWeekViewProps {
   slots: WizardSlot[];
   onChange: (slots: WizardSlot[]) => void;
   defaults?: SlotDefaults;
+  tennisClubId: string;
 }
 
 export function CalendarWeekView({
   slots,
   onChange,
   defaults,
+  tennisClubId,
 }: CalendarWeekViewProps) {
   const t = useTranslations("lessonWizard");
   const gridBodyRef = useRef<HTMLDivElement>(null);
@@ -392,6 +394,7 @@ export function CalendarWeekView({
             <SlotEditPopover
               slot={editingSlot}
               anchorRef={editAnchor}
+              tennisClubId={tennisClubId}
               onSave={handleSlotSave}
               onClose={() => setEditingSlotId(null)}
             />

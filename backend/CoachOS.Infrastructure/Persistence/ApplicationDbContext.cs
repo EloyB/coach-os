@@ -60,6 +60,7 @@ public class ApplicationDbContext(
     // de bestaande FormField/FormResponse — zie ook ApplyTenantFilters().
     public DbSet<CampFormField> CampFormFields { get; set; } = null!;
     public DbSet<CampFormResponse> CampFormResponses { get; set; } = null!;
+    public DbSet<TrainerAvailability> TrainerAvailabilities { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -95,6 +96,7 @@ public class ApplicationDbContext(
         builder.ApplyConfiguration(new CampEnrollmentFormConfiguration());
         builder.ApplyConfiguration(new CampFormFieldConfiguration());
         builder.ApplyConfiguration(new CampFormResponseConfiguration());
+        builder.ApplyConfiguration(new TrainerAvailabilityConfiguration());
 
         ApplyTenantFilters(builder);
     }
@@ -156,6 +158,8 @@ public class ApplicationDbContext(
         // hebben geen eigen OrganizationId en zijn tenant-geïsoleerd via hun parent
         // (CampEnrollmentForm.OrganizationId resp. CampEnrollment.OrganizationId).
         // Zelfde patroon als FormField/FormResponse hierboven.
+        builder.Entity<TrainerAvailability>().HasQueryFilter(e =>
+            _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

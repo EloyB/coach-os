@@ -150,6 +150,7 @@ export default function NewLessonSeriesPage() {
       {step === 2 && (
         <Step2Planning
           slots={weeklyTemplate}
+          tennisClubId={step1Data?.tennisClubId ?? ""}
           onNext={handleStep2Next}
           onBack={() => setStep(1)}
         />

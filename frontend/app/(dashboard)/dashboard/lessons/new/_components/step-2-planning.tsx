@@ -13,18 +13,21 @@ import {
 } from "@/components/ui/select";
 import { LESSON_LEVELS } from "@/lib/api/lessonSeries";
 import { getTrainers, isAssignableTrainer } from "@/lib/api/trainers";
+import { getTrainerAvailabilities } from "@/lib/api/trainerAvailabilities";
 import { inputClass } from "@/lib/styles";
 import type { WizardSlot } from "../_types";
 import { CalendarWeekView, type SlotDefaults } from "./calendar-week-view";
 
 interface Step2Props {
   slots: WizardSlot[];
+  tennisClubId: string;
   onNext: (slots: WizardSlot[]) => void;
   onBack: () => void;
 }
 
 export function Step2Planning({
   slots: initialSlots,
+  tennisClubId,
   onNext,
   onBack,
 }: Step2Props) {
@@ -36,6 +39,21 @@ export function Step2Planning({
     queryFn: getTrainers,
   });
   const assignableTrainers = trainers.filter(isAssignableTrainer);
+
+  const { data: availabilities = [] } = useQuery({
+    queryKey: ["trainerAvailabilities"],
+    queryFn: getTrainerAvailabilities,
+  });
+
+  const clubTrainerIds = new Set(
+    availabilities
+      // null club = beschikbaar bij eender welke club -> matcht deze club ook.
+      .filter((a) => a.tennisClubId === null || a.tennisClubId === tennisClubId)
+      .map((a) => a.trainerId)
+  );
+  const sortedAssignableTrainers = [...assignableTrainers].sort(
+    (a, b) => Number(clubTrainerIds.has(b.id)) - Number(clubTrainerIds.has(a.id))
+  );
 
   const [defaults, setDefaults] = useState<SlotDefaults>({
     trainerId: null,
@@ -83,6 +101,7 @@ export function Step2Planning({
             slots={slots}
             onChange={setSlots}
             defaults={defaults}
+            tennisClubId={tennisClubId}
           />
         </div>
 
@@ -114,9 +133,18 @@ export function Step2Planning({
                   <SelectItem value="none">
                     <span className="text-gray-400">{t("nonePicker")}</span>
                   </SelectItem>
-                  {assignableTrainers.map((tr) => (
+                  {sortedAssignableTrainers.map((tr) => (
                     <SelectItem key={tr.id} value={tr.id}>
-                      {tr.firstName} {tr.lastName}
+                      <span className="inline-flex items-center gap-1.5">
+                        {clubTrainerIds.has(tr.id) && (
+                          <span
+                            className="h-1.5 w-1.5 shrink-0 rounded-full bg-tennis-green"
+                            title={t("availableBadge")}
+                            aria-label={t("availableBadge")}
+                          />
+                        )}
+                        {tr.firstName} {tr.lastName}
+                      </span>
                     </SelectItem>
                   ))}
                 </SelectContent>

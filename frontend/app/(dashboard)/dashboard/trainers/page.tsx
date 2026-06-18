@@ -14,7 +14,9 @@ import {
   X,
   Pencil,
   StickyNote,
+  CalendarClock,
 } from "lucide-react";
+import { TrainerAvailabilityDialog } from "./_components/trainer-availability-dialog";
 import { Mono } from "@/components/ui/mono";
 import {
   getTrainers,
@@ -471,6 +473,7 @@ export default function TrainersPage() {
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [removeDialog, setRemoveDialog] = useState<RemoveDialogState>({ type: "none" });
   const [editTrainer, setEditTrainer] = useState<TrainerDto | null>(null);
+  const [availabilityTrainer, setAvailabilityTrainer] = useState<TrainerDto | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
   const queryClient = useQueryClient();
   const t = useTranslations("trainers");
@@ -682,6 +685,14 @@ export default function TrainersPage() {
                         ) : (
                           <>
                             <button
+                              onClick={() => setAvailabilityTrainer(tr)}
+                              title={t("availabilityButton")}
+                              aria-label={t("availabilityButton")}
+                              className="opacity-0 group-hover:opacity-100 p-1.5 rounded text-ink-3 hover:text-tennis-green hover:bg-tennis-green/10 transition-all"
+                            >
+                              <CalendarClock size={14} />
+                            </button>
+                            <button
                               onClick={() => setEditTrainer(tr)}
                               title={t("edit")}
                               className="opacity-0 group-hover:opacity-100 p-1.5 rounded text-ink-3 hover:text-tennis-green hover:bg-tennis-green/10 transition-all"
@@ -792,6 +803,12 @@ export default function TrainersPage() {
         <EditTrainerDialog
           trainer={editTrainer}
           onClose={() => setEditTrainer(null)}
+        />
+      )}
+      {availabilityTrainer && (
+        <TrainerAvailabilityDialog
+          trainer={availabilityTrainer}
+          onClose={() => setAvailabilityTrainer(null)}
         />
       )}
     </>

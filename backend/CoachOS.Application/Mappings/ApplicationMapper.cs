@@ -3,6 +3,7 @@ using CoachOS.Application.LessonSerie.DTOs;
 using CoachOS.Application.OrganizationSettings.DTOs;
 using CoachOS.Application.StandaloneLessons.DTOs;
 using CoachOS.Application.TennisClubs.DTOs;
+using CoachOS.Application.TrainerAvailabilities.DTOs;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
 using Riok.Mapperly.Abstractions;
@@ -169,4 +170,27 @@ public partial class ApplicationMapper
             RespondedAt = invitation.RespondedAt,
         };
     }
+
+    public TrainerAvailability ToTrainerAvailability(CreateTrainerAvailabilityRequest request, Guid organizationId)
+        => new()
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = organizationId,
+            TrainerId = request.TrainerId,
+            TennisClubId = request.TennisClubId,
+            DayOfWeek = request.DayOfWeek,
+            StartTime = TimeOnly.ParseExact(request.StartTime, "HH:mm"),
+            EndTime = TimeOnly.ParseExact(request.EndTime, "HH:mm"),
+            IsActive = true,
+        };
+
+    public TrainerAvailabilityDto ToTrainerAvailabilityDto(TrainerAvailability availability)
+        => new(
+            availability.Id,
+            availability.TrainerId,
+            availability.TennisClubId,
+            availability.TennisClub?.Name,
+            availability.DayOfWeek,
+            availability.StartTime.ToString("HH\\:mm"),
+            availability.EndTime.ToString("HH\\:mm"));
 }

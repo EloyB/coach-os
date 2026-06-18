@@ -207,6 +207,8 @@
     "saved": "Formulier opgeslagen"
   },
   "lessonWizard": {
+    "availableBadge": "beschikbaar",
+    "trainerNotAvailableWarning": "Deze trainer is volgens de vastgelegde beschikbaarheden niet beschikbaar in deze club op deze dag.",
     "step1Label": "Basisinfo",
     "step2Label": "Planning",
     "step3Label": "Validatie",
@@ -622,6 +624,18 @@
     "heroLabel": "/uitnodiging"
   },
   "trainers": {
+    "availabilityButton": "Beschikbaarheid",
+    "availabilityTitle": "Beschikbaarheid van {name}",
+    "availabilityEmpty": "Nog geen beschikbaarheden vastgelegd.",
+    "availabilityAdd": "Beschikbaarheid toevoegen",
+    "availabilityClub": "Club",
+    "availabilityDay": "Dag",
+    "availabilityFrom": "Van",
+    "availabilityUntil": "Tot",
+    "availabilityDelete": "Verwijderen",
+    "availabilitySaving": "Opslaan...",
+    "availabilityAnyClub": "Alle clubs",
+    "availabilityError": "Er ging iets mis. Probeer het opnieuw.",
     "title": "Trainers",
     "adminBadge": "Beheerder",
     "manageViaSettings": "Beheer via Instellingen",

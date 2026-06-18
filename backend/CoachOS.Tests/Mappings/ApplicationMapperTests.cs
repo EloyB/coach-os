@@ -1,5 +1,6 @@
 using CoachOS.Application.LessonSerie.DTOs;
 using CoachOS.Application.Mappings;
+using CoachOS.Application.TrainerAvailabilities.DTOs;
 using CoachOS.Domain.Entities;
 using FluentAssertions;
 using NUnit.Framework;
@@ -136,5 +137,52 @@ public class ApplicationMapperTests
         var series = _mapper.ToLessonSerie(request, OrgId);
 
         series.MaxRegistrations.Should().BeNull();
+    }
+
+    // ── ToTrainerAvailability ────────────────────────────────────────────────
+
+    [Test]
+    public void ToTrainerAvailability_MapsAllFields()
+    {
+        Guid orgId = Guid.NewGuid();
+        CreateTrainerAvailabilityRequest request = new(Guid.NewGuid(), Guid.NewGuid(), 2, "17:30", "21:00");
+
+        TrainerAvailability entity = _mapper.ToTrainerAvailability(request, orgId);
+
+        entity.Id.Should().NotBeEmpty();
+        entity.OrganizationId.Should().Be(orgId);
+        entity.TrainerId.Should().Be(request.TrainerId);
+        entity.TennisClubId.Should().Be(request.TennisClubId);
+        entity.DayOfWeek.Should().Be(2);
+        entity.StartTime.Should().Be(new TimeOnly(17, 30));
+        entity.EndTime.Should().Be(new TimeOnly(21, 0));
+        entity.IsActive.Should().BeTrue();
+    }
+
+    [Test]
+    public void ToTrainerAvailabilityDto_MapsAllFields()
+    {
+        TrainerAvailability entity = new()
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = Guid.NewGuid(),
+            TrainerId = Guid.NewGuid(),
+            TennisClubId = Guid.NewGuid(),
+            DayOfWeek = 4,
+            StartTime = new TimeOnly(9, 0),
+            EndTime = new TimeOnly(12, 30),
+            IsActive = true,
+            TennisClub = new TennisClub { Name = "TC Demo" },
+        };
+
+        TrainerAvailabilityDto dto = _mapper.ToTrainerAvailabilityDto(entity);
+
+        dto.Id.Should().Be(entity.Id);
+        dto.TrainerId.Should().Be(entity.TrainerId);
+        dto.TennisClubId.Should().Be(entity.TennisClubId);
+        dto.TennisClubName.Should().Be("TC Demo");
+        dto.DayOfWeek.Should().Be(4);
+        dto.StartTime.Should().Be("09:00");
+        dto.EndTime.Should().Be("12:30");
     }
 }
