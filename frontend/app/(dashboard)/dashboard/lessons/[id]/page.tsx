@@ -944,6 +944,16 @@ const FIELD_TYPES = [
 // Field types that carry a list of choices stored in `options`.
 const OPTION_FIELD_TYPES = [2, 4];
 
+// Starter buckets for the age-category question that every new enrollment form
+// gets by default. The admin can edit these or remove the field entirely.
+const DEFAULT_AGE_BUCKETS = [
+  "6-8 jaar",
+  "9-11 jaar",
+  "12-14 jaar",
+  "15-17 jaar",
+  "Volwassenen",
+];
+
 interface DraftField extends SaveFormFieldRequest {
   _key: string;
 }
@@ -963,6 +973,7 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
   useEffect(() => {
     if (!loaded && existingForm !== undefined) {
       if (existingForm) {
+        // Respect what was saved — including an admin who removed the age field.
         setFields(
           existingForm.fields.map((f) => ({
             _key: f.id,
@@ -974,10 +985,23 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
             options: f.options ?? undefined,
           })),
         );
+      } else {
+        // No form configured yet: pre-add a default (removable) age-category
+        // question so age-aware matching is on by default.
+        setFields([
+          {
+            _key: Math.random().toString(36).slice(2),
+            label: t("type_age_category"),
+            type: 4,
+            isRequired: true,
+            order: 0,
+            options: [...DEFAULT_AGE_BUCKETS],
+          },
+        ]);
       }
       setLoaded(true);
     }
-  }, [existingForm, loaded]);
+  }, [existingForm, loaded, t]);
 
   const saveMutation = useMutation({
     mutationFn: () => {
