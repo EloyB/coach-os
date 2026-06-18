@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -963,6 +963,11 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
   const queryClient = useQueryClient();
   const [fields, setFields] = useState<DraftField[]>([]);
   const [loaded, setLoaded] = useState(false);
+  // Set when we seed the default age question for a series with no form yet,
+  // so we can persist it automatically (no manual "save" needed).
+  const [pendingAutoSave, setPendingAutoSave] = useState(false);
+  // Guards against a double auto-save (React StrictMode re-runs effects in dev).
+  const autoSaveStarted = useRef(false);
 
   const { data: existingForm } = useQuery({
     queryKey: ["enrollmentForm", seriesId],
@@ -987,7 +992,8 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
         );
       } else {
         // No form configured yet: pre-add a default (removable) age-category
-        // question so age-aware matching is on by default.
+        // question so age-aware matching is on by default, and persist it
+        // automatically so the public enrollment form has it without a manual save.
         setFields([
           {
             _key: Math.random().toString(36).slice(2),
@@ -998,6 +1004,7 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
             options: [...DEFAULT_AGE_BUCKETS],
           },
         ]);
+        setPendingAutoSave(true);
       }
       setLoaded(true);
     }
@@ -1020,6 +1027,16 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
       queryClient.invalidateQueries({ queryKey: ["enrollmentForm", seriesId] });
     },
   });
+
+  // Persist the seeded default age question once, so it goes live on the public
+  // enrollment form without the admin having to press save.
+  useEffect(() => {
+    if (pendingAutoSave && fields.length > 0 && !autoSaveStarted.current) {
+      autoSaveStarted.current = true;
+      setPendingAutoSave(false);
+      saveMutation.mutate();
+    }
+  }, [pendingAutoSave, fields, saveMutation]);
 
   function addField() {
     setFields((prev) => [
