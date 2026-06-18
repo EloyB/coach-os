@@ -32,4 +32,38 @@ public interface IPaymentService
     /// </summary>
     Task<Result<PaymentStatusDto>> GetPaymentStatusForEnrollmentAsync(
         Guid enrollmentId, bool syncFromMollie, CancellationToken ct = default);
+
+    /// <summary>
+    /// Creëert een Mollie payment voor een bestaande kamp-inschrijving. Het bedrag
+    /// is <c>camp.Price × aantal deelnemers</c> (groep = leider + leden, solo = 1).
+    /// Bij succes returnt een <see cref="CreatePaymentResultDto.CheckoutUrl"/> waar
+    /// de FE de deelnemer naartoe redirect.
+    /// </summary>
+    Task<Result<CreatePaymentResultDto>> CreatePaymentForCampEnrollmentAsync(
+        Guid campEnrollmentId, Guid organizationId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Publieke status-poll voor de kamp-thank-you-page. Mirror van
+    /// <see cref="GetPaymentStatusForEnrollmentAsync"/> maar op basis van de
+    /// kamp-inschrijving.
+    /// </summary>
+    Task<Result<PaymentStatusDto>> GetPaymentStatusForCampEnrollmentAsync(
+        Guid campEnrollmentId, bool syncFromMollie, CancellationToken ct = default);
+
+    /// <summary>
+    /// Legt een Pending cash-betaling vast voor een kamp-inschrijving. Het bedrag is
+    /// <c>camp.Price × aantal deelnemers</c> (zelfde regel als de online flow). De
+    /// inschrijving blijft op PendingPayment staan; de coach bevestigt de cash later
+    /// via <see cref="MarkCampCashPaidAsync"/>.
+    /// </summary>
+    Task<Result> RecordCampCashPaymentAsync(
+        Guid campEnrollmentId, Guid organizationId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Markeert de openstaande cash-betaling van een kamp-inschrijving als betaald en
+    /// bevestigt de inschrijving(en). Verstuurt de bevestigingsmail. Gebruikt door de
+    /// admin/trainer wanneer de deelnemer cash heeft betaald.
+    /// </summary>
+    Task<Result> MarkCampCashPaidAsync(
+        Guid campEnrollmentId, Guid organizationId, CancellationToken ct = default);
 }

@@ -14,6 +14,8 @@ using LessonSerieEntity = CoachOS.Domain.Entities.LessonSerie;
 using OrganizationSettingsEntity = CoachOS.Domain.Entities.OrganizationSettings;
 using PaymentEntity = CoachOS.Domain.Entities.Payment;
 using EnrollmentEntity = CoachOS.Domain.Entities.Enrollment;
+using CampEntity = CoachOS.Domain.Entities.Camp;
+using CampEnrollmentEntity = CoachOS.Domain.Entities.CampEnrollment;
 
 namespace CoachOS.Application.Payments;
 
@@ -21,6 +23,8 @@ public class PaymentService(
     IPaymentRepository payments,
     IEnrollmentRepository enrollments,
     ILessonSerieRepository lessonSeries,
+    ICampRepository camps,
+    ICampEnrollmentRepository campEnrollments,
     IOrganizationSettingsRepository orgSettings,
     IMollieClient mollieClient,
     IMollieConnectService mollieConnect,
@@ -138,6 +142,108 @@ public class PaymentService(
             payment.Id, molliePayment.CheckoutUrl));
     }
 
+    public async Task<Result<CreatePaymentResultDto>> CreatePaymentForCampEnrollmentAsync(
+        Guid campEnrollmentId, Guid organizationId, CancellationToken ct = default)
+    {
+        CampEnrollmentEntity? enrollment = await campEnrollments.GetByIdWithGroupAsync(campEnrollmentId, ct);
+        if (enrollment is null)
+        {
+            return Result<CreatePaymentResultDto>.Fail(
+                new Error(ErrorCodes.NotFound, "Inschrijving niet gevonden."));
+        }
+
+        CampEntity? camp = await camps.GetByIdPublicAsync(enrollment.CampId, ct);
+        if (camp is null)
+        {
+            return Result<CreatePaymentResultDto>.Fail(
+                new Error(ErrorCodes.NotFound, "Kamp niet gevonden."));
+        }
+
+        if (camp.Price <= 0m)
+        {
+            return Result<CreatePaymentResultDto>.Fail(new Error(
+                ErrorCodes.Validation,
+                "Dit kamp is gratis; online betaling is niet nodig."));
+        }
+
+        // Groepsinschrijving = leider + leden; solo = 1. De leider draagt de betaling.
+        // Group.Members includes the leader (the submit flow sets the leader's CampEnrollmentGroupId), so Count = total participants.
+        int participantCount = enrollment.CampEnrollmentGroupId.HasValue && enrollment.Group is not null
+            ? enrollment.Group.Members.Count
+            : 1;
+        if (participantCount < 1) participantCount = 1;
+        decimal amount = camp.Price * participantCount;
+
+        OrganizationSettingsEntity? settings = await orgSettings
+            .GetByOrganizationReadOnlyAsync(enrollment.OrganizationId, ct);
+        string currency = settings?.PaymentCurrency ?? "EUR";
+        decimal feePercentage = settings?.PlatformFeePercentage ?? 0m;
+        decimal? applicationFee = feePercentage > 0m
+            ? Math.Round(amount * feePercentage / 100m, 2, MidpointRounding.AwayFromZero)
+            : null;
+
+        Result<string> tokenResult = await mollieConnect.GetValidAccessTokenAsync(enrollment.OrganizationId, ct);
+        if (!tokenResult.IsSuccess)
+        {
+            return Result<CreatePaymentResultDto>.Fail(tokenResult.Errors);
+        }
+
+        Result<string> profileResult = await mollieClient.GetFirstProfileIdAsync(tokenResult.Value!, ct);
+        if (!profileResult.IsSuccess)
+        {
+            return Result<CreatePaymentResultDto>.Fail(profileResult.Errors);
+        }
+
+        string redirectUrl = BuildCampRedirectUrl(campEnrollmentId);
+        string? webhookUrl = BuildWebhookUrl();
+
+        MolliePaymentRequest paymentRequest = new(
+            Amount: amount,
+            Currency: currency,
+            Description: $"Inschrijving {camp.Name}",
+            RedirectUrl: redirectUrl,
+            WebhookUrl: webhookUrl,
+            ApplicationFee: applicationFee,
+            ApplicationFeeDescription: applicationFee.HasValue ? "CoachOS platform fee" : null,
+            Metadata: new Dictionary<string, string>
+            {
+                ["campEnrollmentId"] = campEnrollmentId.ToString(),
+                ["organizationId"] = enrollment.OrganizationId.ToString(),
+                ["campId"] = camp.Id.ToString(),
+            },
+            ProfileId: profileResult.Value,
+            Testmode: _mollie.UseTestMode ? true : null);
+
+        Result<MolliePaymentCreatedResponse> createResult = await mollieClient.CreatePaymentAsync(
+            tokenResult.Value!, paymentRequest, ct);
+        if (!createResult.IsSuccess)
+        {
+            logger.LogError("Mollie payment-creatie faalde voor kampinschrijving {Id}", campEnrollmentId);
+            return Result<CreatePaymentResultDto>.Fail(createResult.Errors);
+        }
+
+        MolliePaymentCreatedResponse molliePayment = createResult.Value!;
+
+        PaymentEntity payment = new()
+        {
+            OrganizationId = enrollment.OrganizationId,
+            CampEnrollmentId = campEnrollmentId,
+            Amount = amount,
+            Currency = currency,
+            PlatformFee = applicationFee,
+            Status = PaymentStatus.Pending,
+            Method = PaymentMethod.Online,
+            MolliePaymentId = molliePayment.Id,
+            MollieCheckoutUrl = molliePayment.CheckoutUrl,
+            Description = paymentRequest.Description,
+        };
+        await payments.AddAsync(payment, ct);
+        await payments.SaveChangesAsync(ct);
+
+        return Result<CreatePaymentResultDto>.Ok(new CreatePaymentResultDto(
+            payment.Id, molliePayment.CheckoutUrl));
+    }
+
     public async Task<Result> SyncPaymentFromMollieAsync(
         string molliePaymentId, CancellationToken ct = default)
     {
@@ -233,12 +339,54 @@ public class PaymentService(
             FailureReason: payment.FailureReason));
     }
 
+    public async Task<Result<PaymentStatusDto>> GetPaymentStatusForCampEnrollmentAsync(
+        Guid campEnrollmentId, bool syncFromMollie, CancellationToken ct = default)
+    {
+        PaymentEntity? payment = await payments.GetLatestByCampEnrollmentIdAsync(campEnrollmentId, ct);
+        if (payment is null)
+        {
+            return Result<PaymentStatusDto>.Fail(
+                new Error(ErrorCodes.NotFound, "Geen betaling gevonden voor deze inschrijving."));
+        }
+
+        if (syncFromMollie
+            && !string.IsNullOrEmpty(payment.MolliePaymentId)
+            && payment.Status == PaymentStatus.Pending)
+        {
+            await SyncPaymentFromMollieAsync(payment.MolliePaymentId, ct);
+            payment = await payments.GetLatestByCampEnrollmentIdAsync(campEnrollmentId, ct);
+            if (payment is null)
+            {
+                return Result<PaymentStatusDto>.Fail(
+                    new Error(ErrorCodes.NotFound, "Geen betaling gevonden voor deze inschrijving."));
+            }
+        }
+
+        return Result<PaymentStatusDto>.Ok(new PaymentStatusDto(
+            PaymentId: payment.Id,
+            Status: payment.Status.ToString(),
+            Amount: payment.Amount,
+            Currency: payment.Currency,
+            CheckoutUrl: payment.Status == PaymentStatus.Pending ? payment.MollieCheckoutUrl : null,
+            PaidAt: payment.PaidAt,
+            FailureReason: payment.FailureReason));
+    }
+
     // ─── Helpers ────────────────────────────────────────────────────────────
 
     private async Task ConfirmEnrollmentAfterPaymentAsync(PaymentEntity payment, CancellationToken ct)
     {
+        // Kamp-betalingen (CampEnrollmentId gezet) krijgen hun eigen confirm-flow.
+        if (payment.CampEnrollmentId is { } campEnrollmentId)
+        {
+            await ConfirmCampEnrollmentAfterPaymentAsync(campEnrollmentId, ct);
+            return;
+        }
+
+        if (payment.EnrollmentId is not { } enrollmentId) return;
+
         EnrollmentEntity? enrollment = await enrollments.GetByIdAsync(
-            payment.EnrollmentId, payment.OrganizationId, ct);
+            enrollmentId, payment.OrganizationId, ct);
         if (enrollment is null) return;
 
         enrollment.Status = EnrollmentStatus.Confirmed;
@@ -267,6 +415,139 @@ public class PaymentService(
         }
     }
 
+    private async Task ConfirmCampEnrollmentAfterPaymentAsync(
+        Guid campEnrollmentId, CancellationToken ct)
+    {
+        // GetByIdWithGroupAsync is tracked → status-mutaties worden opgeslagen.
+        CampEnrollmentEntity? enrollment = await campEnrollments.GetByIdWithGroupAsync(campEnrollmentId, ct);
+        if (enrollment is null) return;
+
+        await ConfirmCampEnrollmentAndNotifyAsync(enrollment, ct);
+    }
+
+    /// <summary>
+    /// Gedeelde confirm+email logica voor het webhook-pad (online) en het
+    /// admin-pad (cash markeren als betaald). Bevestigt de hele groep of de
+    /// solo-inschrijving en verstuurt één bevestigingsmail naar de leider/contact.
+    /// Verwacht een getrackt entity (uit <c>GetByIdWithGroupAsync</c>).
+    /// </summary>
+    private async Task ConfirmCampEnrollmentAndNotifyAsync(
+        CampEnrollmentEntity enrollment, CancellationToken ct)
+    {
+        // Bevestig de hele groep (leider + leden) of de solo-inschrijving.
+        List<CampEnrollmentEntity> toConfirm =
+            enrollment.CampEnrollmentGroupId.HasValue && enrollment.Group is not null
+                ? enrollment.Group.Members.ToList()
+                : [enrollment];
+
+        // enrollment.Camp komt mee uit GetByIdWithGroupAsync (niet IsActive-gefilterd),
+        // zodat een gedeactiveerd kamp toch echte naam + data in de mail toont.
+        foreach (CampEnrollmentEntity e in toConfirm)
+        {
+            if (e.Status == EnrollmentStatus.Confirmed) continue;
+            e.Status = EnrollmentStatus.Confirmed;
+        }
+        await campEnrollments.SaveChangesAsync(ct);
+
+        try
+        {
+            // MVP: only the leader (the payer/contact) gets the confirmation email; per-member notification is out of scope for v1.
+            await emailService.SendCampEnrollmentConfirmedAsync(
+                enrollment.ParticipantEmail,
+                enrollment.ParticipantName,
+                enrollment.Camp?.Name ?? string.Empty,
+                enrollment.Camp?.StartDate ?? default,
+                enrollment.Camp?.EndDate ?? default,
+                ct);
+        }
+        catch (Exception ex)
+        {
+            // Email-fout mag het webhook-pad niet breken; loggen en doorgaan.
+            logger.LogError(ex,
+                "Bevestigingsmail mislukt voor kampinschrijving {Id} na betaling.",
+                enrollment.Id);
+        }
+    }
+
+    public async Task<Result> RecordCampCashPaymentAsync(
+        Guid campEnrollmentId, Guid organizationId, CancellationToken ct = default)
+    {
+        CampEnrollmentEntity? enrollment = await campEnrollments.GetByIdWithGroupAsync(campEnrollmentId, ct);
+        if (enrollment is null)
+            return Result.Fail(new Error(ErrorCodes.NotFound, "Inschrijving niet gevonden."));
+
+        // Defense-in-depth: GetByIdWithGroupAsync is niet org-gescoped, dus controleer
+        // expliciet dat de inschrijving bij de aanroepende organisatie hoort.
+        if (enrollment.OrganizationId != organizationId)
+            return Result.Fail(new Error(ErrorCodes.NotFound, "Inschrijving niet gevonden."));
+
+        CampEntity? camp = await camps.GetByIdPublicAsync(enrollment.CampId, ct);
+        if (camp is null)
+            return Result.Fail(new Error(ErrorCodes.NotFound, "Kamp niet gevonden."));
+
+        if (camp.Price <= 0m)
+            return Result.Fail(new Error(
+                ErrorCodes.Validation, "Dit kamp is gratis; een betaling is niet nodig."));
+
+        // Zelfde deelnemertelling als de online flow: groep = leider + leden, solo = 1.
+        int participantCount = enrollment.CampEnrollmentGroupId.HasValue && enrollment.Group is not null
+            ? enrollment.Group.Members.Count
+            : 1;
+        if (participantCount < 1) participantCount = 1;
+        decimal amount = camp.Price * participantCount;
+
+        OrganizationSettingsEntity? settings = await orgSettings
+            .GetByOrganizationReadOnlyAsync(enrollment.OrganizationId, ct);
+        string currency = settings?.PaymentCurrency ?? "EUR";
+
+        PaymentEntity payment = new()
+        {
+            OrganizationId = enrollment.OrganizationId,
+            CampEnrollmentId = campEnrollmentId,
+            Amount = amount,
+            Currency = currency,
+            Status = PaymentStatus.Pending,
+            Method = PaymentMethod.Cash,
+            Description = $"Cash - {camp.Name}",
+        };
+        await payments.AddAsync(payment, ct);
+        await payments.SaveChangesAsync(ct);
+
+        // Inschrijving blijft PendingPayment: de coach bevestigt de cash later.
+        return Result.Ok();
+    }
+
+    public async Task<Result> MarkCampCashPaidAsync(
+        Guid campEnrollmentId, Guid organizationId, CancellationToken ct = default)
+    {
+        PaymentEntity? payment = await payments.GetLatestPendingCashByCampEnrollmentIdAsync(
+            campEnrollmentId, organizationId, ct);
+        if (payment is null)
+            return Result.Fail(new Error(
+                ErrorCodes.NotFound, "Geen openstaande cash-betaling gevonden voor deze inschrijving."));
+
+        // Atomiciteit: de payment-mutatie wordt NIET apart opgeslagen. We muteren de
+        // (getrackte) payment, muteren daarna de enrollment(s) en laten één enkele
+        // SaveChangesAsync in ConfirmCampEnrollmentAndNotifyAsync beide wegschrijven.
+        // PaymentRepository én CampEnrollmentRepository delen dezelfde scoped
+        // ApplicationDbContext, dus die ene save flusht beide change-sets. Zo kan een
+        // crash niet langer een Paid-payment achterlaten met een PendingPayment-enrollment.
+        payment.Status = PaymentStatus.Paid;
+        payment.PaidAt = DateTime.UtcNow;
+
+        CampEnrollmentEntity? enrollment = await campEnrollments.GetByIdWithGroupAsync(campEnrollmentId, ct);
+        if (enrollment is null)
+        {
+            // Geen enrollment om te bevestigen → toch de payment-mutatie persisteren.
+            await payments.SaveChangesAsync(ct);
+            return Result.Ok();
+        }
+
+        await ConfirmCampEnrollmentAndNotifyAsync(enrollment, ct);
+
+        return Result.Ok();
+    }
+
     private string BuildRedirectUrl(Guid enrollmentId)
     {
         // PR #5 voegt een dedicated /enroll/[id]/thank-you page toe; voor PR #4
@@ -274,6 +555,12 @@ public class PaymentService(
         // thank-you-page later eenvoudig op te vissen is.
         string baseUrl = _app.FrontendBaseUrl.TrimEnd('/');
         return $"{baseUrl}/enrollment/thank-you?enrollmentId={enrollmentId}";
+    }
+
+    private string BuildCampRedirectUrl(Guid campEnrollmentId)
+    {
+        string baseUrl = _app.FrontendBaseUrl.TrimEnd('/');
+        return $"{baseUrl}/camp-enrollment/thank-you?campEnrollmentId={campEnrollmentId}";
     }
 
     private string? BuildWebhookUrl()

@@ -109,6 +109,9 @@ public static class DependencyInjection
         services.AddScoped<IOrganizationSettingsRepository, OrganizationSettingsRepository>();
         services.AddScoped<IMollieConnectionRepository, MollieConnectionRepository>();
         services.AddScoped<IOAuthStateRepository, OAuthStateRepository>();
+        services.AddScoped<ICampRepository, CampRepository>();
+        services.AddScoped<ICampEnrollmentRepository, CampEnrollmentRepository>();
+        services.AddScoped<ICampEnrollmentFormRepository, CampEnrollmentFormRepository>();
 
         return services;
     }

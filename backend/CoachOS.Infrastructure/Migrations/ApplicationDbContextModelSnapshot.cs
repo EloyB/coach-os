@@ -67,6 +67,334 @@ namespace CoachOS.Infrastructure.Migrations
                     b.ToTable("AssignmentConfirmationTokens");
                 });
 
+            modelBuilder.Entity("CoachOS.Domain.Entities.Camp", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateOnly>("EndDate")
+                        .HasColumnType("date");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<int?>("Level")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("MaxParticipants")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Price")
+                        .HasColumnType("numeric(10,2)");
+
+                    b.Property<DateTime>("RegistrationDeadline")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly>("StartDate")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("TennisClubId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId");
+
+                    b.HasIndex("TennisClubId");
+
+                    b.ToTable("Camps");
+                });
+
+            modelBuilder.Entity("CoachOS.Domain.Entities.CampDay", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CampId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<TimeOnly>("EndTime")
+                        .HasColumnType("time without time zone");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<TimeOnly>("StartTime")
+                        .HasColumnType("time without time zone");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CampId");
+
+                    b.HasIndex("OrganizationId");
+
+                    b.ToTable("CampDays");
+                });
+
+            modelBuilder.Entity("CoachOS.Domain.Entities.CampDayTrainer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CampDayId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<TimeOnly>("EndTime")
+                        .HasColumnType("time without time zone");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<TimeOnly>("StartTime")
+                        .HasColumnType("time without time zone");
+
+                    b.Property<Guid>("TrainerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CampDayId");
+
+                    b.HasIndex("TrainerId", "OrganizationId");
+
+                    b.ToTable("CampDayTrainers");
+                });
+
+            modelBuilder.Entity("CoachOS.Domain.Entities.CampEnrollment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("CampEnrollmentGroupId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CampId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("EnrolledAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ParticipantEmail")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("ParticipantName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("ParticipantPhone")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CampEnrollmentGroupId");
+
+                    b.HasIndex("CampId");
+
+                    b.HasIndex("OrganizationId");
+
+                    b.HasIndex("ParticipantEmail");
+
+                    b.HasIndex("CampId", "ParticipantEmail")
+                        .IsUnique()
+                        .HasFilter("\"Status\" IN (1, 2, 5)");
+
+                    b.ToTable("CampEnrollments");
+                });
+
+            modelBuilder.Entity("CoachOS.Domain.Entities.CampEnrollmentForm", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CampId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CampId")
+                        .IsUnique();
+
+                    b.HasIndex("OrganizationId");
+
+                    b.ToTable("CampEnrollmentForms");
+                });
+
+            modelBuilder.Entity("CoachOS.Domain.Entities.CampEnrollmentGroup", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CampId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("LeaderEnrollmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CampId");
+
+                    b.HasIndex("LeaderEnrollmentId");
+
+                    b.HasIndex("OrganizationId");
+
+                    b.ToTable("CampEnrollmentGroups");
+                });
+
+            modelBuilder.Entity("CoachOS.Domain.Entities.CampFormField", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CampEnrollmentFormId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsRequired")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Options")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CampEnrollmentFormId");
+
+                    b.ToTable("CampFormFields");
+                });
+
+            modelBuilder.Entity("CoachOS.Domain.Entities.CampFormResponse", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CampEnrollmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CampFormFieldId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CampEnrollmentId");
+
+                    b.HasIndex("CampFormFieldId");
+
+                    b.ToTable("CampFormResponses");
+                });
+
             modelBuilder.Entity("CoachOS.Domain.Entities.Enrollment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -763,6 +1091,9 @@ namespace CoachOS.Infrastructure.Migrations
                         .HasPrecision(10, 2)
                         .HasColumnType("numeric(10,2)");
 
+                    b.Property<Guid?>("CampEnrollmentId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -777,7 +1108,7 @@ namespace CoachOS.Infrastructure.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
-                    b.Property<Guid>("EnrollmentId")
+                    b.Property<Guid?>("EnrollmentId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("FailureReason")
@@ -812,6 +1143,8 @@ namespace CoachOS.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CampEnrollmentId");
 
                     b.HasIndex("EnrollmentId");
 
@@ -1410,6 +1743,125 @@ namespace CoachOS.Infrastructure.Migrations
                     b.Navigation("ScheduleAssignment");
                 });
 
+            modelBuilder.Entity("CoachOS.Domain.Entities.Camp", b =>
+                {
+                    b.HasOne("CoachOS.Domain.Entities.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CoachOS.Domain.Entities.TennisClub", "TennisClub")
+                        .WithMany()
+                        .HasForeignKey("TennisClubId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Organization");
+
+                    b.Navigation("TennisClub");
+                });
+
+            modelBuilder.Entity("CoachOS.Domain.Entities.CampDay", b =>
+                {
+                    b.HasOne("CoachOS.Domain.Entities.Camp", "Camp")
+                        .WithMany("Days")
+                        .HasForeignKey("CampId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Camp");
+                });
+
+            modelBuilder.Entity("CoachOS.Domain.Entities.CampDayTrainer", b =>
+                {
+                    b.HasOne("CoachOS.Domain.Entities.CampDay", "CampDay")
+                        .WithMany("TrainerAssignments")
+                        .HasForeignKey("CampDayId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CampDay");
+                });
+
+            modelBuilder.Entity("CoachOS.Domain.Entities.CampEnrollment", b =>
+                {
+                    b.HasOne("CoachOS.Domain.Entities.CampEnrollmentGroup", "Group")
+                        .WithMany("Members")
+                        .HasForeignKey("CampEnrollmentGroupId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("CoachOS.Domain.Entities.Camp", "Camp")
+                        .WithMany("Enrollments")
+                        .HasForeignKey("CampId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Camp");
+
+                    b.Navigation("Group");
+                });
+
+            modelBuilder.Entity("CoachOS.Domain.Entities.CampEnrollmentForm", b =>
+                {
+                    b.HasOne("CoachOS.Domain.Entities.Camp", "Camp")
+                        .WithOne("EnrollmentForm")
+                        .HasForeignKey("CoachOS.Domain.Entities.CampEnrollmentForm", "CampId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Camp");
+                });
+
+            modelBuilder.Entity("CoachOS.Domain.Entities.CampEnrollmentGroup", b =>
+                {
+                    b.HasOne("CoachOS.Domain.Entities.Camp", "Camp")
+                        .WithMany()
+                        .HasForeignKey("CampId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CoachOS.Domain.Entities.CampEnrollment", "LeaderEnrollment")
+                        .WithMany()
+                        .HasForeignKey("LeaderEnrollmentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Camp");
+
+                    b.Navigation("LeaderEnrollment");
+                });
+
+            modelBuilder.Entity("CoachOS.Domain.Entities.CampFormField", b =>
+                {
+                    b.HasOne("CoachOS.Domain.Entities.CampEnrollmentForm", "CampEnrollmentForm")
+                        .WithMany("Fields")
+                        .HasForeignKey("CampEnrollmentFormId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CampEnrollmentForm");
+                });
+
+            modelBuilder.Entity("CoachOS.Domain.Entities.CampFormResponse", b =>
+                {
+                    b.HasOne("CoachOS.Domain.Entities.CampEnrollment", "CampEnrollment")
+                        .WithMany("FormResponses")
+                        .HasForeignKey("CampEnrollmentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CoachOS.Domain.Entities.CampFormField", "CampFormField")
+                        .WithMany("Responses")
+                        .HasForeignKey("CampFormFieldId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CampEnrollment");
+
+                    b.Navigation("CampFormField");
+                });
+
             modelBuilder.Entity("CoachOS.Domain.Entities.Enrollment", b =>
                 {
                     b.HasOne("CoachOS.Domain.Entities.EnrollmentGroup", "EnrollmentGroup")
@@ -1608,17 +2060,23 @@ namespace CoachOS.Infrastructure.Migrations
 
             modelBuilder.Entity("CoachOS.Domain.Entities.Payment", b =>
                 {
+                    b.HasOne("CoachOS.Domain.Entities.CampEnrollment", "CampEnrollment")
+                        .WithMany("Payments")
+                        .HasForeignKey("CampEnrollmentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("CoachOS.Domain.Entities.Enrollment", "Enrollment")
                         .WithMany("Payments")
                         .HasForeignKey("EnrollmentId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("CoachOS.Domain.Entities.Organization", "Organization")
                         .WithMany()
                         .HasForeignKey("OrganizationId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("CampEnrollment");
 
                     b.Navigation("Enrollment");
 
@@ -1833,6 +2291,42 @@ namespace CoachOS.Infrastructure.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("CoachOS.Domain.Entities.Camp", b =>
+                {
+                    b.Navigation("Days");
+
+                    b.Navigation("EnrollmentForm");
+
+                    b.Navigation("Enrollments");
+                });
+
+            modelBuilder.Entity("CoachOS.Domain.Entities.CampDay", b =>
+                {
+                    b.Navigation("TrainerAssignments");
+                });
+
+            modelBuilder.Entity("CoachOS.Domain.Entities.CampEnrollment", b =>
+                {
+                    b.Navigation("FormResponses");
+
+                    b.Navigation("Payments");
+                });
+
+            modelBuilder.Entity("CoachOS.Domain.Entities.CampEnrollmentForm", b =>
+                {
+                    b.Navigation("Fields");
+                });
+
+            modelBuilder.Entity("CoachOS.Domain.Entities.CampEnrollmentGroup", b =>
+                {
+                    b.Navigation("Members");
+                });
+
+            modelBuilder.Entity("CoachOS.Domain.Entities.CampFormField", b =>
+                {
+                    b.Navigation("Responses");
                 });
 
             modelBuilder.Entity("CoachOS.Domain.Entities.Enrollment", b =>

@@ -24,5 +24,27 @@ public interface IPaymentRepository
     /// </summary>
     Task<Payment?> GetLatestByEnrollmentIdAsync(Guid enrollmentId, CancellationToken ct = default);
 
+    /// <summary>
+    /// Meest recente payment voor een kamp-inschrijving (op CreatedAt desc).
+    /// Gebruikt door de publieke thank-you-page status polling.
+    /// </summary>
+    Task<Payment?> GetLatestByCampEnrollmentIdAsync(Guid campEnrollmentId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Meest recente openstaande (Pending) cash-betaling voor een kamp-inschrijving,
+    /// getrackt en gescoped op organisatie. Gebruikt wanneer de coach een cash-betaling
+    /// als betaald markeert. Tracked zodat de status-mutatie wordt opgeslagen.
+    /// </summary>
+    Task<Payment?> GetLatestPendingCashByCampEnrollmentIdAsync(
+        Guid campEnrollmentId, Guid organizationId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Meest recente betaalmethode + status per kamp-inschrijving, in één query
+    /// (vermijdt N+1 in het admin-overzicht). Inschrijvingen zonder betaling
+    /// komen niet in de dictionary voor.
+    /// </summary>
+    Task<Dictionary<Guid, (PaymentMethod? Method, PaymentStatus Status)>> GetLatestMethodAndStatusByCampEnrollmentIdsAsync(
+        IEnumerable<Guid> campEnrollmentIds, CancellationToken ct = default);
+
     Task SaveChangesAsync(CancellationToken ct = default);
 }

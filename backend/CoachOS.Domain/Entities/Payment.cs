@@ -9,7 +9,12 @@ namespace CoachOS.Domain.Entities;
 public class Payment : BaseEntity
 {
     public Guid OrganizationId { get; set; }
-    public Guid EnrollmentId { get; set; }
+
+    /// <summary>Inschrijving op een lesreeks. Null wanneer de betaling bij een kamp hoort.</summary>
+    public Guid? EnrollmentId { get; set; }
+
+    /// <summary>Inschrijving op een kamp. Null wanneer de betaling bij een reeks hoort.</summary>
+    public Guid? CampEnrollmentId { get; set; }
 
     /// <summary>Bedrag in EUR.</summary>
     public decimal Amount { get; set; }
@@ -36,5 +41,6 @@ public class Payment : BaseEntity
 
     // Navigation properties
     public Organization Organization { get; set; } = null!;
-    public Enrollment Enrollment { get; set; } = null!;
+    public Enrollment? Enrollment { get; set; }
+    public CampEnrollment? CampEnrollment { get; set; }
 }

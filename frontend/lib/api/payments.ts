@@ -28,3 +28,19 @@ export async function getPaymentStatusByEnrollment(
   );
   return data;
 }
+
+/**
+ * Status van de meest recente betaling voor een kampinschrijving.
+ * <code>sync=true</code> dwingt een Mollie-roundtrip af, net als de
+ * {@link getPaymentStatusByEnrollment} variant voor reeks-inschrijvingen.
+ */
+export async function getPaymentStatusByCampEnrollment(
+  campEnrollmentId: string,
+  sync = false,
+): Promise<PaymentStatusDto> {
+  const { data } = await apiClient.get<PaymentStatusDto>(
+    `/public/camp-enrollments/${campEnrollmentId}/payment-status`,
+    { params: { sync } },
+  );
+  return data;
+}

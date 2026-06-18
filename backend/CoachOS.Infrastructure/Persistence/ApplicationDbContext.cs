@@ -46,6 +46,20 @@ public class ApplicationDbContext(
     public DbSet<OrganizationSettings> OrganizationSettings { get; set; } = null!;
     public DbSet<MollieConnection> MollieConnections { get; set; } = null!;
     public DbSet<OAuthState> OAuthStates { get; set; } = null!;
+    public DbSet<Camp> Camps { get; set; } = null!;
+    public DbSet<CampDay> CampDays { get; set; } = null!;
+    public DbSet<CampDayTrainer> CampDayTrainers { get; set; } = null!;
+    public DbSet<CampEnrollment> CampEnrollments { get; set; } = null!;
+    public DbSet<CampEnrollmentGroup> CampEnrollmentGroups { get; set; } = null!;
+    public DbSet<CampEnrollmentForm> CampEnrollmentForms { get; set; } = null!;
+
+    // CampFormField en CampFormResponse hebben bewust GEEN tenant query filter:
+    // ze dragen zelf geen OrganizationId. Tenant-isolatie loopt via hun parent
+    // (CampFormField → CampEnrollmentForm.OrganizationId,
+    //  CampFormResponse → CampEnrollment.OrganizationId). Zelfde patroon als
+    // de bestaande FormField/FormResponse — zie ook ApplyTenantFilters().
+    public DbSet<CampFormField> CampFormFields { get; set; } = null!;
+    public DbSet<CampFormResponse> CampFormResponses { get; set; } = null!;
     public DbSet<TrainerAvailability> TrainerAvailabilities { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder builder)
@@ -74,6 +88,14 @@ public class ApplicationDbContext(
         builder.ApplyConfiguration(new OrganizationSettingsConfiguration());
         builder.ApplyConfiguration(new MollieConnectionConfiguration());
         builder.ApplyConfiguration(new OAuthStateConfiguration());
+        builder.ApplyConfiguration(new CampConfiguration());
+        builder.ApplyConfiguration(new CampDayConfiguration());
+        builder.ApplyConfiguration(new CampDayTrainerConfiguration());
+        builder.ApplyConfiguration(new CampEnrollmentConfiguration());
+        builder.ApplyConfiguration(new CampEnrollmentGroupConfiguration());
+        builder.ApplyConfiguration(new CampEnrollmentFormConfiguration());
+        builder.ApplyConfiguration(new CampFormFieldConfiguration());
+        builder.ApplyConfiguration(new CampFormResponseConfiguration());
         builder.ApplyConfiguration(new TrainerAvailabilityConfiguration());
 
         ApplyTenantFilters(builder);
@@ -119,6 +141,23 @@ public class ApplicationDbContext(
             _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
         builder.Entity<OAuthState>().HasQueryFilter(e =>
             _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
+        builder.Entity<Camp>().HasQueryFilter(e =>
+            _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
+        builder.Entity<CampDay>().HasQueryFilter(e =>
+            _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
+        builder.Entity<CampDayTrainer>().HasQueryFilter(e =>
+            _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
+        builder.Entity<CampEnrollment>().HasQueryFilter(e =>
+            _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
+        builder.Entity<CampEnrollmentGroup>().HasQueryFilter(e =>
+            _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
+        builder.Entity<CampEnrollmentForm>().HasQueryFilter(e =>
+            _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
+
+        // Bewust GEEN filter voor CampFormField en CampFormResponse: deze entities
+        // hebben geen eigen OrganizationId en zijn tenant-geïsoleerd via hun parent
+        // (CampEnrollmentForm.OrganizationId resp. CampEnrollment.OrganizationId).
+        // Zelfde patroon als FormField/FormResponse hierboven.
         builder.Entity<TrainerAvailability>().HasQueryFilter(e =>
             _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
     }

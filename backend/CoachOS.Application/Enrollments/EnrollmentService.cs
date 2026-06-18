@@ -1,5 +1,6 @@
 using System.Data;
 using System.Text.Json;
+using CoachOS.Application.Common;
 using CoachOS.Application.Enrollments.DTOs;
 using CoachOS.Application.LessonSerie.DTOs;
 using CoachOS.Application.Mappings;
@@ -207,30 +208,11 @@ public class EnrollmentService(
         // 4. Validate form responses against actual form fields (pre-transaction: cheap, no race risk)
         if (form is not null)
         {
-            var formFieldIds = form.Fields.Select(f => f.Id).ToHashSet();
-
-            // Reject responses referencing fields that don't belong to this form
-            foreach (var response in request.Responses)
-            {
-                if (!formFieldIds.Contains(response.FormFieldId))
-                    return Result<Guid>.Fail(
-                        new Error(ErrorCodes.Validation, "Ongeldig formulierveld."));
-            }
-
-            // Validate required fields have a non-empty response
-            var requiredFields = form.Fields
-                .Where(f => f.IsRequired)
-                .ToList();
-
-            foreach (var requiredField in requiredFields)
-            {
-                var hasResponse = request.Responses.Any(r =>
-                    r.FormFieldId == requiredField.Id && !string.IsNullOrWhiteSpace(r.Value));
-
-                if (!hasResponse)
-                    return Result<Guid>.Fail(
-                        new Error(ErrorCodes.Validation, $"Veld '{requiredField.Label}' is verplicht."));
-            }
+            Error? formError = FormResponseValidator.Validate(
+                form.Fields.Select(f => (f.Id, f.IsRequired, f.Label)),
+                request.Responses.Select(r => (r.FormFieldId, r.Value)));
+            if (formError is not null)
+                return Result<Guid>.Fail(formError);
         }
 
         var groupSize = request.EnrollmentType == "group" && request.GroupMembers is not null

@@ -45,10 +45,18 @@ public class PaymentConfiguration : IEntityTypeConfiguration<Payment>
         builder.HasOne(p => p.Enrollment)
             .WithMany(e => e.Payments)
             .HasForeignKey(p => p.EnrollmentId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .OnDelete(DeleteBehavior.Restrict)
+            .IsRequired(false);
+
+        builder.HasOne(p => p.CampEnrollment)
+            .WithMany(e => e.Payments)
+            .HasForeignKey(p => p.CampEnrollmentId)
+            .OnDelete(DeleteBehavior.Restrict)
+            .IsRequired(false);
 
         builder.HasIndex(p => p.OrganizationId);
         builder.HasIndex(p => p.EnrollmentId);
+        builder.HasIndex(p => p.CampEnrollmentId);
 
         // Unique index voor webhook-lookup, alleen waar MolliePaymentId niet null is.
         builder.HasIndex(p => p.MolliePaymentId)
