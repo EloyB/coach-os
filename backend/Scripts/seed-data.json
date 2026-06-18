@@ -128,13 +128,14 @@
       { "dayOfWeek": 5, "startTime": "10:00", "endTime": "11:00", "courtName": "Baan 1", "maxStudents": 4 },
       { "dayOfWeek": 5, "startTime": "10:00", "endTime": "11:00", "courtName": "Baan 2", "maxStudents": 4 },
       { "dayOfWeek": 5, "startTime": "11:00", "endTime": "12:00", "courtName": "Baan 1", "maxStudents": 4 }
-    ]
+    ],
+    "ageCategoryOptions": ["8-10 jaar", "11-13 jaar", "14-17 jaar", "Volwassenen"]
   },
   "planningEnrollments": [
     {
       "label": "Family De Boer (group of 3, Wed afternoon, open to merge)",
       "studentName": "Sofie De Boer", "studentEmail": "sofie.deboer@gmail.com", "studentPhone": "+32478112233",
-      "enrollmentType": "group", "isOpenToGrouping": true,
+      "enrollmentType": "group", "isOpenToGrouping": true, "ageCategory": "8-10 jaar",
       "groupMembers": [
         { "studentName": "Fien De Boer", "studentEmail": "sofie.deboer+fien@gmail.com", "studentPhone": null },
         { "studentName": "Stan De Boer", "studentEmail": "sofie.deboer+stan@gmail.com", "studentPhone": null }
@@ -144,7 +145,7 @@
     {
       "label": "Couple Peeters-Janssens (group of 2, evenings only, exclusive)",
       "studentName": "Bart Peeters", "studentEmail": "bart.peeters@outlook.be", "studentPhone": "+32479223344",
-      "enrollmentType": "group", "isOpenToGrouping": false,
+      "enrollmentType": "group", "isOpenToGrouping": false, "ageCategory": "Volwassenen",
       "groupMembers": [
         { "studentName": "Lisa Janssens", "studentEmail": "lisa.janssens@outlook.be", "studentPhone": "+32479223345" }
       ],
@@ -153,55 +154,55 @@
     {
       "label": "Emma Van Acker (solo, open, Wed+Sat)",
       "studentName": "Emma Van Acker", "studentEmail": "emma.vanacker@student.be", "studentPhone": "+32468001122",
-      "enrollmentType": "solo", "isOpenToGrouping": true,
+      "enrollmentType": "solo", "isOpenToGrouping": true, "ageCategory": "14-17 jaar",
       "slotPreferences": [1, 1, 3, 2, 2, 2, 3, 3, 2, 2, 1]
     },
     {
       "label": "Thomas Wouters (solo, open, Wed+Sat — auto-merge candidate)",
       "studentName": "Thomas Wouters", "studentEmail": "thomas.w@student.be", "studentPhone": "+32468003344",
-      "enrollmentType": "solo", "isOpenToGrouping": true,
+      "enrollmentType": "solo", "isOpenToGrouping": true, "ageCategory": "14-17 jaar",
       "slotPreferences": [3, 3, 3, 2, 2, 1, 3, 3, 2, 1, 2]
     },
     {
       "label": "Noor Hendrickx (solo, open, Tue+Thu evenings)",
       "studentName": "Noor Hendrickx", "studentEmail": "noor.h@telenet.be", "studentPhone": "+32473556677",
-      "enrollmentType": "solo", "isOpenToGrouping": true,
+      "enrollmentType": "solo", "isOpenToGrouping": true, "ageCategory": "Volwassenen",
       "slotPreferences": [2, 1, 2, 3, 3, 3, 2, 1, 3, 3, 3]
     },
     {
       "label": "Pieter Vermeersch (solo, open, flexible retiree)",
       "studentName": "Pieter Vermeersch", "studentEmail": "pieter.verm@skynet.be", "studentPhone": "+32475889900",
-      "enrollmentType": "solo", "isOpenToGrouping": true,
+      "enrollmentType": "solo", "isOpenToGrouping": true, "ageCategory": "Volwassenen",
       "slotPreferences": [1, 1, 1, 2, 2, 1, 1, 1, 2, 2, 1]
     },
     {
       "label": "Sarah Dubois (solo, exclusive, Thu+Sat only — low overlap)",
       "studentName": "Sarah Dubois", "studentEmail": "sarah.dubois@uzleuven.be", "studentPhone": "+32471990011",
-      "enrollmentType": "solo", "isOpenToGrouping": false,
+      "enrollmentType": "solo", "isOpenToGrouping": false, "ageCategory": "Volwassenen",
       "slotPreferences": [3, 3, 3, 3, 3, 3, 2, 1, 2, 1, 1]
     },
     {
       "label": "Kevin Goossens (solo, open, Tue evenings — auto-merge candidate with Noor)",
       "studentName": "Kevin Goossens", "studentEmail": "kevin.g@proximus.be", "studentPhone": "+32476001122",
-      "enrollmentType": "solo", "isOpenToGrouping": true,
+      "enrollmentType": "solo", "isOpenToGrouping": true, "ageCategory": "Volwassenen",
       "slotPreferences": [1, 1, 2, 3, 3, 3, 2, 3, 3, 3, 3]
     },
     {
       "label": "Ines Claes (solo, open, Sat morning)",
       "studentName": "Ines Claes", "studentEmail": "ines.claes@hotmail.com", "studentPhone": "+32479112233",
-      "enrollmentType": "solo", "isOpenToGrouping": true,
+      "enrollmentType": "solo", "isOpenToGrouping": true, "ageCategory": "11-13 jaar",
       "slotPreferences": [3, 3, 3, 3, 3, 3, 3, 3, 1, 1, 2]
     },
     {
       "label": "Jules Van Damme (solo, open, Saturday only)",
       "studentName": "Jules Van Damme", "studentEmail": "jules.vd@gmail.com", "studentPhone": "+32478334455",
-      "enrollmentType": "solo", "isOpenToGrouping": true,
+      "enrollmentType": "solo", "isOpenToGrouping": true, "ageCategory": "14-17 jaar",
       "slotPreferences": [3, 3, 3, 3, 3, 3, 3, 3, 2, 2, 2]
     },
     {
       "label": "Marie-Claire Vos (solo, open, Tue evening — auto-merge candidate)",
       "studentName": "Marie-Claire Vos", "studentEmail": "mc.vos@gmail.com", "studentPhone": "+32474556677",
-      "enrollmentType": "solo", "isOpenToGrouping": true,
+      "enrollmentType": "solo", "isOpenToGrouping": true, "ageCategory": "Volwassenen",
       "slotPreferences": [2, 2, 1, 3, 3, 3, 1, 3, 3, 3, 3]
     }
   ],
