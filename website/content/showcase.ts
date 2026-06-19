@@ -1,5 +1,6 @@
 import {
   CalendarRange,
+  Tent,
   ClipboardList,
   BrainCircuit,
   FormInput,
@@ -51,6 +52,25 @@ export const SHOWCASE: ShowcaseItem[] = [
     image: {
       src: "",
       alt: "CoachOS dashboard met een lessenreeks-overzicht: weken van een seizoen met lessen per dag en capaciteit per groep.",
+      width: 1600,
+      height: 1000,
+    },
+  },
+  {
+    id: "tenniskampen",
+    icon: Tent,
+    kicker: "KAMPEN",
+    heading: "Meerdaagse kampen en stages, zonder gedoe.",
+    body: "Naast lessenreeksen organiseer je ook tenniskampen en stages: een aaneengesloten periode waarvoor spelers zich eenmalig inschrijven. Stel per dag de uren in en wijs trainers toe met hun eigen aanwezigheidsuren.",
+    bullets: [
+      "Een kamp over meerdere dagen, met eigen uren per dag",
+      "Meerdere trainers per kamp, elk met hun eigen uren per dag",
+      "Publieke inschrijving en betaling: cash of online",
+    ],
+    chrome: "dashboard",
+    image: {
+      src: "",
+      alt: "CoachOS dashboard met een tenniskamp: meerdere dagen met kampuren en de toegewezen trainers per dag.",
       width: 1600,
       height: 1000,
     },
