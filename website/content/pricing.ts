@@ -68,7 +68,7 @@ export const PRICING_TIERS: PricingTier[] = [
       "1 club of locatie",
       "Formulierbouwer per lessenreeks",
       "Planningsalgoritme",
-      "Mollie betalingen (op de roadmap)",
+      "Mollie betalingen (Bancontact + iDEAL)",
       "Prioritaire ondersteuning",
     ],
   },
@@ -163,8 +163,8 @@ export const PRICING_COMPARE: CompareGroup[] = [
         feature: "Mollie (Bancontact + iDEAL)",
         values: {
           starter: false,
-          club: "Op de roadmap",
-          federatie: "Op de roadmap",
+          club: true,
+          federatie: true,
         },
       },
       {

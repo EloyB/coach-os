@@ -42,8 +42,8 @@ export const FEATURES: Feature[] = [
   },
   {
     icon: CreditCard,
-    title: "Betalingen (op de roadmap)",
-    body: "Mollie-integratie voor Bancontact en iDEAL. Cash betalingen handmatig registreren kan vandaag al.",
+    title: "Betalingen",
+    body: "Mollie-integratie voor Bancontact en iDEAL. Cash betalingen handmatig registreren kan ook.",
   },
 ];
 

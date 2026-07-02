@@ -43,7 +43,7 @@ export const FAQ: FaqEntry[] = [
   },
   {
     q: "Hoe zit het met betalingen?",
-    a: "Cash betalingen registreer je vandaag al manueel per inschrijving. Online betalen via Mollie (Bancontact + iDEAL) staat op de roadmap voor de eerste release.",
+    a: "Cash betalingen registreer je manueel per inschrijving. Online betalen via Mollie (Bancontact + iDEAL) is beschikbaar — leerlingen betalen direct bij inschrijving.",
   },
   {
     q: "Wat doen jullie met de gegevens van leerlingen?",
