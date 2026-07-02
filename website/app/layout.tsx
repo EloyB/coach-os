@@ -15,21 +15,21 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL("https://coach-os.be"),
   title: {
-    default: "CoachOS — Lessenplanning voor tennis- en padelclubs",
+    default: "CoachOS — Lessenplanning voor tennis- en padelscholen",
     template: "%s · CoachOS",
   },
   description:
-    "Lessenplanning voor tennis- en padelclubs in Nederland en België. Lessenreeksen, anonieme inschrijvingen, automatische scheduling en magic-link bevestiging.",
+    "Lessenplanning voor tennis- en padelscholen in Nederland en België. Lessenreeksen, anonieme inschrijvingen, automatische scheduling en magic-link bevestiging.",
   applicationName: "CoachOS",
   authors: [{ name: "CoachOS" }],
   keywords: [
-    "lessenplanning tennisclub",
-    "lessenplanning padelclub",
+    "lessenplanning tennisschool",
+    "lessenplanning padelschool",
     "tennisles inschrijven",
     "padel lessenreeksen",
-    "ledenadministratie tennisclub",
+    "leerlingadministratie tennisschool",
     "trainersplanning",
-    "sportclub software Benelux",
+    "lessenplanning software Benelux",
   ],
   category: "business",
   openGraph: {
@@ -37,16 +37,16 @@ export const metadata: Metadata = {
     locale: "nl_BE",
     alternateLocale: ["nl_NL"],
     url: "https://coach-os.be",
-    title: "CoachOS — Lessenplanning voor tennis- en padelclubs",
+    title: "CoachOS — Lessenplanning voor tennis- en padelscholen",
     description:
-      "Een planning die zichzelf bevestigt. Lessenreeksen, anonieme inschrijvingen en automatische scheduling voor tennis- en padelclubs in de Benelux.",
+      "Een planning die zichzelf bevestigt. Lessenreeksen, anonieme inschrijvingen en automatische scheduling voor tennis- en padelscholen in de Benelux.",
     siteName: "CoachOS",
   },
   twitter: {
     card: "summary_large_image",
-    title: "CoachOS — Lessenplanning voor tennis- en padelclubs",
+    title: "CoachOS — Lessenplanning voor tennis- en padelscholen",
     description:
-      "Lessenplanning voor tennis- en padelclubs in Nederland en België.",
+      "Lessenplanning voor tennis- en padelscholen in Nederland en België.",
   },
   alternates: {
     canonical: "https://coach-os.be",

@@ -37,13 +37,13 @@ export interface PublicLessonSeries {
 }
 
 export const LESSON_SERIES_HEADING =
-  "Lessenreeksen bij clubs die met CoachOS werken";
+  "Lessenreeksen bij scholen die met CoachOS werken";
 
 export const LESSON_SERIES_SUB =
-  "Bekijk de lessen die clubs in jouw buurt publiceren. Inschrijven gaat anoniem via een publieke link — geen account nodig.";
+  "Bekijk de lessen die scholen in jouw buurt publiceren. Inschrijven gaat anoniem via een publieke link — geen account nodig.";
 
 export const LESSON_SERIES_DISCLAIMER =
-  "Demovoorbeelden — de clubs en lessen op deze pagina zijn fictief. Echte lessenreeksen verschijnen hier zodra clubs hun planning publiceren.";
+  "Demovoorbeelden — de scholen en lessen op deze pagina zijn fictief. Echte lessenreeksen verschijnen hier zodra scholen hun planning publiceren.";
 
 export const LESSON_SERIES: PublicLessonSeries[] = [
   {

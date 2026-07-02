@@ -12,7 +12,7 @@ export function PricingCompare() {
             VERGELIJKING
           </Mono>
           <h2 className="mt-3 text-3xl font-bold tracking-tight md:text-4xl">
-            Welk abonnement past bij jouw club?
+            Welk abonnement past bij jouw school?
           </h2>
           <p className="mt-3 text-base text-ink-2">
             Alle limieten en functies per tier op één plek.

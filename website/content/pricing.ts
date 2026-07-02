@@ -31,7 +31,7 @@ export interface PricingTier {
   features: string[];
 }
 
-export const PRICING_HEADING = "Eerlijke tarieven, voor elke clubmaat";
+export const PRICING_HEADING = "Eerlijke tarieven, voor elke schoolgrootte";
 export const PRICING_SUB =
   "Geen verborgen kosten per leerling. Betaal maandelijks, of kies jaarlijks en bespaar €5 per maand.";
 
@@ -50,7 +50,7 @@ export const PRICING_TIERS: PricingTier[] = [
     features: [
       "1 trainer",
       "Tot 50 actieve leerlingen",
-      "1 club of locatie",
+      "1 school of locatie",
       "Anonieme inschrijvingen",
       "Magic-link bevestigingen",
       "E-mail ondersteuning",
@@ -58,17 +58,17 @@ export const PRICING_TIERS: PricingTier[] = [
   },
   {
     id: "club",
-    name: "Club",
-    tagline: "Voor tennis- en padelclubs met meerdere trainers.",
+    name: "School",
+    tagline: "Voor tennis- en padelscholen met meerdere trainers.",
     priceMonthly: 70,
     priceSuffix: "/maand",
     priceHelper: "Excl. btw · maandelijks opzegbaar",
     featured: true,
-    cta: { label: "Kies Club", href: "#contact" },
+    cta: { label: "Kies School", href: "#contact" },
     features: [
       "Tot 10 trainers",
       "Onbeperkt aantal leerlingen",
-      "1 club of locatie",
+      "1 school of locatie",
       "Formulierbouwer per lessenreeks",
       "Planningsalgoritme",
       "Mollie betalingen (Bancontact + iDEAL)",
@@ -78,14 +78,14 @@ export const PRICING_TIERS: PricingTier[] = [
   {
     id: "federatie",
     name: "Federatie",
-    tagline: "Voor multi-locatie clubs en overkoepelende organisaties.",
+    tagline: "Voor multi-locatie scholen en overkoepelende organisaties.",
     priceMonthly: 99,
     priceSuffix: "/maand",
     priceHelper: "Excl. btw · maandelijks opzegbaar",
     cta: { label: "Kies Federatie", href: "#contact" },
     features: [
       "Onbeperkte trainers",
-      "Multi-club / multi-locatie",
+      "Meerdere scholen / locaties",
       "Single sign-on (op aanvraag)",
       "Aangepaste rapportering",
       "Aangepaste integraties",
@@ -125,7 +125,7 @@ export const PRICING_COMPARE: CompareGroup[] = [
         },
       },
       {
-        feature: "Clubs / locaties",
+        feature: "Scholen / locaties",
         values: { starter: "1", club: "1", federatie: "Onbeperkt" },
       },
     ],
@@ -180,7 +180,7 @@ export const PRICING_COMPARE: CompareGroup[] = [
     label: "Beheer & integraties",
     rows: [
       {
-        feature: "Multi-club beheer",
+        feature: "Multi-locatie beheer",
         values: { starter: false, club: false, federatie: true },
       },
       {
@@ -232,15 +232,15 @@ export const PRICING_FAQ: PricingFaqEntry[] = [
   },
   {
     q: "Zit btw inbegrepen?",
-    a: "Nee. Alle bedragen zijn excl. btw. Voor Belgische klanten geldt 21%, voor Nederlandse klanten 21%. Btw-nummers van clubs en zelfstandigen worden op de factuur vermeld.",
+    a: "Nee. Alle bedragen zijn excl. btw. Voor Belgische klanten geldt 21%, voor Nederlandse klanten 21%. Btw-nummers van scholen en zelfstandigen worden op de factuur vermeld.",
   },
   {
     q: "Kan ik maandelijks opzeggen?",
     a: "Ja. Op een maandabonnement zeg je op vóór de eerstvolgende factuurdatum en loopt je toegang tot het einde van de lopende maand. Kies je voor jaarlijkse facturatie, dan betaal je het jaar vooruit met €5 per maand korting.",
   },
   {
-    q: "Bieden jullie korting voor sportfederaties of meerdere clubs?",
-    a: "Ja. Bij meerdere clubs binnen één federatie of overkoepelende organisatie maken we een gecombineerde offerte. Neem contact op voor een berekening op basis van het aantal locaties en trainers.",
+    q: "Bieden jullie korting voor meerdere scholen of federaties?",
+    a: "Ja. Bij meerdere scholen binnen één federatie of overkoepelende organisatie maken we een gecombineerde offerte. Neem contact op voor een berekening op basis van het aantal locaties en trainers.",
   },
   {
     q: "Welke betaalmethodes accepteren jullie zelf?",
@@ -252,7 +252,7 @@ export const PRICING_FAQ: PricingFaqEntry[] = [
   },
   {
     q: "Bestaat er een gratis proefperiode?",
-    a: "Ja. Tijdens de pre-launch krijgen alle clubs een verlengde proefperiode van 60 dagen, zonder betaalgegevens vooraf. Je beslist na een volledig seizoen of je doorgaat.",
+    a: "Ja. Tijdens de pre-launch krijgen alle scholen een verlengde proefperiode van 60 dagen, zonder betaalgegevens vooraf. Je beslist na een volledig seizoen of je doorgaat.",
   },
 ];
 

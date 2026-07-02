@@ -41,10 +41,10 @@ export const COMPARISON: ComparisonRow[] = [
       "Eén klik herverdeling. Het algoritme stelt voor wat verandert, de rest van de groep blijft ongemoeid.",
   },
   {
-    task: "Meerdere trainers of clubs",
+    task: "Meerdere trainers of scholen",
     excel:
       "versie_v3, versie_definitief, versie_definitief_v2. Niemand weet welke kopie de meest recente is.",
     coachos:
-      "Eén centrale bron. Rollen per club, en wisselen tussen organisaties met één klik.",
+      "Eén centrale bron. Rollen per school, en wisselen tussen organisaties met één klik.",
   },
 ];

@@ -24,9 +24,9 @@ export function BlogIndex() {
             </h1>
             <p className="mt-5 max-w-2xl text-lg leading-relaxed text-ink-2">
               Hoe je een seizoen plant zonder Excel, wat de AVG-eisen zijn voor
-              een tennisclub, en waarom magic-link bevestigingen
+              een tennisschool, en waarom magic-link bevestigingen
               gebruiksvriendelijker zijn dan accounts. Praktische gidsen voor
-              clubs en trainers.
+              scholen en trainers.
             </p>
           </div>
         </section>
@@ -83,7 +83,7 @@ function BlogIndexJsonLd() {
     "@id": `${SITE_URL}/blog`,
     name: "CoachOS Blog",
     description:
-      "Gidsen en achtergronden over lessenplanning voor tennis- en padelclubs.",
+      "Gidsen en achtergronden over lessenplanning voor tennis- en padelscholen.",
     inLanguage: "nl",
     publisher: { "@id": `${SITE_URL}/#organization` },
     blogPost: POSTS_BY_DATE.map((p) => ({

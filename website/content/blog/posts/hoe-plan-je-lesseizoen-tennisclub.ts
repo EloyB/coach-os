@@ -1,22 +1,22 @@
 import type { BlogPost } from "@/content/blog/types";
 
 export const HOE_PLAN_JE_LESSEIZOEN_TENNISCLUB: BlogPost = {
-  slug: "hoe-plan-je-lesseizoen-tennisclub",
-  title: "Hoe plan je een lesseizoen voor je tennisclub",
-  metaTitle: "Hoe plan je een lesseizoen voor je tennisclub · CoachOS",
+  slug: "hoe-plan-je-lesseizoen-tennisschool",
+  title: "Hoe plan je een lesseizoen voor je tennisschool",
+  metaTitle: "Hoe plan je een lesseizoen voor je tennisschool · CoachOS",
   metaDescription:
-    "Praktische gids om een lesseizoen op te zetten voor je tennisclub: kalender, niveaus, inschrijvingen en planning — zonder Excel en zonder oneindig veel mails.",
+    "Praktische gids om een lesseizoen op te zetten voor je tennisschool: kalender, niveaus, inschrijvingen en planning — zonder Excel en zonder oneindig veel mails.",
   publishedAt: "2026-05-07",
   readMinutes: 6,
   category: "GIDS · LESPLANNING",
-  tags: ["lessenplanning", "tennisclub", "seizoen", "praktische gids"],
-  lead: "Een tennisseizoen plannen begint niet bij het verdelen van leerlingen, maar bij een degelijke kalender en een duidelijk groeperingskader. Wie die twee in orde heeft, plant een heel seizoen in één middag — wie ze overslaat, blijft het hele seizoen brandjes blussen. Deze gids loopt stap voor stap door wat een tennisclub nodig heeft om de planning werkbaar én voorspelbaar te maken.",
+  tags: ["lessenplanning", "tennisschool", "seizoen", "praktische gids"],
+  lead: "Een tennisseizoen plannen begint niet bij het verdelen van leerlingen, maar bij een degelijke kalender en een duidelijk groeperingskader. Wie die twee in orde heeft, plant een heel seizoen in één middag — wie ze overslaat, blijft het hele seizoen brandjes blussen. Deze gids loopt stap voor stap door wat een tennisschool nodig heeft om de planning werkbaar én voorspelbaar te maken.",
   sections: [
     {
       heading: "1. Begin met je seizoenskalender",
       paragraphs: [
-        "Voor je over groepjes of inschrijvingen nadenkt: zet de kalender vast. Een seizoen telt typisch 14 tot 16 lesweken, met onderbrekingen voor vakanties, federatieverplichtingen en clubevenementen. Hoe nauwkeuriger die data vooraf staan, hoe minder je later moet schuiven.",
-        "Verzamel concreet: schoolvakanties van zowel Nederland als Vlaanderen (als je leden uit beide regio's komt), KNLTB- of Tennis Vlaanderen-data, geplande tornooien, en bekende clubevenementen zoals openingsdagen en jeugdkampen. Bouw vanuit die uitsluitingslijst je leskalender op.",
+        "Voor je over groepjes of inschrijvingen nadenkt: zet de kalender vast. Een seizoen telt typisch 14 tot 16 lesweken, met onderbrekingen voor vakanties, federatieverplichtingen en schoolevenementen. Hoe nauwkeuriger die data vooraf staan, hoe minder je later moet schuiven.",
+        "Verzamel concreet: schoolvakanties van zowel Nederland als Vlaanderen (als je leerlingen uit beide regio's komt), KNLTB- of Tennis Vlaanderen-data, geplande tornooien, en bekende schoolevenementen zoals openingsdagen en jeugdkampen. Bouw vanuit die uitsluitingslijst je leskalender op.",
       ],
       bullets: [
         "Lesperiode: meestal mid-september tot eind juni, met winterstop",
@@ -31,12 +31,12 @@ export const HOE_PLAN_JE_LESSEIZOEN_TENNISCLUB: BlogPost = {
     {
       heading: "2. Bepaal je groeperingsniveau",
       paragraphs: [
-        "Tennisclubs werken meestal met drie tot vijf niveaus: mini's (4-7), juniors beginners, juniors gevorderden, volwassenen recreatief en volwassenen competitie. Hoe meer niveaus, hoe gerichter de les — maar ook hoe moeilijker de planning, want elk niveau moet voldoende inschrijvingen hebben om door te gaan.",
+        "Tennisscholen werken meestal met drie tot vijf niveaus: mini's (4-7), juniors beginners, juniors gevorderden, volwassenen recreatief en volwassenen competitie. Hoe meer niveaus, hoe gerichter de les — maar ook hoe moeilijker de planning, want elk niveau moet voldoende inschrijvingen hebben om door te gaan.",
         "Een vuistregel: minimaal vier leerlingen per groep om de les boeiend te houden, maximaal zes om iedereen genoeg balcontact te geven. Onder de vier wordt het een privéles in vermomming; boven de zes wordt het een rondje slaan.",
       ],
       callout: {
         tone: "info",
-        text: "Voor de eerste twee jaren van een nieuwe club: hou je niveaus simpel. Mini, junior, volwassen. Verfijn pas wanneer je per niveau structureel 8+ leerlingen hebt.",
+        text: "Voor de eerste twee jaren van een nieuwe school: hou je niveaus simpel. Mini, junior, volwassen. Verfijn pas wanneer je per niveau structureel 8+ leerlingen hebt.",
       },
     },
     {
@@ -90,7 +90,7 @@ export const HOE_PLAN_JE_LESSEIZOEN_TENNISCLUB: BlogPost = {
     },
     {
       q: "Wanneer is Excel niet meer voldoende?",
-      a: "Vanaf zo'n 50 actieve leerlingen wordt Excel een blokkade in plaats van een hulpmiddel. Wijzigingen propageren niet, formules breken, en niemand weet welke versie de meest recente is. Voor clubs met meer dan 50 leerlingen verdient een dedicated tool zich terug in tijdwinst alleen al.",
+      a: "Vanaf zo'n 50 actieve leerlingen wordt Excel een blokkade in plaats van een hulpmiddel. Wijzigingen propageren niet, formules breken, en niemand weet welke versie de meest recente is. Voor scholen met meer dan 50 leerlingen verdient een dedicated tool zich terug in tijdwinst alleen al.",
     },
   ],
   related: ["anonieme-inschrijving-avg"],

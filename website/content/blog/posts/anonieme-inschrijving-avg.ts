@@ -6,12 +6,12 @@ export const ANONIEME_INSCHRIJVING_AVG: BlogPost = {
   metaTitle:
     "Anonieme inschrijving: AVG-conform leerlingen onboarden · CoachOS",
   metaDescription:
-    "Hoe een sportclub leerlingen inschrijft zonder accounts en AVG-conform werkt: minimale data, magic-link bevestiging, duidelijke bewaartermijnen.",
+    "Hoe een tennis- of padelschool leerlingen inschrijft zonder accounts en AVG-conform werkt: minimale data, magic-link bevestiging, duidelijke bewaartermijnen.",
   publishedAt: "2026-05-07",
   readMinutes: 5,
   category: "GIDS · AVG",
   tags: ["AVG", "GDPR", "anonieme inschrijving", "privacy", "magic link"],
-  lead: "Anonieme inschrijving betekent dat een leerling zich kan inschrijven voor een lessenreeks zonder een account aan te maken: alleen naam en e-mailadres volstaan, en bevestiging gebeurt via een tijdelijke magic-link in plaats van een wachtwoord. Voor sportclubs is dit niet alleen gebruiksvriendelijker — het is ook de meest AVG-conforme manier om leerlinggegevens te onboarden, omdat je per definitie minder data verzamelt dan strikt nodig.",
+  lead: "Anonieme inschrijving betekent dat een leerling zich kan inschrijven voor een lessenreeks zonder een account aan te maken: alleen naam en e-mailadres volstaan, en bevestiging gebeurt via een tijdelijke magic-link in plaats van een wachtwoord. Voor scholen is dit niet alleen gebruiksvriendelijker — het is ook de meest AVG-conforme manier om leerlinggegevens te onboarden, omdat je per definitie minder data verzamelt dan strikt nodig.",
   sections: [
     {
       heading: "Wat 'anonieme inschrijving' juridisch betekent",
@@ -56,7 +56,7 @@ export const ANONIEME_INSCHRIJVING_AVG: BlogPost = {
     {
       heading: "Bewaartermijnen — hoe lang mag je inschrijfdata houden?",
       paragraphs: [
-        "Er is geen vaste wettelijke termijn voor inschrijfgegevens van een sportclub, maar de AVG vraagt om een 'gerechtvaardigd doel' voor de bewaartermijn. Voor lessenplanning is dat: het lopende seizoen plus één seizoen erna voor opvolging (heeft de leerling zich opnieuw ingeschreven, levert de groepering inzichten op voor volgend jaar).",
+        "Er is geen vaste wettelijke termijn voor inschrijfgegevens van een school, maar de AVG vraagt om een 'gerechtvaardigd doel' voor de bewaartermijn. Voor lessenplanning is dat: het lopende seizoen plus één seizoen erna voor opvolging (heeft de leerling zich opnieuw ingeschreven, levert de groepering inzichten op voor volgend jaar).",
         "Praktische richtlijn: bewaar inschrijfgegevens 14 maanden na het einde van de lessenreeks. Daarna automatisch geanonimiseerd of verwijderd. Boekhoudkundige verplichtingen (factuurdata, betalingen) kunnen langer bewaard blijven, maar daarvoor heb je een aparte wettelijke grondslag.",
       ],
       callout: {
@@ -67,8 +67,8 @@ export const ANONIEME_INSCHRIJVING_AVG: BlogPost = {
     {
       heading: "Wat als een leerling vragen stelt over zijn data?",
       paragraphs: [
-        "Onder de AVG heeft elke betrokkene een recht op inzage, correctie, verwijdering en data-portabiliteit. Voor een sportclub vertaalt zich dat naar één concreet ding: er moet een werkbare manier zijn om die rechten in te roepen, en je moet binnen één maand reageren.",
-        "In de praktijk: zet een duidelijk e-mailadres voor privacy-verzoeken op je website (bijvoorbeeld privacy@jouwclub.be), en zorg dat je tool die data daadwerkelijk kan inzien, corrigeren en verwijderen op verzoek. Een handmatig 'rij verwijderen in Excel' werkt niet — er moet traceerbaarheid zijn dat het verzoek is uitgevoerd.",
+        "Onder de AVG heeft elke betrokkene een recht op inzage, correctie, verwijdering en data-portabiliteit. Voor een school vertaalt zich dat naar één concreet ding: er moet een werkbare manier zijn om die rechten in te roepen, en je moet binnen één maand reageren.",
+        "In de praktijk: zet een duidelijk e-mailadres voor privacy-verzoeken op je website (bijvoorbeeld privacy@jouwschool.be), en zorg dat je tool die data daadwerkelijk kan inzien, corrigeren en verwijderen op verzoek. Een handmatig 'rij verwijderen in Excel' werkt niet — er moet traceerbaarheid zijn dat het verzoek is uitgevoerd.",
       ],
     },
   ],
@@ -87,12 +87,12 @@ export const ANONIEME_INSCHRIJVING_AVG: BlogPost = {
     },
     {
       q: "Heb ik een verwerkingsregister nodig?",
-      a: "Vanaf 250 leerlingen of bij verwerking van bijzondere persoonsgegevens (bijvoorbeeld medische info) is een verwerkingsregister verplicht. Voor kleinere clubs is het sterk aangeraden — het zorgt dat je weet welke data je verzamelt en waarom.",
+      a: "Vanaf 250 leerlingen of bij verwerking van bijzondere persoonsgegevens (bijvoorbeeld medische info) is een verwerkingsregister verplicht. Voor kleinere scholen is het sterk aangeraden — het zorgt dat je weet welke data je verzamelt en waarom.",
     },
     {
       q: "Wat als CoachOS de data verwerkt — wie is verantwoordelijk?",
-      a: "Jij als club blijft verwerkingsverantwoordelijke; CoachOS treedt op als verwerker. Daarvoor hoort een verwerkersovereenkomst (DPA) bij die de afspraken vastlegt. CoachOS levert die als standaardbijlage bij elke pilot- of klantcontract.",
+      a: "Jij als school blijft verwerkingsverantwoordelijke; CoachOS treedt op als verwerker. Daarvoor hoort een verwerkersovereenkomst (DPA) bij die de afspraken vastlegt. CoachOS levert die als standaardbijlage bij elke pilot- of klantcontract.",
     },
   ],
-  related: ["hoe-plan-je-lesseizoen-tennisclub"],
+  related: ["hoe-plan-je-lesseizoen-tennisschool"],
 };

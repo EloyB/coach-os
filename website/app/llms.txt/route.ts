@@ -17,7 +17,7 @@ export function GET() {
   lines.push("# CoachOS");
   lines.push("");
   lines.push(
-    "> Lessenplanningsysteem voor tennis- en padelclubs. Trainers stellen een lessenreeks één keer in, leerlingen schrijven zich anoniem in via een publieke link, en een planningsalgoritme verdeelt iedereen automatisch over slots op niveau en voorkeur. Geen accounts voor leerlingen, geen Excel, geen oneindig veel mails.",
+    "> Lessenplanningsysteem voor tennis- en padelscholen. Trainers stellen een lessenreeks één keer in, leerlingen schrijven zich anoniem in via een publieke link, en een planningsalgoritme verdeelt iedereen automatisch over slots op niveau en voorkeur. Geen accounts voor leerlingen, geen Excel, geen oneindig veel mails.",
   );
   lines.push("");
   lines.push(

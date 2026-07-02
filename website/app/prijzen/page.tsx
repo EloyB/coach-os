@@ -19,7 +19,7 @@ const PAGE_URL = `${SITE_URL}/prijzen`;
 export const metadata: Metadata = {
   title: "Prijzen — lessenplanning vanaf €35/maand",
   description:
-    "Tarieven voor CoachOS — lessenplanning voor tennis- en padelclubs. Starter, Club en Federatie. Maandelijks opzegbaar, geen verborgen kosten per leerling.",
+    "Tarieven voor CoachOS — lessenplanning voor tennis- en padelscholen. Starter, School en Federatie. Maandelijks opzegbaar, geen verborgen kosten per leerling.",
   alternates: {
     canonical: PAGE_URL,
     languages: {
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
     url: PAGE_URL,
     title: "Prijzen — CoachOS",
     description:
-      "Tarieven voor CoachOS, lessenplanning voor tennis- en padelclubs. Vanaf €35/maand. Maandelijks opzegbaar.",
+      "Tarieven voor CoachOS, lessenplanning voor tennis- en padelscholen. Vanaf €35/maand. Maandelijks opzegbaar.",
     siteName: "CoachOS",
   },
 };
@@ -98,7 +98,7 @@ export default function PrijzenPage() {
               leerling.
             </h1>
             <p className="mt-5 max-w-2xl text-lg leading-relaxed text-ink-2">
-              Drie abonnementen voor zelfstandige coaches, clubs en federaties.
+              Drie abonnementen voor zelfstandige coaches, scholen en federaties.
               Maandelijks opzegbaar, alle features inbegrepen op elk niveau.
             </p>
           </div>

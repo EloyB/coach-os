@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import { PersonaPage } from "@/components/sections/persona-page";
-import { TENNIS_CLUBS_PERSONA } from "@/content/personas";
+import { PADEL_CLUBS_PERSONA } from "@/content/personas";
 
 const SITE_URL = "https://coach-os.be";
-const PAGE_URL = `${SITE_URL}/${TENNIS_CLUBS_PERSONA.slug}`;
+const PAGE_URL = `${SITE_URL}/${PADEL_CLUBS_PERSONA.slug}`;
 
 export const metadata: Metadata = {
-  title: TENNIS_CLUBS_PERSONA.metaTitle,
-  description: TENNIS_CLUBS_PERSONA.metaDescription,
+  title: PADEL_CLUBS_PERSONA.metaTitle,
+  description: PADEL_CLUBS_PERSONA.metaDescription,
   alternates: {
     canonical: PAGE_URL,
     languages: {
@@ -21,12 +21,12 @@ export const metadata: Metadata = {
     locale: "nl_BE",
     alternateLocale: ["nl_NL"],
     url: PAGE_URL,
-    title: TENNIS_CLUBS_PERSONA.metaTitle,
-    description: TENNIS_CLUBS_PERSONA.metaDescription,
+    title: PADEL_CLUBS_PERSONA.metaTitle,
+    description: PADEL_CLUBS_PERSONA.metaDescription,
     siteName: "CoachOS",
   },
 };
 
-export default function VoorTennisclubsPage() {
-  return <PersonaPage persona={TENNIS_CLUBS_PERSONA} />;
+export default function VoorPadelscholenPage() {
+  return <PersonaPage persona={PADEL_CLUBS_PERSONA} />;
 }

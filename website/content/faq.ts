@@ -11,7 +11,7 @@ export interface FaqEntry {
 export const FAQ: FaqEntry[] = [
   {
     q: "Wat is CoachOS?",
-    a: "CoachOS is een lessenplanningsysteem voor tennis- en padelclubs. Trainers stellen een lessenreeks in, leerlingen schrijven zich anoniem in via een link, en het planningsalgoritme verdeelt iedereen automatisch over slots op niveau en voorkeur. Zonder accounts, zonder Excel, zonder oneindig veel mails.",
+    a: "CoachOS is een lessenplanningsysteem voor tennis- en padelscholen. Trainers stellen een lessenreeks in, leerlingen schrijven zich anoniem in via een link, en het planningsalgoritme verdeelt iedereen automatisch over slots op niveau en voorkeur. Zonder accounts, zonder Excel, zonder oneindig veel mails.",
   },
   {
     q: "Voor welke sporten is CoachOS gemaakt?",
@@ -19,7 +19,7 @@ export const FAQ: FaqEntry[] = [
   },
   {
     q: "Hoe lang duurt het om te starten met CoachOS?",
-    a: "Een lessenreeks instellen duurt ongeveer tien minuten. Een hele seizoensplanning maken, inschrijvingen verzamelen, algoritme draaien, bevestigingen versturen, duurt voor de meeste clubs één middag. Geen voorafgaande training of consultancy nodig.",
+    a: "Een lessenreeks instellen duurt ongeveer tien minuten. Een hele seizoensplanning maken, inschrijvingen verzamelen, algoritme draaien, bevestigingen versturen, duurt voor de meeste scholen één middag. Geen voorafgaande training of consultancy nodig.",
   },
   {
     q: "Moeten mijn leerlingen een account aanmaken?",
@@ -38,8 +38,8 @@ export const FAQ: FaqEntry[] = [
     a: "We starten Nederlandstalig (Nederland + Vlaanderen). Frans volgt zodra de Vlaamse lancering rond is — Wallonië en Frankrijk zitten op de roadmap, gevolgd door bredere Europese expansie.",
   },
   {
-    q: "Kan ik meerdere clubs of locaties beheren vanuit één account?",
-    a: "Ja. CoachOS is multi-tenant: je kan lid zijn van meerdere organisaties met verschillende rollen (admin in club A, trainer in club B) en wisselt met één klik.",
+    q: "Kan ik meerdere scholen of locaties beheren vanuit één account?",
+    a: "Ja. CoachOS is multi-tenant: je kan lid zijn van meerdere organisaties met verschillende rollen (admin in school A, trainer in school B) en wisselt met één klik.",
   },
   {
     q: "Hoe zit het met betalingen?",
@@ -58,12 +58,12 @@ export const FAQ: FaqEntry[] = [
     a: "Ja. Per lessenreeks bouw je een formulier op uit tekstvelden, meerkeuze-opties en ja/nee-vragen. Je kan de antwoorden op je gekozen vragen bekijken per inschrijving.",
   },
   {
-    q: "Wie heeft toegang tot de data binnen mijn club?",
+    q: "Wie heeft toegang tot de data binnen mijn school?",
     a: "Je bepaalt zelf rollen. Admins zien alle lessenreeksen en leerlingen; trainers zien enkel hun eigen reeksen; leerlingen zien alleen hun eigen inschrijving via unieke link. Geen 'iedereen ziet alles'-modus.",
   },
   {
-    q: "Wat is het verschil met een algemene clubadministratie-tool?",
-    a: "Algemene clubadministratie-tools doen ledenbeheer en boekhouding voor de hele club. CoachOS focust specifiek op de lessenkant: lessenreeksen, inschrijvingen per reeks, niveau-indeling en seizoensplanning. We integreren met of zitten naast bestaande administratie-software, niet als vervanging.",
+    q: "Wat is het verschil met een algemene administratie-tool?",
+    a: "Algemene administratie-tools doen ledenbeheer en boekhouding voor de hele organisatie. CoachOS focust specifiek op de lessenkant: lessenreeksen, inschrijvingen per reeks, niveau-indeling en seizoensplanning. We integreren met of zitten naast bestaande administratie-software, niet als vervanging.",
   },
 ];
 

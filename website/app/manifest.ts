@@ -2,10 +2,10 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "CoachOS — Lessenplanning voor tennis- en padelclubs",
+    name: "CoachOS — Lessenplanning voor tennis- en padelscholen",
     short_name: "CoachOS",
     description:
-      "Lessenplanning, inschrijvingen en betalingen voor tennis- en padelclubs.",
+      "Lessenplanning, inschrijvingen en betalingen voor tennis- en padelscholen.",
     start_url: "/",
     display: "standalone",
     background_color: "#fdfcf9",

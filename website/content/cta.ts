@@ -38,7 +38,7 @@ export const CTA_SECTION = {
       email: "E-mailadres",
       role: "Wat doe je?",
       roleOptions: {
-        club: "Tennis-/padelclub",
+        club: "Tennis-/padelschool",
         coach: "Zelfstandige coach",
         anders: "Anders",
       },
