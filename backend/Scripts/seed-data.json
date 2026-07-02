@@ -26,6 +26,13 @@
       "email": "jan@deaces.be"
     }
   },
+  "expiredTrialOrg": {
+    "organizationName": "TC Verlopen Proef",
+    "firstName": "Kris",
+    "lastName": "Expired",
+    "email": "kris@verlopenproef.be",
+    "password": "Demo1234!"
+  },
   "clubs": [
     { "name": "TC De Aces", "address": "Sportlaan 12, 2000 Antwerpen" },
     { "name": "Padel Center Brussel", "address": "Louizalaan 45, 1050 Brussel" }

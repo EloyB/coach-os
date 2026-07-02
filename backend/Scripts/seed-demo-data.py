@@ -13,6 +13,7 @@ Default API_BASE is http://localhost:5142/api.
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 import time
 import urllib.error
@@ -383,6 +384,63 @@ def setup_second_org(api_base: str, cfg: dict) -> None:
     print(f"   Invited existing trainer {invite['email']} - direct membership")
 
 
+def backdate_trial(organization_id: str) -> bool:
+    """Backdates a Subscription's TrialEndsAt into the past via psql, so the
+    org's trial reads as expired for the subscription-access-gating E2E check
+    (SubscriptionAccessMiddleware -> 403 subscription_required). Reaches
+    Postgres the same way reset-db.sh locates docker-compose.yml (repo root),
+    then runs psql inside the compose 'postgres' service — no local psql/driver
+    needed on the host."""
+    try:
+        toplevel = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            capture_output=True, text=True, check=True,
+        ).stdout.strip()
+    except (subprocess.CalledProcessError, FileNotFoundError) as e:
+        print(f"   ERROR: could not resolve repo root for psql backdate: {e}",
+              file=sys.stderr)
+        return False
+
+    compose_file = str(Path(toplevel) / "docker-compose.yml")
+    sql = ('UPDATE "Subscriptions" SET "TrialEndsAt" = now() - interval \'1 day\' '
+           f'WHERE "OrganizationId" = \'{organization_id}\';')
+    cmd = ["docker", "compose", "-f", compose_file, "exec", "-T", "postgres",
+           "psql", "-U", "coachos", "-d", "coachos_dev", "-c", sql]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        print(f"   ERROR backdating trial via psql: {result.stderr.strip()}",
+              file=sys.stderr)
+        return False
+    print(f"   {result.stdout.strip()}")
+    return True
+
+
+def setup_expired_trial_org(api_base: str, cfg: dict) -> None:
+    """Registers a dedicated org and backdates its trial so it can be used to
+    verify SubscriptionAccessMiddleware end-to-end (protected endpoints ->
+    403 subscription_required, /api/billing/status -> 200 hasAccess:false)."""
+    print("\n13. Setting up expired-trial org for access-gating verification...")
+    api = ApiClient(api_base)
+    auth = api.post("/auth/register", cfg, auth=False)
+    if not auth or not auth.get("token"):
+        # Already exists from a previous seed run — just log in.
+        auth = api.post("/auth/login", {
+            "email": cfg["email"], "password": cfg["password"]}, auth=False)
+    if not auth or not auth.get("token"):
+        print("   Could not register/login expired-trial admin — skipping.")
+        return
+
+    organization_id = auth.get("organizationId")
+    if not organization_id:
+        print("   No organizationId on auth response — skipping trial backdate.")
+        return
+
+    print(f"   Created org: {cfg['organizationName']} "
+          f"(admin: {cfg['email']}, orgId: {organization_id})")
+    if backdate_trial(organization_id):
+        print("   Trial backdated — TrialEndsAt is now in the past (expired).")
+
+
 def generate_and_confirm_planning(api: ApiClient, planning_series_id: str) -> None:
     """Run the admin planning flow so ScheduleAssignments exist for the demo.
     Produces assignments in AwaitingConfirmation state (each student has a
@@ -623,6 +681,9 @@ def main() -> int:
     if "secondOrg" in data:
         setup_second_org(api_base, data["secondOrg"])
 
+    if "expiredTrialOrg" in data:
+        setup_expired_trial_org(api_base, data["expiredTrialOrg"])
+
     print("\n=== Seed Complete ===\n")
     print("Login credentials:")
     print(f"  Email:    {data['admin']['email']}")
@@ -633,6 +694,11 @@ def main() -> int:
     if "secondOrg" in data:
         print(f"\n  Second org admin: {data['secondOrg']['admin']['email']}")
         print(f"  Jan is lid van beide orgs - org-switcher zichtbaar in topbar")
+    if "expiredTrialOrg" in data:
+        eto = data["expiredTrialOrg"]
+        print(f"\n  Expired-trial org admin: {eto['email']}")
+        print(f"  Password:                {eto['password']}")
+        print("  Trial backdated to expired - use to verify subscription_required gating")
     print("\nURLs:")
     print("  Frontend:  http://localhost:5317")
     print("  API:       http://localhost:5142/swagger")
