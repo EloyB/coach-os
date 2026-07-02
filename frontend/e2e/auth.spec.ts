@@ -58,7 +58,7 @@ test.describe("Authentication", () => {
     test("has link to register page", async ({ page }) => {
       await page.goto("/login");
 
-      const registerLink = page.getByRole("link", { name: "Registreren" });
+      const registerLink = page.getByRole("link", { name: "Probeer 60 dagen gratis" });
       await expect(registerLink).toBeVisible();
       await expect(registerLink).toHaveAttribute("href", "/register");
     });
@@ -68,7 +68,7 @@ test.describe("Authentication", () => {
     test("shows registration form with all fields", async ({ page }) => {
       await page.goto("/register");
 
-      await expect(page.getByRole("heading", { name: "Account aanmaken" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Maak je account" })).toBeVisible();
       await expect(page.getByLabel("Naam organisatie")).toBeVisible();
       await expect(page.getByLabel("Voornaam")).toBeVisible();
       await expect(page.getByLabel("Achternaam")).toBeVisible();
@@ -80,7 +80,7 @@ test.describe("Authentication", () => {
     test("shows validation errors for empty submit", async ({ page }) => {
       await page.goto("/register");
 
-      await page.getByRole("button", { name: "Account aanmaken" }).click();
+      await page.getByRole("button", { name: "Start 60-dagen proef →" }).click();
 
       await expect(page.locator("[id*='form-item-message']").first()).toBeVisible();
     });
@@ -95,7 +95,7 @@ test.describe("Authentication", () => {
       await page.getByLabel("E-mailadres").fill("coach@test.be");
       await page.getByLabel("Wachtwoord", { exact: true }).fill("Test1234!");
       await page.getByLabel("Wachtwoord bevestigen").fill("Test1234!");
-      await page.getByRole("button", { name: "Account aanmaken" }).click();
+      await page.getByRole("button", { name: "Start 60-dagen proef →" }).click();
 
       await page.waitForURL("**/dashboard");
       await expect(page).toHaveURL(/\/dashboard/);
@@ -111,7 +111,7 @@ test.describe("Authentication", () => {
       await page.getByLabel("E-mailadres").fill("existing@test.be");
       await page.getByLabel("Wachtwoord", { exact: true }).fill("Test1234!");
       await page.getByLabel("Wachtwoord bevestigen").fill("Test1234!");
-      await page.getByRole("button", { name: "Account aanmaken" }).click();
+      await page.getByRole("button", { name: "Start 60-dagen proef →" }).click();
 
       await expect(page.locator(".bg-red-50")).toBeVisible();
       await expect(page.getByText("E-mailadres is al in gebruik")).toBeVisible();
