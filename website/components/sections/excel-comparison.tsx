@@ -33,7 +33,7 @@ export function ExcelComparison() {
         <p className="mt-10 max-w-2xl text-sm text-ink-3">
           Excel werkt prima tot je rond de 50 leerlingen zit. Daarboven worden
           de kleine pijnpunten het seizoen lang het echte werk. CoachOS
-          vervangt die routine zonder dat je nieuwe kennis moet opbouwen — de
+          vervangt die routine zonder dat je nieuwe kennis moet opbouwen, de
           taken blijven dezelfde, alleen de uitvoering verschuift naar het
           systeem.
         </p>

@@ -10,7 +10,7 @@ export type ChromeVariant = "dashboard" | "phone";
 
 export interface ShowcaseImage {
   /**
-   * Path under /public. Leave empty until the screenshot is ready —
+   * Path under /public. Leave empty until the screenshot is ready, 
    * the frame will render a labeled placeholder showing the expected filename.
    */
   src: string;
@@ -41,7 +41,7 @@ export const SHOWCASE: ShowcaseItem[] = [
     icon: CalendarRange,
     kicker: "LESREEKSEN",
     heading: "Eén lessenreeks. Een heel seizoen vooruit.",
-    body: "Stel een lessenreeks één keer in en laat je agenda automatisch vullen. — elke maandag voor de komende 8 weken, zaterdagochtenden tot eind juni? CoachOS plant het naar jouw wensen.",
+    body: "Stel een lessenreeks één keer in en laat je agenda automatisch vullen., elke maandag voor de komende 8 weken, zaterdagochtenden tot eind juni? CoachOS plant het naar jouw wensen.",
     bullets: [
       "Wekelijkse, tweewekelijkse of losse trainingen",
       "Voor 1 of meerdere trainers",

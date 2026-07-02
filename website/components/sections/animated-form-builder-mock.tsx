@@ -114,7 +114,7 @@ const TYPE_META: Record<FieldType, { label: string; Icon: LucideIcon }> = {
 export function AnimatedFormBuilderMock() {
   const ref = useRef<HTMLDivElement>(null);
   // `once: true` latches inView to true the first time the section is
-  // scrolled into view — it never flips back, so the sequence keeps
+  // scrolled into view, it never flips back, so the sequence keeps
   // running to the end even if the user scrolls past mid-animation.
   const inView = useInView(ref, { amount: 0.4, once: true });
   const prefersReducedMotion = useReducedMotion();
@@ -129,7 +129,7 @@ export function AnimatedFormBuilderMock() {
     : STEPS[stepIndex];
 
   useEffect(() => {
-    // Stop scheduling once the final step is reached — the mock then
+    // Stop scheduling once the final step is reached, the mock then
     // sits as a static end-state ("Opgeslagen ✓" with all 3 fields).
     if (prefersReducedMotion || !inView || isComplete) return;
     const t = window.setTimeout(() => {

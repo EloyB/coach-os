@@ -19,7 +19,7 @@ const ANIMATED_MOCKS: Record<string, React.ReactNode> = {
 
 interface ShowcaseRowProps {
   item: ShowcaseItem;
-  /** Reverse the column order on lg+ screens — pass true for every other row. */
+  /** Reverse the column order on lg+ screens, pass true for every other row. */
   reverse?: boolean;
 }
 

@@ -10,7 +10,7 @@ export function SiteNav() {
         <Link
           href="/"
           className="flex items-center gap-2.5 text-ink"
-          aria-label="CoachOS — naar boven"
+          aria-label="CoachOS, naar boven"
         >
           <LogoMark size="sm" />
           <span className="font-semibold tracking-tight">CoachOS</span>

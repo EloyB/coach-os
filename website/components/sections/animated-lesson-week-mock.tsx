@@ -72,7 +72,7 @@ const BASE_DAYS: Day[] = [
 ];
 
 /**
- * Indices into the loop slot. Each step is one frame of the live loop —
+ * Indices into the loop slot. Each step is one frame of the live loop, 
  * a new enrollment ticks capacity up, eventually flipping status.
  */
 const LOOP_STEPS: Array<{

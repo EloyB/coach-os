@@ -22,7 +22,7 @@ export function FinalCta() {
             <p className="mt-4 inline-flex items-center gap-2 rounded-full border border-tennis-green/20 bg-tennis-green/5 px-3 py-1.5 text-xs font-semibold text-tennis-green">
               <span className="inline-block h-1.5 w-1.5 rounded-full bg-tennis-green" />
               Pilot-fase · nog {PILOT_AVAILABLE_SEATS} van {PILOT.totalSeats}{" "}
-              plekken — gratis tijdens pilot, lifetime korting
+              plekken, gratis tijdens pilot, lifetime korting
             </p>
           ) : null}
         </div>

@@ -5,12 +5,12 @@ export const HOE_PLAN_JE_LESSEIZOEN_TENNISCLUB: BlogPost = {
   title: "Hoe plan je een lesseizoen voor je tennisschool",
   metaTitle: "Hoe plan je een lesseizoen voor je tennisschool · CoachOS",
   metaDescription:
-    "Praktische gids om een lesseizoen op te zetten voor je tennisschool: kalender, niveaus, inschrijvingen en planning — zonder Excel en zonder oneindig veel mails.",
+    "Praktische gids om een lesseizoen op te zetten voor je tennisschool: kalender, niveaus, inschrijvingen en planning, zonder Excel en zonder oneindig veel mails.",
   publishedAt: "2026-05-07",
   readMinutes: 6,
   category: "GIDS · LESPLANNING",
   tags: ["lessenplanning", "tennisschool", "seizoen", "praktische gids"],
-  lead: "Een tennisseizoen plannen begint niet bij het verdelen van leerlingen, maar bij een degelijke kalender en een duidelijk groeperingskader. Wie die twee in orde heeft, plant een heel seizoen in één middag — wie ze overslaat, blijft het hele seizoen brandjes blussen. Deze gids loopt stap voor stap door wat een tennisschool nodig heeft om de planning werkbaar én voorspelbaar te maken.",
+  lead: "Een tennisseizoen plannen begint niet bij het verdelen van leerlingen, maar bij een degelijke kalender en een duidelijk groeperingskader. Wie die twee in orde heeft, plant een heel seizoen in één middag, wie ze overslaat, blijft het hele seizoen brandjes blussen. Deze gids loopt stap voor stap door wat een tennisschool nodig heeft om de planning werkbaar én voorspelbaar te maken.",
   sections: [
     {
       heading: "1. Begin met je seizoenskalender",
@@ -31,7 +31,7 @@ export const HOE_PLAN_JE_LESSEIZOEN_TENNISCLUB: BlogPost = {
     {
       heading: "2. Bepaal je groeperingsniveau",
       paragraphs: [
-        "Tennisscholen werken meestal met drie tot vijf niveaus: mini's (4-7), juniors beginners, juniors gevorderden, volwassenen recreatief en volwassenen competitie. Hoe meer niveaus, hoe gerichter de les — maar ook hoe moeilijker de planning, want elk niveau moet voldoende inschrijvingen hebben om door te gaan.",
+        "Tennisscholen werken meestal met drie tot vijf niveaus: mini's (4-7), juniors beginners, juniors gevorderden, volwassenen recreatief en volwassenen competitie. Hoe meer niveaus, hoe gerichter de les, maar ook hoe moeilijker de planning, want elk niveau moet voldoende inschrijvingen hebben om door te gaan.",
         "Een vuistregel: minimaal vier leerlingen per groep om de les boeiend te houden, maximaal zes om iedereen genoeg balcontact te geven. Onder de vier wordt het een privéles in vermomming; boven de zes wordt het een rondje slaan.",
       ],
       callout: {
@@ -40,15 +40,15 @@ export const HOE_PLAN_JE_LESSEIZOEN_TENNISCLUB: BlogPost = {
       },
     },
     {
-      heading: "3. Verzamel inschrijvingen — niet via mail",
+      heading: "3. Verzamel inschrijvingen, niet via mail",
       paragraphs: [
-        "De grootste tijdvreter is niet het plannen zelf, maar het mailverkeer dat eraan voorafgaat. Voorkeurstijden, niveaus, betaalbevestigingen — als al die info via tien losse mails binnenkomt, ben je een week kwijt aan het rangschikken.",
-        "Werk in plaats daarvan met één publieke inschrijflink per lessenreeks. Leerlingen vullen zelf in welke tijdslots ze kunnen, wat hun niveau is, en of ze een vaste partner of groep willen behouden. Eén link, één formulier, één centrale lijst — niemand mailt nog.",
+        "De grootste tijdvreter is niet het plannen zelf, maar het mailverkeer dat eraan voorafgaat. Voorkeurstijden, niveaus, betaalbevestigingen, als al die info via tien losse mails binnenkomt, ben je een week kwijt aan het rangschikken.",
+        "Werk in plaats daarvan met één publieke inschrijflink per lessenreeks. Leerlingen vullen zelf in welke tijdslots ze kunnen, wat hun niveau is, en of ze een vaste partner of groep willen behouden. Eén link, één formulier, één centrale lijst, niemand mailt nog.",
       ],
       bullets: [
         "Naam, voornaam, e-mailadres (en telefoon als je dat nodig hebt)",
         "Niveau-zelfinschatting met duidelijke keuzes",
-        "Beschikbare tijdslots — laat ze meerdere voorkeuren aanvinken",
+        "Beschikbare tijdslots, laat ze meerdere voorkeuren aanvinken",
         "Optionele partner of groep om samen te houden",
         "Eventueel een vrij veld voor opmerkingen",
       ],
@@ -63,7 +63,7 @@ export const HOE_PLAN_JE_LESSEIZOEN_TENNISCLUB: BlogPost = {
     {
       heading: "5. Bevestig en houd het werkbaar",
       paragraphs: [
-        "Stuur niet één massamail met een Excel-export. Stuur elke leerling individueel een bevestiging met zijn of haar concrete tijdslot, baannummer en starttijd. Werk daarbij met een magic-link in plaats van een wachtwoord — dat verlaagt de drempel en houdt het AVG-conform.",
+        "Stuur niet één massamail met een Excel-export. Stuur elke leerling individueel een bevestiging met zijn of haar concrete tijdslot, baannummer en starttijd. Werk daarbij met een magic-link in plaats van een wachtwoord, dat verlaagt de drempel en houdt het AVG-conform.",
         "Wat geen routine moet worden: vragen of de bevestiging is aangekomen, achter betalingen aanjagen, en handmatig bijhouden wie waar staat. Als je systeem dat allemaal automatisch doet, kan je je terug op het lesgeven richten.",
       ],
     },

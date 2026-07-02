@@ -15,7 +15,7 @@ export const AUDIENCES: Audience[] = [
   {
     icon: Trophy,
     title: "Tennisscholen",
-    body: "Van eerste inschrijving tot laatste les van het seizoen — één dashboard voor je hele school.",
+    body: "Van eerste inschrijving tot laatste les van het seizoen, één dashboard voor je hele school.",
     bullets: [
       "Lessenreeksen voor jeugd en volwassenen",
       "Onbeperkt aantal banen en trainers",
@@ -49,4 +49,4 @@ export const AUDIENCES: Audience[] = [
 
 export const AUDIENCES_HEADING = "Voor alle tennis- en padeltrainers?";
 export const AUDIENCES_SUB =
-  "Of je nu een school met 10 trainers runt of solo lesgeeft — CoachOS doet het werk.";
+  "Of je nu een school met 10 trainers runt of solo lesgeeft, CoachOS doet het werk.";

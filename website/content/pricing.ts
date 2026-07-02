@@ -96,7 +96,7 @@ export const PRICING_TIERS: PricingTier[] = [
 
 /**
  * Comparison matrix for the dedicated /prijzen page. Values:
- * - `true` / `false` render as ✓ / —
+ * - `true` / `false` render as a Check / Minus icon
  * - a string renders as text (for limits like "Tot 50")
  */
 export interface CompareGroup {
@@ -228,7 +228,7 @@ export interface PricingFaqEntry {
 export const PRICING_FAQ: PricingFaqEntry[] = [
   {
     q: "Zijn deze tarieven definitief?",
-    a: "Ja. Dit zijn onze vaste tarieven — geen verborgen kosten per leerling en geen verrassingen achteraf. Vroege gebruikers behouden hun starttarief minstens 12 maanden, ook als de prijzen later stijgen.",
+    a: "Ja. Dit zijn onze vaste tarieven, geen verborgen kosten per leerling en geen verrassingen achteraf. Vroege gebruikers behouden hun starttarief minstens 12 maanden, ook als de prijzen later stijgen.",
   },
   {
     q: "Zit btw inbegrepen?",
@@ -248,7 +248,7 @@ export const PRICING_FAQ: PricingFaqEntry[] = [
   },
   {
     q: "Wat als ik tijdens een seizoen meer trainers nodig heb?",
-    a: "Je upgradet meteen naar het volgende abonnement — pro rata aangerekend voor de resterende dagen van de maand. Downgrades gaan in op de volgende factuurdatum.",
+    a: "Je upgradet meteen naar het volgende abonnement, pro rata aangerekend voor de resterende dagen van de maand. Downgrades gaan in op de volgende factuurdatum.",
   },
   {
     q: "Bestaat er een gratis proefperiode?",

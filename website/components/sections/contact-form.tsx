@@ -46,7 +46,7 @@ export function ContactForm() {
       if (!res.ok) throw new Error("submit failed");
       router.push("/bedankt?type=contact");
     } catch {
-      setError("Versturen lukte niet — probeer het opnieuw.");
+      setError("Versturen lukte niet, probeer het opnieuw.");
       setSubmitting(false);
     }
   }

@@ -13,7 +13,7 @@ interface ScreenshotFrameProps {
   priority?: boolean;
   /**
    * If provided, renders inside the frame chrome instead of the static image
-   * or placeholder — used for animated mocks. The aspect-ratio container is
+   * or placeholder, used for animated mocks. The aspect-ratio container is
    * dropped so the children dictate the natural height.
    */
   children?: ReactNode;

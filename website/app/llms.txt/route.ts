@@ -6,7 +6,7 @@ import { PILOT, PILOT_AVAILABLE_SEATS } from "@/content/pilot";
 const SITE_URL = "https://coach-os.be";
 
 /**
- * /llms.txt — emerging convention (https://llmstxt.org) for giving LLMs a
+ * /llms.txt, emerging convention (https://llmstxt.org) for giving LLMs a
  * structured map of the site. Major AI engines (Anthropic, OpenAI, Perplexity)
  * read this when they encounter the domain. Generated dynamically so it stays
  * in sync as new persona pages and blog posts ship.
@@ -21,7 +21,7 @@ export function GET() {
   );
   lines.push("");
   lines.push(
-    `CoachOS is in pilotfase. ${PILOT_AVAILABLE_SEATS > 0 ? `Er zijn nog ${PILOT_AVAILABLE_SEATS} van ${PILOT.totalSeats} pilotplekken vrij` : `Alle ${PILOT.totalSeats} pilotplekken zijn vergeven`} — pilotgebruikers krijgen gratis toegang en lifetime korting. Lancering in 2026.`,
+    `CoachOS is in pilotfase. ${PILOT_AVAILABLE_SEATS > 0 ? `Er zijn nog ${PILOT_AVAILABLE_SEATS} van ${PILOT.totalSeats} pilotplekken vrij` : `Alle ${PILOT.totalSeats} pilotplekken zijn vergeven`}, pilotgebruikers krijgen gratis toegang en lifetime korting. Lancering in 2026.`,
   );
   lines.push("");
 
@@ -38,22 +38,22 @@ export function GET() {
   lines.push("");
   lines.push(`- [Homepage](${SITE_URL}/): Overzicht van alle features.`);
   lines.push(
-    "- Lessenreeksen — terugkerende lesperiodes die je één keer instelt; lessen worden automatisch gegenereerd over de hele periode.",
+    "- Lessenreeksen, terugkerende lesperiodes die je één keer instelt; lessen worden automatisch gegenereerd over de hele periode.",
   );
   lines.push(
-    "- Anonieme inschrijvingen — leerlingen schrijven zich in via een publieke link met enkel naam en e-mailadres; geen account vereist.",
+    "- Anonieme inschrijvingen, leerlingen schrijven zich in via een publieke link met enkel naam en e-mailadres; geen account vereist.",
   );
   lines.push(
-    "- Formulierbouwer — per lessenreeks aangepaste vragen (vrije tekst, meerkeuze, ja/nee).",
+    "- Formulierbouwer, per lessenreeks aangepaste vragen (vrije tekst, meerkeuze, ja/nee).",
   );
   lines.push(
-    "- Planningsalgoritme — verdeelt leerlingen automatisch over slots op basis van niveau, voorkeurstijden en groepsverbanden.",
+    "- Planningsalgoritme, verdeelt leerlingen automatisch over slots op basis van niveau, voorkeurstijden en groepsverbanden.",
   );
   lines.push(
-    "- Magic-link bevestigingen — leerlingen bevestigen hun lestijd met één klik in een e-mail; geen wachtwoord.",
+    "- Magic-link bevestigingen, leerlingen bevestigen hun lestijd met één klik in een e-mail; geen wachtwoord.",
   );
   lines.push(
-    "- Mollie-betalingen (Bancontact + iDEAL) — leerlingen betalen direct online bij inschrijving.",
+    "- Mollie-betalingen (Bancontact + iDEAL), leerlingen betalen direct online bij inschrijving.",
   );
   lines.push("");
 

@@ -52,7 +52,7 @@ export function WaitlistForm() {
       if (!res.ok) throw new Error("submit failed");
       router.push("/bedankt?type=waitlist");
     } catch {
-      setError("Aanvraag versturen lukte niet — probeer het opnieuw.");
+      setError("Aanvraag versturen lukte niet, probeer het opnieuw.");
       setSubmitting(false);
     }
   }

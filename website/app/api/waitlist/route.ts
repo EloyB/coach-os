@@ -29,7 +29,7 @@ export async function POST(req: Request) {
   });
 
   // TODO: replace with email service (Resend/Loops/SMTP) before production deploy.
-  console.info("[waitlist]", clean.email, clean.role ?? "—");
+  console.info("[waitlist]", clean.email, clean.role ?? ", ");
 
   return NextResponse.json({ ok: true });
 }

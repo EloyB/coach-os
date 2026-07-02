@@ -59,7 +59,7 @@ function PersonaHero({ persona }: { persona: Persona }) {
               className="inline-flex h-11 items-center gap-2 rounded-md border border-tennis-green/30 bg-tennis-green/5 px-4 text-sm font-semibold text-tennis-green transition-colors hover:bg-tennis-green/10"
             >
               <Sparkles className="h-4 w-4" />
-              Pilot — nog {PILOT_AVAILABLE_SEATS} van {PILOT.totalSeats} plekken
+              Pilot, nog {PILOT_AVAILABLE_SEATS} van {PILOT.totalSeats} plekken
             </a>
           ) : null}
         </div>

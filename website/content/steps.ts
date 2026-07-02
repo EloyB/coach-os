@@ -8,7 +8,7 @@ export const STEPS: Step[] = [
   {
     num: "/01",
     title: "Maak een lessenreeks aan",
-    body: "Bepaal data, prijs en capaciteit. Personaliseer je inschrijvingsformulier met alle vragen die jij wil stellen — tekst, meerkeuze, ja/nee.",
+    body: "Bepaal data, prijs en capaciteit. Personaliseer je inschrijvingsformulier met alle vragen die jij wil stellen, tekst, meerkeuze, ja/nee.",
   },
   {
     num: "/02",
@@ -24,4 +24,4 @@ export const STEPS: Step[] = [
 
 export const STEPS_HEADING = "Eenvoudig inschrijven en automatisch plannen";
 export const STEPS_SUB =
-  "Drie stappen — van lege agenda naar bevestigde planning.";
+  "Drie stappen, van lege agenda naar bevestigde planning.";

@@ -2,7 +2,7 @@
  * Tennis-ball monogram, extracted from the business card logo
  * (`marketing/business-card/card-front.svg`).
  *
- * Pure JSX — safe to import into both browser-rendered components
+ * Pure JSX, safe to import into both browser-rendered components
  * and Next.js `ImageResponse` (Satori) routes (icon, apple-icon,
  * opengraph-image).
  */

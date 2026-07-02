@@ -35,7 +35,7 @@ export const FAQ: FaqEntry[] = [
   },
   {
     q: "In welke talen is CoachOS beschikbaar?",
-    a: "We starten Nederlandstalig (Nederland + Vlaanderen). Frans volgt zodra de Vlaamse lancering rond is — Wallonië en Frankrijk zitten op de roadmap, gevolgd door bredere Europese expansie.",
+    a: "We starten Nederlandstalig (Nederland + Vlaanderen). Frans volgt zodra de Vlaamse lancering rond is, Wallonië en Frankrijk zitten op de roadmap, gevolgd door bredere Europese expansie.",
   },
   {
     q: "Kan ik meerdere scholen of locaties beheren vanuit één account?",
@@ -43,7 +43,7 @@ export const FAQ: FaqEntry[] = [
   },
   {
     q: "Hoe zit het met betalingen?",
-    a: "Cash betalingen registreer je manueel per inschrijving. Online betalen via Mollie (Bancontact + iDEAL) is beschikbaar — leerlingen betalen direct bij inschrijving.",
+    a: "Cash betalingen registreer je manueel per inschrijving. Online betalen via Mollie (Bancontact + iDEAL) is beschikbaar, leerlingen betalen direct bij inschrijving.",
   },
   {
     q: "Wat doen jullie met de gegevens van leerlingen?",
@@ -51,7 +51,7 @@ export const FAQ: FaqEntry[] = [
   },
   {
     q: "Welke integraties zijn beschikbaar?",
-    a: "Vandaag: e-mailbevestiging via unieke link en Mollie-betalingen (Bancontact + iDEAL). Specifieke integraties — boekhouding, kassa-systemen, agenda-apps — bouwen we op aanvraag tijdens pilot.",
+    a: "Vandaag: e-mailbevestiging via unieke link en Mollie-betalingen (Bancontact + iDEAL). Specifieke integraties, boekhouding, kassa-systemen, agenda-apps, bouwen we op aanvraag tijdens pilot.",
   },
   {
     q: "Kan ik mijn eigen formulier-vragen stellen per lessenreeks?",

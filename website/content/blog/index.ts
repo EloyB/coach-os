@@ -3,7 +3,7 @@ import type { BlogPost } from "@/content/blog/types";
 /** All published blog posts. New posts: import + add here. */
 export const ALL_POSTS: BlogPost[] = [];
 
-/** Posts sorted newest-first by publishedAt — used on the index page. */
+/** Posts sorted newest-first by publishedAt, used on the index page. */
 export const POSTS_BY_DATE: BlogPost[] = [...ALL_POSTS].sort((a, b) =>
   b.publishedAt.localeCompare(a.publishedAt),
 );

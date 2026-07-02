@@ -39,7 +39,7 @@ interface Slot {
   studentIds: string[];
 }
 
-/** Order matters — drives the sequential fill animation. */
+/** Order matters, drives the sequential fill animation. */
 const SLOTS: Slot[] = [
   {
     day: "Maandag",

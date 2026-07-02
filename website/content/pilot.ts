@@ -1,7 +1,7 @@
 /**
  * Pilot programma configuratie.
  *
- * Update `takenSeats` met de hand wanneer een nieuwe pilotgebruiker tekent —
+ * Update `takenSeats` met de hand wanneer een nieuwe pilotgebruiker tekent, 
  * de teller op de homepage, de banner en de finale CTA volgen automatisch.
  */
 export const PILOT = {
@@ -9,7 +9,7 @@ export const PILOT = {
   takenSeats: 4,
 } as const;
 
-/** Hoeveel plekken nog vrij zijn — afgeleid, niet handmatig in te stellen. */
+/** Hoeveel plekken nog vrij zijn, afgeleid, niet handmatig in te stellen. */
 export const PILOT_AVAILABLE_SEATS = PILOT.totalSeats - PILOT.takenSeats;
 
 export const PILOT_BANNER = {
@@ -27,7 +27,7 @@ export const PILOT_BANNER = {
 export const PILOT_KICKER = "PILOT PROGRAMMA";
 export const PILOT_HEADING = "Word één van onze eerste vijf scholen";
 export const PILOT_SUB =
-  "We zoeken vijf scholen of zelfstandige trainers die mee bouwen aan CoachOS. Jouw feedback bepaalt waar we als eerste op inzetten — en jij krijgt er meer dan een plek voor terug.";
+  "We zoeken vijf scholen of zelfstandige trainers die mee bouwen aan CoachOS. Jouw feedback bepaalt waar we als eerste op inzetten, en jij krijgt er meer dan een plek voor terug.";
 
 export interface PilotBenefit {
   title: string;

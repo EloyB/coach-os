@@ -29,7 +29,7 @@ export async function POST(req: Request) {
   });
 
   // TODO: replace with email service (Resend/Loops/SMTP) before production deploy.
-  console.info("[contact]", clean.email, clean.organization ?? "—");
+  console.info("[contact]", clean.email, clean.organization ?? ", ");
 
   return NextResponse.json({ ok: true });
 }

@@ -67,7 +67,7 @@ const STEP_DURATIONS_MS = [900, 500, 500, 600, 700, 500, 500, 600, 350, 800, 0];
 /**
  * Per-step vertical scroll offset (in px). Negative values slide the form
  * upward inside the phone canvas to reveal content lower down. Tuned for
- * the 9:19 aspect ratio + ~604px content height — tweak any value if a
+ * the 9:19 aspect ratio + ~604px content height, tweak any value if a
  * step doesn't end with the focal element comfortably in view.
  */
 const SCROLL_OFFSETS_PX = [
@@ -165,7 +165,7 @@ function FormBody({
       transition={{ duration: 0.25 }}
       className="absolute inset-x-0 top-0"
     >
-      {/* Translation layer — slides upward as the animation progresses to
+      {/* Translation layer, slides upward as the animation progresses to
        * reveal content below, simulating a user scrolling the form. */}
       <motion.div
         animate={{ y: scrollOffset }}

@@ -11,14 +11,14 @@ const DISALLOW = ["/api/", "/bedankt"];
  * not named (notably `Google-Extended`); spelling them out removes that risk
  * and signals to operators that AI crawling is intentional, not accidental.
  *
- * - GPTBot / ChatGPT-User / OAI-SearchBot — OpenAI
- * - ClaudeBot / anthropic-ai — Anthropic
- * - PerplexityBot / Perplexity-User — Perplexity
- * - Google-Extended — Google's separate AI training opt-out toggle
- * - CCBot — Common Crawl (feeds many open-source LLMs)
- * - Applebot-Extended — Apple Intelligence
- * - Bytespider — ByteDance / Doubao
- * - DuckAssistBot — DuckDuckGo
+ * - GPTBot / ChatGPT-User / OAI-SearchBot, OpenAI
+ * - ClaudeBot / anthropic-ai, Anthropic
+ * - PerplexityBot / Perplexity-User, Perplexity
+ * - Google-Extended, Google's separate AI training opt-out toggle
+ * - CCBot, Common Crawl (feeds many open-source LLMs)
+ * - Applebot-Extended, Apple Intelligence
+ * - Bytespider, ByteDance / Doubao
+ * - DuckAssistBot, DuckDuckGo
  */
 const AI_USER_AGENTS = [
   "GPTBot",

@@ -13,13 +13,13 @@ export interface ScheduleSlot {
 export interface PublicLessonSeries {
   id: string;
   slug: string;
-  /** NOTE: not yet in DB — needs `Sport` on TennisClub or LessonSerie. */
+  /** NOTE: not yet in DB, needs `Sport` on TennisClub or LessonSerie. */
   sport: Sport;
   name: string;
-  /** Nullable — LessonSerie.Level is optional. */
+  /** Nullable, LessonSerie.Level is optional. */
   level: LessonLevel | null;
   clubName: string;
-  /** NOTE: not yet in DB — TennisClub only has a single Address string. */
+  /** NOTE: not yet in DB, TennisClub only has a single Address string. */
   clubCity: string;
   /** EUR, whole-series price. */
   pricePerSeriesEur: number;
@@ -40,10 +40,10 @@ export const LESSON_SERIES_HEADING =
   "Lessenreeksen bij scholen die met CoachOS werken";
 
 export const LESSON_SERIES_SUB =
-  "Bekijk de lessen die scholen in jouw buurt publiceren. Inschrijven gaat anoniem via een publieke link — geen account nodig.";
+  "Bekijk de lessen die scholen in jouw buurt publiceren. Inschrijven gaat anoniem via een publieke link, geen account nodig.";
 
 export const LESSON_SERIES_DISCLAIMER =
-  "Demovoorbeelden — de scholen en lessen op deze pagina zijn fictief. Echte lessenreeksen verschijnen hier zodra scholen hun planning publiceren.";
+  "Demovoorbeelden, de scholen en lessen op deze pagina zijn fictief. Echte lessenreeksen verschijnen hier zodra scholen hun planning publiceren.";
 
 export const LESSON_SERIES: PublicLessonSeries[] = [
   {
@@ -92,7 +92,7 @@ export const LESSON_SERIES: PublicLessonSeries[] = [
     id: "3",
     slug: "kids-tennis-6-tot-9-tc-eikenhof",
     sport: "tennis",
-    name: "Kids Tennis (6 — 9 jaar)",
+    name: "Kids Tennis (6, 9 jaar)",
     level: "Beginner",
     clubName: "TC Eikenhof",
     clubCity: "Brasschaat",
@@ -226,7 +226,7 @@ export interface ScheduleSummary {
   earliestStart: string;
   /** Latest end across all slots, "HH:mm". */
   latestEnd: string;
-  /** True when the template offers more than one slot — exact slot will be assigned. */
+  /** True when the template offers more than one slot, exact slot will be assigned. */
   hasMultipleSlots: boolean;
 }
 

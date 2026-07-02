@@ -65,7 +65,7 @@ export function HomepageJsonLd() {
       audienceType:
         "Tennis- en padelscholen, hoofdtrainers en zelfstandige coaches",
     },
-    featureList: FEATURES.map((f) => `${f.title} — ${f.body}`),
+    featureList: FEATURES.map((f) => `${f.title}, ${f.body}`),
   };
 
   const faqPage = {

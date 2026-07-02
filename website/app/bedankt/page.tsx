@@ -21,7 +21,7 @@ export default async function BedanktPage({ searchParams }: PageProps) {
     ? CTA_SECTION.waitlist.success
     : CTA_SECTION.contact.success;
   const body = isWaitlist
-    ? "We nemen contact op om een tijdstip te prikken voor je demo — meestal binnen één werkdag."
+    ? "We nemen contact op om een tijdstip te prikken voor je demo, meestal binnen één werkdag."
     : "Een van ons leest je bericht en antwoordt binnen één werkdag.";
 
   return (
