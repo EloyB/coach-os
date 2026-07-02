@@ -894,5 +894,16 @@
       "back": "Terug",
       "saving": "Opslaan..."
     }
+  },
+  "trial": {
+    "banner": "Proefperiode — nog {days} dagen. Kies je abonnement om te blijven.",
+    "cta": "Bekijk abonnementen"
+  },
+  "billing": {
+    "lockedTitle": "Je proefperiode is afgelopen",
+    "lockedBody": "Kies een abonnement om weer volledige toegang te krijgen. Je gegevens blijven bewaard.",
+    "choosePlan": "Kies een abonnement",
+    "trialActiveTitle": "Je proefperiode loopt",
+    "trialDaysLeft": "Nog {days} dagen"
   }
 }
