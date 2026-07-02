@@ -12,7 +12,7 @@ public class BillingService(ISubscriptionRepository subscriptions) : IBillingSer
     {
         Subscription? sub = await subscriptions.GetByOrganizationAsync(organizationId, ct);
         if (sub is null)
-            return Result<SubscriptionStatusDto>.Fail("Geen abonnement gevonden");
+            return Result<SubscriptionStatusDto>.Ok(new SubscriptionStatusDto("None", null, null, false));
 
         DateTime now = DateTime.UtcNow;
         bool hasAccess = SubscriptionAccess.HasAppAccess(sub.Status, sub.TrialEndsAt, sub.CurrentPeriodEnd, now);

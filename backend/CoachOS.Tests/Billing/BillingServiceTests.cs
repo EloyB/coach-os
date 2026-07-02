@@ -32,4 +32,22 @@ public class BillingServiceTests
         result.Value.HasAccess.Should().BeTrue();
         result.Value.TrialDaysLeft.Should().BeGreaterThan(8);
     }
+
+    [Test]
+    public async Task GetStatus_NoSubscription_ReturnsGracefulNoneStatus()
+    {
+        Guid orgId = Guid.NewGuid();
+        Mock<ISubscriptionRepository> repo = new();
+        repo.Setup(r => r.GetByOrganizationAsync(orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Subscription?)null);
+
+        BillingService svc = new(repo.Object);
+        var result = await svc.GetStatusAsync(orgId, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Status.Should().Be("None");
+        result.Value.HasAccess.Should().BeFalse();
+        result.Value.TrialEndsAt.Should().BeNull();
+        result.Value.TrialDaysLeft.Should().BeNull();
+    }
 }

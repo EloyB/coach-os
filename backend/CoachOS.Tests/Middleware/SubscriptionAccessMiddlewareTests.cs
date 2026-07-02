@@ -76,4 +76,36 @@ public class SubscriptionAccessMiddlewareTests
         called.Should().BeTrue();
         repo.Verify(r => r.GetByOrganizationAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
+
+    [Test]
+    public async Task GatesLookalikePath_ThatOnlySharesPrefixWithAllowlist()
+    {
+        var orgId = Guid.NewGuid();
+        var repo = new Mock<ISubscriptionRepository>();
+        repo.Setup(r => r.GetByOrganizationAsync(orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Subscription { Status = SubscriptionStatus.Trialing, TrialEndsAt = DateTime.UtcNow.AddDays(-1) });
+
+        var tenant = new FakeTenantContext(orgId);
+        var called = false;
+        var mw = new SubscriptionAccessMiddleware(_ => { called = true; return Task.CompletedTask; });
+        var ctx = AuthedContext("/api/authX", orgId);
+
+        await mw.InvokeAsync(ctx, repo.Object, tenant);
+
+        called.Should().BeFalse();
+        ctx.Response.StatusCode.Should().Be(403);
+    }
+
+    [Test]
+    public async Task AllowsAuthLoginPath_EvenWhenExpired()
+    {
+        var orgId = Guid.NewGuid();
+        var repo = new Mock<ISubscriptionRepository>();
+        var called = false;
+        var mw = new SubscriptionAccessMiddleware(_ => { called = true; return Task.CompletedTask; });
+        await mw.InvokeAsync(AuthedContext("/api/auth/login", orgId), repo.Object, new FakeTenantContext(orgId));
+
+        called.Should().BeTrue();
+        repo.Verify(r => r.GetByOrganizationAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
 }

@@ -22,7 +22,8 @@ public class SubscriptionAccessMiddleware(RequestDelegate next)
         string path = context.Request.Path.Value ?? string.Empty;
 
         bool allowlisted = AllowPrefixes.Any(p =>
-            path.StartsWith(p, StringComparison.OrdinalIgnoreCase));
+            path.Equals(p, StringComparison.OrdinalIgnoreCase)
+            || path.StartsWith(p + "/", StringComparison.OrdinalIgnoreCase));
 
         if (allowlisted
             || context.User.Identity?.IsAuthenticated != true
