@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 import { LogoMarkSvg } from "@/components/site/logo-mark-svg";
 
-export const alt = "CoachOS, Lessenplanning voor tennis- en padelscholen";
+export const alt = "CoachOS | Lessenplanning voor tennis- en padelscholen";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
