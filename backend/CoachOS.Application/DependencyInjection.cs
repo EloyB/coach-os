@@ -1,4 +1,5 @@
 using System.Reflection;
+using CoachOS.Application.Billing;
 using CoachOS.Application.Camps;
 using CoachOS.Application.Dashboard;
 using CoachOS.Application.Enrollments;
@@ -28,6 +29,7 @@ public static class DependencyInjection
         services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
         services.AddScoped<ApplicationMapper>();
 
+        services.AddScoped<IBillingService, BillingService>();
         services.AddScoped<ICampService, CampService>();
         services.AddScoped<ICampEnrollmentService, CampEnrollmentService>();
         services.AddScoped<IDashboardService, DashboardService>();
