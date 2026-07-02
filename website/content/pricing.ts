@@ -33,7 +33,10 @@ export interface PricingTier {
 
 export const PRICING_HEADING = "Eerlijke tarieven, voor elke clubmaat";
 export const PRICING_SUB =
-  "Geen verborgen kosten per leerling, geen jaarcontracten. Maandelijks opzegbaar — al is dat hopelijk niet nodig.";
+  "Geen verborgen kosten per leerling. Betaal maandelijks, of kies jaarlijks en bespaar €5 per maand.";
+
+/** Korting per maand (in EUR) bij jaarlijkse facturatie. */
+export const ANNUAL_MONTHLY_DISCOUNT = 5;
 
 export const PRICING_TIERS: PricingTier[] = [
   {
@@ -233,7 +236,7 @@ export const PRICING_FAQ: PricingFaqEntry[] = [
   },
   {
     q: "Kan ik maandelijks opzeggen?",
-    a: "Ja, voor alle abonnementen — Starter, Club én Federatie. Je zegt op vóór de eerstvolgende factuurdatum en je toegang loopt tot het einde van de lopende maand. Geen jaarcontracten.",
+    a: "Ja. Op een maandabonnement zeg je op vóór de eerstvolgende factuurdatum en loopt je toegang tot het einde van de lopende maand. Kies je voor jaarlijkse facturatie, dan betaal je het jaar vooruit met €5 per maand korting.",
   },
   {
     q: "Bieden jullie korting voor sportfederaties of meerdere clubs?",

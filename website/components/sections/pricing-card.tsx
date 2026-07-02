@@ -1,14 +1,29 @@
 import { ArrowRight, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Mono } from "@/components/ui/mono";
-import type { PricingTier } from "@/content/pricing";
+import { ANNUAL_MONTHLY_DISCOUNT, type PricingTier } from "@/content/pricing";
+
+export type BillingPeriod = "monthly" | "yearly";
 
 interface PricingCardProps {
   tier: PricingTier;
+  billing: BillingPeriod;
 }
 
-export function PricingCard({ tier }: PricingCardProps) {
+export function PricingCard({ tier, billing }: PricingCardProps) {
   const featured = tier.featured ?? false;
+  const yearly = billing === "yearly";
+
+  // Effectief maandbedrag: op jaarbasis €5/maand goedkoper.
+  const monthlyPrice =
+    tier.priceMonthly !== null && yearly
+      ? tier.priceMonthly - ANNUAL_MONTHLY_DISCOUNT
+      : tier.priceMonthly;
+  const yearlyTotal =
+    monthlyPrice !== null && yearly ? monthlyPrice * 12 : null;
+  const priceHelper = yearly
+    ? "Excl. btw · jaarlijks gefactureerd"
+    : tier.priceHelper;
 
   return (
     <div
@@ -40,10 +55,10 @@ export function PricingCard({ tier }: PricingCardProps) {
       </p>
 
       <div className="mt-7 flex items-baseline gap-1">
-        {tier.priceMonthly !== null ? (
+        {monthlyPrice !== null ? (
           <>
             <span className="text-4xl font-bold tracking-tight">
-              €{tier.priceMonthly}
+              €{monthlyPrice}
             </span>
             <span
               className={cn(
@@ -60,13 +75,23 @@ export function PricingCard({ tier }: PricingCardProps) {
           </span>
         )}
       </div>
+      {yearlyTotal !== null ? (
+        <p
+          className={cn(
+            "mt-1 text-xs font-medium",
+            featured ? "text-paper/80" : "text-ink-2",
+          )}
+        >
+          €{yearlyTotal}/jaar
+        </p>
+      ) : null}
       <Mono
         className={cn(
           "mt-1 text-[11px] tracking-tight",
           featured ? "text-paper/60" : "text-ink-3",
         )}
       >
-        {tier.priceHelper}
+        {priceHelper}
       </Mono>
 
       <a

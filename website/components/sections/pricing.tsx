@@ -1,7 +1,15 @@
+"use client";
+
+import { useState } from "react";
 import { ArrowRight } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Mono } from "@/components/ui/mono";
-import { PricingCard } from "@/components/sections/pricing-card";
 import {
+  PricingCard,
+  type BillingPeriod,
+} from "@/components/sections/pricing-card";
+import {
+  ANNUAL_MONTHLY_DISCOUNT,
   PRICING_HEADING,
   PRICING_SUB,
   PRICING_TIERS,
@@ -12,7 +20,14 @@ interface PricingProps {
   hideCompareLink?: boolean;
 }
 
+const PERIODS: { value: BillingPeriod; label: string; hint?: string }[] = [
+  { value: "monthly", label: "Maandelijks" },
+  { value: "yearly", label: "Jaarlijks", hint: `−€${ANNUAL_MONTHLY_DISCOUNT}/mnd` },
+];
+
 export function Pricing({ hideCompareLink = false }: PricingProps) {
+  const [billing, setBilling] = useState<BillingPeriod>("monthly");
+
   return (
     <section id="prijzen" className="border-b border-rule bg-canvas">
       <div className="mx-auto max-w-6xl px-6 py-20 md:py-28">
@@ -26,9 +41,48 @@ export function Pricing({ hideCompareLink = false }: PricingProps) {
           <p className="mt-3 text-base text-ink-2">{PRICING_SUB}</p>
         </div>
 
+        <div
+          role="tablist"
+          aria-label="Facturatieperiode"
+          className="mt-8 inline-flex items-center gap-1 rounded-full border border-rule bg-paper p-1"
+        >
+          {PERIODS.map((period) => {
+            const active = billing === period.value;
+            return (
+              <button
+                key={period.value}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setBilling(period.value)}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition-colors",
+                  active
+                    ? "bg-tennis-green text-paper"
+                    : "text-ink-2 hover:text-ink",
+                )}
+              >
+                {period.label}
+                {period.hint ? (
+                  <span
+                    className={cn(
+                      "rounded-full px-1.5 py-0.5 text-[10px] font-bold",
+                      active
+                        ? "bg-tennis-lime text-ink"
+                        : "bg-tennis-lime/30 text-tennis-green",
+                    )}
+                  >
+                    {period.hint}
+                  </span>
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
+
         <div className="mt-12 grid gap-6 lg:grid-cols-3">
           {PRICING_TIERS.map((tier) => (
-            <PricingCard key={tier.id} tier={tier} />
+            <PricingCard key={tier.id} tier={tier} billing={billing} />
           ))}
         </div>
 
