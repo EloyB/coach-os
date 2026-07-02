@@ -8,7 +8,6 @@ import { Pricing } from "@/components/sections/pricing";
 import { PricingCompare } from "@/components/sections/pricing-compare";
 import { FinalCta } from "@/components/sections/final-cta";
 import {
-  PRICING_DISCLAIMER,
   PRICING_FAQ,
   PRICING_FAQ_HEADING,
   PRICING_VISIBLE,
@@ -18,7 +17,7 @@ const SITE_URL = "https://coach-os.be";
 const PAGE_URL = `${SITE_URL}/prijzen`;
 
 export const metadata: Metadata = {
-  title: "Prijzen — lessenplanning vanaf €19/maand",
+  title: "Prijzen — lessenplanning vanaf €35/maand",
   description:
     "Tarieven voor CoachOS — lessenplanning voor tennis- en padelclubs. Starter, Club en Federatie. Maandelijks opzegbaar, geen verborgen kosten per leerling.",
   alternates: {
@@ -36,7 +35,7 @@ export const metadata: Metadata = {
     url: PAGE_URL,
     title: "Prijzen — CoachOS",
     description:
-      "Tarieven voor CoachOS, lessenplanning voor tennis- en padelclubs. Vanaf €19/maand. Maandelijks opzegbaar.",
+      "Tarieven voor CoachOS, lessenplanning voor tennis- en padelclubs. Vanaf €35/maand. Maandelijks opzegbaar.",
     siteName: "CoachOS",
   },
 };
@@ -101,10 +100,6 @@ export default function PrijzenPage() {
             <p className="mt-5 max-w-2xl text-lg leading-relaxed text-ink-2">
               Drie abonnementen voor zelfstandige coaches, clubs en federaties.
               Maandelijks opzegbaar, alle features inbegrepen op elk niveau.
-            </p>
-            <p className="mt-6 inline-flex items-center rounded-md border border-warn/30 bg-warn/10 px-3 py-1.5 text-xs font-medium text-ink-2">
-              <span className="mr-2 inline-block h-1.5 w-1.5 rounded-full bg-warn" />
-              {PRICING_DISCLAIMER}
             </p>
           </div>
         </section>

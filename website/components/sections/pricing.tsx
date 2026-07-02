@@ -2,7 +2,6 @@ import { ArrowRight } from "lucide-react";
 import { Mono } from "@/components/ui/mono";
 import { PricingCard } from "@/components/sections/pricing-card";
 import {
-  PRICING_DISCLAIMER,
   PRICING_HEADING,
   PRICING_SUB,
   PRICING_TIERS,
@@ -25,10 +24,6 @@ export function Pricing({ hideCompareLink = false }: PricingProps) {
             {PRICING_HEADING}
           </h2>
           <p className="mt-3 text-base text-ink-2">{PRICING_SUB}</p>
-          <p className="mt-4 inline-flex items-center rounded-md border border-warn/30 bg-warn/10 px-3 py-1.5 text-xs font-medium text-ink-2">
-            <span className="mr-2 inline-block h-1.5 w-1.5 rounded-full bg-warn" />
-            {PRICING_DISCLAIMER}
-          </p>
         </div>
 
         <div className="mt-12 grid gap-6 lg:grid-cols-3">

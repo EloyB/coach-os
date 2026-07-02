@@ -35,15 +35,12 @@ export const PRICING_HEADING = "Eerlijke tarieven, voor elke clubmaat";
 export const PRICING_SUB =
   "Geen verborgen kosten per leerling, geen jaarcontracten. Maandelijks opzegbaar — al is dat hopelijk niet nodig.";
 
-export const PRICING_DISCLAIMER =
-  "Voorlopige tarifering — definitieve prijzen volgen bij lancering.";
-
 export const PRICING_TIERS: PricingTier[] = [
   {
     id: "starter",
     name: "Starter",
     tagline: "Voor zelfstandige coaches en kleine groepen.",
-    priceMonthly: 19,
+    priceMonthly: 35,
     priceSuffix: "/maand",
     priceHelper: "Excl. btw · maandelijks opzegbaar",
     cta: { label: "Begin met Starter", href: "#contact" },
@@ -60,7 +57,7 @@ export const PRICING_TIERS: PricingTier[] = [
     id: "club",
     name: "Club",
     tagline: "Voor tennis- en padelclubs met meerdere trainers.",
-    priceMonthly: 49,
+    priceMonthly: 70,
     priceSuffix: "/maand",
     priceHelper: "Excl. btw · maandelijks opzegbaar",
     featured: true,
@@ -79,10 +76,10 @@ export const PRICING_TIERS: PricingTier[] = [
     id: "federatie",
     name: "Federatie",
     tagline: "Voor multi-locatie clubs en overkoepelende organisaties.",
-    priceMonthly: null,
-    priceSuffix: "op maat",
-    priceHelper: "Vanaf €149/maand · jaarcontract",
-    cta: { label: "Vraag een offerte", href: "#contact" },
+    priceMonthly: 99,
+    priceSuffix: "/maand",
+    priceHelper: "Excl. btw · maandelijks opzegbaar",
+    cta: { label: "Kies Federatie", href: "#contact" },
     features: [
       "Onbeperkte trainers",
       "Multi-club / multi-locatie",
@@ -228,7 +225,7 @@ export interface PricingFaqEntry {
 export const PRICING_FAQ: PricingFaqEntry[] = [
   {
     q: "Zijn deze tarieven definitief?",
-    a: "Nee. Dit zijn voorlopige tarieven die we hanteren tijdens de pre-launch om early adopters duidelijkheid te geven. Definitieve prijzen volgen bij lancering — vroege gebruikers behouden hun starttarief minstens 12 maanden.",
+    a: "Ja. Dit zijn onze vaste tarieven — geen verborgen kosten per leerling en geen verrassingen achteraf. Vroege gebruikers behouden hun starttarief minstens 12 maanden, ook als de prijzen later stijgen.",
   },
   {
     q: "Zit btw inbegrepen?",
@@ -236,7 +233,7 @@ export const PRICING_FAQ: PricingFaqEntry[] = [
   },
   {
     q: "Kan ik maandelijks opzeggen?",
-    a: "Ja, voor Starter en Club. Je zegt op vóór de eerstvolgende factuurdatum en je toegang loopt tot het einde van de lopende maand. Federatie werkt met een jaarcontract vanwege de aangepaste implementatie.",
+    a: "Ja, voor alle abonnementen — Starter, Club én Federatie. Je zegt op vóór de eerstvolgende factuurdatum en je toegang loopt tot het einde van de lopende maand. Geen jaarcontracten.",
   },
   {
     q: "Bieden jullie korting voor sportfederaties of meerdere clubs?",
@@ -244,7 +241,7 @@ export const PRICING_FAQ: PricingFaqEntry[] = [
   },
   {
     q: "Welke betaalmethodes accepteren jullie zelf?",
-    a: "SEPA-domiciliëring, Bancontact en iDEAL voor Belgische en Nederlandse klanten. Voor jaarcontracten kan ook bankoverschrijving op factuur.",
+    a: "SEPA-domiciliëring, Bancontact en iDEAL voor Belgische en Nederlandse klanten. Betaling op factuur via bankoverschrijving kan op aanvraag.",
   },
   {
     q: "Wat als ik tijdens een seizoen meer trainers nodig heb?",
