@@ -11,7 +11,7 @@
  * Typed as `boolean` (not the literal `false`) so the dependent
  * conditional code paths don't get TS-narrowed away.
  */
-export const PRICING_VISIBLE: boolean = false;
+export const PRICING_VISIBLE: boolean = true;
 
 export interface PricingTier {
   id: string;
