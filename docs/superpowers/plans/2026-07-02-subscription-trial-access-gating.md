@@ -10,6 +10,7 @@
 
 ## Global Constraints
 
+- **Test framework:** the `CoachOS.Tests` project uses **NUnit + Moq + FluentAssertions** (`[TestFixture]`, `[Test]`, `[TestCase]`, `[SetUp]`, `new Mock<T>()` / `.Setup(...).ReturnsAsync(...)`, `.Should()`). The test code blocks in the tasks below are written in xUnit/NSubstitute for illustration — **translate them to NUnit + Moq** to match the existing 31 test files. Do NOT add xUnit or NSubstitute packages. Mapping: `[Fact]`→`[Test]`, `[Theory]`+`[InlineData(x)]`→`[Test]`+`[TestCase(x)]`, `Substitute.For<T>()`→`new Mock<T>()` (pass `.Object` to the SUT), `.Returns(v)`→`.Setup(m => m.Method(...)).ReturnsAsync(v)`.
 - Trial length: **60 days** (config value `SubscriptionOptions.TrialDays = 60`).
 - Access decision is a **pure function** `SubscriptionAccess.HasAppAccess(Subscription?, DateTime utcNow)` — single source of truth, reused by middleware and tests.
 - Multi-tenancy: every query filters by `OrganizationId`; middleware reads it from `ITenantContext` (already populated by `TenantContextMiddleware`).
@@ -351,15 +352,18 @@ git commit -m "feat(subscriptions): ISubscriptionRepository + registration"
 
 ## Task 4: Create trial subscription on registration
 
+**Testing note (revised):** the `CoachOS.Tests` suite has **no** DbContext/UserManager integration harness — all 31 tests are pure service/unit tests with mocked repositories. So instead of an `AuthService` integration test (which would need a real `UserManager` + EF provider), the trial-construction logic is extracted into a **pure `SubscriptionFactory.CreateTrial(...)`** that is unit-tested (NUnit), and `RegisterAsync` calls it. That `RegisterAsync` actually persists the trial is verified end-to-end by the reset+seed in Task 8 (the project's stated "done" bar).
+
 **Files:**
 - Create: `backend/CoachOS.Application/Configuration/SubscriptionOptions.cs`
-- Modify: `backend/CoachOS.Infrastructure/Identity/AuthService.cs` (inside `RegisterAsync` transaction)
-- Modify: `backend/CoachOS.API/Program.cs` (bind options)
-- Test: `backend/CoachOS.Tests/Auth/RegisterCreatesTrialTests.cs`
+- Create: `backend/CoachOS.Domain/Subscriptions/SubscriptionFactory.cs`
+- Modify: `backend/CoachOS.Infrastructure/Identity/AuthService.cs` (inject options, create trial in the `RegisterAsync` transaction)
+- Modify: `backend/CoachOS.Infrastructure/DependencyInjection.cs` (bind `SubscriptionOptions` next to `EmailOptions`/`MollieOptions`)
+- Test: `backend/CoachOS.Tests/Subscriptions/SubscriptionFactoryTests.cs`
 
 **Interfaces:**
-- Consumes: `Subscription`, `SubscriptionStatus`, `ISubscriptionRepository`
-- Produces: after `RegisterAsync`, the org has a `Subscription { Status = Trialing, TrialEndsAt = utcNow + TrialDays }`.
+- Consumes: `Subscription`, `SubscriptionStatus`
+- Produces: `static Subscription SubscriptionFactory.CreateTrial(Guid organizationId, int trialDays, DateTime utcNow)` → `Subscription { Id = new, OrganizationId, Status = Trialing, TrialEndsAt = utcNow.AddDays(trialDays) }`. After `RegisterAsync`, the new org has exactly this subscription persisted.
 
 - [ ] **Step 1: Write the options record**
 
@@ -376,96 +380,105 @@ public class SubscriptionOptions
 }
 ```
 
-- [ ] **Step 2: Bind options in Program.cs**
-
-Add near the other `builder.Services.Configure<...>` calls:
+- [ ] **Step 2: Write the failing test (NUnit — pure factory)**
 
 ```csharp
-builder.Services.Configure<SubscriptionOptions>(
-    builder.Configuration.GetSection(SubscriptionOptions.SectionName));
-```
-
-- [ ] **Step 3: Write the failing test**
-
-```csharp
-// backend/CoachOS.Tests/Auth/RegisterCreatesTrialTests.cs
+// backend/CoachOS.Tests/Subscriptions/SubscriptionFactoryTests.cs
 using CoachOS.Domain.Enums;
-using CoachOS.Infrastructure.Persistence;
+using CoachOS.Domain.Subscriptions;
 using FluentAssertions;
-using Microsoft.EntityFrameworkCore;
-using Xunit;
+using NUnit.Framework;
 
-namespace CoachOS.Tests.Auth;
+namespace CoachOS.Tests.Subscriptions;
 
-public class RegisterCreatesTrialTests
+[TestFixture]
+public class SubscriptionFactoryTests
 {
-    [Fact]
-    public async Task RegisterAsync_CreatesTrialingSubscriptionForNewOrg()
+    private static readonly DateTime Now = new(2026, 7, 2, 12, 0, 0, DateTimeKind.Utc);
+
+    [Test]
+    public void CreateTrial_SetsTrialingStatusAndTrialEnd()
     {
-        // Arrange: build the AuthService against the shared test harness
-        // (see CoachOS.Tests/TestFactory for the existing in-memory/sqlite setup).
-        using var harness = new AuthServiceHarness(trialDays: 60);
+        var orgId = Guid.NewGuid();
 
-        // Act
-        var result = await harness.Auth.RegisterAsync(
-            organizationName: "TC De Plataan",
-            firstName: "Ella",
-            lastName: "Coach",
-            email: "ella@example.be",
-            password: "Str0ng!pass",
-            CancellationToken.None);
+        var sub = SubscriptionFactory.CreateTrial(orgId, trialDays: 60, utcNow: Now);
 
-        // Assert
-        result.IsSuccess.Should().BeTrue();
-        var orgId = result.Value!.OrganizationId;
-
-        var sub = await harness.Db.Subscriptions
-            .IgnoreQueryFilters()
-            .SingleAsync(s => s.OrganizationId == orgId);
-
+        sub.OrganizationId.Should().Be(orgId);
         sub.Status.Should().Be(SubscriptionStatus.Trialing);
-        sub.TrialEndsAt.Should().NotBeNull();
-        sub.TrialEndsAt!.Value.Should().BeAfter(DateTime.UtcNow.AddDays(59));
+        sub.TrialEndsAt.Should().Be(Now.AddDays(60));
         sub.CurrentPeriodEnd.Should().BeNull();
+        sub.Id.Should().NotBe(Guid.Empty);
     }
 }
 ```
 
-> **Note for implementer:** `CoachOS.Tests` already constructs `AuthService` in existing auth tests. Reuse that setup helper; if it isn't factored out yet, create a small `AuthServiceHarness` that news up `AuthService` with the real `ApplicationDbContext` (test connection), `UserManager`, `ITokenService` fake, and `IOptions<SubscriptionOptions>{ TrialDays = 60 }`. Mirror the wiring in the existing `AuthService` tests — do not invent new dependencies.
+- [ ] **Step 3: Run test to verify it fails**
 
-- [ ] **Step 4: Run test to verify it fails**
+Run: `cd backend && dotnet test --filter "FullyQualifiedName~SubscriptionFactoryTests"`
+Expected: FAIL — `SubscriptionFactory` does not exist (compile error).
 
-Run: `cd backend && dotnet test --filter "FullyQualifiedName~RegisterCreatesTrialTests"`
-Expected: FAIL — no subscription row created.
+- [ ] **Step 4: Write the factory**
 
-- [ ] **Step 5: Inject options + create the trial in RegisterAsync**
+```csharp
+// backend/CoachOS.Domain/Subscriptions/SubscriptionFactory.cs
+using CoachOS.Domain.Entities;
+using CoachOS.Domain.Enums;
 
-In `AuthService`'s constructor, add `IOptions<SubscriptionOptions> subscriptionOptions` and store `_trialDays = subscriptionOptions.Value.TrialDays;`.
+namespace CoachOS.Domain.Subscriptions;
+
+/// <summary>
+/// Bouwt een Subscription-entity. Nu enkel de trial; betaalde subscriptions
+/// (Mollie) volgen in fase 2.
+/// </summary>
+public static class SubscriptionFactory
+{
+    public static Subscription CreateTrial(Guid organizationId, int trialDays, DateTime utcNow) =>
+        new()
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = organizationId,
+            Status = SubscriptionStatus.Trialing,
+            TrialEndsAt = utcNow.AddDays(trialDays),
+        };
+}
+```
+
+- [ ] **Step 5: Run test to verify it passes**
+
+Run: `cd backend && dotnet test --filter "FullyQualifiedName~SubscriptionFactoryTests"`
+Expected: PASS.
+
+- [ ] **Step 6: Bind options in Infrastructure DI**
+
+In `backend/CoachOS.Infrastructure/DependencyInjection.cs`, next to the existing `services.Configure<EmailOptions>(...)` / `Configure<MollieOptions>(...)` lines, add:
+
+```csharp
+services.Configure<SubscriptionOptions>(configuration.GetSection(SubscriptionOptions.SectionName));
+```
+Add `using CoachOS.Application.Configuration;` if not present.
+
+- [ ] **Step 7: Inject options + create the trial in RegisterAsync**
+
+In `AuthService`'s constructor, add `IOptions<SubscriptionOptions> subscriptionOptions` and store `_trialDays = subscriptionOptions.Value.TrialDays;` (a `readonly int` field).
 
 Inside the `RegisterAsync` transaction, immediately **after** the `context.OrganizationSettings.Add(...)` call and **before** the first `await context.SaveChangesAsync(...)`, add:
 
 ```csharp
-context.Subscriptions.Add(new Subscription
-{
-    Id = Guid.NewGuid(),
-    OrganizationId = organization.Id,
-    Status = SubscriptionStatus.Trialing,
-    TrialEndsAt = DateTime.UtcNow.AddDays(_trialDays),
-    IntendedPlan = null, // set from the register request in a later refinement
-});
+context.Subscriptions.Add(
+    SubscriptionFactory.CreateTrial(organization.Id, _trialDays, DateTime.UtcNow));
 ```
 
-Add the required usings: `using CoachOS.Domain.Entities;`, `using CoachOS.Domain.Enums;`, `using CoachOS.Application.Configuration;`, `using Microsoft.Extensions.Options;`.
+Add usings as needed: `using CoachOS.Domain.Subscriptions;`, `using CoachOS.Application.Configuration;`, `using Microsoft.Extensions.Options;`.
 
-- [ ] **Step 6: Run test to verify it passes**
+- [ ] **Step 8: Build + run the focused test**
 
-Run: `cd backend && dotnet test --filter "FullyQualifiedName~RegisterCreatesTrialTests"`
-Expected: PASS.
+Run: `cd backend && dotnet build CoachOS.slnx` (0 errors) and `dotnet test --filter "FullyQualifiedName~SubscriptionFactoryTests"` (pass).
+(End-to-end persistence through `RegisterAsync` is verified by Task 8's reset+seed, not here.)
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 9: Commit**
 
 ```bash
-git add backend/CoachOS.Application/Configuration/SubscriptionOptions.cs backend/CoachOS.Infrastructure/Identity/AuthService.cs backend/CoachOS.API/Program.cs backend/CoachOS.Tests/Auth/RegisterCreatesTrialTests.cs
+git add backend/CoachOS.Application/Configuration/SubscriptionOptions.cs backend/CoachOS.Domain/Subscriptions/SubscriptionFactory.cs backend/CoachOS.Infrastructure/Identity/AuthService.cs backend/CoachOS.Infrastructure/DependencyInjection.cs backend/CoachOS.Tests/Subscriptions/SubscriptionFactoryTests.cs
 git commit -m "feat(subscriptions): create 60-day trial on registration"
 ```
 
