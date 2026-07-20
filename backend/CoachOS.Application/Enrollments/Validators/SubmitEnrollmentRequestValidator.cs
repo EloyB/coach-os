@@ -1,3 +1,4 @@
+using CoachOS.Application.Enrollments;
 using CoachOS.Application.Enrollments.DTOs;
 using CoachOS.Application.Common;
 using FluentValidation;
@@ -47,6 +48,12 @@ public class SubmitEnrollmentRequestValidator : AbstractValidator<SubmitEnrollme
 
         When(x => x.EnrollmentType == "group", () =>
         {
+            // De unique index IX_Enrollments_LessonSerieId_StudentEmail laat hetzelfde
+            // adres geen twee keer toe binnen één reeks. Vang dat hier af i.p.v. bij de insert.
+            RuleFor(x => x)
+                .Must(EnrollmentEmails.AreUnique)
+                .WithMessage("Elk groepslid moet een uniek e-mailadres hebben");
+
             RuleFor(x => x.GroupMembers)
                 .NotNull().WithMessage("Groepsleden zijn verplicht bij groepsinschrijving")
                 .Must(m => m is { Count: > 0 and <= 3 })

@@ -468,6 +468,140 @@ public class EnrollmentServiceTests
     }
 
     [Test]
+    public async Task SubmitEnrollment_GroupEnrollment_ReturnsConflict_WhenMemberAlreadyEnrolled()
+    {
+        var series = BuildActiveSeries();
+        SetupSuccessfulEnrollment(series, "leader@test.be");
+        _enrollmentRepo
+            .Setup(r => r.IsDuplicateAsync(SeriesId, "a@test.be", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        SubmitEnrollmentRequest request = new()
+        {
+            StudentName = "Leader",
+            StudentEmail = "leader@test.be",
+            EnrollmentType = "group",
+            GroupMembers = new()
+            {
+                new() { StudentName = "Member A", StudentEmail = "a@test.be" },
+            },
+        };
+
+        var result = await _service.SubmitEnrollmentAsync(SeriesId, request);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.Conflict);
+        _enrollmentRepo.Verify(
+            r => r.AddAsync(It.IsAny<Enrollment>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Test]
+    public async Task SubmitEnrollment_GroupEnrollment_ReturnsConflict_WhenMemberEmailEqualsLeader()
+    {
+        var series = BuildActiveSeries();
+        SetupSuccessfulEnrollment(series, "leader@test.be");
+
+        SubmitEnrollmentRequest request = new()
+        {
+            StudentName = "Leader",
+            StudentEmail = "leader@test.be",
+            EnrollmentType = "group",
+            GroupMembers = new()
+            {
+                new() { StudentName = "Member A", StudentEmail = "LEADER@test.be" },
+            },
+        };
+
+        var result = await _service.SubmitEnrollmentAsync(SeriesId, request);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.Conflict);
+        _enrollmentRepo.Verify(
+            r => r.AddAsync(It.IsAny<Enrollment>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Test]
+    public async Task SubmitEnrollment_GroupEnrollment_ReturnsConflict_WhenMembersShareEmail()
+    {
+        var series = BuildActiveSeries();
+        SetupSuccessfulEnrollment(series, "leader@test.be");
+
+        SubmitEnrollmentRequest request = new()
+        {
+            StudentName = "Leader",
+            StudentEmail = "leader@test.be",
+            EnrollmentType = "group",
+            GroupMembers = new()
+            {
+                new() { StudentName = "Member A", StudentEmail = "same@test.be" },
+                new() { StudentName = "Member B", StudentEmail = "same@test.be" },
+            },
+        };
+
+        var result = await _service.SubmitEnrollmentAsync(SeriesId, request);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.Conflict);
+        _enrollmentRepo.Verify(
+            r => r.AddAsync(It.IsAny<Enrollment>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    /// <summary>
+    /// Bootst een Npgsql PostgresException na: de Application-laag herkent die enkel
+    /// aan de SqlState-property, niet aan het type.
+    /// </summary>
+    private sealed class FakePostgresException(string sqlState) : Exception("db error")
+    {
+        public string SqlState { get; } = sqlState;
+    }
+
+    [Test]
+    public async Task SubmitEnrollment_ReturnsConflict_WhenInsertHitsUniqueViolation()
+    {
+        // Race condition: een parallelle submitter insert hetzelfde adres tussen check en insert.
+        var series = BuildActiveSeries();
+        SetupSuccessfulEnrollment(series, "anna@test.be");
+        _enrollmentRepo
+            .Setup(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("save failed", new FakePostgresException("23505")));
+
+        SubmitEnrollmentRequest request = new()
+        {
+            StudentName = "Anna",
+            StudentEmail = "anna@test.be",
+        };
+
+        var result = await _service.SubmitEnrollmentAsync(SeriesId, request);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.Conflict);
+    }
+
+    [Test]
+    public async Task SubmitEnrollment_ReturnsUnexpected_WhenInsertFailsForOtherReason()
+    {
+        var series = BuildActiveSeries();
+        SetupSuccessfulEnrollment(series, "anna@test.be");
+        _enrollmentRepo
+            .Setup(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("connection lost"));
+
+        SubmitEnrollmentRequest request = new()
+        {
+            StudentName = "Anna",
+            StudentEmail = "anna@test.be",
+        };
+
+        var result = await _service.SubmitEnrollmentAsync(SeriesId, request);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.Unexpected);
+    }
+
+    [Test]
     public async Task SubmitEnrollment_SoloWithPreferences_SavesPreferences()
     {
         var series = BuildActiveSeries(templateEntries: 2);
