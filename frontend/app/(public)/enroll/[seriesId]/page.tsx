@@ -58,9 +58,31 @@ const DAY_NAMES = [
   "Zondag",
 ];
 
-type GroupMember = { name: string; email: string };
+type GroupMember = { name: string; email: string; dateOfBirth: string };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/**
+ * Valideert een geboortedatum (yyyy-MM-dd uit een date-input). Spiegelt de
+ * backendregels in DateOfBirthRules, zodat de gebruiker de fout hier al ziet.
+ */
+function validateBirthDate(value: string): string | undefined {
+  if (!value.trim()) return "Geboortedatum is verplicht";
+
+  const parsed = new Date(value + "T00:00:00");
+  if (Number.isNaN(parsed.getTime())) return "Ongeldige geboortedatum";
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (parsed > today) return "Geboortedatum kan niet in de toekomst liggen";
+
+  const maxAge = 120;
+  const oldest = new Date(today);
+  oldest.setFullYear(oldest.getFullYear() - maxAge);
+  if (parsed < oldest) return "Controleer de geboortedatum";
+
+  return undefined;
+}
 
 function inputClass(hasError: boolean) {
   return `w-full border rounded-lg px-3 py-2 text-sm outline-none transition-colors focus:ring-2 focus:ring-tennis-green/20 ${
@@ -91,12 +113,14 @@ export default function EnrollPage() {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [baseErrors, setBaseErrors] = useState<{
     firstName?: string;
     lastName?: string;
     email?: string;
+    dateOfBirth?: string;
   }>({});
 
   // Availability preferences
@@ -109,7 +133,7 @@ export default function EnrollPage() {
   const [isOpenToGrouping, setIsOpenToGrouping] = useState(false);
   const [groupMembers, setGroupMembers] = useState<GroupMember[]>([]);
   const [memberErrors, setMemberErrors] = useState<
-    Record<number, { name?: string; email?: string }>
+    Record<number, { name?: string; email?: string; dateOfBirth?: string }>
   >({});
 
   const user = getAuthUser();
@@ -154,7 +178,7 @@ export default function EnrollPage() {
 
   function addGroupMember() {
     if (groupMembers.length >= 3) return;
-    setGroupMembers((prev) => [...prev, { name: "", email: "" }]);
+    setGroupMembers((prev) => [...prev, { name: "", email: "", dateOfBirth: "" }]);
   }
 
   function removeGroupMember(index: number) {
@@ -168,7 +192,7 @@ export default function EnrollPage() {
 
   function updateGroupMember(
     index: number,
-    field: "name" | "email",
+    field: "name" | "email" | "dateOfBirth",
     value: string
   ) {
     setGroupMembers((prev) =>
@@ -192,6 +216,8 @@ export default function EnrollPage() {
     if (!email.trim()) errors.email = "E-mailadres is verplicht";
     else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))
       errors.email = "Ongeldig e-mailadres";
+    const dobError = validateBirthDate(dateOfBirth);
+    if (dobError) errors.dateOfBirth = dobError;
     setBaseErrors(errors);
 
     const fErrors: Record<string, string> = {};
@@ -204,15 +230,20 @@ export default function EnrollPage() {
     }
     setFieldErrors(fErrors);
 
-    const mErrors: Record<number, { name?: string; email?: string }> = {};
+    const mErrors: Record<
+      number,
+      { name?: string; email?: string; dateOfBirth?: string }
+    > = {};
     if (enrollmentType === "group") {
       groupMembers.forEach((m, i) => {
-        const e: { name?: string; email?: string } = {};
+        const e: { name?: string; email?: string; dateOfBirth?: string } = {};
         if (!m.name.trim()) e.name = "Naam is verplicht";
         if (!m.email.trim()) e.email = "E-mailadres is verplicht";
         else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(m.email))
           e.email = "Ongeldig e-mailadres";
-        if (e.name || e.email) mErrors[i] = e;
+        const memberDobError = validateBirthDate(m.dateOfBirth);
+        if (memberDobError) e.dateOfBirth = memberDobError;
+        if (e.name || e.email || e.dateOfBirth) mErrors[i] = e;
       });
     }
     setMemberErrors(mErrors);
@@ -248,6 +279,7 @@ export default function EnrollPage() {
         studentName: `${firstName.trim()} ${lastName.trim()}`,
         studentEmail: email.trim(),
         studentPhone: phone.trim() || undefined,
+        dateOfBirth: dateOfBirth,
         responses,
         timeSlotPreferences:
           timeSlotPreferences.length > 0 ? timeSlotPreferences : undefined,
@@ -258,6 +290,7 @@ export default function EnrollPage() {
             ? groupMembers.map((m) => ({
                 studentName: m.name.trim(),
                 studentEmail: m.email.trim(),
+                dateOfBirth: m.dateOfBirth,
                 responses: [],
               }))
             : undefined,
@@ -600,6 +633,39 @@ export default function EnrollPage() {
                         className={inputClass(false)}
                       />
                     </div>
+                    <div>
+                      <label
+                        htmlFor="dateOfBirth"
+                        className="block text-sm font-medium text-gray-700 mb-1.5"
+                      >
+                        {t("form_date_of_birth")}
+                      </label>
+                      <input
+                        id="dateOfBirth"
+                        type="date"
+                        value={dateOfBirth}
+                        onChange={(e) => {
+                          setDateOfBirth(e.target.value);
+                          if (baseErrors.dateOfBirth) {
+                            setBaseErrors((prev) => ({
+                              ...prev,
+                              dateOfBirth: undefined,
+                            }));
+                          }
+                        }}
+                        max={new Date().toISOString().slice(0, 10)}
+                        className={inputClass(!!baseErrors.dateOfBirth)}
+                      />
+                      {baseErrors.dateOfBirth ? (
+                        <p className="text-xs text-red-500 mt-1">
+                          {baseErrors.dateOfBirth}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-gray-400 mt-1">
+                          {t("form_date_of_birth_hint")}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -765,6 +831,26 @@ export default function EnrollPage() {
                               {memberErrors[i]?.email && (
                                 <p className="text-xs text-red-500 mt-1">
                                   {memberErrors[i].email}
+                                </p>
+                              )}
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-500 mb-1">
+                                {t("form_member_date_of_birth")}
+                              </label>
+                              <input
+                                type="date"
+                                aria-label={`${t("form_member_date_of_birth")} ${i + 1}`}
+                                value={member.dateOfBirth}
+                                onChange={(e) =>
+                                  updateGroupMember(i, "dateOfBirth", e.target.value)
+                                }
+                                max={new Date().toISOString().slice(0, 10)}
+                                className={inputClass(!!memberErrors[i]?.dateOfBirth)}
+                              />
+                              {memberErrors[i]?.dateOfBirth && (
+                                <p className="text-xs text-red-500 mt-1">
+                                  {memberErrors[i].dateOfBirth}
                                 </p>
                               )}
                             </div>

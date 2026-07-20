@@ -17,6 +17,7 @@ import { getTrainerAvailabilities } from "@/lib/api/trainerAvailabilities";
 import { inputClass } from "@/lib/styles";
 import type { WizardSlot } from "../_types";
 import { CalendarWeekView, type SlotDefaults } from "./calendar-week-view";
+import { SlotSuggestionsPanel } from "./slot-suggestions-panel";
 
 interface Step2Props {
   slots: WizardSlot[];
@@ -106,7 +107,13 @@ export function Step2Planning({
         </div>
 
         {/* Defaults card */}
-        <div className="w-56 shrink-0 sticky top-8">
+        <div className="w-56 shrink-0 sticky top-8 space-y-4">
+          <SlotSuggestionsPanel
+            tennisClubId={tennisClubId}
+            defaults={defaults}
+            onApply={(newSlots) => setSlots((current) => [...current, ...newSlots])}
+          />
+
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 space-y-4">
             <div>
               <h3 className="text-sm font-semibold text-gray-900 mb-0.5">
