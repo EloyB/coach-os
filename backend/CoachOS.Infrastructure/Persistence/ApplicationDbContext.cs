@@ -27,6 +27,7 @@ public class ApplicationDbContext(
     public DbSet<Organization> Organizations { get; set; } = null!;
     public DbSet<TennisClub> TennisClubs { get; set; } = null!;
     public DbSet<LessonSerie> LessonSeries { get; set; } = null!;
+    public DbSet<LessonSeriePrice> LessonSeriePrices { get; set; } = null!;
     public DbSet<Lesson> Lessons { get; set; } = null!;
     public DbSet<Enrollment> Enrollments { get; set; } = null!;
     public DbSet<Payment> Payments { get; set; } = null!;
@@ -70,6 +71,7 @@ public class ApplicationDbContext(
         builder.ApplyConfiguration(new TennisClubConfiguration());
         builder.ApplyConfiguration(new ApplicationUserConfiguration());
         builder.ApplyConfiguration(new LessonSerieConfiguration());
+        builder.ApplyConfiguration(new LessonSeriePriceConfiguration());
         builder.ApplyConfiguration(new LessonConfiguration());
         builder.ApplyConfiguration(new EnrollmentConfiguration());
         builder.ApplyConfiguration(new PaymentConfiguration());
