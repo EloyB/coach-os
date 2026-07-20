@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using CoachOS.Application.Pricing;
 using CoachOS.Application.StudentConfirmation.DTOs;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
@@ -15,6 +16,7 @@ public class StudentConfirmationService(
     ILessonSerieRepository seriesRepo,
     IPaymentRepository paymentRepo,
     Payments.IPaymentService paymentService,
+    IPricingService pricingService,
     ILogger<StudentConfirmationService> logger) : IStudentConfirmationService
 {
     public async Task<Result<AssignmentDetailsDto>> GetByTokenAsync(
@@ -23,12 +25,7 @@ public class StudentConfirmationService(
         var (token, error) = await LoadTokenAsync(rawToken, ct);
         if (error is not null) return Result<AssignmentDetailsDto>.Fail(error);
 
-        var details = await BuildDetailsAsync(token!, ct);
-        if (details is null)
-            return Result<AssignmentDetailsDto>.Fail(
-                new Error(ErrorCodes.NotFound, "Planning niet gevonden."));
-
-        return Result<AssignmentDetailsDto>.Ok(details);
+        return await BuildDetailsAsync(token!, ct);
     }
 
     public async Task<Result<ConfirmResultDto>> ConfirmAsync(
@@ -43,13 +40,23 @@ public class StudentConfirmationService(
 
         var method = (PaymentMethod)request.PaymentMethod;
         var assignment = token.ScheduleAssignment;
-        var groupSize = assignment.EnrollmentGroupId.HasValue && assignment.EnrollmentGroup is not null
-            ? assignment.EnrollmentGroup.Members.Count
-            : 1;
 
         var series = await seriesRepo.GetByIdAsync(assignment.LessonSerieId, token.OrganizationId, ct);
         if (series is null)
             return Result<ConfirmResultDto>.Fail(new Error(ErrorCodes.NotFound, "Lessenreeks niet gevonden."));
+
+        // Prijs vóór de token-claim berekenen: faalt de berekening, dan blijft de
+        // bevestiging herbruikbaar i.p.v. geclaimd achter te blijven zonder betaling.
+        PriceBreakdown? cashBreakdown = null;
+        if (method == PaymentMethod.Cash)
+        {
+            Result<PriceBreakdown> priceResult = await pricingService.CalculateForGroupAsync(
+                assignment.LessonSerieId, ResolveParticipants(assignment, token.Enrollment), ct);
+            if (!priceResult.IsSuccess)
+                return Result<ConfirmResultDto>.Fail(priceResult.Errors);
+
+            cashBreakdown = priceResult.Value!;
+        }
 
         // Atomisch de token claimen: voorkomt dubbele bevestiging als de student
         // twee keer op "Bevestigen" tikt (dubbele Payment row anders gemaakt).
@@ -68,7 +75,7 @@ public class StudentConfirmationService(
             {
                 OrganizationId = token.OrganizationId,
                 EnrollmentId = token.EnrollmentId,
-                Amount = series.Price * groupSize,
+                Amount = cashBreakdown!.Total,
                 Status = PaymentStatus.Paid,
                 Method = PaymentMethod.Cash,
                 PaidAt = DateTime.UtcNow,
@@ -181,6 +188,18 @@ public class StudentConfirmationService(
                 new Error(ErrorCodes.Validation,
                     $"Tijdslot heeft geen plaats meer ({currentCount}/{targetSlot.MaxStudents})."));
 
+        // Idem als ConfirmAsync: prijs bepalen vóór de claim.
+        PriceBreakdown? cashBreakdown = null;
+        if (method == PaymentMethod.Cash)
+        {
+            Result<PriceBreakdown> priceResult = await pricingService.CalculateForGroupAsync(
+                oldAssignment.LessonSerieId, ResolveParticipants(oldAssignment, token.Enrollment), ct);
+            if (!priceResult.IsSuccess)
+                return Result<ConfirmResultDto>.Fail(priceResult.Errors);
+
+            cashBreakdown = priceResult.Value!;
+        }
+
         // Atomisch de token-response flippen VOOR het aanmaken van assignment/payment.
         // Zonder deze claim kunnen twee parallelle "pick alternative" requests beide de
         // capacity check passeren en elk een nieuwe ScheduleAssignment + Payment aanmaken
@@ -215,7 +234,7 @@ public class StudentConfirmationService(
             {
                 OrganizationId = token.OrganizationId,
                 EnrollmentId = token.EnrollmentId,
-                Amount = series.Price * groupSize,
+                Amount = cashBreakdown!.Total,
                 Status = PaymentStatus.Paid,
                 Method = PaymentMethod.Cash,
                 PaidAt = DateTime.UtcNow,
@@ -339,23 +358,33 @@ public class StudentConfirmationService(
         return (token, null);
     }
 
-    private async Task<AssignmentDetailsDto?> BuildDetailsAsync(
+    private async Task<Result<AssignmentDetailsDto>> BuildDetailsAsync(
         AssignmentConfirmationToken token, CancellationToken ct)
     {
         var assignment = token.ScheduleAssignment;
         var series = await seriesRepo.GetByIdAsync(assignment.LessonSerieId, token.OrganizationId, ct);
-        if (series is null) return null;
+        if (series is null)
+            return Result<AssignmentDetailsDto>.Fail(
+                new Error(ErrorCodes.NotFound, "Planning niet gevonden."));
 
         var slot = series.WeeklyTemplate.FirstOrDefault(s => s.Id == assignment.WeeklyTemplateEntryId);
-        if (slot is null) return null;
+        if (slot is null)
+            return Result<AssignmentDetailsDto>.Fail(
+                new Error(ErrorCodes.NotFound, "Planning niet gevonden."));
 
         var isGroup = assignment.EnrollmentGroupId.HasValue && assignment.EnrollmentGroup is not null;
-        var memberCount = isGroup ? assignment.EnrollmentGroup!.Members.Count : 1;
         var memberNames = isGroup
             ? assignment.EnrollmentGroup!.Members.Select(m => m.StudentName).ToList()
             : new List<string>();
 
-        return new AssignmentDetailsDto
+        Result<PriceBreakdown> priceResult = await pricingService.CalculateForGroupAsync(
+            assignment.LessonSerieId, ResolveParticipants(assignment, token.Enrollment), ct);
+        if (!priceResult.IsSuccess)
+            return Result<AssignmentDetailsDto>.Fail(priceResult.Errors);
+
+        PriceBreakdown breakdown = priceResult.Value!;
+
+        return Result<AssignmentDetailsDto>.Ok(new AssignmentDetailsDto
         {
             AssignmentId = assignment.Id,
             SeriesName = series.Name,
@@ -364,13 +393,33 @@ public class StudentConfirmationService(
             EndTime = slot.EndTime.ToString("HH:mm"),
             CourtName = slot.CourtName,
             StudentName = token.Enrollment.StudentName,
-            PricePerPerson = series.Price,
-            TotalPrice = series.Price * memberCount,
+            PricePerPerson = Math.Round(
+                breakdown.Total / breakdown.GroupSize, 2, MidpointRounding.AwayFromZero),
+            TotalPrice = breakdown.Total,
             IsGroup = isGroup,
             GroupMemberNames = memberNames,
             Status = token.Response.ToString(),
             ExpiresAt = token.ExpiresAt,
-        };
+        });
+    }
+
+    /// <summary>
+    /// Alle deelnemers van de toewijzing, inclusief de leider. Een groep levert
+    /// <c>EnrollmentGroup.Members</c> (bevat de leider); solo levert de enkele
+    /// inschrijving. Valt terug op de token-inschrijving wanneer de navigatie
+    /// niet ingeladen is, zodat de prijsberekening nooit op nul deelnemers uitkomt.
+    /// </summary>
+    private static IReadOnlyList<Enrollment> ResolveParticipants(
+        ScheduleAssignment assignment, Enrollment fallback)
+    {
+        if (assignment.EnrollmentGroupId.HasValue
+            && assignment.EnrollmentGroup is not null
+            && assignment.EnrollmentGroup.Members.Count > 0)
+        {
+            return assignment.EnrollmentGroup.Members.ToList();
+        }
+
+        return assignment.Enrollment is not null ? [assignment.Enrollment] : [fallback];
     }
 
     private async Task<List<AvailableSlotDto>> GetAvailableSlotsForAssignmentAsync(

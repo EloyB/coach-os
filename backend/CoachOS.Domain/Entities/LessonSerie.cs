@@ -14,7 +14,11 @@ public class LessonSerie : BaseEntity
     public string? Description { get; set; }
     public LessonLevel? Level { get; set; }
 
-    /// <summary>Prijs per reeks in EUR.</summary>
+    /// <summary>
+    /// Legacy prijs PER DEELNEMER in EUR. Blijft de fallback voor reeksen zonder
+    /// prijsmatrix (<see cref="Prices"/>): het totaal is dan Price × groepsgrootte.
+    /// Staat er een matrix, dan wint die en wordt dit veld genegeerd.
+    /// </summary>
     public decimal Price { get; set; }
 
     public DateOnly StartDate { get; set; }
@@ -41,5 +45,6 @@ public class LessonSerie : BaseEntity
     public ICollection<WeeklyTemplateEntry> WeeklyTemplate { get; set; } = new List<WeeklyTemplateEntry>();
     public ICollection<EnrollmentGroup> EnrollmentGroups { get; set; } = new List<EnrollmentGroup>();
     public ICollection<ScheduleAssignment> ScheduleAssignments { get; set; } = new List<ScheduleAssignment>();
+    public ICollection<LessonSeriePrice> Prices { get; set; } = new List<LessonSeriePrice>();
     public EnrollmentForm? EnrollmentForm { get; set; }
 }
