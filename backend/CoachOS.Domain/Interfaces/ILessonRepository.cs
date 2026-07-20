@@ -28,6 +28,17 @@ public interface ILessonRepository
         Guid trainerId, DateOnly date, TimeOnly startTime, TimeOnly endTime,
         Guid? excludeLessonId = null, CancellationToken ct = default);
 
+    /// <summary>
+    /// Checks if a court is already occupied by another lesson overlapping the given date + time range.
+    /// Scoped to a single organization: a court belongs to one organization, unlike a trainer
+    /// who must be unique across organizations.
+    /// CourtName is free text, so comparison is trimmed + case-insensitive.
+    /// Optionally excludes a specific lesson (for updates).
+    /// </summary>
+    Task<Lesson?> FindCourtConflictAsync(
+        Guid organizationId, string courtName, DateOnly date, TimeOnly startTime, TimeOnly endTime,
+        Guid? excludeLessonId = null, CancellationToken ct = default);
+
     Task AddAsync(Lesson lesson, CancellationToken ct = default);
     Task DeleteAsync(Lesson lesson, CancellationToken ct = default);
     Task DeleteRangeAsync(IEnumerable<Lesson> lessons, CancellationToken ct = default);

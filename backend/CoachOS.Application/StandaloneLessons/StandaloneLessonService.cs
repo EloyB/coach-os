@@ -49,6 +49,20 @@ public class StandaloneLessonService(
             return Result<Guid>.Fail(new Error(ErrorCodes.Conflict,
                 "Trainer heeft al een les op dit tijdstip."));
 
+        // Baan-conflict check (binnen de organisatie: een baan hoort bij één org).
+        if (!string.IsNullOrWhiteSpace(request.CourtName))
+        {
+            Lesson? courtConflict = await lessonRepo.FindCourtConflictAsync(
+                organizationId, request.CourtName, date, startTime, endTime, excludeLessonId: null, ct);
+            if (courtConflict is not null)
+            {
+                string seriesName = courtConflict.LessonSerie?.Name ?? "onbekende reeks";
+                string conflictTime = $"{courtConflict.StartTime:HH:mm}–{courtConflict.EndTime:HH:mm}";
+                return Result<Guid>.Fail(new Error(ErrorCodes.Conflict,
+                    $"{request.CourtName.Trim()} is op {courtConflict.Date:dd/MM/yyyy} van {conflictTime} al bezet door reeks {seriesName}."));
+            }
+        }
+
         // Deelnemers normaliseren + dedupen.
         List<string> normalizedEmails = NormalizeAndDedup(request.ParticipantEmails);
         if (normalizedEmails.Count == 0)

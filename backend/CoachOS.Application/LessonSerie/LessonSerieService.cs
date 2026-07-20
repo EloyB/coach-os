@@ -198,6 +198,10 @@ public class LessonSerieService(
         if (series is null)
             return Result<Guid>.Fail(new Error(ErrorCodes.NotFound, "LessonSerie niet gevonden."));
 
+        DateOnly lessonDate = DateOnly.ParseExact(request.Date, "yyyy-MM-dd");
+        TimeOnly lessonStart = TimeOnly.ParseExact(request.StartTime, "HH:mm");
+        TimeOnly lessonEnd = TimeOnly.ParseExact(request.EndTime, "HH:mm");
+
         if (request.TrainerId.HasValue)
         {
             bool isValid = await userLookup.IsActiveTrainerAsync(request.TrainerId.Value, organizationId, ct);
@@ -205,14 +209,16 @@ public class LessonSerieService(
                 return Result<Guid>.Fail(
                     new Error(ErrorCodes.Validation, "Deze trainer behoort niet tot deze organisatie."));
 
-            DateOnly lessonDate = DateOnly.ParseExact(request.Date, "yyyy-MM-dd");
-            TimeOnly lessonStart = TimeOnly.ParseExact(request.StartTime, "HH:mm");
-            TimeOnly lessonEnd = TimeOnly.ParseExact(request.EndTime, "HH:mm");
             Error? conflictError = await CheckTrainerConflictAsync(
                 request.TrainerId.Value, lessonDate, lessonStart, lessonEnd, ct: ct);
             if (conflictError is not null)
                 return Result<Guid>.Fail(conflictError);
         }
+
+        Error? courtConflictError = await CheckCourtConflictAsync(
+            organizationId, request.CourtName, lessonDate, lessonStart, lessonEnd, ct: ct);
+        if (courtConflictError is not null)
+            return Result<Guid>.Fail(courtConflictError);
 
         Domain.Entities.Lesson lesson = mapper.ToLesson(request, series);
         await lessonRepo.AddAsync(lesson, ct);
@@ -277,6 +283,14 @@ public class LessonSerieService(
             if (conflictError is not null)
                 return Result<LessonDto>.Fail(conflictError);
         }
+
+        // Baanbezetting: check op de effectieve baannaam (request wint, anders de bestaande).
+        string? effectiveCourtName = request.CourtName ?? lesson.CourtName;
+        Error? courtConflictError = await CheckCourtConflictAsync(
+            organizationId, effectiveCourtName, lesson.Date, lesson.StartTime, lesson.EndTime,
+            lesson.Id, ct);
+        if (courtConflictError is not null)
+            return Result<LessonDto>.Fail(courtConflictError);
 
         if (request.CourtName is not null)
             lesson.CourtName = request.CourtName;
@@ -357,6 +371,26 @@ public class LessonSerieService(
         string conflictTime = $"{conflict.StartTime:HH:mm}–{conflict.EndTime:HH:mm}";
         return new Error(ErrorCodes.Conflict,
             $"Deze trainer heeft al een les op {conflict.Date:dd/MM/yyyy} van {conflictTime} ({seriesName}).");
+    }
+
+    private async Task<Error?> CheckCourtConflictAsync(
+        Guid organizationId, string? courtName, DateOnly date, TimeOnly startTime, TimeOnly endTime,
+        Guid? excludeLessonId = null, CancellationToken ct = default)
+    {
+        // Geen baan opgegeven → geen bezetting mogelijk.
+        if (string.IsNullOrWhiteSpace(courtName))
+            return null;
+
+        Domain.Entities.Lesson? conflict = await lessonRepo.FindCourtConflictAsync(
+            organizationId, courtName, date, startTime, endTime, excludeLessonId, ct);
+
+        if (conflict is null)
+            return null;
+
+        string seriesName = conflict.LessonSerie?.Name ?? "onbekende reeks";
+        string conflictTime = $"{conflict.StartTime:HH:mm}–{conflict.EndTime:HH:mm}";
+        return new Error(ErrorCodes.Conflict,
+            $"{courtName.Trim()} is op {conflict.Date:dd/MM/yyyy} van {conflictTime} al bezet door reeks {seriesName}.");
     }
 
     public async Task<Result> DeleteLessonAsync(

@@ -30,6 +30,25 @@ public class TrainerAvailabilityRepository(ApplicationDbContext db) : ITrainerAv
                 && a.StartTime < endTime
                 && a.EndTime > startTime, ct);
 
+    public async Task<IReadOnlyList<TrainerAvailability>> GetAvailableTrainersAsync(
+        Guid organizationId,
+        Guid? tennisClubId,
+        int dayOfWeek,
+        TimeOnly startTime,
+        TimeOnly endTime,
+        CancellationToken ct = default)
+        => await db.TrainerAvailabilities
+            .AsNoTracking()
+            .Include(a => a.TennisClub)
+            .Where(a => a.OrganizationId == organizationId
+                && a.IsActive
+                && a.DayOfWeek == dayOfWeek
+                && a.StartTime <= startTime
+                && a.EndTime >= endTime
+                && (a.TennisClubId == null || a.TennisClubId == tennisClubId))
+            .OrderBy(a => a.StartTime)
+            .ToListAsync(ct);
+
     public async Task AddAsync(TrainerAvailability availability, CancellationToken ct = default)
         => await db.TrainerAvailabilities.AddAsync(availability, ct);
 
