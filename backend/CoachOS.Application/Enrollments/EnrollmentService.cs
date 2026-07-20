@@ -4,11 +4,15 @@ using CoachOS.Application.Common;
 using CoachOS.Application.Enrollments.DTOs;
 using CoachOS.Application.LessonSerie.DTOs;
 using CoachOS.Application.Mappings;
+using CoachOS.Domain.Common;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
 using CoachOS.Domain.Interfaces;
 using CoachOS.Domain.Models;
 using Microsoft.Extensions.Logging;
+
+// Voorkomt ambiguity met de gelijknamige namespace CoachOS.Application.OrganizationSettings.
+using OrganizationSettingsEntity = CoachOS.Domain.Entities.OrganizationSettings;
 
 namespace CoachOS.Application.Enrollments;
 
@@ -18,6 +22,7 @@ public class EnrollmentService(
     ILessonSerieRepository lessonSeriesRepo,
     IEnrollmentGroupRepository enrollmentGroupRepo,
     ITimeSlotPreferenceRepository timeSlotPreferenceRepo,
+    IOrganizationSettingsRepository orgSettingsRepo,
     IUserLookupService userLookup,
     IEmailService emailService,
     ApplicationMapper mapper,
@@ -104,6 +109,14 @@ public class EnrollmentService(
             Status = e.Status.ToString(),
             EnrolledAt = e.EnrolledAt,
             Notes = e.Notes,
+            DateOfBirth = e.DateOfBirth?.ToString("yyyy-MM-dd"),
+            Category = e.Category.HasValue ? (int)e.Category.Value : null,
+            CategoryLabel = e.Category switch
+            {
+                ParticipantCategory.Youth => "Jeugd",
+                ParticipantCategory.Adult => "Volwassenen",
+                _ => null,
+            },
             FormResponses = e.FormResponses
                 .OrderBy(r => r.FormField.Order)
                 .Select(r => new EnrollmentResponseItemDto
@@ -219,6 +232,15 @@ public class EnrollmentService(
             ? request.GroupMembers.Count + 1
             : 1;
 
+        // 4b. Tariefcategorie afleiden. De leeftijdsgrens is org-specifiek; deze flow is
+        //     anoniem, dus de settings komen via series.OrganizationId en niet uit een JWT.
+        //     De categorie wordt één keer vastgelegd bij inschrijving: wie tijdens de reeks
+        //     jarig is, mag niet halverwege van tarief wisselen.
+        OrganizationSettingsEntity? orgSettings =
+            await orgSettingsRepo.GetByOrganizationReadOnlyAsync(series.OrganizationId, ct);
+        int youthMaxAge = orgSettings?.YouthMaxAge ?? 17;
+        DateOnly enrolledOn = DateOnly.FromDateTime(DateTime.UtcNow);
+
         // 5. Begin SERIALIZABLE transaction: capacity + duplicate checks moeten ATOMIC zijn
         //    met de insert, anders kunnen twee parallelle submitters beide de check passeren
         //    en samen MaxRegistrations overschrijden of een duplicate email creëren.
@@ -278,6 +300,8 @@ public class EnrollmentService(
             Status = EnrollmentStatus.Pending,
             EnrolledAt = DateTime.UtcNow,
             IsOpenToGrouping = request.IsOpenToGrouping,
+            DateOfBirth = ParseBirthDate(request.DateOfBirth),
+            Category = ResolveCategory(request.DateOfBirth, youthMaxAge, enrolledOn),
         };
 
         await enrollmentRepo.AddAsync(enrollment, ct);
@@ -331,6 +355,8 @@ public class EnrollmentService(
                     Status = EnrollmentStatus.Pending,
                     EnrolledAt = DateTime.UtcNow,
                     EnrollmentGroupId = group.Id,
+                    DateOfBirth = ParseBirthDate(member.DateOfBirth),
+                    Category = ResolveCategory(member.DateOfBirth, youthMaxAge, enrolledOn),
                 };
 
                 await enrollmentRepo.AddAsync(memberEnrollment, ct);
@@ -549,6 +575,49 @@ public class EnrollmentService(
         }
 
         return false;
+    }
+
+    public async Task<Result<bool>> CancelEnrollmentAsync(
+        Guid enrollmentId, Guid organizationId, CancellationToken ct = default)
+    {
+        // GetByIdAsync filtert op organizationId — dat is meteen de autorisatiecheck.
+        Enrollment? enrollment = await enrollmentRepo.GetByIdAsync(enrollmentId, organizationId, ct);
+        if (enrollment is null)
+            return Result<bool>.Fail(
+                new Error(ErrorCodes.NotFound, "Inschrijving niet gevonden."));
+
+        if (enrollment.Status == EnrollmentStatus.Cancelled)
+            return Result<bool>.Fail(
+                new Error(ErrorCodes.Validation, "Deze inschrijving is al geannuleerd."));
+
+        enrollment.Status = EnrollmentStatus.Cancelled;
+        enrollment.UpdatedAt = DateTime.UtcNow;
+        await enrollmentRepo.SaveChangesAsync(ct);
+
+        logger.LogInformation(
+            "Inschrijving {EnrollmentId} geannuleerd door beheerder in organisatie {OrganizationId}",
+            enrollmentId, organizationId);
+
+        return Result<bool>.Ok(true);
+    }
+
+    /// <summary>
+    /// Parseert de geboortedatum uit het request. De validator heeft het formaat al
+    /// afgedwongen; faalt het hier toch, dan slaan we null op in plaats van te crashen —
+    /// de inschrijving zelf mag hier niet op stuklopen.
+    /// </summary>
+    private static DateOnly? ParseBirthDate(string? value)
+        => DateOfBirthRules.TryParse(value, out DateOnly date) ? date : null;
+
+    /// <summary>
+    /// Leidt de tariefcategorie af. Zonder bruikbare geboortedatum blijft de categorie
+    /// null; <c>PricingService</c> behandelt dat als volwassene.
+    /// </summary>
+    private static ParticipantCategory? ResolveCategory(
+        string? dateOfBirth, int youthMaxAge, DateOnly onDate)
+    {
+        if (!DateOfBirthRules.TryParse(dateOfBirth, out DateOnly date)) return null;
+        return ParticipantCategoryResolver.Resolve(date, youthMaxAge, onDate);
     }
 
     private static string BuildGroupName(int index)

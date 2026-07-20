@@ -20,6 +20,7 @@ public class EnrollmentServiceTests
     private Mock<ILessonSerieRepository> _lessonSeriesRepo = null!;
     private Mock<IEnrollmentGroupRepository> _enrollmentGroupRepo = null!;
     private Mock<ITimeSlotPreferenceRepository> _timeSlotPreferenceRepo = null!;
+    private Mock<IOrganizationSettingsRepository> _orgSettingsRepo = null!;
     private Mock<IUserLookupService> _userLookup = null!;
     private Mock<IEmailService> _emailService = null!;
     private ApplicationMapper _mapper = null!;
@@ -38,6 +39,7 @@ public class EnrollmentServiceTests
         _lessonSeriesRepo = new Mock<ILessonSerieRepository>();
         _enrollmentGroupRepo = new Mock<IEnrollmentGroupRepository>();
         _timeSlotPreferenceRepo = new Mock<ITimeSlotPreferenceRepository>();
+        _orgSettingsRepo = new Mock<IOrganizationSettingsRepository>();
         _userLookup = new Mock<IUserLookupService>();
         _emailService = new Mock<IEmailService>();
         _mapper = new ApplicationMapper();
@@ -49,6 +51,7 @@ public class EnrollmentServiceTests
             _lessonSeriesRepo.Object,
             _enrollmentGroupRepo.Object,
             _timeSlotPreferenceRepo.Object,
+            _orgSettingsRepo.Object,
             _userLookup.Object,
             _emailService.Object,
             _mapper,
@@ -751,5 +754,91 @@ public class EnrollmentServiceTests
         _userLookup
             .Setup(u => u.GetUserInfoByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(("Trainer Name", "trainer@test.be"));
+    }
+
+    // ── CancelEnrollmentAsync ─────────────────────────────────────────────────
+
+    [Test]
+    public async Task CancelEnrollmentAsync_ExistingEnrollment_SetsStatusToCancelled()
+    {
+        Guid enrollmentId = Guid.NewGuid();
+        Enrollment enrollment = new()
+        {
+            Id = enrollmentId,
+            OrganizationId = OrgId,
+            LessonSerieId = SeriesId,
+            StudentName = "Jan Jansen",
+            StudentEmail = "jan@test.be",
+            Status = EnrollmentStatus.Confirmed,
+        };
+        _enrollmentRepo
+            .Setup(r => r.GetByIdAsync(enrollmentId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(enrollment);
+
+        Result<bool> result = await _service.CancelEnrollmentAsync(
+            enrollmentId, OrgId, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        enrollment.Status.Should().Be(EnrollmentStatus.Cancelled);
+        _enrollmentRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task CancelEnrollmentAsync_UnknownEnrollment_ReturnsNotFound()
+    {
+        Guid enrollmentId = Guid.NewGuid();
+        _enrollmentRepo
+            .Setup(r => r.GetByIdAsync(enrollmentId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Enrollment?)null);
+
+        Result<bool> result = await _service.CancelEnrollmentAsync(
+            enrollmentId, OrgId, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.Code == ErrorCodes.NotFound);
+        _enrollmentRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task CancelEnrollmentAsync_OtherOrganization_ReturnsNotFound()
+    {
+        // Multi-tenancy: de repository filtert op organizationId, dus een inschrijving
+        // van een andere organisatie levert null op en mag niet annuleerbaar zijn.
+        Guid enrollmentId = Guid.NewGuid();
+        Guid otherOrgId = Guid.NewGuid();
+        _enrollmentRepo
+            .Setup(r => r.GetByIdAsync(enrollmentId, otherOrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Enrollment?)null);
+
+        Result<bool> result = await _service.CancelEnrollmentAsync(
+            enrollmentId, otherOrgId, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.Code == ErrorCodes.NotFound);
+    }
+
+    [Test]
+    public async Task CancelEnrollmentAsync_AlreadyCancelled_ReturnsValidationError()
+    {
+        Guid enrollmentId = Guid.NewGuid();
+        Enrollment enrollment = new()
+        {
+            Id = enrollmentId,
+            OrganizationId = OrgId,
+            LessonSerieId = SeriesId,
+            StudentName = "Jan Jansen",
+            StudentEmail = "jan@test.be",
+            Status = EnrollmentStatus.Cancelled,
+        };
+        _enrollmentRepo
+            .Setup(r => r.GetByIdAsync(enrollmentId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(enrollment);
+
+        Result<bool> result = await _service.CancelEnrollmentAsync(
+            enrollmentId, OrgId, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.Code == ErrorCodes.Validation);
+        _enrollmentRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 }

@@ -25,4 +25,14 @@ public interface IEnrollmentService
 
     Task<Result<List<EnrollmentWithPreferencesDto>>> GetSeriesEnrollmentsWithPreferencesAsync(
         Guid lessonSeriesId, Guid organizationId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Annuleert een inschrijving (soft-cancel: status wordt
+    /// <see cref="Domain.Enums.EnrollmentStatus.Cancelled"/>). Er wordt bewust niet hard
+    /// verwijderd — een inschrijving hangt via DeleteBehavior.Restrict vast aan
+    /// formulierantwoorden, groepen en planning-toewijzingen. De capaciteitstellingen
+    /// filteren geannuleerde inschrijvingen al weg, dus de plaats komt automatisch vrij.
+    /// </summary>
+    Task<Result<bool>> CancelEnrollmentAsync(
+        Guid enrollmentId, Guid organizationId, CancellationToken ct = default);
 }

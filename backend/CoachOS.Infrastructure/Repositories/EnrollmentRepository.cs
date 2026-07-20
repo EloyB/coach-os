@@ -16,6 +16,15 @@ public class EnrollmentRepository(ApplicationDbContext context) : IEnrollmentRep
             .FirstOrDefaultAsync(e => e.Id == id && e.OrganizationId == organizationId, ct);
     }
 
+    public async Task<Enrollment?> GetByIdWithGroupAsync(
+        Guid id, Guid organizationId, CancellationToken ct = default)
+    {
+        return await context.Enrollments
+            .Include(e => e.EnrollmentGroup)
+                .ThenInclude(g => g!.Members)
+            .FirstOrDefaultAsync(e => e.Id == id && e.OrganizationId == organizationId, ct);
+    }
+
     public async Task<int> ReassignLessonLinkAsync(
         Guid fromLessonId, Guid toLessonId, CancellationToken ct = default)
     {
