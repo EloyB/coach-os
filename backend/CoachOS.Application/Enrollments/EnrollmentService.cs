@@ -578,11 +578,18 @@ public class EnrollmentService(
     }
 
     public async Task<Result<bool>> CancelEnrollmentAsync(
-        Guid enrollmentId, Guid organizationId, CancellationToken ct = default)
+        Guid lessonSeriesId, Guid enrollmentId, Guid organizationId, CancellationToken ct = default)
     {
         // GetByIdAsync filtert op organizationId — dat is meteen de autorisatiecheck.
         Enrollment? enrollment = await enrollmentRepo.GetByIdAsync(enrollmentId, organizationId, ct);
         if (enrollment is null)
+            return Result<bool>.Fail(
+                new Error(ErrorCodes.NotFound, "Inschrijving niet gevonden."));
+
+        // De inschrijving moet bij de reeks uit de route horen. Zonder deze check zou
+        // DELETE /lessonseries/{willekeurige-reeks}/enrollments/{geldige-id} slagen
+        // zolang beide in dezelfde organisatie zitten — een cross-serie annulering.
+        if (enrollment.LessonSerieId != lessonSeriesId)
             return Result<bool>.Fail(
                 new Error(ErrorCodes.NotFound, "Inschrijving niet gevonden."));
 

@@ -413,11 +413,26 @@ public class PaymentService(
 
         if (payment.EnrollmentId is not { } enrollmentId) return;
 
-        EnrollmentEntity? enrollment = await enrollments.GetByIdAsync(
+        // Met groep laden: de leider betaalt voor de hele groep en de confirm-flow
+        // zette álle leden op PendingPayment. Na betaling moeten dus alle leden mee
+        // naar Confirmed, niet enkel de betalende leider. Group.Members bevat de
+        // leider zelf, dus dat is meteen de volledige deelnemerslijst.
+        EnrollmentEntity? enrollment = await enrollments.GetByIdWithGroupAsync(
             enrollmentId, payment.OrganizationId, ct);
         if (enrollment is null) return;
 
-        enrollment.Status = EnrollmentStatus.Confirmed;
+        List<EnrollmentEntity> toConfirm =
+            enrollment.EnrollmentGroupId.HasValue
+            && enrollment.EnrollmentGroup is not null
+            && enrollment.EnrollmentGroup.Members.Count > 0
+                ? enrollment.EnrollmentGroup.Members.ToList()
+                : [enrollment];
+
+        foreach (EnrollmentEntity e in toConfirm)
+        {
+            if (e.Status == EnrollmentStatus.Confirmed) continue;
+            e.Status = EnrollmentStatus.Confirmed;
+        }
         await enrollments.SaveChangesAsync(ct);
 
         LessonSerieEntity? series = enrollment.LessonSerieId is { } sid
@@ -546,8 +561,17 @@ public class PaymentService(
     }
 
     public async Task<Result> MarkCampCashPaidAsync(
-        Guid campEnrollmentId, Guid organizationId, CancellationToken ct = default)
+        Guid campId, Guid campEnrollmentId, Guid organizationId, CancellationToken ct = default)
     {
+        CampEnrollmentEntity? enrollment = await campEnrollments.GetByIdWithGroupAsync(campEnrollmentId, ct);
+
+        // De route belooft een kamp-scope; die moet ook echt gelden. Zonder de CampId-
+        // (en org-)check zou POST /camps/{ander-kamp}/enrollments/{geldige-id}/mark-cash-paid
+        // een inschrijving van een ánder kamp binnen dezelfde organisatie bevestigen.
+        if (enrollment is not null
+            && (enrollment.OrganizationId != organizationId || enrollment.CampId != campId))
+            return Result.Fail(new Error(ErrorCodes.NotFound, "Inschrijving niet gevonden."));
+
         PaymentEntity? payment = await payments.GetLatestPendingCashByCampEnrollmentIdAsync(
             campEnrollmentId, organizationId, ct);
         if (payment is null)
@@ -563,7 +587,6 @@ public class PaymentService(
         payment.Status = PaymentStatus.Paid;
         payment.PaidAt = DateTime.UtcNow;
 
-        CampEnrollmentEntity? enrollment = await campEnrollments.GetByIdWithGroupAsync(campEnrollmentId, ct);
         if (enrollment is null)
         {
             // Geen enrollment om te bevestigen → toch de payment-mutatie persisteren.

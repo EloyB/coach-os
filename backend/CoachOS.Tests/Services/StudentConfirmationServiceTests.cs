@@ -495,10 +495,23 @@ public class StudentConfirmationServiceTests
         string hash = HashToken(rawToken);
         SetupPrice(MatrixTotal, groupSize: 2);
 
+        Guid altSlotId = Guid.NewGuid();
         LessonSerie series = PlanningServiceTests.BuildSeries(withSlots: true, SeriesId, OrgId, SlotId);
         series.PlanningStatus = PlanningStatus.AwaitingConfirmation;
         series.Price = SeriesPrice;
         series.WeeklyTemplate.First().MaxStudents = 10;
+        // Een tweede, ánder tijdslot: dát wordt het alternatief. Het geweigerde slot
+        // (SlotId) mag niet opnieuw gekozen worden.
+        series.WeeklyTemplate.Add(new WeeklyTemplateEntry
+        {
+            Id = altSlotId,
+            LessonSerieId = SeriesId,
+            DayOfWeek = 3,
+            StartTime = new TimeOnly(18, 0),
+            EndTime = new TimeOnly(19, 0),
+            CourtName = "Baan 2",
+            MaxStudents = 10,
+        });
 
         Enrollment leader = PlanningServiceTests.BuildEnrollment("Alice", OrgId, SeriesId);
         Enrollment member = PlanningServiceTests.BuildEnrollment("Bob", OrgId, SeriesId);
@@ -547,7 +560,7 @@ public class StudentConfirmationServiceTests
             rawToken,
             new PickAlternativeRequest
             {
-                WeeklyTemplateEntryId = SlotId,
+                WeeklyTemplateEntryId = altSlotId,
                 PaymentMethod = (int)PaymentMethod.Cash,
             },
             CancellationToken.None);
@@ -558,6 +571,118 @@ public class StudentConfirmationServiceTests
         booked!.Amount.Should().Be(MatrixTotal);
         booked.Amount.Should().NotBe(SeriesPrice * 2,
             "de legacy formule series.Price * groepsgrootte mag niet meer gebruikt worden");
+    }
+
+    [Test]
+    public async Task PickAlternativeAsync_SameSlotAsDeclined_ReturnsValidationErrorNotDbCrash()
+    {
+        // Regressie: het net-geweigerde slot opnieuw kiezen zou een tweede
+        // ScheduleAssignment met dezelfde (reeks, slot, groep)-tuple invoegen en op de
+        // DB unique index stuklopen (23505 → 500). De service moet dit als propere
+        // validatiefout weigeren vóór er iets wordt aangemaakt.
+        const string rawToken = "same-slot-token";
+        string hash = HashToken(rawToken);
+
+        LessonSerie series = PlanningServiceTests.BuildSeries(withSlots: true, SeriesId, OrgId, SlotId);
+        series.PlanningStatus = PlanningStatus.AwaitingConfirmation;
+        series.WeeklyTemplate.First().MaxStudents = 10;
+
+        Enrollment enrollment = PlanningServiceTests.BuildEnrollment("Alice", OrgId, SeriesId);
+        ScheduleAssignment oldAssignment = new()
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = OrgId,
+            LessonSerieId = SeriesId,
+            WeeklyTemplateEntryId = SlotId,
+            EnrollmentId = enrollment.Id,
+            Enrollment = enrollment,
+            Status = ScheduleAssignmentStatus.Declined,
+        };
+
+        AssignmentConfirmationToken token = BuildToken(hash, oldAssignment, enrollment);
+        token.Response = ConfirmationResponse.Declined;
+
+        _tokenRepo.Setup(r => r.GetByTokenHashAsync(hash, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(token);
+        _seriesRepo.Setup(r => r.GetByIdAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+
+        // Act: kies exact het geweigerde slot opnieuw.
+        var result = await _sut.PickAlternativeAsync(
+            rawToken,
+            new PickAlternativeRequest
+            {
+                WeeklyTemplateEntryId = SlotId,
+                PaymentMethod = (int)PaymentMethod.Cash,
+            },
+            CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.Code == ErrorCodes.Validation);
+        _tokenRepo.Verify(r => r.TryTransitionResponseAsync(
+                It.IsAny<Guid>(), It.IsAny<ConfirmationResponse>(), It.IsAny<ConfirmationResponse>(),
+                It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),
+            Times.Never, "de token mag niet verbruikt worden bij een geweigerd slot");
+        _assignmentRepo.Verify(r => r.AddRangeAsync(
+                It.IsAny<IEnumerable<ScheduleAssignment>>(), It.IsAny<CancellationToken>()),
+            Times.Never, "er mag geen dubbele toewijzing aangemaakt worden");
+    }
+
+    [Test]
+    public async Task DeclineAsync_DoesNotOfferTheJustDeclinedSlotAsAlternative()
+    {
+        // Het geweigerde slot mag niet in de lijst met alternatieven terugkomen: opnieuw
+        // kiezen zou op de DB unique index stuklopen.
+        const string rawToken = "decline-slots-token";
+        string hash = HashToken(rawToken);
+
+        Guid altSlotId = Guid.NewGuid();
+        LessonSerie series = PlanningServiceTests.BuildSeries(withSlots: true, SeriesId, OrgId, SlotId);
+        series.WeeklyTemplate.First().MaxStudents = 10;
+        series.WeeklyTemplate.Add(new WeeklyTemplateEntry
+        {
+            Id = altSlotId,
+            LessonSerieId = SeriesId,
+            DayOfWeek = 3,
+            StartTime = new TimeOnly(18, 0),
+            EndTime = new TimeOnly(19, 0),
+            CourtName = "Baan 2",
+            MaxStudents = 10,
+        });
+
+        Enrollment enrollment = PlanningServiceTests.BuildEnrollment("Alice", OrgId, SeriesId);
+        ScheduleAssignment assignment = new()
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = OrgId,
+            LessonSerieId = SeriesId,
+            WeeklyTemplateEntryId = SlotId,
+            EnrollmentId = enrollment.Id,
+            Enrollment = enrollment,
+            Status = ScheduleAssignmentStatus.AwaitingConfirmation,
+        };
+
+        AssignmentConfirmationToken token = BuildToken(hash, assignment, enrollment);
+
+        _tokenRepo.Setup(r => r.GetByTokenHashAsync(hash, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(token);
+        _seriesRepo.Setup(r => r.GetByIdAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+        _assignmentRepo.Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ScheduleAssignment> { assignment });
+        _tokenRepo.Setup(r => r.TryClaimResponseAsync(
+                token.Id, ConfirmationResponse.Declined, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        // Act
+        var result = await _sut.DeclineAsync(rawToken, CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Should().NotContain(s => s.WeeklyTemplateEntryId == SlotId,
+            "het net-geweigerde slot mag niet als alternatief aangeboden worden");
+        result.Value!.Should().Contain(s => s.WeeklyTemplateEntryId == altSlotId);
     }
 
     [Test]

@@ -34,5 +34,5 @@ public interface IEnrollmentService
     /// filteren geannuleerde inschrijvingen al weg, dus de plaats komt automatisch vrij.
     /// </summary>
     Task<Result<bool>> CancelEnrollmentAsync(
-        Guid enrollmentId, Guid organizationId, CancellationToken ct = default);
+        Guid lessonSeriesId, Guid enrollmentId, Guid organizationId, CancellationToken ct = default);
 }

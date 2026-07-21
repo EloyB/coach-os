@@ -638,7 +638,7 @@ export default function EnrollPage() {
                         htmlFor="dateOfBirth"
                         className="block text-sm font-medium text-gray-700 mb-1.5"
                       >
-                        {t("form_date_of_birth")}
+                        {t("form_date_of_birth")} *
                       </label>
                       <input
                         id="dateOfBirth"
@@ -836,7 +836,7 @@ export default function EnrollPage() {
                             </div>
                             <div>
                               <label className="block text-xs text-gray-500 mb-1">
-                                {t("form_member_date_of_birth")}
+                                {t("form_member_date_of_birth")} *
                               </label>
                               <input
                                 type="date"

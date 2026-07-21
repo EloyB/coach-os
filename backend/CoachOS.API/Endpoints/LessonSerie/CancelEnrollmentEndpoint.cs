@@ -10,7 +10,7 @@ public class CancelEnrollmentEndpoint : IEndpoint
         app.MapDelete("/lessonseries/{id:guid}/enrollments/{enrollmentId:guid}",
             async (Guid id, Guid enrollmentId, IEnrollmentService service, HttpContext ctx, CancellationToken ct) =>
             {
-                var result = await service.CancelEnrollmentAsync(enrollmentId, ctx.GetOrganizationId(), ct);
+                var result = await service.CancelEnrollmentAsync(id, enrollmentId, ctx.GetOrganizationId(), ct);
                 return result.IsSuccess ? Results.NoContent() : result.ToErrorResult();
             })
         .RequireAuthorization(policy => policy.RequireRole("Admin", "Trainer"))

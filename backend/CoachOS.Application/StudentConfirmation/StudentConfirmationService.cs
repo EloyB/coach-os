@@ -169,6 +169,15 @@ public class StudentConfirmationService(
         if (series is null)
             return Result<ConfirmResultDto>.Fail(new Error(ErrorCodes.NotFound, "Lessenreeks niet gevonden."));
 
+        // Het net-geweigerde slot mag niet opnieuw gekozen worden: de oude (Declined)
+        // toewijzing bezet de unieke tuple (reeks + slot + inschrijving/groep) nog in de
+        // DB, dus een nieuwe insert op datzelfde slot slaat stuk op de unique index (23505).
+        // We vangen dat hier als een propere validatiefout op i.p.v. een 500.
+        if (request.WeeklyTemplateEntryId == oldAssignment.WeeklyTemplateEntryId)
+            return Result<ConfirmResultDto>.Fail(new Error(
+                ErrorCodes.Validation,
+                "Je hebt dit tijdslot net geweigerd; kies een ander tijdslot."));
+
         var targetSlot = series.WeeklyTemplate.FirstOrDefault(s => s.Id == request.WeeklyTemplateEntryId);
         if (targetSlot is null)
             return Result<ConfirmResultDto>.Fail(new Error(ErrorCodes.NotFound, "Tijdslot niet gevonden."));
@@ -440,6 +449,10 @@ public class StudentConfirmationService(
             .ToDictionary(g => g.Key, g => g.Sum(a => a.EnrollmentGroup?.Members.Count ?? 1));
 
         return series.WeeklyTemplate
+            // Het huidige (geweigerde) slot niet als alternatief aanbieden: de bestaande
+            // toewijzing bezet de unieke tuple nog, dus opnieuw kiezen zou op de DB unique
+            // index stuklopen. PickAlternativeAsync weigert het slot ook expliciet.
+            .Where(s => s.Id != assignment.WeeklyTemplateEntryId)
             .Select(s =>
             {
                 var used = countBySlot.GetValueOrDefault(s.Id, 0);

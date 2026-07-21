@@ -409,7 +409,7 @@ public class PaymentServiceTests
         _mollie.Setup(m => m.GetPaymentAsync("access-token", MolliePaymentId, It.IsAny<bool>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result<MolliePaymentSnapshot>.Ok(new MolliePaymentSnapshot(
                 MolliePaymentId, "paid", 50m, "EUR", DateTime.UtcNow, "bancontact", null)));
-        _enrollments.Setup(e => e.GetByIdAsync(EnrollmentId, OrgId, It.IsAny<CancellationToken>()))
+        _enrollments.Setup(e => e.GetByIdWithGroupAsync(EnrollmentId, OrgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(enrollment);
         _lessonSeries.Setup(l => l.GetByIdPublicAsync(SeriesId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new LessonSerie { Id = SeriesId, Name = "Voorjaar 2026" });
@@ -423,6 +423,74 @@ public class PaymentServiceTests
         _email.Verify(e => e.SendEnrollmentConfirmationAsync(
             "student@example.com", "Test Student", "Voorjaar 2026", string.Empty, It.IsAny<CancellationToken>()),
             Times.Once);
+    }
+
+    [Test]
+    public async Task Sync_PaidTransition_GroupEnrollment_ConfirmsAllMembers()
+    {
+        // Regressie: na een geslaagde groepsbetaling werd enkel de betalende leider
+        // bevestigd; de overige leden (die de confirm-flow op PendingPayment zette)
+        // bleven hangen. Alle leden moeten mee naar Confirmed.
+        Guid leaderId = EnrollmentId;
+        Guid memberId = Guid.NewGuid();
+        Guid groupId = Guid.NewGuid();
+
+        Enrollment leader = new()
+        {
+            Id = leaderId,
+            OrganizationId = OrgId,
+            LessonSerieId = SeriesId,
+            StudentEmail = "leider@example.com",
+            StudentName = "De Leider",
+            Status = EnrollmentStatus.PendingPayment,
+            EnrollmentGroupId = groupId,
+        };
+        Enrollment member = new()
+        {
+            Id = memberId,
+            OrganizationId = OrgId,
+            LessonSerieId = SeriesId,
+            StudentEmail = "lid@example.com",
+            StudentName = "Het Lid",
+            Status = EnrollmentStatus.PendingPayment,
+            EnrollmentGroupId = groupId,
+        };
+        EnrollmentGroup group = new()
+        {
+            Id = groupId,
+            OrganizationId = OrgId,
+            LessonSerieId = SeriesId,
+            LeaderEnrollmentId = leaderId,
+            Members = [leader, member],
+        };
+        leader.EnrollmentGroup = group;
+
+        Payment payment = new()
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = OrgId,
+            EnrollmentId = leaderId,
+            Status = PaymentStatus.Pending,
+            MolliePaymentId = MolliePaymentId,
+            Amount = 100m,
+        };
+        _payments.Setup(p => p.GetByMolliePaymentIdAsync(MolliePaymentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(payment);
+        _connect.Setup(c => c.GetValidAccessTokenAsync(OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<string>.Ok("access-token"));
+        _mollie.Setup(m => m.GetPaymentAsync("access-token", MolliePaymentId, It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<MolliePaymentSnapshot>.Ok(new MolliePaymentSnapshot(
+                MolliePaymentId, "paid", 100m, "EUR", DateTime.UtcNow, "ideal", null)));
+        _enrollments.Setup(e => e.GetByIdWithGroupAsync(leaderId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(leader);
+        _lessonSeries.Setup(l => l.GetByIdPublicAsync(SeriesId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new LessonSerie { Id = SeriesId, Name = "Voorjaar 2026" });
+
+        Result result = await _sut.SyncPaymentFromMollieAsync(MolliePaymentId);
+
+        result.IsSuccess.Should().BeTrue();
+        leader.Status.Should().Be(EnrollmentStatus.Confirmed);
+        member.Status.Should().Be(EnrollmentStatus.Confirmed, "een groepslid mag niet blijven hangen op PendingPayment");
     }
 
     [Test]
@@ -534,7 +602,7 @@ public class PaymentServiceTests
         _campEnrollments.Setup(c => c.GetByIdWithGroupAsync(campEnrollmentId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(enrollment);
 
-        Result result = await _sut.MarkCampCashPaidAsync(campEnrollmentId, OrgId);
+        Result result = await _sut.MarkCampCashPaidAsync(campId, campEnrollmentId, OrgId);
 
         result.IsSuccess.Should().BeTrue();
         cash.Status.Should().Be(PaymentStatus.Paid);
@@ -546,13 +614,52 @@ public class PaymentServiceTests
     }
 
     [Test]
+    public async Task MarkCampCashPaid_WrongCamp_ReturnsNotFoundAndDoesNotConfirm()
+    {
+        // De route bevat het kamp-id; een inschrijving van een ánder kamp (zelfde org)
+        // mag niet bevestigd worden via een verkeerd kamp-id.
+        Guid campEnrollmentId = Guid.NewGuid();
+        Guid routeCampId = Guid.NewGuid();
+        Guid actualCampId = Guid.NewGuid();
+        CampEnrollment enrollment = new()
+        {
+            Id = campEnrollmentId,
+            OrganizationId = OrgId,
+            CampId = actualCampId,
+            ParticipantEmail = "emma@example.com",
+            ParticipantName = "Emma",
+            Status = EnrollmentStatus.PendingPayment,
+        };
+        _campEnrollments.Setup(c => c.GetByIdWithGroupAsync(campEnrollmentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(enrollment);
+
+        Result result = await _sut.MarkCampCashPaidAsync(routeCampId, campEnrollmentId, OrgId);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.NotFound);
+        enrollment.Status.Should().Be(EnrollmentStatus.PendingPayment);
+        _email.Verify(e => e.SendCampEnrollmentConfirmedAsync(
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+            It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Test]
     public async Task MarkCampCashPaid_NoPendingCash_ReturnsNotFound()
     {
         Guid campEnrollmentId = Guid.NewGuid();
+        Guid campId = Guid.NewGuid();
+        _campEnrollments.Setup(c => c.GetByIdWithGroupAsync(campEnrollmentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CampEnrollment
+            {
+                Id = campEnrollmentId,
+                OrganizationId = OrgId,
+                CampId = campId,
+            });
         _payments.Setup(p => p.GetLatestPendingCashByCampEnrollmentIdAsync(campEnrollmentId, OrgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Payment?)null);
 
-        Result result = await _sut.MarkCampCashPaidAsync(campEnrollmentId, OrgId);
+        Result result = await _sut.MarkCampCashPaidAsync(campId, campEnrollmentId, OrgId);
 
         result.IsSuccess.Should().BeFalse();
         result.Errors[0].Code.Should().Be(ErrorCodes.NotFound);

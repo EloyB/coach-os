@@ -776,7 +776,7 @@ public class EnrollmentServiceTests
             .ReturnsAsync(enrollment);
 
         Result<bool> result = await _service.CancelEnrollmentAsync(
-            enrollmentId, OrgId, CancellationToken.None);
+            SeriesId, enrollmentId, OrgId, CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         enrollment.Status.Should().Be(EnrollmentStatus.Cancelled);
@@ -792,10 +792,39 @@ public class EnrollmentServiceTests
             .ReturnsAsync((Enrollment?)null);
 
         Result<bool> result = await _service.CancelEnrollmentAsync(
-            enrollmentId, OrgId, CancellationToken.None);
+            SeriesId, enrollmentId, OrgId, CancellationToken.None);
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().Contain(e => e.Code == ErrorCodes.NotFound);
+        _enrollmentRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task CancelEnrollmentAsync_WrongSeries_ReturnsNotFound()
+    {
+        // De route bevat de reeks-id; een geldige inschrijving onder een ándere reeks
+        // (zelfde organisatie) mag niet annuleerbaar zijn via die verkeerde reeks.
+        Guid enrollmentId = Guid.NewGuid();
+        Guid otherSeriesId = Guid.NewGuid();
+        Enrollment enrollment = new()
+        {
+            Id = enrollmentId,
+            OrganizationId = OrgId,
+            LessonSerieId = otherSeriesId,
+            StudentName = "Jan Jansen",
+            StudentEmail = "jan@test.be",
+            Status = EnrollmentStatus.Confirmed,
+        };
+        _enrollmentRepo
+            .Setup(r => r.GetByIdAsync(enrollmentId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(enrollment);
+
+        Result<bool> result = await _service.CancelEnrollmentAsync(
+            SeriesId, enrollmentId, OrgId, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.Code == ErrorCodes.NotFound);
+        enrollment.Status.Should().Be(EnrollmentStatus.Confirmed);
         _enrollmentRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -811,7 +840,7 @@ public class EnrollmentServiceTests
             .ReturnsAsync((Enrollment?)null);
 
         Result<bool> result = await _service.CancelEnrollmentAsync(
-            enrollmentId, otherOrgId, CancellationToken.None);
+            SeriesId, enrollmentId, otherOrgId, CancellationToken.None);
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().Contain(e => e.Code == ErrorCodes.NotFound);
@@ -835,7 +864,7 @@ public class EnrollmentServiceTests
             .ReturnsAsync(enrollment);
 
         Result<bool> result = await _service.CancelEnrollmentAsync(
-            enrollmentId, OrgId, CancellationToken.None);
+            SeriesId, enrollmentId, OrgId, CancellationToken.None);
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().Contain(e => e.Code == ErrorCodes.Validation);
