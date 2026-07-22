@@ -81,7 +81,9 @@ In `ConfirmationOrchestrationService.ConfirmScheduleAsync`:
 - Eén ontvanger → huidige template, ongewijzigd.
 - Meerdere → nieuwe template `schedule-confirmation-multi.mjml`: één blok per deelnemer met naam, dag en uur, baan, en een eigen "Bevestigen"-knop.
 
-Dezelfde groepering geldt voor de herinneringsmails over openstaande tokens; anders verplaatst het probleem zich naar de reminder.
+Er is geen automatische herinneringslus: `ResendConfirmationEmailAsync` verstuurt bewust één toewijzing tegelijk, handmatig gestart door een beheerder vanuit het niet-reageerders-overzicht. Die blijft ongebundeld.
+
+Wél gebundeld — of eigenlijk ontdubbeld — worden twee bestaande lussen die per inschrijving mailen en met een gedeeld contactadres hetzelfde postvak meermaals raken: de bevestigingsmail na het indienen van een groepsinschrijving en de lesannulering-/verzetmails. Daar volstaat `DistinctBy(ContactEmail)`.
 
 Foutafhandeling: waar nu één mislukte mail één toewijzing betreft, treft een fout straks N deelnemers. De logregel moet alle betrokken assignment-id's bevatten.
 
@@ -89,7 +91,7 @@ Onderwerpregel: bij één deelnemer ongewijzigd; bij meerdere `"Planning voor <n
 
 ## 4. Portaal en UI
 
-**Student-portaal.** `GetByStudentEmailAsync` wordt `GetByContactEmailAsync` en matcht op `Enrollment.ContactEmail`, voor solo én groepsleden. Wie inlogt ziet exact wat er in zijn mailbox landt. `StudentLessonDto` krijgt `participantName` — zonder dat staan er bij een vriendengroep meerdere identieke rijen. De magic-link-aanvraag valideert eveneens tegen `ContactEmail`.
+**Student-portaal.** `GetByStudentEmailAsync` wordt `GetByContactEmailAsync` en matcht op `Enrollment.ContactEmail`, voor solo én groepsleden. Wie inlogt ziet exact wat er in zijn mailbox landt. `StudentLessonDto` krijgt `participantName` — zonder dat staan er bij een vriendengroep meerdere identieke rijen. De magic-link-flow zelf blijft ongewijzigd: `StudentMagicLinkService` controleert geen inschrijvingen, het is de lookup in `ScheduleAssignmentRepository` die bepaalt wat je na inloggen ziet.
 
 **Publiek inschrijfformulier.** Per groepslid komt onder naam en geboortedatum één checkbox: "Dit lid heeft een eigen e-mailadres". Standaard uit, met daaronder de tekst "Alle communicatie loopt via `<adres van de leider>`". Aanvinken klapt het e-mailveld open. Boven het groepsblok staat één zin die uitlegt dat de contactpersoon alle mails en de betaallink ontvangt.
 
