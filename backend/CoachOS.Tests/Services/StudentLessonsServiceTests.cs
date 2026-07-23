@@ -78,7 +78,7 @@ public class StudentLessonsServiceTests
     {
         // Arrange: groep van 3. Legacy formule zou 3 × 40 = 120 tonen.
         ScheduleAssignment assignment = BuildGroupAssignment(out Enrollment leader, memberCount: 3);
-        _assignmentRepo.Setup(r => r.GetByStudentEmailAsync(Email, It.IsAny<CancellationToken>()))
+        _assignmentRepo.Setup(r => r.GetByContactEmailAsync(Email, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<ScheduleAssignment> { assignment });
 
         // Act
@@ -111,7 +111,7 @@ public class StudentLessonsServiceTests
         assignment.EnrollmentId = enrollment.Id;
         assignment.Enrollment = enrollment;
 
-        _assignmentRepo.Setup(r => r.GetByStudentEmailAsync(Email, It.IsAny<CancellationToken>()))
+        _assignmentRepo.Setup(r => r.GetByContactEmailAsync(Email, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<ScheduleAssignment> { assignment });
 
         Result<List<StudentLessonDto>> result = await _sut.GetMyLessonsAsync(Email, CancellationToken.None);
@@ -130,7 +130,7 @@ public class StudentLessonsServiceTests
     public async Task GetMyLessonsAsync_PricingFails_PropagatesError()
     {
         ScheduleAssignment assignment = BuildGroupAssignment(out _, memberCount: 2);
-        _assignmentRepo.Setup(r => r.GetByStudentEmailAsync(Email, It.IsAny<CancellationToken>()))
+        _assignmentRepo.Setup(r => r.GetByContactEmailAsync(Email, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<ScheduleAssignment> { assignment });
 
         _priceResult = Result<PriceBreakdown>.Fail(
@@ -142,7 +142,42 @@ public class StudentLessonsServiceTests
         result.Errors.Should().ContainSingle(e => e.Message == "Lessenreeks niet gevonden.");
     }
 
+    [Test]
+    public async Task GetMyLessonsAsync_SharedContactAddress_ListsEachParticipantByName()
+    {
+        ScheduleAssignment lotte = AssignmentForParticipant("Lotte Peeters", "ouder@example.com");
+        ScheduleAssignment sofie = AssignmentForParticipant("Sofie Peeters", "ouder@example.com");
+        SetupPrice(65m, groupSize: 1);
+
+        _assignmentRepo
+            .Setup(r => r.GetByContactEmailAsync("ouder@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ScheduleAssignment> { lotte, sofie });
+
+        Result<List<StudentLessonDto>> result =
+            await _sut.GetMyLessonsAsync("ouder@example.com", CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Select(l => l.ParticipantName)
+            .Should().BeEquivalentTo("Lotte Peeters", "Sofie Peeters");
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
+
+    private static ScheduleAssignment AssignmentForParticipant(string name, string contactEmail)
+    {
+        ScheduleAssignment assignment = BuildAssignment();
+        Enrollment enrollment = new()
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = OrgId,
+            LessonSerieId = SeriesId,
+            StudentName = name,
+            ContactEmail = contactEmail,
+        };
+        assignment.EnrollmentId = enrollment.Id;
+        assignment.Enrollment = enrollment;
+        return assignment;
+    }
 
     private static ScheduleAssignment BuildAssignment()
     {

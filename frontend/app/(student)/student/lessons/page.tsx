@@ -119,6 +119,11 @@ export default function StudentLessonsPage() {
                   </Mono>
                 </div>
                 <div className="flex-1 min-w-0">
+                  {lesson.participantName && (
+                    <p className="text-[11px] text-ink-3 m-0">
+                      {lesson.participantName}
+                    </p>
+                  )}
                   <p className="text-[12.5px] font-semibold text-ink m-0">
                     {lesson.seriesName}
                   </p>
