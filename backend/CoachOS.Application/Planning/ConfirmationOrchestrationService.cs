@@ -88,17 +88,50 @@ public class ConfirmationOrchestrationService(
             return Result<bool>.Fail(new Error(ErrorCodes.Unexpected, "Planning kon niet bevestigd worden. Probeer het opnieuw."));
         }
 
-        foreach (var (recipient, assignment, rawToken) in emailsToSend)
-        {
-            if (!slotById.TryGetValue(assignment.WeeklyTemplateEntryId, out var slot)) continue;
+        // Groeperen op contactadres: wie meerdere deelnemers draagt, krijgt één mail
+        // met een eigen bevestigingsknop per deelnemer. Tokens blijven per toewijzing.
+        var byContact = emailsToSend
+            .Where(x => slotById.ContainsKey(x.assignment.WeeklyTemplateEntryId))
+            .GroupBy(x => x.recipient.ContactEmail.Trim().ToLowerInvariant());
 
+        var baseUrl = appOptions.Value.ConfirmationBaseUrl.TrimEnd('/');
+
+        foreach (var group in byContact)
+        {
+            var entries = group.ToList();
             try
             {
-                await SendConfirmationEmailAsync(recipient, series, slot, rawToken, ct);
+                if (entries.Count == 1)
+                {
+                    var (recipient, assignment, rawToken) = entries[0];
+                    await SendConfirmationEmailAsync(
+                        recipient, series, slotById[assignment.WeeklyTemplateEntryId], rawToken, ct);
+                    continue;
+                }
+
+                List<ScheduleConfirmationItem> items = entries
+                    .Select(e =>
+                    {
+                        WeeklyTemplateEntry slot = slotById[e.assignment.WeeklyTemplateEntryId];
+                        return new ScheduleConfirmationItem(
+                            e.recipient.StudentName,
+                            slot.DayOfWeek,
+                            slot.StartTime.ToString("HH:mm"),
+                            slot.EndTime.ToString("HH:mm"),
+                            slot.CourtName,
+                            $"{baseUrl}/{e.rawToken}");
+                    })
+                    .ToList();
+
+                await emailService.SendScheduleConfirmationBundleAsync(
+                    group.Key, series.Name, items, ct);
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "E-mail voor toewijzing {AssignmentId} mislukt.", assignment.Id);
+                // Eén fout raakt nu meerdere deelnemers; log daarom alle assignment-id's,
+                // anders is niet te achterhalen wie geen mail kreeg.
+                logger.LogError(ex, "E-mail naar {ContactEmail} mislukt voor toewijzingen {AssignmentIds}.",
+                    group.Key, string.Join(", ", entries.Select(e => e.assignment.Id)));
             }
         }
 

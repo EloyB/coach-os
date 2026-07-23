@@ -1,3 +1,5 @@
+using CoachOS.Domain.Models;
+
 namespace CoachOS.Domain.Interfaces;
 
 public interface IEmailService
@@ -31,6 +33,16 @@ public interface IEmailService
         string endTime,
         string? courtName,
         string confirmationUrl,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Eén mail voor meerdere deelnemers die hetzelfde contactadres delen. Elke
+    /// deelnemer krijgt een eigen blok met een eigen bevestigingsknop.
+    /// </summary>
+    Task SendScheduleConfirmationBundleAsync(
+        string contactEmail,
+        string seriesName,
+        IReadOnlyList<ScheduleConfirmationItem> items,
         CancellationToken ct = default);
 
     Task SendStudentMagicLinkAsync(

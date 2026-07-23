@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Mail;
+using System.Text;
 using CoachOS.Domain.Interfaces;
+using CoachOS.Domain.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -85,6 +87,45 @@ public class EmailService(
         });
         await SendAsync(studentEmail, studentName,
             $"Bevestig je lesmoment: {seriesName}", html, ct);
+    }
+
+    public async Task SendScheduleConfirmationBundleAsync(
+        string contactEmail, string seriesName,
+        IReadOnlyList<ScheduleConfirmationItem> items, CancellationToken ct = default)
+    {
+        var blocks = new StringBuilder();
+        foreach (ScheduleConfirmationItem item in items)
+        {
+            int safeEu = Math.Clamp(item.DayOfWeek, 0, 6);
+            string dayName = DaysNl[(safeEu + 1) % 7];
+            string courtLine = string.IsNullOrWhiteSpace(item.CourtName)
+                ? string.Empty
+                : $"Baan: {WebUtility.HtmlEncode(item.CourtName)}";
+
+            // Handmatig encoderen: dit blok gaat als raw: token de renderer in,
+            // dus de automatische encoding van Render() slaat het over.
+            blocks.Append($"""
+                <div style="background:#FAFAF8;border-left:4px solid #D0FF14;border-radius:8px;padding:16px 20px;margin:16px 0">
+                  <div style="font-size:14px;font-weight:600;color:#111827">{WebUtility.HtmlEncode(item.ParticipantName)}</div>
+                  <div style="font-size:14px;color:#111827;padding-top:4px">{dayName} {WebUtility.HtmlEncode(item.StartTime)} — {WebUtility.HtmlEncode(item.EndTime)}</div>
+                  <div style="font-size:13px;color:#6b7280;padding-top:4px">{courtLine}</div>
+                  <a href="{WebUtility.HtmlEncode(item.ConfirmationUrl)}" style="display:inline-block;margin-top:12px;background:#2D5016;color:#FFFFFF;border-radius:8px;font-weight:600;font-size:14px;padding:10px 20px;text-decoration:none">Bevestigen of wijzigen</a>
+                </div>
+                """);
+        }
+
+        string names = string.Join(", ", items.Select(i => i.ParticipantName));
+
+        var html = renderer.Render("schedule-confirmation-multi", new Dictionary<string, string>
+        {
+            ["seriesName"] = seriesName,
+            ["participantNames"] = names,
+            ["raw:participantBlocks"] = blocks.ToString(),
+            ["year"] = DateTime.UtcNow.Year.ToString(),
+        });
+
+        await SendAsync(contactEmail, names,
+            $"Bevestig de lesmomenten voor {names} — {seriesName}", html, ct);
     }
 
     public async Task SendStudentMagicLinkAsync(
