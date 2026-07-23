@@ -904,18 +904,21 @@ public class LessonSerieServiceTests
             {
                 Id = Guid.NewGuid(), OrganizationId = OrgId,
                 StudentName = "Jan Janssen", StudentEmail = "jan@example.com",
+                ContactEmail = "jan@example.com",
                 Status = Domain.Enums.EnrollmentStatus.Confirmed,
             },
             new Domain.Entities.Enrollment
             {
                 Id = Guid.NewGuid(), OrganizationId = OrgId,
                 StudentName = "Sofie Peeters", StudentEmail = "sofie@example.com",
+                ContactEmail = "sofie@example.com",
                 Status = Domain.Enums.EnrollmentStatus.Pending,
             },
             new Domain.Entities.Enrollment
             {
                 Id = Guid.NewGuid(), OrganizationId = OrgId,
                 StudentName = "Marc Dubois", StudentEmail = "marc@example.com",
+                ContactEmail = "marc@example.com",
                 Status = Domain.Enums.EnrollmentStatus.Cancelled,
             },
         ];

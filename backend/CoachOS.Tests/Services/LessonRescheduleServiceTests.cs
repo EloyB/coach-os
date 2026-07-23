@@ -235,9 +235,9 @@ public class LessonRescheduleServiceTests
 
         List<Enrollment> enrollments =
         [
-            new() { StudentEmail = "x@y.be", StudentName = "Xan", Status = EnrollmentStatus.Confirmed },
-            new() { StudentEmail = "y@y.be", StudentName = "Yana", Status = EnrollmentStatus.Pending },
-            new() { StudentEmail = "z@y.be", StudentName = "Zoë", Status = EnrollmentStatus.Cancelled },
+            new() { StudentEmail = "x@y.be", ContactEmail = "x@y.be", StudentName = "Xan", Status = EnrollmentStatus.Confirmed },
+            new() { StudentEmail = "y@y.be", ContactEmail = "y@y.be", StudentName = "Yana", Status = EnrollmentStatus.Pending },
+            new() { StudentEmail = "z@y.be", ContactEmail = "z@y.be", StudentName = "Zoë", Status = EnrollmentStatus.Cancelled },
         ];
         _enrollmentRepo
             .Setup(r => r.GetBySeriesAsync(seriesId, OrgId, It.IsAny<CancellationToken>()))

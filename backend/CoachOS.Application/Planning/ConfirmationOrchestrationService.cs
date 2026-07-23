@@ -140,7 +140,8 @@ public class ConfirmationOrchestrationService(
                 AssignmentId = token.ScheduleAssignmentId,
                 EnrollmentId = token.EnrollmentId,
                 StudentName = token.Enrollment.StudentName,
-                StudentEmail = token.Enrollment.StudentEmail,
+                // Contactadres: dat is waar de bevestigingsmail heen ging.
+                StudentEmail = token.Enrollment.ContactEmail,
                 StudentPhone = token.Enrollment.StudentPhone,
                 IsGroup = isGroup,
                 GroupSize = groupSize,
@@ -335,7 +336,7 @@ public class ConfirmationOrchestrationService(
     {
         var baseUrl = appOptions.Value.ConfirmationBaseUrl.TrimEnd('/');
         return emailService.SendScheduleConfirmationAsync(
-            recipient.StudentEmail,
+            recipient.ContactEmail,
             recipient.StudentName,
             series.Name,
             slot.DayOfWeek,

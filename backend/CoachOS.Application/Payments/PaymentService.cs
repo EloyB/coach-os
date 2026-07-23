@@ -441,7 +441,7 @@ public class PaymentService(
         try
         {
             await emailService.SendEnrollmentConfirmationAsync(
-                enrollment.StudentEmail,
+                enrollment.ContactEmail,
                 enrollment.StudentName,
                 series?.Name ?? string.Empty,
                 trainerName: string.Empty,

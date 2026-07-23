@@ -173,7 +173,7 @@ public class PlanningService(
             {
                 Id = e.Id,
                 StudentName = e.StudentName,
-                StudentEmail = e.StudentEmail,
+                StudentEmail = e.ContactEmail,
                 StudentPhone = e.StudentPhone,
                 IsOpenToGrouping = e.IsOpenToGrouping,
                 GroupId = e.EnrollmentGroupId,

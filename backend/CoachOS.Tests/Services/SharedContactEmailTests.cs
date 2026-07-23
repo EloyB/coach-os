@@ -163,6 +163,28 @@ public class SharedContactEmailTests
             It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
+    [Test]
+    public void No_Sender_Uses_StudentEmail_Anymore()
+    {
+        string[] senderFiles =
+        [
+            "Payments/PaymentService.cs",
+            "LessonSerie/LessonSerieService.cs",
+            "LessonReschedule/LessonRescheduleService.cs",
+            "Planning/ConfirmationOrchestrationService.cs",
+        ];
+
+        string root = Path.Combine(TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "CoachOS.Application");
+
+        foreach (string file in senderFiles)
+        {
+            string source = File.ReadAllText(Path.Combine(root, file));
+            source.Should().NotContain(".StudentEmail,",
+                because: $"{file} moet naar ContactEmail sturen, niet naar het adres van de deelnemer");
+        }
+    }
+
     private List<Enrollment> CaptureAddedEnrollments()
     {
         List<Enrollment> added = [];

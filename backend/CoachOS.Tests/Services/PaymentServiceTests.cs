@@ -399,6 +399,7 @@ public class PaymentServiceTests
             OrganizationId = OrgId,
             LessonSerieId = SeriesId,
             StudentEmail = "student@example.com",
+            ContactEmail = "student@example.com",
             StudentName = "Test Student",
             Status = EnrollmentStatus.PendingPayment,
         };
@@ -441,6 +442,7 @@ public class PaymentServiceTests
             OrganizationId = OrgId,
             LessonSerieId = SeriesId,
             StudentEmail = "leider@example.com",
+            ContactEmail = "leider@example.com",
             StudentName = "De Leider",
             Status = EnrollmentStatus.PendingPayment,
             EnrollmentGroupId = groupId,
@@ -451,6 +453,7 @@ public class PaymentServiceTests
             OrganizationId = OrgId,
             LessonSerieId = SeriesId,
             StudentEmail = "lid@example.com",
+            ContactEmail = "lid@example.com",
             StudentName = "Het Lid",
             Status = EnrollmentStatus.PendingPayment,
             EnrollmentGroupId = groupId,
