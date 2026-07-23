@@ -19,7 +19,7 @@
       </mj-column>
     </mj-section>
 
-    <mj-section css-class="cos-card" background-color="#FFFFFF" padding="40px">
+    <mj-section css-class="cos-card" background-color="#FFFFFF" padding="40px 40px 8px">
       <mj-column>
         <mj-text mj-class="heading">Bevestig de lesmomenten</mj-text>
         <mj-text padding-top="16px">
@@ -27,8 +27,21 @@
           <strong style="color:#111827">{{seriesName}}</strong>. Bevestig elk lesmoment
           binnen 72 uur.
         </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Deelnemersblokken in een eigen sectie: mj-raw alleen in de kolom, en de
+         volgorde t.o.v. intro en slotzin wordt door de sectie-volgorde afgedwongen
+         (mj-raw tussen mj-text-siblings wordt door MJML naar boven gehesen). -->
+    <mj-section background-color="#FFFFFF" padding="0 40px">
+      <mj-column>
         <mj-raw>{{participantBlocks}}</mj-raw>
-        <mj-text mj-class="fine" padding-top="20px">
+      </mj-column>
+    </mj-section>
+
+    <mj-section background-color="#FFFFFF" padding="8px 40px 40px">
+      <mj-column>
+        <mj-text mj-class="fine">
           Geen antwoord binnen 72 uur? Dan neemt je club contact op.
         </mj-text>
       </mj-column>
