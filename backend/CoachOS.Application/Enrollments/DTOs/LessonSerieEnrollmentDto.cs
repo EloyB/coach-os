@@ -4,7 +4,13 @@ public class LessonSerieEnrollmentDto
 {
     public Guid Id { get; set; }
     public string StudentName { get; set; } = string.Empty;
-    public string StudentEmail { get; set; } = string.Empty;
+    public string? StudentEmail { get; set; }
+
+    /// <summary>Adres waar de communicatie voor deze inschrijving heen gaat.</summary>
+    public string ContactEmail { get; set; } = string.Empty;
+
+    /// <summary>False = communicatie loopt via de contactpersoon van de groep.</summary>
+    public bool HasOwnEmail { get; set; }
     public string Status { get; set; } = string.Empty;
     public DateTime EnrolledAt { get; set; }
     public string? Notes { get; set; }
