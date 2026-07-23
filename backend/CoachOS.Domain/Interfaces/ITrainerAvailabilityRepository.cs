@@ -17,6 +17,19 @@ public interface ITrainerAvailabilityRepository
     /// </summary>
     Task<bool> HasOverlapAsync(Guid trainerId, Guid organizationId, int dayOfWeek, TimeOnly startTime, TimeOnly endTime, CancellationToken ct = default);
 
+    /// <summary>
+    /// Alle actieve beschikbaarheden waarvan het tijdvak [startTime, endTime] VOLLEDIG
+    /// omvat wordt. Een beschikbaarheid met TennisClubId == null geldt voor elke club
+    /// en matcht dus altijd.
+    /// </summary>
+    Task<IReadOnlyList<TrainerAvailability>> GetAvailableTrainersAsync(
+        Guid organizationId,
+        Guid? tennisClubId,
+        int dayOfWeek,
+        TimeOnly startTime,
+        TimeOnly endTime,
+        CancellationToken ct = default);
+
     Task AddAsync(TrainerAvailability availability, CancellationToken ct = default);
     Task SaveChangesAsync(CancellationToken ct = default);
 }

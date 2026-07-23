@@ -27,12 +27,26 @@
     }
   },
   "clubs": [
-    { "name": "TC De Aces", "address": "Sportlaan 12, 2000 Antwerpen" },
-    { "name": "Padel Center Brussel", "address": "Louizalaan 45, 1050 Brussel" }
+    {
+      "name": "TC De Aces",
+      "address": "Sportlaan 12, 2000 Antwerpen"
+    },
+    {
+      "name": "Padel Center Brussel",
+      "address": "Louizalaan 45, 1050 Brussel"
+    }
   ],
   "trainers": [
-    { "firstName": "Sophie", "lastName": "De Vries", "email": "sophie@deaces.be" },
-    { "firstName": "Pieter", "lastName": "Mertens", "email": "pieter@deaces.be" }
+    {
+      "firstName": "Sophie",
+      "lastName": "De Vries",
+      "email": "sophie@deaces.be"
+    },
+    {
+      "firstName": "Pieter",
+      "lastName": "Mertens",
+      "email": "pieter@deaces.be"
+    }
   ],
   "simpleSeries": [
     {
@@ -40,12 +54,18 @@
       "description": "Tennistraining voor beginners. Leer de basisvaardigheden.",
       "clubIndex": 0,
       "level": 1,
-      "price": 120.00,
+      "price": 120.0,
       "maxRegistrations": 12,
       "startOffsetDays": 0,
       "endOffsetMonths": 3,
       "weeklyTemplate": [
-        { "dayOfWeek": 0, "startTime": "09:00", "endTime": "10:00", "courtName": "Baan 1", "maxStudents": 4 }
+        {
+          "dayOfWeek": 0,
+          "startTime": "09:00",
+          "endTime": "10:00",
+          "courtName": "Baan 1",
+          "maxStudents": 4
+        }
       ]
     },
     {
@@ -53,12 +73,18 @@
       "description": "Intensieve training voor competitiespelers.",
       "clubIndex": 0,
       "level": 4,
-      "price": 180.00,
+      "price": 180.0,
       "maxRegistrations": 8,
       "startOffsetDays": 0,
       "endOffsetMonths": 3,
       "weeklyTemplate": [
-        { "dayOfWeek": 2, "startTime": "10:30", "endTime": "12:00", "courtName": "Baan 2", "maxStudents": 4 }
+        {
+          "dayOfWeek": 2,
+          "startTime": "10:30",
+          "endTime": "12:00",
+          "courtName": "Baan 2",
+          "maxStudents": 4
+        }
       ]
     },
     {
@@ -66,144 +92,582 @@
       "description": "Kennismaken met padel. Regels en basistechnieken.",
       "clubIndex": 1,
       "level": 1,
-      "price": 95.00,
+      "price": 95.0,
       "maxRegistrations": 16,
       "startOffsetDays": 7,
       "endOffsetMonths": 2,
       "weeklyTemplate": [
-        { "dayOfWeek": 4, "startTime": "14:00", "endTime": "15:00", "courtName": "Padel 1", "maxStudents": 4 }
+        {
+          "dayOfWeek": 4,
+          "startTime": "14:00",
+          "endTime": "15:00",
+          "courtName": "Padel 1",
+          "maxStudents": 4
+        }
       ]
     }
   ],
   "additionalLessonsPerSimpleSeries": {
     "weeks": 8,
-    "courts": ["Baan 1", "Baan 2", "Baan 3", "Padel 1"],
-    "startTimes": ["09:00", "10:30", "14:00", "16:00"],
-    "endTimes":   ["10:00", "12:00", "15:00", "17:00"]
+    "courts": [
+      "Baan 1",
+      "Baan 2",
+      "Baan 3",
+      "Padel 1"
+    ],
+    "startTimes": [
+      "09:00",
+      "10:30",
+      "14:00",
+      "16:00"
+    ],
+    "endTimes": [
+      "10:00",
+      "12:00",
+      "15:00",
+      "17:00"
+    ]
   },
   "simpleEnrollments": [
-    { "studentName": "Emma Claes",         "studentEmail": "emma.claes@gmail.com",        "studentPhone": "+32471234567", "seriesIndex": 0 },
-    { "studentName": "Noah Willems",       "studentEmail": "noah.w@gmail.com",            "studentPhone": "+32474567890", "seriesIndex": 0 },
-    { "studentName": "Sarah Jacobs",       "studentEmail": "sarah.j@hotmail.com",         "studentPhone": "+32477890123", "seriesIndex": 0 },
-    { "studentName": "Bram Wouters",       "studentEmail": "bram.wouters@hotmail.com",    "studentPhone": "+32470123456", "seriesIndex": 0 },
-    { "studentName": "Hanne Declercq",     "studentEmail": "hanne.d@gmail.com",           "studentPhone": "+32471100001", "seriesIndex": 0 },
-    { "studentName": "Ruben Smeets",       "studentEmail": "ruben.smeets@hotmail.com",    "studentPhone": "+32471100002", "seriesIndex": 0 },
-    { "studentName": "Elien Bogaert",      "studentEmail": "elien.b@outlook.com",         "studentPhone": "+32471100003", "seriesIndex": 0 },
-    { "studentName": "Ward Janssen",       "studentEmail": "ward.janssen@gmail.com",      "studentPhone": "+32471100004", "seriesIndex": 0 },
-    { "studentName": "Fien Lemmens",       "studentEmail": "fien.l@gmail.com",            "studentPhone": "+32471100005", "seriesIndex": 0 },
-    { "studentName": "Lucas Peeters",      "studentEmail": "lucas.peeters@hotmail.com",   "studentPhone": "+32472345678", "seriesIndex": 1 },
-    { "studentName": "Julie Maes",         "studentEmail": "julie.maes@yahoo.com",        "studentPhone": "+32475678901", "seriesIndex": 1 },
-    { "studentName": "Thomas Hermans",     "studentEmail": "thomas.h@outlook.com",        "studentPhone": "+32478901234", "seriesIndex": 1 },
-    { "studentName": "Amber Pieters",      "studentEmail": "amber.p@gmail.com",           "studentPhone": "+32471200001", "seriesIndex": 1 },
-    { "studentName": "Sander Verbeke",     "studentEmail": "sander.v@hotmail.com",        "studentPhone": "+32471200002", "seriesIndex": 1 },
-    { "studentName": "Nathalie Goossens",  "studentEmail": "nathalie.g@outlook.com",      "studentPhone": "+32471200003", "seriesIndex": 1 },
-    { "studentName": "Lotte Van Damme",    "studentEmail": "lotte.vd@outlook.com",        "studentPhone": "+32473456789", "seriesIndex": 2 },
-    { "studentName": "Axel Dubois",        "studentEmail": "axel.dubois@gmail.com",       "studentPhone": "+32476789012", "seriesIndex": 2 },
-    { "studentName": "Marie Lambert",      "studentEmail": "marie.lambert@gmail.com",     "studentPhone": "+32479012345", "seriesIndex": 2 },
-    { "studentName": "Dries Hermans",      "studentEmail": "dries.h@gmail.com",           "studentPhone": "+32471300001", "seriesIndex": 2 },
-    { "studentName": "Charlotte Baert",    "studentEmail": "charlotte.b@hotmail.com",     "studentPhone": "+32471300002", "seriesIndex": 2 },
-    { "studentName": "Raf Aerts",          "studentEmail": "raf.aerts@outlook.com",       "studentPhone": "+32471300003", "seriesIndex": 2 },
-    { "studentName": "Tine Claes",         "studentEmail": "tine.claes@gmail.com",        "studentPhone": "+32471300004", "seriesIndex": 2 },
-    { "studentName": "Jonas Nijs",         "studentEmail": "jonas.nijs@telenet.be",       "studentPhone": "+32471300005", "seriesIndex": 2 },
-    { "studentName": "Sofie Willems",      "studentEmail": "sofie.willems@proximus.be",   "studentPhone": "+32471300006", "seriesIndex": 2 }
+    {
+      "studentName": "Emma Claes",
+      "studentEmail": "emma.claes@gmail.com",
+      "studentPhone": "+32471234567",
+      "seriesIndex": 0,
+      "dateOfBirth": "1985-03-14"
+    },
+    {
+      "studentName": "Noah Willems",
+      "studentEmail": "noah.w@gmail.com",
+      "studentPhone": "+32474567890",
+      "seriesIndex": 0,
+      "dateOfBirth": "1990-07-22"
+    },
+    {
+      "studentName": "Sarah Jacobs",
+      "studentEmail": "sarah.j@hotmail.com",
+      "studentPhone": "+32477890123",
+      "seriesIndex": 0,
+      "dateOfBirth": "2010-12-02"
+    },
+    {
+      "studentName": "Bram Wouters",
+      "studentEmail": "bram.wouters@hotmail.com",
+      "studentPhone": "+32470123456",
+      "seriesIndex": 0,
+      "dateOfBirth": "1993-01-30"
+    },
+    {
+      "studentName": "Hanne Declercq",
+      "studentEmail": "hanne.d@gmail.com",
+      "studentPhone": "+32471100001",
+      "seriesIndex": 0,
+      "dateOfBirth": "1988-09-17"
+    },
+    {
+      "studentName": "Ruben Smeets",
+      "studentEmail": "ruben.smeets@hotmail.com",
+      "studentPhone": "+32471100002",
+      "seriesIndex": 0,
+      "dateOfBirth": "2013-08-27"
+    },
+    {
+      "studentName": "Elien Bogaert",
+      "studentEmail": "elien.b@outlook.com",
+      "studentPhone": "+32471100003",
+      "seriesIndex": 0,
+      "dateOfBirth": "1985-03-14"
+    },
+    {
+      "studentName": "Ward Janssen",
+      "studentEmail": "ward.janssen@gmail.com",
+      "studentPhone": "+32471100004",
+      "seriesIndex": 0,
+      "dateOfBirth": "1990-07-22"
+    },
+    {
+      "studentName": "Fien Lemmens",
+      "studentEmail": "fien.l@gmail.com",
+      "studentPhone": "+32471100005",
+      "seriesIndex": 0,
+      "dateOfBirth": "2011-04-18"
+    },
+    {
+      "studentName": "Lucas Peeters",
+      "studentEmail": "lucas.peeters@hotmail.com",
+      "studentPhone": "+32472345678",
+      "seriesIndex": 1,
+      "dateOfBirth": "1993-01-30"
+    },
+    {
+      "studentName": "Julie Maes",
+      "studentEmail": "julie.maes@yahoo.com",
+      "studentPhone": "+32475678901",
+      "seriesIndex": 1,
+      "dateOfBirth": "1988-09-17"
+    },
+    {
+      "studentName": "Thomas Hermans",
+      "studentEmail": "thomas.h@outlook.com",
+      "studentPhone": "+32478901234",
+      "seriesIndex": 1,
+      "dateOfBirth": "2014-06-11"
+    },
+    {
+      "studentName": "Amber Pieters",
+      "studentEmail": "amber.p@gmail.com",
+      "studentPhone": "+32471200001",
+      "seriesIndex": 1,
+      "dateOfBirth": "1985-03-14"
+    },
+    {
+      "studentName": "Sander Verbeke",
+      "studentEmail": "sander.v@hotmail.com",
+      "studentPhone": "+32471200002",
+      "seriesIndex": 1,
+      "dateOfBirth": "1990-07-22"
+    },
+    {
+      "studentName": "Nathalie Goossens",
+      "studentEmail": "nathalie.g@outlook.com",
+      "studentPhone": "+32471200003",
+      "seriesIndex": 1,
+      "dateOfBirth": "2010-12-02"
+    },
+    {
+      "studentName": "Lotte Van Damme",
+      "studentEmail": "lotte.vd@outlook.com",
+      "studentPhone": "+32473456789",
+      "seriesIndex": 2,
+      "dateOfBirth": "1993-01-30"
+    },
+    {
+      "studentName": "Axel Dubois",
+      "studentEmail": "axel.dubois@gmail.com",
+      "studentPhone": "+32476789012",
+      "seriesIndex": 2,
+      "dateOfBirth": "1988-09-17"
+    },
+    {
+      "studentName": "Marie Lambert",
+      "studentEmail": "marie.lambert@gmail.com",
+      "studentPhone": "+32479012345",
+      "seriesIndex": 2,
+      "dateOfBirth": "2013-08-27"
+    },
+    {
+      "studentName": "Dries Hermans",
+      "studentEmail": "dries.h@gmail.com",
+      "studentPhone": "+32471300001",
+      "seriesIndex": 2,
+      "dateOfBirth": "1985-03-14"
+    },
+    {
+      "studentName": "Charlotte Baert",
+      "studentEmail": "charlotte.b@hotmail.com",
+      "studentPhone": "+32471300002",
+      "seriesIndex": 2,
+      "dateOfBirth": "1990-07-22"
+    },
+    {
+      "studentName": "Raf Aerts",
+      "studentEmail": "raf.aerts@outlook.com",
+      "studentPhone": "+32471300003",
+      "seriesIndex": 2,
+      "dateOfBirth": "2011-04-18"
+    },
+    {
+      "studentName": "Tine Claes",
+      "studentEmail": "tine.claes@gmail.com",
+      "studentPhone": "+32471300004",
+      "seriesIndex": 2,
+      "dateOfBirth": "1993-01-30"
+    },
+    {
+      "studentName": "Jonas Nijs",
+      "studentEmail": "jonas.nijs@telenet.be",
+      "studentPhone": "+32471300005",
+      "seriesIndex": 2,
+      "dateOfBirth": "1988-09-17"
+    },
+    {
+      "studentName": "Sofie Willems",
+      "studentEmail": "sofie.willems@proximus.be",
+      "studentPhone": "+32471300006",
+      "seriesIndex": 2,
+      "dateOfBirth": "2014-06-11"
+    }
   ],
   "planningSeries": {
     "name": "Zomerlessen 2026",
     "description": "Tennislessen voor jeugd en volwassenen. 3 maanden, 2 banen, meerdere momenten per week.",
     "clubIndex": 0,
     "level": 1,
-    "price": 180.00,
+    "price": 180.0,
     "maxRegistrations": 40,
     "startOffsetDays": 0,
     "endOffsetMonths": 3,
     "weeklyTemplate": [
-      { "dayOfWeek": 1, "startTime": "18:00", "endTime": "19:00", "courtName": "Baan 1", "maxStudents": 4 },
-      { "dayOfWeek": 1, "startTime": "18:00", "endTime": "19:00", "courtName": "Baan 2", "maxStudents": 4 },
-      { "dayOfWeek": 1, "startTime": "19:00", "endTime": "20:00", "courtName": "Baan 1", "maxStudents": 4 },
-      { "dayOfWeek": 2, "startTime": "14:00", "endTime": "15:00", "courtName": "Baan 1", "maxStudents": 4 },
-      { "dayOfWeek": 2, "startTime": "14:00", "endTime": "15:00", "courtName": "Baan 2", "maxStudents": 4 },
-      { "dayOfWeek": 2, "startTime": "15:00", "endTime": "16:00", "courtName": "Baan 1", "maxStudents": 4 },
-      { "dayOfWeek": 3, "startTime": "18:00", "endTime": "19:00", "courtName": "Baan 1", "maxStudents": 4 },
-      { "dayOfWeek": 3, "startTime": "19:00", "endTime": "20:00", "courtName": "Baan 1", "maxStudents": 4 },
-      { "dayOfWeek": 5, "startTime": "10:00", "endTime": "11:00", "courtName": "Baan 1", "maxStudents": 4 },
-      { "dayOfWeek": 5, "startTime": "10:00", "endTime": "11:00", "courtName": "Baan 2", "maxStudents": 4 },
-      { "dayOfWeek": 5, "startTime": "11:00", "endTime": "12:00", "courtName": "Baan 1", "maxStudents": 4 }
+      {
+        "dayOfWeek": 1,
+        "startTime": "18:00",
+        "endTime": "19:00",
+        "courtName": "Baan 1",
+        "maxStudents": 4
+      },
+      {
+        "dayOfWeek": 1,
+        "startTime": "18:00",
+        "endTime": "19:00",
+        "courtName": "Baan 2",
+        "maxStudents": 4
+      },
+      {
+        "dayOfWeek": 1,
+        "startTime": "19:00",
+        "endTime": "20:00",
+        "courtName": "Baan 1",
+        "maxStudents": 4
+      },
+      {
+        "dayOfWeek": 2,
+        "startTime": "14:00",
+        "endTime": "15:00",
+        "courtName": "Baan 1",
+        "maxStudents": 4
+      },
+      {
+        "dayOfWeek": 2,
+        "startTime": "14:00",
+        "endTime": "15:00",
+        "courtName": "Baan 2",
+        "maxStudents": 4
+      },
+      {
+        "dayOfWeek": 2,
+        "startTime": "15:00",
+        "endTime": "16:00",
+        "courtName": "Baan 1",
+        "maxStudents": 4
+      },
+      {
+        "dayOfWeek": 3,
+        "startTime": "18:00",
+        "endTime": "19:00",
+        "courtName": "Baan 1",
+        "maxStudents": 4
+      },
+      {
+        "dayOfWeek": 3,
+        "startTime": "19:00",
+        "endTime": "20:00",
+        "courtName": "Baan 1",
+        "maxStudents": 4
+      },
+      {
+        "dayOfWeek": 5,
+        "startTime": "10:00",
+        "endTime": "11:00",
+        "courtName": "Baan 1",
+        "maxStudents": 4
+      },
+      {
+        "dayOfWeek": 5,
+        "startTime": "10:00",
+        "endTime": "11:00",
+        "courtName": "Baan 2",
+        "maxStudents": 4
+      },
+      {
+        "dayOfWeek": 5,
+        "startTime": "11:00",
+        "endTime": "12:00",
+        "courtName": "Baan 1",
+        "maxStudents": 4
+      }
     ],
-    "ageCategoryOptions": ["8-10 jaar", "11-13 jaar", "14-17 jaar", "Volwassenen"]
+    "ageCategoryOptions": [
+      "8-10 jaar",
+      "11-13 jaar",
+      "14-17 jaar",
+      "Volwassenen"
+    ]
   },
   "planningEnrollments": [
     {
       "label": "Family De Boer (group of 3, Wed afternoon, open to merge)",
-      "studentName": "Sofie De Boer", "studentEmail": "sofie.deboer@gmail.com", "studentPhone": "+32478112233",
-      "enrollmentType": "group", "isOpenToGrouping": true, "ageCategory": "8-10 jaar",
+      "studentName": "Sofie De Boer",
+      "studentEmail": "sofie.deboer@gmail.com",
+      "studentPhone": "+32478112233",
+      "enrollmentType": "group",
+      "isOpenToGrouping": true,
       "groupMembers": [
-        { "studentName": "Fien De Boer", "studentEmail": "sofie.deboer+fien@gmail.com", "studentPhone": null },
-        { "studentName": "Stan De Boer", "studentEmail": "sofie.deboer+stan@gmail.com", "studentPhone": null }
+        {
+          "studentName": "Fien De Boer",
+          "studentEmail": "sofie.deboer+fien@gmail.com",
+          "studentPhone": null,
+          "dateOfBirth": "2011-04-18"
+        },
+        {
+          "studentName": "Stan De Boer",
+          "studentEmail": "sofie.deboer+stan@gmail.com",
+          "studentPhone": null,
+          "dateOfBirth": "2013-08-27"
+        }
       ],
-      "slotPreferences": [3, 3, 3, 2, 2, 1, 3, 3, 1, 1, 3]
+      "slotPreferences": [
+        3,
+        3,
+        3,
+        2,
+        2,
+        1,
+        3,
+        3,
+        1,
+        1,
+        3
+      ],
+      "dateOfBirth": "1985-03-14",
+      "ageCategory": "8-10 jaar"
     },
     {
       "label": "Couple Peeters-Janssens (group of 2, evenings only, exclusive)",
-      "studentName": "Bart Peeters", "studentEmail": "bart.peeters@outlook.be", "studentPhone": "+32479223344",
-      "enrollmentType": "group", "isOpenToGrouping": false, "ageCategory": "Volwassenen",
+      "studentName": "Bart Peeters",
+      "studentEmail": "bart.peeters@outlook.be",
+      "studentPhone": "+32479223344",
+      "enrollmentType": "group",
+      "isOpenToGrouping": false,
       "groupMembers": [
-        { "studentName": "Lisa Janssens", "studentEmail": "lisa.janssens@outlook.be", "studentPhone": "+32479223345" }
+        {
+          "studentName": "Lisa Janssens",
+          "studentEmail": "lisa.janssens@outlook.be",
+          "studentPhone": "+32479223345",
+          "dateOfBirth": "1978-11-05"
+        }
       ],
-      "slotPreferences": [2, 2, 1, 3, 3, 3, 2, 1, 1, 1, 2]
+      "slotPreferences": [
+        2,
+        2,
+        1,
+        3,
+        3,
+        3,
+        2,
+        1,
+        1,
+        1,
+        2
+      ],
+      "dateOfBirth": "1990-07-22",
+      "ageCategory": "Volwassenen"
     },
     {
       "label": "Emma Van Acker (solo, open, Wed+Sat)",
-      "studentName": "Emma Van Acker", "studentEmail": "emma.vanacker@student.be", "studentPhone": "+32468001122",
-      "enrollmentType": "solo", "isOpenToGrouping": true, "ageCategory": "14-17 jaar",
-      "slotPreferences": [1, 1, 3, 2, 2, 2, 3, 3, 2, 2, 1]
+      "studentName": "Emma Van Acker",
+      "studentEmail": "emma.vanacker@student.be",
+      "studentPhone": "+32468001122",
+      "enrollmentType": "solo",
+      "isOpenToGrouping": true,
+      "slotPreferences": [
+        1,
+        1,
+        3,
+        2,
+        2,
+        2,
+        3,
+        3,
+        2,
+        2,
+        1
+      ],
+      "dateOfBirth": "1978-11-05",
+      "ageCategory": "14-17 jaar"
     },
     {
       "label": "Thomas Wouters (solo, open, Wed+Sat — auto-merge candidate)",
-      "studentName": "Thomas Wouters", "studentEmail": "thomas.w@student.be", "studentPhone": "+32468003344",
-      "enrollmentType": "solo", "isOpenToGrouping": true, "ageCategory": "14-17 jaar",
-      "slotPreferences": [3, 3, 3, 2, 2, 1, 3, 3, 2, 1, 2]
+      "studentName": "Thomas Wouters",
+      "studentEmail": "thomas.w@student.be",
+      "studentPhone": "+32468003344",
+      "enrollmentType": "solo",
+      "isOpenToGrouping": true,
+      "slotPreferences": [
+        3,
+        3,
+        3,
+        2,
+        2,
+        1,
+        3,
+        3,
+        2,
+        1,
+        2
+      ],
+      "dateOfBirth": "1993-01-30",
+      "ageCategory": "14-17 jaar"
     },
     {
       "label": "Noor Hendrickx (solo, open, Tue+Thu evenings)",
-      "studentName": "Noor Hendrickx", "studentEmail": "noor.h@telenet.be", "studentPhone": "+32473556677",
-      "enrollmentType": "solo", "isOpenToGrouping": true, "ageCategory": "Volwassenen",
-      "slotPreferences": [2, 1, 2, 3, 3, 3, 2, 1, 3, 3, 3]
+      "studentName": "Noor Hendrickx",
+      "studentEmail": "noor.h@telenet.be",
+      "studentPhone": "+32473556677",
+      "enrollmentType": "solo",
+      "isOpenToGrouping": true,
+      "slotPreferences": [
+        2,
+        1,
+        2,
+        3,
+        3,
+        3,
+        2,
+        1,
+        3,
+        3,
+        3
+      ],
+      "dateOfBirth": "1988-09-17",
+      "ageCategory": "Volwassenen"
     },
     {
       "label": "Pieter Vermeersch (solo, open, flexible retiree)",
-      "studentName": "Pieter Vermeersch", "studentEmail": "pieter.verm@skynet.be", "studentPhone": "+32475889900",
-      "enrollmentType": "solo", "isOpenToGrouping": true, "ageCategory": "Volwassenen",
-      "slotPreferences": [1, 1, 1, 2, 2, 1, 1, 1, 2, 2, 1]
+      "studentName": "Pieter Vermeersch",
+      "studentEmail": "pieter.verm@skynet.be",
+      "studentPhone": "+32475889900",
+      "enrollmentType": "solo",
+      "isOpenToGrouping": true,
+      "slotPreferences": [
+        1,
+        1,
+        1,
+        2,
+        2,
+        1,
+        1,
+        1,
+        2,
+        2,
+        1
+      ],
+      "dateOfBirth": "1982-05-09",
+      "ageCategory": "Volwassenen"
     },
     {
       "label": "Sarah Dubois (solo, exclusive, Thu+Sat only — low overlap)",
-      "studentName": "Sarah Dubois", "studentEmail": "sarah.dubois@uzleuven.be", "studentPhone": "+32471990011",
-      "enrollmentType": "solo", "isOpenToGrouping": false, "ageCategory": "Volwassenen",
-      "slotPreferences": [3, 3, 3, 3, 3, 3, 2, 1, 2, 1, 1]
+      "studentName": "Sarah Dubois",
+      "studentEmail": "sarah.dubois@uzleuven.be",
+      "studentPhone": "+32471990011",
+      "enrollmentType": "solo",
+      "isOpenToGrouping": false,
+      "slotPreferences": [
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        2,
+        1,
+        2,
+        1,
+        1
+      ],
+      "dateOfBirth": "1985-03-14",
+      "ageCategory": "Volwassenen"
     },
     {
       "label": "Kevin Goossens (solo, open, Tue evenings — auto-merge candidate with Noor)",
-      "studentName": "Kevin Goossens", "studentEmail": "kevin.g@proximus.be", "studentPhone": "+32476001122",
-      "enrollmentType": "solo", "isOpenToGrouping": true, "ageCategory": "Volwassenen",
-      "slotPreferences": [1, 1, 2, 3, 3, 3, 2, 3, 3, 3, 3]
+      "studentName": "Kevin Goossens",
+      "studentEmail": "kevin.g@proximus.be",
+      "studentPhone": "+32476001122",
+      "enrollmentType": "solo",
+      "isOpenToGrouping": true,
+      "slotPreferences": [
+        1,
+        1,
+        2,
+        3,
+        3,
+        3,
+        2,
+        3,
+        3,
+        3,
+        3
+      ],
+      "dateOfBirth": "1990-07-22",
+      "ageCategory": "Volwassenen"
     },
     {
       "label": "Ines Claes (solo, open, Sat morning)",
-      "studentName": "Ines Claes", "studentEmail": "ines.claes@hotmail.com", "studentPhone": "+32479112233",
-      "enrollmentType": "solo", "isOpenToGrouping": true, "ageCategory": "11-13 jaar",
-      "slotPreferences": [3, 3, 3, 3, 3, 3, 3, 3, 1, 1, 2]
+      "studentName": "Ines Claes",
+      "studentEmail": "ines.claes@hotmail.com",
+      "studentPhone": "+32479112233",
+      "enrollmentType": "solo",
+      "isOpenToGrouping": true,
+      "slotPreferences": [
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        1,
+        1,
+        2
+      ],
+      "dateOfBirth": "1978-11-05",
+      "ageCategory": "11-13 jaar"
     },
     {
       "label": "Jules Van Damme (solo, open, Saturday only)",
-      "studentName": "Jules Van Damme", "studentEmail": "jules.vd@gmail.com", "studentPhone": "+32478334455",
-      "enrollmentType": "solo", "isOpenToGrouping": true, "ageCategory": "14-17 jaar",
-      "slotPreferences": [3, 3, 3, 3, 3, 3, 3, 3, 2, 2, 2]
+      "studentName": "Jules Van Damme",
+      "studentEmail": "jules.vd@gmail.com",
+      "studentPhone": "+32478334455",
+      "enrollmentType": "solo",
+      "isOpenToGrouping": true,
+      "slotPreferences": [
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        2,
+        2,
+        2
+      ],
+      "dateOfBirth": "1993-01-30",
+      "ageCategory": "14-17 jaar"
     },
     {
       "label": "Marie-Claire Vos (solo, open, Tue evening — auto-merge candidate)",
-      "studentName": "Marie-Claire Vos", "studentEmail": "mc.vos@gmail.com", "studentPhone": "+32474556677",
-      "enrollmentType": "solo", "isOpenToGrouping": true, "ageCategory": "Volwassenen",
-      "slotPreferences": [2, 2, 1, 3, 3, 3, 1, 3, 3, 3, 3]
+      "studentName": "Marie-Claire Vos",
+      "studentEmail": "mc.vos@gmail.com",
+      "studentPhone": "+32474556677",
+      "enrollmentType": "solo",
+      "isOpenToGrouping": true,
+      "slotPreferences": [
+        2,
+        2,
+        1,
+        3,
+        3,
+        3,
+        1,
+        3,
+        3,
+        3,
+        3
+      ],
+      "dateOfBirth": "1988-09-17",
+      "ageCategory": "Volwassenen"
     }
   ],
   "standaloneLessons": [

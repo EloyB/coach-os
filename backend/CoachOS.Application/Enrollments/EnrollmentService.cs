@@ -4,11 +4,15 @@ using CoachOS.Application.Common;
 using CoachOS.Application.Enrollments.DTOs;
 using CoachOS.Application.LessonSerie.DTOs;
 using CoachOS.Application.Mappings;
+using CoachOS.Domain.Common;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
 using CoachOS.Domain.Interfaces;
 using CoachOS.Domain.Models;
 using Microsoft.Extensions.Logging;
+
+// Voorkomt ambiguity met de gelijknamige namespace CoachOS.Application.OrganizationSettings.
+using OrganizationSettingsEntity = CoachOS.Domain.Entities.OrganizationSettings;
 
 namespace CoachOS.Application.Enrollments;
 
@@ -18,6 +22,7 @@ public class EnrollmentService(
     ILessonSerieRepository lessonSeriesRepo,
     IEnrollmentGroupRepository enrollmentGroupRepo,
     ITimeSlotPreferenceRepository timeSlotPreferenceRepo,
+    IOrganizationSettingsRepository orgSettingsRepo,
     IUserLookupService userLookup,
     IEmailService emailService,
     ApplicationMapper mapper,
@@ -104,6 +109,14 @@ public class EnrollmentService(
             Status = e.Status.ToString(),
             EnrolledAt = e.EnrolledAt,
             Notes = e.Notes,
+            DateOfBirth = e.DateOfBirth?.ToString("yyyy-MM-dd"),
+            Category = e.Category.HasValue ? (int)e.Category.Value : null,
+            CategoryLabel = e.Category switch
+            {
+                ParticipantCategory.Youth => "Jeugd",
+                ParticipantCategory.Adult => "Volwassenen",
+                _ => null,
+            },
             FormResponses = e.FormResponses
                 .OrderBy(r => r.FormField.Order)
                 .Select(r => new EnrollmentResponseItemDto
@@ -225,6 +238,15 @@ public class EnrollmentService(
             ? request.GroupMembers.Count + 1
             : 1;
 
+        // 4b. Tariefcategorie afleiden. De leeftijdsgrens is org-specifiek; deze flow is
+        //     anoniem, dus de settings komen via series.OrganizationId en niet uit een JWT.
+        //     De categorie wordt één keer vastgelegd bij inschrijving: wie tijdens de reeks
+        //     jarig is, mag niet halverwege van tarief wisselen.
+        OrganizationSettingsEntity? orgSettings =
+            await orgSettingsRepo.GetByOrganizationReadOnlyAsync(series.OrganizationId, ct);
+        int youthMaxAge = orgSettings?.YouthMaxAge ?? 17;
+        DateOnly enrolledOn = DateOnly.FromDateTime(DateTime.UtcNow);
+
         // 5. Begin SERIALIZABLE transaction: capacity + duplicate checks moeten ATOMIC zijn
         //    met de insert, anders kunnen twee parallelle submitters beide de check passeren
         //    en samen MaxRegistrations overschrijden of een duplicate email creëren.
@@ -244,13 +266,31 @@ public class EnrollmentService(
                 }
             }
 
-            // 7. Duplicate check INSIDE transaction (case-insensitive)
-            var isDuplicate = await enrollmentRepo.IsDuplicateAsync(lessonSeriesId, request.StudentEmail, ct);
-            if (isDuplicate)
+            // 7. Duplicate check INSIDE transaction (case-insensitive), voor ELK adres in het
+            //    verzoek — leider én groepsleden. De unique index
+            //    IX_Enrollments_LessonSerieId_StudentEmail dekt alle rijen van de reeks, dus een
+            //    groepslid dat al ingeschreven staat (of het adres van de leider hergebruikt)
+            //    laat de insert anders klappen met een 23505 halverwege de transactie.
+            List<string> emails = EnrollmentEmails.CollectNormalized(request);
+
+            if (emails.Distinct().Count() != emails.Count)
             {
                 await enrollmentRepo.RollbackTransactionAsync(ct);
                 return Result<Guid>.Fail(
-                    new Error(ErrorCodes.Conflict, "Je bent al ingeschreven voor deze lessenreeks."));
+                    new Error(ErrorCodes.Conflict, "Elk groepslid moet een uniek e-mailadres hebben."));
+            }
+
+            foreach (string email in emails)
+            {
+                if (!await enrollmentRepo.IsDuplicateAsync(lessonSeriesId, email, ct))
+                    continue;
+
+                await enrollmentRepo.RollbackTransactionAsync(ct);
+                return Result<Guid>.Fail(new Error(
+                    ErrorCodes.Conflict,
+                    email == EnrollmentEmails.Normalize(request.StudentEmail)
+                        ? "Je bent al ingeschreven voor deze lessenreeks."
+                        : $"{email} is al ingeschreven voor deze lessenreeks."));
             }
 
         // 8. Create enrollment. Status blijft Pending tot de student via de
@@ -266,6 +306,8 @@ public class EnrollmentService(
             Status = EnrollmentStatus.Pending,
             EnrolledAt = DateTime.UtcNow,
             IsOpenToGrouping = request.IsOpenToGrouping,
+            DateOfBirth = ParseBirthDate(request.DateOfBirth),
+            Category = ResolveCategory(request.DateOfBirth, youthMaxAge, enrolledOn),
         };
 
         await enrollmentRepo.AddAsync(enrollment, ct);
@@ -319,6 +361,8 @@ public class EnrollmentService(
                     Status = EnrollmentStatus.Pending,
                     EnrolledAt = DateTime.UtcNow,
                     EnrollmentGroupId = group.Id,
+                    DateOfBirth = ParseBirthDate(member.DateOfBirth),
+                    Category = ResolveCategory(member.DateOfBirth, youthMaxAge, enrolledOn),
                 };
 
                 await enrollmentRepo.AddAsync(memberEnrollment, ct);
@@ -362,6 +406,17 @@ public class EnrollmentService(
         catch (Exception ex)
         {
             await enrollmentRepo.RollbackTransactionAsync(ct);
+
+            // Een unique violation betekent dat een parallelle submitter ons voor was tussen
+            // de check en de insert. Dat is een conflict (409), geen serverfout — retryen met
+            // dezelfde gegevens gaat nooit lukken, dus zeg dat ook.
+            if (IsUniqueViolation(ex))
+            {
+                logger.LogWarning(ex, "Dubbele inschrijving voor reeks {SeriesId}", lessonSeriesId);
+                return Result<Guid>.Fail(new Error(
+                    ErrorCodes.Conflict, "Dit e-mailadres is al ingeschreven voor deze lessenreeks."));
+            }
+
             logger.LogError(ex, "Inschrijving mislukt voor reeks {SeriesId}", lessonSeriesId);
             return Result<Guid>.Fail(new Error(ErrorCodes.Unexpected, "Inschrijving mislukt. Probeer het opnieuw."));
         }
@@ -507,6 +562,75 @@ public class EnrollmentService(
             .ToList();
 
         return Result<List<EnrollmentWithPreferencesDto>>.Ok(dtos);
+    }
+
+    /// <summary>
+    /// Herkent een PostgreSQL unique violation (SQLSTATE 23505) ergens in de exception-keten.
+    /// Bewust via reflectie: de Application-laag kent Npgsql noch EF Core.
+    /// </summary>
+    private static bool IsUniqueViolation(Exception exception)
+    {
+        for (Exception? current = exception; current is not null; current = current.InnerException)
+        {
+            object? sqlState = current.GetType()
+                .GetProperty("SqlState")
+                ?.GetValue(current);
+
+            if (sqlState as string == "23505")
+                return true;
+        }
+
+        return false;
+    }
+
+    public async Task<Result<bool>> CancelEnrollmentAsync(
+        Guid lessonSeriesId, Guid enrollmentId, Guid organizationId, CancellationToken ct = default)
+    {
+        // GetByIdAsync filtert op organizationId — dat is meteen de autorisatiecheck.
+        Enrollment? enrollment = await enrollmentRepo.GetByIdAsync(enrollmentId, organizationId, ct);
+        if (enrollment is null)
+            return Result<bool>.Fail(
+                new Error(ErrorCodes.NotFound, "Inschrijving niet gevonden."));
+
+        // De inschrijving moet bij de reeks uit de route horen. Zonder deze check zou
+        // DELETE /lessonseries/{willekeurige-reeks}/enrollments/{geldige-id} slagen
+        // zolang beide in dezelfde organisatie zitten — een cross-serie annulering.
+        if (enrollment.LessonSerieId != lessonSeriesId)
+            return Result<bool>.Fail(
+                new Error(ErrorCodes.NotFound, "Inschrijving niet gevonden."));
+
+        if (enrollment.Status == EnrollmentStatus.Cancelled)
+            return Result<bool>.Fail(
+                new Error(ErrorCodes.Validation, "Deze inschrijving is al geannuleerd."));
+
+        enrollment.Status = EnrollmentStatus.Cancelled;
+        enrollment.UpdatedAt = DateTime.UtcNow;
+        await enrollmentRepo.SaveChangesAsync(ct);
+
+        logger.LogInformation(
+            "Inschrijving {EnrollmentId} geannuleerd door beheerder in organisatie {OrganizationId}",
+            enrollmentId, organizationId);
+
+        return Result<bool>.Ok(true);
+    }
+
+    /// <summary>
+    /// Parseert de geboortedatum uit het request. De validator heeft het formaat al
+    /// afgedwongen; faalt het hier toch, dan slaan we null op in plaats van te crashen —
+    /// de inschrijving zelf mag hier niet op stuklopen.
+    /// </summary>
+    private static DateOnly? ParseBirthDate(string? value)
+        => DateOfBirthRules.TryParse(value, out DateOnly date) ? date : null;
+
+    /// <summary>
+    /// Leidt de tariefcategorie af. Zonder bruikbare geboortedatum blijft de categorie
+    /// null; <c>PricingService</c> behandelt dat als volwassene.
+    /// </summary>
+    private static ParticipantCategory? ResolveCategory(
+        string? dateOfBirth, int youthMaxAge, DateOnly onDate)
+    {
+        if (!DateOfBirthRules.TryParse(dateOfBirth, out DateOnly date)) return null;
+        return ParticipantCategoryResolver.Resolve(date, youthMaxAge, onDate);
     }
 
     private static string BuildGroupName(int index)

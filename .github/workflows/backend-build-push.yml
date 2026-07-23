@@ -97,7 +97,7 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: Fetch DB connection string from Scaleway Secret Manager
-        uses: scaleway/action-scw-secret@v0.0.8
+        uses: scaleway/action-scw-secret@v0.0.12
         with:
           secret-names: |
             DatabaseSettings__ConnectionString

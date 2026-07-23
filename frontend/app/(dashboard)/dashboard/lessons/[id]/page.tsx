@@ -55,6 +55,7 @@ import {
   updateLessonSeries,
   deleteLessonSeries,
   exportSeriePlanning,
+  createLesson,
   LessonDto,
 } from "@/lib/api/lessonSeries";
 import { downloadBlob } from "@/lib/download";
@@ -62,6 +63,7 @@ import {
   getLessonSeriesEnrollments,
   getEnrollmentForm,
   saveEnrollmentForm,
+  cancelEnrollment,
 } from "@/lib/api/enrollments";
 import type {
   LessonSeriesEnrollmentDto,
@@ -78,6 +80,7 @@ import { inputClass } from "@/lib/styles";
 import { formatDateShort, formatDateNL } from "@/lib/date-utils";
 import { enrollmentStatusStyles } from "@/lib/status-styles";
 import { Badge } from "@/components/ui/badge";
+import { PriceMatrixSection } from "./_components/price-matrix-section";
 
 // ─── Edit Series Form ─────────────────────────────────────────────────────────
 
@@ -321,6 +324,7 @@ function dayOfWeekFromDate(dateStr: string, weekDays: string[]): number {
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -750,6 +754,176 @@ function EditLessonDialog({
   );
 }
 
+function AddLessonDialog({
+  seriesId,
+  trainers,
+  defaultDate,
+  onClose,
+  onSaved,
+}: {
+  seriesId: string;
+  trainers: TrainerDto[];
+  defaultDate: string;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [date, setDate] = useState(defaultDate);
+  const [trainerId, setTrainerId] = useState("");
+  const [courtName, setCourtName] = useState("");
+  const [startTime, setStartTime] = useState("18:00");
+  const [endTime, setEndTime] = useState("19:00");
+  const [maxStudents, setMaxStudents] = useState(4);
+  const [notes, setNotes] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const isValid = date !== "" && startTime !== "" && endTime < "24:00" && endTime > startTime;
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      await createLesson(seriesId, {
+        date,
+        startTime,
+        endTime,
+        trainerId: trainerId || null,
+        courtName: courtName.trim() || undefined,
+        maxStudents,
+        notes: notes.trim() || undefined,
+      });
+      toast.success("Lesmoment toegevoegd");
+      onSaved();
+    } catch {
+      // Error toast wordt al getoond door de axios interceptor
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Lesmoment toevoegen</DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              Datum
+            </label>
+            <DatePicker value={date} onChange={setDate} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                Starttijd
+              </label>
+              <input
+                type="time"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                Eindtijd
+              </label>
+              <input
+                type="time"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+                className={inputClass}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              Trainer
+            </label>
+            <NativeSelect
+              value={trainerId}
+              onChange={(e) => setTrainerId(e.target.value)}
+              className="w-full"
+            >
+              <option value="">Geen trainer</option>
+              {trainers.filter(isAssignableTrainer).map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.firstName} {t.lastName}
+                </option>
+              ))}
+            </NativeSelect>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              Baan
+            </label>
+            <input
+              type="text"
+              value={courtName}
+              onChange={(e) => setCourtName(e.target.value)}
+              placeholder="Baan 1"
+              className={inputClass}
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              Max. leerlingen
+            </label>
+            <input
+              type="number"
+              min={1}
+              value={maxStudents}
+              onChange={(e) => setMaxStudents(parseInt(e.target.value) || 1)}
+              className={inputClass}
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              Notities
+            </label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={2}
+              className={inputClass + " resize-none"}
+            />
+          </div>
+        </div>
+
+        {endTime <= startTime && (
+          <p className="text-xs text-red-600">
+            De eindtijd moet na de starttijd liggen.
+          </p>
+        )}
+
+        <DialogFooter>
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors"
+          >
+            Annuleren
+          </button>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving || !isValid}
+            className="px-4 py-2 rounded-lg bg-tennis-green text-white text-sm font-medium hover:bg-tennis-green/90 transition-colors disabled:opacity-50"
+          >
+            {saving ? "Bezig…" : "Toevoegen"}
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function LessonWeekView({
   lessons,
   startDate,
@@ -776,6 +950,7 @@ function LessonWeekView({
   })();
   const [weekIndex, setWeekIndex] = useState(initialWeekIndex);
   const [editingLesson, setEditingLesson] = useState<LessonDto | null>(null);
+  const [addingLesson, setAddingLesson] = useState(false);
   const queryClient = useQueryClient();
   const currentWeek = weeks[weekIndex];
 
@@ -839,6 +1014,14 @@ function LessonWeekView({
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setAddingLesson(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 mr-1 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+          >
+            <Plus size={12} />
+            Lesmoment toevoegen
+          </button>
           <span className="text-xs text-gray-500">
             Week {weekIndex + 1} van {weeks.length}
           </span>
@@ -881,6 +1064,22 @@ function LessonWeekView({
           if (lesson) setEditingLesson(lesson);
         }}
       />
+
+      {/* Add lesson dialog */}
+      {addingLesson && (
+        <AddLessonDialog
+          seriesId={seriesId}
+          trainers={trainers}
+          defaultDate={currentWeek.startDate}
+          onClose={() => setAddingLesson(false)}
+          onSaved={() => {
+            setAddingLesson(false);
+            queryClient.invalidateQueries({
+              queryKey: ["lessonSeries", seriesId],
+            });
+          }}
+        />
+      )}
 
       {/* Edit lesson dialog */}
       {editingLesson && (
@@ -1295,20 +1494,41 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
 
 function EnrollmentRow({
   enrollment,
+  seriesId,
 }: {
   enrollment: LessonSeriesEnrollmentDto;
+  seriesId: string;
 }) {
+  const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const hasResponses = enrollment.formResponses.length > 0;
+  const isCancelled = enrollment.status === "Cancelled";
+
+  async function handleCancelEnrollment() {
+    setCancelling(true);
+    try {
+      await cancelEnrollment(seriesId, enrollment.id);
+      toast.success("Inschrijving geannuleerd");
+      queryClient.invalidateQueries({ queryKey: ["enrollments", seriesId] });
+      queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
+    } catch {
+      // Error toast wordt al getoond door de axios interceptor
+    } finally {
+      setCancelling(false);
+    }
+  }
 
   return (
     <div className="border-b border-gray-50 last:border-b-0">
       <div
-        className={`flex items-center justify-between px-5 py-3 ${hasResponses ? "cursor-pointer hover:bg-gray-50/50" : ""}`}
+        className={`flex items-center justify-between px-5 py-3 ${hasResponses ? "cursor-pointer hover:bg-gray-50/50" : ""} ${isCancelled ? "opacity-50" : ""}`}
         onClick={() => hasResponses && setExpanded((v) => !v)}
       >
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-gray-800 truncate">
+          <p
+            className={`text-sm font-medium text-gray-800 truncate ${isCancelled ? "line-through" : ""}`}
+          >
             {enrollment.studentName}
           </p>
           <p className="text-xs text-gray-400 truncate">
@@ -1316,6 +1536,17 @@ function EnrollmentRow({
           </p>
         </div>
         <div className="flex items-center gap-3 ml-4">
+          {enrollment.categoryLabel && (
+            <Badge
+              className={`border-0 text-xs ${
+                enrollment.category === 2
+                  ? "bg-sky-100 text-sky-700"
+                  : "bg-gray-100 text-gray-600"
+              }`}
+            >
+              {enrollment.categoryLabel}
+            </Badge>
+          )}
           <span className="text-xs text-gray-400">
             {new Date(enrollment.enrolledAt).toLocaleDateString("nl-BE")}
           </span>
@@ -1325,6 +1556,39 @@ function EnrollmentRow({
             >
               {enrollmentStatusStyles[enrollment.status].label}
             </Badge>
+          )}
+          {!isCancelled && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <button
+                  onClick={(e) => e.stopPropagation()}
+                  disabled={cancelling}
+                  aria-label={`Inschrijving van ${enrollment.studentName} annuleren`}
+                  className="p-1 rounded-md text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+                >
+                  <Trash2 size={13} />
+                </button>
+              </AlertDialogTrigger>
+              <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Inschrijving annuleren?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    De inschrijving van {enrollment.studentName} wordt op
+                    geannuleerd gezet en de plaats komt weer vrij. De
+                    formulierantwoorden blijven bewaard.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Terug</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleCancelEnrollment}
+                    className="bg-red-600 hover:bg-red-700"
+                  >
+                    Annuleren
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           )}
           {hasResponses &&
             (expanded ? (
@@ -1418,7 +1682,11 @@ function EnrollmentsSection({ seriesId }: { seriesId: string }) {
       ) : (
         <div>
           {enrollments.map((enrollment) => (
-            <EnrollmentRow key={enrollment.id} enrollment={enrollment} />
+            <EnrollmentRow
+              key={enrollment.id}
+              enrollment={enrollment}
+              seriesId={seriesId}
+            />
           ))}
         </div>
       )}
@@ -1633,7 +1901,10 @@ export default function LessonSeriesDetailPage({
             seriesId={id}
           />
 
-          {/* ── Section 4: Form builder ── */}
+          {/* ── Section 4: Prijzen per categorie en groepsgrootte ── */}
+          <PriceMatrixSection seriesId={id} legacyPrice={series.price} />
+
+          {/* ── Section 5: Form builder ── */}
           <FormBuilderSection seriesId={id} />
 
           {/* ── Section 5: Enrollments ── */}

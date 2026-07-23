@@ -401,8 +401,14 @@ namespace CoachOS.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<int?>("Category")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly?>("DateOfBirth")
+                        .HasColumnType("date");
 
                     b.Property<DateTime>("EnrolledAt")
                         .HasColumnType("timestamp with time zone");
@@ -671,6 +677,8 @@ namespace CoachOS.Infrastructure.Migrations
 
                     b.HasIndex("OrganizationId", "Date");
 
+                    b.HasIndex("OrganizationId", "Date", "CourtName");
+
                     b.ToTable("Lessons");
                 });
 
@@ -794,6 +802,44 @@ namespace CoachOS.Infrastructure.Migrations
                     b.HasIndex("TennisClubId");
 
                     b.ToTable("LessonSeries");
+                });
+
+            modelBuilder.Entity("CoachOS.Domain.Entities.LessonSeriePrice", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Category")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("GroupSize")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("LessonSerieId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("TotalPrice")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId");
+
+                    b.HasIndex("LessonSerieId", "Category", "GroupSize")
+                        .IsUnique();
+
+                    b.ToTable("LessonSeriePrices");
                 });
 
             modelBuilder.Entity("CoachOS.Domain.Entities.MagicLinkToken", b =>
@@ -1072,6 +1118,11 @@ namespace CoachOS.Infrastructure.Migrations
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("YouthMaxAge")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(17);
 
                     b.HasKey("Id");
 
@@ -2025,6 +2076,25 @@ namespace CoachOS.Infrastructure.Migrations
                     b.Navigation("TennisClub");
                 });
 
+            modelBuilder.Entity("CoachOS.Domain.Entities.LessonSeriePrice", b =>
+                {
+                    b.HasOne("CoachOS.Domain.Entities.LessonSerie", "LessonSerie")
+                        .WithMany("Prices")
+                        .HasForeignKey("LessonSerieId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CoachOS.Domain.Entities.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("LessonSerie");
+
+                    b.Navigation("Organization");
+                });
+
             modelBuilder.Entity("CoachOS.Domain.Entities.MollieConnection", b =>
                 {
                     b.HasOne("CoachOS.Domain.Entities.Organization", "Organization")
@@ -2367,6 +2437,8 @@ namespace CoachOS.Infrastructure.Migrations
                     b.Navigation("Enrollments");
 
                     b.Navigation("Lessons");
+
+                    b.Navigation("Prices");
 
                     b.Navigation("ScheduleAssignments");
 

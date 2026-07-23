@@ -65,5 +65,5 @@ public interface IPaymentService
     /// admin/trainer wanneer de deelnemer cash heeft betaald.
     /// </summary>
     Task<Result> MarkCampCashPaidAsync(
-        Guid campEnrollmentId, Guid organizationId, CancellationToken ct = default);
+        Guid campId, Guid campEnrollmentId, Guid organizationId, CancellationToken ct = default);
 }

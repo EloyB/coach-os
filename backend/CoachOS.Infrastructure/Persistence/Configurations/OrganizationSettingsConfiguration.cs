@@ -28,6 +28,10 @@ public class OrganizationSettingsConfiguration : IEntityTypeConfiguration<Organi
             .HasMaxLength(3)
             .HasDefaultValue("EUR");
 
+        builder.Property(s => s.YouthMaxAge)
+            .IsRequired()
+            .HasDefaultValue(17);
+
         builder.HasOne(s => s.Organization)
             .WithOne(o => o.Settings)
             .HasForeignKey<OrganizationSettings>(s => s.OrganizationId)

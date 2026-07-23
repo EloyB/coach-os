@@ -60,9 +60,14 @@ export interface UpdateLessonSeriesRequest {
 }
 
 export interface CreateLessonRequest {
+  trainerId?: string | null;
   date: string;
   startTime: string;
-  courtName: string;
+  /** Verplicht in de backend (formaat HH:mm) — zonder eindtijd faalt de validatie. */
+  endTime: string;
+  courtName?: string;
+  maxStudents: number;
+  level?: number | null;
   notes?: string;
 }
 

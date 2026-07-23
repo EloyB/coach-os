@@ -9,6 +9,14 @@ public interface IEnrollmentRepository
     Task<Enrollment?> GetByIdAsync(
         Guid id, Guid organizationId, CancellationToken ct = default);
 
+    /// <summary>
+    /// Zoals <see cref="GetByIdAsync"/>, maar laadt de <see cref="EnrollmentGroup"/>
+    /// met al zijn leden mee. Nodig om het te betalen bedrag te berekenen: de prijs
+    /// van een reeks geldt per deelnemer, dus de groepsgrootte bepaalt het totaal.
+    /// </summary>
+    Task<Enrollment?> GetByIdWithGroupAsync(
+        Guid id, Guid organizationId, CancellationToken ct = default);
+
     Task<List<Enrollment>> GetBySeriesAsync(
         Guid lessonSeriesId, Guid organizationId, CancellationToken ct = default);
 

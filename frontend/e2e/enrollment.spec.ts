@@ -59,6 +59,8 @@ test.describe("Public Enrollment", () => {
     await inputs.nth(0).fill("Sophie");
     await inputs.nth(1).fill("De Vries");
     await page.locator('input[type="email"]').fill("sophie@example.be");
+    // Geboortedatum is verplicht sinds de tariefcategorieën (volwassene/jeugd).
+    await page.locator('input[type="date"]').fill("1990-05-12");
     await page.getByRole("button", { name: "Inschrijven" }).click();
 
     await expect(page.getByText("Ingeschreven!")).toBeVisible();
@@ -75,6 +77,8 @@ test.describe("Public Enrollment", () => {
     await inputs.nth(0).fill("Sophie");
     await inputs.nth(1).fill("De Vries");
     await page.locator('input[type="email"]').fill("sophie@example.be");
+    // Geboortedatum is verplicht sinds de tariefcategorieën (volwassene/jeugd).
+    await page.locator('input[type="date"]').fill("1990-05-12");
     await page.getByRole("button", { name: "Inschrijven" }).click();
 
     await expect(page.getByText(/mislukt/i)).toBeVisible();

@@ -71,10 +71,14 @@ export function SlotEditPopover({
   const availableTrainerIds = new Set(
     availabilities
       // null club = beschikbaar bij eender welke club -> matcht deze club ook.
+      // Het tijdvak van de beschikbaarheid moet het slot volledig omvatten:
+      // "HH:mm" is lexicografisch sorteerbaar, dus string-vergelijking volstaat.
       .filter(
         (a) =>
           (a.tennisClubId === null || a.tennisClubId === tennisClubId) &&
-          a.dayOfWeek === slot.dayOfWeek
+          a.dayOfWeek === slot.dayOfWeek &&
+          a.startTime <= startTime &&
+          a.endTime >= endTime
       )
       .map((a) => a.trainerId)
   );

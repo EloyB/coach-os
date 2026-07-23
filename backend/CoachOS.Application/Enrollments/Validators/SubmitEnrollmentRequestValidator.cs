@@ -1,3 +1,4 @@
+using CoachOS.Application.Enrollments;
 using CoachOS.Application.Enrollments.DTOs;
 using CoachOS.Application.Common;
 using FluentValidation;
@@ -23,6 +24,12 @@ public class SubmitEnrollmentRequestValidator : AbstractValidator<SubmitEnrollme
             .Must(InputSanitizer.IsFreeOfHtmlNullable).WithMessage("Telefoonnummer mag geen HTML of scripttekens bevatten")
             .When(x => !string.IsNullOrEmpty(x.StudentPhone));
 
+        RuleFor(x => x.DateOfBirth)
+            .NotEmpty().WithMessage("Geboortedatum is verplicht")
+            .Must(DateOfBirthRules.IsParseable).WithMessage("Geboortedatum moet het formaat yyyy-MM-dd hebben")
+            .Must(DateOfBirthRules.IsNotInFuture).WithMessage("Geboortedatum kan niet in de toekomst liggen")
+            .Must(DateOfBirthRules.IsRealistic).WithMessage("Controleer de geboortedatum");
+
         RuleForEach(x => x.Responses).ChildRules(r =>
         {
             r.RuleFor(v => v.FormFieldId)
@@ -47,6 +54,12 @@ public class SubmitEnrollmentRequestValidator : AbstractValidator<SubmitEnrollme
 
         When(x => x.EnrollmentType == "group", () =>
         {
+            // De unique index IX_Enrollments_LessonSerieId_StudentEmail laat hetzelfde
+            // adres geen twee keer toe binnen één reeks. Vang dat hier af i.p.v. bij de insert.
+            RuleFor(x => x)
+                .Must(EnrollmentEmails.AreUnique)
+                .WithMessage("Elk groepslid moet een uniek e-mailadres hebben");
+
             RuleFor(x => x.GroupMembers)
                 .NotNull().WithMessage("Groepsleden zijn verplicht bij groepsinschrijving")
                 .Must(m => m is { Count: > 0 and <= 3 })
@@ -68,6 +81,12 @@ public class SubmitEnrollmentRequestValidator : AbstractValidator<SubmitEnrollme
                     .MaximumLength(30).WithMessage("Telefoonnummer is te lang")
                     .Must(InputSanitizer.IsFreeOfHtmlNullable).WithMessage("Telefoonnummer mag geen HTML of scripttekens bevatten")
                     .When(v => !string.IsNullOrEmpty(v.StudentPhone));
+
+                m.RuleFor(v => v.DateOfBirth)
+                    .NotEmpty().WithMessage("Geboortedatum is verplicht")
+                    .Must(DateOfBirthRules.IsParseable).WithMessage("Geboortedatum moet het formaat yyyy-MM-dd hebben")
+                    .Must(DateOfBirthRules.IsNotInFuture).WithMessage("Geboortedatum kan niet in de toekomst liggen")
+                    .Must(DateOfBirthRules.IsRealistic).WithMessage("Controleer de geboortedatum");
             });
         });
     }

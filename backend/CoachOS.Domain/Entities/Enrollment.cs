@@ -14,6 +14,20 @@ public class Enrollment : BaseEntity
     public string StudentEmail { get; set; } = string.Empty;
     public string? StudentPhone { get; set; }
 
+    /// <summary>
+    /// Geboortedatum van de deelnemer. Verplicht bij nieuwe inschrijvingen; nullable
+    /// omdat bestaande rijen van vóór de tariefcategorieën hem niet hebben.
+    /// </summary>
+    public DateOnly? DateOfBirth { get; set; }
+
+    /// <summary>
+    /// Tariefcategorie, afgeleid uit <see cref="DateOfBirth"/> en de leeftijdsgrens
+    /// van de organisatie op het moment van inschrijven. Bewust opgeslagen in plaats
+    /// van steeds herberekend: een deelnemer die tijdens de reeks 18 wordt, mag niet
+    /// halverwege van tarief veranderen. Null = onbekend, valt terug op volwassentarief.
+    /// </summary>
+    public ParticipantCategory? Category { get; set; }
+
     /// <summary>Inschrijving voor een enkele les.</summary>
     public Guid? LessonId { get; set; }
 
