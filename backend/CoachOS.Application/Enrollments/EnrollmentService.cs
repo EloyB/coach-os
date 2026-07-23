@@ -106,6 +106,8 @@ public class EnrollmentService(
             Id = e.Id,
             StudentName = e.StudentName,
             StudentEmail = e.StudentEmail,
+            ContactEmail = e.ContactEmail,
+            HasOwnEmail = e.StudentEmail is not null,
             Status = e.Status.ToString(),
             EnrolledAt = e.EnrolledAt,
             Notes = e.Notes,
@@ -260,31 +262,33 @@ public class EnrollmentService(
                 }
             }
 
-            // 7. Duplicate check INSIDE transaction (case-insensitive), voor ELK adres in het
-            //    verzoek — leider én groepsleden. De unique index
-            //    IX_Enrollments_LessonSerieId_StudentEmail dekt alle rijen van de reeks, dus een
-            //    groepslid dat al ingeschreven staat (of het adres van de leider hergebruikt)
-            //    laat de insert anders klappen met een 23505 halverwege de transactie.
-            List<string> emails = EnrollmentEmails.CollectNormalized(request);
+            // 7. Dubbelcheck INSIDE transaction op persoon, niet op adres: één contactadres
+            //    mag meerdere deelnemers dragen (ouder met kinderen, vriend die alles regelt),
+            //    maar dezelfde persoon mag niet twee keer in de reeks staan. De partiële unique
+            //    index IX_Enrollments_Participant dekt hetzelfde; dit vangt het als een nette
+            //    409 vóór de insert i.p.v. een 23505 halverwege de transactie.
+            List<(string ContactEmail, string Name, DateOnly? Dob)> participants =
+            [
+                (EnrollmentEmails.ResolveContactEmail(request, null),
+                 request.StudentName, ParseBirthDate(request.DateOfBirth)),
+            ];
 
-            if (emails.Distinct().Count() != emails.Count)
+            if (request.EnrollmentType == "group" && request.GroupMembers is not null)
             {
-                await enrollmentRepo.RollbackTransactionAsync(ct);
-                return Result<Guid>.Fail(
-                    new Error(ErrorCodes.Conflict, "Elk groepslid moet een uniek e-mailadres hebben."));
+                participants.AddRange(request.GroupMembers.Select(m =>
+                    (EnrollmentEmails.ResolveContactEmail(request, m),
+                     m.StudentName, ParseBirthDate(m.DateOfBirth))));
             }
 
-            foreach (string email in emails)
+            foreach ((string contactEmail, string name, DateOnly? dob) in participants)
             {
-                if (!await enrollmentRepo.IsDuplicateAsync(lessonSeriesId, email, ct))
+                if (!await enrollmentRepo.IsDuplicateParticipantAsync(
+                        lessonSeriesId, contactEmail, name, dob, ct))
                     continue;
 
                 await enrollmentRepo.RollbackTransactionAsync(ct);
                 return Result<Guid>.Fail(new Error(
-                    ErrorCodes.Conflict,
-                    email == EnrollmentEmails.Normalize(request.StudentEmail)
-                        ? "Je bent al ingeschreven voor deze lessenreeks."
-                        : $"{email} is al ingeschreven voor deze lessenreeks."));
+                    ErrorCodes.Conflict, $"{name} is al ingeschreven voor deze lessenreeks."));
             }
 
         // 8. Create enrollment. Status blijft Pending tot de student via de
@@ -295,7 +299,8 @@ public class EnrollmentService(
             OrganizationId = series.OrganizationId,
             LessonSerieId = series.Id,
             StudentName = request.StudentName,
-            StudentEmail = request.StudentEmail,
+            ContactEmail = EnrollmentEmails.ResolveContactEmail(request, null),
+            StudentEmail = EnrollmentEmails.Normalize(request.StudentEmail),
             StudentPhone = request.StudentPhone,
             Status = EnrollmentStatus.Pending,
             EnrolledAt = DateTime.UtcNow,
@@ -350,7 +355,10 @@ public class EnrollmentService(
                     OrganizationId = series.OrganizationId,
                     LessonSerieId = series.Id,
                     StudentName = member.StudentName,
-                    StudentEmail = member.StudentEmail,
+                    ContactEmail = EnrollmentEmails.ResolveContactEmail(request, member),
+                    StudentEmail = string.IsNullOrWhiteSpace(member.StudentEmail)
+                        ? null
+                        : EnrollmentEmails.Normalize(member.StudentEmail),
                     StudentPhone = member.StudentPhone,
                     Status = EnrollmentStatus.Pending,
                     EnrolledAt = DateTime.UtcNow,
@@ -438,34 +446,29 @@ public class EnrollmentService(
                 }
             }
 
-            await emailService.SendEnrollmentConfirmationAsync(
-                request.StudentEmail,
-                request.StudentName,
-                series.Name,
-                trainerInfo?.FullName ?? string.Empty,
-                ct);
+            // Eén mail per contactadres: wie de communicatie voor meerdere deelnemers
+            // draagt, hoort niet drie keer dezelfde bevestiging te krijgen.
+            List<(string Email, string Name)> confirmationRecipients =
+                [(EnrollmentEmails.ResolveContactEmail(request, null), request.StudentName)];
 
-            // Bij groepsinschrijving ook elk groepslid een bevestigingsmail sturen —
-            // anders weten alleen de leider dat de inschrijving gelukt is.
             if (request.EnrollmentType == "group" && request.GroupMembers is { Count: > 0 })
             {
-                foreach (var member in request.GroupMembers)
+                confirmationRecipients.AddRange(request.GroupMembers.Select(m =>
+                    (EnrollmentEmails.ResolveContactEmail(request, m), m.StudentName)));
+            }
+
+            foreach ((string email, string name) in confirmationRecipients.DistinctBy(r => r.Email))
+            {
+                try
                 {
-                    try
-                    {
-                        await emailService.SendEnrollmentConfirmationAsync(
-                            member.StudentEmail,
-                            member.StudentName,
-                            series.Name,
-                            trainerInfo?.FullName ?? string.Empty,
-                            ct);
-                    }
-                    catch (Exception memberEx)
-                    {
-                        logger.LogError(memberEx,
-                            "E-mail naar groepslid {Email} mislukt voor inschrijving {EnrollmentId}",
-                            member.StudentEmail, enrollment.Id);
-                    }
+                    await emailService.SendEnrollmentConfirmationAsync(
+                        email, name, series.Name, trainerInfo?.FullName ?? string.Empty, ct);
+                }
+                catch (Exception memberEx)
+                {
+                    logger.LogError(memberEx,
+                        "Bevestigingsmail naar {Email} mislukt voor inschrijving {EnrollmentId}",
+                        email, enrollment.Id);
                 }
             }
 
@@ -475,7 +478,7 @@ public class EnrollmentService(
                     trainerInfo.Value.Email,
                     trainerInfo.Value.FullName,
                     request.StudentName,
-                    request.StudentEmail,
+                    EnrollmentEmails.ResolveContactEmail(request, null),
                     series.Name,
                     responseItems,
                     ct);
@@ -540,7 +543,8 @@ public class EnrollmentService(
                 {
                     Id = e.Id,
                     StudentName = e.StudentName,
-                    StudentEmail = e.StudentEmail,
+                    // Contactadres: deze DTO voedt de planning, waar dit het verzendadres is.
+                    StudentEmail = e.ContactEmail,
                     Status = e.Status.ToString(),
                     IsOpenToGrouping = e.IsOpenToGrouping,
                     EnrollmentGroupId = e.EnrollmentGroupId,
