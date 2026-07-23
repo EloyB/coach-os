@@ -49,16 +49,25 @@ public class EnrollmentRepository(ApplicationDbContext context) : IEnrollmentRep
             .ToListAsync(ct);
     }
 
-    public async Task<bool> IsDuplicateAsync(
-        Guid lessonSeriesId, string studentEmail, CancellationToken ct = default)
+    public async Task<bool> IsDuplicateParticipantAsync(
+        Guid lessonSeriesId, string contactEmail, string studentName,
+        DateOnly? dateOfBirth, CancellationToken ct = default)
     {
-        var normalized = studentEmail.Trim().ToLower();
+        if (dateOfBirth is null) return false;
+
+        string normalizedEmail = contactEmail.Trim().ToLower();
+        string normalizedName = studentName.Trim().ToLower();
+
         return await context.Enrollments
             .AsNoTracking()
             .AnyAsync(e =>
                 e.LessonSerieId == lessonSeriesId &&
-                e.StudentEmail.ToLower() == normalized &&
-                (e.Status == EnrollmentStatus.Confirmed || e.Status == EnrollmentStatus.Pending || e.Status == EnrollmentStatus.PendingPayment), ct);
+                e.ContactEmail.ToLower() == normalizedEmail &&
+                e.StudentName.ToLower() == normalizedName &&
+                e.DateOfBirth == dateOfBirth &&
+                (e.Status == EnrollmentStatus.Confirmed
+                    || e.Status == EnrollmentStatus.Pending
+                    || e.Status == EnrollmentStatus.PendingPayment), ct);
     }
 
     public async Task<int> CountActiveBySeriesAsync(Guid lessonSeriesId, CancellationToken ct = default)
