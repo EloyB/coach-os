@@ -60,7 +60,7 @@ public class EmailServiceTests
         {
             await _sut.SendScheduleConfirmationAsync(
                 "a@b.be", "Anna", "Tennisreeks 1", euDay,
-                "18:00", "19:00", null, "https://x", CancellationToken.None);
+                "18:00", "19:00", null, "https://x", null, CancellationToken.None);
         }
         catch
         {

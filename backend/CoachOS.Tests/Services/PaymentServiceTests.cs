@@ -422,7 +422,8 @@ public class PaymentServiceTests
         payment.PaidAt.Should().NotBeNull();
         enrollment.Status.Should().Be(EnrollmentStatus.Confirmed);
         _email.Verify(e => e.SendEnrollmentConfirmationAsync(
-            "student@example.com", "Test Student", "Voorjaar 2026", string.Empty, It.IsAny<CancellationToken>()),
+            "student@example.com", "Test Student", "Voorjaar 2026", string.Empty,
+            It.IsAny<IReadOnlyList<string>?>(), It.IsAny<CancellationToken>()),
             Times.Once);
     }
 

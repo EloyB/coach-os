@@ -457,18 +457,23 @@ public class EnrollmentService(
                     (EnrollmentEmails.ResolveContactEmail(request, m), m.StudentName)));
             }
 
-            foreach ((string email, string name) in confirmationRecipients.DistinctBy(r => r.Email))
+            // Groeperen op contactadres: één mail per adres, met alle deelnemers erin
+            // benoemd zodat de contactpersoon ziet wie er onder zijn adres valt.
+            foreach (IGrouping<string, (string Email, string Name)> contact in
+                     confirmationRecipients.GroupBy(r => r.Email))
             {
+                List<string> names = contact.Select(r => r.Name).ToList();
                 try
                 {
                     await emailService.SendEnrollmentConfirmationAsync(
-                        email, name, series.Name, trainerInfo?.FullName ?? string.Empty, ct);
+                        contact.Key, names[0], series.Name,
+                        trainerInfo?.FullName ?? string.Empty, names, ct);
                 }
                 catch (Exception memberEx)
                 {
                     logger.LogError(memberEx,
                         "Bevestigingsmail naar {Email} mislukt voor inschrijving {EnrollmentId}",
-                        email, enrollment.Id);
+                        contact.Key, enrollment.Id);
                 }
             }
 

@@ -46,15 +46,23 @@ public class EmailService(
             $"Je bent uitgenodigd als beheerder van {organizationName}", html, ct);
     }
 
+    /// <summary>
+    /// "Ingeschreven: A, B, C"-regel voor een gedeeld contactadres. Leeg bij één
+    /// deelnemer, zodat de contactpersoon bij een groep ziet wie er onder valt.
+    /// </summary>
+    private static string ParticipantsLine(IReadOnlyList<string>? names, string label)
+        => names is { Count: > 1 } ? $"{label}: {string.Join(", ", names)}" : string.Empty;
+
     public async Task SendEnrollmentConfirmationAsync(
         string studentEmail, string studentName, string seriesName, string trainerName,
-        CancellationToken ct = default)
+        IReadOnlyList<string>? participantNames = null, CancellationToken ct = default)
     {
         var html = renderer.Render("enrollment-confirmation", new Dictionary<string, string>
         {
             ["studentName"] = studentName,
             ["seriesName"] = seriesName,
             ["trainerName"] = trainerName,
+            ["participantsLine"] = ParticipantsLine(participantNames, "Ingeschreven"),
             ["year"] = DateTime.UtcNow.Year.ToString(),
         });
         await SendAsync(studentEmail, studentName,
@@ -64,7 +72,8 @@ public class EmailService(
     public async Task SendScheduleConfirmationAsync(
         string studentEmail, string studentName, string seriesName,
         int dayOfWeek, string startTime, string endTime, string? courtName,
-        string confirmationUrl, CancellationToken ct = default)
+        string confirmationUrl, IReadOnlyList<string>? participantNames = null,
+        CancellationToken ct = default)
     {
         // dayOfWeek arriveert in EU-conventie (0 = maandag, 6 = zondag) vanuit
         // WeeklyTemplateEntry. DaysNl is .NET-conventie (0 = zondag). Converteren
@@ -82,6 +91,7 @@ public class EmailService(
             ["startTime"] = startTime,
             ["endTime"] = endTime,
             ["courtLine"] = courtLine,
+            ["participantsLine"] = ParticipantsLine(participantNames, "Deze les is voor"),
             ["confirmationUrl"] = confirmationUrl,
             ["year"] = DateTime.UtcNow.Year.ToString(),
         });

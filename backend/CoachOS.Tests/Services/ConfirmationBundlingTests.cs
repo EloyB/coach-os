@@ -77,7 +77,7 @@ public class ConfirmationBundlingTests
         _emailService.Verify(s => s.SendScheduleConfirmationAsync(
             It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(),
             It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
-            It.IsAny<CancellationToken>()), Times.Never);
+            It.IsAny<IReadOnlyList<string>?>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Test]
@@ -90,7 +90,7 @@ public class ConfirmationBundlingTests
         _emailService.Verify(s => s.SendScheduleConfirmationAsync(
             "jan@example.com", "Jan Peeters", It.IsAny<string>(), It.IsAny<int>(),
             It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
-            It.IsAny<CancellationToken>()), Times.Once);
+            It.IsAny<IReadOnlyList<string>?>(), It.IsAny<CancellationToken>()), Times.Once);
 
         _emailService.Verify(s => s.SendScheduleConfirmationBundleAsync(
             It.IsAny<string>(), It.IsAny<string>(),

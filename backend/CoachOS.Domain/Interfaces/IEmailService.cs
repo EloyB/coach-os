@@ -13,6 +13,7 @@ public interface IEmailService
         string studentName,
         string seriesName,
         string trainerName,
+        IReadOnlyList<string>? participantNames = null,
         CancellationToken ct = default);
 
     Task SendEnrollmentNotificationToTrainerAsync(
@@ -33,6 +34,7 @@ public interface IEmailService
         string endTime,
         string? courtName,
         string confirmationUrl,
+        IReadOnlyList<string>? participantNames = null,
         CancellationToken ct = default);
 
     /// <summary>

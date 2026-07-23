@@ -158,9 +158,15 @@ public class SharedContactEmailTests
 
         await _service.SubmitEnrollmentAsync(SeriesId, request);
 
+        // Eén mail naar het contactadres, met álle deelnemers erin benoemd zodat de
+        // ouder ziet dat de bevestiging ook voor Lotte en Sofie geldt.
         _emailService.Verify(s => s.SendEnrollmentConfirmationAsync(
-            "ouder@example.com", It.IsAny<string>(), It.IsAny<string>(),
-            It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
+            "ouder@example.com", It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+            It.Is<IReadOnlyList<string>?>(names => names != null
+                && names.Contains("Els Peeters")
+                && names.Contains("Lotte Peeters")
+                && names.Contains("Sofie Peeters")),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Test]
