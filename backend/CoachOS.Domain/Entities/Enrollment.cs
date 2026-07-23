@@ -11,7 +11,20 @@ public class Enrollment : BaseEntity
 {
     public Guid OrganizationId { get; set; }
     public string StudentName { get; set; } = string.Empty;
-    public string StudentEmail { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Waar élke mail voor deze inschrijving heen gaat. Genormaliseerd opgeslagen
+    /// (trim + lowercase). Bij een deelnemer zonder eigen adres is dit het adres van
+    /// de groepsleider — die neemt de communicatie voor de hele groep op zich.
+    /// </summary>
+    public string ContactEmail { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Eigen adres van de deelnemer. Null wanneer de communicatie via de
+    /// contactpersoon loopt. Puur identiteit en weergave — nooit een verzendadres;
+    /// gebruik daarvoor altijd <see cref="ContactEmail"/>.
+    /// </summary>
+    public string? StudentEmail { get; set; }
     public string? StudentPhone { get; set; }
 
     /// <summary>
