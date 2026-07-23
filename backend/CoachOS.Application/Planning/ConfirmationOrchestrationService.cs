@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using CoachOS.Application.Configuration;
 using CoachOS.Application.Planning.DTOs;
+using CoachOS.Application.Pricing;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
 using CoachOS.Domain.Interfaces;
@@ -17,6 +18,7 @@ public class ConfirmationOrchestrationService(
     IAssignmentConfirmationTokenRepository tokenRepo,
     IPaymentRepository paymentRepo,
     IEmailService emailService,
+    IPricingService pricingService,
     IOptions<AppOptions> appOptions,
     ILogger<ConfirmationOrchestrationService> logger) : IConfirmationOrchestrationService
 {
@@ -229,31 +231,35 @@ public class ConfirmationOrchestrationService(
                 new Error(ErrorCodes.Validation, "Deze toewijzing is al bevestigd."));
 
         Enrollment? payer;
-        int groupSize;
         List<Enrollment> affectedEnrollments;
 
         if (assignment.EnrollmentGroupId.HasValue && assignment.EnrollmentGroup is not null)
         {
             payer = assignment.EnrollmentGroup.Members
                 .FirstOrDefault(m => m.Id == assignment.EnrollmentGroup.LeaderEnrollmentId);
-            groupSize = assignment.EnrollmentGroup.Members.Count;
             affectedEnrollments = assignment.EnrollmentGroup.Members.ToList();
         }
         else
         {
             payer = assignment.Enrollment;
-            groupSize = 1;
             affectedEnrollments = payer is not null ? [payer] : [];
         }
 
         if (payer is null)
             return Result<bool>.Fail(new Error(ErrorCodes.Validation, "Geen betaler gevonden voor deze toewijzing."));
 
+        // affectedEnrollments = alle deelnemers van de toewijzing (leider inbegrepen),
+        // exact wat de prijsmatrix nodig heeft om per categorie te tarifiëren.
+        Result<PriceBreakdown> priceResult = await pricingService.CalculateForGroupAsync(
+            assignment.LessonSerieId, affectedEnrollments, ct);
+        if (!priceResult.IsSuccess)
+            return Result<bool>.Fail(priceResult.Errors);
+
         Payment payment = new()
         {
             OrganizationId = organizationId,
             EnrollmentId = payer.Id,
-            Amount = series.Price * groupSize,
+            Amount = priceResult.Value!.Total,
             Status = PaymentStatus.Paid,
             Method = PaymentMethod.Cash,
             PaidAt = DateTime.UtcNow,

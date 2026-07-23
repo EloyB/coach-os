@@ -51,6 +51,21 @@ public class LessonRescheduleService(
                     "Trainer heeft al een les op dit nieuwe tijdstip."));
         }
 
+        // Baan-conflict (binnen de org). Sluit de huidige les uit, want die wordt geannuleerd.
+        if (!string.IsNullOrWhiteSpace(lesson.CourtName))
+        {
+            Lesson? courtConflict = await lessonRepo.FindCourtConflictAsync(
+                organizationId, lesson.CourtName, newDate, newStart, newEnd,
+                excludeLessonId: lesson.Id, ct);
+            if (courtConflict is not null)
+            {
+                string seriesName = courtConflict.LessonSerie?.Name ?? "onbekende reeks";
+                string conflictTime = $"{courtConflict.StartTime:HH:mm}–{courtConflict.EndTime:HH:mm}";
+                return Result<RescheduleLessonResultDto>.Fail(new Error(ErrorCodes.Conflict,
+                    $"{lesson.CourtName.Trim()} is op {courtConflict.Date:dd/MM/yyyy} van {conflictTime} al bezet door reeks {seriesName}."));
+            }
+        }
+
         string? trimmedReason = string.IsNullOrWhiteSpace(request.Reason)
             ? null
             : request.Reason!.Trim();

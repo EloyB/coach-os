@@ -92,6 +92,31 @@ public class LessonRepository(ApplicationDbContext context) : ILessonRepository
             .FirstOrDefaultAsync(ct);
     }
 
+    public async Task<Lesson?> FindCourtConflictAsync(
+        Guid organizationId, string courtName, DateOnly date, TimeOnly startTime, TimeOnly endTime,
+        Guid? excludeLessonId = null, CancellationToken ct = default)
+    {
+        // Geen baan opgegeven → geen bezetting mogelijk.
+        if (string.IsNullOrWhiteSpace(courtName))
+            return null;
+
+        string normalized = courtName.Trim().ToLower();
+
+        return await context.Lessons
+            .AsNoTracking()
+            .Include(l => l.LessonSerie)
+            .Where(l =>
+                l.OrganizationId == organizationId
+                && l.CourtName != null
+                && l.CourtName.Trim().ToLower() == normalized
+                && l.Date == date
+                && !l.IsCancelled
+                && l.StartTime < endTime
+                && l.EndTime > startTime
+                && (excludeLessonId == null || l.Id != excludeLessonId))
+            .FirstOrDefaultAsync(ct);
+    }
+
     public async Task<int> CountByOrganizationAndDateRangeAsync(
         Guid organizationId, DateOnly from, DateOnly to, CancellationToken ct = default)
     {

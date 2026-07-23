@@ -27,6 +27,12 @@ public class EnrollmentConfiguration : IEntityTypeConfiguration<Enrollment>
         builder.Property(e => e.Notes)
             .HasMaxLength(500);
 
+        // Nullable: bestaande inschrijvingen van vóór de tariefcategorieën hebben
+        // geen geboortedatum. Nieuwe inschrijvingen dwingt de validator af.
+        builder.Property(e => e.DateOfBirth);
+
+        builder.Property(e => e.Category);
+
         builder.HasOne(e => e.Organization)
             .WithMany()
             .HasForeignKey(e => e.OrganizationId)

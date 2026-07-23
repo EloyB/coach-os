@@ -34,6 +34,14 @@ public class OrganizationSettings : BaseEntity
     public string PaymentCurrency { get; set; } = "EUR";
 
     /// <summary>
+    /// Maximumleeftijd (inclusief) om als jeugd te tellen bij het bepalen van de
+    /// tariefcategorie. Default 17: wie op de inschrijfdatum 17 of jonger is, krijgt
+    /// <see cref="ParticipantCategory.Youth"/>. Clubs die een andere grens hanteren
+    /// (bv. 21 voor studenten) passen dit aan.
+    /// </summary>
+    public int YouthMaxAge { get; set; } = 17;
+
+    /// <summary>
     /// Zet enkel bij <c>AuthService.RegisterAsync</c> wanneer een nieuwe organisatie wordt aangemaakt.
     /// NULL voor pre-existing orgs (die zien de onboarding niet) en voor lazy-geprovisioneerde rijen.
     /// Bepaalt samen met <see cref="OnboardingDismissedAt"/> of de checklist op /dashboard zichtbaar is.

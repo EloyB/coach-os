@@ -44,6 +44,11 @@ export interface LessonSeriesEnrollmentDto {
   status: string;
   enrolledAt: string;
   notes: string | null;
+  /** yyyy-MM-dd, null voor inschrijvingen van vóór de tariefcategorieën. */
+  dateOfBirth: string | null;
+  /** 1 = volwassenen, 2 = jeugd, null = onbekend. */
+  category: number | null;
+  categoryLabel: string | null;
   formResponses: EnrollmentResponseItem[];
 }
 
@@ -65,6 +70,8 @@ export interface GroupMemberRequest {
   studentName: string;
   studentEmail: string;
   studentPhone?: string;
+  /** yyyy-MM-dd — verplicht, bepaalt het tarief (volwassene/jeugd). */
+  dateOfBirth: string;
   responses: { formFieldId: string; value: string }[];
 }
 
@@ -72,6 +79,8 @@ export interface SubmitEnrollmentRequest {
   studentName: string;
   studentEmail: string;
   studentPhone?: string;
+  /** yyyy-MM-dd — verplicht, bepaalt het tarief (volwassene/jeugd). */
+  dateOfBirth: string;
   responses: { formFieldId: string; value: string }[];
   timeSlotPreferences?: TimeSlotPreferenceRequest[];
   enrollmentType?: string; // "solo" | "group"
@@ -102,4 +111,13 @@ export async function submitEnrollment(seriesId: string, request: SubmitEnrollme
 export async function getLessonSeriesEnrollments(seriesId: string): Promise<LessonSeriesEnrollmentDto[]> {
   const { data } = await apiClient.get<LessonSeriesEnrollmentDto[]>(`/lessonseries/${seriesId}/enrollments`);
   return data;
+}
+
+/**
+ * Annuleert een inschrijving. De backend doet een soft-cancel: de status wordt
+ * "Cancelled" en de plaats komt vrij, maar formulierantwoorden en planning-historiek
+ * blijven bewaard.
+ */
+export async function cancelEnrollment(seriesId: string, enrollmentId: string): Promise<void> {
+  await apiClient.delete(`/lessonseries/${seriesId}/enrollments/${enrollmentId}`);
 }

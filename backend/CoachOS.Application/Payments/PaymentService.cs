@@ -1,6 +1,7 @@
 using CoachOS.Application.Configuration;
 using CoachOS.Application.MollieConnect;
 using CoachOS.Application.Payments.DTOs;
+using CoachOS.Application.Pricing;
 using CoachOS.Domain.Enums;
 using CoachOS.Domain.Interfaces;
 using CoachOS.Domain.Models;
@@ -29,6 +30,7 @@ public class PaymentService(
     IMollieClient mollieClient,
     IMollieConnectService mollieConnect,
     IEmailService emailService,
+    IPricingService pricingService,
     IOptions<MollieOptions> mollieOptions,
     IOptions<AppOptions> appOptions,
     ILogger<PaymentService> logger) : IPaymentService
@@ -39,7 +41,7 @@ public class PaymentService(
     public async Task<Result<CreatePaymentResultDto>> CreatePaymentForEnrollmentAsync(
         Guid enrollmentId, Guid organizationId, CancellationToken ct = default)
     {
-        EnrollmentEntity? enrollment = await enrollments.GetByIdAsync(enrollmentId, organizationId, ct);
+        EnrollmentEntity? enrollment = await enrollments.GetByIdWithGroupAsync(enrollmentId, organizationId, ct);
         if (enrollment is null)
         {
             return Result<CreatePaymentResultDto>.Fail(
@@ -61,7 +63,31 @@ public class PaymentService(
                 new Error(ErrorCodes.NotFound, "Lessenreeks niet gevonden."));
         }
 
-        if (series.Price <= 0m)
+        // Het totaalbedrag komt uit de centrale prijsmatrix (categorie × groepsgrootte),
+        // met LessonSerie.Price als legacy fallback per persoon. Bij een groeps-
+        // inschrijving draagt de leider de betaling voor de hele groep; Group.Members
+        // bevat de leider zelf, dus dat is meteen de volledige deelnemerslijst.
+        IReadOnlyList<EnrollmentEntity> participants =
+            enrollment.EnrollmentGroupId.HasValue
+            && enrollment.EnrollmentGroup is not null
+            && enrollment.EnrollmentGroup.Members.Count > 0
+                ? enrollment.EnrollmentGroup.Members.ToList()
+                : [enrollment];
+
+        Result<PriceBreakdown> priceResult = await pricingService.CalculateForGroupAsync(
+            seriesId, participants, ct);
+        if (!priceResult.IsSuccess)
+        {
+            return Result<CreatePaymentResultDto>.Fail(priceResult.Errors);
+        }
+
+        PriceBreakdown breakdown = priceResult.Value!;
+        int participantCount = breakdown.GroupSize;
+        decimal amount = breakdown.Total;
+
+        // Nul-check op het berekende totaal, niet meer op het legacy Price-veld:
+        // een reeks met een prijsmatrix mag Price=0 hebben en toch betaalbaar zijn.
+        if (amount <= 0m)
         {
             return Result<CreatePaymentResultDto>.Fail(new Error(
                 ErrorCodes.Validation,
@@ -75,7 +101,7 @@ public class PaymentService(
         decimal? applicationFee = feePercentage > 0m
             // Banken-conventie: rond af op 2 decimalen naar boven; Mollie weigert
             // bedragen met meer dan 2 decimalen.
-            ? Math.Round(series.Price * feePercentage / 100m, 2, MidpointRounding.AwayFromZero)
+            ? Math.Round(amount * feePercentage / 100m, 2, MidpointRounding.AwayFromZero)
             : null;
 
         Result<string> tokenResult = await mollieConnect.GetValidAccessTokenAsync(enrollment.OrganizationId, ct);
@@ -96,9 +122,11 @@ public class PaymentService(
         string? webhookUrl = BuildWebhookUrl();
 
         MolliePaymentRequest paymentRequest = new(
-            Amount: series.Price,
+            Amount: amount,
             Currency: currency,
-            Description: $"Inschrijving {series.Name}",
+            Description: participantCount > 1
+                ? $"Inschrijving {series.Name} ({participantCount} deelnemers)"
+                : $"Inschrijving {series.Name}",
             RedirectUrl: redirectUrl,
             WebhookUrl: webhookUrl,
             ApplicationFee: applicationFee,
@@ -126,7 +154,7 @@ public class PaymentService(
         {
             OrganizationId = enrollment.OrganizationId,
             EnrollmentId = enrollmentId,
-            Amount = series.Price,
+            Amount = amount,
             Currency = currency,
             PlatformFee = applicationFee,
             Status = PaymentStatus.Pending,
@@ -385,11 +413,26 @@ public class PaymentService(
 
         if (payment.EnrollmentId is not { } enrollmentId) return;
 
-        EnrollmentEntity? enrollment = await enrollments.GetByIdAsync(
+        // Met groep laden: de leider betaalt voor de hele groep en de confirm-flow
+        // zette álle leden op PendingPayment. Na betaling moeten dus alle leden mee
+        // naar Confirmed, niet enkel de betalende leider. Group.Members bevat de
+        // leider zelf, dus dat is meteen de volledige deelnemerslijst.
+        EnrollmentEntity? enrollment = await enrollments.GetByIdWithGroupAsync(
             enrollmentId, payment.OrganizationId, ct);
         if (enrollment is null) return;
 
-        enrollment.Status = EnrollmentStatus.Confirmed;
+        List<EnrollmentEntity> toConfirm =
+            enrollment.EnrollmentGroupId.HasValue
+            && enrollment.EnrollmentGroup is not null
+            && enrollment.EnrollmentGroup.Members.Count > 0
+                ? enrollment.EnrollmentGroup.Members.ToList()
+                : [enrollment];
+
+        foreach (EnrollmentEntity e in toConfirm)
+        {
+            if (e.Status == EnrollmentStatus.Confirmed) continue;
+            e.Status = EnrollmentStatus.Confirmed;
+        }
         await enrollments.SaveChangesAsync(ct);
 
         LessonSerieEntity? series = enrollment.LessonSerieId is { } sid
@@ -518,8 +561,17 @@ public class PaymentService(
     }
 
     public async Task<Result> MarkCampCashPaidAsync(
-        Guid campEnrollmentId, Guid organizationId, CancellationToken ct = default)
+        Guid campId, Guid campEnrollmentId, Guid organizationId, CancellationToken ct = default)
     {
+        CampEnrollmentEntity? enrollment = await campEnrollments.GetByIdWithGroupAsync(campEnrollmentId, ct);
+
+        // De route belooft een kamp-scope; die moet ook echt gelden. Zonder de CampId-
+        // (en org-)check zou POST /camps/{ander-kamp}/enrollments/{geldige-id}/mark-cash-paid
+        // een inschrijving van een ánder kamp binnen dezelfde organisatie bevestigen.
+        if (enrollment is not null
+            && (enrollment.OrganizationId != organizationId || enrollment.CampId != campId))
+            return Result.Fail(new Error(ErrorCodes.NotFound, "Inschrijving niet gevonden."));
+
         PaymentEntity? payment = await payments.GetLatestPendingCashByCampEnrollmentIdAsync(
             campEnrollmentId, organizationId, ct);
         if (payment is null)
@@ -535,7 +587,6 @@ public class PaymentService(
         payment.Status = PaymentStatus.Paid;
         payment.PaidAt = DateTime.UtcNow;
 
-        CampEnrollmentEntity? enrollment = await campEnrollments.GetByIdWithGroupAsync(campEnrollmentId, ct);
         if (enrollment is null)
         {
             // Geen enrollment om te bevestigen → toch de payment-mutatie persisteren.

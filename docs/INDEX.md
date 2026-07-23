@@ -7,6 +7,7 @@
 - [project-analysis.md](project-analysis.md) - Full technical & business analysis
 - [market-analysis.md](market-analysis.md) - Market size & opportunity
 - [competition-analysis.md](competition-analysis.md) - Competitive landscape
+- [pricing-strategy.md](pricing-strategy.md) - Prijstiers, concurrent-benchmarks & unit-economics
 - [development-guide.md](development-guide.md) - Coding patterns & conventions
 
 ## Architecture

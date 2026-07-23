@@ -40,5 +40,6 @@ public class LessonConfiguration : IEntityTypeConfiguration<Lesson>
         builder.HasIndex(l => l.TrainerId);
         builder.HasIndex(l => l.Date);
         builder.HasIndex(l => new { l.OrganizationId, l.Date });
+        builder.HasIndex(l => new { l.OrganizationId, l.Date, l.CourtName });
     }
 }

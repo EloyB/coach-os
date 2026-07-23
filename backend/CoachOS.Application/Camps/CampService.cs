@@ -204,7 +204,7 @@ public class CampService(
         bool exists = await camps.ExistsAsync(campId, organizationId, ct);
         if (!exists) return Result.Fail(new Error(ErrorCodes.NotFound, "Kamp niet gevonden."));
 
-        return await paymentService.MarkCampCashPaidAsync(campEnrollmentId, organizationId, ct);
+        return await paymentService.MarkCampCashPaidAsync(campId, campEnrollmentId, organizationId, ct);
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────

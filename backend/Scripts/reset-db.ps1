@@ -29,15 +29,18 @@ function Invoke-Compose {
 Write-Host "Stopping containers and removing database volume..." -ForegroundColor Cyan
 Invoke-Compose down -v
 
+# --build is verplicht: zonder rebuild draait de container de vorige image en test
+# de reset stale code. De reset is pas een echte "definitieve done-check" als de
+# backend-image uit de huidige source herbouwd wordt.
 if ($NoFrontend) {
-    Write-Host "Starting fresh (without frontend)..." -ForegroundColor Cyan
+    Write-Host "Starting fresh (without frontend, rebuilding images)..." -ForegroundColor Cyan
     $services = (& { if ($useV2) { docker compose -f $composeFile config --services } else { docker-compose -f $composeFile config --services } }) `
         | Where-Object { $_ -ne 'frontend' }
-    Invoke-Compose up -d @services
+    Invoke-Compose up -d --build @services
 } else {
-    Write-Host "Starting fresh..." -ForegroundColor Cyan
-    Invoke-Compose up -d
+    Write-Host "Starting fresh (rebuilding images)..." -ForegroundColor Cyan
+    Invoke-Compose up -d --build
 }
 
 Write-Host ""
-Write-Host "Database volume wiped. The API will auto-migrate on startup." -ForegroundColor Green
+Write-Host "Database volume wiped and images rebuilt. The API will auto-migrate on startup." -ForegroundColor Green

@@ -19,14 +19,17 @@ COMPOSE_FILE="$(git rev-parse --show-toplevel)/docker-compose.yml"
 echo "Stopping containers and removing database volume..."
 docker-compose -f "$COMPOSE_FILE" down -v
 
+# --build is verplicht: zonder rebuild draait de container de vorige image en test
+# de reset stale code. De reset is pas een echte "definitieve done-check" als de
+# backend-image uit de huidige source herbouwd wordt.
 if [ "$SKIP_FRONTEND" = true ]; then
-    echo "Starting fresh (without frontend)..."
+    echo "Starting fresh (without frontend, rebuilding images)..."
     SERVICES=$(docker-compose -f "$COMPOSE_FILE" config --services | grep -v '^frontend$' | tr '\n' ' ')
-    docker-compose -f "$COMPOSE_FILE" up -d $SERVICES
+    docker-compose -f "$COMPOSE_FILE" up -d --build $SERVICES
 else
-    echo "Starting fresh..."
-    docker-compose -f "$COMPOSE_FILE" up -d
+    echo "Starting fresh (rebuilding images)..."
+    docker-compose -f "$COMPOSE_FILE" up -d --build
 fi
 
 echo ""
-echo "Database volume wiped. The API will auto-migrate on startup."
+echo "Database volume wiped and images rebuilt. The API will auto-migrate on startup."
