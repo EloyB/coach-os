@@ -58,7 +58,12 @@ const DAY_NAMES = [
   "Zondag",
 ];
 
-type GroupMember = { name: string; email: string; dateOfBirth: string };
+type GroupMember = {
+  name: string;
+  email: string;
+  dateOfBirth: string;
+  hasOwnEmail: boolean;
+};
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -178,7 +183,10 @@ export default function EnrollPage() {
 
   function addGroupMember() {
     if (groupMembers.length >= 3) return;
-    setGroupMembers((prev) => [...prev, { name: "", email: "", dateOfBirth: "" }]);
+    setGroupMembers((prev) => [
+      ...prev,
+      { name: "", email: "", dateOfBirth: "", hasOwnEmail: false },
+    ]);
   }
 
   function removeGroupMember(index: number) {
@@ -205,6 +213,14 @@ export default function EnrollPage() {
         return next;
       });
     }
+  }
+
+  function toggleMemberOwnEmail(index: number, hasOwnEmail: boolean) {
+    setGroupMembers((prev) =>
+      prev.map((m, i) =>
+        i === index ? { ...m, hasOwnEmail, email: hasOwnEmail ? m.email : "" } : m
+      )
+    );
   }
 
   // ─── Validation ─────────────────────────────────────────────────────────
@@ -238,12 +254,30 @@ export default function EnrollPage() {
       groupMembers.forEach((m, i) => {
         const e: { name?: string; email?: string; dateOfBirth?: string } = {};
         if (!m.name.trim()) e.name = "Naam is verplicht";
-        if (!m.email.trim()) e.email = "E-mailadres is verplicht";
-        else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(m.email))
-          e.email = "Ongeldig e-mailadres";
+        if (m.hasOwnEmail) {
+          if (!m.email.trim()) e.email = "E-mailadres is verplicht";
+          else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(m.email))
+            e.email = "Ongeldig e-mailadres";
+        }
         const memberDobError = validateBirthDate(m.dateOfBirth);
         if (memberDobError) e.dateOfBirth = memberDobError;
         if (e.name || e.email || e.dateOfBirth) mErrors[i] = e;
+      });
+
+      // Dubbele deelnemer (naam + geboortedatum) — spiegelt de backend zonder
+      // server-lookup, dus zonder te lekken wie al ingeschreven is.
+      const people = [
+        `${firstName.trim().toLowerCase()} ${lastName.trim().toLowerCase()}|${dateOfBirth}`,
+        ...groupMembers.map(
+          (m) => `${m.name.trim().toLowerCase()}|${m.dateOfBirth}`
+        ),
+      ];
+      groupMembers.forEach((m, i) => {
+        if (!m.name.trim() || !m.dateOfBirth) return;
+        const key = `${m.name.trim().toLowerCase()}|${m.dateOfBirth}`;
+        if (people.filter((p) => p === key).length > 1) {
+          mErrors[i] = { ...mErrors[i], name: t("duplicate_participant") };
+        }
       });
     }
     setMemberErrors(mErrors);
@@ -289,7 +323,7 @@ export default function EnrollPage() {
           enrollmentType === "group" && groupMembers.length > 0
             ? groupMembers.map((m) => ({
                 studentName: m.name.trim(),
-                studentEmail: m.email.trim(),
+                studentEmail: m.hasOwnEmail ? m.email.trim() : null,
                 dateOfBirth: m.dateOfBirth,
                 responses: [],
               }))
@@ -780,6 +814,10 @@ export default function EnrollPage() {
                         )}
                       </div>
 
+                      <p className="text-xs text-gray-500">
+                        {t("group_contact_explainer")}
+                      </p>
+
                       {groupMembers.map((member, i) => (
                         <div
                           key={i}
@@ -818,23 +856,45 @@ export default function EnrollPage() {
                                 </p>
                               )}
                             </div>
-                            <div>
-                              <input
-                                type="email"
-                                value={member.email}
-                                onChange={(e) =>
-                                  updateGroupMember(i, "email", e.target.value)
-                                }
-                                placeholder={t("member_email")}
-                                className={inputClass(!!memberErrors[i]?.email)}
-                              />
-                              {memberErrors[i]?.email && (
-                                <p className="text-xs text-red-500 mt-1">
-                                  {memberErrors[i].email}
+                            <div className="sm:col-span-2">
+                              <label className="flex items-center gap-2 text-xs text-gray-600">
+                                <input
+                                  type="checkbox"
+                                  checked={member.hasOwnEmail}
+                                  onChange={(e) =>
+                                    toggleMemberOwnEmail(i, e.target.checked)
+                                  }
+                                  className="rounded border-gray-300 text-tennis-green focus:ring-tennis-green/20"
+                                />
+                                {t("member_has_own_email")}
+                              </label>
+
+                              {member.hasOwnEmail ? (
+                                <div className="mt-2">
+                                  <input
+                                    type="email"
+                                    value={member.email}
+                                    onChange={(e) =>
+                                      updateGroupMember(i, "email", e.target.value)
+                                    }
+                                    placeholder={t("member_email")}
+                                    className={inputClass(!!memberErrors[i]?.email)}
+                                  />
+                                  {memberErrors[i]?.email && (
+                                    <p className="text-xs text-red-500 mt-1">
+                                      {memberErrors[i].email}
+                                    </p>
+                                  )}
+                                </div>
+                              ) : (
+                                <p className="text-xs text-gray-400 mt-1">
+                                  {t("member_contact_via_leader", {
+                                    email: email.trim() || "…",
+                                  })}
                                 </p>
                               )}
                             </div>
-                            <div>
+                            <div className="sm:col-span-2">
                               <label className="block text-xs text-gray-500 mb-1">
                                 {t("form_member_date_of_birth")} *
                               </label>
