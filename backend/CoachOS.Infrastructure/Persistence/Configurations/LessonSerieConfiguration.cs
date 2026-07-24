@@ -20,6 +20,12 @@ public class LessonSerieConfiguration : IEntityTypeConfiguration<LessonSerie>
         builder.Property(ls => ls.Price)
             .HasPrecision(10, 2);
 
+        builder.Property(ls => ls.MinAge)
+            .HasDefaultValue(3);
+
+        builder.Property(ls => ls.MaxAge)
+            .HasDefaultValue(99);
+
         builder.Property(ls => ls.PaymentMode)
             .IsRequired()
             .HasDefaultValue(Domain.Enums.PaymentMode.Immediate);

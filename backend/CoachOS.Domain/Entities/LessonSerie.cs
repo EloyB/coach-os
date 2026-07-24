@@ -26,6 +26,13 @@ public class LessonSerie : BaseEntity
     public DateTime RegistrationDeadline { get; set; }
     public bool IsActive { get; set; } = true;
     public int? MaxRegistrations { get; set; }
+
+    /// <summary>Minimumleeftijd (inclusief) op de startdatum van de reeks.</summary>
+    public int MinAge { get; set; } = 3;
+
+    /// <summary>Maximumleeftijd (inclusief) op de startdatum van de reeks.</summary>
+    public int MaxAge { get; set; } = 99;
+
     public PlanningStatus PlanningStatus { get; set; } = PlanningStatus.Enrollment;
 
     /// <summary>
