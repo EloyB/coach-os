@@ -60,6 +60,7 @@
       "maxAge": 99,
       "startOffsetDays": 0,
       "endOffsetMonths": 3,
+      "allowGroupEnrollment": false,
       "weeklyTemplate": [
         {
           "dayOfWeek": 0,
@@ -81,6 +82,7 @@
       "maxAge": 99,
       "startOffsetDays": 0,
       "endOffsetMonths": 3,
+      "allowSoloEnrollment": false,
       "weeklyTemplate": [
         {
           "dayOfWeek": 2,

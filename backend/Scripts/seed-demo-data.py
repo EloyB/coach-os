@@ -261,6 +261,10 @@ def create_simple_series(api: ApiClient, series_specs: list[dict],
             "maxAge": spec.get("maxAge", 99),
             "weeklyTemplate": template,
             "lessons": lessons,
+            "allowSoloEnrollment": spec.get("allowSoloEnrollment", True),
+            "allowGroupEnrollment": spec.get("allowGroupEnrollment", True),
+            "acceptOnlinePayment": spec.get("acceptOnlinePayment", False),
+            "acceptManualPayment": spec.get("acceptManualPayment", True),
         }
         sid = strip_quotes(api.post("/lessonseries", body))
         if sid:
@@ -353,6 +357,10 @@ def create_planning_series(api: ApiClient, spec: dict, club_ids: list[str],
         "maxAge": spec.get("maxAge", 99),
         "weeklyTemplate": template_unassigned,
         "lessons": lessons,
+        "allowSoloEnrollment": spec.get("allowSoloEnrollment", True),
+        "allowGroupEnrollment": spec.get("allowGroupEnrollment", True),
+        "acceptOnlinePayment": spec.get("acceptOnlinePayment", False),
+        "acceptManualPayment": spec.get("acceptManualPayment", True),
     }
     sid = strip_quotes(api.post("/lessonseries", body))
     if not sid:
