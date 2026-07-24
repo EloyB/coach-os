@@ -13,6 +13,7 @@ public class LessonSerieService(
     ITennisClubRepository tennisClubRepo,
     IUserLookupService userLookup,
     IEmailService emailService,
+    IMollieConnectionRepository mollieConnectionRepo,
     ApplicationMapper mapper) : ILessonSerieService
 {
     public async Task<Result<List<LessonSerieDto>>> GetAllAsync(
@@ -88,6 +89,11 @@ public class LessonSerieService(
         var clubExists = await tennisClubRepo.ExistsAsync(request.TennisClubId, organizationId, ct);
         if (!clubExists)
             return Result<Guid>.Fail(new Error(ErrorCodes.NotFound, "Tennisclub niet gevonden."));
+
+        Error? onlinePaymentError =
+            await ValidateOnlinePaymentAsync(organizationId, request.AcceptOnlinePayment, ct);
+        if (onlinePaymentError is not null)
+            return Result<Guid>.Fail(onlinePaymentError);
 
         var trainerIds = request.WeeklyTemplate.Select(t => t.TrainerId)
             .Concat(request.Lessons.Select(l => l.TrainerId));
@@ -168,6 +174,11 @@ public class LessonSerieService(
         var clubExists = await tennisClubRepo.ExistsAsync(request.TennisClubId, organizationId, ct);
         if (!clubExists)
             return Result<LessonSerieDto>.Fail(new Error(ErrorCodes.NotFound, "Tennisclub niet gevonden."));
+
+        Error? onlinePaymentError =
+            await ValidateOnlinePaymentAsync(organizationId, request.AcceptOnlinePayment, ct);
+        if (onlinePaymentError is not null)
+            return Result<LessonSerieDto>.Fail(onlinePaymentError);
 
         series.Name = request.Name;
         series.Description = request.Description;
@@ -450,6 +461,21 @@ public class LessonSerieService(
 
         LessonDto dto = mapper.ToLessonDto(lesson, seriesId);
         return Result<LessonDto>.Ok(dto);
+    }
+
+    private async Task<Error?> ValidateOnlinePaymentAsync(
+        Guid organizationId, bool acceptOnlinePayment, CancellationToken ct)
+    {
+        if (!acceptOnlinePayment)
+            return null;
+
+        Domain.Entities.MollieConnection? connection =
+            await mollieConnectionRepo.GetByOrganizationReadOnlyAsync(organizationId, ct);
+        if (connection is null)
+            return new Error(ErrorCodes.Validation,
+                "Online betalen kan pas aangezet worden nadat de organisatie met Mollie verbonden is.");
+
+        return null;
     }
 
     private async Task<Error?> ValidateTrainerIdsAsync(
