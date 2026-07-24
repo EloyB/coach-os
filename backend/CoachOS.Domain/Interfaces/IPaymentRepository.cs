@@ -39,6 +39,14 @@ public interface IPaymentRepository
         Guid campEnrollmentId, Guid organizationId, CancellationToken ct = default);
 
     /// <summary>
+    /// Meest recente openstaande (Pending) cash-betaling voor een reeks-inschrijving,
+    /// getrackt en org-gescoped. Gebruikt wanneer de admin de overschrijving als betaald
+    /// markeert. Tracked zodat de status-mutatie wordt opgeslagen.
+    /// </summary>
+    Task<Payment?> GetLatestPendingCashByEnrollmentIdAsync(
+        Guid enrollmentId, Guid organizationId, CancellationToken ct = default);
+
+    /// <summary>
     /// Meest recente betaalmethode + status per kamp-inschrijving, in één query
     /// (vermijdt N+1 in het admin-overzicht). Inschrijvingen zonder betaling
     /// komen niet in de dictionary voor.

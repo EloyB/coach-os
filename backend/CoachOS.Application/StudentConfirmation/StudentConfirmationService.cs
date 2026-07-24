@@ -17,6 +17,8 @@ public class StudentConfirmationService(
     IPaymentRepository paymentRepo,
     Payments.IPaymentService paymentService,
     IPricingService pricingService,
+    IEnrollmentRepository enrollmentRepo,
+    IEmailService emailService,
     ILogger<StudentConfirmationService> logger) : IStudentConfirmationService
 {
     public async Task<Result<AssignmentDetailsDto>> GetByTokenAsync(
@@ -353,6 +355,69 @@ public class StudentConfirmationService(
             "");
 
         return Result<string>.Ok(ics);
+    }
+
+    public async Task<Result> MarkEnrollmentCashPaidAsync(
+        Guid enrollmentId, Guid organizationId, CancellationToken ct = default)
+    {
+        Payment? payment = await paymentRepo.GetLatestPendingCashByEnrollmentIdAsync(
+            enrollmentId, organizationId, ct);
+        if (payment is null)
+            return Result.Fail(new Error(
+                ErrorCodes.NotFound, "Geen openstaande overschrijving gevonden voor deze inschrijving."));
+
+        Enrollment? enrollment = await enrollmentRepo.GetByIdWithGroupAsync(enrollmentId, organizationId, ct);
+        if (enrollment is null)
+            return Result.Fail(new Error(ErrorCodes.NotFound, "Inschrijving niet gevonden."));
+
+        payment.Status = PaymentStatus.Paid;
+        payment.PaidAt = DateTime.UtcNow;
+
+        // Groep: leider betaalt voor iedereen → alle leden bevestigen. Solo: enkel deze.
+        // Group.Members bevat de leider zelf.
+        List<Enrollment> toConfirm =
+            enrollment.EnrollmentGroupId.HasValue
+            && enrollment.EnrollmentGroup is not null
+            && enrollment.EnrollmentGroup.Members.Count > 0
+                ? enrollment.EnrollmentGroup.Members.ToList()
+                : [enrollment];
+
+        foreach (Enrollment e in toConfirm)
+        {
+            if (e.Status != EnrollmentStatus.Confirmed)
+                e.Status = EnrollmentStatus.Confirmed;
+        }
+
+        // paymentRepo en enrollmentRepo delen dezelfde scoped DbContext → één save flusht beide.
+        await paymentRepo.SaveChangesAsync(ct);
+
+        // Cash-pad sloeg finalisatie bewust over bij bevestigen; nu de betaling rond is,
+        // de reeks alsnog finaliseren indien alle deelnemers gereageerd hebben.
+        if (enrollment.LessonSerieId is { } serieId)
+            await TryFinalizeSeriesAsync(serieId, organizationId, ct);
+
+        // "Plek definitief"-mail, zelfde call als het online-betaalde pad in PaymentService.
+        try
+        {
+            Domain.Entities.LessonSerie? series = enrollment.LessonSerieId is { } sid
+                ? await seriesRepo.GetByIdAsync(sid, organizationId, ct)
+                : null;
+            await emailService.SendEnrollmentConfirmationAsync(
+                enrollment.ContactEmail,
+                enrollment.StudentName,
+                series?.Name ?? string.Empty,
+                trainerName: string.Empty,
+                participantNames: toConfirm.Select(e => e.StudentName).ToList(),
+                ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex,
+                "Bevestigingsmail mislukt voor enrollment {EnrollmentId} na cash-bevestiging.",
+                enrollment.Id);
+        }
+
+        return Result.Ok();
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────

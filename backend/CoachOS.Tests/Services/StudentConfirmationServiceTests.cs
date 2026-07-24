@@ -33,6 +33,8 @@ public class StudentConfirmationServiceTests
     private Mock<IPaymentRepository> _paymentRepo = null!;
     private Mock<CoachOS.Application.Payments.IPaymentService> _paymentService = null!;
     private Mock<IPricingService> _pricingService = null!;
+    private Mock<IEnrollmentRepository> _enrollmentRepo = null!;
+    private Mock<IEmailService> _emailService = null!;
     private Mock<ILogger<StudentConfirmationService>> _logger = null!;
     private StudentConfirmationService _sut = null!;
 
@@ -68,6 +70,8 @@ public class StudentConfirmationServiceTests
         _paymentRepo = new Mock<IPaymentRepository>();
         _paymentService = new Mock<CoachOS.Application.Payments.IPaymentService>();
         _pricingService = new Mock<IPricingService>();
+        _enrollmentRepo = new Mock<IEnrollmentRepository>();
+        _emailService = new Mock<IEmailService>();
         _logger = new Mock<ILogger<StudentConfirmationService>>();
 
         // Default: prijsmatrix levert een vast totaal dat losstaat van
@@ -82,6 +86,8 @@ public class StudentConfirmationServiceTests
             _paymentRepo.Object,
             _paymentService.Object,
             _pricingService.Object,
+            _enrollmentRepo.Object,
+            _emailService.Object,
             _logger.Object);
     }
 
@@ -891,6 +897,67 @@ public class StudentConfirmationServiceTests
         _tokenRepo.Verify(r => r.GetBySeriesAsNoTrackingAsync(
                 It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()),
             Times.Never);
+    }
+
+    // ── Admin: cash-betaling als betaald markeren ─────────────────────────────
+
+    [Test]
+    public async Task MarkEnrollmentCashPaid_sets_payment_paid_and_enrollment_confirmed()
+    {
+        Guid orgId = Guid.NewGuid();
+        Guid enrollmentId = Guid.NewGuid();
+        Payment pending = new()
+        {
+            OrganizationId = orgId,
+            EnrollmentId = enrollmentId,
+            Method = PaymentMethod.Cash,
+            Status = PaymentStatus.Pending,
+            Amount = 120m,
+        };
+        Enrollment enrollment = new()
+        {
+            Id = enrollmentId,
+            OrganizationId = orgId,
+            LessonSerieId = Guid.NewGuid(),
+            StudentName = "Sofie",
+            ContactEmail = "sofie@example.com",
+            Status = EnrollmentStatus.PendingPayment,
+        };
+        _paymentRepo.Setup(r => r.GetLatestPendingCashByEnrollmentIdAsync(enrollmentId, orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pending);
+        _enrollmentRepo.Setup(r => r.GetByIdWithGroupAsync(enrollmentId, orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(enrollment);
+        // finalize no-op: geen tokens
+        _tokenRepo.Setup(r => r.GetBySeriesAsNoTrackingAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<AssignmentConfirmationToken>());
+
+        // Act
+        Result result = await _sut.MarkEnrollmentCashPaidAsync(enrollmentId, orgId, CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        pending.Status.Should().Be(PaymentStatus.Paid);
+        pending.PaidAt.Should().NotBeNull();
+        enrollment.Status.Should().Be(EnrollmentStatus.Confirmed);
+        _emailService.Verify(e => e.SendEnrollmentConfirmationAsync(
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+            It.IsAny<IReadOnlyList<string>?>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task MarkEnrollmentCashPaid_returns_NotFound_when_no_pending_cash()
+    {
+        Guid orgId = Guid.NewGuid();
+        Guid enrollmentId = Guid.NewGuid();
+        _paymentRepo.Setup(r => r.GetLatestPendingCashByEnrollmentIdAsync(enrollmentId, orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Payment?)null);
+
+        // Act
+        Result result = await _sut.MarkEnrollmentCashPaidAsync(enrollmentId, orgId, CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.Code == ErrorCodes.NotFound);
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
