@@ -33,12 +33,19 @@ cash-patroon van tenniskampen.
 |---|---|
 | Modellering | 4 losse booleans op `LessonSerie`, geen enum |
 | Inschrijfwijze default | Solo én groep beide aan |
-| Betaalmethode default | Online aan als Mollie gekoppeld, anders handmatig aan |
+| Betaalmethode default (formulier) | Online aan als Mollie gekoppeld, anders handmatig aan |
 | Online zonder Mollie | Niet aanvinkbaar; validatie weigert `AcceptOnlinePayment=true` zonder `MollieConnection` |
 | Minstens één | Minstens één inschrijfwijze én minstens één betaalmethode verplicht |
-| Handmatige betaling | Spiegelt camp-cashflow: enrollment `PendingPayment` + `Payment{ Method=Cash }`, admin markeert betaald |
+| Waar wordt betaalwijze gekozen | Door de student op de **bevestigingspagina** (`/confirmation/[token]`), NIET bij het inschrijven. De serie-vlaggen bepalen welke opties daar getoond worden. |
+| Handmatige betaling | Camp-stijl: student kiest cash → enrollment `PendingPayment` + `Payment{ Method=Cash, Status=Pending }`; admin markeert betaald → `Confirmed`. **Wijzigt het huidige series-gedrag** (dat cash meteen `Paid`+`Confirmed` zette). |
 | `PaymentMode` (Immediate/Deferred) | Blijft ongewijzigd; enkel relevant wanneer online betaald wordt |
 | Bewerkbaar | Ja — ook via het bewerken-formulier op de reeksdetailpagina |
+
+> **Correctie t.o.v. eerste ontwerp:** de betaalkeuze staat al in de bestaande
+> confirmation-flow (`StudentConfirmationService.ConfirmAsync` / `PickAlternativeAsync`
+> verwerken `request.PaymentMethod`, cash vs online). Dit ontwerp bouwt géén nieuwe
+> betaalkeuze bij het inschrijven; het (a) beperkt de bestaande keuze tot wat de reeks
+> toelaat, en (b) verandert het cash-pad van "meteen betaald" naar "wacht op admin".
 
 ## 1. Datamodel & validatie
 
@@ -51,8 +58,11 @@ cash-patroon van tenniskampen.
 | `AcceptOnlinePayment` | `bool` | `true` | Online betalen via Mollie toegestaan. |
 | `AcceptManualPayment` | `bool` | `false` | Handmatig (overschrijving/cash) toegestaan. |
 
-- **Migratie**: kolommen toevoegen met `defaultValue` `true`/`true`/`true`/`false` zodat
-  bestaande reeksen ongewijzigd gedrag houden ("beide inschrijfwijzen + online betalen").
+- **Migratie**: kolommen toevoegen met `defaultValue` `true` voor alle vier. Bestaande
+  reeksen bieden vandaag zowel cash als online aan op de confirmation-pagina, dus alle vier
+  op `true` backfillen houdt hun gedrag identiek (beide inschrijfwijzen, beide
+  betaalmethodes). De formulier-default voor nieuwe reeksen (`AcceptManualPayment` uit
+  wanneer Mollie gekoppeld is) wordt door de frontend gezet, niet door de kolom-default.
 - **EF-configuratie**: in `LessonSerieConfiguration` (`IEntityTypeConfiguration<T>`), geen
   fluent config in `ApplicationDbContext`.
 
@@ -100,65 +110,91 @@ onderaan **step 1** (`step-1-basisinfo.tsx`), plus de bijbehorende velden in
 **Bewerkformulier op de reeksdetailpagina** krijgt dezelfde twee blokken, voorgevuld
 vanuit `LessonSerieDto`, met dezelfde Mollie-gating.
 
-## 4. Inschrijfpagina afdwingen (frontend + backend)
+## 4. Inschrijfwijze afdwingen (publieke inschrijfpagina)
 
-**Publieke inschrijfpagina `app/(public)/enroll/[seriesId]/page.tsx`:**
+De publieke inschrijfpagina `app/(public)/enroll/[seriesId]/page.tsx` toont **geen**
+betaalkeuze — die staat pas op de bevestigingspagina (§5). Hier enkel de solo/groep-gating.
 
-- **Inschrijfwijze**: toon de solo/groep-radio's enkel voor de toegelaten wijzen. Mag er
-  maar één, dan die vast (geselecteerd, geen keuze getoond). De default-`useState` volgt
-  de eerst-toegelaten wijze i.p.v. hard `"solo"`.
-- **Betaalwijze**: toon de keuze online/overschrijving op basis van de serie-vlaggen.
-  - Enkel online → huidig gedrag (Mollie checkout / betaallink volgens `PaymentMode`).
-  - Enkel handmatig → geen Mollie; "je ontvangt betaalinstructies voor overschrijving".
-  - Beide → leerling kiest; keuze gaat mee in de submit.
+**Frontend:**
+- Toon de solo/groep-radio's enkel voor de toegelaten wijzen. Mag er maar één, dan die
+  vast (geselecteerd, geen keuze getoond). De default-`useState` (nu hard `"solo"`) volgt
+  de eerst-toegelaten wijze; `LessonSeriesDto` levert de twee vlaggen (§2).
 
-**Submit-validatie** (`SubmitEnrollmentRequest` + `SubmitEnrollmentRequestValidator` +
-`EnrollmentService`):
+**Backend-afdwinging** (`EnrollmentService.SubmitEnrollmentAsync`):
+- De service laadt de `LessonSerie` al. Weiger vóór de transactie met een gelokaliseerde
+  `Result.Failure` als `request.EnrollmentType == "solo"` terwijl `!AllowSoloEnrollment`,
+  of `== "group"` terwijl `!AllowGroupEnrollment`. Geen nieuw request-veld nodig.
 
-- Request krijgt een `PaymentChoice` veld (`"online"` | `"manual"`).
-- Service weigert (`Result.Failure`, gelokaliseerd):
-  - een `EnrollmentType` die de serie niet toelaat;
-  - een `PaymentChoice` die de serie niet toelaat.
-- De vorm-validatie (enum-waarden aanwezig) zit in de validator; de serie-afhankelijke
-  checks in de service (die de `LessonSerie` al laadt).
+## 5. Betaalmethode afdwingen (bevestigingspagina + confirmation-service)
 
-## 5. Handmatige betaling voor lessenreeksen (backend)
+De keuze cash/online bestaat al in `StudentConfirmationService.ConfirmAsync` en
+`PickAlternativeAsync` via `request.PaymentMethod` (`1 = Online`, `2 = Cash`) en in de FE
+op `app/confirmation/[token]/page.tsx`. Dit ontwerp beperkt die keuze tot de
+serie-vlaggen en zet het cash-pad om naar camp-stijl.
 
-Spiegelt het bestaande camp-patroon (`RecordCampCashPaymentAsync` /
-`MarkCampCashPaidAsync`).
+**5a. Vlaggen naar de bevestigingspagina.** `AssignmentDetailsDto` krijgt twee velden
+`AcceptOnlinePayment` en `AcceptManualPayment`; `BuildDetailsAsync` vult ze uit de
+`series`. De confirmation-pagina toont de betaalmethode-tegels enkel voor de toegelaten
+opties en zet de default-`useState` op de enige toegelaten optie als er maar één is.
 
-- **Bij inschrijving met `PaymentChoice="manual"`**: `EnrollmentService` maakt de
-  enrollment aan met status `PendingPayment` en registreert een
-  `Payment{ Method = PaymentMethod.Cash, Status = PaymentStatus.Pending }` voor het
-  berekende bedrag (via de bestaande `PricingService`-breakdown). Geen Mollie-call.
-- **Nieuwe service-methode** `RecordEnrollmentCashPaymentAsync` op `IPaymentService`,
-  dezelfde laag als de camp-variant (`RecordCampCashPaymentAsync`). `EnrollmentService`
-  roept ze aan bij `PaymentChoice="manual"`.
-- **Admin markeert betaald**: nieuwe `MarkEnrollmentCashPaidAsync(enrollmentId,
-  organizationId)` (analoog aan `MarkCampCashPaidAsync`): zet `Payment.Status = Paid` en
-  `Enrollment.Status = Confirmed`. Nieuw `IEndpoint` onder de bestaande
-  enrollments/payments-endpoints, `.RequireAuthorization()`, filtert op `organizationId`.
-- **Repository**: methode om de laatste openstaande cash-`Payment` per `EnrollmentId` te
-  vinden (analoog aan `GetLatestPendingCashByCampEnrollmentIdAsync`).
-- **Frontend admin**: op de inschrijvingenlijst van een reeks een "Markeer als betaald"-
-  actie voor `PendingPayment`-inschrijvingen met een cash-betaling. (Minimale UI; zelfde
-  interactiepatroon als bij kampen.)
+**5b. Server-side afdwinging.** In `ConfirmAsync` én `PickAlternativeAsync` (beide laden
+`series`): weiger met een gelokaliseerde `Result.Failure` als de gekozen methode niet is
+toegestaan (`Online` terwijl `!AcceptOnlinePayment`, of `Cash` terwijl
+`!AcceptManualPayment`). Zo is de gating niet te omzeilen door een handmatige request.
+
+**5c. Cash → camp-stijl (gedragswijziging).** Vandaag zet het cash-pad de enrollment
+meteen op `Confirmed` met een `Payment{ Status = Paid }`. Dit wordt:
+- `Payment{ Method = Cash, Status = Pending }` (i.p.v. `Paid`, geen `PaidAt`).
+- `ConfirmEnrollmentStatuses(assignment, EnrollmentStatus.PendingPayment)` (i.p.v.
+  `Confirmed`).
+- `TryFinalizeSeriesAsync` wordt in het cash-pad **niet** meer aangeroepen (de reeks is
+  pas rond zodra betaald). Dezelfde omzetting geldt in het cash-pad van
+  `PickAlternativeAsync`.
+
+**5d. Admin markeert betaald.** Nieuw:
+- `IPaymentRepository.GetLatestPendingCashByEnrollmentIdAsync(Guid enrollmentId,
+  Guid organizationId, CancellationToken ct)` — analoog aan de bestaande
+  `GetLatestPendingCashByCampEnrollmentIdAsync`.
+- `IPaymentService.MarkEnrollmentCashPaidAsync(Guid enrollmentId, Guid organizationId,
+  CancellationToken ct)` — analoog aan `MarkCampCashPaidAsync`: zet de openstaande
+  cash-`Payment` op `Paid` (+`PaidAt`) en de enrollment(s) op `Confirmed`, roept daarna
+  `TryFinalizeSeriesAsync` aan (logica hiervoor leeft in `StudentConfirmationService`;
+  hergebruik via een bestaande finalize-helper of dupliceer de reeks-finalisatie in de
+  payment-laag — kies de laag waar `TryFinalizeSeriesAsync` al bereikbaar is).
+- Nieuw `IEndpoint` `MarkEnrollmentCashPaidEndpoint`
+  (`POST /enrollments/{enrollmentId:guid}/mark-cash-paid`), `.RequireAuthorization(...)`
+  met rol `Admin`/`Trainer`, `ctx.GetOrganizationId()`.
+- **Admin-UI**: op de reeksdetailpagina (`app/(dashboard)/dashboard/lessons/[id]/page.tsx`,
+  inschrijvingenlijst) een "Markeer als betaald"-actie voor inschrijvingen die
+  `PendingPayment` zijn met een openstaande cash-betaling — zelfde interactiepatroon als
+  bij kampen. Nieuwe api-call in `lib/api/`.
+
+> **Edge case:** een reeks aangemaakt met `AcceptOnlinePayment=true` waarna de org Mollie
+> ontkoppelt. Online blijft dan aangeboden en de Mollie-call faalt (net als vandaag). Dit
+> valt buiten scope; de bestaande foutafhandeling in `CreatePaymentForEnrollmentAsync`
+> vangt het af.
 
 ## 6. E-mail / bevestiging
 
-- **Enkel handmatig / gekozen overschrijving**: de bevestigingsmail vermeldt de
-  betaalinstructies (bedrag + "via overschrijving; je plek is bevestigd zodra de betaling
-  is verwerkt"). Tokens toevoegen aan de betrokken MJML-template; `MjmlTemplateRenderer`
+- **Cash gekozen** (nu `PendingPayment`): de bevestigingsmail vermeldt de betaalinstructies
+  (bedrag + "via overschrijving; je plek is definitief zodra de club je betaling bevestigt").
+  Bestaande MJML-template uitbreiden met de nodige tokens; `MjmlTemplateRenderer`
   ongewijzigd van vorm.
-- **Online**: bestaand gedrag (checkout-redirect of betaallink volgens `PaymentMode`).
+- **Cash bevestigd door admin** (`MarkEnrollmentCashPaidAsync`): stuur dezelfde
+  bevestigingsmail als het online-betaalde pad (plek definitief), analoog aan wat
+  `MarkCampCashPaidAsync` doet.
+- **Online**: bestaand gedrag (checkout-redirect + webhook-bevestiging).
 
 ## 7. Tests
 
 - **Unit** — `CreateLessonSerieRequestValidator`/`UpdateLessonSerieRequestValidator`:
-  minstens-één-regels. `LessonSerieService`: weigert `AcceptOnlinePayment` zonder
-  Mollie-koppeling. `EnrollmentService`: weigert niet-toegelaten `EnrollmentType` en
-  `PaymentChoice`; maakt bij `manual` een pending cash-`Payment`. `PaymentService`:
-  `MarkEnrollmentCashPaidAsync` zet enrollment op `Confirmed`.
+  minstens-één-regels (solo/groep én online/handmatig). `LessonSerieService`: weigert
+  `AcceptOnlinePayment` zonder Mollie-koppeling. `EnrollmentService`: weigert een
+  `EnrollmentType` die de reeks niet toelaat. `StudentConfirmationService`: weigert een
+  betaalmethode die de reeks niet toelaat; cash-pad zet enrollment op `PendingPayment` met
+  een `Payment{ Status = Pending }` (niet `Paid`/`Confirmed`). `PaymentService`:
+  `MarkEnrollmentCashPaidAsync` zet de cash-`Payment` op `Paid` en de enrollment op
+  `Confirmed`.
 - **Reset + seed (definitieve E2E-check)**: `seed-data.json` + `seed-demo-data.py`
   bijwerken zodat het contract klopt (de vier nieuwe velden op create, minstens één
   reeks met handmatige betaling en één solo-only / groep-only reeks). Daarna
