@@ -398,13 +398,13 @@
       "groupMembers": [
         {
           "studentName": "Fien De Boer",
-          "studentEmail": "sofie.deboer+fien@gmail.com",
+          "studentEmail": null,
           "studentPhone": null,
           "dateOfBirth": "2011-04-18"
         },
         {
           "studentName": "Stan De Boer",
-          "studentEmail": "sofie.deboer+stan@gmail.com",
+          "studentEmail": null,
           "studentPhone": null,
           "dateOfBirth": "2013-08-27"
         }

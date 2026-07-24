@@ -40,7 +40,9 @@ export interface EnrollmentResponseItem {
 export interface LessonSeriesEnrollmentDto {
   id: string;
   studentName: string;
-  studentEmail: string;
+  studentEmail: string | null;
+  contactEmail: string;
+  hasOwnEmail: boolean;
   status: string;
   enrolledAt: string;
   notes: string | null;
@@ -68,7 +70,8 @@ export interface TimeSlotPreferenceRequest {
 
 export interface GroupMemberRequest {
   studentName: string;
-  studentEmail: string;
+  /** Weglaten of null = communicatie loopt via de groepsleider. */
+  studentEmail?: string | null;
   studentPhone?: string;
   /** yyyy-MM-dd — verplicht, bepaalt het tarief (volwassene/jeugd). */
   dateOfBirth: string;

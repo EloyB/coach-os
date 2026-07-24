@@ -15,7 +15,7 @@ public interface IScheduleAssignmentRepository
     /// directly via the enrollment, or as a group member. Excludes declined
     /// assignments and inactive series.
     /// </summary>
-    Task<List<ScheduleAssignment>> GetByStudentEmailAsync(
+    Task<List<ScheduleAssignment>> GetByContactEmailAsync(
         string email, CancellationToken ct = default);
 
     Task AddRangeAsync(IEnumerable<ScheduleAssignment> assignments, CancellationToken ct = default);

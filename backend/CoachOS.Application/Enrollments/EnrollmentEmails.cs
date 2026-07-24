@@ -3,31 +3,42 @@ using CoachOS.Application.Enrollments.DTOs;
 namespace CoachOS.Application.Enrollments;
 
 /// <summary>
-/// Normalisatie en uniciteitscontrole van de e-mailadressen in een inschrijvingsverzoek.
-/// De DB-index IX_Enrollments_LessonSerieId_StudentEmail is hoofdlettergevoelig; deze helper
-/// is dat bewust niet, zodat "Jan@x.be" en "jan@x.be" als hetzelfde adres gelden.
+/// Bepaalt welk contactadres bij een inschrijving hoort en of er binnen één verzoek
+/// dezelfde deelnemer twee keer staat. Adressen mogen gedeeld worden — een ouder of
+/// een vriend kan de communicatie voor meerdere deelnemers op zich nemen — dus de
+/// identiteit van een deelnemer is naam + geboortedatum, niet het e-mailadres.
 /// </summary>
 internal static class EnrollmentEmails
 {
     public static string Normalize(string email) => email.Trim().ToLowerInvariant();
 
     /// <summary>
-    /// Alle adressen in het verzoek — de hoofdinschrijver plus, bij een groepsinschrijving,
-    /// elk groepslid — genormaliseerd en in volgorde van invoer.
+    /// Contactadres voor een groepslid: het eigen adres wanneer ingevuld, anders dat
+    /// van de leider. Voor de leider zelf: geef <paramref name="member"/> als null mee.
     /// </summary>
-    public static List<string> CollectNormalized(SubmitEnrollmentRequest request)
+    public static string ResolveContactEmail(SubmitEnrollmentRequest request, GroupMemberDto? member)
+        => string.IsNullOrWhiteSpace(member?.StudentEmail)
+            ? Normalize(request.StudentEmail)
+            : Normalize(member.StudentEmail);
+
+    /// <summary>
+    /// Staat dezelfde persoon (genormaliseerde naam + geboortedatum) meer dan één keer
+    /// in het verzoek? Vangt de typfout in het formulier zelf af, zonder server-lookup
+    /// en dus zonder te lekken wie er al ingeschreven staat.
+    /// </summary>
+    public static bool HasDuplicateParticipants(SubmitEnrollmentRequest request)
     {
-        List<string> emails = [Normalize(request.StudentEmail)];
+        List<(string Name, string Dob)> people =
+            [(NormalizeName(request.StudentName), request.DateOfBirth ?? string.Empty)];
 
         if (request.EnrollmentType == "group" && request.GroupMembers is not null)
-            emails.AddRange(request.GroupMembers.Select(m => Normalize(m.StudentEmail)));
+        {
+            people.AddRange(request.GroupMembers.Select(m =>
+                (NormalizeName(m.StudentName), m.DateOfBirth ?? string.Empty)));
+        }
 
-        return emails;
+        return people.Distinct().Count() != people.Count;
     }
 
-    public static bool AreUnique(SubmitEnrollmentRequest request)
-    {
-        List<string> emails = CollectNormalized(request);
-        return emails.Distinct().Count() == emails.Count;
-    }
+    public static string NormalizeName(string name) => name.Trim().ToLowerInvariant();
 }

@@ -84,7 +84,7 @@ public class PlanningExportService(
             .OrderBy(e => e.StudentName)
             .Select(e => new EnrollmentRow(
                 e.StudentName,
-                e.StudentEmail,
+                e.ContactEmail,
                 e.StudentPhone,
                 EnrollmentStatusLabel(e.Status),
                 e.EnrolledAt,
@@ -145,11 +145,11 @@ public class PlanningExportService(
             if (a.EnrollmentGroupId.HasValue && groupsById.TryGetValue(a.EnrollmentGroupId.Value, out EnrollmentGroup? group))
             {
                 foreach (Enrollment member in group.Members)
-                    players.Add(new AssignedPlayer(member.StudentName, member.StudentEmail, group.Name, statusLabel));
+                    players.Add(new AssignedPlayer(member.StudentName, member.ContactEmail, group.Name, statusLabel));
             }
             else if (a.EnrollmentId.HasValue && enrollmentsById.TryGetValue(a.EnrollmentId.Value, out Enrollment? enrollment))
             {
-                players.Add(new AssignedPlayer(enrollment.StudentName, enrollment.StudentEmail, null, statusLabel));
+                players.Add(new AssignedPlayer(enrollment.StudentName, enrollment.ContactEmail, null, statusLabel));
             }
         }
 

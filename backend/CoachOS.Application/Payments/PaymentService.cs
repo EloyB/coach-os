@@ -441,10 +441,13 @@ public class PaymentService(
         try
         {
             await emailService.SendEnrollmentConfirmationAsync(
-                enrollment.StudentEmail,
+                enrollment.ContactEmail,
                 enrollment.StudentName,
                 series?.Name ?? string.Empty,
                 trainerName: string.Empty,
+                // toConfirm = alle leden van de groep (of de solo-inschrijving); zo ziet
+                // de betalende contactpersoon voor wie de bevestiging geldt.
+                participantNames: toConfirm.Select(e => e.StudentName).ToList(),
                 ct);
         }
         catch (Exception ex)

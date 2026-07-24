@@ -294,13 +294,16 @@ public class EnrollmentServiceTests
             .Setup(r => r.GetBySeriesIdReadOnlyAsync(SeriesId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((EnrollmentForm?)null);
         _enrollmentRepo
-            .Setup(r => r.IsDuplicateAsync(SeriesId, "piet@test.be", It.IsAny<CancellationToken>()))
+            .Setup(r => r.IsDuplicateParticipantAsync(
+                SeriesId, "piet@test.be", It.IsAny<string>(),
+                It.IsAny<DateOnly?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
         SubmitEnrollmentRequest request = new()
         {
             StudentName = "Piet",
             StudentEmail = "piet@test.be",
+            DateOfBirth = "1990-05-12",
         };
 
         var result = await _service.SubmitEnrollmentAsync(SeriesId, request);
@@ -320,7 +323,9 @@ public class EnrollmentServiceTests
             .Setup(r => r.GetBySeriesIdReadOnlyAsync(SeriesId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((EnrollmentForm?)null);
         _enrollmentRepo
-            .Setup(r => r.IsDuplicateAsync(SeriesId, "anna@test.be", It.IsAny<CancellationToken>()))
+            .Setup(r => r.IsDuplicateParticipantAsync(
+                SeriesId, It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<DateOnly?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
         _userLookup
             .Setup(u => u.GetUserInfoByIdAsync(TrainerId, It.IsAny<CancellationToken>()))
@@ -330,6 +335,7 @@ public class EnrollmentServiceTests
         {
             StudentName = "Anna",
             StudentEmail = "anna@test.be",
+            DateOfBirth = "1990-05-12",
         };
 
         var result = await _service.SubmitEnrollmentAsync(SeriesId, request);
@@ -476,7 +482,9 @@ public class EnrollmentServiceTests
         var series = BuildActiveSeries();
         SetupSuccessfulEnrollment(series, "leader@test.be");
         _enrollmentRepo
-            .Setup(r => r.IsDuplicateAsync(SeriesId, "a@test.be", It.IsAny<CancellationToken>()))
+            .Setup(r => r.IsDuplicateParticipantAsync(
+                SeriesId, "a@test.be", It.IsAny<string>(),
+                It.IsAny<DateOnly?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
         SubmitEnrollmentRequest request = new()
@@ -486,60 +494,7 @@ public class EnrollmentServiceTests
             EnrollmentType = "group",
             GroupMembers = new()
             {
-                new() { StudentName = "Member A", StudentEmail = "a@test.be" },
-            },
-        };
-
-        var result = await _service.SubmitEnrollmentAsync(SeriesId, request);
-
-        result.IsSuccess.Should().BeFalse();
-        result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.Conflict);
-        _enrollmentRepo.Verify(
-            r => r.AddAsync(It.IsAny<Enrollment>(), It.IsAny<CancellationToken>()),
-            Times.Never);
-    }
-
-    [Test]
-    public async Task SubmitEnrollment_GroupEnrollment_ReturnsConflict_WhenMemberEmailEqualsLeader()
-    {
-        var series = BuildActiveSeries();
-        SetupSuccessfulEnrollment(series, "leader@test.be");
-
-        SubmitEnrollmentRequest request = new()
-        {
-            StudentName = "Leader",
-            StudentEmail = "leader@test.be",
-            EnrollmentType = "group",
-            GroupMembers = new()
-            {
-                new() { StudentName = "Member A", StudentEmail = "LEADER@test.be" },
-            },
-        };
-
-        var result = await _service.SubmitEnrollmentAsync(SeriesId, request);
-
-        result.IsSuccess.Should().BeFalse();
-        result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.Conflict);
-        _enrollmentRepo.Verify(
-            r => r.AddAsync(It.IsAny<Enrollment>(), It.IsAny<CancellationToken>()),
-            Times.Never);
-    }
-
-    [Test]
-    public async Task SubmitEnrollment_GroupEnrollment_ReturnsConflict_WhenMembersShareEmail()
-    {
-        var series = BuildActiveSeries();
-        SetupSuccessfulEnrollment(series, "leader@test.be");
-
-        SubmitEnrollmentRequest request = new()
-        {
-            StudentName = "Leader",
-            StudentEmail = "leader@test.be",
-            EnrollmentType = "group",
-            GroupMembers = new()
-            {
-                new() { StudentName = "Member A", StudentEmail = "same@test.be" },
-                new() { StudentName = "Member B", StudentEmail = "same@test.be" },
+                new() { StudentName = "Member A", StudentEmail = "a@test.be", DateOfBirth = "2012-05-12" },
             },
         };
 
@@ -746,7 +701,9 @@ public class EnrollmentServiceTests
             .Setup(r => r.GetBySeriesIdReadOnlyAsync(SeriesId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((EnrollmentForm?)null);
         _enrollmentRepo
-            .Setup(r => r.IsDuplicateAsync(SeriesId, email, It.IsAny<CancellationToken>()))
+            .Setup(r => r.IsDuplicateParticipantAsync(
+                SeriesId, It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<DateOnly?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
         _enrollmentGroupRepo
             .Setup(r => r.CountBySeriesAsync(SeriesId, It.IsAny<Guid>(), It.IsAny<CancellationToken>()))

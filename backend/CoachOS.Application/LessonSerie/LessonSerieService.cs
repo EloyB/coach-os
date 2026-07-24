@@ -322,10 +322,12 @@ public class LessonSerieService(
                     or Domain.Enums.EnrollmentStatus.PendingPayment)
                 .ToList();
 
-            foreach (Domain.Entities.Enrollment enrollment in activeEnrollments)
+            // Eén mail per contactadres: een ouder met drie kinderen in de reeks hoort
+            // één annuleringsbericht te krijgen, geen drie.
+            foreach (Domain.Entities.Enrollment enrollment in activeEnrollments.DistinctBy(e => e.ContactEmail))
             {
                 _ = emailService.SendLessonCancellationAsync(
-                    enrollment.StudentEmail,
+                    enrollment.ContactEmail,
                     enrollment.StudentName,
                     series.Name,
                     lesson.Date,

@@ -399,6 +399,7 @@ public class PaymentServiceTests
             OrganizationId = OrgId,
             LessonSerieId = SeriesId,
             StudentEmail = "student@example.com",
+            ContactEmail = "student@example.com",
             StudentName = "Test Student",
             Status = EnrollmentStatus.PendingPayment,
         };
@@ -421,7 +422,8 @@ public class PaymentServiceTests
         payment.PaidAt.Should().NotBeNull();
         enrollment.Status.Should().Be(EnrollmentStatus.Confirmed);
         _email.Verify(e => e.SendEnrollmentConfirmationAsync(
-            "student@example.com", "Test Student", "Voorjaar 2026", string.Empty, It.IsAny<CancellationToken>()),
+            "student@example.com", "Test Student", "Voorjaar 2026", string.Empty,
+            It.IsAny<IReadOnlyList<string>?>(), It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -441,6 +443,7 @@ public class PaymentServiceTests
             OrganizationId = OrgId,
             LessonSerieId = SeriesId,
             StudentEmail = "leider@example.com",
+            ContactEmail = "leider@example.com",
             StudentName = "De Leider",
             Status = EnrollmentStatus.PendingPayment,
             EnrollmentGroupId = groupId,
@@ -451,6 +454,7 @@ public class PaymentServiceTests
             OrganizationId = OrgId,
             LessonSerieId = SeriesId,
             StudentEmail = "lid@example.com",
+            ContactEmail = "lid@example.com",
             StudentName = "Het Lid",
             Status = EnrollmentStatus.PendingPayment,
             EnrollmentGroupId = groupId,

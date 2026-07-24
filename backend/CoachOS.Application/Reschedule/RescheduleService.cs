@@ -59,7 +59,7 @@ public class RescheduleService(
                 Id = r.Id,
                 EnrollmentId = r.EnrollmentId ?? r.EnrollmentGroupId ?? Guid.Empty,
                 StudentName = r.Enrollment?.StudentName ?? "Groep",
-                StudentEmail = r.Enrollment?.StudentEmail ?? string.Empty,
+                StudentEmail = r.Enrollment?.ContactEmail ?? string.Empty,
                 ScheduleAssignmentId = r.ScheduleAssignmentId,
                 CurrentSlotDay = entry is not null ? DayNames[(int)entry.DayOfWeek] : string.Empty,
                 CurrentSlotTime = entry is not null ? entry.StartTime.ToString("HH:mm") : string.Empty,

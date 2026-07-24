@@ -1448,9 +1448,11 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
 function EnrollmentRow({
   enrollment,
   seriesId,
+  isPossibleDuplicate,
 }: {
   enrollment: LessonSeriesEnrollmentDto;
   seriesId: string;
+  isPossibleDuplicate: boolean;
 }) {
   const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState(false);
@@ -1485,10 +1487,17 @@ function EnrollmentRow({
             {enrollment.studentName}
           </p>
           <p className="text-xs text-gray-400 truncate">
-            {enrollment.studentEmail}
+            {enrollment.hasOwnEmail
+              ? enrollment.studentEmail
+              : `via ${enrollment.contactEmail}`}
           </p>
         </div>
         <div className="flex items-center gap-3 ml-4">
+          {isPossibleDuplicate && (
+            <Badge className="border-0 text-xs bg-amber-100 text-amber-700">
+              mogelijk dubbel
+            </Badge>
+          )}
           {enrollment.categoryLabel && (
             <Badge
               className={`border-0 text-xs ${
@@ -1589,6 +1598,22 @@ function EnrollmentsSection({ seriesId }: { seriesId: string }) {
     (e) => e.status === "Confirmed" || e.status === "Pending",
   );
 
+  // Zelfde persoon (contactadres + genormaliseerde naam) meer dan één keer =
+  // mogelijk een dubbele inschrijving. Client-side afgeleid uit de lijst die er al is.
+  const duplicateIds = new Set<string>(
+    (() => {
+      const keyed = enrollments.map((e) => ({
+        id: e.id,
+        key: `${e.contactEmail}|${e.studentName.trim().toLowerCase()}`,
+      }));
+      return keyed
+        .filter(
+          (row) => keyed.filter((other) => other.key === row.key).length > 1,
+        )
+        .map((row) => row.id);
+    })(),
+  );
+
   return (
     <div
       id="enrollments"
@@ -1639,6 +1664,7 @@ function EnrollmentsSection({ seriesId }: { seriesId: string }) {
               key={enrollment.id}
               enrollment={enrollment}
               seriesId={seriesId}
+              isPossibleDuplicate={duplicateIds.has(enrollment.id)}
             />
           ))}
         </div>

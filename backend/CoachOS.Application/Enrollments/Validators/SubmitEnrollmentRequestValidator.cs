@@ -54,11 +54,10 @@ public class SubmitEnrollmentRequestValidator : AbstractValidator<SubmitEnrollme
 
         When(x => x.EnrollmentType == "group", () =>
         {
-            // De unique index IX_Enrollments_LessonSerieId_StudentEmail laat hetzelfde
-            // adres geen twee keer toe binnen één reeks. Vang dat hier af i.p.v. bij de insert.
+            // Adressen mogen gedeeld worden; dezelfde persoon twee keer niet.
             RuleFor(x => x)
-                .Must(EnrollmentEmails.AreUnique)
-                .WithMessage("Elk groepslid moet een uniek e-mailadres hebben");
+                .Must(request => !EnrollmentEmails.HasDuplicateParticipants(request))
+                .WithMessage("Deze deelnemer staat al in de groep.");
 
             RuleFor(x => x.GroupMembers)
                 .NotNull().WithMessage("Groepsleden zijn verplicht bij groepsinschrijving")
@@ -73,9 +72,9 @@ public class SubmitEnrollmentRequestValidator : AbstractValidator<SubmitEnrollme
                     .Must(InputSanitizer.IsFreeOfHtml).WithMessage("Naam mag geen HTML of scripttekens bevatten");
 
                 m.RuleFor(v => v.StudentEmail)
-                    .NotEmpty().WithMessage("E-mailadres is verplicht")
+                    .EmailAddress().WithMessage("Ongeldig e-mailadres")
                     .MaximumLength(254).WithMessage("E-mailadres is te lang")
-                    .EmailAddress().WithMessage("Ongeldig e-mailadres");
+                    .When(v => !string.IsNullOrWhiteSpace(v.StudentEmail));
 
                 m.RuleFor(v => v.StudentPhone)
                     .MaximumLength(30).WithMessage("Telefoonnummer is te lang")

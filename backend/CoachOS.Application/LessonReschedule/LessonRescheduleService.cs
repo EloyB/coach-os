@@ -137,7 +137,7 @@ public class LessonRescheduleService(
             foreach (Enrollment e in enrollments)
             {
                 if (e.Status is EnrollmentStatus.Pending or EnrollmentStatus.Confirmed or EnrollmentStatus.PendingPayment)
-                    recipients.Add((e.StudentEmail, e.StudentName));
+                    recipients.Add((e.ContactEmail, e.StudentName));
             }
         }
         else
@@ -151,6 +151,10 @@ public class LessonRescheduleService(
                     recipients.Add((inv.Email, inv.FirstName ?? inv.Email));
             }
         }
+
+        // Eén mail per contactadres: wie meerdere deelnemers draagt, krijgt niet
+        // per deelnemer een apart verzet-bericht.
+        recipients = recipients.DistinctBy(r => r.Email).ToList();
 
         int sent = 0;
         foreach ((string email, string name) in recipients)

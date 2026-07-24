@@ -189,7 +189,11 @@
     "member_email": "E-mailadres",
     "form_date_of_birth": "Geboortedatum",
     "form_date_of_birth_hint": "Bepaalt het tarief (volwassene of jeugd)",
-    "form_member_date_of_birth": "Geboortedatum"
+    "form_member_date_of_birth": "Geboortedatum",
+    "member_has_own_email": "Dit lid heeft een eigen e-mailadres",
+    "member_contact_via_leader": "Alle communicatie loopt via {email}",
+    "group_contact_explainer": "De contactpersoon ontvangt alle e-mails en de betaallink voor de hele groep.",
+    "duplicate_participant": "Deze deelnemer staat al in de groep."
   },
   "formBuilder": {
     "title": "Inschrijfformulier",
