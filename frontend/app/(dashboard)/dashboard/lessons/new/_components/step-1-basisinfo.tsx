@@ -155,11 +155,14 @@ export function Step1Basisinfo({ defaultValues, onNext }: Step1Props) {
   const acceptManualPaymentReg = register("acceptManualPayment");
 
   // Online betalen kan sowieso nooit aangevinkt zijn zonder Mollie-koppeling.
+  // Alleen forceren zodra de status écht geladen is én niet-verbonden — anders
+  // zou de laad-toestand (mollieConnected=false) een verbonden org onterecht
+  // uitvinken (bv. bij terug-navigatie nadat de query-cache is verlopen).
   useEffect(() => {
-    if (!mollieConnected) {
+    if (mollie && !mollieConnected) {
       setValue("acceptOnlinePayment", false);
     }
-  }, [mollieConnected, setValue]);
+  }, [mollie, mollieConnected, setValue]);
 
   return (
     <form onSubmit={handleSubmit(onNext)}>
