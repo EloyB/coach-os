@@ -243,6 +243,8 @@
     "clubLoading": "Laden...",
     "noClubsFound": "Geen clubs gevonden",
     "maxRegistrations": "Max. inschrijvingen",
+    "minAge": "Min. leeftijd",
+    "maxAge": "Max. leeftijd",
     "startDate": "Startdatum",
     "endDate": "Einddatum",
     "registrationDeadline": "Inschrijfdeadline",

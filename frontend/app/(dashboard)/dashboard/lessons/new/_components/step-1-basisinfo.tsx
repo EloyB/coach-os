@@ -39,6 +39,16 @@ const schema = z
       .number({ message: "Maximum inschrijvingen is verplicht" })
       .min(1, "Minimaal 1 inschrijving toestaan")
       .max(500, "Maximum is 500 inschrijvingen"),
+    minAge: z
+      .number({ message: "Minimumleeftijd is verplicht" })
+      .int("Gebruik een heel getal")
+      .min(0, "Minimaal 0")
+      .max(120, "Maximaal 120"),
+    maxAge: z
+      .number({ message: "Maximumleeftijd is verplicht" })
+      .int("Gebruik een heel getal")
+      .min(0, "Minimaal 0")
+      .max(120, "Maximaal 120"),
     registrationDeadline: z.string().min(1, "Inschrijfdeadline is verplicht"),
   })
   .refine((d) => !d.startDate || !d.endDate || d.endDate >= d.startDate, {
@@ -54,7 +64,11 @@ const schema = z
       message: "Inschrijfdeadline moet voor of op de startdatum zijn",
       path: ["registrationDeadline"],
     },
-  );
+  )
+  .refine((d) => d.minAge <= d.maxAge, {
+    message: "Minimumleeftijd mag niet groter zijn dan de maximumleeftijd",
+    path: ["maxAge"],
+  });
 
 type FormValues = z.infer<typeof schema>;
 
@@ -94,7 +108,12 @@ export function Step1Basisinfo({ defaultValues, onNext }: Step1Props) {
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     mode: "onBlur",
-    defaultValues: defaultValues ?? { price: 0, maxRegistrations: 0 },
+    defaultValues: defaultValues ?? {
+      price: 0,
+      maxRegistrations: 0,
+      minAge: 3,
+      maxAge: 99,
+    },
   });
 
   return (
@@ -142,6 +161,32 @@ export function Step1Basisinfo({ defaultValues, onNext }: Step1Props) {
             className={inputClass}
           />
           <FieldError message={errors.maxRegistrations?.message} />
+        </div>
+
+        {/* Leeftijdsgrens */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label required>{t("minAge")}</Label>
+            <input
+              {...register("minAge", { valueAsNumber: true })}
+              type="number"
+              min={0}
+              max={120}
+              className={inputClass}
+            />
+            <FieldError message={errors.minAge?.message} />
+          </div>
+          <div>
+            <Label required>{t("maxAge")}</Label>
+            <input
+              {...register("maxAge", { valueAsNumber: true })}
+              type="number"
+              min={0}
+              max={120}
+              className={inputClass}
+            />
+            <FieldError message={errors.maxAge?.message} />
+          </div>
         </div>
 
         {/* Tennisclub */}

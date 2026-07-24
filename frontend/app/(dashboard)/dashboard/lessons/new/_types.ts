@@ -28,6 +28,8 @@ export type Step1Data = {
   name: string;
   price: number;
   maxRegistrations: number;
+  minAge: number;
+  maxAge: number;
   tennisClubId: string;
   startDate: string;
   endDate: string;

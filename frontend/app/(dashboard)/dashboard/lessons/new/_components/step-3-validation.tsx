@@ -153,6 +153,8 @@ export function Step3Validation({
       name: step1Data.name,
       price: step1Data.price,
       maxRegistrations: step1Data.maxRegistrations,
+      minAge: step1Data.minAge,
+      maxAge: step1Data.maxAge,
       tennisClubId: step1Data.tennisClubId,
       startDate: step1Data.startDate,
       endDate: step1Data.endDate,

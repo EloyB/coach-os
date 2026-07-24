@@ -185,6 +185,8 @@ export interface CreateLessonSeriesWizardRequest {
   name: string;
   price: number;
   maxRegistrations: number;
+  minAge: number;
+  maxAge: number;
   tennisClubId: string;
   startDate: string;
   endDate: string;
