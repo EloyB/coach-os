@@ -12,6 +12,7 @@ public interface ILessonSerieService
     Task<Result<LessonSerieDto>> UpdateAsync(Guid id, Guid organizationId, UpdateLessonSerieRequest request, CancellationToken ct = default);
     Task<Result> DeleteAsync(Guid id, Guid organizationId, CancellationToken ct = default);
     Task<Result<Guid>> AddLessonAsync(Guid seriesId, Guid organizationId, CreateLessonRequest request, CancellationToken ct = default);
+    Task<Result<Guid>> AddWeeklyTemplateEntryAsync(Guid seriesId, Guid organizationId, AddWeeklyTemplateEntryRequest request, CancellationToken ct = default);
     Task<Result<LessonDto>> UpdateLessonAsync(Guid seriesId, Guid lessonId, Guid organizationId, UpdateLessonRequest request, CancellationToken ct = default);
     Task<Result> DeleteLessonAsync(Guid seriesId, Guid lessonId, Guid organizationId, CancellationToken ct = default);
 }

@@ -115,6 +115,30 @@ export async function createLesson(seriesId: string, request: CreateLessonReques
   return data;
 }
 
+export interface AddWeeklyTemplateEntryRequest {
+  /** 0 = maandag … 6 = zondag. */
+  dayOfWeek: number;
+  startTime: string;
+  /** Verplicht in de backend (formaat HH:mm). */
+  endTime: string;
+  trainerId?: string | null;
+  courtName?: string;
+  maxStudents: number;
+  level?: number | null;
+}
+
+/**
+ * Voegt een wekelijks terugkerend weekslot toe aan een reeks. De backend maakt de weekindeling-entry
+ * (zichtbaar in de planning) én genereert de concrete lesmomenten vanaf vandaag tot de einddatum.
+ */
+export async function addWeeklyTemplateEntry(
+  seriesId: string,
+  request: AddWeeklyTemplateEntryRequest,
+): Promise<string> {
+  const { data } = await apiClient.post<string>(`/lessonseries/${seriesId}/weekly-template`, request);
+  return data;
+}
+
 export interface UpdateLessonRequest {
   trainerId?: string | null;
   date?: string;

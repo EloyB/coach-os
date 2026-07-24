@@ -1121,4 +1121,114 @@ public class LessonSerieServiceTests
         result.Value!.IsCancelled.Should().BeFalse();
         result.Value.CancellationReason.Should().BeNull();
     }
+
+    // ── AddWeeklyTemplateEntryAsync ───────────────────────────────────────────
+
+    [Test]
+    public async Task AddWeeklyTemplateEntryAsync_AddsEntryAndExpandsFutureLessons()
+    {
+        // Reeks volledig in de toekomst zodat "vanaf vandaag" de volledige periode dekt.
+        LessonSerie series = BuildSeries(templateEntries: 0);
+        DateOnly start = new(2099, 1, 5);
+        DateOnly end = new(2099, 3, 1);
+        series.StartDate = start;
+        series.EndDate = end;
+        _lessonSeriesRepo
+            .Setup(r => r.GetByIdAsync(series.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+
+        AddWeeklyTemplateEntryRequest request = new()
+        {
+            DayOfWeek = 0,
+            StartTime = "20:00",
+            EndTime = "21:00",
+            CourtName = "Baan 1",
+            MaxStudents = 4,
+        };
+
+        Result<Guid> result = await _service.AddWeeklyTemplateEntryAsync(series.Id, OrgId, request);
+
+        result.IsSuccess.Should().BeTrue();
+        series.WeeklyTemplate.Should().HaveCount(1);
+        series.WeeklyTemplate.Single().DayOfWeek.Should().Be(0);
+
+        IReadOnlyList<DateOnly> expectedDates = WeeklyLessonExpander.MatchingDates(0, start, end);
+        expectedDates.Should().NotBeEmpty();
+        series.Lessons.Select(l => l.Date).Should().BeEquivalentTo(expectedDates);
+        // Elke gegenereerde les valt op maandag (app-dag 0) en erft de slot-gegevens.
+        series.Lessons.Should().OnlyContain(l => ((int)l.Date.DayOfWeek + 6) % 7 == 0 && l.CourtName == "Baan 1");
+        _lessonSeriesRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task AddWeeklyTemplateEntryAsync_ReturnsNotFound_WhenSeriesMissing()
+    {
+        _lessonSeriesRepo
+            .Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((LessonSerie?)null);
+
+        Result<Guid> result = await _service.AddWeeklyTemplateEntryAsync(
+            Guid.NewGuid(), OrgId,
+            new AddWeeklyTemplateEntryRequest { DayOfWeek = 0, StartTime = "20:00", EndTime = "21:00", MaxStudents = 4 });
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.NotFound);
+    }
+
+    [Test]
+    public async Task AddWeeklyTemplateEntryAsync_ReturnsGuidance_WhenParallelSlotWithoutCourtCollides()
+    {
+        LessonSerie series = BuildSeries(templateEntries: 0);
+        series.StartDate = new DateOnly(2099, 1, 5);
+        series.EndDate = new DateOnly(2099, 3, 1);
+        series.WeeklyTemplate.Add(new WeeklyTemplateEntry
+        {
+            Id = Guid.NewGuid(),
+            LessonSerieId = series.Id,
+            DayOfWeek = 0,
+            StartTime = new TimeOnly(20, 0),
+            EndTime = new TimeOnly(21, 0),
+            MaxStudents = 4,
+        });
+        _lessonSeriesRepo
+            .Setup(r => r.GetByIdAsync(series.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+
+        Result<Guid> result = await _service.AddWeeklyTemplateEntryAsync(
+            series.Id, OrgId,
+            new AddWeeklyTemplateEntryRequest { DayOfWeek = 0, StartTime = "20:00", EndTime = "21:00", MaxStudents = 4 });
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Message.Should().Contain("baannaam");
+        _lessonSeriesRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task AddWeeklyTemplateEntryAsync_Succeeds_WhenSameTimeDifferentCourt()
+    {
+        LessonSerie series = BuildSeries(templateEntries: 0);
+        series.StartDate = new DateOnly(2099, 1, 5);
+        series.EndDate = new DateOnly(2099, 1, 12);
+        series.WeeklyTemplate.Add(new WeeklyTemplateEntry
+        {
+            Id = Guid.NewGuid(),
+            LessonSerieId = series.Id,
+            DayOfWeek = 0,
+            StartTime = new TimeOnly(20, 0),
+            EndTime = new TimeOnly(21, 0),
+            CourtName = "Baan 1",
+            MaxStudents = 4,
+        });
+        _lessonSeriesRepo
+            .Setup(r => r.GetByIdAsync(series.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+
+        Result<Guid> result = await _service.AddWeeklyTemplateEntryAsync(
+            series.Id, OrgId,
+            new AddWeeklyTemplateEntryRequest { DayOfWeek = 0, StartTime = "20:00", EndTime = "21:00", CourtName = "Baan 2", MaxStudents = 4 });
+
+        result.IsSuccess.Should().BeTrue();
+        series.WeeklyTemplate.Should().HaveCount(2);
+        _lessonSeriesRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
 }

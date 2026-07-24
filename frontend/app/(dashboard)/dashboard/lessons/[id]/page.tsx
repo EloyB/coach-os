@@ -54,7 +54,7 @@ import {
   updateLessonSeries,
   deleteLessonSeries,
   exportSeriePlanning,
-  createLesson,
+  addWeeklyTemplateEntry,
   LessonDto,
 } from "@/lib/api/lessonSeries";
 import { downloadBlob } from "@/lib/download";
@@ -753,43 +753,49 @@ function EditLessonDialog({
   );
 }
 
-function AddLessonDialog({
+const WEEKDAY_NAMES = [
+  "Maandag",
+  "Dinsdag",
+  "Woensdag",
+  "Donderdag",
+  "Vrijdag",
+  "Zaterdag",
+  "Zondag",
+];
+
+function AddWeekSlotDialog({
   seriesId,
   trainers,
-  defaultDate,
   onClose,
   onSaved,
 }: {
   seriesId: string;
   trainers: TrainerDto[];
-  defaultDate: string;
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const [date, setDate] = useState(defaultDate);
+  const [dayOfWeek, setDayOfWeek] = useState(0);
   const [trainerId, setTrainerId] = useState("");
   const [courtName, setCourtName] = useState("");
   const [startTime, setStartTime] = useState("18:00");
   const [endTime, setEndTime] = useState("19:00");
   const [maxStudents, setMaxStudents] = useState(4);
-  const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const isValid = date !== "" && startTime !== "" && endTime < "24:00" && endTime > startTime;
+  const isValid = startTime !== "" && endTime < "24:00" && endTime > startTime;
 
   async function handleSave() {
     setSaving(true);
     try {
-      await createLesson(seriesId, {
-        date,
+      await addWeeklyTemplateEntry(seriesId, {
+        dayOfWeek,
         startTime,
         endTime,
         trainerId: trainerId || null,
         courtName: courtName.trim() || undefined,
         maxStudents,
-        notes: notes.trim() || undefined,
       });
-      toast.success("Lesmoment toegevoegd");
+      toast.success("Weekslot toegevoegd");
       onSaved();
     } catch {
       // Error toast wordt al getoond door de axios interceptor
@@ -802,15 +808,30 @@ function AddLessonDialog({
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Lesmoment toevoegen</DialogTitle>
+          <DialogTitle>Weekslot toevoegen</DialogTitle>
         </DialogHeader>
+        <p className="text-xs text-gray-500 -mt-1">
+          Dit lesmoment keert elke week terug op de gekozen dag, van vandaag tot
+          het einde van de reeks. Losse lessen beheer je op de pagina Losse
+          lessen.
+        </p>
 
         <div className="space-y-3">
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
-              Datum
+              Dag van de week
             </label>
-            <DatePicker value={date} onChange={setDate} />
+            <NativeSelect
+              value={String(dayOfWeek)}
+              onChange={(e) => setDayOfWeek(parseInt(e.target.value))}
+              className="w-full"
+            >
+              {WEEKDAY_NAMES.map((name, index) => (
+                <option key={index} value={index}>
+                  {name}
+                </option>
+              ))}
+            </NativeSelect>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -879,18 +900,6 @@ function AddLessonDialog({
               value={maxStudents}
               onChange={(e) => setMaxStudents(parseInt(e.target.value) || 1)}
               className={inputClass}
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">
-              Notities
-            </label>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={2}
-              className={inputClass + " resize-none"}
             />
           </div>
         </div>
@@ -1019,7 +1028,7 @@ function LessonWeekView({
             className="flex items-center gap-1.5 px-3 py-1.5 mr-1 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
           >
             <Plus size={12} />
-            Lesmoment toevoegen
+            Weekslot toevoegen
           </button>
           <span className="text-xs text-gray-500">
             Week {weekIndex + 1} van {weeks.length}
@@ -1064,12 +1073,11 @@ function LessonWeekView({
         }}
       />
 
-      {/* Add lesson dialog */}
+      {/* Add week-slot dialog */}
       {addingLesson && (
-        <AddLessonDialog
+        <AddWeekSlotDialog
           seriesId={seriesId}
           trainers={trainers}
-          defaultDate={currentWeek.startDate}
           onClose={() => setAddingLesson(false)}
           onSaved={() => {
             setAddingLesson(false);
