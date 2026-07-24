@@ -409,6 +409,8 @@ public class StudentConfirmationService(
             GroupMemberNames = memberNames,
             Status = token.Response.ToString(),
             ExpiresAt = token.ExpiresAt,
+            AcceptOnlinePayment = series.AcceptOnlinePayment,
+            AcceptManualPayment = series.AcceptManualPayment,
         });
     }
 
