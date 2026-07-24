@@ -91,6 +91,22 @@ public class StudentConfirmationService(
             ConfirmEnrollmentStatuses(assignment, EnrollmentStatus.PendingPayment);
             await paymentRepo.SaveChangesAsync(ct);
 
+            try
+            {
+                await emailService.SendEnrollmentPendingCashAsync(
+                    token.Enrollment.ContactEmail,
+                    token.Enrollment.StudentName,
+                    series.Name,
+                    cashBreakdown!.Total,
+                    ct: ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex,
+                    "Overschrijving-instructiemail mislukt voor enrollment {EnrollmentId}.",
+                    token.EnrollmentId);
+            }
+
             // Géén TryFinalizeSeriesAsync: de reeks is pas rond zodra de betaling bevestigd is.
             return Result<ConfirmResultDto>.Ok(new ConfirmResultDto { IsConfirmed = true });
         }
@@ -262,6 +278,22 @@ public class StudentConfirmationService(
 
             ConfirmEnrollmentStatuses(oldAssignment, EnrollmentStatus.PendingPayment);
             await paymentRepo.SaveChangesAsync(ct);
+
+            try
+            {
+                await emailService.SendEnrollmentPendingCashAsync(
+                    token.Enrollment.ContactEmail,
+                    token.Enrollment.StudentName,
+                    series.Name,
+                    cashBreakdown!.Total,
+                    ct: ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex,
+                    "Overschrijving-instructiemail mislukt voor enrollment {EnrollmentId}.",
+                    token.EnrollmentId);
+            }
 
             // Géén TryFinalizeSeriesAsync: de reeks is pas rond zodra de betaling bevestigd is.
             return Result<ConfirmResultDto>.Ok(new ConfirmResultDto { IsConfirmed = true });

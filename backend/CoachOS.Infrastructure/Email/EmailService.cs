@@ -69,6 +69,22 @@ public class EmailService(
             $"Inschrijving bevestigd: {seriesName}", html, ct);
     }
 
+    public async Task SendEnrollmentPendingCashAsync(
+        string studentEmail, string studentName, string seriesName, decimal amount,
+        IReadOnlyList<string>? participantNames = null, CancellationToken ct = default)
+    {
+        string html = renderer.Render("enrollment-pending-cash", new Dictionary<string, string>
+        {
+            ["studentName"] = studentName,
+            ["seriesName"] = seriesName,
+            ["amount"] = $"€ {amount.ToString("0.00", System.Globalization.CultureInfo.GetCultureInfo("nl-BE"))}",
+            ["participantsLine"] = ParticipantsLine(participantNames, "Ingeschreven"),
+            ["year"] = DateTime.UtcNow.Year.ToString(),
+        });
+        await SendAsync(studentEmail, studentName,
+            $"Plek gereserveerd: {seriesName}", html, ct);
+    }
+
     public async Task SendScheduleConfirmationAsync(
         string studentEmail, string studentName, string seriesName,
         int dayOfWeek, string startTime, string endTime, string? courtName,
