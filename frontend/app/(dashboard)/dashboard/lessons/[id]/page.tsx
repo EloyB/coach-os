@@ -83,14 +83,21 @@ import { PriceMatrixSection } from "./_components/price-matrix-section";
 
 // ─── Edit Series Form ─────────────────────────────────────────────────────────
 
-const editSchema = z.object({
-  name: z.string().min(1, "Naam is verplicht").max(200),
-  description: z.string().max(1000).optional(),
-  tennisClubId: z.string().min(1, "Tennisclub is verplicht"),
-  price: z.number().min(0),
-  registrationDeadline: z.string().optional(),
-  isActive: z.boolean(),
-});
+const editSchema = z
+  .object({
+    name: z.string().min(1, "Naam is verplicht").max(200),
+    description: z.string().max(1000).optional(),
+    tennisClubId: z.string().min(1, "Tennisclub is verplicht"),
+    price: z.number().min(0),
+    registrationDeadline: z.string().optional(),
+    isActive: z.boolean(),
+    minAge: z.number().int().min(0).max(120),
+    maxAge: z.number().int().min(0).max(120),
+  })
+  .refine((d) => d.minAge <= d.maxAge, {
+    message: "Minimumleeftijd mag niet groter zijn dan de maximumleeftijd",
+    path: ["maxAge"],
+  });
 
 type EditFormValues = z.infer<typeof editSchema>;
 
@@ -120,6 +127,8 @@ function EditSeriesForm({
         price: data.price,
         registrationDeadline: data.registrationDeadline || undefined,
         isActive: data.isActive,
+        minAge: data.minAge,
+        maxAge: data.maxAge,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
@@ -214,6 +223,34 @@ function EditSeriesForm({
                 />
               )}
             />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              Min. leeftijd
+            </label>
+            <input
+              {...register("minAge", { valueAsNumber: true })}
+              type="number"
+              min={0}
+              max={120}
+              className={inputClass}
+            />
+            <FieldError message={errors.minAge?.message} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              Max. leeftijd
+            </label>
+            <input
+              {...register("maxAge", { valueAsNumber: true })}
+              type="number"
+              min={0}
+              max={120}
+              className={inputClass}
+            />
+            <FieldError message={errors.maxAge?.message} />
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -1872,6 +1909,8 @@ export default function LessonSeriesDetailPage({
                   registrationDeadline:
                     series.registrationDeadline?.split("T")[0] ?? "",
                   isActive: series.isActive,
+                  minAge: series.minAge ?? 3,
+                  maxAge: series.maxAge ?? 99,
                 }}
                 onCancel={() => setEditing(false)}
                 onSaved={() => setEditing(false)}

@@ -14,6 +14,8 @@ export interface PublicLessonSeriesDto {
   tennisClubName: string;
   enrollmentCount: number;
   maxRegistrations: number | null;
+  minAge: number;
+  maxAge: number;
   lessons: LessonDto[];
 }
 

@@ -10,6 +10,7 @@ import {
   User,
   Users,
   Euro,
+  Cake,
   CheckCircle2,
   Copy,
   Plus,
@@ -87,6 +88,18 @@ function validateBirthDate(value: string): string | undefined {
   if (parsed < oldest) return "Controleer de geboortedatum";
 
   return undefined;
+}
+
+/** Leeftijd in hele jaren op een peildatum (yyyy-MM-dd strings). */
+function ageOn(dob: string, onDate: string): number | null {
+  if (!dob || !onDate) return null;
+  const b = new Date(dob + "T00:00:00");
+  const d = new Date(onDate + "T00:00:00");
+  if (Number.isNaN(b.getTime()) || Number.isNaN(d.getTime())) return null;
+  let age = d.getFullYear() - b.getFullYear();
+  const m = d.getMonth() - b.getMonth();
+  if (m < 0 || (m === 0 && d.getDate() < b.getDate())) age--;
+  return age;
 }
 
 function inputClass(hasError: boolean) {
@@ -234,6 +247,12 @@ export default function EnrollPage() {
       errors.email = "Ongeldig e-mailadres";
     const dobError = validateBirthDate(dateOfBirth);
     if (dobError) errors.dateOfBirth = dobError;
+    if (series) {
+      const leaderAge = ageOn(dateOfBirth, series.startDate);
+      if (leaderAge !== null && (leaderAge < series.minAge || leaderAge > series.maxAge)) {
+        errors.dateOfBirth = `Leeftijd moet tussen ${series.minAge} en ${series.maxAge} jaar zijn`;
+      }
+    }
     setBaseErrors(errors);
 
     const fErrors: Record<string, string> = {};
@@ -261,6 +280,12 @@ export default function EnrollPage() {
         }
         const memberDobError = validateBirthDate(m.dateOfBirth);
         if (memberDobError) e.dateOfBirth = memberDobError;
+        if (series) {
+          const memberAge = ageOn(m.dateOfBirth, series.startDate);
+          if (memberAge !== null && (memberAge < series.minAge || memberAge > series.maxAge)) {
+            e.dateOfBirth = `Leeftijd moet tussen ${series.minAge} en ${series.maxAge} jaar zijn`;
+          }
+        }
         if (e.name || e.email || e.dateOfBirth) mErrors[i] = e;
       });
 
@@ -534,6 +559,10 @@ export default function EnrollPage() {
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <Euro className="w-4 h-4 text-gray-400 shrink-0" />
               <span>€{series.price.toFixed(2)} per reeks</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <Cake className="w-4 h-4 text-gray-400 shrink-0" />
+              <span>Leeftijd: {series.minAge}–{series.maxAge} jaar</span>
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <Users className="w-4 h-4 text-gray-400 shrink-0" />

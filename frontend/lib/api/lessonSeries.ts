@@ -34,6 +34,8 @@ export interface LessonSeriesDto {
   lessonCount: number;
   enrolledCount: number;
   totalCapacity: number;
+  minAge: number;
+  maxAge: number;
   createdAt: string;
   lessons: LessonDto[];
 }
@@ -57,6 +59,8 @@ export interface UpdateLessonSeriesRequest {
   isActive: boolean;
   tennisClubId: string;
   registrationDeadline?: string;
+  minAge: number;
+  maxAge: number;
 }
 
 export interface CreateLessonRequest {
