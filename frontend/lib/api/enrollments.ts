@@ -128,3 +128,12 @@ export async function getLessonSeriesEnrollments(seriesId: string): Promise<Less
 export async function cancelEnrollment(seriesId: string, enrollmentId: string): Promise<void> {
   await apiClient.delete(`/lessonseries/${seriesId}/enrollments/${enrollmentId}`);
 }
+
+/**
+ * Markeert de openstaande overschrijving van een reeksinschrijving als betaald.
+ * Bevestigt de inschrijving en verstuurt de bevestigingsmail. Faalt met NotFound
+ * als er geen openstaande cash-betaling is voor deze inschrijving.
+ */
+export async function markEnrollmentCashPaid(enrollmentId: string): Promise<void> {
+  await apiClient.post(`/enrollments/${enrollmentId}/mark-cash-paid`);
+}

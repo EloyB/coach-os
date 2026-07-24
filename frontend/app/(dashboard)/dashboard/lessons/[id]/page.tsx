@@ -63,6 +63,7 @@ import {
   getEnrollmentForm,
   saveEnrollmentForm,
   cancelEnrollment,
+  markEnrollmentCashPaid,
 } from "@/lib/api/enrollments";
 import type {
   LessonSeriesEnrollmentDto,
@@ -1592,8 +1593,10 @@ function EnrollmentRow({
   const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [markingPaid, setMarkingPaid] = useState(false);
   const hasResponses = enrollment.formResponses.length > 0;
   const isCancelled = enrollment.status === "Cancelled";
+  const isPendingPayment = enrollment.status === "PendingPayment";
 
   async function handleCancelEnrollment() {
     setCancelling(true);
@@ -1606,6 +1609,21 @@ function EnrollmentRow({
       // Error toast wordt al getoond door de axios interceptor
     } finally {
       setCancelling(false);
+    }
+  }
+
+  async function handleMarkCashPaid(e: React.MouseEvent) {
+    e.stopPropagation();
+    setMarkingPaid(true);
+    try {
+      await markEnrollmentCashPaid(enrollment.id);
+      toast.success("Inschrijving gemarkeerd als betaald");
+      queryClient.invalidateQueries({ queryKey: ["enrollments", seriesId] });
+      queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
+    } catch {
+      // Error toast wordt al getoond door de axios interceptor
+    } finally {
+      setMarkingPaid(false);
     }
   }
 
@@ -1653,6 +1671,16 @@ function EnrollmentRow({
             >
               {enrollmentStatusStyles[enrollment.status].label}
             </Badge>
+          )}
+          {isPendingPayment && (
+            <button
+              onClick={handleMarkCashPaid}
+              disabled={markingPaid}
+              className="flex items-center gap-1 px-2 py-1 rounded-md border border-tennis-green/20 text-xs font-medium text-tennis-green hover:bg-tennis-green/5 transition-colors disabled:opacity-50"
+            >
+              <Euro size={12} />
+              Markeer als betaald
+            </button>
           )}
           {!isCancelled && (
             <AlertDialog>
