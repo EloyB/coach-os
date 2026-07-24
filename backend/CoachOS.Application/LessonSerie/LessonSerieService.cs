@@ -96,22 +96,44 @@ public class LessonSerieService(
             return Result<Guid>.Fail(trainerError);
 
         // Reject duplicate weekly template entries (same day + start time + court = same slot).
-        // The key MUST match the unique index IX_WeeklyTemplateEntries_LessonSerieId_DayOfWeek_StartTime_CourtName
-        // (which does NOT include EndTime); otherwise a same-start/different-end collision slips past this guard
-        // and surfaces as a raw DbUpdateException → HTTP 500 instead of this clean validation error.
-        var duplicates = request.WeeklyTemplate
-            .GroupBy(t => (t.DayOfWeek, t.StartTime, CourtName: t.CourtName ?? ""))
+        // Parallelle lessen op hetzelfde moment (2 trainers/velden) worden onderscheiden via de baannaam;
+        // een lege of enkel-witruimte baannaam telt als "geen baan". De sleutel MUST match de unique index
+        // IX_WeeklyTemplateEntries_LessonSerieId_DayOfWeek_StartTime_CourtName (die GEEN EndTime bevat);
+        // anders glipt een same-start/different-end collision hier langs en wordt het een rauwe
+        // DbUpdateException → HTTP 500 in plaats van deze nette validatiefout.
+        static string NormalizeCourt(string? court) =>
+            string.IsNullOrWhiteSpace(court) ? "" : court.Trim();
+
+        List<(int DayOfWeek, string StartTime, string CourtName)> duplicateKeys = request.WeeklyTemplate
+            .GroupBy(t => (t.DayOfWeek, t.StartTime, CourtName: NormalizeCourt(t.CourtName)))
             .Where(g => g.Count() > 1)
             .Select(g => g.Key)
             .ToList();
 
-        if (duplicates.Count > 0)
+        if (duplicateKeys.Count > 0)
         {
             string[] dayNames = ["ma", "di", "wo", "do", "vr", "za", "zo"];
-            var slots = string.Join(", ", duplicates.Select(d =>
-                $"{dayNames[d.DayOfWeek]} {d.StartTime}" + (d.CourtName != "" ? $" ({d.CourtName})" : "")));
+            string SlotLabel((int DayOfWeek, string StartTime, string CourtName) key) =>
+                $"{dayNames[key.DayOfWeek]} {key.StartTime}";
+
+            // Parallelle slots zonder baannaam: stuur de gebruiker naar het toevoegen van baannamen
+            // i.p.v. "verwijder de duplicaten" — het zijn legitieme parallelle lessen die enkel een
+            // onderscheidende baannaam missen.
+            List<(int DayOfWeek, string StartTime, string CourtName)> missingCourt =
+                duplicateKeys.Where(d => d.CourtName == "").ToList();
+
+            if (missingCourt.Count > 0)
+            {
+                string slots = string.Join(", ", missingCourt.Select(SlotLabel));
+                return Result<Guid>.Fail(new Error(ErrorCodes.Validation,
+                    $"Meerdere lessen op hetzelfde moment ({slots}) zonder baannaam. " +
+                    "Geef elke parallelle les een eigen baannaam om ze te onderscheiden."));
+            }
+
+            // Echte duplicaat: dezelfde dag + starttijd + baannaam expliciet herhaald.
+            string dupSlots = string.Join(", ", duplicateKeys.Select(d => $"{SlotLabel(d)} ({d.CourtName})"));
             return Result<Guid>.Fail(new Error(ErrorCodes.Validation,
-                $"Dubbele tijdsloten in weekindeling: {slots}. Verwijder de duplicaten."));
+                $"Dubbele tijdsloten in weekindeling: {dupSlots}. Verwijder de duplicaten."));
         }
 
         Domain.Entities.LessonSerie series = mapper.ToLessonSerie(request, organizationId);
@@ -182,6 +204,9 @@ public class LessonSerieService(
         if (series.Enrollments.Count > 0)
             return Result.Fail(new Error(ErrorCodes.Conflict, "Verwijderen niet mogelijk: er zijn nog inschrijvingen op deze serie."));
 
+        // WeeklyTemplateEntry-rijen staan op DeleteBehavior.Restrict en worden niet automatisch opgeruimd;
+        // expliciet mee verwijderen, anders faalt SaveChanges met een FK-violation (HTTP 500).
+        await lessonSeriesRepo.DeleteWeeklyTemplateRangeAsync(series.WeeklyTemplate, ct);
         await lessonRepo.DeleteRangeAsync(series.Lessons, ct);
         await lessonSeriesRepo.DeleteAsync(series, ct);
         await lessonSeriesRepo.SaveChangesAsync(ct);

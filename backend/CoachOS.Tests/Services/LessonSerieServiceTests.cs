@@ -501,6 +501,25 @@ public class LessonSerieServiceTests
         _lessonSeriesRepo.Verify(r => r.DeleteAsync(series, It.IsAny<CancellationToken>()), Times.Once);
     }
 
+    // Regressie: een reeks met weekindeling verwijderen faalde met HTTP 500 omdat de WeeklyTemplateEntry-rijen
+    // op DeleteBehavior.Restrict staan en niet werden opgeruimd. DeleteAsync moet ze expliciet mee verwijderen.
+    [Test]
+    public async Task DeleteAsync_AlsoRemovesWeeklyTemplateEntries()
+    {
+        var series = BuildSeries(enrollments: 0, lessons: 2, templateEntries: 3);
+        _lessonSeriesRepo
+            .Setup(r => r.GetByIdWithEnrollmentsAsync(series.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+
+        var result = await _service.DeleteAsync(series.Id, OrgId);
+
+        result.IsSuccess.Should().BeTrue();
+        _lessonSeriesRepo.Verify(
+            r => r.DeleteWeeklyTemplateRangeAsync(series.WeeklyTemplate, It.IsAny<CancellationToken>()),
+            Times.Once);
+        _lessonSeriesRepo.Verify(r => r.DeleteAsync(series, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
     [Test]
     public async Task DeleteAsync_ReturnsNotFound_WhenMissing()
     {
@@ -758,6 +777,98 @@ public class LessonSerieServiceTests
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.Validation);
+        _lessonSeriesRepo.Verify(r => r.AddAsync(It.IsAny<LessonSerie>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    // Parallelle lessen op hetzelfde moment (2 trainers/velden) worden onderscheiden via de baannaam.
+    // Twee slots op dezelfde dag/start ZONDER baannaam vallen samen: de gebruiker moet gewezen worden
+    // op het toevoegen van baannamen, niet op "verwijder de duplicaten".
+    [Test]
+    public async Task CreateAsync_ReturnsGuidance_WhenParallelSlotsHaveNoCourtName()
+    {
+        CreateLessonSerieRequest request = new()
+        {
+            Name = "Parallel zonder baan",
+            Price = 100m,
+            StartDate = "2026-06-01",
+            EndDate = "2026-08-31",
+            TennisClubId = ClubId,
+            WeeklyTemplate =
+            [
+                new WeeklyTemplateEntryRequest { DayOfWeek = 0, StartTime = "20:00", EndTime = "21:00", TrainerId = TrainerId, MaxStudents = 4 },
+                new WeeklyTemplateEntryRequest { DayOfWeek = 0, StartTime = "20:00", EndTime = "21:00", TrainerId = TrainerId, MaxStudents = 4 },
+            ],
+        };
+
+        _tennisClubRepo
+            .Setup(r => r.ExistsAsync(ClubId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var result = await _service.CreateAsync(OrgId, request);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.Validation);
+        result.Errors[0].Message.Should().Contain("baannaam");
+        result.Errors[0].Message.Should().NotContain("Verwijder de duplicaten");
+        _lessonSeriesRepo.Verify(r => r.AddAsync(It.IsAny<LessonSerie>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    // Whitespace-only baannaam telt als "geen baannaam" — anders zou " " een slot laten doorglippen
+    // dat de gebruiker als parallel-zonder-baan bedoelde.
+    [Test]
+    public async Task CreateAsync_ReturnsGuidance_WhenParallelSlotsHaveWhitespaceCourtName()
+    {
+        CreateLessonSerieRequest request = new()
+        {
+            Name = "Parallel met spatie-baan",
+            Price = 100m,
+            StartDate = "2026-06-01",
+            EndDate = "2026-08-31",
+            TennisClubId = ClubId,
+            WeeklyTemplate =
+            [
+                new WeeklyTemplateEntryRequest { DayOfWeek = 2, StartTime = "19:00", EndTime = "20:00", TrainerId = TrainerId, CourtName = "  ", MaxStudents = 4 },
+                new WeeklyTemplateEntryRequest { DayOfWeek = 2, StartTime = "19:00", EndTime = "20:00", TrainerId = TrainerId, CourtName = null, MaxStudents = 4 },
+            ],
+        };
+
+        _tennisClubRepo
+            .Setup(r => r.ExistsAsync(ClubId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var result = await _service.CreateAsync(OrgId, request);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Message.Should().Contain("baannaam");
+        _lessonSeriesRepo.Verify(r => r.AddAsync(It.IsAny<LessonSerie>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    // Échte duplicaat (zelfde baannaam expliciet herhaald) blijft de "verwijder de duplicaten"-melding houden.
+    [Test]
+    public async Task CreateAsync_ReturnsRemoveDuplicatesMessage_WhenSameCourtRepeated()
+    {
+        CreateLessonSerieRequest request = new()
+        {
+            Name = "Echte duplicaat",
+            Price = 100m,
+            StartDate = "2026-06-01",
+            EndDate = "2026-08-31",
+            TennisClubId = ClubId,
+            WeeklyTemplate =
+            [
+                new WeeklyTemplateEntryRequest { DayOfWeek = 0, StartTime = "10:00", EndTime = "11:00", TrainerId = TrainerId, CourtName = "Baan 1", MaxStudents = 4 },
+                new WeeklyTemplateEntryRequest { DayOfWeek = 0, StartTime = "10:00", EndTime = "11:00", TrainerId = TrainerId, CourtName = "Baan 1", MaxStudents = 4 },
+            ],
+        };
+
+        _tennisClubRepo
+            .Setup(r => r.ExistsAsync(ClubId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var result = await _service.CreateAsync(OrgId, request);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Message.Should().Contain("Verwijder de duplicaten");
         _lessonSeriesRepo.Verify(r => r.AddAsync(It.IsAny<LessonSerie>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
