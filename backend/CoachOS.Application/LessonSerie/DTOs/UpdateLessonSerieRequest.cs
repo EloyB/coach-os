@@ -12,4 +12,8 @@ public record UpdateLessonSerieRequest
     public int MinAge { get; init; } = 3;
     public int MaxAge { get; init; } = 99;
     public Guid TennisClubId { get; init; }
+    public bool AllowSoloEnrollment { get; init; } = true;
+    public bool AllowGroupEnrollment { get; init; } = true;
+    public bool AcceptOnlinePayment { get; init; } = true;
+    public bool AcceptManualPayment { get; init; }
 }

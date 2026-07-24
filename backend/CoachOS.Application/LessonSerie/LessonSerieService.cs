@@ -179,6 +179,10 @@ public class LessonSerieService(
         series.MinAge = request.MinAge;
         series.MaxAge = request.MaxAge;
         series.TennisClubId = request.TennisClubId;
+        series.AllowSoloEnrollment = request.AllowSoloEnrollment;
+        series.AllowGroupEnrollment = request.AllowGroupEnrollment;
+        series.AcceptOnlinePayment = request.AcceptOnlinePayment;
+        series.AcceptManualPayment = request.AcceptManualPayment;
 
         await lessonSeriesRepo.UpdateAsync(series, ct);
         await lessonSeriesRepo.SaveChangesAsync(ct);

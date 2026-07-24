@@ -42,5 +42,13 @@ public class UpdateLessonSerieRequestValidator : AbstractValidator<UpdateLessonS
 
         RuleFor(x => x.TennisClubId)
             .NotEmpty().WithMessage("Tennisclub is verplicht.");
+
+        RuleFor(x => x.AllowSoloEnrollment)
+            .Must((req, _) => req.AllowSoloEnrollment || req.AllowGroupEnrollment)
+            .WithMessage("Kies minstens één inschrijfwijze (solo of groep).");
+
+        RuleFor(x => x.AcceptOnlinePayment)
+            .Must((req, _) => req.AcceptOnlinePayment || req.AcceptManualPayment)
+            .WithMessage("Kies minstens één betaalmethode (online of overschrijving).");
     }
 }

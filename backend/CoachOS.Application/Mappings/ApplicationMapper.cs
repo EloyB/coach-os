@@ -30,6 +30,10 @@ public partial class ApplicationMapper
             MinAge = request.MinAge,
             MaxAge = request.MaxAge,
             IsActive = true,
+            AllowSoloEnrollment = request.AllowSoloEnrollment,
+            AllowGroupEnrollment = request.AllowGroupEnrollment,
+            AcceptOnlinePayment = request.AcceptOnlinePayment,
+            AcceptManualPayment = request.AcceptManualPayment,
         };
     }
 
@@ -58,6 +62,10 @@ public partial class ApplicationMapper
             TennisClubId = ls.TennisClubId,
             TennisClubName = ls.TennisClub?.Name ?? string.Empty,
             TennisClubAddress = ls.TennisClub?.Address ?? string.Empty,
+            AllowSoloEnrollment = ls.AllowSoloEnrollment,
+            AllowGroupEnrollment = ls.AllowGroupEnrollment,
+            AcceptOnlinePayment = ls.AcceptOnlinePayment,
+            AcceptManualPayment = ls.AcceptManualPayment,
         };
     }
 

@@ -2,6 +2,7 @@ using CoachOS.Application.LessonSerie.DTOs;
 using CoachOS.Application.LessonSerie.Validators;
 using FluentAssertions;
 using FluentValidation.Results;
+using FluentValidation.TestHelper;
 using NUnit.Framework;
 
 namespace CoachOS.Tests.Validators;
@@ -66,5 +67,40 @@ public class CreateLessonSerieRequestValidatorTests
         CreateLessonSerieRequest request = ValidRequest() with { MaxAge = 121 };
 
         _validator.Validate(request).IsValid.Should().BeFalse();
+    }
+
+    [Test]
+    public void Fails_when_no_enrollment_mode_selected()
+    {
+        CreateLessonSerieRequest req = ValidRequest() with
+        {
+            AllowSoloEnrollment = false,
+            AllowGroupEnrollment = false,
+        };
+        TestValidationResult<CreateLessonSerieRequest> result = _validator.TestValidate(req);
+        result.ShouldHaveValidationErrorFor(x => x.AllowSoloEnrollment);
+    }
+
+    [Test]
+    public void Fails_when_no_payment_method_selected()
+    {
+        CreateLessonSerieRequest req = ValidRequest() with
+        {
+            AcceptOnlinePayment = false,
+            AcceptManualPayment = false,
+        };
+        TestValidationResult<CreateLessonSerieRequest> result = _validator.TestValidate(req);
+        result.ShouldHaveValidationErrorFor(x => x.AcceptOnlinePayment);
+    }
+
+    [Test]
+    public void Passes_with_solo_only_and_manual_only()
+    {
+        CreateLessonSerieRequest req = ValidRequest() with
+        {
+            AllowSoloEnrollment = true, AllowGroupEnrollment = false,
+            AcceptOnlinePayment = false, AcceptManualPayment = true,
+        };
+        _validator.TestValidate(req).ShouldNotHaveAnyValidationErrors();
     }
 }
