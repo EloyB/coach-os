@@ -16,12 +16,15 @@ services:
       timeout: 5s
       retries: 5
 
-  smtp4dev:
-    image: rnwood/smtp4dev:v3
-    container_name: coachos_smtp4dev
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: coachos_mailpit
     ports:
-      - "3001:80"    # Web UI
-      - "1025:25"    # SMTP
+      - "3001:8025"  # Web UI (zelfde poort als voorheen)
+      - "1025:1025"  # SMTP
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: "true"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "true"
     restart: unless-stopped
 
   backend:
@@ -38,8 +41,8 @@ services:
       Jwt__Issuer: "CoachOS-Dev"
       Jwt__Audience: "CoachOS-Dev"
       Jwt__ExpiryMinutes: "480"
-      Email__SmtpHost: "smtp4dev"
-      Email__SmtpPort: "25"
+      Email__SmtpHost: "mailpit"
+      Email__SmtpPort: "1025"
       Email__EnableSsl: "false"
       Email__FromAddress: "noreply@coach-hq.com"
       Email__FromName: "CoachOS"
@@ -64,7 +67,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      smtp4dev:
+      mailpit:
         condition: service_started
     develop:
       watch:
