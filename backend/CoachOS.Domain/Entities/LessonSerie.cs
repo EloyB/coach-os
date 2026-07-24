@@ -42,6 +42,18 @@ public class LessonSerie : BaseEntity
     /// </summary>
     public PaymentMode PaymentMode { get; set; } = PaymentMode.Immediate;
 
+    /// <summary>Leerling mag zich solo inschrijven op deze reeks.</summary>
+    public bool AllowSoloEnrollment { get; set; } = true;
+
+    /// <summary>Leerling mag zich als groep inschrijven op deze reeks.</summary>
+    public bool AllowGroupEnrollment { get; set; } = true;
+
+    /// <summary>Online betalen via Mollie toegestaan. Enkel true wanneer de org een MollieConnection heeft.</summary>
+    public bool AcceptOnlinePayment { get; set; } = true;
+
+    /// <summary>Handmatig betalen (overschrijving/cash) toegestaan; bevestigd door de admin.</summary>
+    public bool AcceptManualPayment { get; set; }
+
     public Guid TennisClubId { get; set; }
 
     // Navigation properties

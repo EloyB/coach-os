@@ -30,6 +30,11 @@ public class LessonSerieConfiguration : IEntityTypeConfiguration<LessonSerie>
             .IsRequired()
             .HasDefaultValue(Domain.Enums.PaymentMode.Immediate);
 
+        builder.Property(ls => ls.AllowSoloEnrollment).HasDefaultValue(true);
+        builder.Property(ls => ls.AllowGroupEnrollment).HasDefaultValue(true);
+        builder.Property(ls => ls.AcceptOnlinePayment).HasDefaultValue(true);
+        builder.Property(ls => ls.AcceptManualPayment).HasDefaultValue(true);
+
         builder.HasOne(ls => ls.Organization)
             .WithMany(o => o.LessonSeries)
             .HasForeignKey(ls => ls.OrganizationId)
