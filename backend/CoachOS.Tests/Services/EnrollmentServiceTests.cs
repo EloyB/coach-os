@@ -612,6 +612,82 @@ public class EnrollmentServiceTests
             Times.Never);
     }
 
+    // ── Age eligibility ───────────────────────────────────────────────────────
+
+    [Test]
+    public async Task SubmitEnrollment_ParticipantYoungerThanMinAge_ReturnsConflict()
+    {
+        LessonSerie series = BuildActiveSeries();
+        series.MinAge = 6;
+        series.MaxAge = 99;
+        series.StartDate = new DateOnly(2026, 1, 1);
+        SetupSuccessfulEnrollment(series, "kind@test.be");
+
+        // 3 jaar oud op de startdatum → onder de min van 6.
+        SubmitEnrollmentRequest request = new()
+        {
+            StudentName = "Jong Kind",
+            StudentEmail = "kind@test.be",
+            DateOfBirth = "2023-01-01",
+        };
+
+        Result<Guid> result = await _service.SubmitEnrollmentAsync(SeriesId, request);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.Validation);
+        _enrollmentRepo.Verify(r => r.AddAsync(It.IsAny<Enrollment>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task SubmitEnrollment_ParticipantExactlyMinAge_Succeeds()
+    {
+        LessonSerie series = BuildActiveSeries();
+        series.MinAge = 3;
+        series.MaxAge = 99;
+        series.StartDate = new DateOnly(2026, 1, 1);
+        SetupSuccessfulEnrollment(series, "kind@test.be");
+
+        // Precies 3 op de startdatum.
+        SubmitEnrollmentRequest request = new()
+        {
+            StudentName = "Net Drie",
+            StudentEmail = "kind@test.be",
+            DateOfBirth = "2023-01-01",
+        };
+
+        Result<Guid> result = await _service.SubmitEnrollmentAsync(SeriesId, request);
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Test]
+    public async Task SubmitEnrollment_GroupMemberOutsideRange_RejectsWholeEnrollment()
+    {
+        LessonSerie series = BuildActiveSeries();
+        series.MinAge = 6;
+        series.MaxAge = 12;
+        series.StartDate = new DateOnly(2026, 1, 1);
+        SetupSuccessfulEnrollment(series, "leader@test.be");
+
+        SubmitEnrollmentRequest request = new()
+        {
+            StudentName = "Leader",
+            StudentEmail = "leader@test.be",
+            DateOfBirth = "2016-01-01", // 10 jaar → ok
+            EnrollmentType = "group",
+            GroupMembers = new()
+            {
+                new() { StudentName = "Te Jong", StudentEmail = null, DateOfBirth = "2023-01-01" }, // 3 → buiten
+            },
+        };
+
+        Result<Guid> result = await _service.SubmitEnrollmentAsync(SeriesId, request);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.Validation);
+        _enrollmentRepo.Verify(r => r.AddAsync(It.IsAny<Enrollment>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     // ── GetSeriesEnrollmentsWithPreferencesAsync ─────────────────────────────
 
     [Test]

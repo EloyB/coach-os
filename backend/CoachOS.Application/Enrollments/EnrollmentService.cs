@@ -236,6 +236,12 @@ public class EnrollmentService(
             ? request.GroupMembers.Count + 1
             : 1;
 
+        // Leeftijdsgrens: toets elke deelnemer op de startdatum van de reeks. Fail-fast
+        // vóór de transactie — geen DB-werk als iemand buiten de grens valt.
+        Error? ageError = CheckAgeEligibility(request, series);
+        if (ageError is not null)
+            return Result<Guid>.Fail(ageError);
+
         // 4b. Tariefcategorie afleiden. De leeftijdsgrens is org-specifiek; deze flow is
         //     anoniem, dus de settings komen via series.OrganizationId en niet uit een JWT.
         //     De categorie wordt één keer vastgelegd bij inschrijving: wie tijdens de reeks
@@ -626,6 +632,34 @@ public class EnrollmentService(
     /// </summary>
     private static DateOnly? ParseBirthDate(string? value)
         => DateOfBirthRules.TryParse(value, out DateOnly date) ? date : null;
+
+    /// <summary>
+    /// Controleert of elke deelnemer (leider + groepsleden) op de startdatum van de reeks
+    /// binnen [MinAge, MaxAge] valt. Zonder bruikbare geboortedatum wordt niet geblokkeerd,
+    /// consistent met de tariefcategorie en de partiële unique index.
+    /// </summary>
+    private static Error? CheckAgeEligibility(
+        SubmitEnrollmentRequest request, Domain.Entities.LessonSerie series)
+    {
+        List<(string Name, string? Dob)> people = [(request.StudentName, request.DateOfBirth)];
+        if (request.EnrollmentType == "group" && request.GroupMembers is not null)
+            people.AddRange(request.GroupMembers.Select(m => (m.StudentName, (string?)m.DateOfBirth)));
+
+        foreach ((string name, string? dob) in people)
+        {
+            if (!DateOfBirthRules.TryParse(dob, out DateOnly parsed)) continue;
+
+            int age = ParticipantCategoryResolver.CalculateAge(parsed, series.StartDate);
+            if (age < series.MinAge || age > series.MaxAge)
+            {
+                return new Error(ErrorCodes.Validation,
+                    $"{name} ({age} jaar) valt buiten de leeftijdsgrens van deze reeks " +
+                    $"({series.MinAge}–{series.MaxAge} jaar).");
+            }
+        }
+
+        return null;
+    }
 
     /// <summary>
     /// Leidt de tariefcategorie af. Zonder bruikbare geboortedatum blijft de categorie
