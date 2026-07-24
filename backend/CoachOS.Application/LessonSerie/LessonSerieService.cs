@@ -227,6 +227,87 @@ public class LessonSerieService(
         return Result<Guid>.Ok(lesson.Id);
     }
 
+    public async Task<Result<Guid>> AddWeeklyTemplateEntryAsync(
+        Guid seriesId, Guid organizationId, AddWeeklyTemplateEntryRequest request, CancellationToken ct = default)
+    {
+        Domain.Entities.LessonSerie? series = await lessonSeriesRepo.GetByIdAsync(seriesId, organizationId, ct);
+        if (series is null)
+            return Result<Guid>.Fail(new Error(ErrorCodes.NotFound, "LessonSerie niet gevonden."));
+
+        if (request.TrainerId.HasValue)
+        {
+            bool isValid = await userLookup.IsActiveTrainerAsync(request.TrainerId.Value, organizationId, ct);
+            if (!isValid)
+                return Result<Guid>.Fail(
+                    new Error(ErrorCodes.Validation, "Deze trainer behoort niet tot deze organisatie."));
+        }
+
+        TimeOnly startTime = TimeOnly.ParseExact(request.StartTime, "HH:mm");
+        TimeOnly endTime = TimeOnly.ParseExact(request.EndTime, "HH:mm");
+        string newCourt = NormalizeCourt(request.CourtName);
+
+        // Parallelle weekslots op hetzelfde moment (2 trainers/velden) worden onderscheiden via de baannaam;
+        // een botsing met een bestaand weekslot op dezelfde dag+start+baan is een duplicaat.
+        bool collides = series.WeeklyTemplate.Any(e =>
+            e.DayOfWeek == request.DayOfWeek
+            && e.StartTime == startTime
+            && NormalizeCourt(e.CourtName) == newCourt);
+
+        if (collides)
+        {
+            string[] dayNames = ["ma", "di", "wo", "do", "vr", "za", "zo"];
+            string slot = $"{dayNames[request.DayOfWeek]} {request.StartTime}";
+            return newCourt == ""
+                ? Result<Guid>.Fail(new Error(ErrorCodes.Validation,
+                    $"Er staat al een weekslot op {slot} zonder baannaam. " +
+                    "Geef dit weekslot een eigen baannaam om het te onderscheiden."))
+                : Result<Guid>.Fail(new Error(ErrorCodes.Conflict,
+                    $"Er bestaat al een weekslot op {slot} ({newCourt})."));
+        }
+
+        Domain.Entities.WeeklyTemplateEntry entry = new()
+        {
+            LessonSerieId = series.Id,
+            DayOfWeek = request.DayOfWeek,
+            StartTime = startTime,
+            EndTime = endTime,
+            TrainerId = request.TrainerId,
+            CourtName = request.CourtName,
+            MaxStudents = request.MaxStudents,
+        };
+        series.WeeklyTemplate.Add(entry);
+
+        // Expandeer naar concrete lesmomenten vanaf vandaag (of de startdatum als die later valt)
+        // tot en met de einddatum van de reeks. Zo verschijnt het weekslot zowel in de planning
+        // (uit de weekindeling) als in de lesmomenten-kalender (uit de Lesson-rijen).
+        LessonLevel? level = request.Level.HasValue ? (LessonLevel)request.Level.Value : null;
+        DateOnly today = DateOnly.FromDateTime(DateTime.UtcNow);
+        DateOnly from = series.StartDate > today ? series.StartDate : today;
+
+        foreach (DateOnly date in WeeklyLessonExpander.MatchingDates(request.DayOfWeek, from, series.EndDate))
+        {
+            series.Lessons.Add(new Domain.Entities.Lesson
+            {
+                OrganizationId = series.OrganizationId,
+                LessonSerieId = series.Id,
+                TrainerId = request.TrainerId,
+                CourtName = request.CourtName,
+                Date = date,
+                StartTime = startTime,
+                EndTime = endTime,
+                Level = level,
+                MaxStudents = request.MaxStudents,
+                IsCancelled = false,
+            });
+        }
+
+        await lessonSeriesRepo.SaveChangesAsync(ct);
+        return Result<Guid>.Ok(entry.Id);
+    }
+
+    private static string NormalizeCourt(string? court) =>
+        string.IsNullOrWhiteSpace(court) ? "" : court.Trim();
+
     public async Task<Result<LessonDto>> UpdateLessonAsync(
         Guid seriesId, Guid lessonId, Guid organizationId, UpdateLessonRequest request, CancellationToken ct = default)
     {
