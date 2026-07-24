@@ -9,5 +9,7 @@ public record UpdateLessonSerieRequest
     public DateTime RegistrationDeadline { get; init; }
     public bool IsActive { get; init; }
     public int? MaxRegistrations { get; init; }
+    public int MinAge { get; init; } = 3;
+    public int MaxAge { get; init; } = 99;
     public Guid TennisClubId { get; init; }
 }

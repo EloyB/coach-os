@@ -176,6 +176,8 @@ public class LessonSerieService(
         series.RegistrationDeadline = DateTime.SpecifyKind(request.RegistrationDeadline, DateTimeKind.Utc);
         series.IsActive = request.IsActive;
         series.MaxRegistrations = request.MaxRegistrations;
+        series.MinAge = request.MinAge;
+        series.MaxAge = request.MaxAge;
         series.TennisClubId = request.TennisClubId;
 
         await lessonSeriesRepo.UpdateAsync(series, ct);

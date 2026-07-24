@@ -14,6 +14,8 @@ public class PublicLessonSerieDto
     public DateTime RegistrationDeadline { get; set; }
     public string TennisClubName { get; set; } = string.Empty;
     public int? MaxRegistrations { get; set; }
+    public int MinAge { get; set; }
+    public int MaxAge { get; set; }
     public int EnrollmentCount { get; set; }
     public List<WeeklyTemplateEntryDto> WeeklyTemplate { get; set; } = [];
     public List<LessonDto> Lessons { get; set; } = [];

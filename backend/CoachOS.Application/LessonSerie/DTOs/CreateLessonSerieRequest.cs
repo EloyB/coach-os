@@ -10,6 +10,8 @@ public record CreateLessonSerieRequest
     public string EndDate { get; init; } = string.Empty;
     public DateTime RegistrationDeadline { get; init; }
     public int? MaxRegistrations { get; init; }
+    public int MinAge { get; init; } = 3;
+    public int MaxAge { get; init; } = 99;
     public Guid TennisClubId { get; init; }
     public List<WeeklyTemplateEntryRequest> WeeklyTemplate { get; init; } = [];
     public List<CreateLessonRequest> Lessons { get; init; } = [];

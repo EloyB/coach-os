@@ -57,6 +57,8 @@ public class EnrollmentService(
             RegistrationDeadline = series.RegistrationDeadline,
             TennisClubName = series.TennisClub?.Name ?? string.Empty,
             MaxRegistrations = series.MaxRegistrations,
+            MinAge = series.MinAge,
+            MaxAge = series.MaxAge,
             EnrollmentCount = enrollmentCount,
             WeeklyTemplate = series.WeeklyTemplate
                 .OrderBy(w => w.DayOfWeek)

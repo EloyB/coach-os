@@ -26,6 +26,17 @@ public class UpdateLessonSerieRequestValidator : AbstractValidator<UpdateLessonS
             .LessThanOrEqualTo(500).WithMessage("Maximum aantal inschrijvingen mag niet meer dan 500 zijn.")
             .When(x => x.MaxRegistrations.HasValue);
 
+        RuleFor(x => x.MinAge)
+            .InclusiveBetween(0, 120).WithMessage("Minimumleeftijd moet tussen 0 en 120 liggen.");
+
+        RuleFor(x => x.MaxAge)
+            .InclusiveBetween(0, 120).WithMessage("Maximumleeftijd moet tussen 0 en 120 liggen.");
+
+        RuleFor(x => x)
+            .Must(x => x.MinAge <= x.MaxAge)
+            .WithMessage("Minimumleeftijd mag niet groter zijn dan de maximumleeftijd.")
+            .WithName("MinAge");
+
         RuleFor(x => x.RegistrationDeadline)
             .NotEmpty().WithMessage("Inschrijvingsdeadline is verplicht.");
 

@@ -29,6 +29,17 @@ public class CreateLessonSerieRequestValidator : AbstractValidator<CreateLessonS
             .LessThanOrEqualTo(500).WithMessage("Maximum aantal inschrijvingen mag niet meer dan 500 zijn.")
             .When(x => x.MaxRegistrations.HasValue);
 
+        RuleFor(x => x.MinAge)
+            .InclusiveBetween(0, 120).WithMessage("Minimumleeftijd moet tussen 0 en 120 liggen.");
+
+        RuleFor(x => x.MaxAge)
+            .InclusiveBetween(0, 120).WithMessage("Maximumleeftijd moet tussen 0 en 120 liggen.");
+
+        RuleFor(x => x)
+            .Must(x => x.MinAge <= x.MaxAge)
+            .WithMessage("Minimumleeftijd mag niet groter zijn dan de maximumleeftijd.")
+            .WithName("MinAge");
+
         RuleFor(x => x.StartDate)
             .NotEmpty().WithMessage("Startdatum is verplicht.")
             .Matches(@"^\d{4}-\d{2}-\d{2}$").WithMessage("Startdatum moet het formaat yyyy-MM-dd hebben.");

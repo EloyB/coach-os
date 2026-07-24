@@ -27,6 +27,8 @@ public partial class ApplicationMapper
             RegistrationDeadline = DateTime.SpecifyKind(request.RegistrationDeadline, DateTimeKind.Utc),
             TennisClubId = request.TennisClubId,
             MaxRegistrations = request.MaxRegistrations,
+            MinAge = request.MinAge,
+            MaxAge = request.MaxAge,
             IsActive = true,
         };
     }
@@ -47,6 +49,8 @@ public partial class ApplicationMapper
             RegistrationDeadline = ls.RegistrationDeadline,
             IsActive = ls.IsActive,
             MaxRegistrations = ls.MaxRegistrations,
+            MinAge = ls.MinAge,
+            MaxAge = ls.MaxAge,
             LessonCount = lessonCount,
             EnrolledCount = enrolledCount,
             TotalCapacity = totalCapacity,
