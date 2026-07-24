@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, AlertTriangle } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -16,8 +16,11 @@ import { getTrainers, isAssignableTrainer } from "@/lib/api/trainers";
 import { getTrainerAvailabilities } from "@/lib/api/trainerAvailabilities";
 import { inputClass } from "@/lib/styles";
 import type { WizardSlot } from "../_types";
+import { findSlotConflicts } from "../_lib/slot-conflicts";
 import { CalendarWeekView, type SlotDefaults } from "./calendar-week-view";
 import { SlotSuggestionsPanel } from "./slot-suggestions-panel";
+
+const DAY_NAMES_SHORT = ["ma", "di", "wo", "do", "vr", "za", "zo"];
 
 interface Step2Props {
   slots: WizardSlot[];
@@ -85,6 +88,11 @@ export function Step2Planning({
       level: value === "none" ? null : parseInt(value),
     }));
   }
+
+  // Parallelle lessen op hetzelfde moment moeten een eigen baannaam hebben; botsende slots blokkeren
+  // "Volgende" zodat de gebruiker ze eerst oplost (mirror van de backend-guard).
+  const conflicts = findSlotConflicts(slots);
+  const hasConflicts = conflicts.length > 0;
 
   return (
     <div className="space-y-5">
@@ -224,6 +232,32 @@ export function Step2Planning({
         </div>
       </div>
 
+      {/* Conflict-waarschuwing: parallelle slots zonder onderscheidende baannaam */}
+      {hasConflicts && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 p-3">
+          <div className="flex items-center gap-2 text-sm font-semibold text-amber-800">
+            <AlertTriangle size={15} />
+            {t("slotConflictTitle")}
+          </div>
+          <ul className="mt-1.5 space-y-1 pl-6 text-xs text-amber-700 list-disc">
+            {conflicts.map((c) => (
+              <li key={`${c.dayOfWeek}-${c.startTime}-${c.courtName}`}>
+                {c.missingCourt
+                  ? t("slotConflictMissingCourt", {
+                      day: DAY_NAMES_SHORT[c.dayOfWeek],
+                      time: c.startTime,
+                    })
+                  : t("slotConflictDuplicate", {
+                      day: DAY_NAMES_SHORT[c.dayOfWeek],
+                      time: c.startTime,
+                      court: c.courtName,
+                    })}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {/* Navigation */}
       <div className="flex items-center justify-between">
         <button
@@ -237,7 +271,8 @@ export function Step2Planning({
         <button
           type="button"
           onClick={() => onNext(slots)}
-          className="flex items-center gap-2 px-5 py-2.5 bg-tennis-green text-white text-sm font-semibold rounded-lg hover:bg-tennis-green/90 transition-colors"
+          disabled={hasConflicts}
+          className="flex items-center gap-2 px-5 py-2.5 bg-tennis-green text-white text-sm font-semibold rounded-lg hover:bg-tennis-green/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {t("next")}
           <ChevronRight size={15} />

@@ -10,6 +10,7 @@ public interface ILessonSerieRepository
     Task AddAsync(LessonSerie series, CancellationToken ct = default);
     Task UpdateAsync(LessonSerie series, CancellationToken ct = default);
     Task DeleteAsync(LessonSerie series, CancellationToken ct = default);
+    Task DeleteWeeklyTemplateRangeAsync(IEnumerable<WeeklyTemplateEntry> entries, CancellationToken ct = default);
     Task<LessonSerie?> GetByIdPublicAsync(Guid id, CancellationToken ct = default);
     Task<bool> ExistsAsync(Guid id, Guid organizationId, CancellationToken ct = default);
     Task<bool> AnyByTennisClubAsync(Guid tennisClubId, CancellationToken ct = default);

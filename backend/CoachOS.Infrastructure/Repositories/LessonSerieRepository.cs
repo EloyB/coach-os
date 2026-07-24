@@ -21,6 +21,7 @@ public class LessonSerieRepository(ApplicationDbContext context) : ILessonSerieR
         return await context.LessonSeries
             .Include(ls => ls.Lessons)
             .Include(ls => ls.Enrollments)
+            .Include(ls => ls.WeeklyTemplate)
             .FirstOrDefaultAsync(ls => ls.Id == id && ls.OrganizationId == organizationId, ct);
     }
 
@@ -52,6 +53,12 @@ public class LessonSerieRepository(ApplicationDbContext context) : ILessonSerieR
     public Task DeleteAsync(LessonSerie series, CancellationToken ct = default)
     {
         context.LessonSeries.Remove(series);
+        return Task.CompletedTask;
+    }
+
+    public Task DeleteWeeklyTemplateRangeAsync(IEnumerable<WeeklyTemplateEntry> entries, CancellationToken ct = default)
+    {
+        context.WeeklyTemplateEntries.RemoveRange(entries);
         return Task.CompletedTask;
     }
 
