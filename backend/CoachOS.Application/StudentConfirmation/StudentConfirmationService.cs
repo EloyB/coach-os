@@ -45,6 +45,10 @@ public class StudentConfirmationService(
         if (series is null)
             return Result<ConfirmResultDto>.Fail(new Error(ErrorCodes.NotFound, "Lessenreeks niet gevonden."));
 
+        Error? methodError = ValidatePaymentMethodAllowed(method, series);
+        if (methodError is not null)
+            return Result<ConfirmResultDto>.Fail(methodError);
+
         // Prijs vóór de token-claim berekenen: faalt de berekening, dan blijft de
         // bevestiging herbruikbaar i.p.v. geclaimd achter te blijven zonder betaling.
         PriceBreakdown? cashBreakdown = null;
@@ -70,23 +74,22 @@ public class StudentConfirmationService(
 
         if (method == PaymentMethod.Cash)
         {
-            // Cash: meteen als betaald markeren, geen Mollie roundtrip.
+            // Camp-stijl: registreer een openstaande cash-betaling; de club bevestigt later.
             Payment cashPayment = new()
             {
                 OrganizationId = token.OrganizationId,
                 EnrollmentId = token.EnrollmentId,
                 Amount = cashBreakdown!.Total,
-                Status = PaymentStatus.Paid,
+                Status = PaymentStatus.Pending,
                 Method = PaymentMethod.Cash,
-                PaidAt = DateTime.UtcNow,
-                Description = $"Cash — {series.Name}",
+                Description = $"Overschrijving — {series.Name}",
             };
             await paymentRepo.AddAsync(cashPayment, ct);
 
-            ConfirmEnrollmentStatuses(assignment, EnrollmentStatus.Confirmed);
+            ConfirmEnrollmentStatuses(assignment, EnrollmentStatus.PendingPayment);
             await paymentRepo.SaveChangesAsync(ct);
 
-            await TryFinalizeSeriesAsync(assignment.LessonSerieId, token.OrganizationId, ct);
+            // Géén TryFinalizeSeriesAsync: de reeks is pas rond zodra de betaling bevestigd is.
             return Result<ConfirmResultDto>.Ok(new ConfirmResultDto { IsConfirmed = true });
         }
 
@@ -169,6 +172,10 @@ public class StudentConfirmationService(
         if (series is null)
             return Result<ConfirmResultDto>.Fail(new Error(ErrorCodes.NotFound, "Lessenreeks niet gevonden."));
 
+        Error? methodError = ValidatePaymentMethodAllowed(method, series);
+        if (methodError is not null)
+            return Result<ConfirmResultDto>.Fail(methodError);
+
         // Het net-geweigerde slot mag niet opnieuw gekozen worden: de oude (Declined)
         // toewijzing bezet de unieke tuple (reeks + slot + inschrijving/groep) nog in de
         // DB, dus een nieuwe insert op datzelfde slot slaat stuk op de unique index (23505).
@@ -239,22 +246,22 @@ public class StudentConfirmationService(
 
         if (method == PaymentMethod.Cash)
         {
+            // Camp-stijl: registreer een openstaande cash-betaling; de club bevestigt later.
             Payment cashPayment = new()
             {
                 OrganizationId = token.OrganizationId,
                 EnrollmentId = token.EnrollmentId,
                 Amount = cashBreakdown!.Total,
-                Status = PaymentStatus.Paid,
+                Status = PaymentStatus.Pending,
                 Method = PaymentMethod.Cash,
-                PaidAt = DateTime.UtcNow,
-                Description = $"Cash (alternatief) — {series.Name}",
+                Description = $"Overschrijving (alternatief) — {series.Name}",
             };
             await paymentRepo.AddAsync(cashPayment, ct);
 
-            ConfirmEnrollmentStatuses(oldAssignment, EnrollmentStatus.Confirmed);
+            ConfirmEnrollmentStatuses(oldAssignment, EnrollmentStatus.PendingPayment);
             await paymentRepo.SaveChangesAsync(ct);
 
-            await TryFinalizeSeriesAsync(oldAssignment.LessonSerieId, token.OrganizationId, ct);
+            // Géén TryFinalizeSeriesAsync: de reeks is pas rond zodra de betaling bevestigd is.
             return Result<ConfirmResultDto>.Ok(new ConfirmResultDto { IsConfirmed = true });
         }
 
@@ -537,6 +544,16 @@ public class StudentConfirmationService(
         {
             assignment.Enrollment.Status = newStatus;
         }
+    }
+
+    private static Error? ValidatePaymentMethodAllowed(
+        PaymentMethod method, Domain.Entities.LessonSerie series)
+    {
+        if (method == PaymentMethod.Online && !series.AcceptOnlinePayment)
+            return new Error(ErrorCodes.Validation, "Online betalen is niet mogelijk voor deze lessenreeks.");
+        if (method == PaymentMethod.Cash && !series.AcceptManualPayment)
+            return new Error(ErrorCodes.Validation, "Betalen via overschrijving is niet mogelijk voor deze lessenreeks.");
+        return null;
     }
 
     private static string HashToken(string rawToken)
