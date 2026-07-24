@@ -612,6 +612,58 @@ public class EnrollmentServiceTests
             Times.Never);
     }
 
+    // ── Enrollment-mode gating ───────────────────────────────────────────────
+
+    [Test]
+    public async Task SubmitEnrollment_RejectsGroup_WhenSeriesIsSoloOnly()
+    {
+        LessonSerie series = BuildActiveSeries();
+        series.AllowSoloEnrollment = true;
+        series.AllowGroupEnrollment = false;
+        SetupSuccessfulEnrollment(series, "leader@test.be");
+
+        SubmitEnrollmentRequest request = new()
+        {
+            StudentName = "Leader",
+            StudentEmail = "leader@test.be",
+            DateOfBirth = "1990-05-12",
+            EnrollmentType = "group",
+            GroupMembers = new()
+            {
+                new() { StudentName = "Bob", DateOfBirth = "2000-01-01" },
+            },
+        };
+
+        Result<Guid> result = await _service.SubmitEnrollmentAsync(SeriesId, request);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.Code == ErrorCodes.Validation);
+        _enrollmentRepo.Verify(r => r.AddAsync(It.IsAny<Enrollment>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task SubmitEnrollment_RejectsSolo_WhenSeriesIsGroupOnly()
+    {
+        LessonSerie series = BuildActiveSeries();
+        series.AllowSoloEnrollment = false;
+        series.AllowGroupEnrollment = true;
+        SetupSuccessfulEnrollment(series, "anna@test.be");
+
+        SubmitEnrollmentRequest request = new()
+        {
+            StudentName = "Anna",
+            StudentEmail = "anna@test.be",
+            DateOfBirth = "1990-05-12",
+            EnrollmentType = "solo",
+        };
+
+        Result<Guid> result = await _service.SubmitEnrollmentAsync(SeriesId, request);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.Code == ErrorCodes.Validation);
+        _enrollmentRepo.Verify(r => r.AddAsync(It.IsAny<Enrollment>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     // ── Age eligibility ───────────────────────────────────────────────────────
 
     [Test]

@@ -17,6 +17,8 @@ public class PublicLessonSerieDto
     public int MinAge { get; set; }
     public int MaxAge { get; set; }
     public int EnrollmentCount { get; set; }
+    public bool AllowSoloEnrollment { get; set; }
+    public bool AllowGroupEnrollment { get; set; }
     public List<WeeklyTemplateEntryDto> WeeklyTemplate { get; set; } = [];
     public List<LessonDto> Lessons { get; set; } = [];
 }

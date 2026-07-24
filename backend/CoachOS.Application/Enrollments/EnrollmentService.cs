@@ -60,6 +60,8 @@ public class EnrollmentService(
             MinAge = series.MinAge,
             MaxAge = series.MaxAge,
             EnrollmentCount = enrollmentCount,
+            AllowSoloEnrollment = series.AllowSoloEnrollment,
+            AllowGroupEnrollment = series.AllowGroupEnrollment,
             WeeklyTemplate = series.WeeklyTemplate
                 .OrderBy(w => w.DayOfWeek)
                 .ThenBy(w => w.StartTime)
@@ -231,6 +233,17 @@ public class EnrollmentService(
             if (formError is not null)
                 return Result<Guid>.Fail(formError);
         }
+
+        // 4a. Inschrijfwijze afdwingen: de admin bepaalt per reeks of solo, groep of
+        //     beide toegelaten zijn. Vóór de transactie — geen DB-werk nodig voor een
+        //     wijze die sowieso niet mag.
+        bool wantsGroup = request.EnrollmentType == "group";
+        if (wantsGroup && !series.AllowGroupEnrollment)
+            return Result<Guid>.Fail(new Error(
+                ErrorCodes.Validation, "Inschrijven in groep is niet mogelijk voor deze lessenreeks."));
+        if (!wantsGroup && !series.AllowSoloEnrollment)
+            return Result<Guid>.Fail(new Error(
+                ErrorCodes.Validation, "Solo inschrijven is niet mogelijk voor deze lessenreeks."));
 
         var groupSize = request.EnrollmentType == "group" && request.GroupMembers is not null
             ? request.GroupMembers.Count + 1
