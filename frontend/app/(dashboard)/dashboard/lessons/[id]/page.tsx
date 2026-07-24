@@ -71,6 +71,7 @@ import type {
 } from "@/lib/api/enrollments";
 
 import { getTennisClubs } from "@/lib/api/tennisClubs";
+import { getMollieConnectionStatus } from "@/lib/api/mollieConnect";
 import { getAuthUser } from "@/lib/auth";
 import { FieldError } from "@/components/forms/field-error";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -93,10 +94,22 @@ const editSchema = z
     isActive: z.boolean(),
     minAge: z.number().int().min(0).max(120),
     maxAge: z.number().int().min(0).max(120),
+    allowSoloEnrollment: z.boolean(),
+    allowGroupEnrollment: z.boolean(),
+    acceptOnlinePayment: z.boolean(),
+    acceptManualPayment: z.boolean(),
   })
   .refine((d) => d.minAge <= d.maxAge, {
     message: "Minimumleeftijd mag niet groter zijn dan de maximumleeftijd",
     path: ["maxAge"],
+  })
+  .refine((d) => d.allowSoloEnrollment || d.allowGroupEnrollment, {
+    message: "Kies minstens één inschrijfwijze",
+    path: ["allowGroupEnrollment"],
+  })
+  .refine((d) => d.acceptOnlinePayment || d.acceptManualPayment, {
+    message: "Kies minstens één betaalmethode",
+    path: ["acceptManualPayment"],
   });
 
 type EditFormValues = z.infer<typeof editSchema>;
@@ -117,6 +130,11 @@ function EditSeriesForm({
     queryKey: ["tennisClubs"],
     queryFn: getTennisClubs,
   });
+  const { data: mollie } = useQuery({
+    queryKey: ["mollieStatus"],
+    queryFn: getMollieConnectionStatus,
+  });
+  const mollieConnected = mollie?.connected ?? false;
 
   const mutation = useMutation({
     mutationFn: (data: EditFormValues) =>
@@ -129,6 +147,10 @@ function EditSeriesForm({
         isActive: data.isActive,
         minAge: data.minAge,
         maxAge: data.maxAge,
+        allowSoloEnrollment: data.allowSoloEnrollment,
+        allowGroupEnrollment: data.allowGroupEnrollment,
+        acceptOnlinePayment: data.acceptOnlinePayment,
+        acceptManualPayment: data.acceptManualPayment,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
@@ -141,11 +163,20 @@ function EditSeriesForm({
     register,
     control,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<EditFormValues>({
     resolver: zodResolver(editSchema),
     defaultValues,
   });
+
+  // Als de Mollie-koppeling niet (meer) actief is, kan online betalen nooit
+  // aangevinkt staan — forceer dit zodra de status binnen is.
+  useEffect(() => {
+    if (mollie && !mollieConnected) {
+      setValue("acceptOnlinePayment", false);
+    }
+  }, [mollie, mollieConnected, setValue]);
 
   return (
     <form
@@ -264,6 +295,65 @@ function EditSeriesForm({
             Actief
           </label>
         </div>
+
+        {/* Inschrijfwijze */}
+        <fieldset>
+          <legend className="block text-xs font-medium text-gray-600 mb-1">
+            Inschrijfwijze
+          </legend>
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              {...register("allowSoloEnrollment")}
+              className="w-4 h-4 accent-tennis-green"
+            />
+            Solo inschrijven
+          </label>
+          <label className="flex items-center gap-2 text-sm text-gray-700 mt-1">
+            <input
+              type="checkbox"
+              {...register("allowGroupEnrollment")}
+              className="w-4 h-4 accent-tennis-green"
+            />
+            In groep inschrijven
+          </label>
+          <FieldError message={errors.allowGroupEnrollment?.message} />
+        </fieldset>
+
+        {/* Betaalmethodes */}
+        <fieldset>
+          <legend className="block text-xs font-medium text-gray-600 mb-1">
+            Betaalmethodes
+          </legend>
+          <label
+            className={`flex items-center gap-2 text-sm text-gray-700 ${!mollieConnected ? "opacity-50" : ""}`}
+          >
+            <input
+              type="checkbox"
+              disabled={!mollieConnected}
+              {...register("acceptOnlinePayment")}
+              className="w-4 h-4 accent-tennis-green"
+            />
+            Online betalen (Mollie)
+          </label>
+          {!mollieConnected && (
+            <p className="text-xs text-gray-500 mt-1">
+              Online betalen kan pas nadat je met Mollie verbonden bent.{" "}
+              <Link href="/dashboard/settings" className="underline">
+                Verbind Mollie in instellingen
+              </Link>
+            </p>
+          )}
+          <label className="flex items-center gap-2 text-sm text-gray-700 mt-2">
+            <input
+              type="checkbox"
+              {...register("acceptManualPayment")}
+              className="w-4 h-4 accent-tennis-green"
+            />
+            Overschrijving
+          </label>
+          <FieldError message={errors.acceptManualPayment?.message} />
+        </fieldset>
       </div>
 
       {mutation.isError && (
@@ -1911,6 +2001,10 @@ export default function LessonSeriesDetailPage({
                   isActive: series.isActive,
                   minAge: series.minAge ?? 3,
                   maxAge: series.maxAge ?? 99,
+                  allowSoloEnrollment: series.allowSoloEnrollment,
+                  allowGroupEnrollment: series.allowGroupEnrollment,
+                  acceptOnlinePayment: series.acceptOnlinePayment,
+                  acceptManualPayment: series.acceptManualPayment,
                 }}
                 onCancel={() => setEditing(false)}
                 onSaved={() => setEditing(false)}

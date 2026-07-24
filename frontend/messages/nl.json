@@ -248,6 +248,18 @@
     "startDate": "Startdatum",
     "endDate": "Einddatum",
     "registrationDeadline": "Inschrijfdeadline",
+    "enrollmentMode": {
+      "label": "Inschrijfwijze",
+      "solo": "Solo inschrijven",
+      "group": "In groep inschrijven"
+    },
+    "paymentMethods": {
+      "label": "Betaalmethodes",
+      "online": "Online betalen (Mollie)",
+      "manual": "Overschrijving",
+      "mollieRequired": "Online betalen kan pas nadat je met Mollie verbonden bent.",
+      "connectLink": "Verbind Mollie in instellingen"
+    },
     "step2Title": "Weekindeling",
     "step2Desc": "Klik op een leeg vak om een tijdslot van 1 uur toe te voegen.",
     "slotConflictTitle": "Overlappende lesmomenten",

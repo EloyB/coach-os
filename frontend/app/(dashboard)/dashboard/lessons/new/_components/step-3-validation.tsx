@@ -159,6 +159,10 @@ export function Step3Validation({
       startDate: step1Data.startDate,
       endDate: step1Data.endDate,
       registrationDeadline: step1Data.registrationDeadline,
+      allowSoloEnrollment: step1Data.allowSoloEnrollment,
+      allowGroupEnrollment: step1Data.allowGroupEnrollment,
+      acceptOnlinePayment: step1Data.acceptOnlinePayment,
+      acceptManualPayment: step1Data.acceptManualPayment,
       weeklyTemplate: weeklyTemplate.map((s) => ({
         dayOfWeek: s.dayOfWeek,
         startTime: s.startTime,

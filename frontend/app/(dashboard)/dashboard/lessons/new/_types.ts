@@ -34,6 +34,10 @@ export type Step1Data = {
   startDate: string;
   endDate: string;
   registrationDeadline: string;
+  allowSoloEnrollment: boolean;
+  allowGroupEnrollment: boolean;
+  acceptOnlinePayment: boolean;
+  acceptManualPayment: boolean;
 };
 
 export type WizardData = Step1Data & {

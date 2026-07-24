@@ -38,6 +38,10 @@ export interface LessonSeriesDto {
   maxAge: number;
   createdAt: string;
   lessons: LessonDto[];
+  allowSoloEnrollment: boolean;
+  allowGroupEnrollment: boolean;
+  acceptOnlinePayment: boolean;
+  acceptManualPayment: boolean;
 }
 
 export interface CreateLessonSeriesRequest {
@@ -50,6 +54,10 @@ export interface CreateLessonSeriesRequest {
   endDate: string;
   durationMinutes: number;
   tennisClubId: string;
+  allowSoloEnrollment: boolean;
+  allowGroupEnrollment: boolean;
+  acceptOnlinePayment: boolean;
+  acceptManualPayment: boolean;
 }
 
 export interface UpdateLessonSeriesRequest {
@@ -61,6 +69,10 @@ export interface UpdateLessonSeriesRequest {
   registrationDeadline?: string;
   minAge: number;
   maxAge: number;
+  allowSoloEnrollment: boolean;
+  allowGroupEnrollment: boolean;
+  acceptOnlinePayment: boolean;
+  acceptManualPayment: boolean;
 }
 
 export interface CreateLessonRequest {
@@ -197,6 +209,10 @@ export interface CreateLessonSeriesWizardRequest {
   registrationDeadline: string;
   weeklyTemplate: WizardSlotRequest[];
   lessons: LessonRequest[];
+  allowSoloEnrollment: boolean;
+  allowGroupEnrollment: boolean;
+  acceptOnlinePayment: boolean;
+  acceptManualPayment: boolean;
 }
 
 export async function createLessonSeriesWizard(
