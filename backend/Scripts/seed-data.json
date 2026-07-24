@@ -56,6 +56,8 @@
       "level": 1,
       "price": 120.0,
       "maxRegistrations": 12,
+      "minAge": 5,
+      "maxAge": 99,
       "startOffsetDays": 0,
       "endOffsetMonths": 3,
       "weeklyTemplate": [
@@ -75,6 +77,8 @@
       "level": 4,
       "price": 180.0,
       "maxRegistrations": 8,
+      "minAge": 10,
+      "maxAge": 99,
       "startOffsetDays": 0,
       "endOffsetMonths": 3,
       "weeklyTemplate": [
@@ -94,6 +98,8 @@
       "level": 1,
       "price": 95.0,
       "maxRegistrations": 16,
+      "minAge": 8,
+      "maxAge": 99,
       "startOffsetDays": 7,
       "endOffsetMonths": 2,
       "weeklyTemplate": [
@@ -305,6 +311,8 @@
     "level": 1,
     "price": 180.0,
     "maxRegistrations": 40,
+    "minAge": 3,
+    "maxAge": 99,
     "startOffsetDays": 0,
     "endOffsetMonths": 3,
     "weeklyTemplate": [
