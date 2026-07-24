@@ -79,7 +79,7 @@ Pad: `/enroll/{seriesId}` (Inschrijflink kopiëren via dashboard → reeks → I
 
 ## 4. Planningsmail bundelen (mailbox is de test)
 
-> Lokaal gaan mails naar **smtp4dev** — open `http://localhost:5000` (of de smtp4dev-poort uit docker-compose).
+> Lokaal gaan mails naar **Mailpit** — open `http://localhost:3001`.
 
 | # | Stap | Verwacht |
 |---|---|---|

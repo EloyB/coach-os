@@ -99,7 +99,7 @@ To include pgAdmin: `docker compose --profile tools up`
 ### Additional fixes
 - **Topbar user info:** Shows actual user name, translated role label, and initials instead of hardcoded "Coach / Beheerder".
 - **Admin as trainer:** Admins can now assign themselves to lesson series (previously only the Trainer role was valid).
-- **Docker Compose:** Full-stack setup with backend, frontend, postgres, and smtp4dev.
+- **Docker Compose:** Full-stack setup with backend, frontend, postgres, and mailpit.
 
 ## What Remains (Nice-to-Have for Polish)
 
@@ -167,5 +167,5 @@ Frontend (Next.js App Router)
 
 Docker Compose
   postgres:17 → backend (.NET 10) → frontend (Next.js 16)
-  smtp4dev (email testing)
+  mailpit (email testing)
 ```
