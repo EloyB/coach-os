@@ -1676,6 +1676,7 @@ function EnrollmentRow({
             <button
               onClick={handleMarkCashPaid}
               disabled={markingPaid}
+              aria-label="Markeer als betaald"
               className="flex items-center gap-1 px-2 py-1 rounded-md border border-tennis-green/20 text-xs font-medium text-tennis-green hover:bg-tennis-green/5 transition-colors disabled:opacity-50"
             >
               <Euro size={12} />
