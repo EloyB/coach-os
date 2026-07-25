@@ -105,6 +105,9 @@ public class EnrollmentService(
         var enrollments =
             await enrollmentRepo.GetBySeriesAsync(lessonSeriesId, organizationId, ct);
 
+        var groups = await enrollmentGroupRepo.GetBySeriesAsync(lessonSeriesId, organizationId, ct);
+        var groupsById = groups.ToDictionary(g => g.Id);
+
         var dtos = enrollments.Select(e => new LessonSerieEnrollmentDto
         {
             Id = e.Id,
@@ -123,6 +126,9 @@ public class EnrollmentService(
                 ParticipantCategory.Adult => "Volwassenen",
                 _ => null,
             },
+            EnrollmentGroupId = e.EnrollmentGroupId,
+            IsGroupLeader = e.EnrollmentGroupId.HasValue
+                && groupsById.GetValueOrDefault(e.EnrollmentGroupId.Value)?.LeaderEnrollmentId == e.Id,
             FormResponses = e.FormResponses
                 .OrderBy(r => r.FormField.Order)
                 .Select(r => new EnrollmentResponseItemDto

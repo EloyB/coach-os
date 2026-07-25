@@ -55,6 +55,10 @@ export interface LessonSeriesEnrollmentDto {
   /** 1 = volwassenen, 2 = jeugd, null = onbekend. */
   category: number | null;
   categoryLabel: string | null;
+  /** Null = solo-inschrijving; anders de groep waartoe deze inschrijving hoort. */
+  enrollmentGroupId: string | null;
+  /** True als deze inschrijving de groepsleider is (draagt de gedeelde betaling). */
+  isGroupLeader: boolean;
   formResponses: EnrollmentResponseItem[];
 }
 

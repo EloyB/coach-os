@@ -210,6 +210,9 @@ public class EnrollmentServiceTests
         _enrollmentRepo
             .Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(enrollments);
+        _enrollmentGroupRepo
+            .Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<EnrollmentGroup>());
 
         var result =
             await _service.GetSeriesEnrollmentsAsync(SeriesId, OrgId);
@@ -217,6 +220,8 @@ public class EnrollmentServiceTests
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().HaveCount(1);
         result.Value![0].StudentName.Should().Be("Piet Janssen");
+        result.Value![0].IsGroupLeader.Should().BeFalse();
+        result.Value![0].EnrollmentGroupId.Should().BeNull();
     }
 
     // ── SaveFormAsync ────────────────────────────────────────────────────────

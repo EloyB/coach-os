@@ -1597,6 +1597,11 @@ function EnrollmentRow({
   const hasResponses = enrollment.formResponses.length > 0;
   const isCancelled = enrollment.status === "Cancelled";
   const isPendingPayment = enrollment.status === "PendingPayment";
+  // De cash-betaling hangt aan de groepsleider (of aan een solo-inschrijving).
+  // Alleen die rij mag "Markeer als betaald" tonen; groepsleden hebben geen
+  // eigen betaling en zouden een 404 uitlokken.
+  const ownsPayment =
+    enrollment.enrollmentGroupId == null || enrollment.isGroupLeader;
 
   async function handleCancelEnrollment() {
     setCancelling(true);
@@ -1672,7 +1677,7 @@ function EnrollmentRow({
               {enrollmentStatusStyles[enrollment.status].label}
             </Badge>
           )}
-          {isPendingPayment && (
+          {isPendingPayment && ownsPayment && (
             <button
               onClick={handleMarkCashPaid}
               disabled={markingPaid}
