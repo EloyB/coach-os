@@ -6,7 +6,7 @@ export interface PublicLessonSeriesDto {
   name: string;
   description: string | null;
   trainerName: string;
-  level: number;
+  level: number | null;
   price: number;
   startDate: string;
   endDate: string;
