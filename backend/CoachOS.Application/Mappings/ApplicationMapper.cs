@@ -27,7 +27,13 @@ public partial class ApplicationMapper
             RegistrationDeadline = DateTime.SpecifyKind(request.RegistrationDeadline, DateTimeKind.Utc),
             TennisClubId = request.TennisClubId,
             MaxRegistrations = request.MaxRegistrations,
+            MinAge = request.MinAge,
+            MaxAge = request.MaxAge,
             IsActive = true,
+            AllowSoloEnrollment = request.AllowSoloEnrollment,
+            AllowGroupEnrollment = request.AllowGroupEnrollment,
+            AcceptOnlinePayment = request.AcceptOnlinePayment,
+            AcceptManualPayment = request.AcceptManualPayment,
         };
     }
 
@@ -47,6 +53,8 @@ public partial class ApplicationMapper
             RegistrationDeadline = ls.RegistrationDeadline,
             IsActive = ls.IsActive,
             MaxRegistrations = ls.MaxRegistrations,
+            MinAge = ls.MinAge,
+            MaxAge = ls.MaxAge,
             LessonCount = lessonCount,
             EnrolledCount = enrolledCount,
             TotalCapacity = totalCapacity,
@@ -54,6 +62,10 @@ public partial class ApplicationMapper
             TennisClubId = ls.TennisClubId,
             TennisClubName = ls.TennisClub?.Name ?? string.Empty,
             TennisClubAddress = ls.TennisClub?.Address ?? string.Empty,
+            AllowSoloEnrollment = ls.AllowSoloEnrollment,
+            AllowGroupEnrollment = ls.AllowGroupEnrollment,
+            AcceptOnlinePayment = ls.AcceptOnlinePayment,
+            AcceptManualPayment = ls.AcceptManualPayment,
         };
     }
 

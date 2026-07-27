@@ -14,6 +14,10 @@ export interface PublicLessonSeriesDto {
   tennisClubName: string;
   enrollmentCount: number;
   maxRegistrations: number | null;
+  minAge: number;
+  maxAge: number;
+  allowSoloEnrollment: boolean;
+  allowGroupEnrollment: boolean;
   lessons: LessonDto[];
 }
 
@@ -51,6 +55,10 @@ export interface LessonSeriesEnrollmentDto {
   /** 1 = volwassenen, 2 = jeugd, null = onbekend. */
   category: number | null;
   categoryLabel: string | null;
+  /** Null = solo-inschrijving; anders de groep waartoe deze inschrijving hoort. */
+  enrollmentGroupId: string | null;
+  /** True als deze inschrijving de groepsleider is (draagt de gedeelde betaling). */
+  isGroupLeader: boolean;
   formResponses: EnrollmentResponseItem[];
 }
 
@@ -123,4 +131,13 @@ export async function getLessonSeriesEnrollments(seriesId: string): Promise<Less
  */
 export async function cancelEnrollment(seriesId: string, enrollmentId: string): Promise<void> {
   await apiClient.delete(`/lessonseries/${seriesId}/enrollments/${enrollmentId}`);
+}
+
+/**
+ * Markeert de openstaande overschrijving van een reeksinschrijving als betaald.
+ * Bevestigt de inschrijving en verstuurt de bevestigingsmail. Faalt met NotFound
+ * als er geen openstaande cash-betaling is voor deze inschrijving.
+ */
+export async function markEnrollmentCashPaid(enrollmentId: string): Promise<void> {
+  await apiClient.post(`/enrollments/${enrollmentId}/mark-cash-paid`);
 }

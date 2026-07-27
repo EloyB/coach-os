@@ -20,6 +20,7 @@ public class LessonSerieServiceTests
     private Mock<ITennisClubRepository> _tennisClubRepo = null!;
     private Mock<IUserLookupService> _userLookup = null!;
     private Mock<IEmailService> _emailService = null!;
+    private Mock<IMollieConnectionRepository> _mollieConnectionRepo = null!;
     private ApplicationMapper _mapper = null!;
     private LessonSerieService _service = null!;
 
@@ -36,6 +37,7 @@ public class LessonSerieServiceTests
         _tennisClubRepo = new Mock<ITennisClubRepository>();
         _userLookup = new Mock<IUserLookupService>();
         _emailService = new Mock<IEmailService>();
+        _mollieConnectionRepo = new Mock<IMollieConnectionRepository>();
         _mapper = new ApplicationMapper();
         _service = new LessonSerieService(
             _lessonSeriesRepo.Object,
@@ -44,6 +46,7 @@ public class LessonSerieServiceTests
             _tennisClubRepo.Object,
             _userLookup.Object,
             _emailService.Object,
+            _mollieConnectionRepo.Object,
             _mapper);
 
         // Default: enrollment counts returnen lege dictionary (geen inschrijvingen).
@@ -56,6 +59,13 @@ public class LessonSerieServiceTests
         _userLookup
             .Setup(u => u.IsActiveTrainerAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
+
+        // Default: organisatie is verbonden met Mollie, zodat bestaande tests (die AcceptOnlinePayment
+        // niet expliciet zetten en dus de default `true` gebruiken) niet stuklopen op de gating-check.
+        // Individuele tests overriden dit naar null om het "niet verbonden"-scenario te simuleren.
+        _mollieConnectionRepo
+            .Setup(r => r.GetByOrganizationReadOnlyAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new MollieConnection { Id = Guid.NewGuid(), OrganizationId = OrgId });
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
@@ -396,6 +406,34 @@ public class LessonSerieServiceTests
         _lessonSeriesRepo.Verify(r => r.AddAsync(It.IsAny<LessonSerie>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
+    [Test]
+    public async Task CreateAsync_RejectsOnlinePayment_WhenNoMollieConnection()
+    {
+        CreateLessonSerieRequest request = new()
+        {
+            Name = "Zonder Mollie",
+            Level = (int)LessonLevel.Beginner,
+            StartDate = "2026-06-01",
+            EndDate = "2026-08-31",
+            TennisClubId = ClubId,
+            AcceptOnlinePayment = true,
+        };
+
+        _tennisClubRepo
+            .Setup(r => r.ExistsAsync(ClubId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        _mollieConnectionRepo
+            .Setup(r => r.GetByOrganizationReadOnlyAsync(OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((MollieConnection?)null);
+
+        var result = await _service.CreateAsync(OrgId, request);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.Code == ErrorCodes.Validation);
+        _lessonSeriesRepo.Verify(r => r.AddAsync(It.IsAny<LessonSerie>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     // ── UpdateAsync ───────────────────────────────────────────────────────────
 
     [Test]
@@ -482,6 +520,37 @@ public class LessonSerieServiceTests
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.NotFound);
+    }
+
+    [Test]
+    public async Task UpdateAsync_RejectsOnlinePayment_WhenNoMollieConnection()
+    {
+        var series = BuildSeries();
+        UpdateLessonSerieRequest request = new()
+        {
+            Name = "Zonder Mollie",
+            Level = (int)LessonLevel.Beginner,
+            TennisClubId = ClubId,
+            AcceptOnlinePayment = true,
+        };
+
+        _lessonSeriesRepo
+            .Setup(r => r.GetByIdAsync(series.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+
+        _tennisClubRepo
+            .Setup(r => r.ExistsAsync(ClubId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        _mollieConnectionRepo
+            .Setup(r => r.GetByOrganizationReadOnlyAsync(OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((MollieConnection?)null);
+
+        var result = await _service.UpdateAsync(series.Id, OrgId, request);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.Code == ErrorCodes.Validation);
+        _lessonSeriesRepo.Verify(r => r.UpdateAsync(It.IsAny<LessonSerie>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     // ── DeleteAsync ───────────────────────────────────────────────────────────

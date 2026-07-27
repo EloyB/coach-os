@@ -16,6 +16,8 @@ export interface AssignmentDetailsDto {
   groupMemberNames: string[];
   status: "Pending" | "Confirmed" | "Declined";
   expiresAt: string; // ISO timestamp
+  acceptOnlinePayment: boolean;
+  acceptManualPayment: boolean;
 }
 
 export interface ConfirmResultDto {

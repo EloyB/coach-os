@@ -19,4 +19,7 @@ public interface IStudentConfirmationService
         string rawToken, PickAlternativeRequest request, CancellationToken ct = default);
 
     Task<Result<string>> GenerateCalendarAsync(string rawToken, CancellationToken ct = default);
+
+    Task<Result> MarkEnrollmentCashPaidAsync(
+        Guid enrollmentId, Guid organizationId, CancellationToken ct = default);
 }

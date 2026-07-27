@@ -210,6 +210,9 @@ public class EnrollmentServiceTests
         _enrollmentRepo
             .Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(enrollments);
+        _enrollmentGroupRepo
+            .Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<EnrollmentGroup>());
 
         var result =
             await _service.GetSeriesEnrollmentsAsync(SeriesId, OrgId);
@@ -217,6 +220,8 @@ public class EnrollmentServiceTests
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().HaveCount(1);
         result.Value![0].StudentName.Should().Be("Piet Janssen");
+        result.Value![0].IsGroupLeader.Should().BeFalse();
+        result.Value![0].EnrollmentGroupId.Should().BeNull();
     }
 
     // ── SaveFormAsync ────────────────────────────────────────────────────────
@@ -610,6 +615,134 @@ public class EnrollmentServiceTests
         _timeSlotPreferenceRepo.Verify(
             r => r.AddRangeAsync(It.IsAny<IEnumerable<TimeSlotPreference>>(), It.IsAny<CancellationToken>()),
             Times.Never);
+    }
+
+    // ── Enrollment-mode gating ───────────────────────────────────────────────
+
+    [Test]
+    public async Task SubmitEnrollment_RejectsGroup_WhenSeriesIsSoloOnly()
+    {
+        LessonSerie series = BuildActiveSeries();
+        series.AllowSoloEnrollment = true;
+        series.AllowGroupEnrollment = false;
+        SetupSuccessfulEnrollment(series, "leader@test.be");
+
+        SubmitEnrollmentRequest request = new()
+        {
+            StudentName = "Leader",
+            StudentEmail = "leader@test.be",
+            DateOfBirth = "1990-05-12",
+            EnrollmentType = "group",
+            GroupMembers = new()
+            {
+                new() { StudentName = "Bob", DateOfBirth = "2000-01-01" },
+            },
+        };
+
+        Result<Guid> result = await _service.SubmitEnrollmentAsync(SeriesId, request);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.Code == ErrorCodes.Validation);
+        _enrollmentRepo.Verify(r => r.AddAsync(It.IsAny<Enrollment>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task SubmitEnrollment_RejectsSolo_WhenSeriesIsGroupOnly()
+    {
+        LessonSerie series = BuildActiveSeries();
+        series.AllowSoloEnrollment = false;
+        series.AllowGroupEnrollment = true;
+        SetupSuccessfulEnrollment(series, "anna@test.be");
+
+        SubmitEnrollmentRequest request = new()
+        {
+            StudentName = "Anna",
+            StudentEmail = "anna@test.be",
+            DateOfBirth = "1990-05-12",
+            EnrollmentType = "solo",
+        };
+
+        Result<Guid> result = await _service.SubmitEnrollmentAsync(SeriesId, request);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.Code == ErrorCodes.Validation);
+        _enrollmentRepo.Verify(r => r.AddAsync(It.IsAny<Enrollment>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    // ── Age eligibility ───────────────────────────────────────────────────────
+
+    [Test]
+    public async Task SubmitEnrollment_ParticipantYoungerThanMinAge_ReturnsConflict()
+    {
+        LessonSerie series = BuildActiveSeries();
+        series.MinAge = 6;
+        series.MaxAge = 99;
+        series.StartDate = new DateOnly(2026, 1, 1);
+        SetupSuccessfulEnrollment(series, "kind@test.be");
+
+        // 3 jaar oud op de startdatum → onder de min van 6.
+        SubmitEnrollmentRequest request = new()
+        {
+            StudentName = "Jong Kind",
+            StudentEmail = "kind@test.be",
+            DateOfBirth = "2023-01-01",
+        };
+
+        Result<Guid> result = await _service.SubmitEnrollmentAsync(SeriesId, request);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.Validation);
+        _enrollmentRepo.Verify(r => r.AddAsync(It.IsAny<Enrollment>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task SubmitEnrollment_ParticipantExactlyMinAge_Succeeds()
+    {
+        LessonSerie series = BuildActiveSeries();
+        series.MinAge = 3;
+        series.MaxAge = 99;
+        series.StartDate = new DateOnly(2026, 1, 1);
+        SetupSuccessfulEnrollment(series, "kind@test.be");
+
+        // Precies 3 op de startdatum.
+        SubmitEnrollmentRequest request = new()
+        {
+            StudentName = "Net Drie",
+            StudentEmail = "kind@test.be",
+            DateOfBirth = "2023-01-01",
+        };
+
+        Result<Guid> result = await _service.SubmitEnrollmentAsync(SeriesId, request);
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Test]
+    public async Task SubmitEnrollment_GroupMemberOutsideRange_RejectsWholeEnrollment()
+    {
+        LessonSerie series = BuildActiveSeries();
+        series.MinAge = 6;
+        series.MaxAge = 12;
+        series.StartDate = new DateOnly(2026, 1, 1);
+        SetupSuccessfulEnrollment(series, "leader@test.be");
+
+        SubmitEnrollmentRequest request = new()
+        {
+            StudentName = "Leader",
+            StudentEmail = "leader@test.be",
+            DateOfBirth = "2016-01-01", // 10 jaar → ok
+            EnrollmentType = "group",
+            GroupMembers = new()
+            {
+                new() { StudentName = "Te Jong", StudentEmail = null, DateOfBirth = "2023-01-01" }, // 3 → buiten
+            },
+        };
+
+        Result<Guid> result = await _service.SubmitEnrollmentAsync(SeriesId, request);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.Validation);
+        _enrollmentRepo.Verify(r => r.AddAsync(It.IsAny<Enrollment>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     // ── GetSeriesEnrollmentsWithPreferencesAsync ─────────────────────────────

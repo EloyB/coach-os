@@ -57,7 +57,11 @@ public class EnrollmentService(
             RegistrationDeadline = series.RegistrationDeadline,
             TennisClubName = series.TennisClub?.Name ?? string.Empty,
             MaxRegistrations = series.MaxRegistrations,
+            MinAge = series.MinAge,
+            MaxAge = series.MaxAge,
             EnrollmentCount = enrollmentCount,
+            AllowSoloEnrollment = series.AllowSoloEnrollment,
+            AllowGroupEnrollment = series.AllowGroupEnrollment,
             WeeklyTemplate = series.WeeklyTemplate
                 .OrderBy(w => w.DayOfWeek)
                 .ThenBy(w => w.StartTime)
@@ -101,6 +105,9 @@ public class EnrollmentService(
         var enrollments =
             await enrollmentRepo.GetBySeriesAsync(lessonSeriesId, organizationId, ct);
 
+        var groups = await enrollmentGroupRepo.GetBySeriesAsync(lessonSeriesId, organizationId, ct);
+        var groupsById = groups.ToDictionary(g => g.Id);
+
         var dtos = enrollments.Select(e => new LessonSerieEnrollmentDto
         {
             Id = e.Id,
@@ -119,6 +126,9 @@ public class EnrollmentService(
                 ParticipantCategory.Adult => "Volwassenen",
                 _ => null,
             },
+            EnrollmentGroupId = e.EnrollmentGroupId,
+            IsGroupLeader = e.EnrollmentGroupId.HasValue
+                && groupsById.GetValueOrDefault(e.EnrollmentGroupId.Value)?.LeaderEnrollmentId == e.Id,
             FormResponses = e.FormResponses
                 .OrderBy(r => r.FormField.Order)
                 .Select(r => new EnrollmentResponseItemDto
@@ -230,9 +240,26 @@ public class EnrollmentService(
                 return Result<Guid>.Fail(formError);
         }
 
+        // 4a. Inschrijfwijze afdwingen: de admin bepaalt per reeks of solo, groep of
+        //     beide toegelaten zijn. Vóór de transactie — geen DB-werk nodig voor een
+        //     wijze die sowieso niet mag.
+        bool wantsGroup = request.EnrollmentType == "group";
+        if (wantsGroup && !series.AllowGroupEnrollment)
+            return Result<Guid>.Fail(new Error(
+                ErrorCodes.Validation, "Inschrijven in groep is niet mogelijk voor deze lessenreeks."));
+        if (!wantsGroup && !series.AllowSoloEnrollment)
+            return Result<Guid>.Fail(new Error(
+                ErrorCodes.Validation, "Solo inschrijven is niet mogelijk voor deze lessenreeks."));
+
         var groupSize = request.EnrollmentType == "group" && request.GroupMembers is not null
             ? request.GroupMembers.Count + 1
             : 1;
+
+        // Leeftijdsgrens: toets elke deelnemer op de startdatum van de reeks. Fail-fast
+        // vóór de transactie — geen DB-werk als iemand buiten de grens valt.
+        Error? ageError = CheckAgeEligibility(request, series);
+        if (ageError is not null)
+            return Result<Guid>.Fail(ageError);
 
         // 4b. Tariefcategorie afleiden. De leeftijdsgrens is org-specifiek; deze flow is
         //     anoniem, dus de settings komen via series.OrganizationId en niet uit een JWT.
@@ -624,6 +651,34 @@ public class EnrollmentService(
     /// </summary>
     private static DateOnly? ParseBirthDate(string? value)
         => DateOfBirthRules.TryParse(value, out DateOnly date) ? date : null;
+
+    /// <summary>
+    /// Controleert of elke deelnemer (leider + groepsleden) op de startdatum van de reeks
+    /// binnen [MinAge, MaxAge] valt. Zonder bruikbare geboortedatum wordt niet geblokkeerd,
+    /// consistent met de tariefcategorie en de partiële unique index.
+    /// </summary>
+    private static Error? CheckAgeEligibility(
+        SubmitEnrollmentRequest request, Domain.Entities.LessonSerie series)
+    {
+        List<(string Name, string? Dob)> people = [(request.StudentName, request.DateOfBirth)];
+        if (request.EnrollmentType == "group" && request.GroupMembers is not null)
+            people.AddRange(request.GroupMembers.Select(m => (m.StudentName, (string?)m.DateOfBirth)));
+
+        foreach ((string name, string? dob) in people)
+        {
+            if (!DateOfBirthRules.TryParse(dob, out DateOnly parsed)) continue;
+
+            int age = ParticipantCategoryResolver.CalculateAge(parsed, series.StartDate);
+            if (age < series.MinAge || age > series.MaxAge)
+            {
+                return new Error(ErrorCodes.Validation,
+                    $"{name} ({age} jaar) valt buiten de leeftijdsgrens van deze reeks " +
+                    $"({series.MinAge}–{series.MaxAge} jaar).");
+            }
+        }
+
+        return null;
+    }
 
     /// <summary>
     /// Leidt de tariefcategorie af. Zonder bruikbare geboortedatum blijft de categorie

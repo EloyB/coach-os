@@ -77,13 +77,13 @@ test.describe("Live UI — lessenreeks detailpagina", () => {
     });
   });
 
-  test("knop Lesmoment toevoegen opent de dialog", async ({ page }) => {
+  test("knop Weekslot toevoegen opent de dialog", async ({ page }) => {
     await page.goto(`/dashboard/lessons/${seriesId}`);
 
-    await page.getByRole("button", { name: /Lesmoment toevoegen/ }).click();
+    await page.getByRole("button", { name: /Weekslot toevoegen/ }).click();
 
     await expect(
-      page.getByRole("heading", { name: "Lesmoment toevoegen" }),
+      page.getByRole("heading", { name: "Weekslot toevoegen" }),
     ).toBeVisible();
     await expect(page.getByText("Starttijd", { exact: true })).toBeVisible();
     await expect(page.getByText("Eindtijd", { exact: true })).toBeVisible();
@@ -91,7 +91,7 @@ test.describe("Live UI — lessenreeks detailpagina", () => {
 
   test("dialog blokkeert eindtijd vóór starttijd", async ({ page }) => {
     await page.goto(`/dashboard/lessons/${seriesId}`);
-    await page.getByRole("button", { name: /Lesmoment toevoegen/ }).click();
+    await page.getByRole("button", { name: /Weekslot toevoegen/ }).click();
 
     await page.locator('input[type="time"]').first().fill("15:00");
     await page.locator('input[type="time"]').nth(1).fill("14:00");

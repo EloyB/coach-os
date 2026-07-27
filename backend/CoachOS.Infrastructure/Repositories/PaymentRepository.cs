@@ -77,6 +77,19 @@ public class PaymentRepository(ApplicationDbContext context) : IPaymentRepositor
             .FirstOrDefaultAsync(ct);
     }
 
+    public async Task<Payment?> GetLatestPendingCashByEnrollmentIdAsync(
+        Guid enrollmentId, Guid organizationId, CancellationToken ct = default)
+    {
+        // Getrackt (geen AsNoTracking): de caller muteert Status/PaidAt en slaat op.
+        return await context.Payments
+            .Where(p => p.EnrollmentId == enrollmentId
+                && p.OrganizationId == organizationId
+                && p.Method == PaymentMethod.Cash
+                && p.Status == PaymentStatus.Pending)
+            .OrderByDescending(p => p.CreatedAt)
+            .FirstOrDefaultAsync(ct);
+    }
+
     public async Task<Dictionary<Guid, (PaymentMethod? Method, PaymentStatus Status)>> GetLatestMethodAndStatusByCampEnrollmentIdsAsync(
         IEnumerable<Guid> campEnrollmentIds, CancellationToken ct = default)
     {

@@ -63,6 +63,7 @@ import {
   getEnrollmentForm,
   saveEnrollmentForm,
   cancelEnrollment,
+  markEnrollmentCashPaid,
 } from "@/lib/api/enrollments";
 import type {
   LessonSeriesEnrollmentDto,
@@ -71,6 +72,7 @@ import type {
 } from "@/lib/api/enrollments";
 
 import { getTennisClubs } from "@/lib/api/tennisClubs";
+import { getMollieConnectionStatus } from "@/lib/api/mollieConnect";
 import { getAuthUser } from "@/lib/auth";
 import { FieldError } from "@/components/forms/field-error";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -83,14 +85,33 @@ import { PriceMatrixSection } from "./_components/price-matrix-section";
 
 // ─── Edit Series Form ─────────────────────────────────────────────────────────
 
-const editSchema = z.object({
-  name: z.string().min(1, "Naam is verplicht").max(200),
-  description: z.string().max(1000).optional(),
-  tennisClubId: z.string().min(1, "Tennisclub is verplicht"),
-  price: z.number().min(0),
-  registrationDeadline: z.string().optional(),
-  isActive: z.boolean(),
-});
+const editSchema = z
+  .object({
+    name: z.string().min(1, "Naam is verplicht").max(200),
+    description: z.string().max(1000).optional(),
+    tennisClubId: z.string().min(1, "Tennisclub is verplicht"),
+    price: z.number().min(0),
+    registrationDeadline: z.string().optional(),
+    isActive: z.boolean(),
+    minAge: z.number().int().min(0).max(120),
+    maxAge: z.number().int().min(0).max(120),
+    allowSoloEnrollment: z.boolean(),
+    allowGroupEnrollment: z.boolean(),
+    acceptOnlinePayment: z.boolean(),
+    acceptManualPayment: z.boolean(),
+  })
+  .refine((d) => d.minAge <= d.maxAge, {
+    message: "Minimumleeftijd mag niet groter zijn dan de maximumleeftijd",
+    path: ["maxAge"],
+  })
+  .refine((d) => d.allowSoloEnrollment || d.allowGroupEnrollment, {
+    message: "Kies minstens één inschrijfwijze",
+    path: ["allowGroupEnrollment"],
+  })
+  .refine((d) => d.acceptOnlinePayment || d.acceptManualPayment, {
+    message: "Kies minstens één betaalmethode",
+    path: ["acceptManualPayment"],
+  });
 
 type EditFormValues = z.infer<typeof editSchema>;
 
@@ -110,6 +131,11 @@ function EditSeriesForm({
     queryKey: ["tennisClubs"],
     queryFn: getTennisClubs,
   });
+  const { data: mollie } = useQuery({
+    queryKey: ["mollieStatus"],
+    queryFn: getMollieConnectionStatus,
+  });
+  const mollieConnected = mollie?.connected ?? false;
 
   const mutation = useMutation({
     mutationFn: (data: EditFormValues) =>
@@ -120,6 +146,12 @@ function EditSeriesForm({
         price: data.price,
         registrationDeadline: data.registrationDeadline || undefined,
         isActive: data.isActive,
+        minAge: data.minAge,
+        maxAge: data.maxAge,
+        allowSoloEnrollment: data.allowSoloEnrollment,
+        allowGroupEnrollment: data.allowGroupEnrollment,
+        acceptOnlinePayment: data.acceptOnlinePayment,
+        acceptManualPayment: data.acceptManualPayment,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
@@ -132,11 +164,20 @@ function EditSeriesForm({
     register,
     control,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<EditFormValues>({
     resolver: zodResolver(editSchema),
     defaultValues,
   });
+
+  // Als de Mollie-koppeling niet (meer) actief is, kan online betalen nooit
+  // aangevinkt staan — forceer dit zodra de status binnen is.
+  useEffect(() => {
+    if (mollie && !mollieConnected) {
+      setValue("acceptOnlinePayment", false);
+    }
+  }, [mollie, mollieConnected, setValue]);
 
   return (
     <form
@@ -216,6 +257,34 @@ function EditSeriesForm({
             />
           </div>
         </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              Min. leeftijd
+            </label>
+            <input
+              {...register("minAge", { valueAsNumber: true })}
+              type="number"
+              min={0}
+              max={120}
+              className={inputClass}
+            />
+            <FieldError message={errors.minAge?.message} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              Max. leeftijd
+            </label>
+            <input
+              {...register("maxAge", { valueAsNumber: true })}
+              type="number"
+              min={0}
+              max={120}
+              className={inputClass}
+            />
+            <FieldError message={errors.maxAge?.message} />
+          </div>
+        </div>
         <div className="flex items-center gap-2">
           <input
             {...register("isActive")}
@@ -227,6 +296,65 @@ function EditSeriesForm({
             Actief
           </label>
         </div>
+
+        {/* Inschrijfwijze */}
+        <fieldset>
+          <legend className="block text-xs font-medium text-gray-600 mb-1">
+            Inschrijfwijze
+          </legend>
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              {...register("allowSoloEnrollment")}
+              className="w-4 h-4 accent-tennis-green"
+            />
+            Solo inschrijven
+          </label>
+          <label className="flex items-center gap-2 text-sm text-gray-700 mt-1">
+            <input
+              type="checkbox"
+              {...register("allowGroupEnrollment")}
+              className="w-4 h-4 accent-tennis-green"
+            />
+            In groep inschrijven
+          </label>
+          <FieldError message={errors.allowGroupEnrollment?.message} />
+        </fieldset>
+
+        {/* Betaalmethodes */}
+        <fieldset>
+          <legend className="block text-xs font-medium text-gray-600 mb-1">
+            Betaalmethodes
+          </legend>
+          <label
+            className={`flex items-center gap-2 text-sm text-gray-700 ${!mollieConnected ? "opacity-50" : ""}`}
+          >
+            <input
+              type="checkbox"
+              disabled={!mollieConnected}
+              {...register("acceptOnlinePayment")}
+              className="w-4 h-4 accent-tennis-green"
+            />
+            Online betalen (Mollie)
+          </label>
+          {!mollieConnected && (
+            <p className="text-xs text-gray-500 mt-1">
+              Online betalen kan pas nadat je met Mollie verbonden bent.{" "}
+              <Link href="/dashboard/settings" className="underline">
+                Verbind Mollie in instellingen
+              </Link>
+            </p>
+          )}
+          <label className="flex items-center gap-2 text-sm text-gray-700 mt-2">
+            <input
+              type="checkbox"
+              {...register("acceptManualPayment")}
+              className="w-4 h-4 accent-tennis-green"
+            />
+            Overschrijving
+          </label>
+          <FieldError message={errors.acceptManualPayment?.message} />
+        </fieldset>
       </div>
 
       {mutation.isError && (
@@ -1465,8 +1593,15 @@ function EnrollmentRow({
   const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [markingPaid, setMarkingPaid] = useState(false);
   const hasResponses = enrollment.formResponses.length > 0;
   const isCancelled = enrollment.status === "Cancelled";
+  const isPendingPayment = enrollment.status === "PendingPayment";
+  // De cash-betaling hangt aan de groepsleider (of aan een solo-inschrijving).
+  // Alleen die rij mag "Markeer als betaald" tonen; groepsleden hebben geen
+  // eigen betaling en zouden een 404 uitlokken.
+  const ownsPayment =
+    enrollment.enrollmentGroupId == null || enrollment.isGroupLeader;
 
   async function handleCancelEnrollment() {
     setCancelling(true);
@@ -1479,6 +1614,21 @@ function EnrollmentRow({
       // Error toast wordt al getoond door de axios interceptor
     } finally {
       setCancelling(false);
+    }
+  }
+
+  async function handleMarkCashPaid(e: React.MouseEvent) {
+    e.stopPropagation();
+    setMarkingPaid(true);
+    try {
+      await markEnrollmentCashPaid(enrollment.id);
+      toast.success("Inschrijving gemarkeerd als betaald");
+      queryClient.invalidateQueries({ queryKey: ["enrollments", seriesId] });
+      queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
+    } catch {
+      // Error toast wordt al getoond door de axios interceptor
+    } finally {
+      setMarkingPaid(false);
     }
   }
 
@@ -1526,6 +1676,17 @@ function EnrollmentRow({
             >
               {enrollmentStatusStyles[enrollment.status].label}
             </Badge>
+          )}
+          {isPendingPayment && ownsPayment && (
+            <button
+              onClick={handleMarkCashPaid}
+              disabled={markingPaid}
+              aria-label="Markeer als betaald"
+              className="flex items-center gap-1 px-2 py-1 rounded-md border border-tennis-green/20 text-xs font-medium text-tennis-green hover:bg-tennis-green/5 transition-colors disabled:opacity-50"
+            >
+              <Euro size={12} />
+              Markeer als betaald
+            </button>
           )}
           {!isCancelled && (
             <AlertDialog>
@@ -1872,6 +2033,12 @@ export default function LessonSeriesDetailPage({
                   registrationDeadline:
                     series.registrationDeadline?.split("T")[0] ?? "",
                   isActive: series.isActive,
+                  minAge: series.minAge ?? 3,
+                  maxAge: series.maxAge ?? 99,
+                  allowSoloEnrollment: series.allowSoloEnrollment,
+                  allowGroupEnrollment: series.allowGroupEnrollment,
+                  acceptOnlinePayment: series.acceptOnlinePayment,
+                  acceptManualPayment: series.acceptManualPayment,
                 }}
                 onCancel={() => setEditing(false)}
                 onSaved={() => setEditing(false)}

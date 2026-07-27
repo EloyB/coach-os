@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useForm, Controller } from "react-hook-form";
@@ -14,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { getTennisClubs } from "@/lib/api/tennisClubs";
+import { getMollieConnectionStatus } from "@/lib/api/mollieConnect";
 import { FieldError } from "@/components/forms/field-error";
 import { DatePicker } from "@/components/ui/date-picker";
 import { inputClass } from "@/lib/styles";
@@ -39,7 +41,21 @@ const schema = z
       .number({ message: "Maximum inschrijvingen is verplicht" })
       .min(1, "Minimaal 1 inschrijving toestaan")
       .max(500, "Maximum is 500 inschrijvingen"),
+    minAge: z
+      .number({ message: "Minimumleeftijd is verplicht" })
+      .int("Gebruik een heel getal")
+      .min(0, "Minimaal 0")
+      .max(120, "Maximaal 120"),
+    maxAge: z
+      .number({ message: "Maximumleeftijd is verplicht" })
+      .int("Gebruik een heel getal")
+      .min(0, "Minimaal 0")
+      .max(120, "Maximaal 120"),
     registrationDeadline: z.string().min(1, "Inschrijfdeadline is verplicht"),
+    allowSoloEnrollment: z.boolean(),
+    allowGroupEnrollment: z.boolean(),
+    acceptOnlinePayment: z.boolean(),
+    acceptManualPayment: z.boolean(),
   })
   .refine((d) => !d.startDate || !d.endDate || d.endDate >= d.startDate, {
     message: "Einddatum moet na startdatum zijn",
@@ -54,7 +70,19 @@ const schema = z
       message: "Inschrijfdeadline moet voor of op de startdatum zijn",
       path: ["registrationDeadline"],
     },
-  );
+  )
+  .refine((d) => d.minAge <= d.maxAge, {
+    message: "Minimumleeftijd mag niet groter zijn dan de maximumleeftijd",
+    path: ["maxAge"],
+  })
+  .refine((d) => d.allowSoloEnrollment || d.allowGroupEnrollment, {
+    message: "Kies minstens één inschrijfwijze",
+    path: ["allowGroupEnrollment"],
+  })
+  .refine((d) => d.acceptOnlinePayment || d.acceptManualPayment, {
+    message: "Kies minstens één betaalmethode",
+    path: ["acceptManualPayment"],
+  });
 
 type FormValues = z.infer<typeof schema>;
 
@@ -86,16 +114,55 @@ export function Step1Basisinfo({ defaultValues, onNext }: Step1Props) {
     queryFn: getTennisClubs,
   });
 
+  const { data: mollie } = useQuery({
+    queryKey: ["mollieStatus"],
+    queryFn: getMollieConnectionStatus,
+  });
+  const mollieConnected = mollie?.connected ?? false;
+
   const {
     register,
     control,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     mode: "onBlur",
-    defaultValues: defaultValues ?? { price: 0, maxRegistrations: 0 },
+    defaultValues: defaultValues ?? {
+      price: 0,
+      maxRegistrations: 0,
+      minAge: 3,
+      maxAge: 99,
+      allowSoloEnrollment: true,
+      allowGroupEnrollment: true,
+      acceptOnlinePayment: false,
+      acceptManualPayment: true,
+    },
   });
+
+  // Zet de betaalmethode-defaults zodra de Mollie-status binnen is, maar alleen
+  // voor een vers formulier (nog geen keuze van de gebruiker/vorige stap).
+  const hasTouchedPayment = useRef(defaultValues !== null);
+  useEffect(() => {
+    if (!mollie || hasTouchedPayment.current) return;
+    setValue("acceptOnlinePayment", mollieConnected);
+    setValue("acceptManualPayment", !mollieConnected);
+    hasTouchedPayment.current = true;
+  }, [mollie, mollieConnected, setValue]);
+
+  const acceptOnlinePaymentReg = register("acceptOnlinePayment");
+  const acceptManualPaymentReg = register("acceptManualPayment");
+
+  // Online betalen kan sowieso nooit aangevinkt zijn zonder Mollie-koppeling.
+  // Alleen forceren zodra de status écht geladen is én niet-verbonden — anders
+  // zou de laad-toestand (mollieConnected=false) een verbonden org onterecht
+  // uitvinken (bv. bij terug-navigatie nadat de query-cache is verlopen).
+  useEffect(() => {
+    if (mollie && !mollieConnected) {
+      setValue("acceptOnlinePayment", false);
+    }
+  }, [mollie, mollieConnected, setValue]);
 
   return (
     <form onSubmit={handleSubmit(onNext)}>
@@ -142,6 +209,32 @@ export function Step1Basisinfo({ defaultValues, onNext }: Step1Props) {
             className={inputClass}
           />
           <FieldError message={errors.maxRegistrations?.message} />
+        </div>
+
+        {/* Leeftijdsgrens */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label required>{t("minAge")}</Label>
+            <input
+              {...register("minAge", { valueAsNumber: true })}
+              type="number"
+              min={0}
+              max={120}
+              className={inputClass}
+            />
+            <FieldError message={errors.minAge?.message} />
+          </div>
+          <div>
+            <Label required>{t("maxAge")}</Label>
+            <input
+              {...register("maxAge", { valueAsNumber: true })}
+              type="number"
+              min={0}
+              max={120}
+              className={inputClass}
+            />
+            <FieldError message={errors.maxAge?.message} />
+          </div>
         </div>
 
         {/* Tennisclub */}
@@ -219,6 +312,63 @@ export function Step1Basisinfo({ defaultValues, onNext }: Step1Props) {
           />
           <FieldError message={errors.registrationDeadline?.message} />
         </div>
+
+        {/* Inschrijfwijze */}
+        <fieldset className="mt-6">
+          <legend className="block text-sm font-medium text-gray-700 mb-1.5">
+            {t("enrollmentMode.label")}
+          </legend>
+          <label className="flex items-center gap-2">
+            <input type="checkbox" {...register("allowSoloEnrollment")} />
+            <span>{t("enrollmentMode.solo")}</span>
+          </label>
+          <label className="flex items-center gap-2">
+            <input type="checkbox" {...register("allowGroupEnrollment")} />
+            <span>{t("enrollmentMode.group")}</span>
+          </label>
+          <FieldError message={errors.allowGroupEnrollment?.message} />
+        </fieldset>
+
+        {/* Betaalmethodes */}
+        <fieldset className="mt-6">
+          <legend className="block text-sm font-medium text-gray-700 mb-1.5">
+            {t("paymentMethods.label")}
+          </legend>
+          <label
+            className={`flex items-center gap-2 ${!mollieConnected ? "opacity-50" : ""}`}
+          >
+            <input
+              type="checkbox"
+              disabled={!mollieConnected}
+              {...acceptOnlinePaymentReg}
+              onChange={(e) => {
+                hasTouchedPayment.current = true;
+                acceptOnlinePaymentReg.onChange(e);
+              }}
+            />
+            <span>{t("paymentMethods.online")}</span>
+          </label>
+          {!mollieConnected && (
+            <p className="text-xs text-gray-500 mt-1">
+              {t("paymentMethods.mollieRequired")}{" "}
+              <a href="/dashboard/settings" className="underline">
+                {t("paymentMethods.connectLink")}
+              </a>
+            </p>
+          )}
+          <label className="flex items-center gap-2 mt-2">
+            <input
+              type="checkbox"
+              {...acceptManualPaymentReg}
+              onChange={(e) => {
+                hasTouchedPayment.current = true;
+                acceptManualPaymentReg.onChange(e);
+              }}
+            />
+            <span>{t("paymentMethods.manual")}</span>
+          </label>
+          <FieldError message={errors.acceptManualPayment?.message} />
+        </fieldset>
       </div>
 
       {/* Next */}

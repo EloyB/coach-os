@@ -10,6 +10,7 @@ import {
   User,
   Users,
   Euro,
+  Cake,
   CheckCircle2,
   Copy,
   Plus,
@@ -89,6 +90,18 @@ function validateBirthDate(value: string): string | undefined {
   return undefined;
 }
 
+/** Leeftijd in hele jaren op een peildatum (yyyy-MM-dd strings). */
+function ageOn(dob: string, onDate: string): number | null {
+  if (!dob || !onDate) return null;
+  const b = new Date(dob + "T00:00:00");
+  const d = new Date(onDate + "T00:00:00");
+  if (Number.isNaN(b.getTime()) || Number.isNaN(d.getTime())) return null;
+  let age = d.getFullYear() - b.getFullYear();
+  const m = d.getMonth() - b.getMonth();
+  if (m < 0 || (m === 0 && d.getDate() < b.getDate())) age--;
+  return age;
+}
+
 function inputClass(hasError: boolean) {
   return `w-full border rounded-lg px-3 py-2 text-sm outline-none transition-colors focus:ring-2 focus:ring-tennis-green/20 ${
     hasError
@@ -131,7 +144,9 @@ export default function EnrollPage() {
   // Availability preferences
   const [preferences, setPreferences] = useState<Record<string, number>>({});
 
-  // Enrollment type
+  // Enrollment type. De reeks bepaalt welke wijzen toegelaten zijn; "solo" is
+  // hier enkel een placeholder tot de reeks geladen is (zie loadData hieronder,
+  // die het type corrigeert naar de eerst-toegelaten wijze).
   const [enrollmentType, setEnrollmentType] = useState<"solo" | "group">(
     "solo"
   );
@@ -155,6 +170,10 @@ export default function EnrollPage() {
         setSeries(seriesData);
         setForm(formData);
         setTimeSlots(slotsData);
+        // Default naar de eerst-toegelaten inschrijfwijze zodra de reeks bekend is.
+        setEnrollmentType(
+          seriesData.allowSoloEnrollment ? "solo" : "group"
+        );
       } catch {
         setError("Lessenreeks niet gevonden.");
       } finally {
@@ -234,6 +253,12 @@ export default function EnrollPage() {
       errors.email = "Ongeldig e-mailadres";
     const dobError = validateBirthDate(dateOfBirth);
     if (dobError) errors.dateOfBirth = dobError;
+    if (series) {
+      const leaderAge = ageOn(dateOfBirth, series.startDate);
+      if (leaderAge !== null && (leaderAge < series.minAge || leaderAge > series.maxAge)) {
+        errors.dateOfBirth = `Leeftijd moet tussen ${series.minAge} en ${series.maxAge} jaar zijn`;
+      }
+    }
     setBaseErrors(errors);
 
     const fErrors: Record<string, string> = {};
@@ -261,6 +286,12 @@ export default function EnrollPage() {
         }
         const memberDobError = validateBirthDate(m.dateOfBirth);
         if (memberDobError) e.dateOfBirth = memberDobError;
+        if (series) {
+          const memberAge = ageOn(m.dateOfBirth, series.startDate);
+          if (memberAge !== null && (memberAge < series.minAge || memberAge > series.maxAge)) {
+            e.dateOfBirth = `Leeftijd moet tussen ${series.minAge} en ${series.maxAge} jaar zijn`;
+          }
+        }
         if (e.name || e.email || e.dateOfBirth) mErrors[i] = e;
       });
 
@@ -536,6 +567,10 @@ export default function EnrollPage() {
               <span>€{series.price.toFixed(2)} per reeks</span>
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-600">
+              <Cake className="w-4 h-4 text-gray-400 shrink-0" />
+              <span>Leeftijd: {series.minAge}–{series.maxAge} jaar</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-gray-600">
               <Users className="w-4 h-4 text-gray-400 shrink-0" />
               {series.maxRegistrations ? (
                 <span>
@@ -706,71 +741,81 @@ export default function EnrollPage() {
                 <hr className="border-gray-100" />
 
                 {/* ── Enrollment type ── */}
+                {/* Enkel tonen als er echt een keuze is: bij één toegelaten wijze staat
+                    enrollmentType al vast (zie loadData) en is er niets te kiezen. */}
                 <div>
-                  <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-                    {t("enrollment_type")}
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <label
-                      className={`border-2 rounded-lg p-4 cursor-pointer transition ${
-                        enrollmentType === "solo"
-                          ? "border-tennis-green bg-tennis-green/5"
-                          : "border-gray-200 hover:border-tennis-green/30"
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="enrollType"
-                        value="solo"
-                        checked={enrollmentType === "solo"}
-                        onChange={() => setEnrollmentType("solo")}
-                        className="sr-only"
-                      />
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
-                          <User className="w-5 h-5 text-gray-600" />
-                        </div>
-                        <div>
-                          <div className="font-medium text-gray-900 text-sm">
-                            {t("type_solo")}
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            Ik schrijf mezelf in
-                          </div>
-                        </div>
-                      </div>
-                    </label>
+                  {series.allowSoloEnrollment && series.allowGroupEnrollment && (
+                    <>
+                      <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                        {t("enrollment_type")}
+                      </h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {series.allowSoloEnrollment && (
+                          <label
+                            className={`border-2 rounded-lg p-4 cursor-pointer transition ${
+                              enrollmentType === "solo"
+                                ? "border-tennis-green bg-tennis-green/5"
+                                : "border-gray-200 hover:border-tennis-green/30"
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name="enrollType"
+                              value="solo"
+                              checked={enrollmentType === "solo"}
+                              onChange={() => setEnrollmentType("solo")}
+                              className="sr-only"
+                            />
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
+                                <User className="w-5 h-5 text-gray-600" />
+                              </div>
+                              <div>
+                                <div className="font-medium text-gray-900 text-sm">
+                                  {t("type_solo")}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  Ik schrijf mezelf in
+                                </div>
+                              </div>
+                            </div>
+                          </label>
+                        )}
 
-                    <label
-                      className={`border-2 rounded-lg p-4 cursor-pointer transition ${
-                        enrollmentType === "group"
-                          ? "border-tennis-green bg-tennis-green/5"
-                          : "border-gray-200 hover:border-tennis-green/30"
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="enrollType"
-                        value="group"
-                        checked={enrollmentType === "group"}
-                        onChange={() => setEnrollmentType("group")}
-                        className="sr-only"
-                      />
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
-                          <Users className="w-5 h-5 text-gray-600" />
-                        </div>
-                        <div>
-                          <div className="font-medium text-gray-900 text-sm">
-                            {t("type_group")}
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            Ik schrijf meerdere personen in
-                          </div>
-                        </div>
+                        {series.allowGroupEnrollment && (
+                          <label
+                            className={`border-2 rounded-lg p-4 cursor-pointer transition ${
+                              enrollmentType === "group"
+                                ? "border-tennis-green bg-tennis-green/5"
+                                : "border-gray-200 hover:border-tennis-green/30"
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name="enrollType"
+                              value="group"
+                              checked={enrollmentType === "group"}
+                              onChange={() => setEnrollmentType("group")}
+                              className="sr-only"
+                            />
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
+                                <Users className="w-5 h-5 text-gray-600" />
+                              </div>
+                              <div>
+                                <div className="font-medium text-gray-900 text-sm">
+                                  {t("type_group")}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  Ik schrijf meerdere personen in
+                                </div>
+                              </div>
+                            </div>
+                          </label>
+                        )}
                       </div>
-                    </label>
-                  </div>
+                    </>
+                  )}
 
                   {/* Open to grouping (both solo and group) */}
                   {(enrollmentType === "solo" || enrollmentType === "group") && (

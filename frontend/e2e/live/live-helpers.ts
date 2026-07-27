@@ -169,6 +169,12 @@ export async function createTestSeries(
       // Ruim genoeg zodat de suite niet tegen "volzet" aanloopt.
       maxRegistrations: 500,
       tennisClubId: clubList[0].id,
+      // Nieuwe verplichte flags: minstens één inschrijfwijze en één betaalmethode.
+      // Online betalen staat standaard uit — TC De Aces heeft geen Mollie-koppeling.
+      allowSoloEnrollment: true,
+      allowGroupEnrollment: true,
+      acceptOnlinePayment: false,
+      acceptManualPayment: true,
       weeklyTemplate: [],
       // Minstens één les is verplicht volgens de validator. Baannaam uniek per
       // run, anders botst een tweede run op de baan-bezettingscheck.

@@ -29,6 +29,17 @@ public class CreateLessonSerieRequestValidator : AbstractValidator<CreateLessonS
             .LessThanOrEqualTo(500).WithMessage("Maximum aantal inschrijvingen mag niet meer dan 500 zijn.")
             .When(x => x.MaxRegistrations.HasValue);
 
+        RuleFor(x => x.MinAge)
+            .InclusiveBetween(0, 120).WithMessage("Minimumleeftijd moet tussen 0 en 120 liggen.");
+
+        RuleFor(x => x.MaxAge)
+            .InclusiveBetween(0, 120).WithMessage("Maximumleeftijd moet tussen 0 en 120 liggen.");
+
+        RuleFor(x => x)
+            .Must(x => x.MinAge <= x.MaxAge)
+            .WithMessage("Minimumleeftijd mag niet groter zijn dan de maximumleeftijd.")
+            .WithName("MinAge");
+
         RuleFor(x => x.StartDate)
             .NotEmpty().WithMessage("Startdatum is verplicht.")
             .Matches(@"^\d{4}-\d{2}-\d{2}$").WithMessage("Startdatum moet het formaat yyyy-MM-dd hebben.");
@@ -52,6 +63,14 @@ public class CreateLessonSerieRequestValidator : AbstractValidator<CreateLessonS
 
         RuleFor(x => x.Lessons)
             .NotEmpty().WithMessage("Minstens één les is verplicht.");
+
+        RuleFor(x => x.AllowSoloEnrollment)
+            .Must((req, _) => req.AllowSoloEnrollment || req.AllowGroupEnrollment)
+            .WithMessage("Kies minstens één inschrijfwijze (solo of groep).");
+
+        RuleFor(x => x.AcceptOnlinePayment)
+            .Must((req, _) => req.AcceptOnlinePayment || req.AcceptManualPayment)
+            .WithMessage("Kies minstens één betaalmethode (online of overschrijving).");
 
         RuleForEach(x => x.WeeklyTemplate)
             .SetValidator(new WeeklyTemplateEntryRequestValidator());

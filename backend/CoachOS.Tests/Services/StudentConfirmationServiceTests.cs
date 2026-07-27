@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using CoachOS.Application.Payments.DTOs;
 using CoachOS.Application.Pricing;
 using CoachOS.Application.StudentConfirmation;
 using CoachOS.Application.StudentConfirmation.DTOs;
@@ -32,6 +33,8 @@ public class StudentConfirmationServiceTests
     private Mock<IPaymentRepository> _paymentRepo = null!;
     private Mock<CoachOS.Application.Payments.IPaymentService> _paymentService = null!;
     private Mock<IPricingService> _pricingService = null!;
+    private Mock<IEnrollmentRepository> _enrollmentRepo = null!;
+    private Mock<IEmailService> _emailService = null!;
     private Mock<ILogger<StudentConfirmationService>> _logger = null!;
     private StudentConfirmationService _sut = null!;
 
@@ -67,6 +70,8 @@ public class StudentConfirmationServiceTests
         _paymentRepo = new Mock<IPaymentRepository>();
         _paymentService = new Mock<CoachOS.Application.Payments.IPaymentService>();
         _pricingService = new Mock<IPricingService>();
+        _enrollmentRepo = new Mock<IEnrollmentRepository>();
+        _emailService = new Mock<IEmailService>();
         _logger = new Mock<ILogger<StudentConfirmationService>>();
 
         // Default: prijsmatrix levert een vast totaal dat losstaat van
@@ -81,6 +86,8 @@ public class StudentConfirmationServiceTests
             _paymentRepo.Object,
             _paymentService.Object,
             _pricingService.Object,
+            _enrollmentRepo.Object,
+            _emailService.Object,
             _logger.Object);
     }
 
@@ -150,10 +157,18 @@ public class StudentConfirmationServiceTests
         _assignmentRepo.Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<ScheduleAssignment> { assignment });
 
+        // Online, want cash finaliseert de reeks sinds Task 7 niet meer meteen
+        // (camp-stijl: wacht op admin-bevestiging) — deze test bewijst de
+        // no-tracking staleness-fix van TryFinalizeSeriesAsync, niet het cash-pad.
+        _paymentService.Setup(p => p.CreatePaymentForEnrollmentAsync(
+                enrollment.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<CreatePaymentResultDto>.Ok(
+                new CreatePaymentResultDto(Guid.NewGuid(), "https://mollie.test/checkout")));
+
         // Act
         var result = await _sut.ConfirmAsync(
             rawToken,
-            new ConfirmRequest { PaymentMethod = (int)PaymentMethod.Cash },
+            new ConfirmRequest { PaymentMethod = (int)PaymentMethod.Online },
             CancellationToken.None);
 
         // Assert
@@ -250,10 +265,18 @@ public class StudentConfirmationServiceTests
         _assignmentRepo.Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<ScheduleAssignment> { aliceAssignment, bobAssignment });
 
+        // Online, want cash finaliseert de reeks sinds Task 7 niet meer meteen — deze
+        // test bewijst de "declined zonder vervanging blokkeert finalize" guard, niet
+        // het cash-pad.
+        _paymentService.Setup(p => p.CreatePaymentForEnrollmentAsync(
+                alice.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<CreatePaymentResultDto>.Ok(
+                new CreatePaymentResultDto(Guid.NewGuid(), "https://mollie.test/checkout")));
+
         // Act
         var result = await _sut.ConfirmAsync(
             rawToken,
-            new ConfirmRequest { PaymentMethod = (int)PaymentMethod.Cash },
+            new ConfirmRequest { PaymentMethod = (int)PaymentMethod.Online },
             CancellationToken.None);
 
         // Assert
@@ -350,10 +373,18 @@ public class StudentConfirmationServiceTests
         _assignmentRepo.Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<ScheduleAssignment> { aliceAssignment, charlieAssignment });
 
+        // Online, want cash finaliseert de reeks sinds Task 7 niet meer meteen — deze
+        // test bewijst dat expired non-responders finalize niet blokkeren, niet het
+        // cash-pad.
+        _paymentService.Setup(p => p.CreatePaymentForEnrollmentAsync(
+                alice.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<CreatePaymentResultDto>.Ok(
+                new CreatePaymentResultDto(Guid.NewGuid(), "https://mollie.test/checkout")));
+
         // Act
         var result = await _sut.ConfirmAsync(
             rawToken,
-            new ConfirmRequest { PaymentMethod = (int)PaymentMethod.Cash },
+            new ConfirmRequest { PaymentMethod = (int)PaymentMethod.Online },
             CancellationToken.None);
 
         // Assert
@@ -376,6 +407,7 @@ public class StudentConfirmationServiceTests
         LessonSerie series = PlanningServiceTests.BuildSeries(withSlots: true, SeriesId, OrgId, SlotId);
         series.PlanningStatus = PlanningStatus.AwaitingConfirmation;
         series.Price = SeriesPrice;
+        series.AcceptManualPayment = true; // gating: cash moet expliciet toegelaten zijn
 
         Enrollment leader = PlanningServiceTests.BuildEnrollment("Alice", OrgId, SeriesId);
         Enrollment member1 = PlanningServiceTests.BuildEnrollment("Bob", OrgId, SeriesId);
@@ -429,6 +461,12 @@ public class StudentConfirmationServiceTests
         booked!.Amount.Should().Be(MatrixTotal,
             "het bedrag moet uit IPricingService komen, niet uit series.Price * groepsgrootte");
         booked.Amount.Should().NotBe(SeriesPrice * 3);
+        booked.Status.Should().Be(PaymentStatus.Pending,
+            "cash is sinds Task 7 camp-stijl: wacht op admin-bevestiging i.p.v. meteen Paid");
+        booked.PaidAt.Should().BeNull();
+
+        group.Members.Should().OnlyContain(m => m.Status == EnrollmentStatus.PendingPayment,
+            "de groep moet op PendingPayment staan, niet Confirmed, tot de club de cash-betaling bevestigt");
 
         // De volledige groep (leider inbegrepen) moet aan de prijsberekening gevoerd zijn.
         _pricingService.Verify(p => p.CalculateForGroupAsync(
@@ -452,6 +490,7 @@ public class StudentConfirmationServiceTests
                 new Error(ErrorCodes.NotFound, "Lessenreeks niet gevonden.")));
 
         LessonSerie series = PlanningServiceTests.BuildSeries(withSlots: true, SeriesId, OrgId, SlotId);
+        series.AcceptManualPayment = true; // gating moet cash toelaten zodat pricing-fout het echte pad test
         Enrollment enrollment = PlanningServiceTests.BuildEnrollment("Alice", OrgId, SeriesId);
         ScheduleAssignment assignment = new()
         {
@@ -499,6 +538,7 @@ public class StudentConfirmationServiceTests
         LessonSerie series = PlanningServiceTests.BuildSeries(withSlots: true, SeriesId, OrgId, SlotId);
         series.PlanningStatus = PlanningStatus.AwaitingConfirmation;
         series.Price = SeriesPrice;
+        series.AcceptManualPayment = true; // gating: cash moet expliciet toegelaten zijn
         series.WeeklyTemplate.First().MaxStudents = 10;
         // Een tweede, ánder tijdslot: dát wordt het alternatief. Het geweigerde slot
         // (SlotId) mag niet opnieuw gekozen worden.
@@ -571,6 +611,12 @@ public class StudentConfirmationServiceTests
         booked!.Amount.Should().Be(MatrixTotal);
         booked.Amount.Should().NotBe(SeriesPrice * 2,
             "de legacy formule series.Price * groepsgrootte mag niet meer gebruikt worden");
+        booked.Status.Should().Be(PaymentStatus.Pending,
+            "cash is sinds Task 7 camp-stijl: wacht op admin-bevestiging i.p.v. meteen Paid");
+        booked.PaidAt.Should().BeNull();
+
+        group.Members.Should().OnlyContain(m => m.Status == EnrollmentStatus.PendingPayment,
+            "de groep moet op PendingPayment staan, niet Confirmed, tot de club de cash-betaling bevestigt");
     }
 
     [Test]
@@ -585,6 +631,7 @@ public class StudentConfirmationServiceTests
 
         LessonSerie series = PlanningServiceTests.BuildSeries(withSlots: true, SeriesId, OrgId, SlotId);
         series.PlanningStatus = PlanningStatus.AwaitingConfirmation;
+        series.AcceptManualPayment = true; // gating mag deze regressie niet maskeren
         series.WeeklyTemplate.First().MaxStudents = 10;
 
         Enrollment enrollment = PlanningServiceTests.BuildEnrollment("Alice", OrgId, SeriesId);
@@ -734,6 +781,183 @@ public class StudentConfirmationServiceTests
             "per persoon = totaal / groepsgrootte, afgerond op 2 decimalen");
         result.Value.PricePerPerson.Should().NotBe(SeriesPrice,
             "het legacy veld LessonSerie.Price mag niet meer getoond worden");
+    }
+
+    // ── Server-side betaalmethode-gating (Task 7) ─────────────────────────────
+
+    [Test]
+    public async Task Confirm_rejects_online_when_series_disallows_online()
+    {
+        // Arrange: de reeks staat online betalen niet toe (wel cash), maar de
+        // student kiest toch Online.
+        const string rawToken = "gating-online-token";
+        string hash = HashToken(rawToken);
+
+        LessonSerie series = PlanningServiceTests.BuildSeries(withSlots: true, SeriesId, OrgId, SlotId);
+        series.PlanningStatus = PlanningStatus.AwaitingConfirmation;
+        series.AcceptOnlinePayment = false;
+        series.AcceptManualPayment = true;
+
+        Enrollment enrollment = PlanningServiceTests.BuildEnrollment("Alice", OrgId, SeriesId);
+        ScheduleAssignment assignment = new()
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = OrgId,
+            LessonSerieId = SeriesId,
+            WeeklyTemplateEntryId = SlotId,
+            EnrollmentId = enrollment.Id,
+            Enrollment = enrollment,
+            Status = ScheduleAssignmentStatus.AwaitingConfirmation,
+        };
+
+        _tokenRepo.Setup(r => r.GetByTokenHashAsync(hash, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(BuildToken(hash, assignment, enrollment));
+        _seriesRepo.Setup(r => r.GetByIdAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+
+        // Act
+        var result = await _sut.ConfirmAsync(
+            rawToken,
+            new ConfirmRequest { PaymentMethod = (int)PaymentMethod.Online },
+            CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.Code == ErrorCodes.Validation);
+
+        _paymentService.Verify(p => p.CreatePaymentForEnrollmentAsync(
+                It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()),
+            Times.Never,
+            "een geweigerde betaalmethode mag nooit een Mollie-call triggeren");
+        _tokenRepo.Verify(r => r.TryClaimResponseAsync(
+                It.IsAny<Guid>(), It.IsAny<ConfirmationResponse>(),
+                It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),
+            Times.Never,
+            "een geweigerde betaalmethode mag de bevestiging niet verbruiken");
+    }
+
+    [Test]
+    public async Task Confirm_cash_sets_pending_payment_not_paid()
+    {
+        // Arrange: solo-inschrijving, cash toegelaten. Cash is sinds Task 7
+        // camp-stijl: registreert een openstaande betaling i.p.v. meteen Paid.
+        const string rawToken = "gating-cash-token";
+        string hash = HashToken(rawToken);
+
+        LessonSerie series = PlanningServiceTests.BuildSeries(withSlots: true, SeriesId, OrgId, SlotId);
+        series.PlanningStatus = PlanningStatus.AwaitingConfirmation;
+        series.AcceptManualPayment = true;
+
+        Enrollment enrollment = PlanningServiceTests.BuildEnrollment("Alice", OrgId, SeriesId);
+        ScheduleAssignment assignment = new()
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = OrgId,
+            LessonSerieId = SeriesId,
+            WeeklyTemplateEntryId = SlotId,
+            EnrollmentId = enrollment.Id,
+            Enrollment = enrollment,
+            Status = ScheduleAssignmentStatus.AwaitingConfirmation,
+        };
+
+        AssignmentConfirmationToken token = BuildToken(hash, assignment, enrollment);
+
+        _tokenRepo.Setup(r => r.GetByTokenHashAsync(hash, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(token);
+        _seriesRepo.Setup(r => r.GetByIdAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+        _tokenRepo.Setup(r => r.TryClaimResponseAsync(
+                token.Id, ConfirmationResponse.Confirmed, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        Payment? booked = null;
+        _paymentRepo.Setup(r => r.AddAsync(It.IsAny<Payment>(), It.IsAny<CancellationToken>()))
+            .Callback<Payment, CancellationToken>((p, _) => booked = p);
+
+        // Act
+        var result = await _sut.ConfirmAsync(
+            rawToken,
+            new ConfirmRequest { PaymentMethod = (int)PaymentMethod.Cash },
+            CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        booked.Should().NotBeNull();
+        booked!.Status.Should().Be(PaymentStatus.Pending);
+        booked.PaidAt.Should().BeNull();
+        enrollment.Status.Should().Be(EnrollmentStatus.PendingPayment,
+            "de inschrijving mag pas Confirmed worden zodra de club de cash-betaling bevestigt");
+
+        _paymentRepo.Verify(r => r.AddAsync(
+                It.Is<Payment>(p => p.Status == PaymentStatus.Pending),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+
+        // Cash finaliseert de reeks niet meer meteen — dat gebeurt pas na admin-bevestiging.
+        _tokenRepo.Verify(r => r.GetBySeriesAsNoTrackingAsync(
+                It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    // ── Admin: cash-betaling als betaald markeren ─────────────────────────────
+
+    [Test]
+    public async Task MarkEnrollmentCashPaid_sets_payment_paid_and_enrollment_confirmed()
+    {
+        Guid orgId = Guid.NewGuid();
+        Guid enrollmentId = Guid.NewGuid();
+        Payment pending = new()
+        {
+            OrganizationId = orgId,
+            EnrollmentId = enrollmentId,
+            Method = PaymentMethod.Cash,
+            Status = PaymentStatus.Pending,
+            Amount = 120m,
+        };
+        Enrollment enrollment = new()
+        {
+            Id = enrollmentId,
+            OrganizationId = orgId,
+            LessonSerieId = Guid.NewGuid(),
+            StudentName = "Sofie",
+            ContactEmail = "sofie@example.com",
+            Status = EnrollmentStatus.PendingPayment,
+        };
+        _paymentRepo.Setup(r => r.GetLatestPendingCashByEnrollmentIdAsync(enrollmentId, orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pending);
+        _enrollmentRepo.Setup(r => r.GetByIdWithGroupAsync(enrollmentId, orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(enrollment);
+        // finalize no-op: geen tokens
+        _tokenRepo.Setup(r => r.GetBySeriesAsNoTrackingAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<AssignmentConfirmationToken>());
+
+        // Act
+        Result result = await _sut.MarkEnrollmentCashPaidAsync(enrollmentId, orgId, CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        pending.Status.Should().Be(PaymentStatus.Paid);
+        pending.PaidAt.Should().NotBeNull();
+        enrollment.Status.Should().Be(EnrollmentStatus.Confirmed);
+        _emailService.Verify(e => e.SendEnrollmentConfirmationAsync(
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+            It.IsAny<IReadOnlyList<string>?>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task MarkEnrollmentCashPaid_returns_NotFound_when_no_pending_cash()
+    {
+        Guid orgId = Guid.NewGuid();
+        Guid enrollmentId = Guid.NewGuid();
+        _paymentRepo.Setup(r => r.GetLatestPendingCashByEnrollmentIdAsync(enrollmentId, orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Payment?)null);
+
+        // Act
+        Result result = await _sut.MarkEnrollmentCashPaidAsync(enrollmentId, orgId, CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.Code == ErrorCodes.NotFound);
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────

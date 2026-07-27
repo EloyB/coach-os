@@ -22,5 +22,12 @@ public class LessonSerieEnrollmentDto
     public int? Category { get; set; }
 
     public string? CategoryLabel { get; set; }
+
+    /// <summary>Null = solo-inschrijving; anders de groep waartoe deze inschrijving hoort.</summary>
+    public Guid? EnrollmentGroupId { get; set; }
+
+    /// <summary>True als deze inschrijving de groepsleider is (draagt de gedeelde betaling).</summary>
+    public bool IsGroupLeader { get; set; }
+
     public List<EnrollmentResponseItemDto> FormResponses { get; set; } = new();
 }
