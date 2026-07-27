@@ -41,6 +41,8 @@ public class EnrollmentConfiguration : IEntityTypeConfiguration<Enrollment>
 
         builder.Property(e => e.Category);
 
+        builder.Property(e => e.SelectedPriceOptionId);
+
         builder.HasOne(e => e.Organization)
             .WithMany()
             .HasForeignKey(e => e.OrganizationId)

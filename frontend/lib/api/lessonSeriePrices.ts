@@ -1,6 +1,19 @@
 import apiClient from "@/lib/api-client";
 
-/** 1 = volwassenen, 2 = jeugd. Spiegelt ParticipantCategory in de backend. */
+export const PRICING_MODES = {
+  FixedPerParticipant: 1,
+  GroupSize: 2,
+  TariffCategory: 3,
+  ManualOption: 4,
+} as const;
+
+export const PRICING_MODE_LABELS: Record<number, string> = {
+  1: "Vaste prijs per deelnemer",
+  2: "Prijs per groepsgrootte",
+  3: "Prijs per tariefcategorie",
+  4: "Manueel gekozen optie",
+};
+
 export const PARTICIPANT_CATEGORIES = {
   Adult: 1,
   Youth: 2,
@@ -11,22 +24,31 @@ export const CATEGORY_LABELS: Record<number, string> = {
   2: "Jeugd",
 };
 
-/** Groepsgroottes die de prijsmatrix aanbiedt, van groot naar klein. */
 export const GROUP_SIZES = [4, 3, 2, 1] as const;
 
 export interface LessonSeriePriceDto {
   id: string;
-  category: number;
-  categoryLabel: string;
-  groupSize: number;
-  /** TOTAALBEDRAG voor de hele groep van deze grootte — niet per persoon. */
+  label: string;
+  description: string | null;
+  mode: number;
+  modeLabel: string;
+  category: number | null;
+  categoryLabel: string | null;
+  groupSize: number | null;
   totalPrice: number;
+  sortOrder: number;
+  reusableKey: string | null;
 }
 
 export interface LessonSeriePriceRequest {
-  category: number;
-  groupSize: number;
+  label: string;
+  description?: string | null;
+  mode: number;
+  category?: number | null;
+  groupSize?: number | null;
   totalPrice: number;
+  sortOrder: number;
+  reusableKey?: string | null;
 }
 
 export async function getLessonSeriePrices(

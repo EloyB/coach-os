@@ -46,6 +46,8 @@ public class PricingServiceTests
             Id = Guid.NewGuid(),
             OrganizationId = OrgId,
             LessonSerieId = SeriesId,
+            Label = r.Category == ParticipantCategory.Youth ? "Jeugd" : "Volwassenen",
+            Mode = PricingMode.GroupSize,
             Category = r.Category,
             GroupSize = r.GroupSize,
             TotalPrice = r.Total,
@@ -53,6 +55,12 @@ public class PricingServiceTests
 
         _prices.Setup(p => p.GetBySeriesPublicAsync(SeriesId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(matrix);
+    }
+
+    private void ArrangeOptions(params LessonSeriePrice[] rows)
+    {
+        _prices.Setup(p => p.GetBySeriesPublicAsync(SeriesId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(rows.ToList());
     }
 
     private static Enrollment Participant(ParticipantCategory? category) => new()
@@ -71,6 +79,111 @@ public class PricingServiceTests
         for (int i = 0; i < adults; i++) list.Add(Participant(ParticipantCategory.Adult));
         for (int i = 0; i < youth; i++) list.Add(Participant(ParticipantCategory.Youth));
         return list;
+    }
+
+    // ── Flexibele prijsopties ────────────────────────────────────────────────
+
+    [Test]
+    public async Task Calculate_FixedPerParticipantOption_MultipliesByGroupSize()
+    {
+        ArrangeSeries(legacyPrice: 999m);
+        ArrangeOptions(new LessonSeriePrice
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = OrgId,
+            LessonSerieId = SeriesId,
+            Label = "Standaardtarief",
+            Description = "Voor elke deelnemer hetzelfde bedrag.",
+            Mode = PricingMode.FixedPerParticipant,
+            TotalPrice = 125m,
+        });
+
+        Result<PriceBreakdown> result = await _sut.CalculateForGroupAsync(
+            SeriesId, Participants(adults: 2, youth: 1));
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Total.Should().Be(375m);
+        result.Value.Lines.Single().Label.Should().Be("Standaardtarief");
+    }
+
+    [Test]
+    public async Task Calculate_GroupSizeOption_UsesTotalForWholeGroup()
+    {
+        ArrangeSeries(legacyPrice: 999m);
+        ArrangeOptions(
+            new LessonSeriePrice { Id = Guid.NewGuid(), OrganizationId = OrgId, LessonSerieId = SeriesId, Label = "Duo", Mode = PricingMode.GroupSize, GroupSize = 2, TotalPrice = 260m },
+            new LessonSeriePrice { Id = Guid.NewGuid(), OrganizationId = OrgId, LessonSerieId = SeriesId, Label = "Groep van drie", Mode = PricingMode.GroupSize, GroupSize = 3, TotalPrice = 300m });
+
+        Result<PriceBreakdown> result = await _sut.CalculateForGroupAsync(
+            SeriesId, Participants(adults: 2, youth: 1));
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Total.Should().Be(300m);
+        result.Value.Lines.Single().Label.Should().Be("Groep van drie");
+    }
+
+    [Test]
+    public async Task Calculate_TariffCategoryOptions_ChargePerParticipantCategory()
+    {
+        ArrangeSeries(legacyPrice: 999m);
+        ArrangeOptions(
+            new LessonSeriePrice { Id = Guid.NewGuid(), OrganizationId = OrgId, LessonSerieId = SeriesId, Label = "Volwassenen", Mode = PricingMode.TariffCategory, Category = ParticipantCategory.Adult, TotalPrice = 140m },
+            new LessonSeriePrice { Id = Guid.NewGuid(), OrganizationId = OrgId, LessonSerieId = SeriesId, Label = "Jeugd", Mode = PricingMode.TariffCategory, Category = ParticipantCategory.Youth, TotalPrice = 90m });
+
+        Result<PriceBreakdown> result = await _sut.CalculateForGroupAsync(
+            SeriesId, Participants(adults: 1, youth: 2));
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Total.Should().Be(320m);
+        result.Value.Lines.Should().HaveCount(2);
+    }
+
+    [Test]
+    public async Task Calculate_ManualOption_UsesSelectedOptionPerParticipant()
+    {
+        ArrangeSeries(legacyPrice: 999m);
+        Guid socialRateId = Guid.NewGuid();
+        ArrangeOptions(new LessonSeriePrice
+        {
+            Id = socialRateId,
+            OrganizationId = OrgId,
+            LessonSerieId = SeriesId,
+            Label = "Sociaal tarief",
+            Mode = PricingMode.ManualOption,
+            TotalPrice = 75m,
+        });
+
+        List<Enrollment> participants = Participants(adults: 2, youth: 0);
+        participants.ForEach(p => p.SelectedPriceOptionId = socialRateId);
+
+        Result<PriceBreakdown> result = await _sut.CalculateForGroupAsync(SeriesId, participants);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Total.Should().Be(150m);
+        result.Value.Lines.Single().Label.Should().Be("Sociaal tarief");
+    }
+
+    [Test]
+    public async Task Calculate_InvalidManualOption_ReturnsValidationError()
+    {
+        ArrangeSeries(legacyPrice: 999m);
+        ArrangeOptions(new LessonSeriePrice
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = OrgId,
+            LessonSerieId = SeriesId,
+            Label = "Sociaal tarief",
+            Mode = PricingMode.ManualOption,
+            TotalPrice = 75m,
+        });
+
+        List<Enrollment> participants = Participants(adults: 1, youth: 0);
+        participants[0].SelectedPriceOptionId = Guid.NewGuid();
+
+        Result<PriceBreakdown> result = await _sut.CalculateForGroupAsync(SeriesId, participants);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.Code == ErrorCodes.Validation);
     }
 
     // ── Legacy fallback ───────────────────────────────────────────────────────

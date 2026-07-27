@@ -5,7 +5,6 @@ import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
   CalendarDays,
-  Clock,
   MapPin,
   User,
   Users,
@@ -31,6 +30,7 @@ import type {
 import { getPublicTimeSlots } from "@/lib/api/timeSlots";
 import type { TimeSlotDto } from "@/lib/api/timeSlots";
 import { LESSON_LEVELS } from "@/lib/api/lessonSeries";
+import { PRICING_MODES, type LessonSeriePriceDto } from "@/lib/api/lessonSeriePrices";
 import { getAuthUser } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -41,7 +41,6 @@ import Link from "next/link";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const FIELD_TYPE_TEXT = 1;
 const FIELD_TYPE_MULTIPLE_CHOICE = 2;
 const FIELD_TYPE_YES_NO = 3;
 
@@ -152,6 +151,7 @@ export default function EnrollPage() {
   );
   const [isOpenToGrouping, setIsOpenToGrouping] = useState(false);
   const [groupMembers, setGroupMembers] = useState<GroupMember[]>([]);
+  const [selectedPriceOptionId, setSelectedPriceOptionId] = useState<string>("");
   const [memberErrors, setMemberErrors] = useState<
     Record<number, { name?: string; email?: string; dateOfBirth?: string }>
   >({});
@@ -174,6 +174,10 @@ export default function EnrollPage() {
         setEnrollmentType(
           seriesData.allowSoloEnrollment ? "solo" : "group"
         );
+        const manualOptions = seriesData.priceOptions.filter(
+          (option) => option.mode === PRICING_MODES.ManualOption
+        );
+        setSelectedPriceOptionId(manualOptions.length === 1 ? manualOptions[0].id : "");
       } catch {
         setError("Lessenreeks niet gevonden.");
       } finally {
@@ -240,6 +244,22 @@ export default function EnrollPage() {
         i === index ? { ...m, hasOwnEmail, email: hasOwnEmail ? m.email : "" } : m
       )
     );
+  }
+
+  function applicableAutomaticPriceOptions(): LessonSeriePriceDto[] {
+    if (!series) return [];
+    return series.priceOptions.filter((option) => option.mode !== PRICING_MODES.ManualOption);
+  }
+
+  function manualPriceOptions(): LessonSeriePriceDto[] {
+    return series?.priceOptions.filter((option) => option.mode === PRICING_MODES.ManualOption) ?? [];
+  }
+
+  function formatPriceOption(option: LessonSeriePriceDto): string {
+    const suffix = option.mode === PRICING_MODES.GroupSize
+      ? "totaal"
+      : "per deelnemer";
+    return `€${option.totalPrice.toFixed(2)} ${suffix}`;
   }
 
   // ─── Validation ─────────────────────────────────────────────────────────
@@ -313,6 +333,12 @@ export default function EnrollPage() {
     }
     setMemberErrors(mErrors);
 
+    const requiresManualPrice = manualPriceOptions().length > 0;
+    if (requiresManualPrice && !selectedPriceOptionId) {
+      setSubmitError("Kies een prijsoptie om verder te gaan.");
+      return false;
+    }
+
     return (
       Object.keys(errors).length === 0 &&
       Object.keys(fErrors).length === 0 &&
@@ -350,6 +376,7 @@ export default function EnrollPage() {
           timeSlotPreferences.length > 0 ? timeSlotPreferences : undefined,
         enrollmentType,
         isOpenToGrouping,
+        selectedPriceOptionId: selectedPriceOptionId || undefined,
         groupMembers:
           enrollmentType === "group" && groupMembers.length > 0
             ? groupMembers.map((m) => ({
@@ -570,7 +597,11 @@ export default function EnrollPage() {
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <Euro className="w-4 h-4 text-gray-400 shrink-0" />
-              <span>€{series.price.toFixed(2)} per reeks</span>
+              <span>
+                {series.priceOptions.length > 0
+                  ? `${series.priceOptions.length} prijsoptie${series.priceOptions.length === 1 ? "" : "s"}`
+                  : `€${series.price.toFixed(2)} per deelnemer`}
+              </span>
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <Cake className="w-4 h-4 text-gray-400 shrink-0" />
@@ -605,6 +636,62 @@ export default function EnrollPage() {
             </div>
           </div>
         </div>
+
+        {series.priceOptions.length > 0 && (
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 mb-6">
+            <div className="flex items-center gap-2 mb-3">
+              <Euro className="w-4 h-4 text-tennis-green" />
+              <h2 className="text-sm font-semibold text-gray-900">Prijsopties</h2>
+            </div>
+            {applicableAutomaticPriceOptions().length > 0 && (
+              <div className="space-y-2 mb-4">
+                {applicableAutomaticPriceOptions().map((option) => (
+                  <div key={option.id} className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-medium text-gray-800">{option.label}</p>
+                        {option.description && (
+                          <p className="text-xs text-gray-500 mt-0.5">{option.description}</p>
+                        )}
+                      </div>
+                      <span className="text-sm font-semibold text-tennis-green whitespace-nowrap">
+                        {formatPriceOption(option)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {manualPriceOptions().length > 0 && (
+              <div>
+                <p className="text-xs text-gray-500 mb-2">Kies de prijsoptie die voor jou van toepassing is.</p>
+                <div className="space-y-2">
+                  {manualPriceOptions().map((option) => (
+                    <label key={option.id} className="block cursor-pointer rounded-lg border border-gray-200 p-3 hover:border-tennis-green/40">
+                      <div className="flex items-start gap-3">
+                        <input
+                          type="radio"
+                          name="selectedPriceOption"
+                          value={option.id}
+                          checked={selectedPriceOptionId === option.id}
+                          onChange={() => setSelectedPriceOptionId(option.id)}
+                          className="mt-1 w-4 h-4 text-tennis-green focus:ring-tennis-green"
+                        />
+                        <div className="flex-1">
+                          <div className="flex items-start justify-between gap-3">
+                            <span className="text-sm font-medium text-gray-800">{option.label}</span>
+                            <span className="text-sm font-semibold text-tennis-green whitespace-nowrap">{formatPriceOption(option)}</span>
+                          </div>
+                          {option.description && <p className="text-xs text-gray-500 mt-1">{option.description}</p>}
+                        </div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Enrollment form card */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">

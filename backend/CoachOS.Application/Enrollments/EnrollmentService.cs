@@ -4,6 +4,7 @@ using CoachOS.Application.Common;
 using CoachOS.Application.Enrollments.DTOs;
 using CoachOS.Application.LessonSerie.DTOs;
 using CoachOS.Application.Mappings;
+using CoachOS.Application.Pricing;
 using CoachOS.Domain.Common;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
@@ -62,6 +63,10 @@ public class EnrollmentService(
             EnrollmentCount = enrollmentCount,
             AllowSoloEnrollment = series.AllowSoloEnrollment,
             AllowGroupEnrollment = series.AllowGroupEnrollment,
+            PriceOptions = series.Prices
+                .OrderBy(p => p.SortOrder)
+                .Select(LessonSeriePricingService.ToDto)
+                .ToList(),
             WeeklyTemplate = series.WeeklyTemplate
                 .OrderBy(w => w.DayOfWeek)
                 .ThenBy(w => w.StartTime)
@@ -334,6 +339,7 @@ public class EnrollmentService(
             IsOpenToGrouping = request.IsOpenToGrouping,
             DateOfBirth = ParseBirthDate(request.DateOfBirth),
             Category = ResolveCategory(request.DateOfBirth, youthMaxAge, enrolledOn),
+            SelectedPriceOptionId = request.SelectedPriceOptionId,
         };
 
         await enrollmentRepo.AddAsync(enrollment, ct);
@@ -392,6 +398,7 @@ public class EnrollmentService(
                     EnrollmentGroupId = group.Id,
                     DateOfBirth = ParseBirthDate(member.DateOfBirth),
                     Category = ResolveCategory(member.DateOfBirth, youthMaxAge, enrolledOn),
+                    SelectedPriceOptionId = request.SelectedPriceOptionId,
                 };
 
                 await enrollmentRepo.AddAsync(memberEnrollment, ct);

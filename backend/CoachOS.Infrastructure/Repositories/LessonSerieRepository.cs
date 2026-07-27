@@ -91,6 +91,7 @@ public class LessonSerieRepository(ApplicationDbContext context) : ILessonSerieR
             .Include(ls => ls.Lessons)
             .Include(ls => ls.TennisClub)
             .Include(ls => ls.WeeklyTemplate)
+            .Include(ls => ls.Prices)
             .FirstOrDefaultAsync(ls => ls.Id == id && ls.IsActive, ct);
     }
 

@@ -1,28 +1,76 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Euro, Info } from "lucide-react";
+import { Euro, Info, Plus, Trash2 } from "lucide-react";
 import {
-  getLessonSeriePrices,
-  saveLessonSeriePrices,
   CATEGORY_LABELS,
   GROUP_SIZES,
   PARTICIPANT_CATEGORIES,
+  PRICING_MODE_LABELS,
+  PRICING_MODES,
+  getLessonSeriePrices,
+  saveLessonSeriePrices,
+  type LessonSeriePriceDto,
   type LessonSeriePriceRequest,
 } from "@/lib/api/lessonSeriePrices";
 import { inputClass } from "@/lib/styles";
 
-/** Sleutel voor één cel in de matrix. */
-function cellKey(category: number, groupSize: number): string {
-  return `${category}-${groupSize}`;
+type PriceDraft = {
+  id: string;
+  label: string;
+  description: string;
+  mode: number;
+  category: string;
+  groupSize: string;
+  totalPrice: string;
+  reusableKey: string;
+};
+
+function toDraft(p: LessonSeriePriceDto, index: number): PriceDraft {
+  return {
+    id: p.id || `saved-${index}`,
+    label: p.label,
+    description: p.description ?? "",
+    mode: p.mode,
+    category: p.category ? String(p.category) : "",
+    groupSize: p.groupSize ? String(p.groupSize) : "",
+    totalPrice: String(p.totalPrice),
+    reusableKey: p.reusableKey ?? "",
+  };
+}
+
+function newDraft(mode: number = PRICING_MODES.FixedPerParticipant): PriceDraft {
+  return {
+    id: `new-${crypto.randomUUID()}`,
+    label: "",
+    description: "",
+    mode,
+    category: "",
+    groupSize: mode === PRICING_MODES.GroupSize ? "4" : "",
+    totalPrice: "",
+    reusableKey: "",
+  };
+}
+
+function summary(option: PriceDraft): string {
+  if (option.mode === PRICING_MODES.GroupSize && option.groupSize) {
+    return `Totaalprijs voor groep van ${option.groupSize}`;
+  }
+  if (option.mode === PRICING_MODES.TariffCategory && option.category) {
+    return `Per deelnemer: ${CATEGORY_LABELS[Number(option.category)]}`;
+  }
+  if (option.mode === PRICING_MODES.ManualOption) {
+    return "Speler kiest deze optie zelf";
+  }
+  return "Per deelnemer";
 }
 
 /**
- * Prijsmatrix per categorie × groepsgrootte. Elk bedrag is het TOTAAL voor de
- * hele groep, niet per persoon — dat verschil is bewust prominent in de UI,
- * omdat het legacy prijsveld op de reeks wél per persoon geldt.
+ * Flexibele prijsopties per lessenreeks. Vervangt de oude vaste matrix als hoofd-UX:
+ * admins kiezen zelf welke opties bestaan en leggen met de beschrijving uit wanneer
+ * een prijs geldt. ReusableKey is de lichte eerste stap naar organisatiebrede templates.
  */
 export function PriceMatrixSection({
   seriesId,
@@ -32,7 +80,7 @@ export function PriceMatrixSection({
   legacyPrice: number;
 }) {
   const queryClient = useQueryClient();
-  const [values, setValues] = useState<Record<string, string>>({});
+  const [drafts, setDrafts] = useState<PriceDraft[]>([]);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
 
@@ -43,36 +91,63 @@ export function PriceMatrixSection({
 
   useEffect(() => {
     if (!prices) return;
-    const next: Record<string, string> = {};
-    for (const p of prices) {
-      next[cellKey(p.category, p.groupSize)] = String(p.totalPrice);
-    }
-    setValues(next);
+    setDrafts(prices.map(toDraft));
     setDirty(false);
   }, [prices]);
 
-  function handleChange(category: number, groupSize: number, raw: string) {
-    setValues((prev) => ({ ...prev, [cellKey(category, groupSize)]: raw }));
+  const grouped = useMemo(() => {
+    return Object.entries(PRICING_MODE_LABELS).map(([mode, label]) => ({
+      mode: Number(mode),
+      label,
+      options: drafts.filter((d) => d.mode === Number(mode)),
+    }));
+  }, [drafts]);
+
+  function update(id: string, patch: Partial<PriceDraft>) {
+    setDrafts((prev) => prev.map((p) => {
+      if (p.id !== id) return p;
+      const next = { ...p, ...patch };
+      if (patch.mode && patch.mode !== PRICING_MODES.GroupSize) next.groupSize = "";
+      if (patch.mode && patch.mode !== PRICING_MODES.TariffCategory) next.category = "";
+      return next;
+    }));
+    setDirty(true);
+  }
+
+  function add(mode: number) {
+    setDrafts((prev) => [...prev, newDraft(mode)]);
+    setDirty(true);
+  }
+
+  function remove(id: string) {
+    setDrafts((prev) => prev.filter((p) => p.id !== id));
     setDirty(true);
   }
 
   async function handleSave() {
     const payload: LessonSeriePriceRequest[] = [];
 
-    for (const category of Object.values(PARTICIPANT_CATEGORIES)) {
-      for (const groupSize of GROUP_SIZES) {
-        const raw = values[cellKey(category, groupSize)];
-        if (raw === undefined || raw.trim() === "") continue;
-
-        const parsed = Number(raw);
-        if (Number.isNaN(parsed) || parsed < 0) {
-          toast.error(
-            `Ongeldig bedrag bij ${CATEGORY_LABELS[category]}, groep van ${groupSize}.`,
-          );
-          return;
-        }
-        payload.push({ category, groupSize, totalPrice: parsed });
+    for (const [index, draft] of drafts.entries()) {
+      if (!draft.label.trim()) {
+        toast.error("Elke prijsoptie heeft een naam nodig.");
+        return;
       }
+      const amount = Number(draft.totalPrice);
+      if (Number.isNaN(amount) || amount < 0) {
+        toast.error(`Ongeldig bedrag bij ${draft.label}.`);
+        return;
+      }
+
+      payload.push({
+        label: draft.label.trim(),
+        description: draft.description.trim() || null,
+        mode: draft.mode,
+        category: draft.category ? Number(draft.category) : null,
+        groupSize: draft.groupSize ? Number(draft.groupSize) : null,
+        totalPrice: amount,
+        sortOrder: index,
+        reusableKey: draft.reusableKey.trim() || null,
+      });
     }
 
     setSaving(true);
@@ -80,8 +155,8 @@ export function PriceMatrixSection({
       await saveLessonSeriePrices(seriesId, payload);
       toast.success(
         payload.length === 0
-          ? "Prijstabel gewist — de reeks gebruikt weer de standaardprijs"
-          : "Prijstabel opgeslagen",
+          ? "Prijsopties gewist — de reeks gebruikt weer de standaardprijs"
+          : "Prijsopties opgeslagen",
       );
       queryClient.invalidateQueries({ queryKey: ["lessonSeriePrices", seriesId] });
       setDirty(false);
@@ -92,14 +167,17 @@ export function PriceMatrixSection({
     }
   }
 
-  const hasAnyValue = Object.values(values).some((v) => v?.trim() !== "");
-
   return (
     <div className="bg-white rounded-xl shadow-sm shadow-gray-100 overflow-hidden">
       <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <Euro size={14} className="text-tennis-green" />
-          <h2 className="text-sm font-semibold text-gray-800">Prijzen</h2>
+          <div>
+            <h2 className="text-sm font-semibold text-gray-800">Prijsopties</h2>
+            <p className="text-xs text-gray-500">
+              Vervangt de vaste matrix: leg per optie uit wanneer welke prijs geldt.
+            </p>
+          </div>
         </div>
         {dirty && (
           <button
@@ -117,70 +195,134 @@ export function PriceMatrixSection({
           <div className="w-4 h-4 border-2 border-tennis-green/30 border-t-tennis-green rounded-full animate-spin mx-auto" />
         </div>
       ) : (
-        <div className="p-5">
-          <div className="flex items-start gap-2 mb-4 px-3 py-2 bg-blue-50 border border-blue-100 rounded-lg">
+        <div className="p-5 space-y-5">
+          <div className="flex items-start gap-2 px-3 py-2 bg-blue-50 border border-blue-100 rounded-lg">
             <Info size={12} className="text-blue-600 shrink-0 mt-0.5" />
             <p className="text-xs text-blue-800">
-              Elk bedrag is het <strong>totaal voor de hele groep</strong>, niet per
-              persoon. Bij een gemengde groep wordt per deelnemer het aandeel van zijn
-              categorie gerekend. Laat velden leeg om ze niet in te stellen.
+              Maak alleen de prijsopties die voor deze reeks gelden. Gebruik de beschrijving
+              om duidelijk te maken of een prijs automatisch geldt of door de speler gekozen wordt.
+              De sleutel “herbruikbaar als” kan later gebruikt worden om opties per organisatie te hergebruiken.
             </p>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="text-left py-2 pr-4 text-xs font-medium text-gray-500">
-                    Groepsgrootte
-                  </th>
-                  {Object.values(PARTICIPANT_CATEGORIES).map((category) => (
-                    <th
-                      key={category}
-                      className="text-left py-2 px-2 text-xs font-medium text-gray-500"
-                    >
-                      {CATEGORY_LABELS[category]}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {GROUP_SIZES.map((groupSize) => (
-                  <tr key={groupSize} className="border-b border-gray-50 last:border-b-0">
-                    <td className="py-2 pr-4 text-gray-700">
-                      {groupSize === 1 ? "Privé (1)" : `${groupSize} personen`}
-                    </td>
-                    {Object.values(PARTICIPANT_CATEGORIES).map((category) => (
-                      <td key={category} className="py-2 px-2">
-                        <div className="relative w-32">
-                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400">
-                            €
-                          </span>
+          {grouped.map((group) => (
+            <section key={group.mode} className="border border-gray-100 rounded-xl overflow-hidden">
+              <div className="px-4 py-3 bg-gray-50 flex items-center justify-between">
+                <div>
+                  <h3 className="text-xs font-semibold text-gray-700">{group.label}</h3>
+                  <p className="text-[11px] text-gray-500">
+                    {group.mode === PRICING_MODES.GroupSize && "Totaalbedrag voor de hele groep."}
+                    {group.mode === PRICING_MODES.TariffCategory && "Bedrag per deelnemer in deze categorie."}
+                    {group.mode === PRICING_MODES.FixedPerParticipant && "Zelfde bedrag voor elke deelnemer."}
+                    {group.mode === PRICING_MODES.ManualOption && "Speler kiest deze optie in het inschrijfformulier."}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => add(group.mode)}
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-700 hover:bg-white"
+                >
+                  <Plus size={12} /> Optie
+                </button>
+              </div>
+
+              {group.options.length === 0 ? (
+                <p className="px-4 py-3 text-xs text-gray-400">Nog geen opties.</p>
+              ) : (
+                <div className="divide-y divide-gray-100">
+                  {group.options.map((option) => (
+                    <div key={option.id} className="p-4 grid grid-cols-1 lg:grid-cols-12 gap-3 items-start">
+                      <div className="lg:col-span-3">
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Naam</label>
+                        <input
+                          className={inputClass}
+                          value={option.label}
+                          placeholder="bv. Jeugd, Duo, Sociaal tarief"
+                          onChange={(e) => update(option.id, { label: e.target.value })}
+                        />
+                        <p className="mt-1 text-[11px] text-gray-400">{summary(option)}</p>
+                      </div>
+                      <div className="lg:col-span-3">
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Beschrijving</label>
+                        <textarea
+                          className={inputClass + " min-h-20"}
+                          value={option.description}
+                          placeholder="Wanneer geldt deze prijs?"
+                          onChange={(e) => update(option.id, { description: e.target.value })}
+                        />
+                      </div>
+                      {option.mode === PRICING_MODES.GroupSize && (
+                        <div className="lg:col-span-2">
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Groep</label>
+                          <select
+                            className={inputClass}
+                            value={option.groupSize}
+                            onChange={(e) => update(option.id, { groupSize: e.target.value })}
+                          >
+                            {GROUP_SIZES.map((size) => (
+                              <option key={size} value={size}>{size === 1 ? "Privé (1)" : `${size} personen`}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                      {option.mode === PRICING_MODES.TariffCategory && (
+                        <div className="lg:col-span-2">
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Categorie</label>
+                          <select
+                            className={inputClass}
+                            value={option.category}
+                            onChange={(e) => update(option.id, { category: e.target.value })}
+                          >
+                            <option value="">Kies categorie</option>
+                            {Object.values(PARTICIPANT_CATEGORIES).map((category) => (
+                              <option key={category} value={category}>{CATEGORY_LABELS[category]}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                      <div className="lg:col-span-2">
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Prijs</label>
+                        <div className="relative">
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400">€</span>
                           <input
                             type="number"
                             min={0}
                             step={0.01}
-                            aria-label={`${CATEGORY_LABELS[category]}, groep van ${groupSize}`}
-                            value={values[cellKey(category, groupSize)] ?? ""}
-                            onChange={(e) =>
-                              handleChange(category, groupSize, e.target.value)
-                            }
-                            placeholder="—"
                             className={inputClass + " pl-6"}
+                            value={option.totalPrice}
+                            onChange={(e) => update(option.id, { totalPrice: e.target.value })}
                           />
                         </div>
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                      </div>
+                      <div className="lg:col-span-1">
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Herbruikbaar als</label>
+                        <input
+                          className={inputClass}
+                          value={option.reusableKey}
+                          placeholder="optioneel"
+                          onChange={(e) => update(option.id, { reusableKey: e.target.value })}
+                        />
+                      </div>
+                      <div className="lg:col-span-1 flex lg:justify-end">
+                        <button
+                          type="button"
+                          onClick={() => remove(option.id)}
+                          className="mt-5 inline-flex items-center justify-center w-9 h-9 rounded-lg text-red-500 hover:bg-red-50"
+                          aria-label={`Verwijder ${option.label || "prijsoptie"}`}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          ))}
 
-          {!hasAnyValue && (
-            <p className="mt-4 text-xs text-gray-500">
-              Geen prijstabel ingesteld. De reeks rekent nu{" "}
-              <strong>€{legacyPrice} per deelnemer</strong>.
+          {drafts.length === 0 && (
+            <p className="text-xs text-gray-500">
+              Geen prijsopties ingesteld. De reeks rekent nu nog <strong>€{legacyPrice} per deelnemer</strong>.
             </p>
           )}
         </div>

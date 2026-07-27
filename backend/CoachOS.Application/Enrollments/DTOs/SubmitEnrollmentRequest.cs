@@ -16,5 +16,6 @@ public record SubmitEnrollmentRequest
     public List<TimeSlotPreferenceDto>? TimeSlotPreferences { get; init; }
     public string EnrollmentType { get; init; } = "solo";
     public bool IsOpenToGrouping { get; init; }
+    public Guid? SelectedPriceOptionId { get; init; }
     public List<GroupMemberDto>? GroupMembers { get; init; }
 }

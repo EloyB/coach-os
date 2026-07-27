@@ -1,5 +1,6 @@
 import apiClient from '@/lib/api-client';
 import type { LessonDto } from './lessonSeries';
+import type { LessonSeriePriceDto } from './lessonSeriePrices';
 
 export interface PublicLessonSeriesDto {
   id: string;
@@ -18,6 +19,7 @@ export interface PublicLessonSeriesDto {
   maxAge: number;
   allowSoloEnrollment: boolean;
   allowGroupEnrollment: boolean;
+  priceOptions: LessonSeriePriceDto[];
   lessons: LessonDto[];
 }
 
@@ -96,6 +98,7 @@ export interface SubmitEnrollmentRequest {
   timeSlotPreferences?: TimeSlotPreferenceRequest[];
   enrollmentType?: string; // "solo" | "group"
   isOpenToGrouping?: boolean;
+  selectedPriceOptionId?: string;
   groupMembers?: GroupMemberRequest[];
 }
 
