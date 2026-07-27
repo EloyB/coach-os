@@ -526,6 +526,10 @@ export default function EnrollPage() {
     (a, b) => a.dayOfWeek - b.dayOfWeek || a.startTime.localeCompare(b.startTime)
   );
 
+  // Niveau is optioneel — geen badge tonen als het niet ingevuld is
+  const levelLabel =
+    series.level != null ? LESSON_LEVELS[series.level] : undefined;
+
   // ─── Render ─────────────────────────────────────────────────────────────
 
   return (
@@ -541,9 +545,11 @@ export default function EnrollPage() {
 
         {/* Series info card */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 mb-6">
-          <Badge className="bg-tennis-lime/20 text-tennis-green border-0 mb-2 text-xs font-semibold">
-            {LESSON_LEVELS[series.level] ?? "Niveau " + series.level}
-          </Badge>
+          {levelLabel && (
+            <Badge className="bg-tennis-lime/20 text-tennis-green border-0 mb-2 text-xs font-semibold">
+              {levelLabel}
+            </Badge>
+          )}
           <h1 className="text-2xl font-bold text-gray-900 mb-2">{series.name}</h1>
           {series.description && (
             <p className="text-gray-600 text-sm mb-4 leading-relaxed">
