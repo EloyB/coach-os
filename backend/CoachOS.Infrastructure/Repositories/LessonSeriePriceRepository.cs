@@ -14,9 +14,7 @@ public class LessonSeriePriceRepository(ApplicationDbContext context) : ILessonS
             .AsNoTracking()
             .Where(p => p.LessonSerieId == lessonSerieId && p.OrganizationId == organizationId)
             .OrderBy(p => p.SortOrder)
-            .ThenBy(p => p.Mode)
-            .ThenByDescending(p => p.GroupSize)
-            .ThenBy(p => p.Category)
+            .ThenBy(p => p.Label)
             .ToListAsync(ct);
     }
 
@@ -27,9 +25,7 @@ public class LessonSeriePriceRepository(ApplicationDbContext context) : ILessonS
             .AsNoTracking()
             .Where(p => p.LessonSerieId == lessonSerieId)
             .OrderBy(p => p.SortOrder)
-            .ThenBy(p => p.Mode)
-            .ThenByDescending(p => p.GroupSize)
-            .ThenBy(p => p.Category)
+            .ThenBy(p => p.Label)
             .ToListAsync(ct);
     }
 

@@ -5,7 +5,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Euro, Info, Plus, Trash2 } from "lucide-react";
 import {
-  PRICING_MODES,
   getLessonSeriePrices,
   saveLessonSeriePrices,
   type LessonSeriePriceDto,
@@ -99,10 +98,6 @@ export function PriceMatrixSection({
       payload.push({
         label: draft.label.trim(),
         description: draft.description.trim() || null,
-        // Eén simpel model: elke optie is een benoemd tarief waaruit de speler kiest.
-        mode: PRICING_MODES.ManualOption,
-        category: null,
-        groupSize: null,
         totalPrice: amount,
         sortOrder: index,
         reusableKey: null,

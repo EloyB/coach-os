@@ -1,5 +1,4 @@
 using CoachOS.Domain.Entities;
-using CoachOS.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -18,19 +17,9 @@ public class LessonSeriePriceConfiguration : IEntityTypeConfiguration<LessonSeri
         builder.Property(p => p.Description)
             .HasMaxLength(500);
 
-        builder.Property(p => p.Mode)
-            .HasDefaultValue(PricingMode.GroupSize)
-            .IsRequired();
-
         builder.Property(p => p.TotalPrice)
             .HasPrecision(10, 2)
             .IsRequired();
-
-        builder.Property(p => p.Category)
-            .IsRequired(false);
-
-        builder.Property(p => p.GroupSize)
-            .IsRequired(false);
 
         builder.Property(p => p.ReusableKey)
             .HasMaxLength(120);
@@ -46,7 +35,7 @@ public class LessonSeriePriceConfiguration : IEntityTypeConfiguration<LessonSeri
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(p => p.OrganizationId);
-        builder.HasIndex(p => new { p.LessonSerieId, p.Mode, p.GroupSize, p.Category });
+        builder.HasIndex(p => new { p.LessonSerieId, p.SortOrder });
         builder.HasIndex(p => new { p.OrganizationId, p.ReusableKey });
     }
 }
