@@ -31,6 +31,10 @@ public interface IEnrollmentRepository
         Guid lessonSeriesId, string contactEmail, string studentName,
         DateOnly? dateOfBirth, CancellationToken ct = default);
 
+    Task<bool> IsDuplicateParticipantExceptAsync(
+        Guid lessonSeriesId, Guid excludedEnrollmentId, string contactEmail,
+        string studentName, DateOnly? dateOfBirth, CancellationToken ct = default);
+
     Task<int> CountActiveBySeriesAsync(Guid lessonSeriesId, CancellationToken ct = default);
 
     Task<Dictionary<Guid, int>> CountActiveBySeriesIdsAsync(

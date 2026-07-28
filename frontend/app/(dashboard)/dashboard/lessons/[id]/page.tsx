@@ -64,6 +64,7 @@ import {
   saveEnrollmentForm,
   cancelEnrollment,
   markEnrollmentCashPaid,
+  updateBasicEnrollment,
 } from "@/lib/api/enrollments";
 import type {
   LessonSeriesEnrollmentDto,
@@ -451,6 +452,7 @@ function dayOfWeekFromDate(dateStr: string, weekDays: string[]): number {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -1581,6 +1583,129 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
 
 // ─── Enrollments Section ──────────────────────────────────────────────────────
 
+const basicEnrollmentSchema = z.object({
+  studentName: z.string().min(1, "Naam is verplicht").max(200),
+  contactEmail: z.string().min(1, "Contact e-mailadres is verplicht").email("Ongeldig e-mailadres"),
+  studentEmail: z
+    .string()
+    .email("Ongeldig e-mailadres")
+    .optional()
+    .or(z.literal("")),
+  studentPhone: z.string().max(50).optional(),
+  dateOfBirth: z.string().min(1, "Geboortedatum is verplicht"),
+  isOpenToGrouping: z.boolean(),
+});
+
+type BasicEnrollmentFormValues = z.infer<typeof basicEnrollmentSchema>;
+
+function EditEnrollmentDialog({
+  enrollment,
+  seriesId,
+  open,
+  onOpenChange,
+}: {
+  enrollment: LessonSeriesEnrollmentDto;
+  seriesId: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const queryClient = useQueryClient();
+  const form = useForm<BasicEnrollmentFormValues>({
+    resolver: zodResolver(basicEnrollmentSchema),
+    values: {
+      studentName: enrollment.studentName,
+      contactEmail: enrollment.contactEmail,
+      studentEmail: enrollment.studentEmail ?? "",
+      studentPhone: enrollment.studentPhone ?? "",
+      dateOfBirth: enrollment.dateOfBirth ?? "",
+      isOpenToGrouping: enrollment.isOpenToGrouping,
+    },
+  });
+
+  const mutation = useMutation({
+    mutationFn: (values: BasicEnrollmentFormValues) =>
+      updateBasicEnrollment(seriesId, enrollment.id, {
+        studentName: values.studentName,
+        contactEmail: values.contactEmail,
+        studentEmail: values.studentEmail?.trim() ? values.studentEmail : null,
+        studentPhone: values.studentPhone?.trim() ? values.studentPhone : null,
+        dateOfBirth: values.dateOfBirth,
+        isOpenToGrouping: values.isOpenToGrouping,
+      }),
+    onSuccess: () => {
+      toast.success("Inschrijving bijgewerkt");
+      queryClient.invalidateQueries({ queryKey: ["enrollments", seriesId] });
+      queryClient.invalidateQueries({ queryKey: ["planning", seriesId] });
+      onOpenChange(false);
+    },
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent onClick={(e) => e.stopPropagation()} className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Inschrijving aanpassen</DialogTitle>
+          <DialogDescription>
+            Wijzig enkel basisgegevens. Betaling en planning blijven ongewijzigd.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={form.handleSubmit((values) => mutation.mutate(values))} className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-medium text-gray-600 mb-1">Naam deelnemer</label>
+              <input className={inputClass} {...form.register("studentName")} />
+              <FieldError message={form.formState.errors.studentName?.message} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Contact e-mail</label>
+              <input type="email" className={inputClass} {...form.register("contactEmail")} />
+              <FieldError message={form.formState.errors.contactEmail?.message} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Eigen e-mail deelnemer</label>
+              <input type="email" className={inputClass} {...form.register("studentEmail")} />
+              <FieldError message={form.formState.errors.studentEmail?.message} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Telefoon</label>
+              <input className={inputClass} {...form.register("studentPhone")} />
+              <FieldError message={form.formState.errors.studentPhone?.message} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Geboortedatum</label>
+              <input type="date" className={inputClass} {...form.register("dateOfBirth")} />
+              <FieldError message={form.formState.errors.dateOfBirth?.message} />
+            </div>
+          </div>
+          <label className="flex items-center gap-2 text-xs text-gray-600">
+            <input type="checkbox" {...form.register("isOpenToGrouping")} />
+            Open voor groepering met andere deelnemers
+          </label>
+          <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
+            Deze wijziging past geen betaalstatus, betalingsbedrag of planningstoewijzing aan.
+          </p>
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={() => onOpenChange(false)}
+              className="px-3 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50"
+            >
+              Annuleren
+            </button>
+            <button
+              type="submit"
+              disabled={mutation.isPending}
+              className="px-3 py-2 rounded-lg bg-tennis-green text-sm font-medium text-white hover:bg-tennis-green/90 disabled:opacity-50"
+            >
+              {mutation.isPending ? "Opslaan…" : "Opslaan"}
+            </button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function EnrollmentRow({
   enrollment,
   seriesId,
@@ -1594,6 +1719,7 @@ function EnrollmentRow({
   const [expanded, setExpanded] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [markingPaid, setMarkingPaid] = useState(false);
+  const [editing, setEditing] = useState(false);
   const hasResponses = enrollment.formResponses.length > 0;
   const isCancelled = enrollment.status === "Cancelled";
   const isPendingPayment = enrollment.status === "PendingPayment";
@@ -1648,6 +1774,7 @@ function EnrollmentRow({
             {enrollment.hasOwnEmail
               ? enrollment.studentEmail
               : `via ${enrollment.contactEmail}`}
+            {enrollment.studentPhone ? ` · ${enrollment.studentPhone}` : ""}
           </p>
         </div>
         <div className="flex items-center gap-3 ml-4">
@@ -1686,6 +1813,18 @@ function EnrollmentRow({
             >
               <Euro size={12} />
               Markeer als betaald
+            </button>
+          )}
+          {!isCancelled && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setEditing(true);
+              }}
+              aria-label={`Inschrijving van ${enrollment.studentName} aanpassen`}
+              className="p-1 rounded-md text-gray-300 hover:text-tennis-green hover:bg-tennis-green/5 transition-colors"
+            >
+              <Pencil size={13} />
             </button>
           )}
           {!isCancelled && (
@@ -1744,6 +1883,13 @@ function EnrollmentRow({
           </dl>
         </div>
       )}
+
+      <EditEnrollmentDialog
+        enrollment={enrollment}
+        seriesId={seriesId}
+        open={editing}
+        onOpenChange={setEditing}
+      />
     </div>
   );
 }

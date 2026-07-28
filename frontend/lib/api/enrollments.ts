@@ -47,6 +47,7 @@ export interface LessonSeriesEnrollmentDto {
   id: string;
   studentName: string;
   studentEmail: string | null;
+  studentPhone: string | null;
   contactEmail: string;
   hasOwnEmail: boolean;
   status: string;
@@ -61,7 +62,17 @@ export interface LessonSeriesEnrollmentDto {
   enrollmentGroupId: string | null;
   /** True als deze inschrijving de groepsleider is (draagt de gedeelde betaling). */
   isGroupLeader: boolean;
+  isOpenToGrouping: boolean;
   formResponses: EnrollmentResponseItem[];
+}
+
+export interface UpdateBasicEnrollmentRequest {
+  studentName: string;
+  contactEmail: string;
+  studentEmail?: string | null;
+  studentPhone?: string | null;
+  dateOfBirth: string;
+  isOpenToGrouping: boolean;
 }
 
 export interface SaveFormFieldRequest {
@@ -124,6 +135,18 @@ export async function submitEnrollment(seriesId: string, request: SubmitEnrollme
 
 export async function getLessonSeriesEnrollments(seriesId: string): Promise<LessonSeriesEnrollmentDto[]> {
   const { data } = await apiClient.get<LessonSeriesEnrollmentDto[]>(`/lessonseries/${seriesId}/enrollments`);
+  return data;
+}
+
+export async function updateBasicEnrollment(
+  seriesId: string,
+  enrollmentId: string,
+  request: UpdateBasicEnrollmentRequest,
+): Promise<LessonSeriesEnrollmentDto> {
+  const { data } = await apiClient.put<LessonSeriesEnrollmentDto>(
+    `/lessonseries/${seriesId}/enrollments/${enrollmentId}`,
+    request,
+  );
   return data;
 }
 

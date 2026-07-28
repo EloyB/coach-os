@@ -846,6 +846,183 @@ public class EnrollmentServiceTests
             .ReturnsAsync(("Trainer Name", "trainer@test.be"));
     }
 
+    // ── UpdateBasicEnrollmentAsync ────────────────────────────────────────────
+
+    [Test]
+    public async Task UpdateBasicEnrollmentAsync_UpdatesBasicFields_WithoutChangingStatusOrGroup()
+    {
+        Guid enrollmentId = Guid.NewGuid();
+        Guid groupId = Guid.NewGuid();
+        Enrollment enrollment = new()
+        {
+            Id = enrollmentId,
+            OrganizationId = OrgId,
+            LessonSerieId = SeriesId,
+            EnrollmentGroupId = groupId,
+            StudentName = "Jan Jansen",
+            ContactEmail = "old@test.be",
+            StudentEmail = "jan@test.be",
+            StudentPhone = "0470000000",
+            DateOfBirth = new DateOnly(2012, 5, 10),
+            Category = ParticipantCategory.Youth,
+            Status = EnrollmentStatus.PendingPayment,
+            IsOpenToGrouping = true,
+        };
+        _enrollmentRepo
+            .Setup(r => r.GetByIdAsync(enrollmentId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(enrollment);
+        _enrollmentRepo
+            .Setup(r => r.IsDuplicateParticipantExceptAsync(
+                SeriesId, enrollmentId, "parent@example.be", "Piet Jansen",
+                new DateOnly(2010, 4, 3), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+        _orgSettingsRepo
+            .Setup(r => r.GetByOrganizationReadOnlyAsync(OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new OrganizationSettings { OrganizationId = OrgId, YouthMaxAge = 17 });
+
+        UpdateBasicEnrollmentRequest request = new()
+        {
+            StudentName = "Piet Jansen",
+            ContactEmail = " Parent@Example.BE ",
+            StudentEmail = " Piet@Example.BE ",
+            StudentPhone = "0499000000",
+            DateOfBirth = "2010-04-03",
+            IsOpenToGrouping = false,
+        };
+
+        Result<LessonSerieEnrollmentDto> result = await _service.UpdateBasicEnrollmentAsync(
+            SeriesId, enrollmentId, OrgId, request, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        enrollment.StudentName.Should().Be("Piet Jansen");
+        enrollment.ContactEmail.Should().Be("parent@example.be");
+        enrollment.StudentEmail.Should().Be("piet@example.be");
+        enrollment.StudentPhone.Should().Be("0499000000");
+        enrollment.DateOfBirth.Should().Be(new DateOnly(2010, 4, 3));
+        enrollment.Category.Should().Be(ParticipantCategory.Youth);
+        enrollment.IsOpenToGrouping.Should().BeFalse();
+        enrollment.Status.Should().Be(EnrollmentStatus.PendingPayment);
+        enrollment.EnrollmentGroupId.Should().Be(groupId);
+        result.Value!.ContactEmail.Should().Be("parent@example.be");
+        result.Value.StudentPhone.Should().Be("0499000000");
+        result.Value.IsOpenToGrouping.Should().BeFalse();
+        _enrollmentRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task UpdateBasicEnrollmentAsync_AllowsSharedContactEmail_WhenParticipantIsDifferent()
+    {
+        Guid enrollmentId = Guid.NewGuid();
+        Enrollment enrollment = new()
+        {
+            Id = enrollmentId,
+            OrganizationId = OrgId,
+            LessonSerieId = SeriesId,
+            StudentName = "Kind Een",
+            ContactEmail = "ouder@example.be",
+            Status = EnrollmentStatus.Pending,
+        };
+        _enrollmentRepo
+            .Setup(r => r.GetByIdAsync(enrollmentId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(enrollment);
+        _enrollmentRepo
+            .Setup(r => r.IsDuplicateParticipantExceptAsync(
+                SeriesId, enrollmentId, "ouder@example.be", "Kind Twee",
+                new DateOnly(2014, 1, 2), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+        _orgSettingsRepo
+            .Setup(r => r.GetByOrganizationReadOnlyAsync(OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((OrganizationSettings?)null);
+
+        UpdateBasicEnrollmentRequest request = new()
+        {
+            StudentName = "Kind Twee",
+            ContactEmail = "ouder@example.be",
+            StudentEmail = null,
+            StudentPhone = null,
+            DateOfBirth = "2014-01-02",
+            IsOpenToGrouping = true,
+        };
+
+        Result<LessonSerieEnrollmentDto> result = await _service.UpdateBasicEnrollmentAsync(
+            SeriesId, enrollmentId, OrgId, request, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        enrollment.ContactEmail.Should().Be("ouder@example.be");
+        enrollment.StudentName.Should().Be("Kind Twee");
+    }
+
+    [Test]
+    public async Task UpdateBasicEnrollmentAsync_DuplicateParticipant_ReturnsConflict()
+    {
+        Guid enrollmentId = Guid.NewGuid();
+        Enrollment enrollment = new()
+        {
+            Id = enrollmentId,
+            OrganizationId = OrgId,
+            LessonSerieId = SeriesId,
+            StudentName = "Kind Een",
+            ContactEmail = "ouder@example.be",
+            Status = EnrollmentStatus.Pending,
+        };
+        _enrollmentRepo
+            .Setup(r => r.GetByIdAsync(enrollmentId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(enrollment);
+        _enrollmentRepo
+            .Setup(r => r.IsDuplicateParticipantExceptAsync(
+                SeriesId, enrollmentId, "ouder@example.be", "Kind Een",
+                new DateOnly(2014, 1, 2), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        UpdateBasicEnrollmentRequest request = new()
+        {
+            StudentName = "Kind Een",
+            ContactEmail = "ouder@example.be",
+            DateOfBirth = "2014-01-02",
+            IsOpenToGrouping = true,
+        };
+
+        Result<LessonSerieEnrollmentDto> result = await _service.UpdateBasicEnrollmentAsync(
+            SeriesId, enrollmentId, OrgId, request, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.Code == ErrorCodes.Conflict);
+        _enrollmentRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task UpdateBasicEnrollmentAsync_WrongSeries_ReturnsNotFound()
+    {
+        Guid enrollmentId = Guid.NewGuid();
+        Enrollment enrollment = new()
+        {
+            Id = enrollmentId,
+            OrganizationId = OrgId,
+            LessonSerieId = Guid.NewGuid(),
+            StudentName = "Jan Jansen",
+            ContactEmail = "jan@test.be",
+            Status = EnrollmentStatus.Pending,
+        };
+        _enrollmentRepo
+            .Setup(r => r.GetByIdAsync(enrollmentId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(enrollment);
+
+        UpdateBasicEnrollmentRequest request = new()
+        {
+            StudentName = "Jan Jansen",
+            ContactEmail = "jan@test.be",
+            DateOfBirth = "2014-01-02",
+            IsOpenToGrouping = true,
+        };
+
+        Result<LessonSerieEnrollmentDto> result = await _service.UpdateBasicEnrollmentAsync(
+            SeriesId, enrollmentId, OrgId, request, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.Code == ErrorCodes.NotFound);
+        _enrollmentRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     // ── CancelEnrollmentAsync ─────────────────────────────────────────────────
 
     [Test]
