@@ -1763,8 +1763,8 @@ function EnrollmentRow({
   return (
     <div className="border-b border-gray-50 last:border-b-0">
       <div
-        className={`flex items-center justify-between px-5 py-3 ${hasResponses ? "cursor-pointer hover:bg-gray-50/50" : ""} ${isCancelled ? "opacity-50" : ""}`}
-        onClick={() => hasResponses && setExpanded((v) => !v)}
+        className={`flex items-center justify-between px-5 py-3 ${!isCancelled ? "cursor-pointer hover:bg-gray-50/50" : ""} ${isCancelled ? "opacity-50" : ""}`}
+        onClick={() => !isCancelled && setEditing(true)}
       >
         <div className="flex-1 min-w-0">
           <p
