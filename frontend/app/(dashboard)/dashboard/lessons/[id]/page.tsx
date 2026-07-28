@@ -1720,6 +1720,8 @@ function EnrollmentRow({
   const [cancelling, setCancelling] = useState(false);
   const [markingPaid, setMarkingPaid] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [showActionsMenu, setShowActionsMenu] = useState(false);
+  const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
   const hasResponses = enrollment.formResponses.length > 0;
   const isCancelled = enrollment.status === "Cancelled";
   const isPendingPayment = enrollment.status === "PendingPayment";
@@ -1815,57 +1817,67 @@ function EnrollmentRow({
               Markeer als betaald
             </button>
           )}
-          {!isCancelled && (
+          <div className="relative">
             <button
+              type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                setEditing(true);
+                setShowActionsMenu((v) => !v);
               }}
-              aria-label={`Inschrijving van ${enrollment.studentName} aanpassen`}
-              className="p-1 rounded-md text-gray-300 hover:text-tennis-green hover:bg-tennis-green/5 transition-colors"
+              aria-label={`Acties voor inschrijving van ${enrollment.studentName}`}
+              className="w-8 h-8 flex items-center justify-center rounded-md border border-gray-100 text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-colors"
             >
-              <Pencil size={13} />
+              <MoreVertical size={15} />
             </button>
-          )}
-          {!isCancelled && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <button
-                  onClick={(e) => e.stopPropagation()}
-                  disabled={cancelling}
-                  aria-label={`Inschrijving van ${enrollment.studentName} annuleren`}
-                  className="p-1 rounded-md text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
-                >
-                  <Trash2 size={13} />
-                </button>
-              </AlertDialogTrigger>
-              <AlertDialogContent onClick={(e) => e.stopPropagation()}>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Inschrijving annuleren?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    De inschrijving van {enrollment.studentName} wordt op
-                    geannuleerd gezet en de plaats komt weer vrij. De
-                    formulierantwoorden blijven bewaard.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Terug</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleCancelEnrollment}
-                    className="bg-red-600 hover:bg-red-700"
+
+            {showActionsMenu && (
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="absolute right-0 top-full mt-1 z-50 min-w-48 rounded-lg border border-gray-100 bg-white py-1 text-sm shadow-lg"
+              >
+                {!isCancelled && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowActionsMenu(false);
+                      setEditing(true);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-left text-gray-700 hover:bg-tennis-green/5 hover:text-tennis-green"
                   >
-                    Annuleren
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
-          {hasResponses &&
-            (expanded ? (
-              <ChevronUp size={13} className="text-gray-400" />
-            ) : (
-              <ChevronDown size={13} className="text-gray-400" />
-            ))}
+                    <Pencil size={13} />
+                    Inschrijving aanpassen
+                  </button>
+                )}
+                {hasResponses && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowActionsMenu(false);
+                      setExpanded((v) => !v);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                  >
+                    {expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                    {expanded ? "Details verbergen" : "Details bekijken"}
+                  </button>
+                )}
+                {!isCancelled && (
+                  <button
+                    type="button"
+                    disabled={cancelling}
+                    onClick={() => {
+                      setShowActionsMenu(false);
+                      setConfirmCancelOpen(true);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-left text-red-600 hover:bg-red-50 disabled:opacity-50"
+                  >
+                    <Trash2 size={13} />
+                    Inschrijving annuleren
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -1890,6 +1902,28 @@ function EnrollmentRow({
         open={editing}
         onOpenChange={setEditing}
       />
+
+      <AlertDialog open={confirmCancelOpen} onOpenChange={setConfirmCancelOpen}>
+        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Inschrijving annuleren?</AlertDialogTitle>
+            <AlertDialogDescription>
+              De inschrijving van {enrollment.studentName} wordt op geannuleerd
+              gezet en de plaats komt weer vrij. De formulierantwoorden blijven
+              bewaard.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Terug</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleCancelEnrollment}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Annuleren
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -1932,7 +1966,7 @@ function EnrollmentsSection({ seriesId }: { seriesId: string }) {
   return (
     <div
       id="enrollments"
-      className="bg-white rounded-xl shadow-sm shadow-gray-100 overflow-hidden scroll-mt-20"
+      className="bg-white rounded-xl shadow-sm shadow-gray-100 overflow-visible scroll-mt-20"
     >
       <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
