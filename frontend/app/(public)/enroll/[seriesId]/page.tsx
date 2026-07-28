@@ -34,7 +34,7 @@ import { type LessonSeriePriceDto } from "@/lib/api/lessonSeriePrices";
 import { getAuthUser } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { TennisBallIcon } from "@/components/ui/tennis-ball-icon";
+import { LogoMark } from "@/components/ui/logo-mark";
 import { Spinner } from "@/components/ui/spinner";
 import { formatDateNL } from "@/lib/date-utils";
 import Link from "next/link";
@@ -556,9 +556,7 @@ export default function EnrollPage() {
       <div className="max-w-2xl mx-auto px-4 py-8">
         {/* Logo */}
         <div className="flex items-center gap-2 mb-8">
-          <div className="w-8 h-8 bg-tennis-green rounded-full flex items-center justify-center">
-            <TennisBallIcon className="w-4 h-4 text-white" strokeWidth={2} />
-          </div>
+          <LogoMark variant="green" className="h-8 w-8" markPx={22} />
           <span className="font-semibold text-lg text-tennis-green">CoachOS</span>
         </div>
 
@@ -629,7 +627,7 @@ export default function EnrollPage() {
           </div>
         </div>
 
-        {series.priceOptions.length > 0 && (
+        {!submitted && series.priceOptions.length > 0 && (
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 mb-6">
             <div className="flex items-center gap-2 mb-3">
               <Euro className="w-4 h-4 text-tennis-green" />
