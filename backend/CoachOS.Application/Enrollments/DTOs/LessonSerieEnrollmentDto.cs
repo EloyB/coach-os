@@ -5,6 +5,7 @@ public class LessonSerieEnrollmentDto
     public Guid Id { get; set; }
     public string StudentName { get; set; } = string.Empty;
     public string? StudentEmail { get; set; }
+    public string? StudentPhone { get; set; }
 
     /// <summary>Adres waar de communicatie voor deze inschrijving heen gaat.</summary>
     public string ContactEmail { get; set; } = string.Empty;
@@ -28,6 +29,8 @@ public class LessonSerieEnrollmentDto
 
     /// <summary>True als deze inschrijving de groepsleider is (draagt de gedeelde betaling).</summary>
     public bool IsGroupLeader { get; set; }
+
+    public bool IsOpenToGrouping { get; set; }
 
     public List<EnrollmentResponseItemDto> FormResponses { get; set; } = new();
 }

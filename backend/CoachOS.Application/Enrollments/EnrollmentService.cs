@@ -118,6 +118,7 @@ public class EnrollmentService(
             Id = e.Id,
             StudentName = e.StudentName,
             StudentEmail = e.StudentEmail,
+            StudentPhone = e.StudentPhone,
             ContactEmail = e.ContactEmail,
             HasOwnEmail = e.StudentEmail is not null,
             Status = e.Status.ToString(),
@@ -134,6 +135,7 @@ public class EnrollmentService(
             EnrollmentGroupId = e.EnrollmentGroupId,
             IsGroupLeader = e.EnrollmentGroupId.HasValue
                 && groupsById.GetValueOrDefault(e.EnrollmentGroupId.Value)?.LeaderEnrollmentId == e.Id,
+            IsOpenToGrouping = e.IsOpenToGrouping,
             FormResponses = e.FormResponses
                 .OrderBy(r => r.FormField.Order)
                 .Select(r => new EnrollmentResponseItemDto
@@ -599,6 +601,76 @@ public class EnrollmentService(
             .ToList();
 
         return Result<List<EnrollmentWithPreferencesDto>>.Ok(dtos);
+    }
+
+    public async Task<Result<LessonSerieEnrollmentDto>> UpdateBasicEnrollmentAsync(
+        Guid lessonSeriesId, Guid enrollmentId, Guid organizationId,
+        UpdateBasicEnrollmentRequest request, CancellationToken ct = default)
+    {
+        Enrollment? enrollment = await enrollmentRepo.GetByIdAsync(enrollmentId, organizationId, ct);
+        if (enrollment is null || enrollment.LessonSerieId != lessonSeriesId)
+            return Result<LessonSerieEnrollmentDto>.Fail(
+                new Error(ErrorCodes.NotFound, "Inschrijving niet gevonden."));
+
+        DateOnly? dateOfBirth = ParseBirthDate(request.DateOfBirth);
+        string contactEmail = EnrollmentEmails.Normalize(request.ContactEmail);
+        string studentEmail = string.IsNullOrWhiteSpace(request.StudentEmail)
+            ? string.Empty
+            : EnrollmentEmails.Normalize(request.StudentEmail);
+        string studentName = request.StudentName.Trim();
+
+        bool duplicate = await enrollmentRepo.IsDuplicateParticipantExceptAsync(
+            lessonSeriesId, enrollmentId, contactEmail, studentName, dateOfBirth, ct);
+        if (duplicate)
+            return Result<LessonSerieEnrollmentDto>.Fail(new Error(
+                ErrorCodes.Conflict, $"{studentName} is al ingeschreven voor deze lessenreeks."));
+
+        OrganizationSettingsEntity? orgSettings =
+            await orgSettingsRepo.GetByOrganizationReadOnlyAsync(organizationId, ct);
+        int youthMaxAge = orgSettings?.YouthMaxAge ?? 17;
+        DateOnly updatedOn = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        enrollment.StudentName = studentName;
+        enrollment.ContactEmail = contactEmail;
+        enrollment.StudentEmail = string.IsNullOrWhiteSpace(studentEmail) ? null : studentEmail;
+        enrollment.StudentPhone = string.IsNullOrWhiteSpace(request.StudentPhone)
+            ? null
+            : request.StudentPhone.Trim();
+        enrollment.DateOfBirth = dateOfBirth;
+        enrollment.Category = ResolveCategory(request.DateOfBirth, youthMaxAge, updatedOn);
+        enrollment.IsOpenToGrouping = request.IsOpenToGrouping;
+        enrollment.UpdatedAt = DateTime.UtcNow;
+
+        await enrollmentRepo.SaveChangesAsync(ct);
+
+        LessonSerieEnrollmentDto dto = new()
+        {
+            Id = enrollment.Id,
+            StudentName = enrollment.StudentName,
+            StudentEmail = enrollment.StudentEmail,
+            StudentPhone = enrollment.StudentPhone,
+            ContactEmail = enrollment.ContactEmail,
+            HasOwnEmail = enrollment.StudentEmail is not null,
+            Status = enrollment.Status.ToString(),
+            EnrolledAt = enrollment.EnrolledAt,
+            Notes = enrollment.Notes,
+            DateOfBirth = enrollment.DateOfBirth?.ToString("yyyy-MM-dd"),
+            Category = enrollment.Category.HasValue ? (int)enrollment.Category.Value : null,
+            CategoryLabel = enrollment.Category switch
+            {
+                ParticipantCategory.Youth => "Jeugd",
+                ParticipantCategory.Adult => "Volwassenen",
+                _ => null,
+            },
+            EnrollmentGroupId = enrollment.EnrollmentGroupId,
+            IsOpenToGrouping = enrollment.IsOpenToGrouping,
+        };
+
+        logger.LogInformation(
+            "Basisgegevens van inschrijving {EnrollmentId} aangepast door beheerder in organisatie {OrganizationId}",
+            enrollmentId, organizationId);
+
+        return Result<LessonSerieEnrollmentDto>.Ok(dto);
     }
 
     /// <summary>

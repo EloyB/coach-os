@@ -64,6 +64,7 @@ import {
   saveEnrollmentForm,
   cancelEnrollment,
   markEnrollmentCashPaid,
+  updateBasicEnrollment,
 } from "@/lib/api/enrollments";
 import type {
   LessonSeriesEnrollmentDto,
@@ -451,6 +452,7 @@ function dayOfWeekFromDate(dateStr: string, weekDays: string[]): number {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -1581,6 +1583,132 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
 
 // ─── Enrollments Section ──────────────────────────────────────────────────────
 
+const basicEnrollmentSchema = z.object({
+  studentName: z.string().min(1, "Naam is verplicht").max(200),
+  contactEmail: z.string().min(1, "Contact e-mailadres is verplicht").email("Ongeldig e-mailadres"),
+  studentEmail: z
+    .string()
+    .email("Ongeldig e-mailadres")
+    .optional()
+    .or(z.literal("")),
+  studentPhone: z.string().max(50).optional(),
+  dateOfBirth: z.string().min(1, "Geboortedatum is verplicht"),
+  isOpenToGrouping: z.boolean(),
+});
+
+type BasicEnrollmentFormValues = z.infer<typeof basicEnrollmentSchema>;
+
+function EditEnrollmentDialog({
+  enrollment,
+  seriesId,
+  open,
+  onOpenChange,
+}: {
+  enrollment: LessonSeriesEnrollmentDto;
+  seriesId: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const queryClient = useQueryClient();
+  const form = useForm<BasicEnrollmentFormValues>({
+    resolver: zodResolver(basicEnrollmentSchema),
+    values: {
+      studentName: enrollment.studentName,
+      contactEmail: enrollment.contactEmail,
+      studentEmail: enrollment.studentEmail ?? "",
+      studentPhone: enrollment.studentPhone ?? "",
+      dateOfBirth: enrollment.dateOfBirth ?? "",
+      isOpenToGrouping: enrollment.isOpenToGrouping,
+    },
+  });
+
+  const mutation = useMutation({
+    mutationFn: (values: BasicEnrollmentFormValues) =>
+      updateBasicEnrollment(seriesId, enrollment.id, {
+        studentName: values.studentName,
+        contactEmail: values.contactEmail,
+        studentEmail: values.studentEmail?.trim() ? values.studentEmail : null,
+        studentPhone: values.studentPhone?.trim() ? values.studentPhone : null,
+        dateOfBirth: values.dateOfBirth,
+        isOpenToGrouping: values.isOpenToGrouping,
+      }),
+    onSuccess: () => {
+      toast.success("Inschrijving bijgewerkt");
+      queryClient.invalidateQueries({ queryKey: ["enrollments", seriesId] });
+      queryClient.invalidateQueries({ queryKey: ["planning", seriesId] });
+      onOpenChange(false);
+    },
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent onClick={(e) => e.stopPropagation()} className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Inschrijving aanpassen</DialogTitle>
+          <DialogDescription>
+            Wijzig enkel basisgegevens. Betaling en planning blijven ongewijzigd.
+          </DialogDescription>
+        </DialogHeader>
+        <p className="text-xs text-gray-500">
+          Ingeschreven op {new Date(enrollment.enrolledAt).toLocaleDateString("nl-BE")}
+        </p>
+        <form onSubmit={form.handleSubmit((values) => mutation.mutate(values))} className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-medium text-gray-600 mb-1">Naam deelnemer</label>
+              <input className={inputClass} {...form.register("studentName")} />
+              <FieldError message={form.formState.errors.studentName?.message} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Contact e-mail</label>
+              <input type="email" className={inputClass} {...form.register("contactEmail")} />
+              <FieldError message={form.formState.errors.contactEmail?.message} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Eigen e-mail deelnemer</label>
+              <input type="email" className={inputClass} {...form.register("studentEmail")} />
+              <FieldError message={form.formState.errors.studentEmail?.message} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Telefoon</label>
+              <input className={inputClass} {...form.register("studentPhone")} />
+              <FieldError message={form.formState.errors.studentPhone?.message} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Geboortedatum</label>
+              <input type="date" className={inputClass} {...form.register("dateOfBirth")} />
+              <FieldError message={form.formState.errors.dateOfBirth?.message} />
+            </div>
+          </div>
+          <label className="flex items-center gap-2 text-xs text-gray-600">
+            <input type="checkbox" {...form.register("isOpenToGrouping")} />
+            Open voor groepering met andere deelnemers
+          </label>
+          <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
+            Deze wijziging past geen betaalstatus, betalingsbedrag of planningstoewijzing aan.
+          </p>
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={() => onOpenChange(false)}
+              className="px-3 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50"
+            >
+              Annuleren
+            </button>
+            <button
+              type="submit"
+              disabled={mutation.isPending}
+              className="px-3 py-2 rounded-lg bg-tennis-green text-sm font-medium text-white hover:bg-tennis-green/90 disabled:opacity-50"
+            >
+              {mutation.isPending ? "Opslaan…" : "Opslaan"}
+            </button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function EnrollmentRow({
   enrollment,
   seriesId,
@@ -1594,6 +1722,9 @@ function EnrollmentRow({
   const [expanded, setExpanded] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [markingPaid, setMarkingPaid] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [showActionsMenu, setShowActionsMenu] = useState(false);
+  const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
   const hasResponses = enrollment.formResponses.length > 0;
   const isCancelled = enrollment.status === "Cancelled";
   const isPendingPayment = enrollment.status === "PendingPayment";
@@ -1635,8 +1766,8 @@ function EnrollmentRow({
   return (
     <div className="border-b border-gray-50 last:border-b-0">
       <div
-        className={`flex items-center justify-between px-5 py-3 ${hasResponses ? "cursor-pointer hover:bg-gray-50/50" : ""} ${isCancelled ? "opacity-50" : ""}`}
-        onClick={() => hasResponses && setExpanded((v) => !v)}
+        className={`flex items-center justify-between px-5 py-3 ${!isCancelled ? "cursor-pointer hover:bg-gray-50/50" : ""} ${isCancelled ? "opacity-50" : ""}`}
+        onClick={() => !isCancelled && setEditing(true)}
       >
         <div className="flex-1 min-w-0">
           <p
@@ -1648,6 +1779,7 @@ function EnrollmentRow({
             {enrollment.hasOwnEmail
               ? enrollment.studentEmail
               : `via ${enrollment.contactEmail}`}
+            {enrollment.studentPhone ? ` · ${enrollment.studentPhone}` : ""}
           </p>
         </div>
         <div className="flex items-center gap-3 ml-4">
@@ -1656,20 +1788,6 @@ function EnrollmentRow({
               mogelijk dubbel
             </Badge>
           )}
-          {enrollment.categoryLabel && (
-            <Badge
-              className={`border-0 text-xs ${
-                enrollment.category === 2
-                  ? "bg-sky-100 text-sky-700"
-                  : "bg-gray-100 text-gray-600"
-              }`}
-            >
-              {enrollment.categoryLabel}
-            </Badge>
-          )}
-          <span className="text-xs text-gray-400">
-            {new Date(enrollment.enrolledAt).toLocaleDateString("nl-BE")}
-          </span>
           {enrollmentStatusStyles[enrollment.status] && (
             <Badge
               className={`${enrollmentStatusStyles[enrollment.status].className} border-0 text-xs`}
@@ -1688,45 +1806,67 @@ function EnrollmentRow({
               Markeer als betaald
             </button>
           )}
-          {!isCancelled && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <button
-                  onClick={(e) => e.stopPropagation()}
-                  disabled={cancelling}
-                  aria-label={`Inschrijving van ${enrollment.studentName} annuleren`}
-                  className="p-1 rounded-md text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
-                >
-                  <Trash2 size={13} />
-                </button>
-              </AlertDialogTrigger>
-              <AlertDialogContent onClick={(e) => e.stopPropagation()}>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Inschrijving annuleren?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    De inschrijving van {enrollment.studentName} wordt op
-                    geannuleerd gezet en de plaats komt weer vrij. De
-                    formulierantwoorden blijven bewaard.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Terug</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleCancelEnrollment}
-                    className="bg-red-600 hover:bg-red-700"
+          <div className="relative">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowActionsMenu((v) => !v);
+              }}
+              aria-label={`Acties voor inschrijving van ${enrollment.studentName}`}
+              className="w-8 h-8 flex items-center justify-center rounded-md border border-gray-100 text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              <MoreVertical size={15} />
+            </button>
+
+            {showActionsMenu && (
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="absolute right-0 top-full mt-1 z-50 min-w-48 rounded-lg border border-gray-100 bg-white py-1 text-sm shadow-lg"
+              >
+                {!isCancelled && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowActionsMenu(false);
+                      setEditing(true);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-left text-gray-700 hover:bg-tennis-green/5 hover:text-tennis-green"
                   >
-                    Annuleren
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
-          {hasResponses &&
-            (expanded ? (
-              <ChevronUp size={13} className="text-gray-400" />
-            ) : (
-              <ChevronDown size={13} className="text-gray-400" />
-            ))}
+                    <Pencil size={13} />
+                    Inschrijving aanpassen
+                  </button>
+                )}
+                {hasResponses && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowActionsMenu(false);
+                      setExpanded((v) => !v);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                  >
+                    {expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                    {expanded ? "Details verbergen" : "Details bekijken"}
+                  </button>
+                )}
+                {!isCancelled && (
+                  <button
+                    type="button"
+                    disabled={cancelling}
+                    onClick={() => {
+                      setShowActionsMenu(false);
+                      setConfirmCancelOpen(true);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-left text-red-600 hover:bg-red-50 disabled:opacity-50"
+                  >
+                    <Trash2 size={13} />
+                    Inschrijving annuleren
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -1744,6 +1884,35 @@ function EnrollmentRow({
           </dl>
         </div>
       )}
+
+      <EditEnrollmentDialog
+        enrollment={enrollment}
+        seriesId={seriesId}
+        open={editing}
+        onOpenChange={setEditing}
+      />
+
+      <AlertDialog open={confirmCancelOpen} onOpenChange={setConfirmCancelOpen}>
+        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Inschrijving annuleren?</AlertDialogTitle>
+            <AlertDialogDescription>
+              De inschrijving van {enrollment.studentName} wordt op geannuleerd
+              gezet en de plaats komt weer vrij. De formulierantwoorden blijven
+              bewaard.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Terug</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleCancelEnrollment}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Annuleren
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -1786,7 +1955,7 @@ function EnrollmentsSection({ seriesId }: { seriesId: string }) {
   return (
     <div
       id="enrollments"
-      className="bg-white rounded-xl shadow-sm shadow-gray-100 overflow-hidden scroll-mt-20"
+      className="bg-white rounded-xl shadow-sm shadow-gray-100 overflow-visible scroll-mt-20"
     >
       <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
         <div className="flex items-center gap-2.5">

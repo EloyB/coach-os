@@ -53,21 +53,39 @@ public class EnrollmentRepository(ApplicationDbContext context) : IEnrollmentRep
         Guid lessonSeriesId, string contactEmail, string studentName,
         DateOnly? dateOfBirth, CancellationToken ct = default)
     {
-        if (dateOfBirth is null) return false;
+        return await IsDuplicateParticipantQuery(
+                lessonSeriesId, contactEmail, studentName, dateOfBirth)
+            .AnyAsync(ct);
+    }
+
+    public async Task<bool> IsDuplicateParticipantExceptAsync(
+        Guid lessonSeriesId, Guid excludedEnrollmentId, string contactEmail,
+        string studentName, DateOnly? dateOfBirth, CancellationToken ct = default)
+    {
+        return await IsDuplicateParticipantQuery(
+                lessonSeriesId, contactEmail, studentName, dateOfBirth)
+            .Where(e => e.Id != excludedEnrollmentId)
+            .AnyAsync(ct);
+    }
+
+    private IQueryable<Enrollment> IsDuplicateParticipantQuery(
+        Guid lessonSeriesId, string contactEmail, string studentName, DateOnly? dateOfBirth)
+    {
+        if (dateOfBirth is null) return context.Enrollments.Where(_ => false);
 
         string normalizedEmail = contactEmail.Trim().ToLower();
         string normalizedName = studentName.Trim().ToLower();
 
-        return await context.Enrollments
+        return context.Enrollments
             .AsNoTracking()
-            .AnyAsync(e =>
+            .Where(e =>
                 e.LessonSerieId == lessonSeriesId &&
                 e.ContactEmail.ToLower() == normalizedEmail &&
                 e.StudentName.ToLower() == normalizedName &&
                 e.DateOfBirth == dateOfBirth &&
                 (e.Status == EnrollmentStatus.Confirmed
                     || e.Status == EnrollmentStatus.Pending
-                    || e.Status == EnrollmentStatus.PendingPayment), ct);
+                    || e.Status == EnrollmentStatus.PendingPayment));
     }
 
     public async Task<int> CountActiveBySeriesAsync(Guid lessonSeriesId, CancellationToken ct = default)
