@@ -1649,6 +1649,22 @@ function EditEnrollmentDialog({
             Wijzig enkel basisgegevens. Betaling en planning blijven ongewijzigd.
           </DialogDescription>
         </DialogHeader>
+        <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
+          {enrollment.categoryLabel && (
+            <Badge
+              className={`border-0 text-xs ${
+                enrollment.category === 2
+                  ? "bg-sky-100 text-sky-700"
+                  : "bg-gray-100 text-gray-600"
+              }`}
+            >
+              {enrollment.categoryLabel}
+            </Badge>
+          )}
+          <span>
+            Ingeschreven op {new Date(enrollment.enrolledAt).toLocaleDateString("nl-BE")}
+          </span>
+        </div>
         <form onSubmit={form.handleSubmit((values) => mutation.mutate(values))} className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="sm:col-span-2">
@@ -1785,20 +1801,6 @@ function EnrollmentRow({
               mogelijk dubbel
             </Badge>
           )}
-          {enrollment.categoryLabel && (
-            <Badge
-              className={`border-0 text-xs ${
-                enrollment.category === 2
-                  ? "bg-sky-100 text-sky-700"
-                  : "bg-gray-100 text-gray-600"
-              }`}
-            >
-              {enrollment.categoryLabel}
-            </Badge>
-          )}
-          <span className="text-xs text-gray-400">
-            {new Date(enrollment.enrolledAt).toLocaleDateString("nl-BE")}
-          </span>
           {enrollmentStatusStyles[enrollment.status] && (
             <Badge
               className={`${enrollmentStatusStyles[enrollment.status].className} border-0 text-xs`}
