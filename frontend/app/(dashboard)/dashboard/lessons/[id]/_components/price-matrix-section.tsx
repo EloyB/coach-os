@@ -229,89 +229,101 @@ export function PriceMatrixSection({
               {group.options.length === 0 ? (
                 <p className="px-4 py-3 text-xs text-gray-400">Nog geen opties.</p>
               ) : (
-                <div className="divide-y divide-gray-100">
+                <div className="p-3 space-y-3">
                   {group.options.map((option) => (
-                    <div key={option.id} className="p-4 grid grid-cols-1 lg:grid-cols-12 gap-3 items-start">
-                      <div className="lg:col-span-3">
-                        <label className="block text-xs font-medium text-gray-600 mb-1">Naam</label>
-                        <input
-                          className={inputClass}
-                          value={option.label}
-                          placeholder="bv. Jeugd, Duo, Sociaal tarief"
-                          onChange={(e) => update(option.id, { label: e.target.value })}
-                        />
-                        <p className="mt-1 text-[11px] text-gray-400">{summary(option)}</p>
+                    <div
+                      key={option.id}
+                      className="rounded-lg border border-gray-200 bg-white p-3.5 space-y-3"
+                    >
+                      {/* Regel 1 — identiteit + prijs + verwijderen, alles enkelregelig en uitgelijnd */}
+                      <div className="flex flex-wrap items-end gap-3">
+                        <div className="flex-1 min-w-[180px]">
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Naam</label>
+                          <input
+                            className={inputClass}
+                            value={option.label}
+                            placeholder="bv. Jeugd, Duo, Sociaal tarief"
+                            onChange={(e) => update(option.id, { label: e.target.value })}
+                          />
+                        </div>
+                        {option.mode === PRICING_MODES.GroupSize && (
+                          <div className="w-36">
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Groep</label>
+                            <select
+                              className={inputClass}
+                              value={option.groupSize}
+                              onChange={(e) => update(option.id, { groupSize: e.target.value })}
+                            >
+                              {GROUP_SIZES.map((size) => (
+                                <option key={size} value={size}>{size === 1 ? "Privé (1)" : `${size} personen`}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                        {option.mode === PRICING_MODES.TariffCategory && (
+                          <div className="w-40">
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Categorie</label>
+                            <select
+                              className={inputClass}
+                              value={option.category}
+                              onChange={(e) => update(option.id, { category: e.target.value })}
+                            >
+                              <option value="">Kies categorie</option>
+                              {Object.values(PARTICIPANT_CATEGORIES).map((category) => (
+                                <option key={category} value={category}>{CATEGORY_LABELS[category]}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                        <div className="w-32">
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Prijs</label>
+                          <div className="relative">
+                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400">€</span>
+                            <input
+                              type="number"
+                              min={0}
+                              step={0.01}
+                              className={inputClass + " pl-6"}
+                              value={option.totalPrice}
+                              onChange={(e) => update(option.id, { totalPrice: e.target.value })}
+                            />
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => remove(option.id)}
+                          className="shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-lg text-red-500 hover:bg-red-50 transition-colors"
+                          aria-label={`Verwijder ${option.label || "prijsoptie"}`}
+                        >
+                          <Trash2 size={14} />
+                        </button>
                       </div>
-                      <div className="lg:col-span-3">
+
+                      {/* Regel 2 — beschrijving over de volle breedte */}
+                      <div>
                         <label className="block text-xs font-medium text-gray-600 mb-1">Beschrijving</label>
                         <textarea
-                          className={inputClass + " min-h-20"}
+                          className={inputClass + " min-h-16"}
                           value={option.description}
                           placeholder="Wanneer geldt deze prijs?"
                           onChange={(e) => update(option.id, { description: e.target.value })}
                         />
                       </div>
-                      {option.mode === PRICING_MODES.GroupSize && (
-                        <div className="lg:col-span-2">
-                          <label className="block text-xs font-medium text-gray-600 mb-1">Groep</label>
-                          <select
-                            className={inputClass}
-                            value={option.groupSize}
-                            onChange={(e) => update(option.id, { groupSize: e.target.value })}
-                          >
-                            {GROUP_SIZES.map((size) => (
-                              <option key={size} value={size}>{size === 1 ? "Privé (1)" : `${size} personen`}</option>
-                            ))}
-                          </select>
-                        </div>
-                      )}
-                      {option.mode === PRICING_MODES.TariffCategory && (
-                        <div className="lg:col-span-2">
-                          <label className="block text-xs font-medium text-gray-600 mb-1">Categorie</label>
-                          <select
-                            className={inputClass}
-                            value={option.category}
-                            onChange={(e) => update(option.id, { category: e.target.value })}
-                          >
-                            <option value="">Kies categorie</option>
-                            {Object.values(PARTICIPANT_CATEGORIES).map((category) => (
-                              <option key={category} value={category}>{CATEGORY_LABELS[category]}</option>
-                            ))}
-                          </select>
-                        </div>
-                      )}
-                      <div className="lg:col-span-2">
-                        <label className="block text-xs font-medium text-gray-600 mb-1">Prijs</label>
-                        <div className="relative">
-                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400">€</span>
+
+                      {/* Regel 3 — geavanceerd/optioneel, gedempt, plus de samenvatting */}
+                      <div className="flex flex-wrap items-end justify-between gap-3 pt-0.5">
+                        <div className="w-full max-w-xs">
+                          <label className="block text-[11px] font-medium text-gray-500 mb-1">
+                            Herbruikbaar als <span className="font-normal text-gray-400">(optioneel)</span>
+                          </label>
                           <input
-                            type="number"
-                            min={0}
-                            step={0.01}
-                            className={inputClass + " pl-6"}
-                            value={option.totalPrice}
-                            onChange={(e) => update(option.id, { totalPrice: e.target.value })}
+                            className={inputClass}
+                            value={option.reusableKey}
+                            placeholder="bv. jeugd-tarief"
+                            onChange={(e) => update(option.id, { reusableKey: e.target.value })}
                           />
                         </div>
-                      </div>
-                      <div className="lg:col-span-1">
-                        <label className="block text-xs font-medium text-gray-600 mb-1">Herbruikbaar als</label>
-                        <input
-                          className={inputClass}
-                          value={option.reusableKey}
-                          placeholder="optioneel"
-                          onChange={(e) => update(option.id, { reusableKey: e.target.value })}
-                        />
-                      </div>
-                      <div className="lg:col-span-1 flex lg:justify-end">
-                        <button
-                          type="button"
-                          onClick={() => remove(option.id)}
-                          className="mt-5 inline-flex items-center justify-center w-9 h-9 rounded-lg text-red-500 hover:bg-red-50"
-                          aria-label={`Verwijder ${option.label || "prijsoptie"}`}
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                        <p className="text-[11px] text-gray-400 pb-2">{summary(option)}</p>
                       </div>
                     </div>
                   ))}
