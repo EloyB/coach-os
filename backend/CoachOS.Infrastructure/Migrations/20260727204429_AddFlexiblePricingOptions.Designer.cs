@@ -3,6 +3,7 @@ using System;
 using CoachOS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CoachOS.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260727204429_AddFlexiblePricingOptions")]
+    partial class AddFlexiblePricingOptions
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -853,12 +856,18 @@ namespace CoachOS.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<int?>("Category")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Description")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
+
+                    b.Property<int?>("GroupSize")
+                        .HasColumnType("integer");
 
                     b.Property<string>("Label")
                         .IsRequired()
@@ -867,6 +876,11 @@ namespace CoachOS.Infrastructure.Migrations
 
                     b.Property<Guid>("LessonSerieId")
                         .HasColumnType("uuid");
+
+                    b.Property<int>("Mode")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(2);
 
                     b.Property<Guid>("OrganizationId")
                         .HasColumnType("uuid");
@@ -889,9 +903,9 @@ namespace CoachOS.Infrastructure.Migrations
 
                     b.HasIndex("OrganizationId");
 
-                    b.HasIndex("LessonSerieId", "SortOrder");
-
                     b.HasIndex("OrganizationId", "ReusableKey");
+
+                    b.HasIndex("LessonSerieId", "Mode", "GroupSize", "Category");
 
                     b.ToTable("LessonSeriePrices");
                 });

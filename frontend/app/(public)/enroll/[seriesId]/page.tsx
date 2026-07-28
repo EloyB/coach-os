@@ -5,7 +5,6 @@ import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
   CalendarDays,
-  Clock,
   MapPin,
   User,
   Users,
@@ -31,17 +30,17 @@ import type {
 import { getPublicTimeSlots } from "@/lib/api/timeSlots";
 import type { TimeSlotDto } from "@/lib/api/timeSlots";
 import { LESSON_LEVELS } from "@/lib/api/lessonSeries";
+import { type LessonSeriePriceDto } from "@/lib/api/lessonSeriePrices";
 import { getAuthUser } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { TennisBallIcon } from "@/components/ui/tennis-ball-icon";
+import { LogoMark } from "@/components/ui/logo-mark";
 import { Spinner } from "@/components/ui/spinner";
 import { formatDateNL } from "@/lib/date-utils";
 import Link from "next/link";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const FIELD_TYPE_TEXT = 1;
 const FIELD_TYPE_MULTIPLE_CHOICE = 2;
 const FIELD_TYPE_YES_NO = 3;
 
@@ -152,6 +151,7 @@ export default function EnrollPage() {
   );
   const [isOpenToGrouping, setIsOpenToGrouping] = useState(false);
   const [groupMembers, setGroupMembers] = useState<GroupMember[]>([]);
+  const [selectedPriceOptionId, setSelectedPriceOptionId] = useState<string>("");
   const [memberErrors, setMemberErrors] = useState<
     Record<number, { name?: string; email?: string; dateOfBirth?: string }>
   >({});
@@ -174,6 +174,10 @@ export default function EnrollPage() {
         setEnrollmentType(
           seriesData.allowSoloEnrollment ? "solo" : "group"
         );
+        // Eén optie? Automatisch geselecteerd. Meerdere? De speler kiest.
+        setSelectedPriceOptionId(
+          seriesData.priceOptions.length === 1 ? seriesData.priceOptions[0].id : ""
+        );
       } catch {
         setError("Lessenreeks niet gevonden.");
       } finally {
@@ -182,6 +186,37 @@ export default function EnrollPage() {
     }
     loadData();
   }, [seriesId]);
+
+  // Reset alle formuliervelden zodat iemand meteen een nieuwe inschrijving kan
+  // doen zonder de pagina te verversen. Ververst ook de reeks zodat het aantal
+  // ingeschrevenen/vrije plekken klopt na de vorige inschrijving.
+  async function resetForm() {
+    setSubmitted(false);
+    setSubmitError(null);
+    setFirstName("");
+    setLastName("");
+    setEmail("");
+    setPhone("");
+    setDateOfBirth("");
+    setFieldValues({});
+    setFieldErrors({});
+    setBaseErrors({});
+    setPreferences({});
+    setIsOpenToGrouping(false);
+    setGroupMembers([]);
+    setMemberErrors({});
+    setEnrollmentType(series?.allowSoloEnrollment ? "solo" : "group");
+    setSelectedPriceOptionId(
+      series && series.priceOptions.length === 1 ? series.priceOptions[0].id : ""
+    );
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    try {
+      const fresh = await getPublicLessonSeries(seriesId);
+      setSeries(fresh);
+    } catch {
+      // Niet fataal — het formulier is al gereset.
+    }
+  }
 
   // ─── Field helpers ──────────────────────────────────────────────────────
 
@@ -240,6 +275,14 @@ export default function EnrollPage() {
         i === index ? { ...m, hasOwnEmail, email: hasOwnEmail ? m.email : "" } : m
       )
     );
+  }
+
+  function priceOptions(): LessonSeriePriceDto[] {
+    return series?.priceOptions ?? [];
+  }
+
+  function formatPriceOption(option: LessonSeriePriceDto): string {
+    return `€${option.totalPrice.toFixed(2)} per deelnemer`;
   }
 
   // ─── Validation ─────────────────────────────────────────────────────────
@@ -313,6 +356,12 @@ export default function EnrollPage() {
     }
     setMemberErrors(mErrors);
 
+    const requiresPriceChoice = priceOptions().length > 0;
+    if (requiresPriceChoice && !selectedPriceOptionId) {
+      setSubmitError("Kies een prijsoptie om verder te gaan.");
+      return false;
+    }
+
     return (
       Object.keys(errors).length === 0 &&
       Object.keys(fErrors).length === 0 &&
@@ -350,6 +399,7 @@ export default function EnrollPage() {
           timeSlotPreferences.length > 0 ? timeSlotPreferences : undefined,
         enrollmentType,
         isOpenToGrouping,
+        selectedPriceOptionId: selectedPriceOptionId || undefined,
         groupMembers:
           enrollmentType === "group" && groupMembers.length > 0
             ? groupMembers.map((m) => ({
@@ -537,9 +587,7 @@ export default function EnrollPage() {
       <div className="max-w-2xl mx-auto px-4 py-8">
         {/* Logo */}
         <div className="flex items-center gap-2 mb-8">
-          <div className="w-8 h-8 bg-tennis-green rounded-full flex items-center justify-center">
-            <TennisBallIcon className="w-4 h-4 text-white" strokeWidth={2} />
-          </div>
+          <LogoMark className="h-8 w-8" markPx={22} />
           <span className="font-semibold text-lg text-tennis-green">CoachOS</span>
         </div>
 
@@ -570,7 +618,11 @@ export default function EnrollPage() {
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <Euro className="w-4 h-4 text-gray-400 shrink-0" />
-              <span>€{series.price.toFixed(2)} per reeks</span>
+              <span>
+                {series.priceOptions.length > 0
+                  ? `${series.priceOptions.length} prijsoptie${series.priceOptions.length === 1 ? "" : "s"}`
+                  : `€${series.price.toFixed(2)} per deelnemer`}
+              </span>
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <Cake className="w-4 h-4 text-gray-400 shrink-0" />
@@ -606,6 +658,43 @@ export default function EnrollPage() {
           </div>
         </div>
 
+        {!submitted && series.priceOptions.length > 0 && (
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 mb-6">
+            <div className="flex items-center gap-2 mb-3">
+              <Euro className="w-4 h-4 text-tennis-green" />
+              <h2 className="text-sm font-semibold text-gray-900">Prijsopties</h2>
+            </div>
+            {priceOptions().length > 0 && (
+              <div>
+                <p className="text-xs text-gray-500 mb-2">Kies de prijsoptie die voor jou van toepassing is.</p>
+                <div className="space-y-2">
+                  {priceOptions().map((option) => (
+                    <label key={option.id} className="block cursor-pointer rounded-lg border border-gray-200 p-3 hover:border-tennis-green/40">
+                      <div className="flex items-start gap-3">
+                        <input
+                          type="radio"
+                          name="selectedPriceOption"
+                          value={option.id}
+                          checked={selectedPriceOptionId === option.id}
+                          onChange={() => setSelectedPriceOptionId(option.id)}
+                          className="mt-1 w-4 h-4 text-tennis-green focus:ring-tennis-green"
+                        />
+                        <div className="flex-1">
+                          <div className="flex items-start justify-between gap-3">
+                            <span className="text-sm font-medium text-gray-800">{option.label}</span>
+                            <span className="text-sm font-semibold text-tennis-green whitespace-nowrap">{formatPriceOption(option)}</span>
+                          </div>
+                          {option.description && <p className="text-xs text-gray-500 mt-1">{option.description}</p>}
+                        </div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Enrollment form card */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
           {submitted ? (
@@ -617,6 +706,13 @@ export default function EnrollPage() {
                 {t("enroll_success_title")}
               </h2>
               <p className="text-sm text-gray-500">{t("enroll_success_body")}</p>
+              <button
+                type="button"
+                onClick={resetForm}
+                className="mt-6 text-sm font-medium text-tennis-green hover:underline"
+              >
+                {t("enroll_again")}
+              </button>
             </div>
           ) : (
             <form onSubmit={handleSubmit} noValidate>

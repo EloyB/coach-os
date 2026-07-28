@@ -53,6 +53,12 @@ public class Enrollment : BaseEntity
     public Guid? EnrollmentGroupId { get; set; }
     public bool IsOpenToGrouping { get; set; }
 
+    /// <summary>
+    /// Prijsoptie die de speler koos bij mode ManualOption. Null voor automatische
+    /// prijsmodellen zoals vaste prijs, groepsgrootte of tariefcategorie.
+    /// </summary>
+    public Guid? SelectedPriceOptionId { get; set; }
+
     // Navigation properties
     public Organization Organization { get; set; } = null!;
     public Lesson? Lesson { get; set; }

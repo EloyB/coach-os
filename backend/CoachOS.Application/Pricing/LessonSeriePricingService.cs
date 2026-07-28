@@ -1,6 +1,5 @@
 using CoachOS.Application.LessonSerie.DTOs;
 using CoachOS.Domain.Entities;
-using CoachOS.Domain.Enums;
 using CoachOS.Domain.Interfaces;
 using CoachOS.Domain.Models;
 
@@ -37,15 +36,18 @@ public class LessonSeriePricingService(
                 new Error(ErrorCodes.NotFound, "Lessenreeks niet gevonden."));
         }
 
-        List<LessonSeriePrice> rows = request.Prices.Select(p => new LessonSeriePrice
-        {
-            Id = Guid.NewGuid(),
-            OrganizationId = organizationId,
-            LessonSerieId = lessonSerieId,
-            Category = (ParticipantCategory)p.Category,
-            GroupSize = p.GroupSize,
-            TotalPrice = p.TotalPrice,
-        }).ToList();
+        List<LessonSeriePrice> rows = request.Prices
+            .Select((p, index) => new LessonSeriePrice
+            {
+                Id = Guid.NewGuid(),
+                OrganizationId = organizationId,
+                LessonSerieId = lessonSerieId,
+                Label = p.Label.Trim(),
+                Description = string.IsNullOrWhiteSpace(p.Description) ? null : p.Description.Trim(),
+                TotalPrice = p.TotalPrice,
+                SortOrder = p.SortOrder == 0 ? index : p.SortOrder,
+                ReusableKey = string.IsNullOrWhiteSpace(p.ReusableKey) ? null : p.ReusableKey.Trim(),
+            }).ToList();
 
         await prices.ReplaceForSeriesAsync(lessonSerieId, organizationId, rows, ct);
         await prices.SaveChangesAsync(ct);
@@ -54,12 +56,13 @@ public class LessonSeriePricingService(
         return Result<List<LessonSeriePriceDto>>.Ok(saved.Select(ToDto).ToList());
     }
 
-    private static LessonSeriePriceDto ToDto(LessonSeriePrice p) => new()
+    public static LessonSeriePriceDto ToDto(LessonSeriePrice p) => new()
     {
         Id = p.Id,
-        Category = (int)p.Category,
-        CategoryLabel = p.Category == ParticipantCategory.Youth ? "Jeugd" : "Volwassenen",
-        GroupSize = p.GroupSize,
+        Label = string.IsNullOrWhiteSpace(p.Label) ? "Prijsoptie" : p.Label,
+        Description = p.Description,
         TotalPrice = p.TotalPrice,
+        SortOrder = p.SortOrder,
+        ReusableKey = p.ReusableKey,
     };
 }

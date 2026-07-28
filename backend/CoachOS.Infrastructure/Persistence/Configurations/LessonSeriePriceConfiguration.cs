@@ -10,15 +10,19 @@ public class LessonSeriePriceConfiguration : IEntityTypeConfiguration<LessonSeri
     {
         builder.HasKey(p => p.Id);
 
+        builder.Property(p => p.Label)
+            .HasMaxLength(120)
+            .IsRequired();
+
+        builder.Property(p => p.Description)
+            .HasMaxLength(500);
+
         builder.Property(p => p.TotalPrice)
             .HasPrecision(10, 2)
             .IsRequired();
 
-        builder.Property(p => p.Category)
-            .IsRequired();
-
-        builder.Property(p => p.GroupSize)
-            .IsRequired();
+        builder.Property(p => p.ReusableKey)
+            .HasMaxLength(120);
 
         builder.HasOne(p => p.Organization)
             .WithMany()
@@ -30,11 +34,8 @@ public class LessonSeriePriceConfiguration : IEntityTypeConfiguration<LessonSeri
             .HasForeignKey(p => p.LessonSerieId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // Eén tarief per (reeks, categorie, groepsgrootte) — voorkomt dubbele cellen
-        // in de matrix, die een niet-deterministische prijs zouden opleveren.
-        builder.HasIndex(p => new { p.LessonSerieId, p.Category, p.GroupSize })
-            .IsUnique();
-
         builder.HasIndex(p => p.OrganizationId);
+        builder.HasIndex(p => new { p.LessonSerieId, p.SortOrder });
+        builder.HasIndex(p => new { p.OrganizationId, p.ReusableKey });
     }
 }
