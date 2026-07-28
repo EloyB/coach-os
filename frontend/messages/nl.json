@@ -161,6 +161,7 @@
     "status_cancelled": "Geannuleerd",
     "enroll_success_title": "Ingeschreven!",
     "enroll_success_body": "Je ontvangt een bevestiging per e-mail.",
+    "enroll_again": "Ik wil nog een inschrijving doen",
     "enrollments_count": "{count} inschrijvingen",
     "student": "Student",
     "enrolled_on": "Ingeschreven op",

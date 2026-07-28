@@ -187,6 +187,37 @@ export default function EnrollPage() {
     loadData();
   }, [seriesId]);
 
+  // Reset alle formuliervelden zodat iemand meteen een nieuwe inschrijving kan
+  // doen zonder de pagina te verversen. Ververst ook de reeks zodat het aantal
+  // ingeschrevenen/vrije plekken klopt na de vorige inschrijving.
+  async function resetForm() {
+    setSubmitted(false);
+    setSubmitError(null);
+    setFirstName("");
+    setLastName("");
+    setEmail("");
+    setPhone("");
+    setDateOfBirth("");
+    setFieldValues({});
+    setFieldErrors({});
+    setBaseErrors({});
+    setPreferences({});
+    setIsOpenToGrouping(false);
+    setGroupMembers([]);
+    setMemberErrors({});
+    setEnrollmentType(series?.allowSoloEnrollment ? "solo" : "group");
+    setSelectedPriceOptionId(
+      series && series.priceOptions.length === 1 ? series.priceOptions[0].id : ""
+    );
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    try {
+      const fresh = await getPublicLessonSeries(seriesId);
+      setSeries(fresh);
+    } catch {
+      // Niet fataal — het formulier is al gereset.
+    }
+  }
+
   // ─── Field helpers ──────────────────────────────────────────────────────
 
   function setFieldValue(fieldId: string, value: string) {
@@ -675,6 +706,13 @@ export default function EnrollPage() {
                 {t("enroll_success_title")}
               </h2>
               <p className="text-sm text-gray-500">{t("enroll_success_body")}</p>
+              <button
+                type="button"
+                onClick={resetForm}
+                className="mt-6 text-sm font-medium text-tennis-green hover:underline"
+              >
+                {t("enroll_again")}
+              </button>
             </div>
           ) : (
             <form onSubmit={handleSubmit} noValidate>
