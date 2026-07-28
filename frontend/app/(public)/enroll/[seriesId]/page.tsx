@@ -556,7 +556,7 @@ export default function EnrollPage() {
       <div className="max-w-2xl mx-auto px-4 py-8">
         {/* Logo */}
         <div className="flex items-center gap-2 mb-8">
-          <LogoMark variant="green" className="h-8 w-8" markPx={22} />
+          <LogoMark className="h-8 w-8" markPx={22} />
           <span className="font-semibold text-lg text-tennis-green">CoachOS</span>
         </div>
 
