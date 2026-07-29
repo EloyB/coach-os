@@ -1,4 +1,4 @@
-import apiClient from "@/lib/api-client";
+import publicApiClient from "@/lib/public-api-client";
 
 export interface PublicInvitationDto {
   /** 0 = Pending, 1 = Accepted, 2 = Declined */
@@ -20,7 +20,7 @@ export interface PublicInvitationDto {
 export async function getPublicInvitation(
   token: string
 ): Promise<PublicInvitationDto> {
-  const { data } = await apiClient.get<PublicInvitationDto>(
+  const { data } = await publicApiClient.get<PublicInvitationDto>(
     `/public/invitations/${token}`
   );
   return data;
@@ -29,7 +29,7 @@ export async function getPublicInvitation(
 export async function acceptPublicInvitation(
   token: string
 ): Promise<PublicInvitationDto> {
-  const { data } = await apiClient.post<PublicInvitationDto>(
+  const { data } = await publicApiClient.post<PublicInvitationDto>(
     `/public/invitations/${token}/accept`
   );
   return data;
@@ -38,7 +38,7 @@ export async function acceptPublicInvitation(
 export async function declinePublicInvitation(
   token: string
 ): Promise<PublicInvitationDto> {
-  const { data } = await apiClient.post<PublicInvitationDto>(
+  const { data } = await publicApiClient.post<PublicInvitationDto>(
     `/public/invitations/${token}/decline`
   );
   return data;

@@ -1,4 +1,4 @@
-import apiClient from "@/lib/api-client";
+import publicApiClient from "@/lib/public-api-client";
 
 export interface TimeSlotDto {
   id: string;
@@ -12,7 +12,7 @@ export interface TimeSlotDto {
 export async function getPublicTimeSlots(
   seriesId: string
 ): Promise<TimeSlotDto[]> {
-  const { data } = await apiClient.get<TimeSlotDto[]>(
+  const { data } = await publicApiClient.get<TimeSlotDto[]>(
     `/public/lessonseries/${seriesId}/timeslots`
   );
   return data;

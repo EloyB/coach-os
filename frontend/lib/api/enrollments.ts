@@ -1,4 +1,5 @@
 import apiClient from '@/lib/api-client';
+import publicApiClient from '@/lib/public-api-client';
 import type { LessonDto } from './lessonSeries';
 import type { LessonSeriePriceDto } from './lessonSeriePrices';
 
@@ -114,12 +115,12 @@ export interface SubmitEnrollmentRequest {
 }
 
 export async function getPublicLessonSeries(id: string): Promise<PublicLessonSeriesDto> {
-  const { data } = await apiClient.get<PublicLessonSeriesDto>(`/public/lessonseries/${id}`);
+  const { data } = await publicApiClient.get<PublicLessonSeriesDto>(`/public/lessonseries/${id}`);
   return data;
 }
 
 export async function getEnrollmentForm(seriesId: string): Promise<EnrollmentFormDto | null> {
-  const { data } = await apiClient.get<EnrollmentFormDto | null>(`/public/lessonseries/${seriesId}/form`);
+  const { data } = await publicApiClient.get<EnrollmentFormDto | null>(`/public/lessonseries/${seriesId}/form`);
   return data;
 }
 
@@ -129,7 +130,7 @@ export async function saveEnrollmentForm(seriesId: string, fields: SaveFormField
 }
 
 export async function submitEnrollment(seriesId: string, request: SubmitEnrollmentRequest): Promise<string> {
-  const { data } = await apiClient.post<string>(`/public/lessonseries/${seriesId}/enroll`, request);
+  const { data } = await publicApiClient.post<string>(`/public/lessonseries/${seriesId}/enroll`, request);
   return data;
 }
 
