@@ -297,8 +297,6 @@ function LoginForm() {
             {t("magicLink")}
           </Button>
 
-          {/* Self-registration disabled in production — restore when re-enabling sign-up */}
-          {/*
           <p className="mt-5 text-center text-[11.5px] text-ink-3">
             {t("noAccount")}{" "}
             <Link
@@ -308,7 +306,6 @@ function LoginForm() {
               {t("noAccountCta")}
             </Link>
           </p>
-          */}
         </div>
       </div>
     </div>

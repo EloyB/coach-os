@@ -59,6 +59,7 @@ public static class DependencyInjection
         services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.Section));
         services.Configure<AppOptions>(configuration.GetSection(AppOptions.Section));
         services.Configure<MollieOptions>(configuration.GetSection(MollieOptions.Section));
+        services.Configure<SubscriptionOptions>(configuration.GetSection(SubscriptionOptions.SectionName));
 
         // TimeProvider is in .NET 8+ ingebouwd; testen kunnen FakeTimeProvider injecteren.
         services.AddSingleton(TimeProvider.System);
@@ -113,6 +114,7 @@ public static class DependencyInjection
         services.AddScoped<ICampRepository, CampRepository>();
         services.AddScoped<ICampEnrollmentRepository, CampEnrollmentRepository>();
         services.AddScoped<ICampEnrollmentFormRepository, CampEnrollmentFormRepository>();
+        services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();
 
         return services;
     }

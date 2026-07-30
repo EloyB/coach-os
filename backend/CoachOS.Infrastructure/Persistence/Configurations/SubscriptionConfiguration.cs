@@ -10,12 +10,12 @@ public class SubscriptionConfiguration : IEntityTypeConfiguration<Subscription>
     {
         builder.HasKey(s => s.Id);
 
-        builder.Property(s => s.Plan)
-            .IsRequired();
+        builder.Property(s => s.Status)
+            .IsRequired()
+            .HasConversion<int>();
 
         builder.Property(s => s.MonthlyPrice)
-            .IsRequired()
-            .HasPrecision(10, 2);
+            .HasPrecision(10, 2); // nullable now
 
         builder.Property(s => s.MollieSubscriptionId)
             .HasMaxLength(100);

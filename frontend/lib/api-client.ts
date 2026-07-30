@@ -28,6 +28,16 @@ apiClient.interceptors.response.use(
       return Promise.reject(error);
     }
 
+    if (
+      error.response?.status === 403 &&
+      (error.response.data as { code?: string })?.code === 'subscription_required' &&
+      typeof window !== 'undefined' &&
+      !window.location.pathname.startsWith('/billing')
+    ) {
+      window.location.assign('/billing?locked=1');
+      return Promise.reject(error);
+    }
+
     // Show toast for all non-401/403 errors
     if (typeof window !== 'undefined' && error.response) {
       const status = error.response.status;

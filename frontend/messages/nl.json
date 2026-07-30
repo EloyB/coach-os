@@ -737,7 +737,7 @@
     "loginError": "Inloggen mislukt. Controleer je gegevens.",
     "registerError": "Registratie mislukt. Probeer het opnieuw.",
     "noAccount": "Nog geen club?",
-    "noAccountCta": "Probeer 30 dagen gratis",
+    "noAccountCta": "Probeer 60 dagen gratis",
     "hasAccount": "Al een account?",
     "hasAccountCta": "Inloggen",
     "loading": "Bezig...",
@@ -760,10 +760,10 @@
     "confirmPassword": "Wachtwoord bevestigen",
     "passwordMismatch": "Wachtwoorden komen niet overeen",
     "createAccount": "Account aanmaken",
-    "registerTagline": "CoachOS is de planningstool voor tennis- en padelclubs — €49/mnd per trainer, eerste 30 dagen gratis.",
+    "registerTagline": "CoachOS is de planningstool voor tennis- en padelclubs — €49/mnd per trainer, eerste 60 dagen gratis.",
     "registerHeadline": "Maak je account",
     "registerStep": "/01 — je club",
-    "registerCta": "Start 30-dagen proef →",
+    "registerCta": "Start 60-dagen proef →",
     "registerHeroLine1": "Van 40 Excel-",
     "registerHeroLine2": "regels naar",
     "registerHeroLine3": "één planning.",
@@ -927,5 +927,16 @@
       "back": "Terug",
       "saving": "Opslaan..."
     }
+  },
+  "trial": {
+    "banner": "Proefperiode — nog {days} dagen. Kies je abonnement om te blijven.",
+    "cta": "Bekijk abonnementen"
+  },
+  "billing": {
+    "lockedTitle": "Je proefperiode is afgelopen",
+    "lockedBody": "Kies een abonnement om weer volledige toegang te krijgen. Je gegevens blijven bewaard.",
+    "choosePlan": "Kies een abonnement",
+    "trialActiveTitle": "Je proefperiode loopt",
+    "trialDaysLeft": "Nog {days} dagen"
   }
 }

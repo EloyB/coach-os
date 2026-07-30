@@ -3,6 +3,7 @@ using System;
 using CoachOS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CoachOS.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260702214421_BackfillTrialSubscriptions")]
+    partial class BackfillTrialSubscriptions
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -401,19 +404,8 @@ namespace CoachOS.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<int?>("Category")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("ContactEmail")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateOnly?>("DateOfBirth")
-                        .HasColumnType("date");
 
                     b.Property<DateTime>("EnrolledAt")
                         .HasColumnType("timestamp with time zone");
@@ -437,13 +429,11 @@ namespace CoachOS.Infrastructure.Migrations
                     b.Property<Guid>("OrganizationId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid?>("SelectedPriceOptionId")
-                        .HasColumnType("uuid");
-
                     b.Property<int>("Status")
                         .HasColumnType("integer");
 
                     b.Property<string>("StudentEmail")
+                        .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
@@ -451,11 +441,6 @@ namespace CoachOS.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
-
-                    b.Property<string>("StudentNameNormalized")
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("text")
-                        .HasComputedColumnSql("lower(btrim(\"StudentName\"))", true);
 
                     b.Property<string>("StudentPhone")
                         .HasMaxLength(30)
@@ -466,8 +451,6 @@ namespace CoachOS.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ContactEmail");
-
                     b.HasIndex("EnrollmentGroupId");
 
                     b.HasIndex("LessonId");
@@ -476,10 +459,11 @@ namespace CoachOS.Infrastructure.Migrations
 
                     b.HasIndex("OrganizationId");
 
-                    b.HasIndex("LessonSerieId", "ContactEmail", "StudentNameNormalized", "DateOfBirth")
+                    b.HasIndex("StudentEmail");
+
+                    b.HasIndex("LessonSerieId", "StudentEmail")
                         .IsUnique()
-                        .HasDatabaseName("IX_Enrollments_Participant")
-                        .HasFilter("\"DateOfBirth\" IS NOT NULL AND \"Status\" IN (1, 2, 5)");
+                        .HasFilter("\"Status\" IN (1, 2)");
 
                     b.ToTable("Enrollments");
                 });
@@ -690,8 +674,6 @@ namespace CoachOS.Infrastructure.Migrations
 
                     b.HasIndex("OrganizationId", "Date");
 
-                    b.HasIndex("OrganizationId", "Date", "CourtName");
-
                     b.ToTable("Lessons");
                 });
 
@@ -757,26 +739,6 @@ namespace CoachOS.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<bool>("AcceptManualPayment")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(true);
-
-                    b.Property<bool>("AcceptOnlinePayment")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(true);
-
-                    b.Property<bool>("AllowGroupEnrollment")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(true);
-
-                    b.Property<bool>("AllowSoloEnrollment")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(true);
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -793,18 +755,8 @@ namespace CoachOS.Infrastructure.Migrations
                     b.Property<int?>("Level")
                         .HasColumnType("integer");
 
-                    b.Property<int>("MaxAge")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(99);
-
                     b.Property<int?>("MaxRegistrations")
                         .HasColumnType("integer");
-
-                    b.Property<int>("MinAge")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(3);
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -845,55 +797,6 @@ namespace CoachOS.Infrastructure.Migrations
                     b.HasIndex("TennisClubId");
 
                     b.ToTable("LessonSeries");
-                });
-
-            modelBuilder.Entity("CoachOS.Domain.Entities.LessonSeriePrice", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<string>("Label")
-                        .IsRequired()
-                        .HasMaxLength(120)
-                        .HasColumnType("character varying(120)");
-
-                    b.Property<Guid>("LessonSerieId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("OrganizationId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("ReusableKey")
-                        .HasMaxLength(120)
-                        .HasColumnType("character varying(120)");
-
-                    b.Property<int>("SortOrder")
-                        .HasColumnType("integer");
-
-                    b.Property<decimal>("TotalPrice")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("numeric(10,2)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("OrganizationId");
-
-                    b.HasIndex("LessonSerieId", "SortOrder");
-
-                    b.HasIndex("OrganizationId", "ReusableKey");
-
-                    b.ToTable("LessonSeriePrices");
                 });
 
             modelBuilder.Entity("CoachOS.Domain.Entities.MagicLinkToken", b =>
@@ -1172,11 +1075,6 @@ namespace CoachOS.Infrastructure.Migrations
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("YouthMaxAge")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(17);
 
                     b.HasKey("Id");
 
@@ -2133,25 +2031,6 @@ namespace CoachOS.Infrastructure.Migrations
                     b.Navigation("TennisClub");
                 });
 
-            modelBuilder.Entity("CoachOS.Domain.Entities.LessonSeriePrice", b =>
-                {
-                    b.HasOne("CoachOS.Domain.Entities.LessonSerie", "LessonSerie")
-                        .WithMany("Prices")
-                        .HasForeignKey("LessonSerieId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("CoachOS.Domain.Entities.Organization", "Organization")
-                        .WithMany()
-                        .HasForeignKey("OrganizationId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("LessonSerie");
-
-                    b.Navigation("Organization");
-                });
-
             modelBuilder.Entity("CoachOS.Domain.Entities.MollieConnection", b =>
                 {
                     b.HasOne("CoachOS.Domain.Entities.Organization", "Organization")
@@ -2494,8 +2373,6 @@ namespace CoachOS.Infrastructure.Migrations
                     b.Navigation("Enrollments");
 
                     b.Navigation("Lessons");
-
-                    b.Navigation("Prices");
 
                     b.Navigation("ScheduleAssignments");
 

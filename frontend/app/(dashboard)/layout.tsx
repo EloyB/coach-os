@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DashboardSidebar } from "@/components/layouts/dashboard-sidebar";
 import { MobileBottomNav } from "@/components/layouts/dashboard-bottom-nav";
+import { TrialBanner } from "@/components/dashboard/trial-banner";
 import { SlashLabel } from "@/components/ui/slash-label";
 import { getAuthUser, isAuthenticated, type AuthUser } from "@/lib/auth";
 
@@ -52,6 +53,8 @@ export default function DashboardLayout({
         <header className="bg-paper border-b border-rule px-7 py-3.5 flex items-center shrink-0">
           <SlashLabel>{formatDayHeader()}</SlashLabel>
         </header>
+
+        <TrialBanner />
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto px-7 py-6 pb-16 lg:pb-6">

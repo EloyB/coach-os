@@ -83,6 +83,7 @@ try
     app.UseMiddleware<UserActiveValidationMiddleware>();
     app.UseMiddleware<TenantContextMiddleware>();
     app.UseMiddleware<OrganizationValidationMiddleware>();
+    app.UseMiddleware<SubscriptionAccessMiddleware>();
     app.MapAllEndpoints();
     app.MapHealthChecks("/health").AllowAnonymous().DisableRateLimiting();
 

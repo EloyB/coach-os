@@ -1,13 +1,16 @@
 using CoachOS.Application.Auth;
 using CoachOS.Application.Auth.DTOs;
+using CoachOS.Application.Configuration;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
 using CoachOS.Domain.Interfaces;
 using CoachOS.Domain.Models;
+using CoachOS.Domain.Subscriptions;
 using CoachOS.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace CoachOS.Infrastructure.Identity;
 
@@ -16,9 +19,13 @@ public class AuthService(
     ApplicationDbContext context,
     TokenService tokenService,
     IEmailService emailService,
-    ILogger<AuthService> logger)
+    ILogger<AuthService> logger,
+    IOptions<SubscriptionOptions> subscriptionOptions)
     : IAuthService
 {
+    private readonly int _trialDays = subscriptionOptions.Value.TrialDays;
+
+
     public async Task<Result<AuthResponseDto>> RegisterAsync(
         string organizationName,
         string firstName,
@@ -66,6 +73,9 @@ public class AuthService(
                 AdminsActAsTrainers = true,
                 OnboardingStartedAt = DateTime.UtcNow,
             });
+
+            context.Subscriptions.Add(
+                SubscriptionFactory.CreateTrial(organization.Id, _trialDays, DateTime.UtcNow));
 
             await context.SaveChangesAsync(cancellationToken);
 
