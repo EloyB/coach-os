@@ -60,13 +60,24 @@ export function SlotEditPopover({
 
   // Reset form when slot changes
   useEffect(() => {
-    setTrainerId(slot.trainerId ?? "none");
-    setStartTime(slot.startTime);
-    setEndTime(slot.endTime);
-    setCourtName(slot.courtName ?? "");
-    setMaxStudents(slot.maxStudents);
-    setLevel(slot.level !== null ? String(slot.level) : "none");
-  }, [slot.id]);
+    const frame = requestAnimationFrame(() => {
+      setTrainerId(slot.trainerId ?? "none");
+      setStartTime(slot.startTime);
+      setEndTime(slot.endTime);
+      setCourtName(slot.courtName ?? "");
+      setMaxStudents(slot.maxStudents);
+      setLevel(slot.level !== null ? String(slot.level) : "none");
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [
+    slot.id,
+    slot.trainerId,
+    slot.startTime,
+    slot.endTime,
+    slot.courtName,
+    slot.maxStudents,
+    slot.level,
+  ]);
 
   const availableTrainerIds = new Set(
     availabilities
@@ -195,6 +206,7 @@ export function SlotEditPopover({
           </label>
           <input
             type="text"
+            aria-label={t("courtName")}
             value={courtName}
             onChange={(e) => setCourtName(e.target.value)}
             placeholder={t("courtNamePlaceholder")}

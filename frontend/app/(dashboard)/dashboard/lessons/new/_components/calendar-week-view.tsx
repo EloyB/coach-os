@@ -64,9 +64,7 @@ export function CalendarWeekView({
   const justDraggedRef = useRef(false);
   const [editingSlotId, setEditingSlotId] = useState<string | null>(null);
   const [editAnchor, setEditAnchor] = useState<HTMLElement | null>(null);
-  const [ghostStyle, setGhostStyle] = useState<React.CSSProperties | null>(
-    null
-  );
+  const [ghostStyle, setGhostStyle] = useState<React.CSSProperties | null>(null);
 
   const slotsRef = useRef(slots);
   const onChangeRef = useRef(onChange);
@@ -126,8 +124,10 @@ export function CalendarWeekView({
     []
   );
 
+  const isDragActive = drag !== null;
+
   useEffect(() => {
-    if (!drag) return;
+    if (!isDragActive) return;
 
     function handleMouseMove(e: MouseEvent) {
       setDrag((prev) => {
@@ -178,25 +178,28 @@ export function CalendarWeekView({
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [drag !== null, calcPosition]);
+  }, [isDragActive, calcPosition]);
 
   // ─── Ghost position ─────────────────────────────────────────────────────
-
   useEffect(() => {
+    let frame = 0;
     if (!drag?.moved || !gridBodyRef.current) {
-      setGhostStyle(null);
-      return;
+      frame = requestAnimationFrame(() => setGhostStyle(null));
+      return () => cancelAnimationFrame(frame);
     }
 
     const gridRect = gridBodyRef.current.getBoundingClientRect();
     const colWidth = (gridRect.width - 60) / 7;
 
-    setGhostStyle({
+    const nextStyle = {
       left: 60 + drag.previewDay * colWidth + 2,
       top: ((drag.previewStartMin - START_HOUR * 60) / 60) * ROW_HEIGHT,
       width: colWidth - 4,
       height: (drag.durationMin / 60) * ROW_HEIGHT,
-    });
+    };
+
+    frame = requestAnimationFrame(() => setGhostStyle(nextStyle));
+    return () => cancelAnimationFrame(frame);
   }, [drag]);
 
   // ─── Click handlers ─────────────────────────────────────────────────────
@@ -273,6 +276,25 @@ export function CalendarWeekView({
 
   const isDragging = drag?.moved ?? false;
 
+  function getParallelSlotLabel(slot: CalendarSlot, daySlots: CalendarSlot[]) {
+    const parallelSlots = daySlots
+      .filter(
+        (candidate) =>
+          candidate.startTime === slot.startTime && candidate.endTime === slot.endTime
+      )
+      .sort((a, b) => {
+        const courtCompare = (a.courtName ?? "").localeCompare(b.courtName ?? "");
+        return courtCompare || a.id.localeCompare(b.id);
+      });
+
+    if (parallelSlots.length < 2) return null;
+
+    return t("parallelSlotLabel", {
+      index: parallelSlots.findIndex((candidate) => candidate.id === slot.id) + 1,
+      count: parallelSlots.length,
+    });
+  }
+
   return (
     <>
       <CalendarGrid
@@ -283,6 +305,7 @@ export function CalendarWeekView({
         onSlotMouseDown={handleSlotMouseDown}
         onSlotClick={handleSlotClick}
         onSlotRemove={handleSlotRemove}
+        getSlotBadge={getParallelSlotLabel}
         renderDayOverlay={(dayIndex) => {
           // Add-parallel buttons for slot clusters
           const daySlots = slots
@@ -339,6 +362,8 @@ export function CalendarWeekView({
                 <button
                   key={`add-${cluster.slots[0].id}`}
                   type="button"
+                  aria-label={t("addParallelSlot")}
+                  title={t("addParallelSlot")}
                   data-slot-id="add-parallel"
                   onClick={(e) => handleAddParallelSlot(cluster.slots[0], e)}
                   className="absolute right-0 flex items-center justify-center rounded-md border border-dashed border-gray-200 bg-gray-50/80 text-gray-300 opacity-0 group-hover/day:opacity-100 hover:!border-tennis-green/40 hover:!text-tennis-green hover:!bg-tennis-green/5 transition-all z-10"
@@ -349,6 +374,7 @@ export function CalendarWeekView({
                   }}
                 >
                   <Plus size={14} strokeWidth={2} />
+                  <span className="sr-only">{t("addParallelSlot")}</span>
                 </button>
               ))}
             </>
