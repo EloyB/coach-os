@@ -199,6 +199,59 @@ public class PlanningServiceTests
         captured!.Should().NotContain(a => a.EnrollmentId == anna.Id);
     }
 
+    // ── Assignment locking ───────────────────────────────────────────────────
+
+    [Test]
+    public async Task SetAssignmentLockAsync_ProposedAssignment_LocksAndReturnsLockedDto()
+    {
+        var assignment = new ScheduleAssignment
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = OrgId,
+            LessonSerieId = SeriesId,
+            WeeklyTemplateEntryId = SlotId,
+            EnrollmentId = Guid.NewGuid(),
+            Status = ScheduleAssignmentStatus.Proposed,
+            IsLocked = false,
+        };
+
+        _assignmentRepo.Setup(r => r.GetByIdAsync(assignment.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(assignment);
+
+        var result = await _service.SetAssignmentLockAsync(SeriesId, assignment.Id, OrgId, isLocked: true);
+
+        result.IsSuccess.Should().BeTrue();
+        assignment.IsLocked.Should().BeTrue();
+        result.Value!.IsLocked.Should().BeTrue();
+        result.Value.Status.Should().Be("Proposed");
+        _assignmentRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task SetAssignmentLockAsync_NonProposedAssignment_ReturnsValidationError()
+    {
+        var assignment = new ScheduleAssignment
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = OrgId,
+            LessonSerieId = SeriesId,
+            WeeklyTemplateEntryId = SlotId,
+            EnrollmentId = Guid.NewGuid(),
+            Status = ScheduleAssignmentStatus.AwaitingConfirmation,
+            IsLocked = false,
+        };
+
+        _assignmentRepo.Setup(r => r.GetByIdAsync(assignment.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(assignment);
+
+        var result = await _service.SetAssignmentLockAsync(SeriesId, assignment.Id, OrgId, isLocked: true);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be("validation");
+        assignment.IsLocked.Should().BeFalse();
+        _assignmentRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     internal static LessonSerie BuildSeries(bool withSlots, Guid? seriesId = null, Guid? orgId = null, Guid? slotId = null)

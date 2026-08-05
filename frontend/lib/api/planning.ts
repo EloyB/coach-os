@@ -116,6 +116,26 @@ export async function updateAssignment(
   );
 }
 
+export async function lockAssignment(
+  seriesId: string,
+  assignmentId: string
+): Promise<PlanningAssignmentDto> {
+  const { data } = await apiClient.post<PlanningAssignmentDto>(
+    `/lessonseries/${seriesId}/planning/assignments/${assignmentId}/lock`
+  );
+  return data;
+}
+
+export async function unlockAssignment(
+  seriesId: string,
+  assignmentId: string
+): Promise<PlanningAssignmentDto> {
+  const { data } = await apiClient.delete<PlanningAssignmentDto>(
+    `/lessonseries/${seriesId}/planning/assignments/${assignmentId}/lock`
+  );
+  return data;
+}
+
 export async function createGroup(
   seriesId: string,
   request: CreateGroupRequest

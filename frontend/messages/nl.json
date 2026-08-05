@@ -336,6 +336,8 @@
     "regenerateKeepOrOverwrite": "Wil je handmatige aanpassingen behouden of alles opnieuw laten berekenen?",
     "regenerateKeep": "Behoud handmatig",
     "regenerateOverwrite": "Alles overschrijven",
+    "lock": "Vastzetten",
+    "unlock": "Vrijgeven",
     "unassign": "Verwijder toewijzing",
     "goBack": "Later verder"
   },
