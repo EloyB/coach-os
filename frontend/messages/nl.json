@@ -337,7 +337,13 @@
     "regenerateKeep": "Behoud handmatig",
     "regenerateOverwrite": "Alles overschrijven",
     "lock": "Vastzetten",
+    "lockGroup": "Groep vastzetten",
     "unlock": "Vrijgeven",
+    "locked": "Vastgezet",
+    "lockedCount": "{count, plural, one {# vastgezet} other {# vastgezet}}",
+    "lockHelpTitle": "Zet een volledige groep vast zodra het voorstel klopt",
+    "lockHelpDesc": "Klik op ‘Groep vastzetten’ op een voorgesteld tijdslot. Vastgezette groepen blijven behouden bij ‘Opnieuw genereren’, terwijl nieuwe inschrijvingen nog later ingepland kunnen worden.",
+    "lockedKeepsOnRegenerate": "Blijft behouden bij opnieuw genereren",
     "unassign": "Verwijder toewijzing",
     "goBack": "Later verder"
   },

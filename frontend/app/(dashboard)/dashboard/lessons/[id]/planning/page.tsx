@@ -276,6 +276,8 @@ export default function PlanningPage({
   const totalCapacity =
     planning?.timeSlots.reduce((sum, s) => sum + s.maxCapacity, 0) ?? 0;
   const totalEnrollments = planning?.enrollments.length ?? 0;
+  const lockedAssignmentsCount =
+    planning?.assignments.filter((assignment) => assignment.isLocked).length ?? 0;
 
   // Helper: get names for a slot's assignments
   function getSlotNames(slotId: string): string[] {
@@ -480,6 +482,26 @@ export default function PlanningPage({
         </div>
       </div>
 
+      {planning.planningStatus !== "Scheduled" && (
+        <div className="bg-amber-50 border-b border-amber-100 px-8 py-3 shrink-0">
+          <div className="flex items-center gap-3 text-sm text-amber-900">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+              <Lock size={16} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold">{t("lockHelpTitle")}</p>
+              <p className="text-xs text-amber-700">{t("lockHelpDesc")}</p>
+            </div>
+            {lockedAssignmentsCount > 0 && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-tennis-green shadow-sm">
+                <Lock size={12} />
+                {t("lockedCount", { count: lockedAssignmentsCount })}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Calendar + Sidebar */}
       <div className="flex-1 flex overflow-hidden">
         {/* Calendar area */}
@@ -526,16 +548,21 @@ export default function PlanningPage({
                     const hasProposed = slotHasProposed(slot.id);
                     const hasAutoMerged = slotAssignments.some((a) => a.isAutoMerged);
                     const lockableAssignment = slotAssignments.find((a) => a.status === "Proposed");
-                    const borderColor = hasAutoMerged
-                      ? "border-blue-300"
-                      : hasProposed
-                        ? "border-amber-300"
-                        : "border-green-300";
-                    const bgColor = hasAutoMerged
-                      ? "bg-blue-50"
-                      : hasProposed
-                        ? "bg-amber-50"
-                        : "bg-green-50";
+                    const lockedAssignment = slotAssignments.find((a) => a.isLocked);
+                    const borderColor = lockedAssignment
+                      ? "border-tennis-green"
+                      : hasAutoMerged
+                        ? "border-blue-300"
+                        : hasProposed
+                          ? "border-amber-300"
+                          : "border-green-300";
+                    const bgColor = lockedAssignment
+                      ? "bg-green-50"
+                      : hasAutoMerged
+                        ? "bg-blue-50"
+                        : hasProposed
+                          ? "bg-amber-50"
+                          : "bg-green-50";
 
                     return (
                       <div
@@ -618,7 +645,12 @@ export default function PlanningPage({
                                           {assignment.isAutoMerged && <span className="text-[9px] text-blue-500 italic">auto</span>}
                                         </>
                                       )}
-                                      {assignment.isLocked && <Lock size={9} className="text-gray-400 shrink-0" />}
+                                      {assignment.isLocked && (
+                                        <span className="inline-flex items-center gap-1 rounded bg-green-100 px-1.5 py-0.5 text-[9px] font-semibold text-green-700">
+                                          <Lock size={9} />
+                                          {t("locked")}
+                                        </span>
+                                      )}
                                       {assignment.status === "Proposed" && (
                                         <button
                                           type="button"
@@ -635,7 +667,11 @@ export default function PlanningPage({
                                           className="ml-auto shrink-0 inline-flex h-5 items-center gap-1 rounded px-1.5 text-[10px] font-medium text-gray-500 hover:bg-tennis-green/5 hover:text-tennis-green disabled:opacity-50"
                                         >
                                           {assignment.isLocked ? <Unlock size={10} /> : <Lock size={10} />}
-                                          {assignment.isLocked ? t("unlock") : t("lock")}
+                                          {assignment.isLocked
+                                            ? t("unlock")
+                                            : assignment.groupId
+                                              ? t("lockGroup")
+                                              : t("lock")}
                                         </button>
                                       )}
                                       <button
@@ -700,10 +736,18 @@ export default function PlanningPage({
                                   });
                                 }}
                                 disabled={lockMutation.isPending}
-                                className="inline-flex h-5 items-center gap-1 rounded bg-white/80 px-1.5 text-[10px] font-medium text-gray-600 shadow-sm hover:text-tennis-green disabled:opacity-50"
+                                className={`inline-flex h-5 items-center gap-1 rounded px-1.5 text-[10px] font-semibold shadow-sm disabled:opacity-50 ${
+                                  lockableAssignment.isLocked
+                                    ? "bg-green-100 text-green-700 hover:bg-green-200"
+                                    : "bg-white/90 text-tennis-green hover:bg-tennis-green/10"
+                                }`}
                               >
                                 {lockableAssignment.isLocked ? <Unlock size={10} /> : <Lock size={10} />}
-                                {lockableAssignment.isLocked ? t("unlock") : t("lock")}
+                                {lockableAssignment.isLocked
+                                  ? t("unlock")
+                                  : lockableAssignment.groupId
+                                    ? t("lockGroup")
+                                    : t("lock")}
                               </button>
                             )}
                             <span
@@ -1136,23 +1180,34 @@ export default function PlanningPage({
                     (a) => a.groupId === group.id
                   );
                   const isAutoMerged = groupAssignment?.isAutoMerged ?? false;
+                  const isLocked = groupAssignment?.isLocked ?? false;
 
                   return (
                     <div
                       key={group.id}
                       className={`border rounded-lg p-3 ${
-                        isAutoMerged
-                          ? "border-blue-200 bg-blue-50/30"
-                          : "border-gray-200"
+                        isLocked
+                          ? "border-tennis-green bg-green-50/50"
+                          : isAutoMerged
+                            ? "border-blue-200 bg-blue-50/30"
+                            : "border-gray-200"
                       }`}
                     >
                       <div className="flex items-center justify-between mb-1.5">
                         <span className="text-[10px] font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded">
                           {group.name}
                         </span>
-                        <span className={`text-[10px] ${isAutoMerged ? "text-blue-500 italic" : "text-gray-400"}`}>
-                          {isAutoMerged ? t("autoGrouped") : t("preFormed")}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          {isLocked && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-tennis-green shadow-sm">
+                              <Lock size={10} />
+                              {t("locked")}
+                            </span>
+                          )}
+                          <span className={`text-[10px] ${isAutoMerged ? "text-blue-500 italic" : "text-gray-400"}`}>
+                            {isAutoMerged ? t("autoGrouped") : t("preFormed")}
+                          </span>
+                        </div>
                       </div>
                       <div className="text-[10px] text-gray-600">
                         {memberNames}
@@ -1161,6 +1216,12 @@ export default function PlanningPage({
                         <div className="text-[10px] text-gray-400 mt-1.5 flex items-center gap-1">
                           <Check size={12} className="text-green-500" />
                           {slotLabel}
+                        </div>
+                      )}
+                      {isLocked && (
+                        <div className="mt-1.5 flex items-center gap-1 text-[10px] font-medium text-tennis-green">
+                          <Lock size={11} />
+                          {t("lockedKeepsOnRegenerate")}
                         </div>
                       )}
                     </div>

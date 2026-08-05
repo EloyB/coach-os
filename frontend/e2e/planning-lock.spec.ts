@@ -84,9 +84,25 @@ test.describe("planning assignment locking", () => {
     });
 
     await page.goto(`/dashboard/lessons/${SERIES_ID}/planning`);
+
+    await expect(page.getByText("Zet een volledige groep vast zodra het voorstel klopt")).toBeVisible();
     await page.getByText("Anna Peeters").hover();
     await page.getByRole("button", { name: "Vastzetten" }).click();
 
     await expect.poll(() => lockCalled).toBe(true);
+  });
+
+  test("clearly marks a locked group as preserved on regenerate", async ({ page }) => {
+    await mockApi(page, "GET", `/lessonseries/${SERIES_ID}/planning`, {
+      ...planningOverview,
+      assignments: [{ ...planningOverview.assignments[0], isLocked: true }],
+    });
+
+    await page.goto(`/dashboard/lessons/${SERIES_ID}/planning`);
+
+    await expect(page.getByText("1 vastgezet")).toBeVisible();
+    await expect(page.getByText("Vastgezet").first()).toBeVisible();
+    await expect(page.getByText("Blijft behouden bij opnieuw genereren")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Vrijgeven" }).first()).toBeVisible();
   });
 });
