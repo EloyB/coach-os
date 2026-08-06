@@ -1,4 +1,5 @@
 import apiClient from "@/lib/api-client";
+import publicApiClient from "@/lib/public-api-client";
 
 // ─── Response types ──────────────────────────────────────────────────────────
 
@@ -55,7 +56,7 @@ export interface NonResponderDto {
 export async function getAssignmentDetails(
   token: string
 ): Promise<AssignmentDetailsDto> {
-  const { data } = await apiClient.get<AssignmentDetailsDto>(
+  const { data } = await publicApiClient.get<AssignmentDetailsDto>(
     `/public/confirmation/${token}`
   );
   return data;
@@ -66,7 +67,7 @@ export async function confirmAssignment(
   paymentMethod: number,
   redirectUrl?: string
 ): Promise<ConfirmResultDto> {
-  const { data } = await apiClient.post<ConfirmResultDto>(
+  const { data } = await publicApiClient.post<ConfirmResultDto>(
     `/public/confirmation/${token}/confirm`,
     { paymentMethod, redirectUrl }
   );
@@ -76,7 +77,7 @@ export async function confirmAssignment(
 export async function declineAssignment(
   token: string
 ): Promise<{ availableSlots: AvailableSlotDto[] }> {
-  const { data } = await apiClient.post<{
+  const { data } = await publicApiClient.post<{
     availableSlots: AvailableSlotDto[];
   }>(`/public/confirmation/${token}/decline`);
   return data;
@@ -85,7 +86,7 @@ export async function declineAssignment(
 export async function getAvailableSlots(
   token: string
 ): Promise<{ slots: AvailableSlotDto[] }> {
-  const { data } = await apiClient.get<{ slots: AvailableSlotDto[] }>(
+  const { data } = await publicApiClient.get<{ slots: AvailableSlotDto[] }>(
     `/public/confirmation/${token}/available-slots`
   );
   return data;
@@ -97,7 +98,7 @@ export async function pickAlternativeSlot(
   paymentMethod: number,
   redirectUrl?: string
 ): Promise<ConfirmResultDto> {
-  const { data } = await apiClient.post<ConfirmResultDto>(
+  const { data } = await publicApiClient.post<ConfirmResultDto>(
     `/public/confirmation/${token}/pick-alternative`,
     { weeklyTemplateEntryId, paymentMethod, redirectUrl }
   );

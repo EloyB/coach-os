@@ -102,6 +102,12 @@ export const TEST_PUBLIC_SERIES = {
   tennisClubAddress: "Sportlaan 1, Antwerpen",
   trainerName: "Jan Janssen",
   enrollmentCount: 3,
+  maxRegistrations: 12,
+  minAge: 6,
+  maxAge: 99,
+  allowSoloEnrollment: true,
+  allowGroupEnrollment: true,
+  priceOptions: [],
   lessons: [
     {
       id: "77777777-7777-7777-7777-777777777777",

@@ -1,4 +1,4 @@
-import apiClient from "@/lib/api-client";
+import publicApiClient from "@/lib/public-api-client";
 
 export type PaymentStatus = "Pending" | "Paid" | "Failed" | "Refunded";
 
@@ -22,7 +22,7 @@ export async function getPaymentStatusByEnrollment(
   enrollmentId: string,
   sync = false,
 ): Promise<PaymentStatusDto> {
-  const { data } = await apiClient.get<PaymentStatusDto>(
+  const { data } = await publicApiClient.get<PaymentStatusDto>(
     `/public/payments/by-enrollment/${enrollmentId}`,
     { params: { sync } },
   );
@@ -38,7 +38,7 @@ export async function getPaymentStatusByCampEnrollment(
   campEnrollmentId: string,
   sync = false,
 ): Promise<PaymentStatusDto> {
-  const { data } = await apiClient.get<PaymentStatusDto>(
+  const { data } = await publicApiClient.get<PaymentStatusDto>(
     `/public/camp-enrollments/${campEnrollmentId}/payment-status`,
     { params: { sync } },
   );

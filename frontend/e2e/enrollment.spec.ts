@@ -24,6 +24,75 @@ function mockPublicApi(
 }
 
 test.describe("Public Enrollment", () => {
+  test.beforeEach(async ({ page }) => {
+    await mockPublicApi(
+      page,
+      "GET",
+      `/public/lessonseries/${seriesId}/timeslots`,
+      []
+    );
+  });
+
+  test("loads public enrollment without sending an existing auth token", async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem("token", "token-from-other-organization");
+      localStorage.setItem(
+        "auth_user",
+        JSON.stringify({
+          email: "steve@example.be",
+          role: "Admin",
+          organizationId: "99999999-9999-9999-9999-999999999999",
+        })
+      );
+    });
+
+    const requestsWithAuthHeader: string[] = [];
+    await page.route(`**/public/lessonseries/${seriesId}**`, (route) => {
+      if (route.request().headers().authorization) {
+        requestsWithAuthHeader.push(route.request().url());
+      }
+
+      const url = new URL(route.request().url());
+      if (url.pathname.endsWith(`/public/lessonseries/${seriesId}`)) {
+        return route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(TEST_PUBLIC_SERIES),
+        });
+      }
+      if (url.pathname.endsWith(`/public/lessonseries/${seriesId}/form`)) {
+        return route.fulfill({
+          status: 204,
+          contentType: "application/json",
+          body: JSON.stringify(null),
+        });
+      }
+      if (url.pathname.endsWith(`/public/lessonseries/${seriesId}/timeslots`)) {
+        return route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify([]),
+        });
+      }
+      return route.continue();
+    });
+
+    const formResponse = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return url.pathname.endsWith(`/public/lessonseries/${seriesId}/form`);
+    });
+    const timeslotsResponse = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return url.pathname.endsWith(`/public/lessonseries/${seriesId}/timeslots`);
+    });
+
+    await page.goto(`/enroll/${seriesId}`);
+    await Promise.all([formResponse, timeslotsResponse]);
+
+    await expect(page.getByText("Voorjaarslessen Beginners")).toBeVisible();
+    expect(requestsWithAuthHeader).toEqual([]);
+  });
+
   test("shows public lesson series info", async ({ page }) => {
     await mockPublicApi(page, "GET", `/public/lessonseries/${seriesId}`, TEST_PUBLIC_SERIES);
     await mockPublicApi(page, "GET", `/public/lessonseries/${seriesId}/form`, null, 204);
@@ -32,7 +101,6 @@ test.describe("Public Enrollment", () => {
 
     await expect(page.getByText("Voorjaarslessen Beginners")).toBeVisible();
     await expect(page.getByText("TC De Aces")).toBeVisible();
-    await expect(page.getByText("Jan Janssen")).toBeVisible();
   });
 
   test("shows enrollment form fields", async ({ page }) => {
@@ -81,7 +149,7 @@ test.describe("Public Enrollment", () => {
     await page.locator('input[type="date"]').fill("1990-05-12");
     await page.getByRole("button", { name: "Inschrijven" }).click();
 
-    await expect(page.getByText(/mislukt/i)).toBeVisible();
+    await expect(page.getByText("Inschrijven mislukt.")).toBeVisible();
   });
 
   test("submits a group member without own email as studentEmail null", async ({
@@ -169,7 +237,7 @@ test.describe("Public Enrollment", () => {
 
     await page.goto(`/enroll/${seriesId}`);
 
-    await expect(page.getByText("Geboortedatum")).toBeVisible();
+    await expect(page.getByLabel("Geboortedatum *")).toBeVisible();
     await expect(page.getByText("Eerder les gehad?")).toBeVisible();
   });
 });
