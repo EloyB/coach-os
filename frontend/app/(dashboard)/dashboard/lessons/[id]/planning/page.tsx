@@ -1221,6 +1221,7 @@ export default function PlanningPage({
                   );
                   const isAutoMerged = groupAssignment?.isAutoMerged ?? false;
                   const isLocked = groupAssignment?.isLocked ?? false;
+                  const canOfferDefinitively = groupAssignment?.status === "Proposed";
 
                   return (
                     <div
@@ -1263,6 +1264,17 @@ export default function PlanningPage({
                           <Lock size={11} />
                           {t("lockedKeepsOnRegenerate")}
                         </div>
+                      )}
+                      {canOfferDefinitively && groupAssignment && (
+                        <button
+                          type="button"
+                          onClick={() => sendConfirmationMutation.mutate(groupAssignment.id)}
+                          disabled={sendConfirmationMutation.isPending}
+                          className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-md bg-tennis-green px-2 py-1.5 text-[11px] font-semibold text-white hover:bg-tennis-green/90 disabled:opacity-50"
+                        >
+                          <Mail size={12} />
+                          {t("offerDefinitively")}
+                        </button>
                       )}
                     </div>
                   );

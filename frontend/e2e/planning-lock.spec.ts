@@ -118,8 +118,8 @@ test.describe("planning assignment locking", () => {
 
     await page.goto(`/dashboard/lessons/${SERIES_ID}/planning`);
 
-    await page.getByText("Anna Peeters").hover();
-    await page.getByRole("button", { name: "Definitief aanbieden" }).click();
+    await expect(page.getByText("Definitief aanbieden")).toBeVisible();
+    await page.getByText("Definitief aanbieden").click();
 
     await expect.poll(() => sendCalled).toBe(true);
   });

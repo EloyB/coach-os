@@ -95,12 +95,26 @@ const planningOverview = {
   conflicts: [],
 };
 
+async function login(page) {
+  await page.goto("http://localhost:5317/login");
+  await page.evaluate(({ token, user }) => {
+    localStorage.setItem("token", token);
+    localStorage.setItem("auth_user", JSON.stringify(user));
+    document.cookie = "has_token=1; path=/; SameSite=Lax";
+  }, USER);
+}
+
 (async () => {
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   let currentPlanningOverview = planningOverview;
-  await page.route(`**/api/lessonseries/${SERIES_ID}`, (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(series) }));
-  await page.route(`**/api/lessonseries/${SERIES_ID}/planning`, (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(currentPlanningOverview) }));
+
+  await page.route(`**/api/lessonseries/${SERIES_ID}`, (route) =>
+    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(series) })
+  );
+  await page.route(`**/api/lessonseries/${SERIES_ID}/planning`, (route) =>
+    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(currentPlanningOverview) })
+  );
   await page.route(`**/api/lessonseries/${SERIES_ID}/planning/assignments/${ASSIGNMENT_ID}/lock`, (route) => {
     currentPlanningOverview = {
       ...currentPlanningOverview,
@@ -110,16 +124,33 @@ const planningOverview = {
     };
     return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(currentPlanningOverview.assignments[0]) });
   });
-  await page.goto("http://localhost:5317/login");
-  await page.evaluate(({ token, user }) => {
-    localStorage.setItem("token", token);
-    localStorage.setItem("auth_user", JSON.stringify(user));
-    document.cookie = "has_token=1; path=/; SameSite=Lax";
-  }, USER);
+  await page.route(`**/api/lessonseries/${SERIES_ID}/planning/assignments/${ASSIGNMENT_ID}/send-confirmation`, (route) => {
+    currentPlanningOverview = {
+      ...currentPlanningOverview,
+      assignments: currentPlanningOverview.assignments.map((assignment) =>
+        assignment.id === ASSIGNMENT_ID
+          ? { ...assignment, status: "AwaitingConfirmation", isLocked: true }
+          : assignment
+      ),
+    };
+    return route.fulfill({ status: 200, contentType: "application/json", body: "true" });
+  });
+
+  await login(page);
   await page.goto(`http://localhost:5317/dashboard/lessons/${SERIES_ID}/planning`);
+
+  // Screenshot 1: lock action + result state.
   await page.getByRole("button", { name: "Vastzetten" }).click();
   await page.getByText("Vastgezet").first().waitFor({ state: "visible" });
   await page.getByText("Blijft behouden bij opnieuw genereren").waitFor({ state: "visible" });
   await page.screenshot({ path: "../pr-screenshots/issue-178-planning-lock.png", fullPage: true });
+
+  // Reset to Proposed, then screenshot 2: definitive offer action is discoverable.
+  currentPlanningOverview = planningOverview;
+  await page.reload();
+  await page.getByText("Anna Peeters").hover();
+  await page.getByText("Definitief aanbieden").waitFor({ state: "visible" });
+  await page.screenshot({ path: "../pr-screenshots/issue-178-planning-offer-confirmation.png", fullPage: true });
+
   await browser.close();
 })();
