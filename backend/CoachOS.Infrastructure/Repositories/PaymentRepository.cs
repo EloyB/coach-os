@@ -54,6 +54,18 @@ public class PaymentRepository(ApplicationDbContext context) : IPaymentRepositor
             .FirstOrDefaultAsync(ct);
     }
 
+    public async Task<Payment?> GetLatestOpenOrPaidByEnrollmentIdAsync(
+        Guid enrollmentId, Guid organizationId, CancellationToken ct = default)
+    {
+        return await context.Payments
+            .AsNoTracking()
+            .Where(p => p.EnrollmentId == enrollmentId
+                && p.OrganizationId == organizationId
+                && (p.Status == PaymentStatus.Pending || p.Status == PaymentStatus.Paid))
+            .OrderByDescending(p => p.CreatedAt)
+            .FirstOrDefaultAsync(ct);
+    }
+
     public async Task<Payment?> GetLatestByCampEnrollmentIdAsync(
         Guid campEnrollmentId, CancellationToken ct = default)
     {

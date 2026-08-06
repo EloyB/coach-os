@@ -42,6 +42,7 @@ import {
   deleteAssignment,
   lockAssignment,
   unlockAssignment,
+  sendAssignmentConfirmation,
 } from "@/lib/api/planning";
 import type {
   PlanningEnrollmentDto,
@@ -136,6 +137,14 @@ export default function PlanningPage({
       isLocked ? unlockAssignment(id, assignmentId) : lockAssignment(id, assignmentId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["planning", id] });
+    },
+  });
+
+  const sendConfirmationMutation = useMutation({
+    mutationFn: (assignmentId: string) => sendAssignmentConfirmation(id, assignmentId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["planning", id] });
+      queryClient.invalidateQueries({ queryKey: ["lessonSeries", id] });
     },
   });
 
@@ -652,27 +661,43 @@ export default function PlanningPage({
                                         </span>
                                       )}
                                       {assignment.status === "Proposed" && (
-                                        <button
-                                          type="button"
-                                          aria-label={assignment.isLocked ? t("unlock") : t("lock")}
-                                          title={assignment.isLocked ? t("unlock") : t("lock")}
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            lockMutation.mutate({
-                                              assignmentId: assignment.id,
-                                              isLocked: assignment.isLocked,
-                                            });
-                                          }}
-                                          disabled={lockMutation.isPending}
-                                          className="ml-auto shrink-0 inline-flex h-5 items-center gap-1 rounded px-1.5 text-[10px] font-medium text-gray-500 hover:bg-tennis-green/5 hover:text-tennis-green disabled:opacity-50"
-                                        >
-                                          {assignment.isLocked ? <Unlock size={10} /> : <Lock size={10} />}
-                                          {assignment.isLocked
-                                            ? t("unlock")
-                                            : assignment.groupId
-                                              ? t("lockGroup")
-                                              : t("lock")}
-                                        </button>
+                                        <div className="ml-auto flex shrink-0 items-center gap-1">
+                                          <button
+                                            type="button"
+                                            aria-label={assignment.isLocked ? t("unlock") : t("lock")}
+                                            title={assignment.isLocked ? t("unlock") : t("lock")}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              lockMutation.mutate({
+                                                assignmentId: assignment.id,
+                                                isLocked: assignment.isLocked,
+                                              });
+                                            }}
+                                            disabled={lockMutation.isPending}
+                                            className="inline-flex h-5 items-center gap-1 rounded px-1.5 text-[10px] font-medium text-gray-500 hover:bg-tennis-green/5 hover:text-tennis-green disabled:opacity-50"
+                                          >
+                                            {assignment.isLocked ? <Unlock size={10} /> : <Lock size={10} />}
+                                            {assignment.isLocked
+                                              ? t("unlock")
+                                              : assignment.groupId
+                                                ? t("lockGroup")
+                                                : t("lock")}
+                                          </button>
+                                          <button
+                                            type="button"
+                                            aria-label={t("offerDefinitively")}
+                                            title={t("offerDefinitivelyTitle")}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              sendConfirmationMutation.mutate(assignment.id);
+                                            }}
+                                            disabled={sendConfirmationMutation.isPending}
+                                            className="inline-flex h-5 items-center gap-1 rounded bg-tennis-green/10 px-1.5 text-[10px] font-semibold text-tennis-green hover:bg-tennis-green/15 disabled:opacity-50"
+                                          >
+                                            <Mail size={10} />
+                                            {t("offerDefinitively")}
+                                          </button>
+                                        </div>
                                       )}
                                       <button
                                         type="button"
@@ -724,31 +749,46 @@ export default function PlanningPage({
                           </div>
                           <div className="flex items-center gap-1 shrink-0">
                             {lockableAssignment && (
-                              <button
-                                type="button"
-                                aria-label={lockableAssignment.isLocked ? t("unlock") : t("lock")}
-                                title={lockableAssignment.isLocked ? t("unlock") : t("lock")}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  lockMutation.mutate({
-                                    assignmentId: lockableAssignment.id,
-                                    isLocked: lockableAssignment.isLocked,
-                                  });
-                                }}
-                                disabled={lockMutation.isPending}
-                                className={`inline-flex h-5 items-center gap-1 rounded px-1.5 text-[10px] font-semibold shadow-sm disabled:opacity-50 ${
-                                  lockableAssignment.isLocked
-                                    ? "bg-green-100 text-green-700 hover:bg-green-200"
-                                    : "bg-white/90 text-tennis-green hover:bg-tennis-green/10"
-                                }`}
-                              >
-                                {lockableAssignment.isLocked ? <Unlock size={10} /> : <Lock size={10} />}
-                                {lockableAssignment.isLocked
-                                  ? t("unlock")
-                                  : lockableAssignment.groupId
-                                    ? t("lockGroup")
-                                    : t("lock")}
-                              </button>
+                              <>
+                                <button
+                                  type="button"
+                                  aria-label={lockableAssignment.isLocked ? t("unlock") : t("lock")}
+                                  title={lockableAssignment.isLocked ? t("unlock") : t("lock")}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    lockMutation.mutate({
+                                      assignmentId: lockableAssignment.id,
+                                      isLocked: lockableAssignment.isLocked,
+                                    });
+                                  }}
+                                  disabled={lockMutation.isPending}
+                                  className={`inline-flex h-5 items-center gap-1 rounded px-1.5 text-[10px] font-semibold shadow-sm disabled:opacity-50 ${
+                                    lockableAssignment.isLocked
+                                      ? "bg-green-100 text-green-700 hover:bg-green-200"
+                                      : "bg-white/90 text-tennis-green hover:bg-tennis-green/10"
+                                  }`}
+                                >
+                                  {lockableAssignment.isLocked ? <Unlock size={10} /> : <Lock size={10} />}
+                                  {lockableAssignment.isLocked
+                                    ? t("unlock")
+                                    : lockableAssignment.groupId
+                                      ? t("lockGroup")
+                                      : t("lock")}
+                                </button>
+                                <button
+                                  type="button"
+                                  aria-label={t("offerDefinitively")}
+                                  title={t("offerDefinitivelyTitle")}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    sendConfirmationMutation.mutate(lockableAssignment.id);
+                                  }}
+                                  disabled={sendConfirmationMutation.isPending}
+                                  className="inline-flex h-5 w-5 items-center justify-center rounded bg-white/90 text-tennis-green shadow-sm hover:bg-tennis-green/10 disabled:opacity-50"
+                                >
+                                  <Mail size={10} />
+                                </button>
+                              </>
                             )}
                             <span
                               className={`text-[10px] ${

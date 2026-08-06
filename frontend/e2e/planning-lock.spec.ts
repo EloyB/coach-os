@@ -105,4 +105,22 @@ test.describe("planning assignment locking", () => {
     await expect(page.getByText("Blijft behouden bij opnieuw genereren")).toBeVisible();
     await expect(page.getByRole("button", { name: "Vrijgeven" }).first()).toBeVisible();
   });
+
+  test("offers a proposed group definitively and calls send-confirmation endpoint", async ({ page }) => {
+    let sendCalled = false;
+    await page.route(`**/lessonseries/${SERIES_ID}/planning/assignments/${ASSIGNMENT_ID}/send-confirmation`, async (route) => {
+      if (route.request().method() === "POST") {
+        sendCalled = true;
+        return route.fulfill({ status: 200, contentType: "application/json", body: "true" });
+      }
+      return route.continue();
+    });
+
+    await page.goto(`/dashboard/lessons/${SERIES_ID}/planning`);
+
+    await page.getByText("Anna Peeters").hover();
+    await page.getByRole("button", { name: "Definitief aanbieden" }).click();
+
+    await expect.poll(() => sendCalled).toBe(true);
+  });
 });

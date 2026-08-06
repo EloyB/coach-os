@@ -155,6 +155,59 @@ public class PaymentServiceTests
     }
 
     [Test]
+    public async Task CreatePayment_ExistingPendingPayment_ReturnsExistingCheckoutAndDoesNotCreateDuplicate()
+    {
+        ArrangeEnrollment(price: 50m);
+        Payment existing = new()
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = OrgId,
+            EnrollmentId = EnrollmentId,
+            Amount = 50m,
+            Status = PaymentStatus.Pending,
+            Method = PaymentMethod.Online,
+            MollieCheckoutUrl = "https://www.mollie.com/checkout/existing",
+        };
+        _payments.Setup(p => p.GetLatestOpenOrPaidByEnrollmentIdAsync(EnrollmentId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existing);
+
+        Result<CreatePaymentResultDto> result = await _sut.CreatePaymentForEnrollmentAsync(EnrollmentId, OrgId);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.PaymentId.Should().Be(existing.Id);
+        result.Value.CheckoutUrl.Should().Be("https://www.mollie.com/checkout/existing");
+        _mollie.Verify(m => m.CreatePaymentAsync(
+                It.IsAny<string>(), It.IsAny<MolliePaymentRequest>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+        _payments.Verify(p => p.AddAsync(It.IsAny<Payment>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task CreatePayment_ExistingPaidPayment_FailsConflictAndDoesNotCreateDuplicate()
+    {
+        ArrangeEnrollment(price: 50m);
+        _payments.Setup(p => p.GetLatestOpenOrPaidByEnrollmentIdAsync(EnrollmentId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Payment
+            {
+                Id = Guid.NewGuid(),
+                OrganizationId = OrgId,
+                EnrollmentId = EnrollmentId,
+                Amount = 50m,
+                Status = PaymentStatus.Paid,
+                Method = PaymentMethod.Online,
+            });
+
+        Result<CreatePaymentResultDto> result = await _sut.CreatePaymentForEnrollmentAsync(EnrollmentId, OrgId);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.Conflict);
+        _mollie.Verify(m => m.CreatePaymentAsync(
+                It.IsAny<string>(), It.IsAny<MolliePaymentRequest>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+        _payments.Verify(p => p.AddAsync(It.IsAny<Payment>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
     public async Task CreatePayment_GroupOfFour_ChargesPricePerParticipant()
     {
         // Regressie: online betalingen rekenden enkel series.Price aan, terwijl de

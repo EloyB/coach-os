@@ -143,6 +143,73 @@ public class ConfirmationOrchestrationService(
         return Result<bool>.Ok(true);
     }
 
+    public async Task<Result<bool>> SendAssignmentConfirmationAsync(
+        Guid seriesId, Guid assignmentId, Guid organizationId, CancellationToken ct = default)
+    {
+        var series = await lessonSeriesRepo.GetByIdAsync(seriesId, organizationId, ct);
+        if (series is null)
+            return Result<bool>.Fail(new Error(ErrorCodes.NotFound, "Lessenreeks niet gevonden."));
+
+        if (series.PlanningStatus is not (PlanningStatus.Planning or PlanningStatus.AwaitingConfirmation))
+            return Result<bool>.Fail(
+                new Error(ErrorCodes.Validation, "Planning moet eerst gegenereerd worden."));
+
+        var assignment = await scheduleAssignmentRepo.GetByIdAsync(assignmentId, organizationId, ct);
+        if (assignment is null || assignment.LessonSerieId != seriesId)
+            return Result<bool>.Fail(new Error(ErrorCodes.NotFound, "Toewijzing niet gevonden."));
+
+        if (assignment.Status != ScheduleAssignmentStatus.Proposed)
+            return Result<bool>.Fail(
+                new Error(ErrorCodes.Validation, "Alleen concepttoewijzingen kunnen definitief aangeboden worden."));
+
+        var slot = series.WeeklyTemplate.FirstOrDefault(s => s.Id == assignment.WeeklyTemplateEntryId);
+        if (slot is null)
+            return Result<bool>.Fail(new Error(ErrorCodes.NotFound, "Tijdslot niet gevonden."));
+
+        var recipient = ResolveRecipient(assignment);
+        if (recipient is null)
+            return Result<bool>.Fail(new Error(ErrorCodes.Validation, "Geen ontvanger gevonden voor deze toewijzing."));
+
+        var rawToken = GenerateRawToken();
+        var token = new AssignmentConfirmationToken
+        {
+            OrganizationId = organizationId,
+            ScheduleAssignmentId = assignment.Id,
+            EnrollmentId = recipient.Id,
+            TokenHash = HashToken(rawToken),
+            ExpiresAt = DateTime.UtcNow.AddHours(72),
+            Response = ConfirmationResponse.Pending,
+        };
+
+        assignment.Status = ScheduleAssignmentStatus.AwaitingConfirmation;
+        assignment.IsLocked = true;
+
+        await tokenRepo.AddRangeAsync([token], ct);
+
+        var allAssignments = await scheduleAssignmentRepo.GetBySeriesAsync(seriesId, organizationId, ct);
+        bool hasRemainingProposed = allAssignments.Any(a =>
+            a.Id != assignment.Id && a.Status == ScheduleAssignmentStatus.Proposed);
+        if (!hasRemainingProposed)
+            series.PlanningStatus = PlanningStatus.AwaitingConfirmation;
+
+        await lessonSeriesRepo.SaveChangesAsync(ct);
+
+        try
+        {
+            await SendConfirmationEmailAsync(
+                recipient, series, slot, rawToken, GroupParticipantNames(assignment), ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Vroege bevestigingsmail voor toewijzing {AssignmentId} mislukt.", assignment.Id);
+            return Result<bool>.Fail(
+                new Error(ErrorCodes.Validation, "E-mail kon niet verzonden worden. Probeer opnieuw of contacteer de lesnemer handmatig."));
+        }
+
+        logger.LogInformation("Toewijzing {AssignmentId} definitief aangeboden voor reeks {SeriesId}.", assignment.Id, seriesId);
+        return Result<bool>.Ok(true);
+    }
+
     public async Task<Result<List<NonResponderDto>>> GetNonRespondersAsync(
         Guid seriesId, Guid organizationId, CancellationToken ct = default)
     {

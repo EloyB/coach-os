@@ -164,6 +164,15 @@ export async function resendConfirmation(
   );
 }
 
+export async function sendAssignmentConfirmation(
+  seriesId: string,
+  assignmentId: string
+): Promise<void> {
+  await apiClient.post(
+    `/lessonseries/${seriesId}/planning/assignments/${assignmentId}/send-confirmation`
+  );
+}
+
 export async function adminConfirm(
   seriesId: string,
   assignmentId: string

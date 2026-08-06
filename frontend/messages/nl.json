@@ -343,6 +343,8 @@
     "lockedCount": "{count, plural, one {# vastgezet} other {# vastgezet}}",
     "lockHelpTitle": "Zet een volledige groep vast zodra het voorstel klopt",
     "lockHelpDesc": "Klik op ‘Groep vastzetten’ op een voorgesteld tijdslot. Vastgezette groepen blijven behouden bij ‘Opnieuw genereren’, terwijl nieuwe inschrijvingen nog later ingepland kunnen worden.",
+    "offerDefinitively": "Definitief aanbieden",
+    "offerDefinitivelyTitle": "Stuur bevestigings- en betaalkeuze naar deze lesnemer of groep",
     "lockedKeepsOnRegenerate": "Blijft behouden bij opnieuw genereren",
     "unassign": "Verwijder toewijzing",
     "goBack": "Later verder"
