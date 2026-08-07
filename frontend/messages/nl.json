@@ -342,11 +342,14 @@
     "locked": "Vastgezet",
     "lockedCount": "{count, plural, one {# vastgezet} other {# vastgezet}}",
     "lockHelpTitle": "Zet een volledige groep vast zodra het voorstel klopt",
-    "lockHelpDesc": "Klik op ‘Groep vastzetten’ op een voorgesteld tijdslot. Vastgezette groepen blijven behouden bij ‘Opnieuw genereren’, terwijl nieuwe inschrijvingen nog later ingepland kunnen worden.",
+    "lockHelpDesc": "Klik op een tijdslot en zet de groep vast zodra het voorstel klopt. Vastgezette groepen blijven behouden bij ‘Opnieuw genereren’, terwijl nieuwe inschrijvingen nog later ingepland kunnen worden.",
     "offerDefinitively": "Definitief aanbieden",
     "offerDefinitivelyTitle": "Stuur bevestigings- en betaalkeuze naar deze lesnemer of groep",
     "lockedKeepsOnRegenerate": "Blijft behouden bij opnieuw genereren",
     "unassign": "Verwijder toewijzing",
+    "occupied": "{count}/{max} bezet",
+    "slotDialogEmpty": "Nog niemand toegewezen.",
+    "close": "Sluiten",
     "goBack": "Later verder"
   },
   "confirmation": {

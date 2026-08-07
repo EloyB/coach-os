@@ -10,13 +10,10 @@ import {
   RefreshCw,
   Check,
   Users,
-  User,
   Mail,
   Phone,
   MessageCircle,
-  X,
   Lock,
-  Unlock,
 } from "lucide-react";
 import {
   Popover,
@@ -58,38 +55,12 @@ import {
   layoutDaySlots,
   type CalendarSlot,
 } from "@/components/calendar/calendar-grid";
+import { getInitials, getAvatarColor } from "@/lib/planning-avatars";
+import { TimeslotDetailDialog } from "./_components/timeslot-detail-dialog";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const DAY_NAMES_SHORT = ["Ma", "Di", "Wo", "Do", "Vr", "Za", "Zo"];
-
-const AVATAR_COLORS = [
-  { bg: "bg-tennis-green", text: "text-white" },
-  { bg: "bg-blue-100", text: "text-blue-700" },
-  { bg: "bg-purple-100", text: "text-purple-700" },
-  { bg: "bg-orange-100", text: "text-orange-700" },
-  { bg: "bg-pink-100", text: "text-pink-700" },
-  { bg: "bg-teal-100", text: "text-teal-700" },
-  { bg: "bg-indigo-100", text: "text-indigo-700" },
-  { bg: "bg-emerald-100", text: "text-emerald-700" },
-];
-
-function hashStr(s: string): number {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
-  return Math.abs(h);
-}
-
-function getInitials(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length >= 2)
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-  return name.slice(0, 2).toUpperCase();
-}
-
-function getAvatarColor(name: string) {
-  return AVATAR_COLORS[hashStr(name) % AVATAR_COLORS.length];
-}
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 
@@ -160,9 +131,12 @@ export default function PlanningPage({
   // Manual assign
   const [assigningEnrollmentId, setAssigningEnrollmentId] = useState<string | null>(null);
 
-  // Slot hover popover
+  // Slot hover popover (read-only peek)
   const [hoveredSlotId, setHoveredSlotId] = useState<string | null>(null);
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Slot detail dialog (click to open)
+  const [openSlotId, setOpenSlotId] = useState<string | null>(null);
 
   const assignMutation = useMutation({
     mutationFn: ({ enrollmentId, groupId, slotId }: { enrollmentId?: string; groupId?: string; slotId: string }) =>
@@ -556,7 +530,6 @@ export default function PlanningPage({
                     const currentCount = getSlotCurrentCount(slot.id);
                     const hasProposed = slotHasProposed(slot.id);
                     const hasAutoMerged = slotAssignments.some((a) => a.isAutoMerged);
-                    const lockableAssignment = slotAssignments.find((a) => a.status === "Proposed");
                     const lockedAssignment = slotAssignments.find((a) => a.isLocked);
                     const borderColor = lockedAssignment
                       ? "border-tennis-green"
@@ -585,6 +558,7 @@ export default function PlanningPage({
                           left: `calc(${col.colIndex * colWidthPct}% + 1px)`,
                           width: `calc(${colWidthPct}% - 2px)`,
                         }}
+                        onClick={() => setOpenSlotId(slot.id)}
                         onMouseEnter={() => {
                           if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
                           if (slotAssignments.length > 0) setHoveredSlotId(slot.id);
@@ -593,7 +567,7 @@ export default function PlanningPage({
                           hoverTimeoutRef.current = setTimeout(() => setHoveredSlotId(null), 200);
                         }}
                       >
-                        {/* Hover popover */}
+                        {/* Hover popover — read-only peek; klik op de tegel voor acties */}
                         {hoveredSlotId === slot.id && (
                           <div
                             className="absolute left-full top-0 ml-2 z-50 bg-white border border-gray-200 rounded-xl shadow-lg p-3 w-60"
@@ -636,83 +610,25 @@ export default function PlanningPage({
 
                                 return (
                                   <div key={assignment.id}>
-                                    <div className="flex items-center gap-1.5 mb-1">
-                                      {gName ? (
-                                        <>
-                                          <Users size={10} className="text-gray-400 shrink-0" />
+                                    {(gName || assignment.isLocked) && (
+                                      <div className="flex items-center gap-1.5 mb-1">
+                                        {gName && (
                                           <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
                                             assignment.isAutoMerged ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700"
                                           }`}>
                                             {gName}
                                           </span>
-                                          {assignment.isAutoMerged && <span className="text-[9px] text-blue-500 italic">auto</span>}
-                                        </>
-                                      ) : (
-                                        <>
-                                          <User size={10} className="text-gray-400 shrink-0" />
-                                          <span className="text-[10px] text-gray-500">Individueel</span>
-                                          {assignment.isAutoMerged && <span className="text-[9px] text-blue-500 italic">auto</span>}
-                                        </>
-                                      )}
-                                      {assignment.isLocked && (
-                                        <span className="inline-flex items-center gap-1 rounded bg-green-100 px-1.5 py-0.5 text-[9px] font-semibold text-green-700">
-                                          <Lock size={9} />
-                                          {t("locked")}
-                                        </span>
-                                      )}
-                                      {assignment.status === "Proposed" && (
-                                        <div className="ml-auto flex shrink-0 items-center gap-1">
-                                          <button
-                                            type="button"
-                                            aria-label={assignment.isLocked ? t("unlock") : t("lock")}
-                                            title={assignment.isLocked ? t("unlock") : t("lock")}
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              lockMutation.mutate({
-                                                assignmentId: assignment.id,
-                                                isLocked: assignment.isLocked,
-                                              });
-                                            }}
-                                            disabled={lockMutation.isPending}
-                                            className="inline-flex h-5 items-center gap-1 rounded px-1.5 text-[10px] font-medium text-gray-500 hover:bg-tennis-green/5 hover:text-tennis-green disabled:opacity-50"
-                                          >
-                                            {assignment.isLocked ? <Unlock size={10} /> : <Lock size={10} />}
-                                            {assignment.isLocked
-                                              ? t("unlock")
-                                              : assignment.groupId
-                                                ? t("lockGroup")
-                                                : t("lock")}
-                                          </button>
-                                          <button
-                                            type="button"
-                                            aria-label={t("offerDefinitively")}
-                                            title={t("offerDefinitivelyTitle")}
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              sendConfirmationMutation.mutate(assignment.id);
-                                            }}
-                                            disabled={sendConfirmationMutation.isPending}
-                                            className="inline-flex h-5 items-center gap-1 rounded bg-tennis-green/10 px-1.5 text-[10px] font-semibold text-tennis-green hover:bg-tennis-green/15 disabled:opacity-50"
-                                          >
-                                            <Mail size={10} />
-                                            {t("offerDefinitively")}
-                                          </button>
-                                        </div>
-                                      )}
-                                      <button
-                                        type="button"
-                                        title={t("unassign")}
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          unassignMutation.mutate(assignment.id);
-                                        }}
-                                        disabled={unassignMutation.isPending}
-                                        className="shrink-0 w-5 h-5 flex items-center justify-center rounded text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
-                                      >
-                                        <X size={11} />
-                                      </button>
-                                    </div>
-                                    <div className="space-y-1 pl-4">
+                                        )}
+                                        {assignment.isAutoMerged && <span className="text-[9px] text-blue-500 italic">auto</span>}
+                                        {assignment.isLocked && (
+                                          <span className="inline-flex items-center gap-1 rounded bg-green-100 px-1.5 py-0.5 text-[9px] font-semibold text-green-700">
+                                            <Lock size={9} />
+                                            {t("locked")}
+                                          </span>
+                                        )}
+                                      </div>
+                                    )}
+                                    <div className={`space-y-1 ${gName ? "pl-2" : ""}`}>
                                       {aNames.map((name, ni) => {
                                         const aColor = getAvatarColor(name);
                                         return (
@@ -730,7 +646,7 @@ export default function PlanningPage({
                               })}
                             </div>
                             <div className="mt-2 pt-2 border-t border-gray-100 text-[10px] text-gray-400">
-                              {currentCount}/{slot.maxCapacity} bezet
+                              {t("occupied", { count: currentCount, max: slot.maxCapacity })}
                             </div>
                           </div>
                         )}
@@ -748,48 +664,6 @@ export default function PlanningPage({
                             )}
                           </div>
                           <div className="flex items-center gap-1 shrink-0">
-                            {lockableAssignment && (
-                              <>
-                                <button
-                                  type="button"
-                                  aria-label={lockableAssignment.isLocked ? t("unlock") : t("lock")}
-                                  title={lockableAssignment.isLocked ? t("unlock") : t("lock")}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    lockMutation.mutate({
-                                      assignmentId: lockableAssignment.id,
-                                      isLocked: lockableAssignment.isLocked,
-                                    });
-                                  }}
-                                  disabled={lockMutation.isPending}
-                                  className={`inline-flex h-5 items-center gap-1 rounded px-1.5 text-[10px] font-semibold shadow-sm disabled:opacity-50 ${
-                                    lockableAssignment.isLocked
-                                      ? "bg-green-100 text-green-700 hover:bg-green-200"
-                                      : "bg-white/90 text-tennis-green hover:bg-tennis-green/10"
-                                  }`}
-                                >
-                                  {lockableAssignment.isLocked ? <Unlock size={10} /> : <Lock size={10} />}
-                                  {lockableAssignment.isLocked
-                                    ? t("unlock")
-                                    : lockableAssignment.groupId
-                                      ? t("lockGroup")
-                                      : t("lock")}
-                                </button>
-                                <button
-                                  type="button"
-                                  aria-label={t("offerDefinitively")}
-                                  title={t("offerDefinitivelyTitle")}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    sendConfirmationMutation.mutate(lockableAssignment.id);
-                                  }}
-                                  disabled={sendConfirmationMutation.isPending}
-                                  className="inline-flex h-5 w-5 items-center justify-center rounded bg-white/90 text-tennis-green shadow-sm hover:bg-tennis-green/10 disabled:opacity-50"
-                                >
-                                  <Mail size={10} />
-                                </button>
-                              </>
-                            )}
                             <span
                               className={`text-[10px] ${
                                 hasAutoMerged
@@ -1344,6 +1218,28 @@ export default function PlanningPage({
           </div>
         </aside>
       </div>
+
+      <TimeslotDetailDialog
+        open={openSlotId !== null}
+        onOpenChange={(o) => !o && setOpenSlotId(null)}
+        slot={
+          openSlotId
+            ? planning.timeSlots.find((s) => s.id === openSlotId) ?? null
+            : null
+        }
+        assignments={openSlotId ? assignmentsBySlot.get(openSlotId) ?? [] : []}
+        enrollmentMap={enrollmentMap}
+        groupMap={groupMap}
+        currentCount={openSlotId ? getSlotCurrentCount(openSlotId) : 0}
+        onLock={(assignmentId, isLocked) =>
+          lockMutation.mutate({ assignmentId, isLocked })
+        }
+        onOffer={(assignmentId) => sendConfirmationMutation.mutate(assignmentId)}
+        onUnassign={(assignmentId) => unassignMutation.mutate(assignmentId)}
+        isLockPending={lockMutation.isPending}
+        isOfferPending={sendConfirmationMutation.isPending}
+        isUnassignPending={unassignMutation.isPending}
+      />
     </div>
   );
 }
