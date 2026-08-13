@@ -225,4 +225,31 @@ public class PlanningService(
             Conflicts = conflicts,
         });
     }
+
+    public async Task<Result<PlanningAssignmentDto>> SetAssignmentLockAsync(
+        Guid seriesId, Guid assignmentId, Guid organizationId, bool isLocked, CancellationToken ct = default)
+    {
+        var assignment = await scheduleAssignmentRepo.GetByIdAsync(assignmentId, organizationId, ct);
+        if (assignment is null || assignment.LessonSerieId != seriesId)
+            return Result<PlanningAssignmentDto>.Fail(
+                new Error(ErrorCodes.NotFound, "Toewijzing niet gevonden."));
+
+        if (assignment.Status != ScheduleAssignmentStatus.Proposed)
+            return Result<PlanningAssignmentDto>.Fail(
+                new Error(ErrorCodes.Validation, "Alleen concepttoewijzingen kunnen vastgezet of vrijgegeven worden."));
+
+        assignment.IsLocked = isLocked;
+        await scheduleAssignmentRepo.SaveChangesAsync(ct);
+
+        return Result<PlanningAssignmentDto>.Ok(new PlanningAssignmentDto
+        {
+            Id = assignment.Id,
+            TimeSlotId = assignment.WeeklyTemplateEntryId,
+            EnrollmentId = assignment.EnrollmentId,
+            GroupId = assignment.EnrollmentGroupId,
+            Status = assignment.Status.ToString(),
+            IsAutoMerged = assignment.IsAutoMerged,
+            IsLocked = assignment.IsLocked,
+        });
+    }
 }

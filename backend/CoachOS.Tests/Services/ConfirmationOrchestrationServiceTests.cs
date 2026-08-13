@@ -145,6 +145,111 @@ public class ConfirmationOrchestrationServiceTests
         assignment.Status.Should().Be(ScheduleAssignmentStatus.AwaitingConfirmation);
     }
 
+    [Test]
+    public async Task SendAssignmentConfirmationAsync_ProposedGroup_SendsSingleMailAndLeavesOtherProposalsForGlobalConfirm()
+    {
+        LessonSerie series = PlanningServiceTests.BuildSeries(withSlots: true, SeriesId, OrgId, SlotId);
+        series.PlanningStatus = PlanningStatus.Planning;
+        series.Name = "Lentelessen";
+
+        Enrollment leader = PlanningServiceTests.BuildEnrollment("Alice", OrgId, SeriesId);
+        leader.ContactEmail = "ouder@example.com";
+        Enrollment member = PlanningServiceTests.BuildEnrollment("Bob", OrgId, SeriesId);
+        member.ContactEmail = "ouder@example.com";
+        EnrollmentGroup group = new()
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = OrgId,
+            LessonSerieId = SeriesId,
+            LeaderEnrollmentId = leader.Id,
+            Members = [leader, member],
+        };
+
+        ScheduleAssignment sentEarly = new()
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = OrgId,
+            LessonSerieId = SeriesId,
+            WeeklyTemplateEntryId = SlotId,
+            EnrollmentGroupId = group.Id,
+            EnrollmentGroup = group,
+            Status = ScheduleAssignmentStatus.Proposed,
+        };
+        ScheduleAssignment remaining = new()
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = OrgId,
+            LessonSerieId = SeriesId,
+            WeeklyTemplateEntryId = SlotId,
+            EnrollmentId = Guid.NewGuid(),
+            Status = ScheduleAssignmentStatus.Proposed,
+        };
+
+        _seriesRepo.Setup(r => r.GetByIdAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+        _assignmentRepo.Setup(r => r.GetByIdAsync(sentEarly.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(sentEarly);
+        _assignmentRepo.Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ScheduleAssignment> { sentEarly, remaining });
+
+        Result<bool> early = await _service.SendAssignmentConfirmationAsync(SeriesId, sentEarly.Id, OrgId);
+
+        early.IsSuccess.Should().BeTrue();
+        sentEarly.Status.Should().Be(ScheduleAssignmentStatus.AwaitingConfirmation);
+        sentEarly.IsLocked.Should().BeTrue("vroeg aangeboden groepen moeten bij hergenereren behouden blijven");
+        series.PlanningStatus.Should().Be(PlanningStatus.Planning,
+            "de volledige planning mag nog niet afgesloten worden zolang er andere voorstellen zijn");
+        _tokenRepo.Verify(r => r.AddRangeAsync(
+            It.Is<IEnumerable<AssignmentConfirmationToken>>(tokens => tokens.Count() == 1),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _emailService.Verify(s => s.SendScheduleConfirmationAsync(
+            "ouder@example.com", "Alice", "Lentelessen", It.IsAny<int>(),
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(),
+            It.IsAny<string>(), It.Is<IReadOnlyList<string>?>(names => names != null && names.Count == 2),
+            It.IsAny<CancellationToken>()), Times.Once);
+
+        Result<bool> global = await _service.ConfirmScheduleAsync(SeriesId, OrgId);
+
+        global.IsSuccess.Should().BeTrue();
+        _emailService.Verify(s => s.SendScheduleConfirmationAsync(
+            "ouder@example.com", It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(),
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(),
+            It.IsAny<string>(), It.IsAny<IReadOnlyList<string>?>(), It.IsAny<CancellationToken>()), Times.Once,
+            "de vroeg aangeboden groep mag later geen tweede planningsmail krijgen");
+    }
+
+    [Test]
+    public async Task SendAssignmentConfirmationAsync_LastProposedAssignment_MovesSeriesToAwaitingConfirmation()
+    {
+        LessonSerie series = PlanningServiceTests.BuildSeries(withSlots: true, SeriesId, OrgId, SlotId);
+        series.PlanningStatus = PlanningStatus.Planning;
+
+        Enrollment enrollment = PlanningServiceTests.BuildEnrollment("Alice", OrgId, SeriesId);
+        enrollment.ContactEmail = "alice@example.com";
+        ScheduleAssignment assignment = new()
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = OrgId,
+            LessonSerieId = SeriesId,
+            WeeklyTemplateEntryId = SlotId,
+            EnrollmentId = enrollment.Id,
+            Enrollment = enrollment,
+            Status = ScheduleAssignmentStatus.Proposed,
+        };
+
+        _seriesRepo.Setup(r => r.GetByIdAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+        _assignmentRepo.Setup(r => r.GetByIdAsync(assignment.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(assignment);
+        _assignmentRepo.Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ScheduleAssignment> { assignment });
+
+        Result<bool> result = await _service.SendAssignmentConfirmationAsync(SeriesId, assignment.Id, OrgId);
+
+        result.IsSuccess.Should().BeTrue();
+        series.PlanningStatus.Should().Be(PlanningStatus.AwaitingConfirmation);
+    }
+
     // ── Admin cash-bevestiging: bedrag komt uit IPricingService ───────────────
 
     [Test]

@@ -56,6 +56,24 @@ public class PaymentService(
                 "Online betaling is alleen ondersteund voor inschrijvingen op een lesreeks."));
         }
 
+        PaymentEntity? existingPayment = await payments.GetLatestOpenOrPaidByEnrollmentIdAsync(
+            enrollmentId, organizationId, ct);
+        if (existingPayment is not null)
+        {
+            if (existingPayment.Status == PaymentStatus.Pending
+                && !string.IsNullOrWhiteSpace(existingPayment.MollieCheckoutUrl))
+            {
+                return Result<CreatePaymentResultDto>.Ok(new CreatePaymentResultDto(
+                    existingPayment.Id, existingPayment.MollieCheckoutUrl));
+            }
+
+            return Result<CreatePaymentResultDto>.Fail(new Error(
+                ErrorCodes.Conflict,
+                existingPayment.Status == PaymentStatus.Paid
+                    ? "Deze inschrijving is al betaald."
+                    : "Er loopt al een betaling voor deze inschrijving."));
+        }
+
         LessonSerieEntity? series = await lessonSeries.GetByIdPublicAsync(seriesId, ct);
         if (series is null)
         {

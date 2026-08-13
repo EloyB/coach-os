@@ -10,4 +10,7 @@ public interface IPlanningService
 
     Task<Result<PlanningOverviewDto>> GetPlanningOverviewAsync(
         Guid seriesId, Guid organizationId, CancellationToken ct = default);
+
+    Task<Result<PlanningAssignmentDto>> SetAssignmentLockAsync(
+        Guid seriesId, Guid assignmentId, Guid organizationId, bool isLocked, CancellationToken ct = default);
 }

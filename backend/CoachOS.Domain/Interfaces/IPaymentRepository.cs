@@ -25,6 +25,14 @@ public interface IPaymentRepository
     Task<Payment?> GetLatestByEnrollmentIdAsync(Guid enrollmentId, CancellationToken ct = default);
 
     /// <summary>
+    /// Meest recente Pending/Paid payment voor een enrollment. Gebruikt als
+    /// idempotency guard zodat dubbelklikken of dubbele webrequests geen tweede
+    /// Mollie-betaling voor dezelfde betaler aanmaken.
+    /// </summary>
+    Task<Payment?> GetLatestOpenOrPaidByEnrollmentIdAsync(
+        Guid enrollmentId, Guid organizationId, CancellationToken ct = default);
+
+    /// <summary>
     /// Meest recente payment voor een kamp-inschrijving (op CreatedAt desc).
     /// Gebruikt door de publieke thank-you-page status polling.
     /// </summary>
