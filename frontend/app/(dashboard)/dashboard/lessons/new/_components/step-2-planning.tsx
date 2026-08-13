@@ -89,8 +89,7 @@ export function Step2Planning({
     }));
   }
 
-  // Parallelle lessen op hetzelfde moment moeten een eigen baannaam hebben; botsende slots blokkeren
-  // "Volgende" zodat de gebruiker ze eerst oplost (mirror van de backend-guard).
+  // Naamloze parallelle lessen zijn toegestaan; alleen een dubbel gebruikte expliciete baan blokkeert.
   const conflicts = findSlotConflicts(slots);
   const hasConflicts = conflicts.length > 0;
 

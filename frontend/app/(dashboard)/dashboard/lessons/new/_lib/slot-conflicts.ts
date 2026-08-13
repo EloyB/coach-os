@@ -22,7 +22,8 @@ function normalizeCourt(court: string | null): string {
 
 /**
  * Vindt alle groepen slots die dezelfde dag + starttijd + (genormaliseerde) baannaam delen.
- * Retourneert één conflict per botsende groep.
+ * Retourneert één conflict per botsende groep. Naamloze slots zijn bewust geen conflict:
+ * de club kan de baan later toewijzen.
  */
 export function findSlotConflicts(slots: WizardSlot[]): SlotConflict[] {
   const groups = new Map<string, { slot: WizardSlot; court: string }[]>();
@@ -37,7 +38,7 @@ export function findSlotConflicts(slots: WizardSlot[]): SlotConflict[] {
 
   const conflicts: SlotConflict[] = [];
   for (const group of groups.values()) {
-    if (group.length > 1) {
+    if (group.length > 1 && group[0].court !== "") {
       const court = group[0].court;
       conflicts.push({
         dayOfWeek: group[0].slot.dayOfWeek,
