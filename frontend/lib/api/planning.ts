@@ -50,6 +50,24 @@ export interface PlanningOverviewDto {
   assignments: PlanningAssignmentDto[];
 }
 
+export interface TrainerPlanningEnrollmentDto {
+  id: string;
+  studentName: string;
+  isOpenToGrouping: boolean;
+  groupId: string | null;
+}
+
+export interface TrainerPlanningDto {
+  lessonSerieId: string;
+  lessonSerieName: string;
+  planningStatus: string;
+  planningLastEditedAt: string | null;
+  timeSlots: PlanningTimeSlotDto[];
+  enrollments: TrainerPlanningEnrollmentDto[];
+  groups: PlanningGroupDto[];
+  assignments: PlanningAssignmentDto[];
+}
+
 // ─── Request types ───────────────────────────────────────────────────────────
 
 export interface UpdateAssignmentRequest {
@@ -67,6 +85,11 @@ export interface CreateGroupRequest {
 }
 
 // ─── API calls ───────────────────────────────────────────────────────────────
+
+export async function getTrainerPlanning(): Promise<TrainerPlanningDto[]> {
+  const { data } = await apiClient.get<TrainerPlanningDto[]>("/trainer/planning");
+  return data;
+}
 
 export async function getPlanningOverview(
   seriesId: string
