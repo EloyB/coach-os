@@ -4,7 +4,8 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { CalendarDays, Clock3, MapPin, Users } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Mono } from "@/components/ui/mono";
+import { SlashLabel } from "@/components/ui/slash-label";
 import {
   getTrainerPlanning,
   type PlanningAssignmentDto,
@@ -64,73 +65,65 @@ function SeriesPlanning({ planning, t }: { planning: TrainerPlanningDto; t: (key
   );
 
   return (
-    <Card>
-      <CardHeader className="flex-row items-start justify-between gap-4 space-y-0">
+    <section className="bg-paper border border-rule rounded-xl overflow-hidden">
+      <div className="flex items-start justify-between gap-4 px-4 py-3.5 border-b border-rule bg-[#fbfaf6]">
         <div>
-          <CardTitle className="text-lg">{planning.lessonSerieName}</CardTitle>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <h2 className="text-[12.5px] font-bold text-ink tracking-tight">{planning.lessonSerieName}</h2>
+          <Mono className="text-[10.5px] text-ink-3 mt-0.5 block">
             {getStatusLabel(planning.planningStatus, t)} · {planning.enrollments.length} {t("students")}
-          </p>
+          </Mono>
         </div>
-        <CalendarDays className="h-5 w-5 text-tennis-green" aria-hidden="true" />
-      </CardHeader>
-      <CardContent>
-        {slotRows.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("noSlots")}</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[620px] text-sm">
-              <thead>
-                <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
-                  <th className="pb-3 pr-4 font-medium">{t("day")}</th>
-                  <th className="pb-3 pr-4 font-medium">{t("time")}</th>
-                  <th className="pb-3 pr-4 font-medium">{t("court")}</th>
-                  <th className="pb-3 font-medium">{t("studentsColumn")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {slotRows.map((slot) => {
-                  const students = (assignmentsBySlot.get(slot.id) ?? [])
-                    .flatMap((assignment) => getStudentsForAssignment(assignment, planning));
+        <CalendarDays size={15} className="text-tennis-green mt-0.5" aria-hidden="true" />
+      </div>
 
-                  return (
-                    <tr key={slot.id} className="border-b last:border-0">
-                      <td className="py-3 pr-4 font-medium">{t(`day${slot.dayOfWeek}`)}</td>
-                      <td className="whitespace-nowrap py-3 pr-4">
-                        <span className="inline-flex items-center gap-1.5">
-                          <Clock3 className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
-                          {slot.startTime} – {slot.endTime}
-                        </span>
-                      </td>
-                      <td className="py-3 pr-4">
-                        {slot.courtName ? (
-                          <span className="inline-flex items-center gap-1.5">
-                            <MapPin className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
-                            {slot.courtName}
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground">{t("noCourt")}</span>
-                        )}
-                      </td>
-                      <td className="py-3">
-                        {students.length > 0 ? (
-                          <span className="inline-flex items-center gap-1.5">
-                            <Users className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
-                            {students.join(", ")}
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground">{t("noStudents")}</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+      {slotRows.length === 0 ? (
+        <p className="px-4 py-5 text-[12px] text-ink-3">{t("noSlots")}</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <div className="min-w-[620px]">
+            <div className="grid grid-cols-[.9fr_1.1fr_1fr_2fr] gap-3 px-4 py-2.5 text-[10px] text-ink-3 font-semibold font-mono uppercase tracking-[0.08em] border-b border-rule">
+              <span>{t("day")}</span>
+              <span>{t("time")}</span>
+              <span>{t("court")}</span>
+              <span>{t("studentsColumn")}</span>
+            </div>
+            {slotRows.map((slot) => {
+              const students = (assignmentsBySlot.get(slot.id) ?? [])
+                .flatMap((assignment) => getStudentsForAssignment(assignment, planning));
+
+              return (
+                <div
+                  key={slot.id}
+                  className="grid grid-cols-[.9fr_1.1fr_1fr_2fr] gap-3 px-4 py-3 items-center border-b border-rule last:border-b-0 text-[11.5px] hover:bg-canvas/50 transition-colors"
+                >
+                  <span className="font-semibold text-ink">{t(`day${slot.dayOfWeek}`)}</span>
+                  <Mono className="inline-flex items-center gap-1.5 text-ink-2 text-[11px]">
+                    <Clock3 size={12} className="text-ink-3" aria-hidden="true" />
+                    {slot.startTime} – {slot.endTime}
+                  </Mono>
+                  {slot.courtName ? (
+                    <span className="inline-flex items-center gap-1.5 text-ink-2">
+                      <MapPin size={12} className="text-ink-3" aria-hidden="true" />
+                      {slot.courtName}
+                    </span>
+                  ) : (
+                    <span className="text-ink-3">{t("noCourt")}</span>
+                  )}
+                  {students.length > 0 ? (
+                    <span className="inline-flex items-center gap-1.5 text-ink">
+                      <Users size={12} className="text-ink-3 shrink-0" aria-hidden="true" />
+                      <span className="truncate">{students.join(", ")}</span>
+                    </span>
+                  ) : (
+                    <span className="text-ink-3">{t("noStudents")}</span>
+                  )}
+                </div>
+              );
+            })}
           </div>
-        )}
-      </CardContent>
-    </Card>
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -142,27 +135,46 @@ export default function PlanningOverviewPage() {
   });
 
   return (
-    <main className="space-y-6 p-6 pb-24 lg:p-8">
-      <header>
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-tennis-green">{t("eyebrow")}</p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight">{t("title")}</h1>
-        <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{t("description")}</p>
-      </header>
+    <>
+      <div className="flex items-center justify-between mb-5">
+        <div>
+          <SlashLabel>{t("eyebrow")}</SlashLabel>
+          <h1 className="text-lg font-bold text-ink tracking-tight mt-0.5">{t("title")}</h1>
+          <p className="text-[11.5px] text-ink-3 mt-1 max-w-2xl">{t("description")}</p>
+        </div>
+        <span className="hidden sm:inline-flex items-center gap-1.5 text-[10.5px] px-2 py-0.5 rounded-full bg-tennis-green/10 text-tennis-green font-semibold">
+          <span className="w-1.5 h-1.5 rounded-full bg-tennis-green" aria-hidden="true" />
+          {t("readOnly")}
+        </span>
+      </div>
 
-      {isLoading && <p className="text-sm text-muted-foreground">{t("loading")}</p>}
-      {isError && <p className="text-sm text-destructive">{t("error")}</p>}
+      {isLoading && (
+        <div className="bg-paper border border-rule rounded-xl overflow-hidden animate-pulse">
+          <div className="h-11 bg-canvas border-b border-rule" />
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-12 border-b border-rule" />
+          ))}
+        </div>
+      )}
+      {isError && (
+        <div className="bg-red-50 border border-red-100 rounded-xl p-4 text-[12px] text-red-600">{t("error")}</div>
+      )}
       {!isLoading && !isError && plannings.length === 0 && (
-        <Card>
-          <CardContent className="py-10 text-center text-sm text-muted-foreground">{t("empty")}</CardContent>
-        </Card>
+        <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+          <div className="w-16 h-16 rounded-full bg-tennis-green/[.08] flex items-center justify-center mb-5">
+            <CalendarDays className="w-8 h-8 text-tennis-green" aria-hidden="true" />
+          </div>
+          <p className="text-ink font-semibold text-sm mb-1">{t("empty")}</p>
+          <p className="text-ink-3 text-[12px] max-w-64 leading-relaxed">{t("emptyDescription")}</p>
+        </div>
       )}
       {!isLoading && !isError && plannings.length > 0 && (
-        <div className="space-y-5">
+        <div className="space-y-[18px]">
           {plannings.map((planning) => (
             <SeriesPlanning key={planning.lessonSerieId} planning={planning} t={t} />
           ))}
         </div>
       )}
-    </main>
+    </>
   );
 }
