@@ -22,6 +22,14 @@ RUN dotnet publish CoachOS.API/CoachOS.API.csproj -c Release -o /app
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 
+# aspnet:10.0 is Debian-based and ships neither wget nor curl. The compose
+# healthcheck (infrastructure/docker-compose.yml) execs wget against
+# /health from inside this container; without this, that exec always fails
+# with "not found" and Docker reports the container unhealthy regardless of
+# whether the app itself is fine.
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
 # aspnet:10.0 ships with a non-root "app" user (uid 1654); just use it.
 # WORKDIR creates /app owned by root — chown it so the app user can create
 # subdirectories at runtime (e.g. LodeKennes.Extensions.Scaleway.SecretManager
