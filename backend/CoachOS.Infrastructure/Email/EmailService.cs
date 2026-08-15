@@ -57,11 +57,19 @@ public class EmailService(
         string studentEmail, string studentName, string seriesName, string trainerName,
         IReadOnlyList<string>? participantNames = null, CancellationToken ct = default)
     {
+        string trainerDescription = string.IsNullOrWhiteSpace(trainerName)
+            ? "Je club neemt indien nodig contact met je op."
+            : $"Trainer {trainerName} neemt indien nodig contact met je op.";
+        string trainerLine = string.IsNullOrWhiteSpace(trainerName)
+            ? string.Empty
+            : $"Trainer: {trainerName}";
+
         var html = renderer.Render("enrollment-confirmation", new Dictionary<string, string>
         {
             ["studentName"] = studentName,
             ["seriesName"] = seriesName,
-            ["trainerName"] = trainerName,
+            ["trainerDescription"] = trainerDescription,
+            ["trainerLine"] = trainerLine,
             ["participantsLine"] = ParticipantsLine(participantNames, "Ingeschreven"),
             ["year"] = DateTime.UtcNow.Year.ToString(),
         });
