@@ -39,6 +39,30 @@ public class EmailServiceTests
             NullLogger<EmailService>.Instance);
     }
 
+    [Test]
+    public async Task SendEnrollmentConfirmation_OmitsTrainerDetailsWhenNoTrainerIsAssigned()
+    {
+        IReadOnlyDictionary<string, string>? captured = null;
+        _renderer
+            .Setup(r => r.Render("enrollment-confirmation", It.IsAny<IReadOnlyDictionary<string, string>>()))
+            .Callback<string, IReadOnlyDictionary<string, string>>((_, dict) => captured = dict)
+            .Returns("<html/>");
+
+        try
+        {
+            await _sut.SendEnrollmentConfirmationAsync(
+                "a@b.be", "Anna", "Tennisreeks 1", string.Empty, null, CancellationToken.None);
+        }
+        catch
+        {
+            // SMTP-failure verwacht; renderer.Render is reeds aangeroepen.
+        }
+
+        captured.Should().NotBeNull();
+        captured!["trainerDescription"].Should().Be("Je club neemt indien nodig contact met je op.");
+        captured["trainerLine"].Should().BeEmpty();
+    }
+
     [TestCase(0, "maandag")]   // EU 0 = maandag
     [TestCase(1, "dinsdag")]   // EU 1 = dinsdag (de bug-case: gaf voorheen "maandag")
     [TestCase(2, "woensdag")]
