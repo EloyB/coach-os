@@ -9,6 +9,7 @@ public class FormField : BaseEntity
     public string Label { get; set; } = string.Empty;
     public FormFieldType Type { get; set; }
     public bool IsRequired { get; set; }
+    public bool IsForEachGroupMember { get; set; }
     public int Order { get; set; }
 
     /// <summary>JSON array of option strings for MultipleChoice fields.</summary>

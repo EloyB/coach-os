@@ -63,6 +63,14 @@ type GroupMember = {
   email: string;
   dateOfBirth: string;
   hasOwnEmail: boolean;
+  responses: Record<string, string>;
+};
+
+type MemberErrors = {
+  name?: string;
+  email?: string;
+  dateOfBirth?: string;
+  fields?: Record<string, string>;
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -152,9 +160,7 @@ export default function EnrollPage() {
   const [isOpenToGrouping, setIsOpenToGrouping] = useState(false);
   const [groupMembers, setGroupMembers] = useState<GroupMember[]>([]);
   const [selectedPriceOptionId, setSelectedPriceOptionId] = useState<string>("");
-  const [memberErrors, setMemberErrors] = useState<
-    Record<number, { name?: string; email?: string; dateOfBirth?: string }>
-  >({});
+  const [memberErrors, setMemberErrors] = useState<Record<number, MemberErrors>>({});
 
   const user = getAuthUser();
   const isAdminOrTrainer = user?.role === "Admin" || user?.role === "Trainer";
@@ -239,7 +245,7 @@ export default function EnrollPage() {
     if (groupMembers.length >= 3) return;
     setGroupMembers((prev) => [
       ...prev,
-      { name: "", email: "", dateOfBirth: "", hasOwnEmail: false },
+      { name: "", email: "", dateOfBirth: "", hasOwnEmail: false, responses: {} },
     ]);
   }
 
@@ -275,6 +281,25 @@ export default function EnrollPage() {
         i === index ? { ...m, hasOwnEmail, email: hasOwnEmail ? m.email : "" } : m
       )
     );
+  }
+
+  function updateMemberField(index: number, fieldId: string, value: string) {
+    setGroupMembers((prev) =>
+      prev.map((member, i) =>
+        i === index
+          ? { ...member, responses: { ...member.responses, [fieldId]: value } }
+          : member,
+      ),
+    );
+    if (memberErrors[index]?.fields?.[fieldId]) {
+      setMemberErrors((prev) => {
+        const next = { ...prev };
+        const fields = { ...(next[index]?.fields ?? {}) };
+        delete fields[fieldId];
+        next[index] = { ...next[index], fields };
+        return next;
+      });
+    }
   }
 
   function priceOptions(): LessonSeriePriceDto[] {
@@ -314,13 +339,10 @@ export default function EnrollPage() {
     }
     setFieldErrors(fErrors);
 
-    const mErrors: Record<
-      number,
-      { name?: string; email?: string; dateOfBirth?: string }
-    > = {};
+    const mErrors: Record<number, MemberErrors> = {};
     if (enrollmentType === "group") {
       groupMembers.forEach((m, i) => {
-        const e: { name?: string; email?: string; dateOfBirth?: string } = {};
+        const e: MemberErrors = {};
         if (!m.name.trim()) e.name = "Naam is verplicht";
         if (m.hasOwnEmail) {
           if (!m.email.trim()) e.email = "E-mailadres is verplicht";
@@ -335,7 +357,15 @@ export default function EnrollPage() {
             e.dateOfBirth = `Leeftijd moet tussen ${series.minAge} en ${series.maxAge} jaar zijn`;
           }
         }
+        const customErrors: Record<string, string> = {};
+        for (const field of form?.fields ?? []) {
+          if (field.isForEachGroupMember && field.isRequired && !m.responses[field.id]?.trim()) {
+            customErrors[field.id] = `${field.label} is verplicht`;
+          }
+        }
+        if (Object.keys(customErrors).length > 0) e.fields = customErrors;
         if (e.name || e.email || e.dateOfBirth) mErrors[i] = e;
+        if (e.fields && Object.keys(e.fields).length > 0) mErrors[i] = e;
       });
 
       // Dubbele deelnemer (naam + geboortedatum) — spiegelt de backend zonder
@@ -406,7 +436,13 @@ export default function EnrollPage() {
                 studentName: m.name.trim(),
                 studentEmail: m.hasOwnEmail ? m.email.trim() : null,
                 dateOfBirth: m.dateOfBirth,
-                responses: [],
+                responses: Object.entries(m.responses)
+                  .filter(([fieldId, value]) =>
+                    Boolean(value.trim()) && form?.fields.some((field) =>
+                      field.id === fieldId && field.isForEachGroupMember,
+                    ),
+                  )
+                  .map(([formFieldId, value]) => ({ formFieldId, value })),
               }))
             : undefined,
       });
@@ -1061,6 +1097,26 @@ export default function EnrollPage() {
                                 </p>
                               )}
                             </div>
+                            {form?.fields.filter((field) => field.isForEachGroupMember).map((field) => {
+                              const value = member.responses[field.id] ?? "";
+                              const fieldError = memberErrors[i]?.fields?.[field.id];
+                              return (
+                                <div key={field.id} className="sm:col-span-2">
+                                  <label className="block text-xs text-gray-500 mb-1">
+                                    {field.label}{field.isRequired && " *"}
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={value}
+                                    onChange={(e) => updateMemberField(i, field.id, e.target.value)}
+                                    className={inputClass(!!fieldError)}
+                                  />
+                                  {fieldError && (
+                                    <p className="text-xs text-red-500 mt-1">{fieldError}</p>
+                                  )}
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
                       ))}
