@@ -406,13 +406,15 @@
           "studentName": "Fien De Boer",
           "studentEmail": "sofie.deboer+fien@gmail.com",
           "studentPhone": null,
-          "dateOfBirth": "2011-04-18"
+          "dateOfBirth": "2011-04-18",
+          "ageCategory": "14-17 jaar"
         },
         {
           "studentName": "Stan De Boer",
           "studentEmail": "sofie.deboer+stan@gmail.com",
           "studentPhone": null,
-          "dateOfBirth": "2013-08-27"
+          "dateOfBirth": "2013-08-27",
+          "ageCategory": "11-13 jaar"
         }
       ],
       "slotPreferences": [
@@ -429,7 +431,7 @@
         3
       ],
       "dateOfBirth": "1985-03-14",
-      "ageCategory": "8-10 jaar"
+      "ageCategory": "Volwassenen"
     },
     {
       "label": "Couple Peeters-Janssens (group of 2, evenings only, exclusive)",
@@ -443,7 +445,8 @@
           "studentName": "Lisa Janssens",
           "studentEmail": "lisa.janssens@outlook.be",
           "studentPhone": "+32479223345",
-          "dateOfBirth": "1978-11-05"
+          "dateOfBirth": "1978-11-05",
+          "ageCategory": "Volwassenen"
         }
       ],
       "slotPreferences": [
@@ -483,7 +486,7 @@
         1
       ],
       "dateOfBirth": "1978-11-05",
-      "ageCategory": "14-17 jaar"
+      "ageCategory": "Volwassenen"
     },
     {
       "label": "Thomas Wouters (solo, open, Wed+Sat — auto-merge candidate)",
@@ -506,7 +509,7 @@
         2
       ],
       "dateOfBirth": "1993-01-30",
-      "ageCategory": "14-17 jaar"
+      "ageCategory": "Volwassenen"
     },
     {
       "label": "Noor Hendrickx (solo, open, Tue+Thu evenings)",
@@ -621,7 +624,7 @@
         2
       ],
       "dateOfBirth": "1978-11-05",
-      "ageCategory": "11-13 jaar"
+      "ageCategory": "Volwassenen"
     },
     {
       "label": "Jules Van Damme (solo, open, Saturday only)",
@@ -644,7 +647,7 @@
         2
       ],
       "dateOfBirth": "1993-01-30",
-      "ageCategory": "14-17 jaar"
+      "ageCategory": "Volwassenen"
     },
     {
       "label": "Marie-Claire Vos (solo, open, Tue evening — auto-merge candidate)",

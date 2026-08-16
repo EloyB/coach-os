@@ -446,6 +446,21 @@ def planning_enrollments(api: ApiClient, planning_series_id: str,
     slot_ids = [s["id"] for s in slots]
     print(f"   Found {len(slot_ids)} time slots")
 
+    # Coverage guard: when the age question is configured, at least one group must
+    # span multiple age categories so the reset+seed exercises mixed-age matching
+    # (GetSharedAgeCategory -> null, so PlanningProposalBuilder treats the group as
+    # unconstrained). Fails loudly if someone flattens the seed buckets and silently
+    # drops this path.
+    if age_field_id:
+        has_mixed_age_group = any(
+            len({e.get("ageCategory")}
+                | {m.get("ageCategory") for m in e["groupMembers"]}) > 1
+            for e in enrollments if e.get("groupMembers")
+        )
+        assert has_mixed_age_group, (
+            "seed must include a group whose members span multiple age categories "
+            "to cover age-aware matching of mixed-age groups")
+
     print("\n8. Creating planning enrollments...")
     for e in enrollments:
         prefs = e.get("slotPreferences", [])
@@ -473,7 +488,7 @@ def planning_enrollments(api: ApiClient, planning_series_id: str,
         }
         if e.get("groupMembers"):
             body["groupMembers"] = [
-                {**m, "responses": age_responses(e)} for m in e["groupMembers"]
+                {**m, "responses": age_responses(m)} for m in e["groupMembers"]
             ]
         result = api.post(f"/public/lessonseries/{planning_series_id}/enroll",
                           body, auth=False)
