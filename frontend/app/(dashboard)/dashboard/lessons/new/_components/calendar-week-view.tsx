@@ -276,25 +276,6 @@ export function CalendarWeekView({
 
   const isDragging = drag?.moved ?? false;
 
-  function getParallelSlotLabel(slot: CalendarSlot, daySlots: CalendarSlot[]) {
-    const parallelSlots = daySlots
-      .filter(
-        (candidate) =>
-          candidate.startTime === slot.startTime && candidate.endTime === slot.endTime
-      )
-      .sort((a, b) => {
-        const courtCompare = (a.courtName ?? "").localeCompare(b.courtName ?? "");
-        return courtCompare || a.id.localeCompare(b.id);
-      });
-
-    if (parallelSlots.length < 2) return null;
-
-    return t("parallelSlotLabel", {
-      index: parallelSlots.findIndex((candidate) => candidate.id === slot.id) + 1,
-      count: parallelSlots.length,
-    });
-  }
-
   return (
     <>
       <CalendarGrid
@@ -305,7 +286,6 @@ export function CalendarWeekView({
         onSlotMouseDown={handleSlotMouseDown}
         onSlotClick={handleSlotClick}
         onSlotRemove={handleSlotRemove}
-        getSlotBadge={getParallelSlotLabel}
         renderDayOverlay={(dayIndex) => {
           // Add-parallel buttons for slot clusters
           const daySlots = slots

@@ -269,7 +269,6 @@
     "slotConflictDuplicate": "Dubbele les op {day} om {time} ({court}). Verwijder er één of geef ze een andere baannaam.",
     "calendarHint": "Klik op een leeg vak om een slot toe te voegen. Hover over een slot om het te verwijderen of een parallel veld op hetzelfde moment toe te voegen.",
     "addParallelSlot": "Parallel veld op dit moment toevoegen",
-    "parallelSlotLabel": "Parallel veld {index} van {count}",
     "defaultsTitle": "Standaardwaarden",
     "defaultsDesc": "Deze waarden worden automatisch toegepast bij het toevoegen van een nieuw slot.",
     "nonePicker": "Geen",

@@ -174,8 +174,6 @@ interface CalendarGridProps {
   renderDayOverlay?: (dayIndex: number) => React.ReactNode;
   /** Render extra content inside the grid body wrapper (e.g. drag ghost) */
   renderGridOverlay?: () => React.ReactNode;
-  /** Optional label rendered in slot blocks, e.g. for parallel court grouping. */
-  getSlotBadge?: (slot: CalendarSlot, daySlots: CalendarSlot[]) => string | null;
   /** Slot event handlers */
   onSlotMouseDown?: (slot: CalendarSlot, e: React.MouseEvent) => void;
   onSlotClick?: (slot: CalendarSlot, e: React.MouseEvent) => void;
@@ -194,7 +192,6 @@ export function CalendarGrid({
   gridBodyRef,
   renderDayOverlay,
   renderGridOverlay,
-  getSlotBadge,
   onSlotMouseDown,
   onSlotClick,
   onSlotRemove,
@@ -313,7 +310,6 @@ export function CalendarGrid({
                   const cancelled = slot.isCancelled === true;
                   const slotBg = cancelled ? "rgba(156,163,175,0.15)" : color.bg;
                   const slotBorder = cancelled ? "#9CA3AF" : color.border;
-                  const slotBadge = getSlotBadge?.(slot, daySlots);
 
                   return (
                     <div
@@ -371,11 +367,6 @@ export function CalendarGrid({
                       {cancelled && (
                         <div className="text-[9px] font-bold uppercase tracking-wide text-gray-500 mb-0.5">
                           Geannuleerd
-                        </div>
-                      )}
-                      {slotBadge && (
-                        <div className="mb-0.5 inline-flex rounded bg-white/70 px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide text-ink-2">
-                          {slotBadge}
                         </div>
                       )}
                       <div
