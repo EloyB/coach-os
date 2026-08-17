@@ -934,8 +934,7 @@ export default function EnrollPage() {
                             {t("open_to_grouping")}
                           </div>
                           <div className="text-xs text-gray-500 mt-0.5">
-                            Het systeem kan je automatisch koppelen aan andere
-                            leerlingen met dezelfde beschikbaarheid
+                            {t("open_to_grouping_desc")}
                           </div>
                         </div>
                       </label>
