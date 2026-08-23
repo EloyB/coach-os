@@ -162,6 +162,8 @@ function PersonRow({
   isLeader,
   isDuplicate,
   isMatch,
+  openMenuId,
+  setOpenMenuId,
 }: {
   enrollment: LessonSeriesEnrollmentDto;
   seriesId: string;
@@ -169,13 +171,15 @@ function PersonRow({
   isLeader: boolean;
   isDuplicate: boolean;
   isMatch: boolean;
+  openMenuId: string | null;
+  setOpenMenuId: (id: string | null) => void;
 }) {
   const t = useTranslations("enrollmentsTable");
   const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [showActionsMenu, setShowActionsMenu] = useState(false);
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
+  const showActionsMenu = openMenuId === enrollment.id;
 
   const hasResponses = enrollment.formResponses.length > 0;
   const isCancelled = enrollment.status === "Cancelled";
@@ -270,7 +274,7 @@ function PersonRow({
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                setShowActionsMenu((v) => !v);
+                setOpenMenuId(showActionsMenu ? null : enrollment.id);
               }}
               aria-label={t("actionsLabel", { name: enrollment.studentName })}
               className="flex h-8 w-8 items-center justify-center rounded-md border border-gray-100 text-gray-400 hover:bg-gray-50 hover:text-gray-700"
@@ -287,7 +291,7 @@ function PersonRow({
                     type="button"
                     disabled={markPaidMutation.isPending}
                     onClick={() => {
-                      setShowActionsMenu(false);
+                      setOpenMenuId(null);
                       markPaidMutation.mutate();
                     }}
                     className="flex w-full items-center gap-2 px-3 py-2 text-left text-tennis-green hover:bg-tennis-green/5 disabled:opacity-50"
@@ -300,7 +304,7 @@ function PersonRow({
                   <button
                     type="button"
                     onClick={() => {
-                      setShowActionsMenu(false);
+                      setOpenMenuId(null);
                       setEditing(true);
                     }}
                     className="flex w-full items-center gap-2 px-3 py-2 text-left text-gray-700 hover:bg-tennis-green/5 hover:text-tennis-green"
@@ -313,7 +317,7 @@ function PersonRow({
                   <button
                     type="button"
                     onClick={() => {
-                      setShowActionsMenu(false);
+                      setOpenMenuId(null);
                       setExpanded((v) => !v);
                     }}
                     className="flex w-full items-center gap-2 px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
@@ -327,7 +331,7 @@ function PersonRow({
                     type="button"
                     disabled={cancelMutation.isPending}
                     onClick={() => {
-                      setShowActionsMenu(false);
+                      setOpenMenuId(null);
                       setConfirmCancelOpen(true);
                     }}
                     className="flex w-full items-center gap-2 px-3 py-2 text-left text-red-600 hover:bg-red-50 disabled:opacity-50"
@@ -399,12 +403,16 @@ function GroupBlockRows({
   forceExpanded,
   duplicateIds,
   matchedIds,
+  openMenuId,
+  setOpenMenuId,
 }: {
   block: Extract<Block, { kind: "group" }>;
   seriesId: string;
   forceExpanded: boolean;
   duplicateIds: Set<string>;
   matchedIds: Set<string> | null;
+  openMenuId: string | null;
+  setOpenMenuId: (id: string | null) => void;
 }) {
   const t = useTranslations("enrollmentsTable");
   const [open, setOpen] = useState(false);
@@ -469,6 +477,8 @@ function GroupBlockRows({
             isLeader={m.id === leader.id}
             isDuplicate={duplicateIds.has(m.id)}
             isMatch={matchedIds?.has(m.id) ?? false}
+            openMenuId={openMenuId}
+            setOpenMenuId={setOpenMenuId}
           />
         ))}
     </>
@@ -487,6 +497,8 @@ function EnrollmentsTable({
   const t = useTranslations("enrollmentsTable");
   const [query, setQuery] = useState("");
   const [showCancelled, setShowCancelled] = useState(false);
+  // Eén open acties-menu tegelijk (rij-id), gedeeld over alle rijen.
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   const cancelledCount = useMemo(
     () => enrollments.filter((e) => e.status === "Cancelled").length,
@@ -610,6 +622,8 @@ function EnrollmentsTable({
                   isLeader={false}
                   isDuplicate={duplicateIds.has(block.enrollment.id)}
                   isMatch={matchedIds?.has(block.enrollment.id) ?? false}
+                  openMenuId={openMenuId}
+                  setOpenMenuId={setOpenMenuId}
                 />
               ))}
 
@@ -624,6 +638,8 @@ function EnrollmentsTable({
                   forceExpanded={!!q}
                   duplicateIds={duplicateIds}
                   matchedIds={matchedIds}
+                  openMenuId={openMenuId}
+                  setOpenMenuId={setOpenMenuId}
                 />
               ))}
             </tbody>
