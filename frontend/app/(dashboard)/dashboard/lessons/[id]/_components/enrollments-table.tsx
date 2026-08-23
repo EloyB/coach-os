@@ -253,8 +253,8 @@ function PersonRow({
         </td>
 
         {/* Status */}
-        <td className="px-4 py-2.5 whitespace-nowrap">
-          <div className="flex items-center gap-2">
+        <td className="px-4 py-2.5">
+          <div className="flex flex-wrap items-center gap-1.5">
             {enrollmentStatusStyles[enrollment.status] && (
               <Badge
                 className={`${enrollmentStatusStyles[enrollment.status].className} border-0 text-xs`}
@@ -447,8 +447,8 @@ function GroupBlockRows({
         </td>
 
         {/* Status (leider) + markeer betaald */}
-        <td className="px-4 py-2.5 whitespace-nowrap">
-          <div className="flex items-center gap-2">
+        <td className="px-4 py-2.5">
+          <div className="flex flex-wrap items-center gap-1.5">
             {enrollmentStatusStyles[leader.status] && (
               <Badge
                 className={`${enrollmentStatusStyles[leader.status].className} border-0 text-xs`}
@@ -617,7 +617,15 @@ function EnrollmentsTable({
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-left [&_td]:border-r [&_td]:border-gray-100 [&_th]:border-r [&_th]:border-gray-100 [&_td:last-child]:border-r-0 [&_th:last-child]:border-r-0">
+          <table className="w-full table-fixed border-collapse text-left [&_td]:border-r [&_td]:border-gray-100 [&_th]:border-r [&_th]:border-gray-100 [&_td:last-child]:border-r-0 [&_th:last-child]:border-r-0">
+            <colgroup>
+              <col style={{ width: "36%" }} />
+              <col style={{ width: "26%" }} />
+              <col style={{ width: "8%" }} />
+              <col style={{ width: "12%" }} />
+              <col style={{ width: "12%" }} />
+              <col style={{ width: "6%" }} />
+            </colgroup>
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50/70 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
                 <th className="px-4 py-2 font-semibold">{t("colName")}</th>
