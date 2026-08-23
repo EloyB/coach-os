@@ -629,20 +629,6 @@ function EnrollmentsTable({
               </tr>
             </thead>
             <tbody>
-              {groupBlocks.length > 0 && (
-                <SectionHeaderRow label={t("sectionGroups")} count={groupBlocks.length} />
-              )}
-              {groupBlocks.map((block) => (
-                <GroupBlockRows
-                  key={block.groupId}
-                  block={block}
-                  seriesId={seriesId}
-                  forceExpanded={!!q}
-                  duplicateIds={duplicateIds}
-                  matchedIds={matchedIds}
-                />
-              ))}
-
               {soloBlocks.length > 0 && (
                 <SectionHeaderRow label={t("sectionIndividual")} count={soloBlocks.length} />
               )}
@@ -655,6 +641,20 @@ function EnrollmentsTable({
                   isLeader={false}
                   isDuplicate={duplicateIds.has(block.enrollment.id)}
                   isMatch={matchedIds?.has(block.enrollment.id) ?? false}
+                />
+              ))}
+
+              {groupBlocks.length > 0 && (
+                <SectionHeaderRow label={t("sectionGroups")} count={groupBlocks.length} />
+              )}
+              {groupBlocks.map((block) => (
+                <GroupBlockRows
+                  key={block.groupId}
+                  block={block}
+                  seriesId={seriesId}
+                  forceExpanded={!!q}
+                  duplicateIds={duplicateIds}
+                  matchedIds={matchedIds}
                 />
               ))}
             </tbody>
