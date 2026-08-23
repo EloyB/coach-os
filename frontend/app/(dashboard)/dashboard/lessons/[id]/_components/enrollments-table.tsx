@@ -11,7 +11,7 @@ import {
   Search,
   ChevronDown,
   ChevronRight,
-  ChevronUp,
+  Eye,
   Pencil,
   Trash2,
   Euro,
@@ -49,6 +49,7 @@ import {
   updateBasicEnrollment,
 } from "@/lib/api/enrollments";
 import type { LessonSeriesEnrollmentDto } from "@/lib/api/enrollments";
+import { EnrollmentDetailDialog } from "./enrollment-detail-dialog";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -164,6 +165,7 @@ function PersonRow({
   isMatch,
   openMenuId,
   setOpenMenuId,
+  leaderName,
 }: {
   enrollment: LessonSeriesEnrollmentDto;
   seriesId: string;
@@ -173,15 +175,15 @@ function PersonRow({
   isMatch: boolean;
   openMenuId: string | null;
   setOpenMenuId: (id: string | null) => void;
+  leaderName?: string | null;
 }) {
   const t = useTranslations("enrollmentsTable");
   const queryClient = useQueryClient();
-  const [expanded, setExpanded] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
   const showActionsMenu = openMenuId === enrollment.id;
 
-  const hasResponses = enrollment.formResponses.length > 0;
   const isCancelled = enrollment.status === "Cancelled";
   const isPendingPayment = enrollment.status === "PendingPayment";
   const ownsPayment = enrollment.enrollmentGroupId == null || enrollment.isGroupLeader;
@@ -211,7 +213,7 @@ function PersonRow({
         className={`border-t border-gray-50 ${
           isCancelled ? "opacity-50" : "hover:bg-gray-50/60 cursor-pointer"
         } ${isMatch ? "bg-tennis-lime/10" : ""}`}
-        onClick={() => !isCancelled && setEditing(true)}
+        onClick={() => setDetailOpen(true)}
       >
         {/* Naam */}
         <td className={`px-4 py-2.5 ${isMember ? "pl-10" : ""}`}>
@@ -286,6 +288,17 @@ function PersonRow({
                 onClick={(e) => e.stopPropagation()}
                 className="absolute right-0 top-full z-50 mt-1 min-w-48 rounded-lg border border-gray-100 bg-white py-1 text-sm shadow-lg"
               >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenMenuId(null);
+                    setDetailOpen(true);
+                  }}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                >
+                  <Eye size={13} />
+                  {t("viewDetails")}
+                </button>
                 {isPendingPayment && ownsPayment && (
                   <button
                     type="button"
@@ -313,19 +326,6 @@ function PersonRow({
                     {t("editAction")}
                   </button>
                 )}
-                {hasResponses && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setOpenMenuId(null);
-                      setExpanded((v) => !v);
-                    }}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
-                  >
-                    {expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-                    {expanded ? t("detailsHide") : t("detailsShow")}
-                  </button>
-                )}
                 {!isCancelled && (
                   <button
                     type="button"
@@ -346,22 +346,17 @@ function PersonRow({
         </td>
       </tr>
 
-      {expanded && hasResponses && (
-        <tr className={isMatch ? "bg-tennis-lime/10" : ""}>
-          <td colSpan={COLS} className={`px-4 pb-3 ${isMember ? "pl-10" : ""}`}>
-            <dl className="space-y-1.5 rounded-lg bg-[#FAFAF8] p-3">
-              {enrollment.formResponses.map((r, i) => (
-                <div key={i} className="flex gap-3 text-xs">
-                  <dt className="min-w-[120px] shrink-0 text-gray-500">
-                    {r.fieldLabel}
-                  </dt>
-                  <dd className="font-medium text-gray-800">{r.value}</dd>
-                </div>
-              ))}
-            </dl>
-          </td>
-        </tr>
-      )}
+      <EnrollmentDetailDialog
+        enrollment={enrollment}
+        seriesId={seriesId}
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        onEdit={() => {
+          setDetailOpen(false);
+          setEditing(true);
+        }}
+        leaderName={leaderName}
+      />
 
       <EditEnrollmentDialog
         enrollment={enrollment}
@@ -479,6 +474,7 @@ function GroupBlockRows({
             isMatch={matchedIds?.has(m.id) ?? false}
             openMenuId={openMenuId}
             setOpenMenuId={setOpenMenuId}
+            leaderName={leader.studentName}
           />
         ))}
     </>

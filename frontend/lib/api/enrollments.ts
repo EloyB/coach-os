@@ -139,6 +139,34 @@ export async function getLessonSeriesEnrollments(seriesId: string): Promise<Less
   return data;
 }
 
+/** Tijdslot-voorkeur: 1 = Beschikbaar, 2 = Voorkeur, 3 = Niet beschikbaar. */
+export interface EnrollmentTimeSlotPreferenceDto {
+  weeklyTemplateEntryId: string;
+  preference: number;
+}
+
+export interface EnrollmentWithPreferencesDto {
+  id: string;
+  studentName: string;
+  studentEmail: string | null;
+  status: string;
+  isOpenToGrouping: boolean;
+  enrollmentGroupId: string | null;
+  groupName: string | null;
+  isGroupLeader: boolean;
+  preferences: EnrollmentTimeSlotPreferenceDto[];
+}
+
+/** Inschrijvingen mét hun tijdslot-voorkeuren (admin) — voor de detail-weergave. */
+export async function getEnrollmentsWithPreferences(
+  seriesId: string,
+): Promise<EnrollmentWithPreferencesDto[]> {
+  const { data } = await apiClient.get<EnrollmentWithPreferencesDto[]>(
+    `/lessonseries/${seriesId}/enrollments/planning`,
+  );
+  return data;
+}
+
 export async function updateBasicEnrollment(
   seriesId: string,
   enrollmentId: string,
