@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -499,6 +499,17 @@ function EnrollmentsTable({
   const [showCancelled, setShowCancelled] = useState(false);
   // Eén open acties-menu tegelijk (rij-id), gedeeld over alle rijen.
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
+  // Klik buiten het open menu sluit het. De toggle-knop en het menu zelf doen
+  // stopPropagation, dus deze document-listener vangt enkel klikken erbuiten.
+  useEffect(() => {
+    if (openMenuId === null) return;
+    function handleOutside() {
+      setOpenMenuId(null);
+    }
+    document.addEventListener("click", handleOutside);
+    return () => document.removeEventListener("click", handleOutside);
+  }, [openMenuId]);
 
   const cancelledCount = useMemo(
     () => enrollments.filter((e) => e.status === "Cancelled").length,
