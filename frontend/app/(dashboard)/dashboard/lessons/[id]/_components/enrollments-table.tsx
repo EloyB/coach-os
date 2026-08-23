@@ -254,28 +254,13 @@ function PersonRow({
 
         {/* Status */}
         <td className="px-4 py-2.5">
-          <div className="flex flex-wrap items-center gap-1.5">
-            {enrollmentStatusStyles[enrollment.status] && (
-              <Badge
-                className={`${enrollmentStatusStyles[enrollment.status].className} border-0 text-xs`}
-              >
-                {enrollmentStatusStyles[enrollment.status].label}
-              </Badge>
-            )}
-            {isPendingPayment && ownsPayment && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  markPaidMutation.mutate();
-                }}
-                disabled={markPaidMutation.isPending}
-                className="flex items-center gap-1 rounded-md border border-tennis-green/20 px-2 py-1 text-[11px] font-medium text-tennis-green hover:bg-tennis-green/5 disabled:opacity-50"
-              >
-                <Euro size={11} />
-                {t("markPaid")}
-              </button>
-            )}
-          </div>
+          {enrollmentStatusStyles[enrollment.status] && (
+            <Badge
+              className={`${enrollmentStatusStyles[enrollment.status].className} border-0 text-xs`}
+            >
+              {enrollmentStatusStyles[enrollment.status].label}
+            </Badge>
+          )}
         </td>
 
         {/* Acties */}
@@ -297,6 +282,20 @@ function PersonRow({
                 onClick={(e) => e.stopPropagation()}
                 className="absolute right-0 top-full z-50 mt-1 min-w-48 rounded-lg border border-gray-100 bg-white py-1 text-sm shadow-lg"
               >
+                {isPendingPayment && ownsPayment && (
+                  <button
+                    type="button"
+                    disabled={markPaidMutation.isPending}
+                    onClick={() => {
+                      setShowActionsMenu(false);
+                      markPaidMutation.mutate();
+                    }}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-tennis-green hover:bg-tennis-green/5 disabled:opacity-50"
+                  >
+                    <Euro size={13} />
+                    {t("markPaid")}
+                  </button>
+                )}
                 {!isCancelled && (
                   <button
                     type="button"
@@ -412,7 +411,6 @@ function GroupBlockRows({
   const expanded = forceExpanded || open;
 
   const { leader, members } = block;
-  const isPendingPayment = leader.status === "PendingPayment";
 
   return (
     <>
@@ -446,20 +444,15 @@ function GroupBlockRows({
           {formatEnrolledAt(leader.enrolledAt)}
         </td>
 
-        {/* Status (leider) + markeer betaald */}
+        {/* Status (leider) */}
         <td className="px-4 py-2.5">
-          <div className="flex flex-wrap items-center gap-1.5">
-            {enrollmentStatusStyles[leader.status] && (
-              <Badge
-                className={`${enrollmentStatusStyles[leader.status].className} border-0 text-xs`}
-              >
-                {enrollmentStatusStyles[leader.status].label}
-              </Badge>
-            )}
-            {isPendingPayment && (
-              <MarkGroupPaidButton seriesId={seriesId} enrollmentId={leader.id} />
-            )}
-          </div>
+          {enrollmentStatusStyles[leader.status] && (
+            <Badge
+              className={`${enrollmentStatusStyles[leader.status].className} border-0 text-xs`}
+            >
+              {enrollmentStatusStyles[leader.status].label}
+            </Badge>
+          )}
         </td>
 
         {/* Acties (leeg voor kop — acties zitten per lid) */}
@@ -479,38 +472,6 @@ function GroupBlockRows({
           />
         ))}
     </>
-  );
-}
-
-function MarkGroupPaidButton({
-  seriesId,
-  enrollmentId,
-}: {
-  seriesId: string;
-  enrollmentId: string;
-}) {
-  const t = useTranslations("enrollmentsTable");
-  const queryClient = useQueryClient();
-  const mutation = useMutation({
-    mutationFn: () => markEnrollmentCashPaid(enrollmentId),
-    onSuccess: () => {
-      toast.success("Inschrijving gemarkeerd als betaald");
-      queryClient.invalidateQueries({ queryKey: ["enrollments", seriesId] });
-      queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
-    },
-  });
-  return (
-    <button
-      onClick={(e) => {
-        e.stopPropagation();
-        mutation.mutate();
-      }}
-      disabled={mutation.isPending}
-      className="flex items-center gap-1 rounded-md border border-tennis-green/20 px-2 py-1 text-[11px] font-medium text-tennis-green hover:bg-tennis-green/5 disabled:opacity-50"
-    >
-      <Euro size={11} />
-      {t("markPaid")}
-    </button>
   );
 }
 
