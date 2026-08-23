@@ -138,6 +138,21 @@ function contactLine(
 
 const COLS = 6;
 
+// ─── Section header row (Groepen / Individueel) ─────────────────────────────────
+
+function SectionHeaderRow({ label, count }: { label: string; count: number }) {
+  return (
+    <tr>
+      <td
+        colSpan={COLS}
+        className="border-t border-gray-100 bg-gray-50/70 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500"
+      >
+        {label} <span className="text-gray-400">({count})</span>
+      </td>
+    </tr>
+  );
+}
+
 // ─── Person row (solo of groepslid) ────────────────────────────────────────────
 
 function PersonRow({
@@ -561,6 +576,13 @@ function EnrollmentsTable({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [blocks, q]);
 
+  const groupBlocks = filteredBlocks.filter(
+    (b): b is Extract<Block, { kind: "group" }> => b.kind === "group",
+  );
+  const soloBlocks = filteredBlocks.filter(
+    (b): b is Extract<Block, { kind: "solo" }> => b.kind === "solo",
+  );
+
   return (
     <div>
       {/* Zoekveld */}
@@ -607,28 +629,34 @@ function EnrollmentsTable({
               </tr>
             </thead>
             <tbody>
-              {filteredBlocks.map((block) =>
-                block.kind === "group" ? (
-                  <GroupBlockRows
-                    key={block.groupId}
-                    block={block}
-                    seriesId={seriesId}
-                    forceExpanded={!!q}
-                    duplicateIds={duplicateIds}
-                    matchedIds={matchedIds}
-                  />
-                ) : (
-                  <PersonRow
-                    key={block.enrollment.id}
-                    enrollment={block.enrollment}
-                    seriesId={seriesId}
-                    isMember={false}
-                    isLeader={false}
-                    isDuplicate={duplicateIds.has(block.enrollment.id)}
-                    isMatch={matchedIds?.has(block.enrollment.id) ?? false}
-                  />
-                ),
+              {groupBlocks.length > 0 && (
+                <SectionHeaderRow label={t("sectionGroups")} count={groupBlocks.length} />
               )}
+              {groupBlocks.map((block) => (
+                <GroupBlockRows
+                  key={block.groupId}
+                  block={block}
+                  seriesId={seriesId}
+                  forceExpanded={!!q}
+                  duplicateIds={duplicateIds}
+                  matchedIds={matchedIds}
+                />
+              ))}
+
+              {soloBlocks.length > 0 && (
+                <SectionHeaderRow label={t("sectionIndividual")} count={soloBlocks.length} />
+              )}
+              {soloBlocks.map((block) => (
+                <PersonRow
+                  key={block.enrollment.id}
+                  enrollment={block.enrollment}
+                  seriesId={seriesId}
+                  isMember={false}
+                  isLeader={false}
+                  isDuplicate={duplicateIds.has(block.enrollment.id)}
+                  isMatch={matchedIds?.has(block.enrollment.id) ?? false}
+                />
+              ))}
             </tbody>
           </table>
         </div>

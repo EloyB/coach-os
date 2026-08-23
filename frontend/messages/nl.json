@@ -208,6 +208,8 @@
     "group": "Groep",
     "leader": "leider",
     "solo": "solo",
+    "sectionGroups": "Groepen",
+    "sectionIndividual": "Individueel",
     "members": "{count, plural, one {# lid} other {# leden}}",
     "viaContact": "via {email}",
     "showCancelled": "Toon geannuleerde ({count})",
