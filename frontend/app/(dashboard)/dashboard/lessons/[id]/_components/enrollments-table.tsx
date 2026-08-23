@@ -617,9 +617,9 @@ function EnrollmentsTable({
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-left">
+          <table className="w-full border-collapse text-left [&_td]:border-r [&_td]:border-gray-100 [&_th]:border-r [&_th]:border-gray-100 [&_td:last-child]:border-r-0 [&_th:last-child]:border-r-0">
             <thead>
-              <tr className="border-b border-gray-100 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+              <tr className="border-b border-gray-200 bg-gray-50/70 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
                 <th className="px-4 py-2 font-semibold">{t("colName")}</th>
                 <th className="px-4 py-2 font-semibold">{t("colContact")}</th>
                 <th className="px-4 py-2 font-semibold">{t("colAge")}</th>
