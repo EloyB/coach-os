@@ -4,10 +4,22 @@ import {
   mockApi,
   mockAllDashboardApis,
   TEST_SERIES,
-  TEST_TRAINERS,
 } from "./helpers";
 
 // ─── Wizard helpers ─────────────────────────────────────────────────────────
+
+/** Select a date in the custom date-picker. */
+async function selectDate(
+  page: Page,
+  pickerIndex: number,
+  accessibleName: string
+): Promise<void> {
+  await page.getByRole("button", { name: "Kies een datum" }).nth(pickerIndex).click();
+  const popover = page.locator('[data-radix-popper-content-wrapper]').last();
+  await popover.locator("select").nth(0).selectOption("3"); // April
+  await popover.locator("select").nth(1).selectOption("2026");
+  await popover.getByRole("button", { name: accessibleName }).click();
+}
 
 /** Fill step 1 fields and click "Volgende" to advance to step 2 */
 async function fillStep1AndAdvance(page: Page): Promise<void> {
@@ -24,9 +36,9 @@ async function fillStep1AndAdvance(page: Page): Promise<void> {
   await page.getByRole("option", { name: "TC De Aces" }).click();
 
   // Dates
-  await page.locator('input[name="startDate"]').fill("2026-04-21");
-  await page.locator('input[name="endDate"]').fill("2026-06-30");
-  await page.locator('input[name="registrationDeadline"]').fill("2026-04-14");
+  await selectDate(page, 0, "dinsdag 21 april 2026");
+  await selectDate(page, 0, "donderdag 30 april 2026");
+  await selectDate(page, 0, "dinsdag 14 april 2026");
 
   await page.getByRole("button", { name: "Volgende" }).click();
 }
@@ -147,6 +159,31 @@ test.describe("Lesson Series", () => {
 
         const slotsAfter = await page.locator("div[data-slot-id]").count();
         expect(slotsAfter).toBe(1);
+      });
+
+      test("can add and label a parallel court at the same day and time", async ({ page }) => {
+        await page.getByPlaceholder("Baan 1").fill("Baan 1");
+        await addSlotOnDay(page, 1); // Tuesday
+
+        await page.locator("div[data-slot-id]").first().hover();
+        await page
+          .getByRole("button", { name: "Parallel veld op dit moment toevoegen" })
+          .click();
+
+        await expect(page.locator("div[data-slot-id]")).toHaveCount(2);
+        await expect(page.getByText("Parallel veld 1 van 2")).toBeVisible();
+        await expect(page.getByText("Parallel veld 2 van 2")).toBeVisible();
+        await expect(page.getByText("Dubbele les op di om")).toBeVisible();
+
+        await page.locator("div[data-slot-id]").nth(1).click();
+        await page.getByLabel("Naam baan").fill("Baan 2");
+        await page.getByRole("button", { name: "Slot opslaan" }).click();
+
+        await expect(page.getByText("Baan 1")).toBeVisible();
+        await expect(page.getByText("Baan 2")).toBeVisible();
+        await expect(page.getByText("Parallel veld 1 van 2")).toBeVisible();
+        await expect(page.getByText("Parallel veld 2 van 2")).toBeVisible();
+        await expect(page.getByText("Overlappende lesmomenten")).not.toBeVisible();
       });
 
       test("can remove a slot", async ({ page }) => {

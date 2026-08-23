@@ -101,9 +101,8 @@ public class LessonSerieService(
         if (trainerError is not null)
             return Result<Guid>.Fail(trainerError);
 
-        // Reject duplicate weekly template entries (same day + start time + court = same slot).
-        // Parallelle lessen op hetzelfde moment (2 trainers/velden) worden onderscheiden via de baannaam;
-        // een lege of enkel-witruimte baannaam telt als "geen baan". De sleutel MUST match de unique index
+        // Reject duplicate weekly template entries when a court is known.
+        // Multiple unnamed parallel lessons are allowed; the club can assign courts later. The key MUST match the unique index
         // IX_WeeklyTemplateEntries_LessonSerieId_DayOfWeek_StartTime_CourtName (die GEEN EndTime bevat);
         // anders glipt een same-start/different-end collision hier langs en wordt het een rauwe
         // DbUpdateException → HTTP 500 in plaats van deze nette validatiefout.
@@ -112,7 +111,7 @@ public class LessonSerieService(
 
         List<(int DayOfWeek, string StartTime, string CourtName)> duplicateKeys = request.WeeklyTemplate
             .GroupBy(t => (t.DayOfWeek, t.StartTime, CourtName: NormalizeCourt(t.CourtName)))
-            .Where(g => g.Count() > 1)
+            .Where(g => g.Key.CourtName != "" && g.Count() > 1)
             .Select(g => g.Key)
             .ToList();
 
@@ -121,20 +120,6 @@ public class LessonSerieService(
             string[] dayNames = ["ma", "di", "wo", "do", "vr", "za", "zo"];
             string SlotLabel((int DayOfWeek, string StartTime, string CourtName) key) =>
                 $"{dayNames[key.DayOfWeek]} {key.StartTime}";
-
-            // Parallelle slots zonder baannaam: stuur de gebruiker naar het toevoegen van baannamen
-            // i.p.v. "verwijder de duplicaten" — het zijn legitieme parallelle lessen die enkel een
-            // onderscheidende baannaam missen.
-            List<(int DayOfWeek, string StartTime, string CourtName)> missingCourt =
-                duplicateKeys.Where(d => d.CourtName == "").ToList();
-
-            if (missingCourt.Count > 0)
-            {
-                string slots = string.Join(", ", missingCourt.Select(SlotLabel));
-                return Result<Guid>.Fail(new Error(ErrorCodes.Validation,
-                    $"Meerdere lessen op hetzelfde moment ({slots}) zonder baannaam. " +
-                    "Geef elke parallelle les een eigen baannaam om ze te onderscheiden."));
-            }
 
             // Echte duplicaat: dezelfde dag + starttijd + baannaam expliciet herhaald.
             string dupSlots = string.Join(", ", duplicateKeys.Select(d => $"{SlotLabel(d)} ({d.CourtName})"));
@@ -147,12 +132,18 @@ public class LessonSerieService(
         foreach (WeeklyTemplateEntryRequest templateRequest in request.WeeklyTemplate)
         {
             Domain.Entities.WeeklyTemplateEntry entry = mapper.ToWeeklyTemplateEntry(templateRequest, series);
+            entry.CourtName = NormalizeCourt(templateRequest.CourtName) is { Length: > 0 } normalizedCourt
+                ? normalizedCourt
+                : null;
             series.WeeklyTemplate.Add(entry);
         }
 
         foreach (var lessonRequest in request.Lessons)
         {
             var lesson = mapper.ToLesson(lessonRequest, series);
+            lesson.CourtName = NormalizeCourt(lessonRequest.CourtName) is { Length: > 0 } normalizedCourt
+                ? normalizedCourt
+                : null;
             series.Lessons.Add(lesson);
         }
 
@@ -290,7 +281,7 @@ public class LessonSerieService(
 
         // Parallelle weekslots op hetzelfde moment (2 trainers/velden) worden onderscheiden via de baannaam;
         // een botsing met een bestaand weekslot op dezelfde dag+start+baan is een duplicaat.
-        bool collides = series.WeeklyTemplate.Any(e =>
+        bool collides = newCourt != "" && series.WeeklyTemplate.Any(e =>
             e.DayOfWeek == request.DayOfWeek
             && e.StartTime == startTime
             && NormalizeCourt(e.CourtName) == newCourt);
@@ -314,7 +305,7 @@ public class LessonSerieService(
             StartTime = startTime,
             EndTime = endTime,
             TrainerId = request.TrainerId,
-            CourtName = request.CourtName,
+            CourtName = newCourt is { Length: > 0 } ? newCourt : null,
             MaxStudents = request.MaxStudents,
         };
         series.WeeklyTemplate.Add(entry);
@@ -333,7 +324,7 @@ public class LessonSerieService(
                 OrganizationId = series.OrganizationId,
                 LessonSerieId = series.Id,
                 TrainerId = request.TrainerId,
-                CourtName = request.CourtName,
+                CourtName = newCourt is { Length: > 0 } ? newCourt : null,
                 Date = date,
                 StartTime = startTime,
                 EndTime = endTime,
@@ -408,7 +399,11 @@ public class LessonSerieService(
         }
 
         // Baanbezetting: check op de effectieve baannaam (request wint, anders de bestaande).
-        string? effectiveCourtName = request.CourtName ?? lesson.CourtName;
+        string? effectiveCourtName = request.CourtName is null
+            ? lesson.CourtName
+            : NormalizeCourt(request.CourtName) is { Length: > 0 } normalizedCourt
+                ? normalizedCourt
+                : null;
         Error? courtConflictError = await CheckCourtConflictAsync(
             organizationId, effectiveCourtName, lesson.Date, lesson.StartTime, lesson.EndTime,
             lesson.Id, ct);
@@ -416,7 +411,7 @@ public class LessonSerieService(
             return Result<LessonDto>.Fail(courtConflictError);
 
         if (request.CourtName is not null)
-            lesson.CourtName = request.CourtName;
+            lesson.CourtName = effectiveCourtName;
         if (request.MaxStudents.HasValue)
             lesson.MaxStudents = request.MaxStudents.Value;
         if (request.Notes is not null)
