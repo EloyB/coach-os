@@ -86,6 +86,7 @@ public class ApplicationDbContext(
         builder.ApplyConfiguration(new ScheduleAssignmentConfiguration());
         builder.ApplyConfiguration(new MagicLinkTokenConfiguration());
         builder.ApplyConfiguration(new OrganizationMembershipConfiguration());
+        builder.ApplyConfiguration(new HeadTrainerClubConfiguration());
         builder.ApplyConfiguration(new RescheduleRequestConfiguration());
         builder.ApplyConfiguration(new LessonInvitationConfiguration());
         builder.ApplyConfiguration(new OrganizationSettingsConfiguration());

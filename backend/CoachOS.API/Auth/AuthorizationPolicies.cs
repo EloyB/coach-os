@@ -11,7 +11,8 @@ public static class AuthorizationPolicies
 
     /// <summary>
     /// Read-only toegang tot inschrijvingen en planning: rol Admin, of een hoofdtrainer
-    /// (Trainer met de <see cref="CoachOsClaims.IsHeadTrainer"/> claim). Enkel op GET-endpoints.
+    /// (Trainer met ≥1 <see cref="CoachOsClaims.HeadTrainerClub"/> claim). Enkel op GET-endpoints.
+    /// De fijne per-reeks club-check gebeurt in <c>HeadTrainerAccess</c>.
     /// </summary>
     public const string EnrollmentsPlanningRead = "EnrollmentsPlanningRead";
 }

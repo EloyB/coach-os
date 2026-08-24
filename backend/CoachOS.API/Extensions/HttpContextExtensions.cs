@@ -27,6 +27,16 @@ public static class HttpContextExtensions
     public static bool IsSuperAdmin(this HttpContext context) =>
         context.User.FindFirst(CoachOsClaims.IsSuperAdmin)?.Value == "true";
 
+    public static bool IsAdmin(this HttpContext context) =>
+        context.User.IsInRole("Admin");
+
+    /// <summary>Club-id's waarvan de user hoofdtrainer is (0..n headTrainerClub-claims).</summary>
+    public static IReadOnlyList<Guid> GetHeadTrainerClubIds(this HttpContext context) =>
+        context.User.FindAll(CoachOsClaims.HeadTrainerClub)
+            .Select(c => Guid.TryParse(c.Value, out var id) ? id : Guid.Empty)
+            .Where(id => id != Guid.Empty)
+            .ToList();
+
     public static string GetEmail(this HttpContext context)
     {
         var claim = context.User.FindFirst(ClaimTypes.Email)

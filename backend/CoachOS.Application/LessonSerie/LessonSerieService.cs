@@ -545,4 +545,16 @@ public class LessonSerieService(
 
         return Result.Ok();
     }
+
+    public async Task<Result<Guid>> GetClubIdAsync(
+        Guid id, Guid organizationId, CancellationToken ct = default)
+    {
+        Domain.Entities.LessonSerie? series =
+            await lessonSeriesRepo.GetByIdAsync(id, organizationId, ct);
+
+        if (series is null)
+            return Result<Guid>.Fail(new Error(ErrorCodes.NotFound, "LessonSerie niet gevonden."));
+
+        return Result<Guid>.Ok(series.TennisClubId);
+    }
 }
