@@ -20,8 +20,8 @@ export interface AuthUser {
   role: string;
   memberships?: OrganizationMembershipInfo[];
   isSuperAdmin?: boolean;
-  /** Hoofdtrainer in de actieve org: read-only toegang tot inschrijvingen + planning. */
-  isHeadTrainer?: boolean;
+  /** Tennisclub-id's waarvan de trainer hoofdtrainer is: read-only toegang tot inschrijvingen + planning voor die clubs. */
+  headTrainerClubIds?: string[];
 }
 
 export function isStudent(): boolean {
@@ -35,7 +35,7 @@ export function isStudent(): boolean {
  */
 export function isHeadTrainerViewer(): boolean {
   const u = getAuthUser();
-  return u?.role === "Trainer" && u?.isHeadTrainer === true;
+  return u?.role === "Trainer" && (u?.headTrainerClubIds?.length ?? 0) > 0;
 }
 
 export function isSuperAdmin(): boolean {

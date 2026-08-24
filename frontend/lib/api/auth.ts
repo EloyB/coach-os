@@ -18,7 +18,7 @@ export interface AuthResponse {
   role: string;
   memberships: OrganizationMembershipInfo[];
   isSuperAdmin?: boolean;
-  isHeadTrainer?: boolean;
+  headTrainerClubIds?: string[];
 }
 
 export interface AcceptInviteRequest {
