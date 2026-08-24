@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { X } from "lucide-react";
+import { Pencil, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -43,6 +43,7 @@ export function EnrollmentDetailDialog({
   onOpenChange,
   onEdit,
   groupMembers,
+  onEditMember,
 }: {
   enrollment: LessonSeriesEnrollmentDto;
   seriesId: string;
@@ -51,6 +52,8 @@ export function EnrollmentDetailDialog({
   onEdit: () => void;
   /** Wanneer gezet: toon een 'Leden'-sectie (groep-detail). `enrollment` = de leider. */
   groupMembers?: LessonSeriesEnrollmentDto[];
+  /** Wanneer gezet: toon per lid een bewerk-knop die dit lid opent. */
+  onEditMember?: (member: LessonSeriesEnrollmentDto) => void;
 }) {
   const t = useTranslations("enrollmentDetail");
 
@@ -191,20 +194,32 @@ export function EnrollmentDetailDialog({
               return (
                 <li
                   key={m.id}
-                  className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm"
+                  className="flex items-center gap-3 px-3 py-2.5 text-sm"
                 >
-                  <span className="flex min-w-0 items-center gap-2">
-                    <span className="font-medium text-gray-800">{m.studentName}</span>
+                  <span className="flex min-w-0 flex-1 items-center gap-2">
+                    <span className="truncate font-medium text-gray-800">
+                      {m.studentName}
+                    </span>
                     {m.isGroupLeader && (
                       <span className="shrink-0 rounded bg-tennis-green/10 px-1.5 py-0.5 text-[10px] font-semibold text-tennis-green">
                         {t("leaderBadge")}
                       </span>
                     )}
                   </span>
-                  <span className="max-w-[55%] shrink-0 truncate text-right text-xs text-gray-500">
+                  <span className="max-w-[45%] shrink-0 truncate text-right text-xs text-gray-500">
                     {mContact}
                     {mAge != null ? ` · ${t("ageYears", { count: mAge })}` : ""}
                   </span>
+                  {onEditMember && (
+                    <button
+                      type="button"
+                      onClick={() => onEditMember(m)}
+                      aria-label={t("editMemberLabel", { name: m.studentName })}
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-gray-400 hover:bg-gray-50 hover:text-tennis-green"
+                    >
+                      <Pencil size={13} />
+                    </button>
+                  )}
                 </li>
               );
             })}

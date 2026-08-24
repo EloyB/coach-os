@@ -411,6 +411,8 @@ function GroupBlockRows({
   const [open, setOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
+  const [editingMember, setEditingMember] =
+    useState<LessonSeriesEnrollmentDto | null>(null);
   const expanded = forceExpanded || open;
 
   const { leader, members } = block;
@@ -564,7 +566,17 @@ function GroupBlockRows({
         onOpenChange={setDetailOpen}
         onEdit={() => {}}
         groupMembers={members}
+        onEditMember={setEditingMember}
       />
+
+      {editingMember && (
+        <EditEnrollmentDialog
+          enrollment={editingMember}
+          seriesId={seriesId}
+          open={editingMember !== null}
+          onOpenChange={(o) => !o && setEditingMember(null)}
+        />
+      )}
 
       <AlertDialog open={confirmCancelOpen} onOpenChange={setConfirmCancelOpen}>
         <AlertDialogContent onClick={(e) => e.stopPropagation()}>
