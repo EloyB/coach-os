@@ -91,8 +91,10 @@ export function EnrollmentDetailDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         onClick={(e) => e.stopPropagation()}
-        className="sm:max-w-lg max-h-[85vh] overflow-y-auto"
+        className="flex max-h-[85vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg"
       >
+        {/* Scrollbaar deel */}
+        <div className="flex flex-col gap-4 overflow-y-auto px-6 pt-6 pb-2">
         <DialogHeader>
           <DialogTitle className="flex flex-wrap items-center gap-2">
             {enrollment.studentName}
@@ -213,9 +215,10 @@ export function EnrollmentDetailDialog({
             <AvailabilityGrid timeSlots={timeSlots} prefMap={prefMap} t={t} />
           )}
         </section>
+        </div>
 
-        {/* Footer */}
-        <div className="mt-2 flex justify-end gap-2 border-t border-gray-100 pt-4">
+        {/* Footer (vast onderaan; scrollt niet mee) */}
+        <div className="flex shrink-0 justify-end gap-2 border-t border-gray-100 bg-background px-6 py-4">
           <button
             type="button"
             onClick={() => onOpenChange(false)}
