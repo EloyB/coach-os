@@ -16,12 +16,6 @@ public class OrganizationMembership : BaseEntity
 
     public UserRole Role { get; set; }
 
-    /// <summary>
-    /// Hoofdtrainer: een trainer met read-only toegang tot inschrijvingen en planning
-    /// (bovenop de gewone trainer-rechten). Enkel relevant wanneer <see cref="Role"/> = Trainer.
-    /// </summary>
-    public bool IsHeadTrainer { get; set; }
-
     public bool IsActive { get; set; } = true;
 
     /// <summary>
@@ -36,6 +30,12 @@ public class OrganizationMembership : BaseEntity
     public string? Notes { get; set; }
 
     public DateTime JoinedAt { get; set; }
+
+    /// <summary>
+    /// Clubs waarvan deze trainer hoofdtrainer is (read-only inschrijvingen + planning).
+    /// Leeg = geen hoofdtrainer. Enkel relevant wanneer <see cref="Role"/> = Trainer.
+    /// </summary>
+    public ICollection<HeadTrainerClub> HeadTrainerClubs { get; set; } = new List<HeadTrainerClub>();
 
     public Organization Organization { get; set; } = null!;
 }

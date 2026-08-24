@@ -42,6 +42,7 @@ public class ApplicationDbContext(
     public DbSet<AssignmentConfirmationToken> AssignmentConfirmationTokens { get; set; } = null!;
     public DbSet<MagicLinkToken> MagicLinkTokens { get; set; } = null!;
     public DbSet<OrganizationMembership> OrganizationMemberships { get; set; } = null!;
+    public DbSet<HeadTrainerClub> HeadTrainerClubs { get; set; } = null!;
     public DbSet<RescheduleRequest> RescheduleRequests { get; set; } = null!;
     public DbSet<LessonInvitation> LessonInvitations { get; set; } = null!;
     public DbSet<OrganizationSettings> OrganizationSettings { get; set; } = null!;
