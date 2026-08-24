@@ -225,11 +225,17 @@
     "ageYears": "{count} jr",
     "unknown": "—",
     "actionsLabel": "Acties voor inschrijving van {name}",
-    "viewDetails": "Details bekijken"
+    "actionsLabelGroup": "Acties voor groep van {name}",
+    "viewDetails": "Details bekijken",
+    "cancelGroup": "Groep annuleren",
+    "cancelGroupTitle": "Groep annuleren?",
+    "cancelGroupBody": "De {count} inschrijvingen van deze groep worden geannuleerd en de plaatsen komen weer vrij. De formulierantwoorden blijven bewaard."
   },
   "enrollmentDetail": {
     "title": "Details inschrijving",
     "sectionBasic": "Gegevens",
+    "sectionMembers": "Leden",
+    "leaderBadge": "leider",
     "sectionAvailability": "Beschikbaarheden",
     "sectionResponses": "Formulierantwoorden",
     "contact": "Contact",

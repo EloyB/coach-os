@@ -410,10 +410,39 @@ function GroupBlockRows({
   setOpenMenuId: (id: string | null) => void;
 }) {
   const t = useTranslations("enrollmentsTable");
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
   const expanded = forceExpanded || open;
 
   const { leader, members } = block;
+  const menuId = `group:${block.groupId}`;
+  const showActionsMenu = openMenuId === menuId;
+  const leaderPendingPayment = leader.status === "PendingPayment";
+
+  const markPaidMutation = useMutation({
+    mutationFn: () => markEnrollmentCashPaid(leader.id),
+    onSuccess: () => {
+      toast.success("Inschrijving gemarkeerd als betaald");
+      queryClient.invalidateQueries({ queryKey: ["enrollments", seriesId] });
+      queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
+    },
+  });
+
+  const cancelGroupMutation = useMutation({
+    mutationFn: () =>
+      Promise.all(
+        members
+          .filter((m) => m.status !== "Cancelled")
+          .map((m) => cancelEnrollment(seriesId, m.id)),
+      ),
+    onSuccess: () => {
+      toast.success("Groep geannuleerd");
+      queryClient.invalidateQueries({ queryKey: ["enrollments", seriesId] });
+      queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
+    },
+  });
 
   return (
     <>
@@ -458,26 +487,178 @@ function GroupBlockRows({
           )}
         </td>
 
-        {/* Acties (leeg voor kop — acties zitten per lid) */}
-        <td className="px-4 py-2.5" />
+        {/* Acties — groepsniveau */}
+        <td className="px-4 py-2.5 text-right whitespace-nowrap">
+          <div className="relative inline-block">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpenMenuId(showActionsMenu ? null : menuId);
+              }}
+              aria-label={t("actionsLabelGroup", { name: leader.studentName })}
+              className="flex h-8 w-8 items-center justify-center rounded-md border border-gray-100 text-gray-400 hover:bg-gray-50 hover:text-gray-700"
+            >
+              <MoreVertical size={15} />
+            </button>
+            {showActionsMenu && (
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="absolute right-0 top-full z-50 mt-1 min-w-48 rounded-lg border border-gray-100 bg-white py-1 text-sm shadow-lg"
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenMenuId(null);
+                    setDetailOpen(true);
+                  }}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                >
+                  <Eye size={13} />
+                  {t("viewDetails")}
+                </button>
+                {leaderPendingPayment && (
+                  <button
+                    type="button"
+                    disabled={markPaidMutation.isPending}
+                    onClick={() => {
+                      setOpenMenuId(null);
+                      markPaidMutation.mutate();
+                    }}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-tennis-green hover:bg-tennis-green/5 disabled:opacity-50"
+                  >
+                    <Euro size={13} />
+                    {t("markPaid")}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  disabled={cancelGroupMutation.isPending}
+                  onClick={() => {
+                    setOpenMenuId(null);
+                    setConfirmCancelOpen(true);
+                  }}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-red-600 hover:bg-red-50 disabled:opacity-50"
+                >
+                  <Trash2 size={13} />
+                  {t("cancelGroup")}
+                </button>
+              </div>
+            )}
+          </div>
+        </td>
       </tr>
 
       {expanded &&
         members.map((m) => (
-          <PersonRow
+          <MemberRow
             key={m.id}
             enrollment={m}
-            seriesId={seriesId}
-            isMember
             isLeader={m.id === leader.id}
             isDuplicate={duplicateIds.has(m.id)}
             isMatch={matchedIds?.has(m.id) ?? false}
-            openMenuId={openMenuId}
-            setOpenMenuId={setOpenMenuId}
-            leaderName={leader.studentName}
           />
         ))}
+
+      <EnrollmentDetailDialog
+        enrollment={leader}
+        seriesId={seriesId}
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        onEdit={() => {}}
+        groupMembers={members}
+      />
+
+      <AlertDialog open={confirmCancelOpen} onOpenChange={setConfirmCancelOpen}>
+        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("cancelGroupTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("cancelGroupBody", { count: members.length })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Terug</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => cancelGroupMutation.mutate()}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Annuleren
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
+  );
+}
+
+// ─── Member row (read-only, binnen een uitgeklapte groep) ───────────────────────
+
+function MemberRow({
+  enrollment,
+  isLeader,
+  isDuplicate,
+  isMatch,
+}: {
+  enrollment: LessonSeriesEnrollmentDto;
+  isLeader: boolean;
+  isDuplicate: boolean;
+  isMatch: boolean;
+}) {
+  const t = useTranslations("enrollmentsTable");
+  const isCancelled = enrollment.status === "Cancelled";
+  const age = computeAge(enrollment.dateOfBirth);
+
+  return (
+    <tr
+      className={`border-t border-gray-50 ${isCancelled ? "opacity-50" : ""} ${
+        isMatch ? "bg-tennis-lime/10" : ""
+      }`}
+    >
+      <td className="px-4 py-2.5 pl-10">
+        <div className="flex min-w-0 items-center gap-2">
+          <User size={13} className="shrink-0 text-gray-300" />
+          <span
+            className={`truncate text-sm font-medium text-gray-800 ${
+              isCancelled ? "line-through" : ""
+            }`}
+          >
+            {enrollment.studentName}
+          </span>
+          {isLeader && (
+            <span className="shrink-0 rounded bg-tennis-green/10 px-1.5 py-0.5 text-[10px] font-semibold text-tennis-green">
+              {t("leader")}
+            </span>
+          )}
+          {isDuplicate && (
+            <Badge className="shrink-0 border-0 bg-amber-100 text-amber-700 text-[10px]">
+              {t("possibleDuplicate")}
+            </Badge>
+          )}
+        </div>
+      </td>
+      <td className="px-4 py-2.5">
+        <span className="block max-w-[220px] truncate text-xs text-gray-500">
+          {contactLine(enrollment, (email) => t("viaContact", { email }))}
+        </span>
+      </td>
+      <td className="px-4 py-2.5 text-xs text-gray-600 whitespace-nowrap">
+        {age != null ? t("ageYears", { count: age }) : t("unknown")}
+      </td>
+      <td className="px-4 py-2.5 text-xs text-gray-500 whitespace-nowrap">
+        {formatEnrolledAt(enrollment.enrolledAt)}
+      </td>
+      <td className="px-4 py-2.5">
+        {enrollmentStatusStyles[enrollment.status] && (
+          <Badge
+            className={`${enrollmentStatusStyles[enrollment.status].className} border-0 text-xs`}
+          >
+            {enrollmentStatusStyles[enrollment.status].label}
+          </Badge>
+        )}
+      </td>
+      <td className="px-4 py-2.5" />
+    </tr>
   );
 }
 

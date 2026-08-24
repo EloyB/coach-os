@@ -41,6 +41,7 @@ export function EnrollmentDetailDialog({
   onOpenChange,
   onEdit,
   leaderName,
+  groupMembers,
 }: {
   enrollment: LessonSeriesEnrollmentDto;
   seriesId: string;
@@ -48,6 +49,8 @@ export function EnrollmentDetailDialog({
   onOpenChange: (open: boolean) => void;
   onEdit: () => void;
   leaderName?: string | null;
+  /** Wanneer gezet: toon een 'Leden'-sectie (groep-detail). `enrollment` = de leider. */
+  groupMembers?: LessonSeriesEnrollmentDto[];
 }) {
   const t = useTranslations("enrollmentDetail");
 
@@ -140,6 +143,42 @@ export function EnrollmentDetailDialog({
           </dl>
         </section>
 
+        {/* Leden (groep-detail) */}
+        {groupMembers && groupMembers.length > 0 && (
+          <section className="space-y-2">
+            <h3 className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+              {t("sectionMembers")}
+            </h3>
+            <ul className="divide-y divide-gray-50 rounded-lg border border-gray-100">
+              {groupMembers.map((m) => {
+                const mAge = computeAge(m.dateOfBirth);
+                const mContact = m.hasOwnEmail
+                  ? (m.studentEmail ?? "")
+                  : t("viaContact", { email: m.contactEmail });
+                return (
+                  <li
+                    key={m.id}
+                    className="flex items-center justify-between gap-3 px-3 py-2 text-sm"
+                  >
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className="font-medium text-gray-800">{m.studentName}</span>
+                      {m.isGroupLeader && (
+                        <span className="shrink-0 rounded bg-tennis-green/10 px-1.5 py-0.5 text-[10px] font-semibold text-tennis-green">
+                          {t("leaderBadge")}
+                        </span>
+                      )}
+                    </span>
+                    <span className="max-w-[55%] shrink-0 truncate text-right text-xs text-gray-500">
+                      {mContact}
+                      {mAge != null ? ` · ${t("ageYears", { count: mAge })}` : ""}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        )}
+
         {/* Formulierantwoorden */}
         <section className="space-y-2">
           <h3 className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
@@ -184,13 +223,15 @@ export function EnrollmentDetailDialog({
           >
             {t("close")}
           </button>
-          <button
-            type="button"
-            onClick={onEdit}
-            className="rounded-lg bg-tennis-green px-3 py-2 text-sm font-medium text-white hover:bg-tennis-green/90"
-          >
-            {t("edit")}
-          </button>
+          {!groupMembers && (
+            <button
+              type="button"
+              onClick={onEdit}
+              className="rounded-lg bg-tennis-green px-3 py-2 text-sm font-medium text-white hover:bg-tennis-green/90"
+            >
+              {t("edit")}
+            </button>
+          )}
         </div>
       </DialogContent>
     </Dialog>
