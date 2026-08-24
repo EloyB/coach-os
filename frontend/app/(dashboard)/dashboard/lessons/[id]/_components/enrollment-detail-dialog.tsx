@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { X } from "lucide-react";
@@ -22,6 +22,8 @@ const DAY_NAMES_SHORT = ["Ma", "Di", "Wo", "Do", "Vr", "Za", "Zo"];
 const PREF_AVAILABLE = 1;
 const PREF_PREFERRED = 2;
 const PREF_UNAVAILABLE = 3;
+
+type TabId = "gegevens" | "leden" | "beschikbaarheden";
 
 function computeAge(dob: string | null): number | null {
   if (!dob) return null;
@@ -87,11 +89,19 @@ export function EnrollmentDetailDialog({
         ? t("leader")
         : t("memberOf", { group: leaderName ? `Groep · ${leaderName}` : t("solo") });
 
+  const hasGroup = !!(groupMembers && groupMembers.length > 0);
+  const tabs: { id: TabId; label: string }[] = [
+    { id: "gegevens", label: t("sectionBasic") },
+    ...(hasGroup ? [{ id: "leden" as TabId, label: t("tabMembers") }] : []),
+    { id: "beschikbaarheden", label: t("sectionAvailability") },
+  ];
+  const [activeTab, setActiveTab] = useState<TabId>("gegevens");
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[85vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg"
+        className="flex max-h-[85vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-xl"
       >
         {/* Scrollbaar deel */}
         <div className="flex flex-col gap-4 overflow-y-auto px-6 pt-6 pb-2">
@@ -111,101 +121,111 @@ export function EnrollmentDetailDialog({
           </DialogTitle>
         </DialogHeader>
 
-        {/* Basisgegevens */}
-        <section className="space-y-2">
-          <h3 className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
-            {t("sectionBasic")}
-          </h3>
-          <dl className="grid grid-cols-[130px_1fr] gap-x-3 gap-y-1.5 text-sm">
-            <DetailRow label={t("contact")} value={contact} />
-            {enrollment.studentPhone && (
-              <DetailRow label="Telefoon" value={enrollment.studentPhone} />
-            )}
-            <DetailRow
-              label={t("birthDate")}
-              value={
-                enrollment.dateOfBirth
-                  ? `${new Date(enrollment.dateOfBirth + "T00:00:00").toLocaleDateString("nl-BE")}${
-                      age != null ? ` (${t("ageYears", { count: age })})` : ""
-                    }`
-                  : t("unknown")
-              }
-            />
-            {enrollment.categoryLabel && (
-              <DetailRow label={t("category")} value={enrollment.categoryLabel} />
-            )}
-            <DetailRow
-              label={t("enrolledAt")}
-              value={new Date(enrollment.enrolledAt).toLocaleDateString("nl-BE")}
-            />
-            <DetailRow
-              label={t("openToGrouping")}
-              value={enrollment.isOpenToGrouping ? t("yes") : t("no")}
-            />
-          </dl>
-        </section>
+        {/* Tab-balk */}
+        <div role="tablist" className="flex gap-1 border-b border-gray-100">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors ${
+                activeTab === tab.id
+                  ? "border-tennis-green text-tennis-green"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
-        {/* Leden (groep-detail) */}
-        {groupMembers && groupMembers.length > 0 && (
-          <section className="space-y-2">
-            <h3 className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
-              {t("sectionMembers")}
-            </h3>
-            <ul className="divide-y divide-gray-50 rounded-lg border border-gray-100">
-              {groupMembers.map((m) => {
-                const mAge = computeAge(m.dateOfBirth);
-                const mContact = m.hasOwnEmail
-                  ? (m.studentEmail ?? "")
-                  : t("viaContact", { email: m.contactEmail });
-                return (
-                  <li
-                    key={m.id}
-                    className="flex items-center justify-between gap-3 px-3 py-2 text-sm"
-                  >
-                    <span className="flex min-w-0 items-center gap-2">
-                      <span className="font-medium text-gray-800">{m.studentName}</span>
-                      {m.isGroupLeader && (
-                        <span className="shrink-0 rounded bg-tennis-green/10 px-1.5 py-0.5 text-[10px] font-semibold text-tennis-green">
-                          {t("leaderBadge")}
-                        </span>
-                      )}
-                    </span>
-                    <span className="max-w-[55%] shrink-0 truncate text-right text-xs text-gray-500">
-                      {mContact}
-                      {mAge != null ? ` · ${t("ageYears", { count: mAge })}` : ""}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
+        {/* Tab: Gegevens (basis + formulierantwoorden) */}
+        {activeTab === "gegevens" && (
+          <div className="space-y-5">
+            <dl className="grid grid-cols-[130px_1fr] gap-x-3 gap-y-1.5 text-sm">
+              <DetailRow label={t("contact")} value={contact} />
+              {enrollment.studentPhone && (
+                <DetailRow label="Telefoon" value={enrollment.studentPhone} />
+              )}
+              <DetailRow
+                label={t("birthDate")}
+                value={
+                  enrollment.dateOfBirth
+                    ? `${new Date(enrollment.dateOfBirth + "T00:00:00").toLocaleDateString("nl-BE")}${
+                        age != null ? ` (${t("ageYears", { count: age })})` : ""
+                      }`
+                    : t("unknown")
+                }
+              />
+              {enrollment.categoryLabel && (
+                <DetailRow label={t("category")} value={enrollment.categoryLabel} />
+              )}
+              <DetailRow
+                label={t("enrolledAt")}
+                value={new Date(enrollment.enrolledAt).toLocaleDateString("nl-BE")}
+              />
+              <DetailRow
+                label={t("openToGrouping")}
+                value={enrollment.isOpenToGrouping ? t("yes") : t("no")}
+              />
+            </dl>
+
+            <div className="space-y-2">
+              <h3 className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                {t("sectionResponses")}
+              </h3>
+              {enrollment.formResponses.length === 0 ? (
+                <p className="text-sm text-gray-400">{t("noResponses")}</p>
+              ) : (
+                <dl className="space-y-1.5">
+                  {enrollment.formResponses.map((r, i) => (
+                    <div key={i} className="grid grid-cols-[130px_1fr] gap-x-3 text-sm">
+                      <dt className="text-gray-500">{r.fieldLabel}</dt>
+                      <dd className="font-medium text-gray-800">{r.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
+            </div>
+          </div>
         )}
 
-        {/* Formulierantwoorden */}
-        <section className="space-y-2">
-          <h3 className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
-            {t("sectionResponses")}
-          </h3>
-          {enrollment.formResponses.length === 0 ? (
-            <p className="text-sm text-gray-400">{t("noResponses")}</p>
-          ) : (
-            <dl className="space-y-1.5">
-              {enrollment.formResponses.map((r, i) => (
-                <div key={i} className="grid grid-cols-[130px_1fr] gap-x-3 text-sm">
-                  <dt className="text-gray-500">{r.fieldLabel}</dt>
-                  <dd className="font-medium text-gray-800">{r.value}</dd>
-                </div>
-              ))}
-            </dl>
-          )}
-        </section>
+        {/* Tab: Groepsleden */}
+        {activeTab === "leden" && hasGroup && (
+          <ul className="divide-y divide-gray-50 rounded-lg border border-gray-100">
+            {groupMembers!.map((m) => {
+              const mAge = computeAge(m.dateOfBirth);
+              const mContact = m.hasOwnEmail
+                ? (m.studentEmail ?? "")
+                : t("viaContact", { email: m.contactEmail });
+              return (
+                <li
+                  key={m.id}
+                  className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm"
+                >
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span className="font-medium text-gray-800">{m.studentName}</span>
+                    {m.isGroupLeader && (
+                      <span className="shrink-0 rounded bg-tennis-green/10 px-1.5 py-0.5 text-[10px] font-semibold text-tennis-green">
+                        {t("leaderBadge")}
+                      </span>
+                    )}
+                  </span>
+                  <span className="max-w-[55%] shrink-0 truncate text-right text-xs text-gray-500">
+                    {mContact}
+                    {mAge != null ? ` · ${t("ageYears", { count: mAge })}` : ""}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
 
-        {/* Beschikbaarheden */}
-        <section className="space-y-2">
-          <h3 className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
-            {t("sectionAvailability")}
-          </h3>
-          {slotsLoading || prefsLoading ? (
+        {/* Tab: Beschikbaarheden */}
+        {activeTab === "beschikbaarheden" &&
+          (slotsLoading || prefsLoading ? (
             <p className="text-sm text-gray-400">{t("loading")}</p>
           ) : prefMap.size === 0 ? (
             <p className="text-sm text-gray-400">
@@ -213,8 +233,7 @@ export function EnrollmentDetailDialog({
             </p>
           ) : (
             <AvailabilityGrid timeSlots={timeSlots} prefMap={prefMap} t={t} />
-          )}
-        </section>
+          ))}
         </div>
 
         {/* Footer (vast onderaan; scrollt niet mee) */}
