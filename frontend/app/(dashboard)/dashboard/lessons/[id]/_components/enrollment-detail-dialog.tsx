@@ -299,14 +299,20 @@ function AvailabilityGrid({
   }, [timeSlots]);
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       <div className="overflow-x-auto">
-        <table className="border-collapse text-sm">
+        <table className="w-full table-fixed border-collapse text-sm">
+          <colgroup>
+            <col style={{ width: "6.5rem" }} />
+            {days.map((d) => (
+              <col key={d} />
+            ))}
+          </colgroup>
           <thead>
             <tr className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
-              <th className="py-1 pr-3 text-left font-semibold" />
+              <th className="py-2 pr-3 text-left font-semibold" />
               {days.map((d) => (
-                <th key={d} className="px-3 py-1 text-center font-semibold">
+                <th key={d} className="px-2 py-2 text-center font-semibold">
                   {DAY_NAMES_SHORT[d]}
                 </th>
               ))}
@@ -315,11 +321,13 @@ function AvailabilityGrid({
           <tbody>
             {ranges.map((range) => (
               <tr key={range} className="border-t border-gray-100">
-                <td className="whitespace-nowrap py-2 pr-3 text-xs text-gray-600">{range}</td>
+                <td className="whitespace-nowrap py-3.5 pr-3 text-xs text-gray-600">
+                  {range}
+                </td>
                 {days.map((d) => {
                   const slots = cells.get(`${range}|${d}`) ?? [];
                   return (
-                    <td key={d} className="px-3 py-2 text-center">
+                    <td key={d} className="px-2 py-3.5 text-center">
                       {slots.length === 0 ? (
                         <span className="text-gray-200">·</span>
                       ) : (
