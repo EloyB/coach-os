@@ -15,6 +15,7 @@ public class SetHeadTrainerClubsRequestValidator : AbstractValidator<SetHeadTrai
 
         RuleFor(x => x.ClubIds)
             .Must(ids => ids.Distinct().Count() == ids.Count)
+            .When(x => x.ClubIds is not null)
             .WithMessage("Dubbele club-id's zijn niet toegestaan.");
     }
 }
