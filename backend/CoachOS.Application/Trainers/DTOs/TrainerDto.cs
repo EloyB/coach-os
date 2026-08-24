@@ -14,6 +14,6 @@ public class TrainerDto
     public string? Notes { get; set; }
     public DateTime CreatedAt { get; set; }
 
-    /// <summary>Hoofdtrainer: read-only toegang tot inschrijvingen + planning.</summary>
-    public bool IsHeadTrainer { get; set; }
+    /// <summary>Clubs waarvan deze trainer hoofdtrainer is (read-only inschrijvingen + planning). Leeg = geen hoofdtrainer.</summary>
+    public List<Guid> HeadTrainerClubIds { get; set; } = [];
 }
