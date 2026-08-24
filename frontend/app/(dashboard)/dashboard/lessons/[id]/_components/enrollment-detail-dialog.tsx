@@ -42,7 +42,6 @@ export function EnrollmentDetailDialog({
   open,
   onOpenChange,
   onEdit,
-  leaderName,
   groupMembers,
 }: {
   enrollment: LessonSeriesEnrollmentDto;
@@ -50,7 +49,6 @@ export function EnrollmentDetailDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onEdit: () => void;
-  leaderName?: string | null;
   /** Wanneer gezet: toon een 'Leden'-sectie (groep-detail). `enrollment` = de leider. */
   groupMembers?: LessonSeriesEnrollmentDto[];
 }) {
@@ -82,13 +80,6 @@ export function EnrollmentDetailDialog({
     ? (enrollment.studentEmail ?? "")
     : t("viaContact", { email: enrollment.contactEmail });
 
-  const roleBadge =
-    enrollment.enrollmentGroupId == null
-      ? t("solo")
-      : enrollment.isGroupLeader
-        ? t("leader")
-        : t("memberOf", { group: leaderName ? `Groep · ${leaderName}` : t("solo") });
-
   const hasGroup = !!(groupMembers && groupMembers.length > 0);
   const tabs: { id: TabId; label: string }[] = [
     { id: "gegevens", label: t("sectionBasic") },
@@ -108,9 +99,6 @@ export function EnrollmentDetailDialog({
         <DialogHeader>
           <DialogTitle className="flex flex-wrap items-center gap-2">
             {enrollment.studentName}
-            <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[11px] font-medium text-gray-600">
-              {roleBadge}
-            </span>
             {enrollmentStatusStyles[enrollment.status] && (
               <Badge
                 className={`${enrollmentStatusStyles[enrollment.status].className} border-0 text-xs`}

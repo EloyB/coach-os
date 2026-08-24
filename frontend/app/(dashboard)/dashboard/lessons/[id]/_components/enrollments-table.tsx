@@ -165,7 +165,6 @@ function PersonRow({
   isMatch,
   openMenuId,
   setOpenMenuId,
-  leaderName,
 }: {
   enrollment: LessonSeriesEnrollmentDto;
   seriesId: string;
@@ -175,7 +174,6 @@ function PersonRow({
   isMatch: boolean;
   openMenuId: string | null;
   setOpenMenuId: (id: string | null) => void;
-  leaderName?: string | null;
 }) {
   const t = useTranslations("enrollmentsTable");
   const queryClient = useQueryClient();
@@ -355,7 +353,6 @@ function PersonRow({
           setDetailOpen(false);
           setEditing(true);
         }}
-        leaderName={leaderName}
       />
 
       <EditEnrollmentDialog
