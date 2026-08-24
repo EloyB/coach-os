@@ -5,7 +5,7 @@ namespace CoachOS.Application.LessonSerie;
 
 public interface ILessonSerieService
 {
-    Task<Result<List<LessonSerieDto>>> GetAllAsync(Guid organizationId, Guid? trainerId = null, CancellationToken ct = default);
+    Task<Result<List<LessonSerieDto>>> GetAllAsync(Guid organizationId, Guid? trainerId, IReadOnlyList<Guid> headTrainerClubIds, CancellationToken ct = default);
     Task<Result<LessonSerieDto>> GetByIdAsync(Guid id, Guid organizationId, CancellationToken ct = default);
     Task<Result<List<LessonSerieMemberDto>>> GetMembersAsync(Guid organizationId, CancellationToken ct = default);
     Task<Result<Guid>> CreateAsync(Guid organizationId, CreateLessonSerieRequest request, CancellationToken ct = default);

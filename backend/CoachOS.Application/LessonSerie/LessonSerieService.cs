@@ -17,10 +17,10 @@ public class LessonSerieService(
     ApplicationMapper mapper) : ILessonSerieService
 {
     public async Task<Result<List<LessonSerieDto>>> GetAllAsync(
-        Guid organizationId, Guid? trainerId = null, CancellationToken ct = default)
+        Guid organizationId, Guid? trainerId, IReadOnlyList<Guid> headTrainerClubIds, CancellationToken ct = default)
     {
         IReadOnlyList<Domain.Entities.LessonSerie> seriesList =
-            await lessonSeriesRepo.GetByOrganizationAsync(organizationId, trainerId, ct);
+            await lessonSeriesRepo.GetByOrganizationAsync(organizationId, trainerId, headTrainerClubIds, ct);
 
         if (seriesList.Count == 0)
             return Result<List<LessonSerieDto>>.Ok([]);
