@@ -87,6 +87,7 @@ function LoginForm() {
         role: response.role,
         memberships: response.memberships,
         isSuperAdmin: response.isSuperAdmin,
+        isHeadTrainer: response.isHeadTrainer,
       });
       const landing = response.isSuperAdmin ? "/super-admin/dashboard" : "/dashboard";
       router.push(redirectTo ?? landing);

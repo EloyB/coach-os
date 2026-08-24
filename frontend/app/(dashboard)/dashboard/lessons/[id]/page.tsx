@@ -74,7 +74,7 @@ import type {
 
 import { getTennisClubs } from "@/lib/api/tennisClubs";
 import { getMollieConnectionStatus } from "@/lib/api/mollieConnect";
-import { getAuthUser } from "@/lib/auth";
+import { getAuthUser, isHeadTrainerViewer } from "@/lib/auth";
 import { FieldError } from "@/components/forms/field-error";
 import { DatePicker } from "@/components/ui/date-picker";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -1733,6 +1733,8 @@ function EnrollmentRow({
   // eigen betaling en zouden een 404 uitlokken.
   const ownsPayment =
     enrollment.enrollmentGroupId == null || enrollment.isGroupLeader;
+  // Hoofdtrainer = read-only: geen bewerk-/betaalacties.
+  const readOnly = isHeadTrainerViewer();
 
   async function handleCancelEnrollment() {
     setCancelling(true);
@@ -1766,8 +1768,15 @@ function EnrollmentRow({
   return (
     <div className="border-b border-gray-50 last:border-b-0">
       <div
-        className={`flex items-center justify-between px-5 py-3 ${!isCancelled ? "cursor-pointer hover:bg-gray-50/50" : ""} ${isCancelled ? "opacity-50" : ""}`}
-        onClick={() => !isCancelled && setEditing(true)}
+        className={`flex items-center justify-between px-5 py-3 ${!isCancelled && (!readOnly || hasResponses) ? "cursor-pointer hover:bg-gray-50/50" : ""} ${isCancelled ? "opacity-50" : ""}`}
+        onClick={() => {
+          if (isCancelled) return;
+          if (readOnly) {
+            if (hasResponses) setExpanded((v) => !v);
+          } else {
+            setEditing(true);
+          }
+        }}
       >
         <div className="flex-1 min-w-0">
           <p
@@ -1795,7 +1804,7 @@ function EnrollmentRow({
               {enrollmentStatusStyles[enrollment.status].label}
             </Badge>
           )}
-          {isPendingPayment && ownsPayment && (
+          {!readOnly && isPendingPayment && ownsPayment && (
             <button
               onClick={handleMarkCashPaid}
               disabled={markingPaid}
@@ -1806,6 +1815,7 @@ function EnrollmentRow({
               Markeer als betaald
             </button>
           )}
+          {!readOnly && (
           <div className="relative">
             <button
               type="button"
@@ -1867,6 +1877,7 @@ function EnrollmentRow({
               </div>
             )}
           </div>
+          )}
         </div>
       </div>
 

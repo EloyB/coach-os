@@ -13,6 +13,7 @@ export interface TrainerDto {
   weeklyCapacityHours: number;
   notes: string | null;
   createdAt: string;
+  isHeadTrainer: boolean;
 }
 
 export interface InviteTrainerRequest {
@@ -52,6 +53,14 @@ export async function updateTrainer(
   req: UpdateTrainerRequest,
 ): Promise<void> {
   await apiClient.put(`/trainers/${id}`, req);
+}
+
+/** Zet de hoofdtrainer-vlag aan/uit (admin-only). */
+export async function setHeadTrainer(
+  id: string,
+  isHeadTrainer: boolean,
+): Promise<void> {
+  await apiClient.put(`/trainers/${id}/head-trainer`, { isHeadTrainer });
 }
 
 export async function acceptInvite(req: AcceptInviteRequest): Promise<AuthResponse> {

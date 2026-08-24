@@ -15,6 +15,7 @@ import {
   Pencil,
   StickyNote,
   CalendarClock,
+  Crown,
 } from "lucide-react";
 import { TrainerAvailabilityDialog } from "./_components/trainer-availability-dialog";
 import { Mono } from "@/components/ui/mono";
@@ -26,6 +27,7 @@ import {
   reassignTrainerSeries,
   removeTrainer,
   resendTrainerInvite,
+  setHeadTrainer,
   TrainerDto,
 } from "@/lib/api/trainers";
 import { Textarea } from "@/components/ui/textarea";
@@ -492,6 +494,12 @@ export default function TrainersPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["trainers"] }),
   });
 
+  const headTrainerMutation = useMutation({
+    mutationFn: ({ id, value }: { id: string; value: boolean }) =>
+      setHeadTrainer(id, value),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["trainers"] }),
+  });
+
   const removeMutation = useMutation({
     mutationFn: removeTrainer,
     onSuccess: () => {
@@ -620,6 +628,12 @@ export default function TrainersPage() {
                             <title>{tr.notes}</title>
                           </StickyNote>
                         )}
+                        {tr.isHeadTrainer && (
+                          <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-tennis-lime/30 px-1.5 py-0.5 text-[9px] font-semibold text-tennis-green">
+                            <Crown size={9} />
+                            {t("headTrainerBadge")}
+                          </span>
+                        )}
                       </p>
                       {isSelfAdmin ? (
                         <span className="text-[10px] px-2 py-0.5 rounded-full bg-tennis-lime/30 text-tennis-green font-semibold">
@@ -684,6 +698,21 @@ export default function TrainersPage() {
                           </span>
                         ) : (
                           <>
+                            <button
+                              onClick={() =>
+                                headTrainerMutation.mutate({ id: tr.id, value: !tr.isHeadTrainer })
+                              }
+                              disabled={headTrainerMutation.isPending}
+                              title={tr.isHeadTrainer ? t("removeHeadTrainer") : t("makeHeadTrainer")}
+                              aria-label={tr.isHeadTrainer ? t("removeHeadTrainer") : t("makeHeadTrainer")}
+                              className={`p-1.5 rounded transition-all disabled:opacity-50 ${
+                                tr.isHeadTrainer
+                                  ? "text-tennis-green bg-tennis-green/10"
+                                  : "opacity-0 group-hover:opacity-100 text-ink-3 hover:text-tennis-green hover:bg-tennis-green/10"
+                              }`}
+                            >
+                              <Crown size={14} />
+                            </button>
                             <button
                               onClick={() => setAvailabilityTrainer(tr)}
                               title={t("availabilityButton")}
