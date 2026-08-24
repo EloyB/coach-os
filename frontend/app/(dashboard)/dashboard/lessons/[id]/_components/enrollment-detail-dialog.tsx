@@ -140,22 +140,6 @@ export function EnrollmentDetailDialog({
           </dl>
         </section>
 
-        {/* Beschikbaarheden */}
-        <section className="space-y-2">
-          <h3 className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
-            {t("sectionAvailability")}
-          </h3>
-          {slotsLoading || prefsLoading ? (
-            <p className="text-sm text-gray-400">{t("loading")}</p>
-          ) : prefMap.size === 0 ? (
-            <p className="text-sm text-gray-400">
-              {isMember ? t("availabilityViaLeader") : t("noAvailability")}
-            </p>
-          ) : (
-            <AvailabilityGrid timeSlots={timeSlots} prefMap={prefMap} t={t} />
-          )}
-        </section>
-
         {/* Formulierantwoorden */}
         <section className="space-y-2">
           <h3 className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
@@ -172,6 +156,22 @@ export function EnrollmentDetailDialog({
                 </div>
               ))}
             </dl>
+          )}
+        </section>
+
+        {/* Beschikbaarheden */}
+        <section className="space-y-2">
+          <h3 className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+            {t("sectionAvailability")}
+          </h3>
+          {slotsLoading || prefsLoading ? (
+            <p className="text-sm text-gray-400">{t("loading")}</p>
+          ) : prefMap.size === 0 ? (
+            <p className="text-sm text-gray-400">
+              {isMember ? t("availabilityViaLeader") : t("noAvailability")}
+            </p>
+          ) : (
+            <AvailabilityGrid timeSlots={timeSlots} prefMap={prefMap} t={t} />
           )}
         </section>
 
