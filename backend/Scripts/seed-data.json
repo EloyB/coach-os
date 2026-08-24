@@ -48,6 +48,11 @@
       "email": "pieter@deaces.be"
     }
   ],
+  "headTrainer": {
+    "trainerIndex": 0,
+    "clubIndex": 0,
+    "password": "Demo1234!"
+  },
   "simpleSeries": [
     {
       "name": "Voorjaarslessen Beginners",
