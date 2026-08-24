@@ -48,15 +48,19 @@ public sealed class TokenService(IConfiguration configuration)
         SymmetricSecurityKey securityKey = new(Encoding.UTF8.GetBytes(key));
         SigningCredentials credentials = new(securityKey, SecurityAlgorithms.HmacSha256);
 
-        Claim[] claims =
+        List<Claim> claims =
         [
             new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new(JwtRegisteredClaimNames.Email, user.Email!),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             new(ClaimTypes.Role, membership.Role.ToString()),
-            new("organizationId", membership.OrganizationId.ToString()),
-            new("isHeadTrainer", membership.IsHeadTrainer ? "true" : "false")
+            new("organizationId", membership.OrganizationId.ToString())
         ];
+
+        foreach (HeadTrainerClub grant in membership.HeadTrainerClubs)
+        {
+            claims.Add(new Claim("headTrainerClub", grant.TennisClubId.ToString()));
+        }
 
         var expiresAt = DateTime.UtcNow.AddMinutes(expiryMinutes);
 

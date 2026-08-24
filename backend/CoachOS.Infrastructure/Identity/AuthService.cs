@@ -294,6 +294,7 @@ public class AuthService(
 
         var pendings = await context.OrganizationMemberships
             .Include(m => m.Organization)
+            .Include(m => m.HeadTrainerClubs)
             .Where(m => m.UserId == user.Id && !m.IsActive)
             .ToListAsync(cancellationToken);
 
@@ -391,6 +392,7 @@ public class AuthService(
         return await context.OrganizationMemberships
             .AsNoTracking()
             .Include(m => m.Organization)
+            .Include(m => m.HeadTrainerClubs)
             .Where(m => m.UserId == userId && m.IsActive)
             .OrderBy(m => m.Organization.Name)
             .ToListAsync(ct);
@@ -412,7 +414,7 @@ public class AuthService(
             LastName = user.LastName,
             OrganizationId = active.OrganizationId,
             Role = active.Role.ToString(),
-            IsHeadTrainer = active.IsHeadTrainer,
+            HeadTrainerClubIds = active.HeadTrainerClubs.Select(h => h.TennisClubId).ToList(),
             Memberships = all.Select(ToDto).ToList()
         });
     }
