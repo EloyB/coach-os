@@ -1,3 +1,4 @@
+using CoachOS.API.Auth;
 using CoachOS.API.Extensions;
 using CoachOS.Application.Planning;
 
@@ -13,7 +14,7 @@ public class GetPlanningEndpoint : IEndpoint
                 var result = await service.GetPlanningOverviewAsync(id, ctx.GetOrganizationId(), ct);
                 return result.IsSuccess ? Results.Ok(result.Value) : result.ToErrorResult();
             })
-        .RequireAuthorization(policy => policy.RequireRole("Admin"))
+        .RequireAuthorization(AuthorizationPolicies.EnrollmentsPlanningRead)
         .WithTags("Planning");
     }
 }

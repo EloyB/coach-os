@@ -98,6 +98,13 @@ public static class ConfigurationExtensions
                 options.AddPolicy(AuthorizationPolicies.SuperAdmin, policy =>
                     policy.RequireAuthenticatedUser()
                           .RequireClaim(CoachOsClaims.IsSuperAdmin, "true"));
+
+                // Read-only inschrijvingen + planning: Admin of hoofdtrainer.
+                options.AddPolicy(AuthorizationPolicies.EnrollmentsPlanningRead, policy =>
+                    policy.RequireAuthenticatedUser()
+                          .RequireAssertion(ctx =>
+                              ctx.User.IsInRole("Admin") ||
+                              ctx.User.HasClaim(CoachOsClaims.IsHeadTrainer, "true")));
             });
 
             return services;

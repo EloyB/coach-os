@@ -54,7 +54,8 @@ public sealed class TokenService(IConfiguration configuration)
             new(JwtRegisteredClaimNames.Email, user.Email!),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             new(ClaimTypes.Role, membership.Role.ToString()),
-            new("organizationId", membership.OrganizationId.ToString())
+            new("organizationId", membership.OrganizationId.ToString()),
+            new("isHeadTrainer", membership.IsHeadTrainer ? "true" : "false")
         ];
 
         var expiresAt = DateTime.UtcNow.AddMinutes(expiryMinutes);

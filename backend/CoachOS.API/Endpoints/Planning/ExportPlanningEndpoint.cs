@@ -1,3 +1,4 @@
+using CoachOS.API.Auth;
 using CoachOS.API.Extensions;
 using CoachOS.Application.Export;
 
@@ -15,7 +16,7 @@ public class ExportPlanningEndpoint : IEndpoint
                     ? Results.File(result.Value!.Content, result.Value.ContentType, result.Value.FileName)
                     : result.ToErrorResult();
             })
-        .RequireAuthorization(policy => policy.RequireRole("Admin"))
+        .RequireAuthorization(AuthorizationPolicies.EnrollmentsPlanningRead)
         .WithTags("Planning");
     }
 }

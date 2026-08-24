@@ -16,6 +16,12 @@ public class OrganizationMembership : BaseEntity
 
     public UserRole Role { get; set; }
 
+    /// <summary>
+    /// Hoofdtrainer: een trainer met read-only toegang tot inschrijvingen en planning
+    /// (bovenop de gewone trainer-rechten). Enkel relevant wanneer <see cref="Role"/> = Trainer.
+    /// </summary>
+    public bool IsHeadTrainer { get; set; }
+
     public bool IsActive { get; set; } = true;
 
     /// <summary>

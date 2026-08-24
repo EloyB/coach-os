@@ -412,6 +412,7 @@ public class AuthService(
             LastName = user.LastName,
             OrganizationId = active.OrganizationId,
             Role = active.Role.ToString(),
+            IsHeadTrainer = active.IsHeadTrainer,
             Memberships = all.Select(ToDto).ToList()
         });
     }

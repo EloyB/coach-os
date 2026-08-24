@@ -154,6 +154,7 @@ public class TrainerService(
                     .Count(ls => ls.Lessons.Any(l => l.TrainerId == u.Id) && ls.OrganizationId == organizationId && ls.IsActive),
                 WeeklyCapacityHours = m.WeeklyCapacityHours,
                 Notes = m.Notes,
+                IsHeadTrainer = m.IsHeadTrainer,
             };
 
         List<TrainerDto> trainers = await query.ToListAsync(ct);
@@ -222,6 +223,26 @@ public class TrainerService(
         user.FirstName = request.FirstName.Trim();
         user.LastName = request.LastName.Trim();
 
+        await context.SaveChangesAsync(ct);
+        return Result.Ok();
+    }
+
+    public async Task<Result> SetHeadTrainerAsync(
+        Guid trainerId,
+        Guid organizationId,
+        bool isHeadTrainer,
+        CancellationToken ct = default)
+    {
+        // Enkel trainers kunnen hoofdtrainer worden (admins hebben al alle rechten).
+        OrganizationMembership? membership = await context.OrganizationMemberships
+            .FirstOrDefaultAsync(m => m.UserId == trainerId
+                && m.OrganizationId == organizationId
+                && m.Role == UserRole.Trainer, ct);
+
+        if (membership is null)
+            return Result.Fail(new Error(ErrorCodes.NotFound, "Trainer niet gevonden in deze organisatie."));
+
+        membership.IsHeadTrainer = isHeadTrainer;
         await context.SaveChangesAsync(ct);
         return Result.Ok();
     }

@@ -10,4 +10,7 @@ public static class CoachOsClaims
 
     /// <summary>Organization id voor org-scoped tokens. Afwezig op super-admin tokens.</summary>
     public const string OrganizationId = "organizationId";
+
+    /// <summary>"true" als de trainer hoofdtrainer is (read-only inschrijvingen + planning).</summary>
+    public const string IsHeadTrainer = "isHeadTrainer";
 }

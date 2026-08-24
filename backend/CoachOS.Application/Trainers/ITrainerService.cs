@@ -29,6 +29,13 @@ public interface ITrainerService
         UpdateTrainerRequest request,
         CancellationToken ct = default);
 
+    /// <summary>Zet de hoofdtrainer-vlag aan/uit voor een trainer in deze organisatie.</summary>
+    Task<Result> SetHeadTrainerAsync(
+        Guid trainerId,
+        Guid organizationId,
+        bool isHeadTrainer,
+        CancellationToken ct = default);
+
     Task<Result> ResendInviteAsync(
         Guid trainerId,
         Guid organizationId,

@@ -13,4 +13,7 @@ public class TrainerDto
     public int WeeklyCapacityHours { get; set; }
     public string? Notes { get; set; }
     public DateTime CreatedAt { get; set; }
+
+    /// <summary>Hoofdtrainer: read-only toegang tot inschrijvingen + planning.</summary>
+    public bool IsHeadTrainer { get; set; }
 }
