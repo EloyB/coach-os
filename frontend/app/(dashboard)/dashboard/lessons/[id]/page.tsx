@@ -1733,8 +1733,10 @@ function EnrollmentRow({
   // eigen betaling en zouden een 404 uitlokken.
   const ownsPayment =
     enrollment.enrollmentGroupId == null || enrollment.isGroupLeader;
-  // Hoofdtrainer = read-only: geen bewerk-/betaalacties.
-  const readOnly = isHeadTrainerViewer();
+  // Hoofdtrainer = read-only: geen bewerk-/betaalacties. Reactief zodat het na
+  // hydration klopt (localStorage is er niet bij SSR).
+  const [readOnly, setReadOnly] = useState(false);
+  useEffect(() => setReadOnly(isHeadTrainerViewer()), []);
 
   async function handleCancelEnrollment() {
     setCancelling(true);
