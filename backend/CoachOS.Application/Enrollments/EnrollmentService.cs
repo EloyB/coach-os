@@ -536,7 +536,7 @@ public class EnrollmentService(
     public async Task<Result<List<PublicTimeSlotDto>>> GetPublicTimeSlotsAsync(
         Guid lessonSeriesId, CancellationToken ct = default)
     {
-        var series = await lessonSeriesRepo.GetByIdPublicAsync(lessonSeriesId, ct);
+        var series = await lessonSeriesRepo.GetByIdPublicForTimeSlotsAsync(lessonSeriesId, ct);
 
         if (series is null)
             return Result<List<PublicTimeSlotDto>>.Fail(
