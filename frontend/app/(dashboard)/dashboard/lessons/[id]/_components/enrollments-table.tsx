@@ -45,6 +45,7 @@ import { enrollmentStatusStyles } from "@/lib/status-styles";
 import {
   getLessonSeriesEnrollments,
   cancelEnrollment,
+  cancelEnrollmentGroup,
   markEnrollmentCashPaid,
   updateBasicEnrollment,
 } from "@/lib/api/enrollments";
@@ -435,16 +436,14 @@ function GroupBlockRows({
   });
 
   const cancelGroupMutation = useMutation({
-    mutationFn: () =>
-      Promise.all(
-        members
-          .filter((m) => m.status !== "Cancelled")
-          .map((m) => cancelEnrollment(seriesId, m.id)),
-      ),
+    mutationFn: () => cancelEnrollmentGroup(seriesId, block.groupId),
     onSuccess: () => {
       toast.success("Groep geannuleerd");
       queryClient.invalidateQueries({ queryKey: ["enrollments", seriesId] });
       queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
+    },
+    onError: () => {
+      toast.error("Kon de groep niet annuleren");
     },
   });
 

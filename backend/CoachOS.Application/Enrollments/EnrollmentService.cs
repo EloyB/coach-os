@@ -734,6 +734,43 @@ public class EnrollmentService(
         return Result<bool>.Ok(true);
     }
 
+    public async Task<Result<bool>> CancelGroupAsync(
+        Guid lessonSeriesId, Guid groupId, Guid organizationId, CancellationToken ct = default)
+    {
+        // GetByIdAsync filtert op organizationId (autorisatiecheck) en laadt de leden mee.
+        EnrollmentGroup? group = await enrollmentGroupRepo.GetByIdAsync(groupId, organizationId, ct);
+        if (group is null)
+            return Result<bool>.Fail(new Error(ErrorCodes.NotFound, "Groep niet gevonden."));
+
+        // De groep moet bij de reeks uit de route horen (cross-serie guard).
+        if (group.LessonSerieId != lessonSeriesId)
+            return Result<bool>.Fail(new Error(ErrorCodes.NotFound, "Groep niet gevonden."));
+
+        List<Enrollment> active = group.Members
+            .Where(m => m.Status != EnrollmentStatus.Cancelled)
+            .ToList();
+
+        if (active.Count == 0)
+            return Result<bool>.Fail(new Error(ErrorCodes.Validation, "Deze groep is al geannuleerd."));
+
+        DateTime now = DateTime.UtcNow;
+        foreach (Enrollment member in active)
+        {
+            member.Status = EnrollmentStatus.Cancelled;
+            member.UpdatedAt = now;
+        }
+
+        // Eén SaveChanges = één impliciete transactie: alles-of-niets. De leden zijn
+        // getrackt door dezelfde DbContext (GetByIdAsync include't ze zonder AsNoTracking).
+        await enrollmentGroupRepo.SaveChangesAsync(ct);
+
+        logger.LogInformation(
+            "Groep {GroupId} ({Count} leden) geannuleerd door beheerder in organisatie {OrganizationId}",
+            groupId, active.Count, organizationId);
+
+        return Result<bool>.Ok(true);
+    }
+
     /// <summary>
     /// Parseert de geboortedatum uit het request. De validator heeft het formaat al
     /// afgedwongen; faalt het hier toch, dan slaan we null op in plaats van te crashen —

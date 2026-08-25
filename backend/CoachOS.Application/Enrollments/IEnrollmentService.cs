@@ -39,4 +39,12 @@ public interface IEnrollmentService
     /// </summary>
     Task<Result<bool>> CancelEnrollmentAsync(
         Guid lessonSeriesId, Guid enrollmentId, Guid organizationId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Annuleert een volledige groep atomair: alle nog-actieve leden worden in één
+    /// transactie (één SaveChanges) op <see cref="EnrollmentStatus.Cancelled"/> gezet.
+    /// Alles-of-niets — voorkomt een half-geannuleerde groep bij een tussentijdse fout.
+    /// </summary>
+    Task<Result<bool>> CancelGroupAsync(
+        Guid lessonSeriesId, Guid groupId, Guid organizationId, CancellationToken ct = default);
 }

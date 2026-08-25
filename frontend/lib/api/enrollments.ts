@@ -188,6 +188,11 @@ export async function cancelEnrollment(seriesId: string, enrollmentId: string): 
   await apiClient.delete(`/lessonseries/${seriesId}/enrollments/${enrollmentId}`);
 }
 
+/** Annuleert een volledige groep in één atomaire backend-transactie (alles-of-niets). */
+export async function cancelEnrollmentGroup(seriesId: string, groupId: string): Promise<void> {
+  await apiClient.delete(`/lessonseries/${seriesId}/enrollment-groups/${groupId}`);
+}
+
 /**
  * Markeert de openstaande overschrijving van een reeksinschrijving als betaald.
  * Bevestigt de inschrijving en verstuurt de bevestigingsmail. Faalt met NotFound
