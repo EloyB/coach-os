@@ -30,12 +30,14 @@ jobs:
           SCW_DEFAULT_PROJECT_ID: ${{ secrets.SCALEWAY_PROJECT_ID }}
           REGISTRY_ENDPOINT: ${{ env.REGISTRY_ENDPOINT }}
           DOZZLE_PASSWORD: ${{ secrets.DOZZLE_PASSWORD }}
+          GRAFANA_ADMIN_USER: ${{ secrets.GRAFANA_ADMIN_USER }}
+          GRAFANA_ADMIN_PASSWORD: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
         with:
           host: ${{ secrets.VPS_IP }}
           username: root
           key: ${{ secrets.VPS_SSH_KEY }}
           port: 22
-          envs: SCW_ACCESS_KEY,SCW_SECRET_KEY,SCW_DEFAULT_ORGANIZATION_ID,SCW_DEFAULT_PROJECT_ID,REGISTRY_ENDPOINT,DOZZLE_PASSWORD
+          envs: SCW_ACCESS_KEY,SCW_SECRET_KEY,SCW_DEFAULT_ORGANIZATION_ID,SCW_DEFAULT_PROJECT_ID,REGISTRY_ENDPOINT,DOZZLE_PASSWORD,GRAFANA_ADMIN_USER,GRAFANA_ADMIN_PASSWORD
           script: |
             set -euo pipefail
             cd /app
@@ -45,6 +47,7 @@ jobs:
             TIMESTAMP=$(date +%Y%m%d_%H%M%S)
             cp docker-compose.yml "backups/docker-compose.yml.$TIMESTAMP" 2>/dev/null || true
             [ -d nginx ] && cp -r nginx "backups/nginx.$TIMESTAMP" || true
+            [ -d monitoring ] && cp -r monitoring "backups/monitoring.$TIMESTAMP" || true
 
             # Pull latest infra config
             rm -rf /tmp/infra
@@ -55,6 +58,12 @@ jobs:
             mkdir -p ./nginx/conf.d
             cp -v /tmp/infra/infrastructure/nginx/nginx.conf ./nginx/nginx.conf
             cp -v /tmp/infra/infrastructure/nginx/conf.d/*.conf ./nginx/conf.d/
+            rm -rf ./monitoring
+            cp -rv /tmp/infra/infrastructure/monitoring ./monitoring
+
+            # Refuse to deploy an unauthenticated Grafana instance.
+            : "${GRAFANA_ADMIN_USER:?GRAFANA_ADMIN_USER secret is required}"
+            : "${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD secret is required}"
 
             # Write env file consumed by docker-compose interpolation.
             # umask 077 ensures only root can read.
@@ -67,6 +76,8 @@ jobs:
             SCW_DEFAULT_PROJECT_ID=${SCW_DEFAULT_PROJECT_ID}
             SCW_REGION=fr-par
             DOZZLE_PASSWORD=${DOZZLE_PASSWORD}
+            GRAFANA_ADMIN_USER=${GRAFANA_ADMIN_USER}
+            GRAFANA_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
             EOF
 
             # Validate compose syntax (rolls back on failure)
@@ -74,6 +85,7 @@ jobs:
               echo "Invalid docker-compose.yml — rolling back"
               cp "backups/docker-compose.yml.$TIMESTAMP" ./docker-compose.yml
               [ -d "backups/nginx.$TIMESTAMP" ] && { rm -rf ./nginx; cp -r "backups/nginx.$TIMESTAMP" ./nginx; }
+              [ -d "backups/monitoring.$TIMESTAMP" ] && { rm -rf ./monitoring; cp -r "backups/monitoring.$TIMESTAMP" ./monitoring; }
               exit 1
             fi
 
@@ -90,6 +102,7 @@ jobs:
               cp "backups/docker-compose.yml.$TIMESTAMP" ./docker-compose.yml
               rm -rf ./nginx
               cp -r "backups/nginx.$TIMESTAMP" ./nginx
+              [ -d "backups/monitoring.$TIMESTAMP" ] && { rm -rf ./monitoring; cp -r "backups/monitoring.$TIMESTAMP" ./monitoring; }
               exit 1
             fi
 
