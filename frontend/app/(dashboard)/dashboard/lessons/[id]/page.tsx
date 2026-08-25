@@ -2237,8 +2237,10 @@ export default function LessonSeriesDetailPage({
             seriesId={id}
           />
 
-          {/* ── Section 4: Prijzen per categorie en groepsgrootte ── */}
-          <PriceMatrixSection seriesId={id} legacyPrice={series.price} />
+          {/* ── Section 4: Prijzen per categorie en groepsgrootte (admin only) ── */}
+          {isAdmin && (
+            <PriceMatrixSection seriesId={id} legacyPrice={series.price} />
+          )}
 
           {/* ── Section 5: Form builder ── */}
           <FormBuilderSection seriesId={id} />
