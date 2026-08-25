@@ -83,11 +83,15 @@ public sealed class EmailOutboxWorker(
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
         DateTime now = DateTime.UtcNow;
         EmailOutboxMessage? message = await db.EmailOutboxMessages
-            .Where(m => (m.Status == EmailOutboxStatuses.Pending
-                         || m.Status == EmailOutboxStatuses.Processing)
-                        && m.AvailableAt <= now)
-            .OrderBy(m => m.AvailableAt)
-            .ThenBy(m => m.CreatedAt)
+            .FromSqlRaw("""
+                SELECT * FROM "EmailOutboxMessages"
+                WHERE ("Status" = {0} OR "Status" = {1})
+                  AND "AvailableAt" <= {2}
+                ORDER BY "AvailableAt", "CreatedAt"
+                FOR UPDATE SKIP LOCKED
+                LIMIT 1
+                """, EmailOutboxStatuses.Pending, EmailOutboxStatuses.Processing, now)
+            .IgnoreQueryFilters()
             .FirstOrDefaultAsync(ct);
 
         if (message is null)
