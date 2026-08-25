@@ -63,6 +63,7 @@ public class ApplicationDbContext(
     public DbSet<CampFormField> CampFormFields { get; set; } = null!;
     public DbSet<CampFormResponse> CampFormResponses { get; set; } = null!;
     public DbSet<TrainerAvailability> TrainerAvailabilities { get; set; } = null!;
+    public DbSet<EmailOutboxMessage> EmailOutboxMessages { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -101,6 +102,7 @@ public class ApplicationDbContext(
         builder.ApplyConfiguration(new CampFormFieldConfiguration());
         builder.ApplyConfiguration(new CampFormResponseConfiguration());
         builder.ApplyConfiguration(new TrainerAvailabilityConfiguration());
+        builder.ApplyConfiguration(new EmailOutboxMessageConfiguration());
 
         ApplyTenantFilters(builder);
     }
@@ -163,6 +165,8 @@ public class ApplicationDbContext(
         // (CampEnrollmentForm.OrganizationId resp. CampEnrollment.OrganizationId).
         // Zelfde patroon als FormField/FormResponse hierboven.
         builder.Entity<TrainerAvailability>().HasQueryFilter(e =>
+            _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
+        builder.Entity<EmailOutboxMessage>().HasQueryFilter(e =>
             _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
     }
 
