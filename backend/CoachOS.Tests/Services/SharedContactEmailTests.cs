@@ -27,7 +27,7 @@ public class SharedContactEmailTests
     private Mock<ITimeSlotPreferenceRepository> _timeSlotPreferenceRepo = null!;
     private Mock<IOrganizationSettingsRepository> _orgSettingsRepo = null!;
     private Mock<IUserLookupService> _userLookup = null!;
-    private Mock<IEmailService> _emailService = null!;
+    private Mock<IEmailOutboxRepository> _emailOutboxRepository = null!;
     private ApplicationMapper _mapper = null!;
     private Mock<ILogger<EnrollmentService>> _logger = null!;
     private EnrollmentService _service = null!;
@@ -45,7 +45,7 @@ public class SharedContactEmailTests
         _timeSlotPreferenceRepo = new Mock<ITimeSlotPreferenceRepository>();
         _orgSettingsRepo = new Mock<IOrganizationSettingsRepository>();
         _userLookup = new Mock<IUserLookupService>();
-        _emailService = new Mock<IEmailService>();
+        _emailOutboxRepository = new Mock<IEmailOutboxRepository>();
         _mapper = new ApplicationMapper();
         _logger = new Mock<ILogger<EnrollmentService>>();
 
@@ -82,7 +82,7 @@ public class SharedContactEmailTests
             _timeSlotPreferenceRepo.Object,
             _orgSettingsRepo.Object,
             _userLookup.Object,
-            _emailService.Object,
+            _emailOutboxRepository.Object,
             _mapper,
             _logger.Object);
     }
@@ -158,14 +158,12 @@ public class SharedContactEmailTests
 
         await _service.SubmitEnrollmentAsync(SeriesId, request);
 
-        // Eén mail naar het contactadres, met álle deelnemers erin benoemd zodat de
-        // ouder ziet dat de bevestiging ook voor Lotte en Sofie geldt.
-        _emailService.Verify(s => s.SendEnrollmentConfirmationAsync(
-            "ouder@example.com", It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
-            It.Is<IReadOnlyList<string>?>(names => names != null
-                && names.Contains("Els Peeters")
-                && names.Contains("Lotte Peeters")
-                && names.Contains("Sofie Peeters")),
+        _emailOutboxRepository.Verify(r => r.AddRangeAsync(
+            It.Is<IEnumerable<EmailOutboxMessage>>(messages =>
+                messages.Count(m => m.Type == EmailOutboxMessageTypes.EnrollmentConfirmation) == 1
+                && messages.Single(m => m.Type == EmailOutboxMessageTypes.EnrollmentConfirmation).Payload.Contains("Els Peeters")
+                && messages.Single(m => m.Type == EmailOutboxMessageTypes.EnrollmentConfirmation).Payload.Contains("Lotte Peeters")
+                && messages.Single(m => m.Type == EmailOutboxMessageTypes.EnrollmentConfirmation).Payload.Contains("Sofie Peeters")),
             It.IsAny<CancellationToken>()), Times.Once);
     }
 

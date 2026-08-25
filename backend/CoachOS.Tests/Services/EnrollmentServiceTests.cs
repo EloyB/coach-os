@@ -23,6 +23,7 @@ public class EnrollmentServiceTests
     private Mock<IOrganizationSettingsRepository> _orgSettingsRepo = null!;
     private Mock<IUserLookupService> _userLookup = null!;
     private Mock<IEmailService> _emailService = null!;
+    private Mock<IEmailOutboxRepository> _emailOutboxRepository = null!;
     private ApplicationMapper _mapper = null!;
     private Mock<ILogger<EnrollmentService>> _logger = null!;
     private EnrollmentService _service = null!;
@@ -42,6 +43,7 @@ public class EnrollmentServiceTests
         _orgSettingsRepo = new Mock<IOrganizationSettingsRepository>();
         _userLookup = new Mock<IUserLookupService>();
         _emailService = new Mock<IEmailService>();
+        _emailOutboxRepository = new Mock<IEmailOutboxRepository>();
         _mapper = new ApplicationMapper();
         _logger = new Mock<ILogger<EnrollmentService>>();
 
@@ -53,7 +55,7 @@ public class EnrollmentServiceTests
             _timeSlotPreferenceRepo.Object,
             _orgSettingsRepo.Object,
             _userLookup.Object,
-            _emailService.Object,
+            _emailOutboxRepository.Object,
             _mapper,
             _logger.Object);
     }
@@ -315,6 +317,33 @@ public class EnrollmentServiceTests
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.Conflict);
+    }
+
+    [Test]
+    public async Task SubmitEnrollment_QueuesNotifications_WithoutSendingEmailInline()
+    {
+        var series = BuildActiveSeries();
+        SetupSuccessfulEnrollment(series, "anna@test.be");
+
+        SubmitEnrollmentRequest request = new()
+        {
+            StudentName = "Anna",
+            StudentEmail = "anna@test.be",
+            DateOfBirth = "1990-05-12",
+        };
+
+        var result = await _service.SubmitEnrollmentAsync(SeriesId, request);
+
+        result.IsSuccess.Should().BeTrue();
+        _emailOutboxRepository.Verify(r => r.AddRangeAsync(
+                It.Is<IEnumerable<EmailOutboxMessage>>(messages =>
+                    messages.Count() == 2
+                    && messages.All(m => m.EnrollmentId == result.Value)
+                    && messages.Any(m => m.Type == EmailOutboxMessageTypes.EnrollmentConfirmation)
+                    && messages.Any(m => m.Type == EmailOutboxMessageTypes.TrainerNotification)),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+        _emailService.VerifyNoOtherCalls();
     }
 
     [Test]
