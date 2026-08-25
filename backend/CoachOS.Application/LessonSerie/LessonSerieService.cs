@@ -17,10 +17,10 @@ public class LessonSerieService(
     ApplicationMapper mapper) : ILessonSerieService
 {
     public async Task<Result<List<LessonSerieDto>>> GetAllAsync(
-        Guid organizationId, Guid? trainerId = null, CancellationToken ct = default)
+        Guid organizationId, Guid? trainerId, IReadOnlyList<Guid> headTrainerClubIds, CancellationToken ct = default)
     {
         IReadOnlyList<Domain.Entities.LessonSerie> seriesList =
-            await lessonSeriesRepo.GetByOrganizationAsync(organizationId, trainerId, ct);
+            await lessonSeriesRepo.GetByOrganizationAsync(organizationId, trainerId, headTrainerClubIds, ct);
 
         if (seriesList.Count == 0)
             return Result<List<LessonSerieDto>>.Ok([]);
@@ -544,5 +544,17 @@ public class LessonSerieService(
         await lessonRepo.SaveChangesAsync(ct);
 
         return Result.Ok();
+    }
+
+    public async Task<Result<Guid>> GetClubIdAsync(
+        Guid id, Guid organizationId, CancellationToken ct = default)
+    {
+        Domain.Entities.LessonSerie? series =
+            await lessonSeriesRepo.GetByIdAsync(id, organizationId, ct);
+
+        if (series is null)
+            return Result<Guid>.Fail(new Error(ErrorCodes.NotFound, "LessonSerie niet gevonden."));
+
+        return Result<Guid>.Ok(series.TennisClubId);
     }
 }

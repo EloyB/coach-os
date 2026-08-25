@@ -27,6 +27,8 @@ const DAY_NAMES_FULL = [
 ];
 
 interface TimeslotDetailDialogProps {
+  /** Hoofdtrainer = read-only: enkel bekijken, geen lock/aanbieden/verwijderen. */
+  readOnly?: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   slot: PlanningTimeSlotDto | null;
@@ -43,6 +45,7 @@ interface TimeslotDetailDialogProps {
 }
 
 export function TimeslotDetailDialog({
+  readOnly = false,
   open,
   onOpenChange,
   slot,
@@ -159,15 +162,17 @@ export function TimeslotDetailDialog({
                       {t("locked")}
                     </span>
                   )}
-                  <button
-                    type="button"
-                    title={t("unassign")}
-                    onClick={() => onUnassign(assignment.id)}
-                    disabled={isUnassignPending}
-                    className="ml-auto flex h-6 w-6 shrink-0 items-center justify-center rounded text-gray-300 transition-colors hover:bg-red-50 hover:text-red-500 disabled:opacity-50"
-                  >
-                    <X size={14} />
-                  </button>
+                  {!readOnly && (
+                    <button
+                      type="button"
+                      title={t("unassign")}
+                      onClick={() => onUnassign(assignment.id)}
+                      disabled={isUnassignPending}
+                      className="ml-auto flex h-6 w-6 shrink-0 items-center justify-center rounded text-gray-300 transition-colors hover:bg-red-50 hover:text-red-500 disabled:opacity-50"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
                 </div>
 
                 {/* Members */}
@@ -188,7 +193,7 @@ export function TimeslotDetailDialog({
                 </div>
 
                 {/* Actions */}
-                {canOffer && (
+                {!readOnly && canOffer && (
                   <div className="mt-3 flex items-center gap-2 border-t border-gray-100 pt-3">
                     <button
                       type="button"

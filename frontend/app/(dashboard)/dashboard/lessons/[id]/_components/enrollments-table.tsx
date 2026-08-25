@@ -49,6 +49,7 @@ import {
   updateBasicEnrollment,
 } from "@/lib/api/enrollments";
 import type { LessonSeriesEnrollmentDto } from "@/lib/api/enrollments";
+import { isHeadTrainerViewer } from "@/lib/auth";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -179,6 +180,10 @@ function PersonRow({
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
+  // Hoofdtrainer = read-only: geen bewerk-/annuleer-/betaalacties. Reactief zodat
+  // het na hydratie klopt (localStorage is null tijdens SSR).
+  const [readOnly, setReadOnly] = useState(false);
+  useEffect(() => setReadOnly(isHeadTrainerViewer()), []);
   const showActionsMenu = openMenuId === enrollment.id;
 
   const hasResponses = enrollment.formResponses.length > 0;
@@ -209,9 +214,20 @@ function PersonRow({
     <>
       <tr
         className={`border-t border-gray-50 ${
-          isCancelled ? "opacity-50" : "hover:bg-gray-50/60 cursor-pointer"
+          isCancelled
+            ? "opacity-50"
+            : !readOnly || hasResponses
+              ? "hover:bg-gray-50/60 cursor-pointer"
+              : ""
         } ${isMatch ? "bg-tennis-lime/10" : ""}`}
-        onClick={() => !isCancelled && setEditing(true)}
+        onClick={() => {
+          if (isCancelled) return;
+          if (readOnly) {
+            if (hasResponses) setExpanded((v) => !v);
+            return;
+          }
+          setEditing(true);
+        }}
       >
         {/* Naam */}
         <td className={`px-4 py-2.5 ${isMember ? "pl-10" : ""}`}>
@@ -270,23 +286,25 @@ function PersonRow({
         {/* Acties */}
         <td className="px-4 py-2.5 text-right whitespace-nowrap">
           <div className="relative inline-block">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setOpenMenuId(showActionsMenu ? null : enrollment.id);
-              }}
-              aria-label={t("actionsLabel", { name: enrollment.studentName })}
-              className="flex h-8 w-8 items-center justify-center rounded-md border border-gray-100 text-gray-400 hover:bg-gray-50 hover:text-gray-700"
-            >
-              <MoreVertical size={15} />
-            </button>
+            {(!readOnly || hasResponses) && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setOpenMenuId(showActionsMenu ? null : enrollment.id);
+                }}
+                aria-label={t("actionsLabel", { name: enrollment.studentName })}
+                className="flex h-8 w-8 items-center justify-center rounded-md border border-gray-100 text-gray-400 hover:bg-gray-50 hover:text-gray-700"
+              >
+                <MoreVertical size={15} />
+              </button>
+            )}
             {showActionsMenu && (
               <div
                 onClick={(e) => e.stopPropagation()}
                 className="absolute right-0 top-full z-50 mt-1 min-w-48 rounded-lg border border-gray-100 bg-white py-1 text-sm shadow-lg"
               >
-                {isPendingPayment && ownsPayment && (
+                {!readOnly && isPendingPayment && ownsPayment && (
                   <button
                     type="button"
                     disabled={markPaidMutation.isPending}
@@ -300,7 +318,7 @@ function PersonRow({
                     {t("markPaid")}
                   </button>
                 )}
-                {!isCancelled && (
+                {!readOnly && !isCancelled && (
                   <button
                     type="button"
                     onClick={() => {
@@ -326,7 +344,7 @@ function PersonRow({
                     {expanded ? t("detailsHide") : t("detailsShow")}
                   </button>
                 )}
-                {!isCancelled && (
+                {!readOnly && !isCancelled && (
                   <button
                     type="button"
                     disabled={cancelMutation.isPending}

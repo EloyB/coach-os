@@ -15,7 +15,7 @@ public class SaveEnrollmentFormEndpoint : IEndpoint
                 var result = await service.SaveFormAsync(id, ctx.GetOrganizationId(), request, ct);
                 return result.IsSuccess ? Results.Ok(result.Value) : result.ToErrorResult();
             })
-        .RequireAuthorization(policy => policy.RequireRole("Admin", "Trainer"))
+        .RequireAuthorization(policy => policy.RequireRole("Admin"))
         .AddEndpointFilter<ValidationFilter<SaveEnrollmentFormRequest>>()
         .WithTags("Enrollments");
     }
