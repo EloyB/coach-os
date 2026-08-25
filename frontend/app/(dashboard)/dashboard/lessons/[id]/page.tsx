@@ -1790,8 +1790,8 @@ export default function LessonSeriesDetailPage({
             <PriceMatrixSection seriesId={id} legacyPrice={series.price} />
           )}
 
-          {/* ── Section 5: Form builder ── */}
-          <FormBuilderSection seriesId={id} />
+          {/* ── Section 5: Form builder (admin only) ── */}
+          {isAdmin && <FormBuilderSection seriesId={id} />}
 
           {/* ── Section 5: Enrollments ── */}
           <EnrollmentsSection seriesId={id} />
