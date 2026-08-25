@@ -15,6 +15,9 @@ public class AuthResponseDto
     /// <summary>Rol binnen de actieve organisatie.</summary>
     public string Role { get; set; } = string.Empty;
 
+    /// <summary>Club-id's waarvan de user hoofdtrainer is in de actieve organisatie (read-only inschrijvingen + planning). Leeg = geen hoofdtrainer.</summary>
+    public List<Guid> HeadTrainerClubIds { get; set; } = [];
+
     /// <summary>Alle (actieve) memberships van de user — nodig voor de org-switcher.</summary>
     public List<OrganizationMembershipDto> Memberships { get; set; } = [];
 

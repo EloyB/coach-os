@@ -151,10 +151,10 @@ public class LessonSerieServiceTests
     public async Task GetAllAsync_ReturnsEmptyList_WhenNoSeries()
     {
         _lessonSeriesRepo
-            .Setup(r => r.GetByOrganizationAsync(OrgId, null, It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetByOrganizationAsync(OrgId, null, Array.Empty<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<LessonSerie>());
 
-        var result = await _service.GetAllAsync(OrgId);
+        var result = await _service.GetAllAsync(OrgId, null, Array.Empty<Guid>());
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().BeEmpty();
@@ -165,14 +165,14 @@ public class LessonSerieServiceTests
     {
         var series = BuildSeries();
         _lessonSeriesRepo
-            .Setup(r => r.GetByOrganizationAsync(OrgId, null, It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetByOrganizationAsync(OrgId, null, Array.Empty<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<LessonSerie> { series });
 
         _lessonRepo
             .Setup(r => r.GetLessonCountsBySeriesIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Dictionary<Guid, int> { { series.Id, 3 } });
 
-        var result = await _service.GetAllAsync(OrgId);
+        var result = await _service.GetAllAsync(OrgId, null, Array.Empty<Guid>());
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().HaveCount(1);
@@ -186,19 +186,43 @@ public class LessonSerieServiceTests
     {
         var series = BuildSeries();
         _lessonSeriesRepo
-            .Setup(r => r.GetByOrganizationAsync(OrgId, TrainerId, It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetByOrganizationAsync(OrgId, TrainerId, Array.Empty<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<LessonSerie> { series });
 
         _lessonRepo
             .Setup(r => r.GetLessonCountsBySeriesIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Dictionary<Guid, int> { { series.Id, 1 } });
 
-        var result = await _service.GetAllAsync(OrgId, TrainerId);
+        var result = await _service.GetAllAsync(OrgId, TrainerId, Array.Empty<Guid>());
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().HaveCount(1);
         _lessonSeriesRepo.Verify(
-            r => r.GetByOrganizationAsync(OrgId, TrainerId, It.IsAny<CancellationToken>()),
+            r => r.GetByOrganizationAsync(OrgId, TrainerId, Array.Empty<Guid>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Test]
+    public async Task GetAllAsync_ForwardsHeadTrainerClubIds_ToRepository()
+    {
+        // Regressietest voor de union-uitbreiding: het service laagje mag de meegegeven
+        // hoofdtrainer-club-ids ongewijzigd doorgeven aan de repository — de eigenlijke
+        // union-query zelf wordt gedekt door de reset+seed E2E-check (Task 8), niet hier.
+        _lessonSeriesRepo
+            .Setup(r => r.GetByOrganizationAsync(OrgId, TrainerId, It.IsAny<IReadOnlyList<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<LessonSerie>());
+
+        List<Guid> headTrainerClubIds = [ClubId];
+
+        var result = await _service.GetAllAsync(OrgId, TrainerId, headTrainerClubIds);
+
+        result.IsSuccess.Should().BeTrue();
+        _lessonSeriesRepo.Verify(
+            r => r.GetByOrganizationAsync(
+                OrgId,
+                TrainerId,
+                It.Is<IReadOnlyList<Guid>>(ids => ids.Count == 1 && ids[0] == ClubId),
+                It.IsAny<CancellationToken>()),
             Times.Once);
     }
 

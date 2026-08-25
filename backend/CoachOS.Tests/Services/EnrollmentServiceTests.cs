@@ -23,6 +23,7 @@ public class EnrollmentServiceTests
     private Mock<IOrganizationSettingsRepository> _orgSettingsRepo = null!;
     private Mock<IUserLookupService> _userLookup = null!;
     private Mock<IEmailService> _emailService = null!;
+    private Mock<IEmailOutboxRepository> _emailOutboxRepository = null!;
     private ApplicationMapper _mapper = null!;
     private Mock<ILogger<EnrollmentService>> _logger = null!;
     private EnrollmentService _service = null!;
@@ -42,6 +43,7 @@ public class EnrollmentServiceTests
         _orgSettingsRepo = new Mock<IOrganizationSettingsRepository>();
         _userLookup = new Mock<IUserLookupService>();
         _emailService = new Mock<IEmailService>();
+        _emailOutboxRepository = new Mock<IEmailOutboxRepository>();
         _mapper = new ApplicationMapper();
         _logger = new Mock<ILogger<EnrollmentService>>();
 
@@ -53,7 +55,7 @@ public class EnrollmentServiceTests
             _timeSlotPreferenceRepo.Object,
             _orgSettingsRepo.Object,
             _userLookup.Object,
-            _emailService.Object,
+            _emailOutboxRepository.Object,
             _mapper,
             _logger.Object);
     }
@@ -187,6 +189,39 @@ public class EnrollmentServiceTests
         result.Value.Fields[0].Label.Should().Be("Geboortedatum");
     }
 
+    [Test]
+    public async Task GetPublicTimeSlots_UsesLightweightRepositoryQuery()
+    {
+        var series = BuildActiveSeries(templateEntries: 2);
+        _lessonSeriesRepo
+            .Setup(r => r.GetByIdPublicForTimeSlotsAsync(SeriesId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+
+        var result = await _service.GetPublicTimeSlotsAsync(SeriesId);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().HaveCount(2);
+        _lessonSeriesRepo.Verify(
+            r => r.GetByIdPublicForTimeSlotsAsync(SeriesId, It.IsAny<CancellationToken>()),
+            Times.Once);
+        _lessonSeriesRepo.Verify(
+            r => r.GetByIdPublicAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Test]
+    public async Task GetPublicTimeSlots_ReturnsNotFound_WhenSeriesMissing()
+    {
+        _lessonSeriesRepo
+            .Setup(r => r.GetByIdPublicForTimeSlotsAsync(SeriesId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((LessonSerie?)null);
+
+        var result = await _service.GetPublicTimeSlotsAsync(SeriesId);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.NotFound);
+    }
+
     // ── GetSeriesEnrollmentsAsync ────────────────────────────────────────────
 
     [Test]
@@ -315,6 +350,35 @@ public class EnrollmentServiceTests
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.Conflict);
+    }
+
+    [Test]
+    public async Task SubmitEnrollment_QueuesNotifications_WithoutSendingEmailInline()
+    {
+        var series = BuildActiveSeries();
+        SetupSuccessfulEnrollment(series, "anna@test.be");
+
+        SubmitEnrollmentRequest request = new()
+        {
+            StudentName = "Anna",
+            StudentEmail = "anna@test.be",
+            DateOfBirth = "1990-05-12",
+        };
+
+        var result = await _service.SubmitEnrollmentAsync(SeriesId, request);
+
+        result.IsSuccess.Should().BeTrue();
+        _emailOutboxRepository.Verify(r => r.AddRangeAsync(
+                It.Is<IEnumerable<EmailOutboxMessage>>(messages =>
+                    messages.Count() == 2
+                    && messages.All(m => m.EnrollmentId == result.Value)
+                    && messages.Any(m => m.Type == EmailOutboxMessageTypes.EnrollmentConfirmation)
+                    && messages.Any(m => m.Type == EmailOutboxMessageTypes.TrainerNotification)),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+        _emailOutboxRepository.Verify(
+            r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _emailService.VerifyNoOtherCalls();
     }
 
     [Test]

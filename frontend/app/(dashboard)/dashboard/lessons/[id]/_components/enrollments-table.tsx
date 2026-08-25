@@ -50,6 +50,7 @@ import {
 } from "@/lib/api/enrollments";
 import type { LessonSeriesEnrollmentDto } from "@/lib/api/enrollments";
 import { EnrollmentDetailDialog } from "./enrollment-detail-dialog";
+import { isHeadTrainerViewer } from "@/lib/auth";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -180,6 +181,10 @@ function PersonRow({
   const [detailOpen, setDetailOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
+  // Hoofdtrainer = read-only: geen bewerk-/annuleer-/betaalacties. Reactief zodat
+  // het na hydratie klopt (localStorage is null tijdens SSR).
+  const [readOnly, setReadOnly] = useState(false);
+  useEffect(() => setReadOnly(isHeadTrainerViewer()), []);
   const showActionsMenu = openMenuId === enrollment.id;
 
   const isCancelled = enrollment.status === "Cancelled";
@@ -297,7 +302,7 @@ function PersonRow({
                   <Eye size={13} />
                   {t("viewDetails")}
                 </button>
-                {isPendingPayment && ownsPayment && (
+                {!readOnly && isPendingPayment && ownsPayment && (
                   <button
                     type="button"
                     disabled={markPaidMutation.isPending}
@@ -311,7 +316,7 @@ function PersonRow({
                     {t("markPaid")}
                   </button>
                 )}
-                {!isCancelled && (
+                {!readOnly && !isCancelled && (
                   <button
                     type="button"
                     onClick={() => {
@@ -324,7 +329,7 @@ function PersonRow({
                     {t("editAction")}
                   </button>
                 )}
-                {!isCancelled && (
+                {!readOnly && !isCancelled && (
                   <button
                     type="button"
                     disabled={cancelMutation.isPending}

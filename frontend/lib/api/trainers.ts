@@ -13,6 +13,7 @@ export interface TrainerDto {
   weeklyCapacityHours: number;
   notes: string | null;
   createdAt: string;
+  headTrainerClubIds: string[];
 }
 
 export interface InviteTrainerRequest {
@@ -52,6 +53,14 @@ export async function updateTrainer(
   req: UpdateTrainerRequest,
 ): Promise<void> {
   await apiClient.put(`/trainers/${id}`, req);
+}
+
+/** Zet de set clubs waarvan deze trainer hoofdtrainer is (admin-only). */
+export async function setHeadTrainerClubs(
+  id: string,
+  clubIds: string[],
+): Promise<void> {
+  await apiClient.put(`/trainers/${id}/head-trainer-clubs`, { clubIds });
 }
 
 export async function acceptInvite(req: AcceptInviteRequest): Promise<AuthResponse> {

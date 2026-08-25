@@ -31,5 +31,11 @@ public class OrganizationMembership : BaseEntity
 
     public DateTime JoinedAt { get; set; }
 
+    /// <summary>
+    /// Clubs waarvan deze trainer hoofdtrainer is (read-only inschrijvingen + planning).
+    /// Leeg = geen hoofdtrainer. Enkel relevant wanneer <see cref="Role"/> = Trainer.
+    /// </summary>
+    public ICollection<HeadTrainerClub> HeadTrainerClubs { get; set; } = new List<HeadTrainerClub>();
+
     public Organization Organization { get; set; } = null!;
 }

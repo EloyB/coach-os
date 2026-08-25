@@ -8,4 +8,11 @@ public static class AuthorizationPolicies
 {
     /// <summary>System-level super admin. Geen org-scope.</summary>
     public const string SuperAdmin = "SuperAdmin";
+
+    /// <summary>
+    /// Read-only toegang tot inschrijvingen en planning: rol Admin, of een hoofdtrainer
+    /// (Trainer met ≥1 <see cref="CoachOsClaims.HeadTrainerClub"/> claim). Enkel op GET-endpoints.
+    /// De fijne per-reeks club-check gebeurt in <c>HeadTrainerAccess</c>.
+    /// </summary>
+    public const string EnrollmentsPlanningRead = "EnrollmentsPlanningRead";
 }

@@ -26,15 +26,22 @@ public class LessonSerieRepository(ApplicationDbContext context) : ILessonSerieR
     }
 
     public async Task<IReadOnlyList<LessonSerie>> GetByOrganizationAsync(
-        Guid organizationId, Guid? trainerId = null, CancellationToken ct = default)
+        Guid organizationId, Guid? trainerId, IReadOnlyList<Guid> headTrainerClubIds, CancellationToken ct = default)
     {
         var query = context.LessonSeries
             .AsNoTracking()
             .Include(ls => ls.TennisClub)
             .Where(ls => ls.OrganizationId == organizationId);
 
+        // trainerId gezet (gewone trainer of hoofdtrainer) => filter op eigen reeksen,
+        // maar union met alle reeksen van de hoofdtrainer-club(s). Admin geeft trainerId null.
         if (trainerId.HasValue)
-            query = query.Where(ls => ls.Lessons.Any(l => l.TrainerId == trainerId.Value));
+        {
+            Guid tid = trainerId.Value;
+            query = query.Where(ls =>
+                ls.Lessons.Any(l => l.TrainerId == tid) ||
+                headTrainerClubIds.Contains(ls.TennisClubId));
+        }
 
         return await query.OrderBy(ls => ls.StartDate).ToListAsync(ct);
     }
@@ -88,10 +95,19 @@ public class LessonSerieRepository(ApplicationDbContext context) : ILessonSerieR
     {
         return await context.LessonSeries
             .AsNoTracking()
+            .AsSplitQuery()
             .Include(ls => ls.Lessons)
             .Include(ls => ls.TennisClub)
             .Include(ls => ls.WeeklyTemplate)
             .Include(ls => ls.Prices)
+            .FirstOrDefaultAsync(ls => ls.Id == id && ls.IsActive, ct);
+    }
+
+    public async Task<LessonSerie?> GetByIdPublicForTimeSlotsAsync(Guid id, CancellationToken ct = default)
+    {
+        return await context.LessonSeries
+            .AsNoTracking()
+            .Include(ls => ls.WeeklyTemplate)
             .FirstOrDefaultAsync(ls => ls.Id == id && ls.IsActive, ct);
     }
 

@@ -13,4 +13,7 @@ public class TrainerDto
     public int WeeklyCapacityHours { get; set; }
     public string? Notes { get; set; }
     public DateTime CreatedAt { get; set; }
+
+    /// <summary>Clubs waarvan deze trainer hoofdtrainer is (read-only inschrijvingen + planning). Leeg = geen hoofdtrainer.</summary>
+    public List<Guid> HeadTrainerClubIds { get; set; } = [];
 }

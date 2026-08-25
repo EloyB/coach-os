@@ -154,6 +154,7 @@ public class TrainerService(
                     .Count(ls => ls.Lessons.Any(l => l.TrainerId == u.Id) && ls.OrganizationId == organizationId && ls.IsActive),
                 WeeklyCapacityHours = m.WeeklyCapacityHours,
                 Notes = m.Notes,
+                HeadTrainerClubIds = m.HeadTrainerClubs.Select(h => h.TennisClubId).ToList(),
             };
 
         List<TrainerDto> trainers = await query.ToListAsync(ct);
@@ -221,6 +222,48 @@ public class TrainerService(
         membership.Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim();
         user.FirstName = request.FirstName.Trim();
         user.LastName = request.LastName.Trim();
+
+        await context.SaveChangesAsync(ct);
+        return Result.Ok();
+    }
+
+    public async Task<Result> SetHeadTrainerClubsAsync(
+        Guid trainerId,
+        Guid organizationId,
+        IReadOnlyList<Guid> clubIds,
+        CancellationToken ct = default)
+    {
+        // Enkel trainers kunnen hoofdtrainer worden (admins hebben al alle rechten).
+        OrganizationMembership? membership = await context.OrganizationMemberships
+            .Include(m => m.HeadTrainerClubs)
+            .FirstOrDefaultAsync(m => m.UserId == trainerId
+                && m.OrganizationId == organizationId
+                && m.Role == UserRole.Trainer, ct);
+
+        if (membership is null)
+            return Result.Fail(new Error(ErrorCodes.NotFound, "Trainer niet gevonden in deze organisatie."));
+
+        List<Guid> distinctClubIds = clubIds.Distinct().ToList();
+
+        // Elke club moet tot deze org horen (voorkomt cross-tenant grants).
+        if (distinctClubIds.Count > 0)
+        {
+            int validClubs = await context.TennisClubs
+                .CountAsync(c => c.OrganizationId == organizationId && distinctClubIds.Contains(c.Id), ct);
+            if (validClubs != distinctClubIds.Count)
+                return Result.Fail(new Error(ErrorCodes.Validation, "Eén of meer clubs horen niet bij deze organisatie."));
+        }
+
+        // Vervang de grant-set: verwijder bestaande, voeg de nieuwe toe.
+        context.HeadTrainerClubs.RemoveRange(membership.HeadTrainerClubs);
+        foreach (Guid clubId in distinctClubIds)
+        {
+            context.HeadTrainerClubs.Add(new HeadTrainerClub
+            {
+                OrganizationMembershipId = membership.Id,
+                TennisClubId = clubId
+            });
+        }
 
         await context.SaveChangesAsync(ct);
         return Result.Ok();

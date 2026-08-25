@@ -15,6 +15,7 @@ import {
   Pencil,
   StickyNote,
   CalendarClock,
+  Crown,
 } from "lucide-react";
 import { TrainerAvailabilityDialog } from "./_components/trainer-availability-dialog";
 import { Mono } from "@/components/ui/mono";
@@ -26,8 +27,15 @@ import {
   reassignTrainerSeries,
   removeTrainer,
   resendTrainerInvite,
+  setHeadTrainerClubs,
   TrainerDto,
 } from "@/lib/api/trainers";
+import { getTennisClubs } from "@/lib/api/tennisClubs";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
 import { getAxiosErrorMessages } from "@/lib/utils/api-errors";
 import { getInitials } from "@/lib/utils/initials";
@@ -462,6 +470,104 @@ function EditTrainerDialog({
   );
 }
 
+// ─── Head trainer control ──────────────────────────────────────────────────────
+
+function HeadTrainerControl({
+  trainer,
+  clubs,
+  onSave,
+  pending,
+}: {
+  trainer: TrainerDto;
+  clubs: { id: string; name: string }[];
+  onSave: (clubIds: string[]) => void;
+  pending: boolean;
+}) {
+  const t = useTranslations("trainers");
+  const active = trainer.headTrainerClubIds.length > 0;
+
+  // 0 of 1 club in de org: kroon is een simpele toggle van die ene club.
+  if (clubs.length <= 1) {
+    const soleClub = clubs[0]?.id;
+    const toggle = () =>
+      onSave(active ? [] : soleClub ? [soleClub] : []);
+    return (
+      <button
+        type="button"
+        onClick={toggle}
+        disabled={pending || (!active && !soleClub)}
+        title={active ? t("removeHeadTrainer") : t("makeHeadTrainer")}
+        aria-label={active ? t("removeHeadTrainer") : t("makeHeadTrainer")}
+        className={`p-1.5 rounded transition-all disabled:opacity-50 ${
+          active
+            ? "text-tennis-green bg-tennis-green/10"
+            : "opacity-0 group-hover:opacity-100 text-ink-3 hover:text-tennis-green hover:bg-tennis-green/10"
+        }`}
+      >
+        <Crown size={14} />
+      </button>
+    );
+  }
+
+  // Meerdere clubs: popover met checkboxes.
+  const toggleClub = (clubId: string) => {
+    const set = new Set(trainer.headTrainerClubIds);
+    if (set.has(clubId)) set.delete(clubId);
+    else set.add(clubId);
+    onSave([...set]);
+  };
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          disabled={pending}
+          title={t("headTrainerClubsTitle")}
+          aria-label={t("headTrainerClubsTitle")}
+          className={`p-1.5 rounded transition-all disabled:opacity-50 ${
+            active
+              ? "text-tennis-green bg-tennis-green/10"
+              : "opacity-0 group-hover:opacity-100 text-ink-3 hover:text-tennis-green hover:bg-tennis-green/10"
+          }`}
+        >
+          <Crown size={14} />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-56 p-2">
+        <p className="px-2 py-1.5 text-xs font-semibold text-gray-500">
+          {t("headTrainerClubsTitle")}
+        </p>
+        <div className="space-y-0.5">
+          {clubs.map((club) => {
+            const checked = trainer.headTrainerClubIds.includes(club.id);
+            return (
+              <button
+                key={club.id}
+                type="button"
+                onClick={() => toggleClub(club.id)}
+                disabled={pending}
+                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-gray-50"
+              >
+                <span
+                  className={
+                    checked
+                      ? "flex h-4 w-4 items-center justify-center rounded border border-tennis-green bg-tennis-green text-white"
+                      : "flex h-4 w-4 items-center justify-center rounded border border-gray-300"
+                  }
+                >
+                  {checked && <Crown size={9} />}
+                </span>
+                <span className="truncate">{club.name}</span>
+              </button>
+            );
+          })}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 type RemoveDialogState =
@@ -487,8 +593,19 @@ export default function TrainersPage() {
     queryFn: getTrainers,
   });
 
+  const { data: clubs = [] } = useQuery({
+    queryKey: ["tennisClubs"],
+    queryFn: getTennisClubs,
+  });
+
   const deactivateMutation = useMutation({
     mutationFn: deactivateTrainer,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["trainers"] }),
+  });
+
+  const headTrainerMutation = useMutation({
+    mutationFn: ({ id, clubIds }: { id: string; clubIds: string[] }) =>
+      setHeadTrainerClubs(id, clubIds),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["trainers"] }),
   });
 
@@ -620,6 +737,12 @@ export default function TrainersPage() {
                             <title>{tr.notes}</title>
                           </StickyNote>
                         )}
+                        {tr.headTrainerClubIds.length > 0 && (
+                          <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-tennis-lime/30 px-1.5 py-0.5 text-[9px] font-semibold text-tennis-green">
+                            <Crown size={9} />
+                            {t("headTrainerBadge")}
+                          </span>
+                        )}
                       </p>
                       {isSelfAdmin ? (
                         <span className="text-[10px] px-2 py-0.5 rounded-full bg-tennis-lime/30 text-tennis-green font-semibold">
@@ -684,6 +807,14 @@ export default function TrainersPage() {
                           </span>
                         ) : (
                           <>
+                            <HeadTrainerControl
+                              trainer={tr}
+                              clubs={clubs}
+                              pending={headTrainerMutation.isPending}
+                              onSave={(clubIds) =>
+                                headTrainerMutation.mutate({ id: tr.id, clubIds })
+                              }
+                            />
                             <button
                               onClick={() => setAvailabilityTrainer(tr)}
                               title={t("availabilityButton")}

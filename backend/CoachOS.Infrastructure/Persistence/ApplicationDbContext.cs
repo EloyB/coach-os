@@ -42,6 +42,7 @@ public class ApplicationDbContext(
     public DbSet<AssignmentConfirmationToken> AssignmentConfirmationTokens { get; set; } = null!;
     public DbSet<MagicLinkToken> MagicLinkTokens { get; set; } = null!;
     public DbSet<OrganizationMembership> OrganizationMemberships { get; set; } = null!;
+    public DbSet<HeadTrainerClub> HeadTrainerClubs { get; set; } = null!;
     public DbSet<RescheduleRequest> RescheduleRequests { get; set; } = null!;
     public DbSet<LessonInvitation> LessonInvitations { get; set; } = null!;
     public DbSet<OrganizationSettings> OrganizationSettings { get; set; } = null!;
@@ -62,6 +63,7 @@ public class ApplicationDbContext(
     public DbSet<CampFormField> CampFormFields { get; set; } = null!;
     public DbSet<CampFormResponse> CampFormResponses { get; set; } = null!;
     public DbSet<TrainerAvailability> TrainerAvailabilities { get; set; } = null!;
+    public DbSet<EmailOutboxMessage> EmailOutboxMessages { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -85,6 +87,7 @@ public class ApplicationDbContext(
         builder.ApplyConfiguration(new ScheduleAssignmentConfiguration());
         builder.ApplyConfiguration(new MagicLinkTokenConfiguration());
         builder.ApplyConfiguration(new OrganizationMembershipConfiguration());
+        builder.ApplyConfiguration(new HeadTrainerClubConfiguration());
         builder.ApplyConfiguration(new RescheduleRequestConfiguration());
         builder.ApplyConfiguration(new LessonInvitationConfiguration());
         builder.ApplyConfiguration(new OrganizationSettingsConfiguration());
@@ -99,6 +102,7 @@ public class ApplicationDbContext(
         builder.ApplyConfiguration(new CampFormFieldConfiguration());
         builder.ApplyConfiguration(new CampFormResponseConfiguration());
         builder.ApplyConfiguration(new TrainerAvailabilityConfiguration());
+        builder.ApplyConfiguration(new EmailOutboxMessageConfiguration());
 
         ApplyTenantFilters(builder);
     }
@@ -161,6 +165,8 @@ public class ApplicationDbContext(
         // (CampEnrollmentForm.OrganizationId resp. CampEnrollment.OrganizationId).
         // Zelfde patroon als FormField/FormResponse hierboven.
         builder.Entity<TrainerAvailability>().HasQueryFilter(e =>
+            _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
+        builder.Entity<EmailOutboxMessage>().HasQueryFilter(e =>
             _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
     }
 

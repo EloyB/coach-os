@@ -29,6 +29,12 @@ public interface ITrainerService
         UpdateTrainerRequest request,
         CancellationToken ct = default);
 
+    Task<Result> SetHeadTrainerClubsAsync(
+        Guid trainerId,
+        Guid organizationId,
+        IReadOnlyList<Guid> clubIds,
+        CancellationToken ct = default);
+
     Task<Result> ResendInviteAsync(
         Guid trainerId,
         Guid organizationId,

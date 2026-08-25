@@ -100,6 +100,7 @@ export default function InvitePage({
         role: response.role,
         memberships: response.memberships,
         isSuperAdmin: response.isSuperAdmin,
+        headTrainerClubIds: response.headTrainerClubIds,
       });
       router.push(
         response.isSuperAdmin ? "/super-admin/dashboard" : "/dashboard",
