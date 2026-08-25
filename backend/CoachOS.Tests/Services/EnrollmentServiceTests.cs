@@ -187,6 +187,39 @@ public class EnrollmentServiceTests
         result.Value.Fields[0].Label.Should().Be("Geboortedatum");
     }
 
+    [Test]
+    public async Task GetPublicTimeSlots_UsesLightweightRepositoryQuery()
+    {
+        var series = BuildActiveSeries(templateEntries: 2);
+        _lessonSeriesRepo
+            .Setup(r => r.GetByIdPublicForTimeSlotsAsync(SeriesId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+
+        var result = await _service.GetPublicTimeSlotsAsync(SeriesId);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().HaveCount(2);
+        _lessonSeriesRepo.Verify(
+            r => r.GetByIdPublicForTimeSlotsAsync(SeriesId, It.IsAny<CancellationToken>()),
+            Times.Once);
+        _lessonSeriesRepo.Verify(
+            r => r.GetByIdPublicAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Test]
+    public async Task GetPublicTimeSlots_ReturnsNotFound_WhenSeriesMissing()
+    {
+        _lessonSeriesRepo
+            .Setup(r => r.GetByIdPublicForTimeSlotsAsync(SeriesId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((LessonSerie?)null);
+
+        var result = await _service.GetPublicTimeSlotsAsync(SeriesId);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.NotFound);
+    }
+
     // ── GetSeriesEnrollmentsAsync ────────────────────────────────────────────
 
     [Test]

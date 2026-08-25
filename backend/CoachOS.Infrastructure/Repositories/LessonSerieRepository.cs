@@ -88,10 +88,19 @@ public class LessonSerieRepository(ApplicationDbContext context) : ILessonSerieR
     {
         return await context.LessonSeries
             .AsNoTracking()
+            .AsSplitQuery()
             .Include(ls => ls.Lessons)
             .Include(ls => ls.TennisClub)
             .Include(ls => ls.WeeklyTemplate)
             .Include(ls => ls.Prices)
+            .FirstOrDefaultAsync(ls => ls.Id == id && ls.IsActive, ct);
+    }
+
+    public async Task<LessonSerie?> GetByIdPublicForTimeSlotsAsync(Guid id, CancellationToken ct = default)
+    {
+        return await context.LessonSeries
+            .AsNoTracking()
+            .Include(ls => ls.WeeklyTemplate)
             .FirstOrDefaultAsync(ls => ls.Id == id && ls.IsActive, ct);
     }
 
