@@ -25,7 +25,7 @@ public class EnrollmentService(
     ITimeSlotPreferenceRepository timeSlotPreferenceRepo,
     IOrganizationSettingsRepository orgSettingsRepo,
     IUserLookupService userLookup,
-    IEmailService emailService,
+    IEmailOutboxRepository emailOutboxRepository,
     ApplicationMapper mapper,
     ILogger<EnrollmentService> logger) : IEnrollmentService
 {
@@ -277,6 +277,48 @@ public class EnrollmentService(
         int youthMaxAge = orgSettings?.YouthMaxAge ?? 17;
         DateOnly enrolledOn = DateOnly.FromDateTime(DateTime.UtcNow);
 
+        // Prepare notification payloads before opening the transaction. The messages themselves
+        // are persisted inside the transaction below, so a committed enrollment always has
+        // durable notification work attached to it.
+        var firstTrainerId = series.Lessons
+            .OrderBy(l => l.Date).ThenBy(l => l.StartTime)
+            .Select(l => l.TrainerId)
+            .FirstOrDefault(id => id.HasValue);
+        (string FullName, string Email)? trainerInfo = null;
+        if (firstTrainerId.HasValue)
+        {
+            try
+            {
+                trainerInfo = await userLookup.GetUserInfoByIdAsync(firstTrainerId.Value, ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex,
+                    "Trainergegevens konden niet worden geladen voor inschrijving in reeks {SeriesId}; " +
+                    "de trainernotificatie wordt overgeslagen",
+                    lessonSeriesId);
+            }
+        }
+
+        List<EmailResponseItem> responseItems = new();
+        if (form is not null)
+        {
+            foreach (var response in request.Responses)
+            {
+                var field = form.Fields.FirstOrDefault(f => f.Id == response.FormFieldId);
+                if (field is not null)
+                    responseItems.Add(new EmailResponseItem(field.Label, response.Value));
+            }
+        }
+
+        List<(string Email, string Name)> confirmationRecipients =
+            [(EnrollmentEmails.ResolveContactEmail(request, null), request.StudentName)];
+        if (request.EnrollmentType == "group" && request.GroupMembers is { Count: > 0 })
+        {
+            confirmationRecipients.AddRange(request.GroupMembers.Select(member =>
+                (EnrollmentEmails.ResolveContactEmail(request, member), member.StudentName)));
+        }
+
         // 5. Begin SERIALIZABLE transaction: capacity + duplicate checks moeten ATOMIC zijn
         //    met de insert, anders kunnen twee parallelle submitters beide de check passeren
         //    en samen MaxRegistrations overschrijden of een duplicate email creëren.
@@ -438,6 +480,46 @@ public class EnrollmentService(
             await timeSlotPreferenceRepo.SaveChangesAsync(ct);
         }
 
+        var outboxMessages = new List<EmailOutboxMessage>();
+        foreach (IGrouping<string, (string Email, string Name)> contact in
+                 confirmationRecipients.GroupBy(r => r.Email))
+        {
+            var names = contact.Select(r => r.Name).ToList();
+            var payload = new EnrollmentConfirmationEmailPayload(
+                contact.Key,
+                names[0],
+                series.Name,
+                trainerInfo?.FullName ?? string.Empty,
+                names);
+            outboxMessages.Add(new EmailOutboxMessage
+            {
+                OrganizationId = series.OrganizationId,
+                EnrollmentId = enrollment.Id,
+                Type = EmailOutboxMessageTypes.EnrollmentConfirmation,
+                Payload = JsonSerializer.Serialize(payload),
+            });
+        }
+
+        if (trainerInfo.HasValue)
+        {
+            var payload = new TrainerEnrollmentNotificationEmailPayload(
+                trainerInfo.Value.Email,
+                trainerInfo.Value.FullName,
+                request.StudentName,
+                EnrollmentEmails.ResolveContactEmail(request, null),
+                series.Name,
+                responseItems);
+            outboxMessages.Add(new EmailOutboxMessage
+            {
+                OrganizationId = series.OrganizationId,
+                EnrollmentId = enrollment.Id,
+                Type = EmailOutboxMessageTypes.TrainerNotification,
+                Payload = JsonSerializer.Serialize(payload),
+            });
+        }
+
+        await emailOutboxRepository.AddRangeAsync(outboxMessages, ct);
+        await emailOutboxRepository.SaveChangesAsync(ct);
         await enrollmentRepo.CommitTransactionAsync(ct);
 
         }
@@ -457,77 +539,6 @@ public class EnrollmentService(
 
             logger.LogError(ex, "Inschrijving mislukt voor reeks {SeriesId}", lessonSeriesId);
             return Result<Guid>.Fail(new Error(ErrorCodes.Unexpected, "Inschrijving mislukt. Probeer het opnieuw."));
-        }
-
-        // 13. Send notification emails (fire-and-forget in try/catch)
-        try
-        {
-            var firstTrainerId = series.Lessons
-                .OrderBy(l => l.Date).ThenBy(l => l.StartTime)
-                .Select(l => l.TrainerId)
-                .FirstOrDefault(id => id.HasValue);
-
-            var trainerInfo = firstTrainerId.HasValue
-                ? await userLookup.GetUserInfoByIdAsync(firstTrainerId.Value, ct)
-                : null;
-
-            List<(string FieldLabel, string Value)> responseItems = new();
-            if (form is not null)
-            {
-                foreach (var r in request.Responses)
-                {
-                    var field = form.Fields.FirstOrDefault(f => f.Id == r.FormFieldId);
-                    if (field is not null)
-                        responseItems.Add((field.Label, r.Value));
-                }
-            }
-
-            // Eén mail per contactadres: wie de communicatie voor meerdere deelnemers
-            // draagt, hoort niet drie keer dezelfde bevestiging te krijgen.
-            List<(string Email, string Name)> confirmationRecipients =
-                [(EnrollmentEmails.ResolveContactEmail(request, null), request.StudentName)];
-
-            if (request.EnrollmentType == "group" && request.GroupMembers is { Count: > 0 })
-            {
-                confirmationRecipients.AddRange(request.GroupMembers.Select(m =>
-                    (EnrollmentEmails.ResolveContactEmail(request, m), m.StudentName)));
-            }
-
-            // Groeperen op contactadres: één mail per adres, met alle deelnemers erin
-            // benoemd zodat de contactpersoon ziet wie er onder zijn adres valt.
-            foreach (IGrouping<string, (string Email, string Name)> contact in
-                     confirmationRecipients.GroupBy(r => r.Email))
-            {
-                List<string> names = contact.Select(r => r.Name).ToList();
-                try
-                {
-                    await emailService.SendEnrollmentConfirmationAsync(
-                        contact.Key, names[0], series.Name,
-                        trainerInfo?.FullName ?? string.Empty, names, ct);
-                }
-                catch (Exception memberEx)
-                {
-                    logger.LogError(memberEx,
-                        "Bevestigingsmail naar {Email} mislukt voor inschrijving {EnrollmentId}",
-                        contact.Key, enrollment.Id);
-                }
-            }
-
-            if (trainerInfo.HasValue)
-            {
-                await emailService.SendEnrollmentNotificationToTrainerAsync(
-                    trainerInfo.Value.Email,
-                    trainerInfo.Value.FullName,
-                    request.StudentName,
-                    EnrollmentEmails.ResolveContactEmail(request, null),
-                    series.Name,
-                    responseItems,
-                    ct);
-            }
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "E-mailnotificatie mislukt voor inschrijving {EnrollmentId}", enrollment.Id);
         }
 
         return Result<Guid>.Ok(enrollment.Id);

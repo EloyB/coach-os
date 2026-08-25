@@ -99,6 +99,8 @@ public static class DependencyInjection
         services.AddScoped<IEnrollmentFormRepository, EnrollmentFormRepository>();
         services.AddScoped<IEnrollmentGroupRepository, EnrollmentGroupRepository>();
         services.AddScoped<ITimeSlotPreferenceRepository, TimeSlotPreferenceRepository>();
+        services.AddScoped<IEmailOutboxRepository, EmailOutboxRepository>();
+        services.AddHostedService<EmailOutboxWorker>();
         services.AddScoped<ITrainerAvailabilityRepository, TrainerAvailabilityRepository>();
         services.AddScoped<IScheduleAssignmentRepository, ScheduleAssignmentRepository>();
         services.AddScoped<IAssignmentConfirmationTokenRepository, AssignmentConfirmationTokenRepository>();
