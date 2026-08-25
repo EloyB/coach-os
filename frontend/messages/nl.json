@@ -211,6 +211,8 @@
     "sectionGroups": "Groepen",
     "sectionIndividual": "Individueel",
     "members": "{count, plural, one {# lid} other {# leden}}",
+    "expandGroup": "Groepsleden tonen",
+    "collapseGroup": "Groepsleden verbergen",
     "viaContact": "via {email}",
     "showCancelled": "Toon geannuleerde ({count})",
     "hideCancelled": "Verberg geannuleerde",
@@ -233,6 +235,7 @@
   },
   "enrollmentDetail": {
     "title": "Details inschrijving",
+    "groupTitle": "Groep · {name}",
     "sectionBasic": "Gegevens",
     "sectionMembers": "Leden",
     "tabMembers": "Groepsleden",

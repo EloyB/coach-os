@@ -101,7 +101,7 @@ export function EnrollmentDetailDialog({
         <div className="flex flex-col gap-4 overflow-y-auto px-6 pt-6 pb-2">
         <DialogHeader>
           <DialogTitle className="flex flex-wrap items-center gap-2">
-            {enrollment.studentName}
+            {hasGroup ? t("groupTitle", { name: enrollment.studentName }) : enrollment.studentName}
             {enrollmentStatusStyles[enrollment.status] && (
               <Badge
                 className={`${enrollmentStatusStyles[enrollment.status].className} border-0 text-xs`}
@@ -135,7 +135,7 @@ export function EnrollmentDetailDialog({
         {/* Tab: Gegevens (basis + formulierantwoorden) */}
         {activeTab === "gegevens" && (
           <div className="space-y-5">
-            <dl className="grid grid-cols-[130px_1fr] gap-x-3 gap-y-1.5 text-sm">
+            <dl className="space-y-3.5">
               <DetailRow label={t("contact")} value={contact} />
               {enrollment.studentPhone && (
                 <DetailRow label="Telefoon" value={enrollment.studentPhone} />
@@ -170,11 +170,11 @@ export function EnrollmentDetailDialog({
               {enrollment.formResponses.length === 0 ? (
                 <p className="text-sm text-gray-400">{t("noResponses")}</p>
               ) : (
-                <dl className="space-y-1.5">
+                <dl className="space-y-3">
                   {enrollment.formResponses.map((r, i) => (
-                    <div key={i} className="grid grid-cols-[130px_1fr] gap-x-3 text-sm">
-                      <dt className="text-gray-500">{r.fieldLabel}</dt>
-                      <dd className="font-medium text-gray-800">{r.value}</dd>
+                    <div key={i}>
+                      <dt className="text-xs text-gray-500">{r.fieldLabel}</dt>
+                      <dd className="mt-0.5 text-sm text-gray-800">{r.value}</dd>
                     </div>
                   ))}
                 </dl>
@@ -194,28 +194,42 @@ export function EnrollmentDetailDialog({
               return (
                 <li
                   key={m.id}
-                  className="flex items-center gap-3 px-3 py-2.5 text-sm"
+                  className="flex items-start gap-3 px-3 py-2.5 text-sm"
                 >
-                  <span className="flex min-w-0 flex-1 items-center gap-2">
-                    <span className="truncate font-medium text-gray-800">
-                      {m.studentName}
-                    </span>
-                    {m.isGroupLeader && (
-                      <span className="shrink-0 rounded bg-tennis-green/10 px-1.5 py-0.5 text-[10px] font-semibold text-tennis-green">
-                        {t("leaderBadge")}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="truncate font-medium text-gray-800">
+                        {m.studentName}
                       </span>
-                    )}
-                  </span>
-                  <span className="max-w-[45%] shrink-0 truncate text-right text-xs text-gray-500">
-                    {mContact}
-                    {mAge != null ? ` · ${t("ageYears", { count: mAge })}` : ""}
-                  </span>
+                      {m.isGroupLeader && (
+                        <span className="shrink-0 rounded bg-tennis-green/10 px-1.5 py-0.5 text-[10px] font-semibold text-tennis-green">
+                          {t("leaderBadge")}
+                        </span>
+                      )}
+                      {enrollmentStatusStyles[m.status] && (
+                        <Badge
+                          className={`${enrollmentStatusStyles[m.status].className} shrink-0 border-0 text-[10px]`}
+                        >
+                          {enrollmentStatusStyles[m.status].label}
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="mt-0.5 truncate text-xs text-gray-500">
+                      {[
+                        mContact,
+                        mAge != null ? t("ageYears", { count: mAge }) : null,
+                        m.categoryLabel || null,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </div>
+                  </div>
                   {onEditMember && (
                     <button
                       type="button"
                       onClick={() => onEditMember(m)}
                       aria-label={t("editMemberLabel", { name: m.studentName })}
-                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-gray-400 hover:bg-gray-50 hover:text-tennis-green"
+                      className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-gray-400 hover:bg-gray-50 hover:text-tennis-green"
                     >
                       <Pencil size={13} />
                     </button>
@@ -265,10 +279,12 @@ export function EnrollmentDetailDialog({
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
-    <>
-      <dt className="text-gray-500">{label}</dt>
-      <dd className="text-gray-800">{value}</dd>
-    </>
+    <div>
+      <dt className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+        {label}
+      </dt>
+      <dd className="mt-0.5 text-sm text-gray-800">{value}</dd>
+    </div>
   );
 }
 

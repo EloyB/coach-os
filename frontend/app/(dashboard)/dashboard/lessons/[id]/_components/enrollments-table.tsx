@@ -452,16 +452,26 @@ function GroupBlockRows({
     <>
       <tr
         className="border-t border-gray-100 bg-gray-50/40 cursor-pointer hover:bg-gray-50"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setDetailOpen(true)}
       >
         {/* Naam / groepskop */}
         <td className="px-4 py-2.5" colSpan={2}>
           <div className="flex items-center gap-2 min-w-0">
-            {expanded ? (
-              <ChevronDown size={15} className="shrink-0 text-gray-400" />
-            ) : (
-              <ChevronRight size={15} className="shrink-0 text-gray-400" />
-            )}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpen((v) => !v);
+              }}
+              aria-label={expanded ? t("collapseGroup") : t("expandGroup")}
+              className="-m-1 shrink-0 rounded p-1 text-gray-400 hover:bg-gray-200/60 hover:text-gray-600"
+            >
+              {expanded ? (
+                <ChevronDown size={15} />
+              ) : (
+                <ChevronRight size={15} />
+              )}
+            </button>
             <Users size={14} className="shrink-0 text-tennis-green" />
             <span className="truncate text-sm font-semibold text-gray-800">
               {t("group")} · {leader.studentName}
