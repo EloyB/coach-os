@@ -519,6 +519,7 @@ public class EnrollmentService(
         }
 
         await emailOutboxRepository.AddRangeAsync(outboxMessages, ct);
+        await emailOutboxRepository.SaveChangesAsync(ct);
         await enrollmentRepo.CommitTransactionAsync(ct);
 
         }

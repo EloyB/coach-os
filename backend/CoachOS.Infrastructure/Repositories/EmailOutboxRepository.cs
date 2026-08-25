@@ -8,4 +8,7 @@ public class EmailOutboxRepository(ApplicationDbContext db) : IEmailOutboxReposi
 {
     public async Task AddRangeAsync(IEnumerable<EmailOutboxMessage> messages, CancellationToken ct = default)
         => await db.EmailOutboxMessages.AddRangeAsync(messages, ct);
+
+    public Task SaveChangesAsync(CancellationToken ct = default)
+        => db.SaveChangesAsync(ct);
 }

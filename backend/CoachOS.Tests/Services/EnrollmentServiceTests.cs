@@ -343,6 +343,8 @@ public class EnrollmentServiceTests
                     && messages.Any(m => m.Type == EmailOutboxMessageTypes.TrainerNotification)),
                 It.IsAny<CancellationToken>()),
             Times.Once);
+        _emailOutboxRepository.Verify(
+            r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
         _emailService.VerifyNoOtherCalls();
     }
 
