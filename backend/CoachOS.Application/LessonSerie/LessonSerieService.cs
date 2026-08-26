@@ -144,6 +144,16 @@ public class LessonSerieService(
             lesson.CourtName = NormalizeCourt(lessonRequest.CourtName) is { Length: > 0 } normalizedCourt
                 ? normalizedCourt
                 : null;
+
+            // Koppel de les aan z'n weekslot (match op dag + starttijd + baan) zodat "pas hele
+            // weekslot aan" én de planning-synchronisatie werken. Onze DayOfWeek: 0=maandag,
+            // System.DayOfWeek: 0=zondag → (dow + 6) % 7. Geen match (losse les) → null.
+            int lessonDow = ((int)lesson.Date.DayOfWeek + 6) % 7;
+            lesson.WeeklyTemplateEntry = series.WeeklyTemplate.FirstOrDefault(e =>
+                e.DayOfWeek == lessonDow
+                && e.StartTime == lesson.StartTime
+                && NormalizeCourt(e.CourtName) == NormalizeCourt(lesson.CourtName));
+
             series.Lessons.Add(lesson);
         }
 
@@ -331,6 +341,8 @@ public class LessonSerieService(
                 Level = level,
                 MaxStudents = request.MaxStudents,
                 IsCancelled = false,
+                // Navigatie zetten (niet de Id): EF lost de FK op ongeacht Id-generatietiming.
+                WeeklyTemplateEntry = entry,
             });
         }
 
@@ -425,6 +437,36 @@ public class LessonSerieService(
                 lesson.CancellationReason = request.CancellationReason;
             else if (!request.IsCancelled.Value)
                 lesson.CancellationReason = null;
+        }
+
+        // Slot-scope: pas de recurring attributen (tijd, trainer, baan, capaciteit) toe op het
+        // hele weekslot — de WeeklyTemplateEntry én alle niet-geannuleerde lessen ervan — zodat de
+        // planning (die de template leest) meteen meegaat. Datum en annulering blijven per les.
+        // series.WeeklyTemplate en series.Lessons zijn door dezelfde DbContext getrackt als `lesson`,
+        // dus deze mutaties gaan mee in één SaveChanges (atomair).
+        if (string.Equals(request.ApplyTo, "slot", StringComparison.OrdinalIgnoreCase)
+            && lesson.WeeklyTemplateEntryId is Guid templateEntryId)
+        {
+            Domain.Entities.WeeklyTemplateEntry? entry =
+                series.WeeklyTemplate.FirstOrDefault(w => w.Id == templateEntryId);
+            if (entry is not null)
+            {
+                entry.StartTime = lesson.StartTime;
+                entry.EndTime = lesson.EndTime;
+                entry.TrainerId = lesson.TrainerId;
+                entry.CourtName = lesson.CourtName;
+                entry.MaxStudents = lesson.MaxStudents;
+
+                foreach (Domain.Entities.Lesson sibling in series.Lessons.Where(l =>
+                    l.WeeklyTemplateEntryId == templateEntryId && l.Id != lesson.Id && !l.IsCancelled))
+                {
+                    sibling.StartTime = lesson.StartTime;
+                    sibling.EndTime = lesson.EndTime;
+                    sibling.TrainerId = lesson.TrainerId;
+                    sibling.CourtName = lesson.CourtName;
+                    sibling.MaxStudents = lesson.MaxStudents;
+                }
+            }
         }
 
         await lessonRepo.SaveChangesAsync(ct);

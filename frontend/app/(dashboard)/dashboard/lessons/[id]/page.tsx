@@ -472,6 +472,10 @@ function EditLessonDialog({
   const [endTime, setEndTime] = useState(lesson.endTime);
   const [maxStudents, setMaxStudents] = useState(lesson.maxStudents);
   const [notes, setNotes] = useState(lesson.notes ?? "");
+  // Alleen relevant als de les uit een weekslot komt: past de wijziging op het hele
+  // weekslot toe (default) of enkel op deze les. Datum blijft altijd per les.
+  const belongsToWeekSlot = Boolean(lesson.weeklyTemplateEntryId);
+  const [applyTo, setApplyTo] = useState<"lesson" | "slot">("slot");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [cancelling, setCancelling] = useState(false);
@@ -495,6 +499,7 @@ function EditLessonDialog({
         endTime,
         maxStudents,
         notes,
+        applyTo: belongsToWeekSlot ? applyTo : undefined,
       };
 
       await updateLesson(seriesId, lesson.id, request);
@@ -669,6 +674,44 @@ function EditLessonDialog({
             />
           </div>
         </div>
+
+        {/* Reikwijdte: enkel deze les of het hele weekslot (alleen als de les uit een weekslot komt) */}
+        {belongsToWeekSlot && (
+          <div className="rounded-lg border border-gray-200 bg-gray-50/50 p-3">
+            <p className="mb-2 text-xs font-medium text-gray-600">
+              Wijziging toepassen op
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setApplyTo("slot")}
+                className={`flex-1 rounded-md px-3 py-2 text-xs font-medium transition-colors ${
+                  applyTo === "slot"
+                    ? "bg-tennis-green text-white"
+                    : "border border-gray-200 text-gray-600 hover:bg-gray-50"
+                }`}
+              >
+                Hele weekslot
+              </button>
+              <button
+                type="button"
+                onClick={() => setApplyTo("lesson")}
+                className={`flex-1 rounded-md px-3 py-2 text-xs font-medium transition-colors ${
+                  applyTo === "lesson"
+                    ? "bg-tennis-green text-white"
+                    : "border border-gray-200 text-gray-600 hover:bg-gray-50"
+                }`}
+              >
+                Enkel deze les
+              </button>
+            </div>
+            <p className="mt-2 text-[11px] leading-relaxed text-gray-400">
+              {applyTo === "slot"
+                ? "Tijd, trainer, baan en capaciteit gelden voor alle lessen van dit weekslot én de planning. De datum blijft enkel voor deze les."
+                : "De wijziging geldt enkel voor deze les. De planning blijft de tijd van het weekslot tonen."}
+            </p>
+          </div>
+        )}
 
         {/* Geannuleerd banner */}
         {lesson.isCancelled && (

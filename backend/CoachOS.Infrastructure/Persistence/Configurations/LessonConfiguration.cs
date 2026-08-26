@@ -36,6 +36,16 @@ public class LessonConfiguration : IEntityTypeConfiguration<Lesson>
             .OnDelete(DeleteBehavior.Restrict)
             .IsRequired(false);
 
+        // Optionele terugverwijzing naar het weekslot. SetNull: verwijderen van een
+        // weekslot maakt de les los i.p.v. te blokkeren of mee te cascade-deleten.
+        builder.HasOne(l => l.WeeklyTemplateEntry)
+            .WithMany()
+            .HasForeignKey(l => l.WeeklyTemplateEntryId)
+            .OnDelete(DeleteBehavior.SetNull)
+            .IsRequired(false);
+
+        builder.HasIndex(l => l.WeeklyTemplateEntryId);
+
         builder.HasIndex(l => l.OrganizationId);
         builder.HasIndex(l => l.TrainerId);
         builder.HasIndex(l => l.Date);

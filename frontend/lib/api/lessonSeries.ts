@@ -12,6 +12,8 @@ export interface LessonDto {
   notes?: string;
   isCancelled: boolean;
   cancellationReason?: string | null;
+  /** Het weekslot waaruit deze les komt; null voor losse lessen. */
+  weeklyTemplateEntryId?: string | null;
 }
 
 export interface LessonSeriesDto {
@@ -165,6 +167,8 @@ export interface UpdateLessonRequest {
   notes?: string;
   isCancelled?: boolean;
   cancellationReason?: string;
+  /** "slot" past tijd/trainer/baan/capaciteit toe op het hele weekslot; "lesson" (of leeg) enkel deze les. */
+  applyTo?: "lesson" | "slot";
 }
 
 export async function updateLesson(seriesId: string, lessonId: string, request: UpdateLessonRequest): Promise<LessonDto> {

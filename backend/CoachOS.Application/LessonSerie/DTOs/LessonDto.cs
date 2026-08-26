@@ -14,4 +14,8 @@ public class LessonDto
     public string? Notes { get; set; }
     public bool IsCancelled { get; set; }
     public string? CancellationReason { get; set; }
+
+    /// <summary>Het weekslot waaruit deze les komt; null voor losse lessen. Bepaalt of de
+    /// "pas hele weekslot aan"-keuze getoond wordt.</summary>
+    public Guid? WeeklyTemplateEntryId { get; set; }
 }
