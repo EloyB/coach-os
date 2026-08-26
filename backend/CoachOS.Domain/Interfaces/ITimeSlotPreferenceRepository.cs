@@ -14,5 +14,7 @@ public interface ITimeSlotPreferenceRepository
 
     Task RemoveByEnrollmentAsync(Guid enrollmentId, CancellationToken ct = default);
 
+    void RemoveRange(IEnumerable<TimeSlotPreference> preferences);
+
     Task SaveChangesAsync(CancellationToken ct = default);
 }

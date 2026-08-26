@@ -176,8 +176,13 @@ export async function updateLesson(seriesId: string, lessonId: string, request: 
   return data;
 }
 
-export async function deleteLesson(seriesId: string, lessonId: string): Promise<void> {
-  await apiClient.delete(`/lessonseries/${seriesId}/lessons/${lessonId}`);
+export async function deleteLesson(
+  seriesId: string,
+  lessonId: string,
+  wholeSlot = false,
+): Promise<void> {
+  const qs = wholeSlot ? "?applyTo=slot" : "";
+  await apiClient.delete(`/lessonseries/${seriesId}/lessons/${lessonId}${qs}`);
 }
 
 // ─── Wizard API ───────────────────────────────────────────────────────────────

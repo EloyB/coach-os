@@ -476,6 +476,7 @@ function EditLessonDialog({
   // hele weekslot geldt of enkel deze les. Datum blijft altijd per les.
   const belongsToWeekSlot = Boolean(lesson.weeklyTemplateEntryId);
   const [confirmScopeOpen, setConfirmScopeOpen] = useState(false);
+  const [confirmDeleteScopeOpen, setConfirmDeleteScopeOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [cancelling, setCancelling] = useState(false);
@@ -521,11 +522,11 @@ function EditLessonDialog({
     void doSave(undefined);
   }
 
-  async function handleDelete() {
+  async function doDelete(wholeSlot: boolean) {
     setDeleting(true);
     try {
       const { deleteLesson } = await import("@/lib/api/lessonSeries");
-      await deleteLesson(seriesId, lesson.id);
+      await deleteLesson(seriesId, lesson.id, wholeSlot);
       queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
       onClose();
     } finally {
@@ -801,7 +802,7 @@ function EditLessonDialog({
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={handleDelete}
+                onClick={() => doDelete(false)}
                 disabled={deleting}
                 className="px-3 py-1.5 bg-red-600 text-white text-xs font-semibold rounded-lg hover:bg-red-700 disabled:opacity-60"
               >
@@ -870,7 +871,15 @@ function EditLessonDialog({
                   )}
                   <button
                     type="button"
-                    onClick={() => { setShowActionsMenu(false); setActiveAction("delete"); }}
+                    onClick={() => {
+                      setShowActionsMenu(false);
+                      // Weekslot-les: vraag de reikwijdte; losse les: inline bevestiging.
+                      if (belongsToWeekSlot) {
+                        setConfirmDeleteScopeOpen(true);
+                      } else {
+                        setActiveAction("delete");
+                      }
+                    }}
                     className="w-full flex items-center gap-2 px-3 py-2 text-red-600 hover:bg-red-50 text-left"
                   >
                     <Trash2 size={13} />
@@ -912,6 +921,46 @@ function EditLessonDialog({
                   void doSave("slot");
                 }}
                 className="rounded-lg bg-tennis-green px-4 py-2 text-sm font-semibold text-white hover:bg-tennis-green/90"
+              >
+                Ja
+              </button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Reikwijdte-bevestiging bij verwijderen (enkel weekslot-lessen) */}
+        <AlertDialog open={confirmDeleteScopeOpen} onOpenChange={setConfirmDeleteScopeOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                Wil je dit verwijderen voor elk van deze weekslots?
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                &ldquo;Ja&rdquo; verwijdert het hele weekslot: alle lessen ervan én de
+                planning-plaatsing verdwijnen. De inschrijvingen zelf blijven bestaan.
+                Kies &ldquo;Enkel dit weekslot&rdquo; om alleen deze les te verwijderen.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={() => {
+                  setConfirmDeleteScopeOpen(false);
+                  void doDelete(false);
+                }}
+                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-60"
+              >
+                Enkel dit weekslot
+              </button>
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={() => {
+                  setConfirmDeleteScopeOpen(false);
+                  void doDelete(true);
+                }}
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
               >
                 Ja
               </button>

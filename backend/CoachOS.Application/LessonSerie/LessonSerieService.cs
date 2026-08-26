@@ -14,6 +14,8 @@ public class LessonSerieService(
     IUserLookupService userLookup,
     IEmailService emailService,
     IMollieConnectionRepository mollieConnectionRepo,
+    IScheduleAssignmentRepository scheduleAssignmentRepo,
+    ITimeSlotPreferenceRepository timeSlotPreferenceRepo,
     ApplicationMapper mapper) : ILessonSerieService
 {
     public async Task<Result<List<LessonSerieDto>>> GetAllAsync(
@@ -571,7 +573,7 @@ public class LessonSerieService(
     }
 
     public async Task<Result> DeleteLessonAsync(
-        Guid seriesId, Guid lessonId, Guid organizationId, CancellationToken ct = default)
+        Guid seriesId, Guid lessonId, Guid organizationId, bool wholeSlot = false, CancellationToken ct = default)
     {
         var lesson =
             await lessonRepo.GetByIdWithEnrollmentsAsync(lessonId, seriesId, organizationId, ct);
@@ -579,11 +581,67 @@ public class LessonSerieService(
         if (lesson is null)
             return Result.Fail(new Error(ErrorCodes.NotFound, "Lesmoment niet gevonden."));
 
+        // Hele weekslot verwijderen (enkel als de les uit een weekslot komt).
+        if (wholeSlot && lesson.WeeklyTemplateEntryId is Guid templateEntryId)
+            return await DeleteWeekSlotAsync(seriesId, templateEntryId, organizationId, ct);
+
         if (lesson.Enrollments.Count > 0)
             return Result.Fail(new Error(ErrorCodes.Conflict, "Verwijderen niet mogelijk: er zijn nog inschrijvingen op dit lesmoment."));
 
         await lessonRepo.DeleteAsync(lesson, ct);
         await lessonRepo.SaveChangesAsync(ct);
+
+        return Result.Ok();
+    }
+
+    /// <summary>
+    /// Verwijdert een volledig weekslot over de hele reeks: de <see cref="WeeklyTemplateEntry"/>,
+    /// al z'n lessen, z'n beschikbaarheid-voorkeuren en z'n nog-voorgestelde planning-toewijzingen —
+    /// in één transactie, zodat het slot ook uit de planning verdwijnt. Blokkeert wanneer het slot
+    /// bevestigde of te-bevestigen toewijzingen heeft (geen student verliest stil een bevestigde plaats).
+    /// De inschrijvingen zelf zitten op de reeks en blijven bestaan.
+    /// </summary>
+    private async Task<Result> DeleteWeekSlotAsync(
+        Guid seriesId, Guid templateEntryId, Guid organizationId, CancellationToken ct)
+    {
+        Domain.Entities.LessonSerie? series = await lessonSeriesRepo.GetByIdAsync(seriesId, organizationId, ct);
+        if (series is null)
+            return Result.Fail(new Error(ErrorCodes.NotFound, "Lesreeks niet gevonden."));
+
+        Domain.Entities.WeeklyTemplateEntry? entry =
+            series.WeeklyTemplate.FirstOrDefault(w => w.Id == templateEntryId);
+        if (entry is null)
+            return Result.Fail(new Error(ErrorCodes.NotFound, "Weekslot niet gevonden."));
+
+        List<Domain.Entities.ScheduleAssignment> assignments =
+            (await scheduleAssignmentRepo.GetBySeriesAsync(seriesId, organizationId, ct))
+            .Where(a => a.WeeklyTemplateEntryId == templateEntryId)
+            .ToList();
+
+        if (assignments.Any(a => a.Status is ScheduleAssignmentStatus.Confirmed
+                or ScheduleAssignmentStatus.AwaitingConfirmation))
+        {
+            return Result.Fail(new Error(ErrorCodes.Conflict,
+                "Dit weekslot heeft bevestigde planning. Maak eerst de planning van dit slot ongedaan."));
+        }
+
+        List<Domain.Entities.TimeSlotPreference> preferences =
+            (await timeSlotPreferenceRepo.GetBySeriesAsync(seriesId, organizationId, ct))
+            .Where(p => p.WeeklyTemplateEntryId == templateEntryId)
+            .ToList();
+
+        List<Domain.Entities.Lesson> slotLessons = series.Lessons
+            .Where(l => l.WeeklyTemplateEntryId == templateEntryId)
+            .ToList();
+
+        // Kinderen vóór de ouder, alles in één SaveChanges = één transactie (alles-of-niets).
+        // assignments bevatten hier enkel Proposed/Declined (bevestigd is hierboven geblokkeerd),
+        // die hebben geen bevestigings-tokens, dus geen verdere keten nodig.
+        scheduleAssignmentRepo.RemoveRange(assignments);
+        timeSlotPreferenceRepo.RemoveRange(preferences);
+        await lessonRepo.DeleteRangeAsync(slotLessons, ct);
+        await lessonSeriesRepo.DeleteWeeklyTemplateRangeAsync([entry], ct);
+        await lessonSeriesRepo.SaveChangesAsync(ct);
 
         return Result.Ok();
     }

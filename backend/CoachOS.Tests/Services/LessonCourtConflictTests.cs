@@ -35,6 +35,8 @@ public class LessonCourtConflictTests
     private Mock<IUserLookupService> _userLookup = null!;
     private Mock<IEmailService> _emailService = null!;
     private Mock<IMollieConnectionRepository> _mollieConnectionRepo = null!;
+    private Mock<IScheduleAssignmentRepository> _scheduleAssignmentRepo = null!;
+    private Mock<ITimeSlotPreferenceRepository> _timeSlotPreferenceRepo = null!;
     private ApplicationMapper _mapper = null!;
 
     private LessonSerieService _serieService = null!;
@@ -59,6 +61,8 @@ public class LessonCourtConflictTests
         _userLookup = new Mock<IUserLookupService>();
         _emailService = new Mock<IEmailService>();
         _mollieConnectionRepo = new Mock<IMollieConnectionRepository>();
+        _scheduleAssignmentRepo = new Mock<IScheduleAssignmentRepository>();
+        _timeSlotPreferenceRepo = new Mock<ITimeSlotPreferenceRepository>();
         _mapper = new ApplicationMapper();
 
         _serieService = new LessonSerieService(
@@ -69,6 +73,8 @@ public class LessonCourtConflictTests
             _userLookup.Object,
             _emailService.Object,
             _mollieConnectionRepo.Object,
+            _scheduleAssignmentRepo.Object,
+            _timeSlotPreferenceRepo.Object,
             _mapper);
 
         _standaloneService = new StandaloneLessonService(
