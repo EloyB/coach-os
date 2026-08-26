@@ -422,6 +422,7 @@
     "deleteSlot": "Verwijder weekslot",
     "editSlot": "Weekslot aanpassen",
     "addSlot": "Weekslot toevoegen",
+    "slotActions": "Weekslot-acties",
     "occupied": "{count}/{max} bezet",
     "slotDialogEmpty": "Nog niemand toegewezen.",
     "close": "Sluiten",
