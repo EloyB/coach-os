@@ -1201,4 +1201,76 @@ public class EnrollmentServiceTests
         result.Errors.Should().Contain(e => e.Code == ErrorCodes.Validation);
         _enrollmentRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
+
+    // ── CancelGroupAsync (atomair) ────────────────────────────────────────────
+
+    [Test]
+    public async Task CancelGroupAsync_ActiveMembers_CancelsAllInOneSave()
+    {
+        Guid groupId = Guid.NewGuid();
+        Enrollment m1 = new() { Id = Guid.NewGuid(), OrganizationId = OrgId, LessonSerieId = SeriesId, Status = EnrollmentStatus.Confirmed, StudentName = "A", StudentEmail = "a@t.be" };
+        Enrollment m2 = new() { Id = Guid.NewGuid(), OrganizationId = OrgId, LessonSerieId = SeriesId, Status = EnrollmentStatus.PendingPayment, StudentName = "B", StudentEmail = "b@t.be" };
+        EnrollmentGroup group = new() { Id = groupId, OrganizationId = OrgId, LessonSerieId = SeriesId, Members = new List<Enrollment> { m1, m2 } };
+        _enrollmentGroupRepo
+            .Setup(r => r.GetByIdAsync(groupId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(group);
+
+        Result<bool> result = await _service.CancelGroupAsync(SeriesId, groupId, OrgId, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        m1.Status.Should().Be(EnrollmentStatus.Cancelled);
+        m2.Status.Should().Be(EnrollmentStatus.Cancelled);
+        // Eén SaveChanges over alle leden = atomair (alles-of-niets).
+        _enrollmentGroupRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task CancelGroupAsync_UnknownGroup_ReturnsNotFound()
+    {
+        Guid groupId = Guid.NewGuid();
+        _enrollmentGroupRepo
+            .Setup(r => r.GetByIdAsync(groupId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((EnrollmentGroup?)null);
+
+        Result<bool> result = await _service.CancelGroupAsync(SeriesId, groupId, OrgId, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.Code == ErrorCodes.NotFound);
+        _enrollmentGroupRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task CancelGroupAsync_WrongSeries_ReturnsNotFoundAndDoesNotMutate()
+    {
+        Guid groupId = Guid.NewGuid();
+        Enrollment m1 = new() { Id = Guid.NewGuid(), OrganizationId = OrgId, LessonSerieId = Guid.NewGuid(), Status = EnrollmentStatus.Confirmed, StudentName = "A", StudentEmail = "a@t.be" };
+        EnrollmentGroup group = new() { Id = groupId, OrganizationId = OrgId, LessonSerieId = Guid.NewGuid(), Members = new List<Enrollment> { m1 } };
+        _enrollmentGroupRepo
+            .Setup(r => r.GetByIdAsync(groupId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(group);
+
+        Result<bool> result = await _service.CancelGroupAsync(SeriesId, groupId, OrgId, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.Code == ErrorCodes.NotFound);
+        m1.Status.Should().Be(EnrollmentStatus.Confirmed);
+        _enrollmentGroupRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task CancelGroupAsync_AllAlreadyCancelled_ReturnsValidationError()
+    {
+        Guid groupId = Guid.NewGuid();
+        Enrollment m1 = new() { Id = Guid.NewGuid(), OrganizationId = OrgId, LessonSerieId = SeriesId, Status = EnrollmentStatus.Cancelled, StudentName = "A", StudentEmail = "a@t.be" };
+        EnrollmentGroup group = new() { Id = groupId, OrganizationId = OrgId, LessonSerieId = SeriesId, Members = new List<Enrollment> { m1 } };
+        _enrollmentGroupRepo
+            .Setup(r => r.GetByIdAsync(groupId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(group);
+
+        Result<bool> result = await _service.CancelGroupAsync(SeriesId, groupId, OrgId, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.Code == ErrorCodes.Validation);
+        _enrollmentGroupRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
 }

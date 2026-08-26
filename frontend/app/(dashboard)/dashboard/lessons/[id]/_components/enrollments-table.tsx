@@ -11,7 +11,7 @@ import {
   Search,
   ChevronDown,
   ChevronRight,
-  ChevronUp,
+  Eye,
   Pencil,
   Trash2,
   Euro,
@@ -45,10 +45,12 @@ import { enrollmentStatusStyles } from "@/lib/status-styles";
 import {
   getLessonSeriesEnrollments,
   cancelEnrollment,
+  cancelEnrollmentGroup,
   markEnrollmentCashPaid,
   updateBasicEnrollment,
 } from "@/lib/api/enrollments";
 import type { LessonSeriesEnrollmentDto } from "@/lib/api/enrollments";
+import { EnrollmentDetailDialog } from "./enrollment-detail-dialog";
 import { isHeadTrainerViewer } from "@/lib/auth";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -177,7 +179,7 @@ function PersonRow({
 }) {
   const t = useTranslations("enrollmentsTable");
   const queryClient = useQueryClient();
-  const [expanded, setExpanded] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
   // Hoofdtrainer = read-only: geen bewerk-/annuleer-/betaalacties. Reactief zodat
@@ -186,7 +188,6 @@ function PersonRow({
   useEffect(() => setReadOnly(isHeadTrainerViewer()), []);
   const showActionsMenu = openMenuId === enrollment.id;
 
-  const hasResponses = enrollment.formResponses.length > 0;
   const isCancelled = enrollment.status === "Cancelled";
   const isPendingPayment = enrollment.status === "PendingPayment";
   const ownsPayment = enrollment.enrollmentGroupId == null || enrollment.isGroupLeader;
@@ -195,7 +196,7 @@ function PersonRow({
   const cancelMutation = useMutation({
     mutationFn: () => cancelEnrollment(seriesId, enrollment.id),
     onSuccess: () => {
-      toast.success("Inschrijving geannuleerd");
+      toast.success(t("toastCancelled"));
       queryClient.invalidateQueries({ queryKey: ["enrollments", seriesId] });
       queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
     },
@@ -204,7 +205,7 @@ function PersonRow({
   const markPaidMutation = useMutation({
     mutationFn: () => markEnrollmentCashPaid(enrollment.id),
     onSuccess: () => {
-      toast.success("Inschrijving gemarkeerd als betaald");
+      toast.success(t("toastMarkedPaid"));
       queryClient.invalidateQueries({ queryKey: ["enrollments", seriesId] });
       queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
     },
@@ -214,20 +215,9 @@ function PersonRow({
     <>
       <tr
         className={`border-t border-gray-50 ${
-          isCancelled
-            ? "opacity-50"
-            : !readOnly || hasResponses
-              ? "hover:bg-gray-50/60 cursor-pointer"
-              : ""
+          isCancelled ? "opacity-50" : "hover:bg-gray-50/60 cursor-pointer"
         } ${isMatch ? "bg-tennis-lime/10" : ""}`}
-        onClick={() => {
-          if (isCancelled) return;
-          if (readOnly) {
-            if (hasResponses) setExpanded((v) => !v);
-            return;
-          }
-          setEditing(true);
-        }}
+        onClick={() => setDetailOpen(true)}
       >
         {/* Naam */}
         <td className={`px-4 py-2.5 ${isMember ? "pl-10" : ""}`}>
@@ -286,24 +276,33 @@ function PersonRow({
         {/* Acties */}
         <td className="px-4 py-2.5 text-right whitespace-nowrap">
           <div className="relative inline-block">
-            {(!readOnly || hasResponses) && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setOpenMenuId(showActionsMenu ? null : enrollment.id);
-                }}
-                aria-label={t("actionsLabel", { name: enrollment.studentName })}
-                className="flex h-8 w-8 items-center justify-center rounded-md border border-gray-100 text-gray-400 hover:bg-gray-50 hover:text-gray-700"
-              >
-                <MoreVertical size={15} />
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpenMenuId(showActionsMenu ? null : enrollment.id);
+              }}
+              aria-label={t("actionsLabel", { name: enrollment.studentName })}
+              className="flex h-8 w-8 items-center justify-center rounded-md border border-gray-100 text-gray-400 hover:bg-gray-50 hover:text-gray-700"
+            >
+              <MoreVertical size={15} />
+            </button>
             {showActionsMenu && (
               <div
                 onClick={(e) => e.stopPropagation()}
                 className="absolute right-0 top-full z-50 mt-1 min-w-48 rounded-lg border border-gray-100 bg-white py-1 text-sm shadow-lg"
               >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenMenuId(null);
+                    setDetailOpen(true);
+                  }}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                >
+                  <Eye size={13} />
+                  {t("viewDetails")}
+                </button>
                 {!readOnly && isPendingPayment && ownsPayment && (
                   <button
                     type="button"
@@ -331,19 +330,6 @@ function PersonRow({
                     {t("editAction")}
                   </button>
                 )}
-                {hasResponses && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setOpenMenuId(null);
-                      setExpanded((v) => !v);
-                    }}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
-                  >
-                    {expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-                    {expanded ? t("detailsHide") : t("detailsShow")}
-                  </button>
-                )}
                 {!readOnly && !isCancelled && (
                   <button
                     type="button"
@@ -364,22 +350,16 @@ function PersonRow({
         </td>
       </tr>
 
-      {expanded && hasResponses && (
-        <tr className={isMatch ? "bg-tennis-lime/10" : ""}>
-          <td colSpan={COLS} className={`px-4 pb-3 ${isMember ? "pl-10" : ""}`}>
-            <dl className="space-y-1.5 rounded-lg bg-[#FAFAF8] p-3">
-              {enrollment.formResponses.map((r, i) => (
-                <div key={i} className="flex gap-3 text-xs">
-                  <dt className="min-w-[120px] shrink-0 text-gray-500">
-                    {r.fieldLabel}
-                  </dt>
-                  <dd className="font-medium text-gray-800">{r.value}</dd>
-                </div>
-              ))}
-            </dl>
-          </td>
-        </tr>
-      )}
+      <EnrollmentDetailDialog
+        enrollment={enrollment}
+        seriesId={seriesId}
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        onEdit={() => {
+          setDetailOpen(false);
+          setEditing(true);
+        }}
+      />
 
       <EditEnrollmentDialog
         enrollment={enrollment}
@@ -391,20 +371,18 @@ function PersonRow({
       <AlertDialog open={confirmCancelOpen} onOpenChange={setConfirmCancelOpen}>
         <AlertDialogContent onClick={(e) => e.stopPropagation()}>
           <AlertDialogHeader>
-            <AlertDialogTitle>Inschrijving annuleren?</AlertDialogTitle>
+            <AlertDialogTitle>{t("cancelTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              De inschrijving van {enrollment.studentName} wordt op geannuleerd
-              gezet en de plaats komt weer vrij. De formulierantwoorden blijven
-              bewaard.
+              {t("cancelBody", { name: enrollment.studentName })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Terug</AlertDialogCancel>
+            <AlertDialogCancel>{t("back")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => cancelMutation.mutate()}
               className="bg-red-600 hover:bg-red-700"
             >
-              Annuleren
+              {t("confirmCancel")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -433,25 +411,67 @@ function GroupBlockRows({
   setOpenMenuId: (id: string | null) => void;
 }) {
   const t = useTranslations("enrollmentsTable");
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
+  const [editingMember, setEditingMember] =
+    useState<LessonSeriesEnrollmentDto | null>(null);
+  // Hoofdtrainer = read-only: geen betaal-/annuleer-acties op groepsniveau.
+  const [readOnly, setReadOnly] = useState(false);
+  useEffect(() => setReadOnly(isHeadTrainerViewer()), []);
   const expanded = forceExpanded || open;
 
   const { leader, members } = block;
+  const menuId = `group:${block.groupId}`;
+  const showActionsMenu = openMenuId === menuId;
+  const leaderPendingPayment = leader.status === "PendingPayment";
+
+  const markPaidMutation = useMutation({
+    mutationFn: () => markEnrollmentCashPaid(leader.id),
+    onSuccess: () => {
+      toast.success(t("toastMarkedPaid"));
+      queryClient.invalidateQueries({ queryKey: ["enrollments", seriesId] });
+      queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
+    },
+  });
+
+  const cancelGroupMutation = useMutation({
+    mutationFn: () => cancelEnrollmentGroup(seriesId, block.groupId),
+    onSuccess: () => {
+      toast.success(t("toastGroupCancelled"));
+      queryClient.invalidateQueries({ queryKey: ["enrollments", seriesId] });
+      queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
+    },
+    onError: () => {
+      toast.error(t("toastGroupCancelError"));
+    },
+  });
 
   return (
     <>
       <tr
         className="border-t border-gray-100 bg-gray-50/40 cursor-pointer hover:bg-gray-50"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setDetailOpen(true)}
       >
         {/* Naam / groepskop */}
         <td className="px-4 py-2.5" colSpan={2}>
           <div className="flex items-center gap-2 min-w-0">
-            {expanded ? (
-              <ChevronDown size={15} className="shrink-0 text-gray-400" />
-            ) : (
-              <ChevronRight size={15} className="shrink-0 text-gray-400" />
-            )}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpen((v) => !v);
+              }}
+              aria-label={expanded ? t("collapseGroup") : t("expandGroup")}
+              className="-m-1 shrink-0 rounded p-1 text-gray-400 hover:bg-gray-200/60 hover:text-gray-600"
+            >
+              {expanded ? (
+                <ChevronDown size={15} />
+              ) : (
+                <ChevronRight size={15} />
+              )}
+            </button>
             <Users size={14} className="shrink-0 text-tennis-green" />
             <span className="truncate text-sm font-semibold text-gray-800">
               {t("group")} · {leader.studentName}
@@ -481,25 +501,190 @@ function GroupBlockRows({
           )}
         </td>
 
-        {/* Acties (leeg voor kop — acties zitten per lid) */}
-        <td className="px-4 py-2.5" />
+        {/* Acties — groepsniveau */}
+        <td className="px-4 py-2.5 text-right whitespace-nowrap">
+          <div className="relative inline-block">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpenMenuId(showActionsMenu ? null : menuId);
+              }}
+              aria-label={t("actionsLabelGroup", { name: leader.studentName })}
+              className="flex h-8 w-8 items-center justify-center rounded-md border border-gray-100 text-gray-400 hover:bg-gray-50 hover:text-gray-700"
+            >
+              <MoreVertical size={15} />
+            </button>
+            {showActionsMenu && (
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="absolute right-0 top-full z-50 mt-1 min-w-48 rounded-lg border border-gray-100 bg-white py-1 text-sm shadow-lg"
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenMenuId(null);
+                    setDetailOpen(true);
+                  }}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                >
+                  <Eye size={13} />
+                  {t("viewDetails")}
+                </button>
+                {!readOnly && leaderPendingPayment && (
+                  <button
+                    type="button"
+                    disabled={markPaidMutation.isPending}
+                    onClick={() => {
+                      setOpenMenuId(null);
+                      markPaidMutation.mutate();
+                    }}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-tennis-green hover:bg-tennis-green/5 disabled:opacity-50"
+                  >
+                    <Euro size={13} />
+                    {t("markPaid")}
+                  </button>
+                )}
+                {!readOnly && (
+                <button
+                  type="button"
+                  disabled={cancelGroupMutation.isPending}
+                  onClick={() => {
+                    setOpenMenuId(null);
+                    setConfirmCancelOpen(true);
+                  }}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-red-600 hover:bg-red-50 disabled:opacity-50"
+                >
+                  <Trash2 size={13} />
+                  {t("cancelGroup")}
+                </button>
+                )}
+              </div>
+            )}
+          </div>
+        </td>
       </tr>
 
       {expanded &&
         members.map((m) => (
-          <PersonRow
+          <MemberRow
             key={m.id}
             enrollment={m}
-            seriesId={seriesId}
-            isMember
             isLeader={m.id === leader.id}
             isDuplicate={duplicateIds.has(m.id)}
             isMatch={matchedIds?.has(m.id) ?? false}
-            openMenuId={openMenuId}
-            setOpenMenuId={setOpenMenuId}
           />
         ))}
+
+      <EnrollmentDetailDialog
+        enrollment={leader}
+        seriesId={seriesId}
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        onEdit={() => {}}
+        groupMembers={members}
+        onEditMember={setEditingMember}
+      />
+
+      {editingMember && (
+        <EditEnrollmentDialog
+          enrollment={editingMember}
+          seriesId={seriesId}
+          open={editingMember !== null}
+          onOpenChange={(o) => !o && setEditingMember(null)}
+        />
+      )}
+
+      <AlertDialog open={confirmCancelOpen} onOpenChange={setConfirmCancelOpen}>
+        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("cancelGroupTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("cancelGroupBody", { count: members.length })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("back")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => cancelGroupMutation.mutate()}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {t("confirmCancel")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
+  );
+}
+
+// ─── Member row (read-only, binnen een uitgeklapte groep) ───────────────────────
+
+function MemberRow({
+  enrollment,
+  isLeader,
+  isDuplicate,
+  isMatch,
+}: {
+  enrollment: LessonSeriesEnrollmentDto;
+  isLeader: boolean;
+  isDuplicate: boolean;
+  isMatch: boolean;
+}) {
+  const t = useTranslations("enrollmentsTable");
+  const isCancelled = enrollment.status === "Cancelled";
+  const age = computeAge(enrollment.dateOfBirth);
+
+  return (
+    <tr
+      className={`border-t border-gray-50 ${isCancelled ? "opacity-50" : ""} ${
+        isMatch ? "bg-tennis-lime/10" : ""
+      }`}
+    >
+      <td className="px-4 py-2.5 pl-10">
+        <div className="flex min-w-0 items-center gap-2">
+          <User size={13} className="shrink-0 text-gray-300" />
+          <span
+            className={`truncate text-sm font-medium text-gray-800 ${
+              isCancelled ? "line-through" : ""
+            }`}
+          >
+            {enrollment.studentName}
+          </span>
+          {isLeader && (
+            <span className="shrink-0 rounded bg-tennis-green/10 px-1.5 py-0.5 text-[10px] font-semibold text-tennis-green">
+              {t("leader")}
+            </span>
+          )}
+          {isDuplicate && (
+            <Badge className="shrink-0 border-0 bg-amber-100 text-amber-700 text-[10px]">
+              {t("possibleDuplicate")}
+            </Badge>
+          )}
+        </div>
+      </td>
+      <td className="px-4 py-2.5">
+        <span className="block max-w-[220px] truncate text-xs text-gray-500">
+          {contactLine(enrollment, (email) => t("viaContact", { email }))}
+        </span>
+      </td>
+      <td className="px-4 py-2.5 text-xs text-gray-600 whitespace-nowrap">
+        {age != null ? t("ageYears", { count: age }) : t("unknown")}
+      </td>
+      <td className="px-4 py-2.5 text-xs text-gray-500 whitespace-nowrap">
+        {formatEnrolledAt(enrollment.enrolledAt)}
+      </td>
+      <td className="px-4 py-2.5">
+        {enrollmentStatusStyles[enrollment.status] && (
+          <Badge
+            className={`${enrollmentStatusStyles[enrollment.status].className} border-0 text-xs`}
+          >
+            {enrollmentStatusStyles[enrollment.status].label}
+          </Badge>
+        )}
+      </td>
+      <td className="px-4 py-2.5" />
+    </tr>
   );
 }
 
@@ -773,6 +958,7 @@ function EditEnrollmentDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const t = useTranslations("enrollmentsTable");
   const queryClient = useQueryClient();
   const form = useForm<BasicEnrollmentFormValues>({
     resolver: zodResolver(basicEnrollmentSchema),
@@ -797,7 +983,7 @@ function EditEnrollmentDialog({
         isOpenToGrouping: values.isOpenToGrouping,
       }),
     onSuccess: () => {
-      toast.success("Inschrijving bijgewerkt");
+      toast.success(t("toastUpdated"));
       queryClient.invalidateQueries({ queryKey: ["enrollments", seriesId] });
       queryClient.invalidateQueries({ queryKey: ["planning", seriesId] });
       onOpenChange(false);
