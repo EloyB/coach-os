@@ -10,7 +10,6 @@ import {
   X,
   Trash2,
   Pencil,
-  MoreVertical,
 } from "lucide-react";
 import {
   Dialog,
@@ -18,11 +17,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { getInitials, getAvatarColor } from "@/lib/planning-avatars";
 import type {
   PlanningTimeSlotDto,
@@ -111,41 +105,28 @@ export function TimeslotDetailDialog({
               {DAY_NAMES_FULL[slot.dayOfWeek]} {slot.startTime}–{slot.endTime}
             </DialogTitle>
             <div className="flex shrink-0 items-center gap-0.5">
-              {!readOnly && (onEditSlot || onDeleteSlot) && (
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <button
-                      type="button"
-                      aria-label={t("slotActions")}
-                      className="flex h-8 w-8 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 focus:outline-none"
-                    >
-                      <MoreVertical size={18} />
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent align="end" className="w-56 p-1">
-                    {onEditSlot && (
-                      <button
-                        type="button"
-                        onClick={onEditSlot}
-                        className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50"
-                      >
-                        <Pencil size={14} className="shrink-0 text-gray-400" />
-                        {t("editSlot")}
-                      </button>
-                    )}
-                    {onDeleteSlot && (
-                      <button
-                        type="button"
-                        onClick={onDeleteSlot}
-                        disabled={isDeletePending}
-                        className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
-                      >
-                        <Trash2 size={14} className="shrink-0" />
-                        {t("deleteSlot")}
-                      </button>
-                    )}
-                  </PopoverContent>
-                </Popover>
+              {!readOnly && onEditSlot && (
+                <button
+                  type="button"
+                  aria-label={t("editSlot")}
+                  title={t("editSlot")}
+                  onClick={onEditSlot}
+                  className="flex h-8 w-8 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 focus:outline-none"
+                >
+                  <Pencil size={17} />
+                </button>
+              )}
+              {!readOnly && onDeleteSlot && (
+                <button
+                  type="button"
+                  aria-label={t("deleteSlot")}
+                  title={t("deleteSlot")}
+                  onClick={onDeleteSlot}
+                  disabled={isDeletePending}
+                  className="flex h-8 w-8 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 focus:outline-none disabled:opacity-50"
+                >
+                  <Trash2 size={17} />
+                </button>
               )}
               <button
                 type="button"
