@@ -231,7 +231,16 @@
     "viewDetails": "Details bekijken",
     "cancelGroup": "Groep annuleren",
     "cancelGroupTitle": "Groep annuleren?",
-    "cancelGroupBody": "De {count} inschrijvingen van deze groep worden geannuleerd en de plaatsen komen weer vrij. De formulierantwoorden blijven bewaard."
+    "cancelGroupBody": "De {count} inschrijvingen van deze groep worden geannuleerd en de plaatsen komen weer vrij. De formulierantwoorden blijven bewaard.",
+    "cancelTitle": "Inschrijving annuleren?",
+    "cancelBody": "De inschrijving van {name} wordt geannuleerd en de plaats komt weer vrij. De formulierantwoorden blijven bewaard.",
+    "back": "Terug",
+    "confirmCancel": "Annuleren",
+    "toastCancelled": "Inschrijving geannuleerd",
+    "toastMarkedPaid": "Inschrijving gemarkeerd als betaald",
+    "toastGroupCancelled": "Groep geannuleerd",
+    "toastGroupCancelError": "Kon de groep niet annuleren",
+    "toastUpdated": "Inschrijving bijgewerkt"
   },
   "enrollmentDetail": {
     "title": "Details inschrijving",
