@@ -9,6 +9,14 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { NativeSelect } from "@/components/ui/native-select";
 import { inputClass } from "@/lib/styles";
 import { addWeeklyTemplateEntry, updateWeekSlot } from "@/lib/api/lessonSeries";
@@ -36,6 +44,8 @@ export interface WeekSlotEditData {
   trainerId?: string | null;
   courtName?: string | null;
   maxStudents: number;
+  /** Aantal ingeplande studenten op dit slot; >0 vraagt een extra bevestiging bij aanpassen. */
+  plannedCount?: number;
 }
 
 export function AddWeekSlotDialog({
@@ -60,10 +70,12 @@ export function AddWeekSlotDialog({
   const [endTime, setEndTime] = useState(editEntry?.endTime ?? "19:00");
   const [maxStudents, setMaxStudents] = useState(editEntry?.maxStudents ?? 4);
   const [saving, setSaving] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
+  const plannedCount = editEntry?.plannedCount ?? 0;
   const isValid = startTime !== "" && endTime < "24:00" && endTime > startTime;
 
-  async function handleSave() {
+  async function doSubmit() {
     setSaving(true);
     try {
       if (isEdit) {
@@ -92,6 +104,15 @@ export function AddWeekSlotDialog({
     } finally {
       setSaving(false);
     }
+  }
+
+  function handleSave() {
+    // Bij aanpassen van een slot waar al mensen op ingepland staan: eerst bevestigen.
+    if (isEdit && plannedCount > 0) {
+      setConfirmOpen(true);
+      return;
+    }
+    void doSubmit();
   }
 
   return (
@@ -220,6 +241,38 @@ export function AddWeekSlotDialog({
             {saving ? "Bezig…" : isEdit ? "Opslaan" : "Toevoegen"}
           </button>
         </DialogFooter>
+
+        <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Aanpassing bevestigen</AlertDialogTitle>
+              <AlertDialogDescription>
+                Er staan {plannedCount} inschrijving(en) ingepland op dit tijdsslot.
+                De wijziging (tijd, trainer, baan, capaciteit) geldt voor het slot én
+                al z&apos;n lessen. Wil je de aanpassing toch doorvoeren?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <button
+                type="button"
+                onClick={() => setConfirmOpen(false)}
+                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+              >
+                Annuleren
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmOpen(false);
+                  void doSubmit();
+                }}
+                className="rounded-lg bg-tennis-green px-4 py-2 text-sm font-semibold text-white hover:bg-tennis-green/90"
+              >
+                Ja, aanpassen
+              </button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </DialogContent>
     </Dialog>
   );

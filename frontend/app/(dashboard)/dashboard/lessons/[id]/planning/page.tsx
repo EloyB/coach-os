@@ -1294,6 +1294,7 @@ export default function PlanningPage({
             trainerId: s.trainerId,
             courtName: s.courtName,
             maxStudents: s.maxCapacity,
+            plannedCount: getSlotCurrentCount(s.id),
           });
           setOpenSlotId(null);
         }}
