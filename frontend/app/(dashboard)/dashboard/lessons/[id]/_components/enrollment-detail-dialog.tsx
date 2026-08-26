@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { Pencil, X } from "lucide-react";
@@ -15,6 +15,7 @@ import { enrollmentStatusStyles } from "@/lib/status-styles";
 import { getEnrollmentsWithPreferences } from "@/lib/api/enrollments";
 import type { LessonSeriesEnrollmentDto } from "@/lib/api/enrollments";
 import { getPublicTimeSlots } from "@/lib/api/timeSlots";
+import { isHeadTrainerViewer } from "@/lib/auth";
 import type { TimeSlotDto } from "@/lib/api/timeSlots";
 
 const DAY_NAMES_SHORT = ["Ma", "Di", "Wo", "Do", "Vr", "Za", "Zo"];
@@ -90,6 +91,9 @@ export function EnrollmentDetailDialog({
     { id: "beschikbaarheden", label: t("sectionAvailability") },
   ];
   const [activeTab, setActiveTab] = useState<TabId>("gegevens");
+  // Hoofdtrainer = read-only: geen bewerk-affordances in de detail-dialog.
+  const [readOnly, setReadOnly] = useState(false);
+  useEffect(() => setReadOnly(isHeadTrainerViewer()), []);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -224,7 +228,7 @@ export function EnrollmentDetailDialog({
                         .join(" · ")}
                     </div>
                   </div>
-                  {onEditMember && (
+                  {!readOnly && onEditMember && (
                     <button
                       type="button"
                       onClick={() => onEditMember(m)}
@@ -262,7 +266,7 @@ export function EnrollmentDetailDialog({
           >
             {t("close")}
           </button>
-          {!groupMembers && (
+          {!readOnly && !groupMembers && (
             <button
               type="button"
               onClick={onEdit}

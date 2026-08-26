@@ -419,6 +419,9 @@ function GroupBlockRows({
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
   const [editingMember, setEditingMember] =
     useState<LessonSeriesEnrollmentDto | null>(null);
+  // Hoofdtrainer = read-only: geen betaal-/annuleer-acties op groepsniveau.
+  const [readOnly, setReadOnly] = useState(false);
+  useEffect(() => setReadOnly(isHeadTrainerViewer()), []);
   const expanded = forceExpanded || open;
 
   const { leader, members } = block;
@@ -530,7 +533,7 @@ function GroupBlockRows({
                   <Eye size={13} />
                   {t("viewDetails")}
                 </button>
-                {leaderPendingPayment && (
+                {!readOnly && leaderPendingPayment && (
                   <button
                     type="button"
                     disabled={markPaidMutation.isPending}
@@ -544,6 +547,7 @@ function GroupBlockRows({
                     {t("markPaid")}
                   </button>
                 )}
+                {!readOnly && (
                 <button
                   type="button"
                   disabled={cancelGroupMutation.isPending}
@@ -556,6 +560,7 @@ function GroupBlockRows({
                   <Trash2 size={13} />
                   {t("cancelGroup")}
                 </button>
+                )}
               </div>
             )}
           </div>
