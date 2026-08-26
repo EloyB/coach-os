@@ -196,7 +196,7 @@ function PersonRow({
   const cancelMutation = useMutation({
     mutationFn: () => cancelEnrollment(seriesId, enrollment.id),
     onSuccess: () => {
-      toast.success("Inschrijving geannuleerd");
+      toast.success(t("toastCancelled"));
       queryClient.invalidateQueries({ queryKey: ["enrollments", seriesId] });
       queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
     },
@@ -205,7 +205,7 @@ function PersonRow({
   const markPaidMutation = useMutation({
     mutationFn: () => markEnrollmentCashPaid(enrollment.id),
     onSuccess: () => {
-      toast.success("Inschrijving gemarkeerd als betaald");
+      toast.success(t("toastMarkedPaid"));
       queryClient.invalidateQueries({ queryKey: ["enrollments", seriesId] });
       queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
     },
@@ -371,20 +371,18 @@ function PersonRow({
       <AlertDialog open={confirmCancelOpen} onOpenChange={setConfirmCancelOpen}>
         <AlertDialogContent onClick={(e) => e.stopPropagation()}>
           <AlertDialogHeader>
-            <AlertDialogTitle>Inschrijving annuleren?</AlertDialogTitle>
+            <AlertDialogTitle>{t("cancelTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              De inschrijving van {enrollment.studentName} wordt op geannuleerd
-              gezet en de plaats komt weer vrij. De formulierantwoorden blijven
-              bewaard.
+              {t("cancelBody", { name: enrollment.studentName })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Terug</AlertDialogCancel>
+            <AlertDialogCancel>{t("back")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => cancelMutation.mutate()}
               className="bg-red-600 hover:bg-red-700"
             >
-              Annuleren
+              {t("confirmCancel")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -432,7 +430,7 @@ function GroupBlockRows({
   const markPaidMutation = useMutation({
     mutationFn: () => markEnrollmentCashPaid(leader.id),
     onSuccess: () => {
-      toast.success("Inschrijving gemarkeerd als betaald");
+      toast.success(t("toastMarkedPaid"));
       queryClient.invalidateQueries({ queryKey: ["enrollments", seriesId] });
       queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
     },
@@ -441,12 +439,12 @@ function GroupBlockRows({
   const cancelGroupMutation = useMutation({
     mutationFn: () => cancelEnrollmentGroup(seriesId, block.groupId),
     onSuccess: () => {
-      toast.success("Groep geannuleerd");
+      toast.success(t("toastGroupCancelled"));
       queryClient.invalidateQueries({ queryKey: ["enrollments", seriesId] });
       queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
     },
     onError: () => {
-      toast.error("Kon de groep niet annuleren");
+      toast.error(t("toastGroupCancelError"));
     },
   });
 
@@ -606,12 +604,12 @@ function GroupBlockRows({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Terug</AlertDialogCancel>
+            <AlertDialogCancel>{t("back")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => cancelGroupMutation.mutate()}
               className="bg-red-600 hover:bg-red-700"
             >
-              Annuleren
+              {t("confirmCancel")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -960,6 +958,7 @@ function EditEnrollmentDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const t = useTranslations("enrollmentsTable");
   const queryClient = useQueryClient();
   const form = useForm<BasicEnrollmentFormValues>({
     resolver: zodResolver(basicEnrollmentSchema),
@@ -984,7 +983,7 @@ function EditEnrollmentDialog({
         isOpenToGrouping: values.isOpenToGrouping,
       }),
     onSuccess: () => {
-      toast.success("Inschrijving bijgewerkt");
+      toast.success(t("toastUpdated"));
       queryClient.invalidateQueries({ queryKey: ["enrollments", seriesId] });
       queryClient.invalidateQueries({ queryKey: ["planning", seriesId] });
       onOpenChange(false);
