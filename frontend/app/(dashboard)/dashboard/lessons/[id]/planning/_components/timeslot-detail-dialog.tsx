@@ -84,7 +84,12 @@ export function TimeslotDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md" aria-describedby={undefined}>
+      <DialogContent
+        className="flex max-h-[85vh] max-w-md flex-col gap-0 overflow-hidden p-0"
+        aria-describedby={undefined}
+      >
+        {/* Scrollbaar deel */}
+        <div className="flex flex-col overflow-y-auto px-6 pt-6 pb-2">
         <DialogHeader>
           <DialogTitle>
             {DAY_NAMES_FULL[slot.dayOfWeek]} {slot.startTime}–{slot.endTime}
@@ -240,8 +245,10 @@ export function TimeslotDetailDialog({
           })}
         </div>
 
-        {/* Footer */}
-        <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-4">
+        </div>
+
+        {/* Footer (sticky onderaan; scrollt niet mee) */}
+        <div className="flex shrink-0 items-center justify-between border-t border-gray-100 bg-background px-6 py-4">
           <div className="flex items-center gap-1">
             {!readOnly && onEditSlot && (
               <button
