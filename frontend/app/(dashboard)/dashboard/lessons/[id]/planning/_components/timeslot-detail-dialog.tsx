@@ -88,14 +88,15 @@ export function TimeslotDetailDialog({
         className="flex max-h-[85vh] max-w-md flex-col gap-0 overflow-hidden p-0"
         aria-describedby={undefined}
       >
-        {/* Scrollbaar deel */}
-        <div className="flex flex-col overflow-y-auto px-6 pt-6 pb-2">
-        <DialogHeader>
+        {/* Sticky header (dag + uren; scrollt niet mee) */}
+        <DialogHeader className="shrink-0 border-b border-gray-100 px-6 pb-3 pt-6">
           <DialogTitle>
             {DAY_NAMES_FULL[slot.dayOfWeek]} {slot.startTime}–{slot.endTime}
           </DialogTitle>
         </DialogHeader>
 
+        {/* Scrollbaar deel */}
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pt-3 pb-2">
         {/* Slot meta */}
         <div className="mt-1 flex items-center justify-between gap-3">
           <span className="text-sm text-gray-500">{subtitle ?? " "}</span>
