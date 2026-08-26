@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Users, User, Mail, Lock, Unlock, X } from "lucide-react";
+import { Users, User, Mail, Lock, Unlock, X, Trash2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -42,6 +42,9 @@ interface TimeslotDetailDialogProps {
   isLockPending: boolean;
   isOfferPending: boolean;
   isUnassignPending: boolean;
+  /** Verwijdert dit weekslot uit de weektemplate (tijdelijk, o.a. voor legacy slots). */
+  onDeleteSlot?: () => void;
+  isDeletePending?: boolean;
 }
 
 export function TimeslotDetailDialog({
@@ -59,6 +62,8 @@ export function TimeslotDetailDialog({
   isLockPending,
   isOfferPending,
   isUnassignPending,
+  onDeleteSlot,
+  isDeletePending = false,
 }: TimeslotDetailDialogProps) {
   const t = useTranslations("planning");
 
@@ -233,7 +238,20 @@ export function TimeslotDetailDialog({
         </div>
 
         {/* Footer */}
-        <div className="mt-4 flex justify-end border-t border-gray-100 pt-4">
+        <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-4">
+          {!readOnly && onDeleteSlot ? (
+            <button
+              type="button"
+              onClick={onDeleteSlot}
+              disabled={isDeletePending}
+              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
+            >
+              <Trash2 size={14} />
+              {t("deleteSlot")}
+            </button>
+          ) : (
+            <span />
+          )}
           <button
             type="button"
             onClick={() => onOpenChange(false)}

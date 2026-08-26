@@ -185,6 +185,14 @@ export async function deleteLesson(
   await apiClient.delete(`/lessonseries/${seriesId}/lessons/${lessonId}${qs}`);
 }
 
+/** Verwijdert een weekslot rechtstreeks uit de weektemplate (incl. lessen/voorkeuren/voorgestelde toewijzingen). */
+export async function deleteWeekSlot(
+  seriesId: string,
+  weeklyTemplateEntryId: string,
+): Promise<void> {
+  await apiClient.delete(`/lessonseries/${seriesId}/weekly-template/${weeklyTemplateEntryId}`);
+}
+
 // ─── Wizard API ───────────────────────────────────────────────────────────────
 
 export interface WizardSlotRequest {

@@ -14,6 +14,7 @@ import {
   Phone,
   MessageCircle,
   Lock,
+  Plus,
 } from "lucide-react";
 import {
   Popover,
@@ -46,7 +47,9 @@ import type {
   PlanningAssignmentDto,
   PlanningGroupDto,
 } from "@/lib/api/planning";
-import { getLessonSeriesById } from "@/lib/api/lessonSeries";
+import { getLessonSeriesById, deleteWeekSlot } from "@/lib/api/lessonSeries";
+import { getTrainers } from "@/lib/api/trainers";
+import { AddWeekSlotDialog } from "../_components/add-week-slot-dialog";
 import { NonRespondersPanel } from "@/components/dashboard/non-responders-panel";
 import {
   CalendarGrid,
@@ -82,6 +85,11 @@ export default function PlanningPage({
   const { data: series } = useQuery({
     queryKey: ["lessonSeries", id],
     queryFn: () => getLessonSeriesById(id),
+  });
+
+  const { data: trainers = [] } = useQuery({
+    queryKey: ["trainers"],
+    queryFn: getTrainers,
   });
 
   const {
@@ -142,6 +150,16 @@ export default function PlanningPage({
 
   // Slot detail dialog (click to open)
   const [openSlotId, setOpenSlotId] = useState<string | null>(null);
+  const [addingSlot, setAddingSlot] = useState(false);
+
+  const deleteSlotMutation = useMutation({
+    mutationFn: (entryId: string) => deleteWeekSlot(id, entryId),
+    onSuccess: () => {
+      setOpenSlotId(null);
+      queryClient.invalidateQueries({ queryKey: ["planning", id] });
+      queryClient.invalidateQueries({ queryKey: ["lessonSeries", id] });
+    },
+  });
 
   const assignMutation = useMutation({
     mutationFn: ({ enrollmentId, groupId, slotId }: { enrollmentId?: string; groupId?: string; slotId: string }) =>
@@ -369,6 +387,14 @@ export default function PlanningPage({
         </div>
         {!readOnly && planning.planningStatus !== "Scheduled" && (
           <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setAddingSlot(true)}
+              className="inline-flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
+            >
+              <Plus size={15} />
+              {t("addSlot")}
+            </button>
             <Link
               href={`/dashboard/lessons/${id}`}
               className="inline-flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
@@ -1247,7 +1273,24 @@ export default function PlanningPage({
         isLockPending={lockMutation.isPending}
         isOfferPending={sendConfirmationMutation.isPending}
         isUnassignPending={unassignMutation.isPending}
+        onDeleteSlot={
+          openSlotId ? () => deleteSlotMutation.mutate(openSlotId) : undefined
+        }
+        isDeletePending={deleteSlotMutation.isPending}
       />
+
+      {addingSlot && (
+        <AddWeekSlotDialog
+          seriesId={id}
+          trainers={trainers}
+          onClose={() => setAddingSlot(false)}
+          onSaved={() => {
+            setAddingSlot(false);
+            queryClient.invalidateQueries({ queryKey: ["planning", id] });
+            queryClient.invalidateQueries({ queryKey: ["lessonSeries", id] });
+          }}
+        />
+      )}
     </div>
   );
 }

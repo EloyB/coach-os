@@ -601,8 +601,8 @@ public class LessonSerieService(
     /// bevestigde of te-bevestigen toewijzingen heeft (geen student verliest stil een bevestigde plaats).
     /// De inschrijvingen zelf zitten op de reeks en blijven bestaan.
     /// </summary>
-    private async Task<Result> DeleteWeekSlotAsync(
-        Guid seriesId, Guid templateEntryId, Guid organizationId, CancellationToken ct)
+    public async Task<Result> DeleteWeekSlotAsync(
+        Guid seriesId, Guid templateEntryId, Guid organizationId, CancellationToken ct = default)
     {
         Domain.Entities.LessonSerie? series = await lessonSeriesRepo.GetByIdAsync(seriesId, organizationId, ct);
         if (series is null)

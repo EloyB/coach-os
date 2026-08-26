@@ -419,6 +419,8 @@
     "offerDefinitivelyTitle": "Stuur bevestigings- en betaalkeuze naar deze lesnemer of groep",
     "lockedKeepsOnRegenerate": "Blijft behouden bij opnieuw genereren",
     "unassign": "Verwijder toewijzing",
+    "deleteSlot": "Verwijder weekslot",
+    "addSlot": "Weekslot toevoegen",
     "occupied": "{count}/{max} bezet",
     "slotDialogEmpty": "Nog niemand toegewezen.",
     "close": "Sluiten",
