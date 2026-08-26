@@ -22,5 +22,11 @@ public interface ILessonSerieService
     /// (o.a. legacy slots zonder lessen). Blokkeert bij bevestigde/te-bevestigen toewijzingen.
     /// </summary>
     Task<Result> DeleteWeekSlotAsync(Guid seriesId, Guid weeklyTemplateEntryId, Guid organizationId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Past een weekslot aan vanuit de planning-view: tijd/trainer/baan/capaciteit van de
+    /// <see cref="WeeklyTemplateEntry"/> én al z'n niet-geannuleerde lessen, zodat de planning meegaat.
+    /// </summary>
+    Task<Result> UpdateWeekSlotAsync(Guid seriesId, Guid weeklyTemplateEntryId, Guid organizationId, UpdateWeekSlotRequest request, CancellationToken ct = default);
     Task<Result<Guid>> GetClubIdAsync(Guid id, Guid organizationId, CancellationToken ct = default);
 }

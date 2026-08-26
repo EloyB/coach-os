@@ -49,7 +49,10 @@ import type {
 } from "@/lib/api/planning";
 import { getLessonSeriesById, deleteWeekSlot } from "@/lib/api/lessonSeries";
 import { getTrainers } from "@/lib/api/trainers";
-import { AddWeekSlotDialog } from "../_components/add-week-slot-dialog";
+import {
+  AddWeekSlotDialog,
+  type WeekSlotEditData,
+} from "../_components/add-week-slot-dialog";
 import { NonRespondersPanel } from "@/components/dashboard/non-responders-panel";
 import {
   CalendarGrid,
@@ -151,6 +154,7 @@ export default function PlanningPage({
   // Slot detail dialog (click to open)
   const [openSlotId, setOpenSlotId] = useState<string | null>(null);
   const [addingSlot, setAddingSlot] = useState(false);
+  const [editingSlot, setEditingSlot] = useState<WeekSlotEditData | null>(null);
 
   const deleteSlotMutation = useMutation({
     mutationFn: (entryId: string) => deleteWeekSlot(id, entryId),
@@ -1277,15 +1281,36 @@ export default function PlanningPage({
           openSlotId ? () => deleteSlotMutation.mutate(openSlotId) : undefined
         }
         isDeletePending={deleteSlotMutation.isPending}
+        onEditSlot={() => {
+          const s = openSlotId
+            ? planning.timeSlots.find((x) => x.id === openSlotId)
+            : null;
+          if (!s) return;
+          setEditingSlot({
+            id: s.id,
+            dayOfWeek: s.dayOfWeek,
+            startTime: s.startTime,
+            endTime: s.endTime,
+            trainerId: s.trainerId,
+            courtName: s.courtName,
+            maxStudents: s.maxCapacity,
+          });
+          setOpenSlotId(null);
+        }}
       />
 
-      {addingSlot && (
+      {(addingSlot || editingSlot) && (
         <AddWeekSlotDialog
           seriesId={id}
           trainers={trainers}
-          onClose={() => setAddingSlot(false)}
+          editEntry={editingSlot ?? undefined}
+          onClose={() => {
+            setAddingSlot(false);
+            setEditingSlot(null);
+          }}
           onSaved={() => {
             setAddingSlot(false);
+            setEditingSlot(null);
             queryClient.invalidateQueries({ queryKey: ["planning", id] });
             queryClient.invalidateQueries({ queryKey: ["lessonSeries", id] });
           }}

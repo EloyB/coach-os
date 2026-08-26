@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Users, User, Mail, Lock, Unlock, X, Trash2 } from "lucide-react";
+import { Users, User, Mail, Lock, Unlock, X, Trash2, Pencil } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -45,6 +45,8 @@ interface TimeslotDetailDialogProps {
   /** Verwijdert dit weekslot uit de weektemplate (tijdelijk, o.a. voor legacy slots). */
   onDeleteSlot?: () => void;
   isDeletePending?: boolean;
+  /** Opent de aanpas-dialog voor dit weekslot. */
+  onEditSlot?: () => void;
 }
 
 export function TimeslotDetailDialog({
@@ -64,6 +66,7 @@ export function TimeslotDetailDialog({
   isUnassignPending,
   onDeleteSlot,
   isDeletePending = false,
+  onEditSlot,
 }: TimeslotDetailDialogProps) {
   const t = useTranslations("planning");
 
@@ -239,19 +242,29 @@ export function TimeslotDetailDialog({
 
         {/* Footer */}
         <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-4">
-          {!readOnly && onDeleteSlot ? (
-            <button
-              type="button"
-              onClick={onDeleteSlot}
-              disabled={isDeletePending}
-              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
-            >
-              <Trash2 size={14} />
-              {t("deleteSlot")}
-            </button>
-          ) : (
-            <span />
-          )}
+          <div className="flex items-center gap-1">
+            {!readOnly && onEditSlot && (
+              <button
+                type="button"
+                onClick={onEditSlot}
+                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
+              >
+                <Pencil size={14} />
+                {t("editSlot")}
+              </button>
+            )}
+            {!readOnly && onDeleteSlot && (
+              <button
+                type="button"
+                onClick={onDeleteSlot}
+                disabled={isDeletePending}
+                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
+              >
+                <Trash2 size={14} />
+                {t("deleteSlot")}
+              </button>
+            )}
+          </div>
           <button
             type="button"
             onClick={() => onOpenChange(false)}

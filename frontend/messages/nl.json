@@ -420,6 +420,7 @@
     "lockedKeepsOnRegenerate": "Blijft behouden bij opnieuw genereren",
     "unassign": "Verwijder toewijzing",
     "deleteSlot": "Verwijder weekslot",
+    "editSlot": "Weekslot aanpassen",
     "addSlot": "Weekslot toevoegen",
     "occupied": "{count}/{max} bezet",
     "slotDialogEmpty": "Nog niemand toegewezen.",

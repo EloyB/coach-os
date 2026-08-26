@@ -151,6 +151,26 @@ public class LessonSlotScopeUpdateTests
         sibling.EndTime.Should().Be(new TimeOnly(19, 0));
     }
 
+    // ── UpdateWeekSlotAsync (vanuit planning-view) ────────────────────────────
+
+    [Test]
+    public async Task UpdateWeekSlotAsync_UpdatesTemplateAndActiveLessons()
+    {
+        (LessonSerie series, Lesson edited, Lesson sibling, Lesson cancelledSibling, WeeklyTemplateEntry entry) =
+            BuildSlotScenario();
+        UpdateWeekSlotRequest request = new() { StartTime = "18:00", EndTime = "19:30", MaxStudents = 6 };
+
+        Result result = await _service.UpdateWeekSlotAsync(series.Id, entry.Id, OrgId, request, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        entry.EndTime.Should().Be(new TimeOnly(19, 30));
+        entry.MaxStudents.Should().Be(6);
+        edited.EndTime.Should().Be(new TimeOnly(19, 30));
+        sibling.EndTime.Should().Be(new TimeOnly(19, 30));
+        cancelledSibling.EndTime.Should().Be(new TimeOnly(19, 0));
+        _serieRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
     // ── DeleteLessonAsync (wholeSlot) ─────────────────────────────────────────
 
     private (Guid SeriesId, Lesson Lesson, WeeklyTemplateEntry Entry) SetupSlotForDelete(

@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { NativeSelect } from "@/components/ui/native-select";
 import { inputClass } from "@/lib/styles";
-import { addWeeklyTemplateEntry } from "@/lib/api/lessonSeries";
+import { addWeeklyTemplateEntry, updateWeekSlot } from "@/lib/api/lessonSeries";
 import { isAssignableTrainer, type TrainerDto } from "@/lib/api/trainers";
 
 const WEEKDAY_NAMES = [
@@ -28,23 +28,37 @@ const WEEKDAY_NAMES = [
  * Voegt een weekslot toe aan de weektemplate: het lesmoment keert elke week terug
  * en genereert lessen tot het einde van de reeks. Gebruikt in de planning-view.
  */
+export interface WeekSlotEditData {
+  id: string;
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  trainerId?: string | null;
+  courtName?: string | null;
+  maxStudents: number;
+}
+
 export function AddWeekSlotDialog({
   seriesId,
   trainers,
+  editEntry,
   onClose,
   onSaved,
 }: {
   seriesId: string;
   trainers: TrainerDto[];
+  /** Aanwezig => aanpas-modus (bestaand weekslot); afwezig => toevoeg-modus. */
+  editEntry?: WeekSlotEditData;
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const [dayOfWeek, setDayOfWeek] = useState(0);
-  const [trainerId, setTrainerId] = useState("");
-  const [courtName, setCourtName] = useState("");
-  const [startTime, setStartTime] = useState("18:00");
-  const [endTime, setEndTime] = useState("19:00");
-  const [maxStudents, setMaxStudents] = useState(4);
+  const isEdit = editEntry != null;
+  const [dayOfWeek, setDayOfWeek] = useState(editEntry?.dayOfWeek ?? 0);
+  const [trainerId, setTrainerId] = useState(editEntry?.trainerId ?? "");
+  const [courtName, setCourtName] = useState(editEntry?.courtName ?? "");
+  const [startTime, setStartTime] = useState(editEntry?.startTime ?? "18:00");
+  const [endTime, setEndTime] = useState(editEntry?.endTime ?? "19:00");
+  const [maxStudents, setMaxStudents] = useState(editEntry?.maxStudents ?? 4);
   const [saving, setSaving] = useState(false);
 
   const isValid = startTime !== "" && endTime < "24:00" && endTime > startTime;
@@ -52,15 +66,26 @@ export function AddWeekSlotDialog({
   async function handleSave() {
     setSaving(true);
     try {
-      await addWeeklyTemplateEntry(seriesId, {
-        dayOfWeek,
-        startTime,
-        endTime,
-        trainerId: trainerId || null,
-        courtName: courtName.trim() || undefined,
-        maxStudents,
-      });
-      toast.success("Weekslot toegevoegd");
+      if (isEdit) {
+        await updateWeekSlot(seriesId, editEntry.id, {
+          startTime,
+          endTime,
+          trainerId: trainerId || null,
+          courtName: courtName.trim() || undefined,
+          maxStudents,
+        });
+        toast.success("Weekslot aangepast");
+      } else {
+        await addWeeklyTemplateEntry(seriesId, {
+          dayOfWeek,
+          startTime,
+          endTime,
+          trainerId: trainerId || null,
+          courtName: courtName.trim() || undefined,
+          maxStudents,
+        });
+        toast.success("Weekslot toegevoegd");
+      }
       onSaved();
     } catch {
       // Error toast wordt al getoond door de axios interceptor
@@ -73,12 +98,14 @@ export function AddWeekSlotDialog({
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Weekslot toevoegen</DialogTitle>
+          <DialogTitle>
+            {isEdit ? "Weekslot aanpassen" : "Weekslot toevoegen"}
+          </DialogTitle>
         </DialogHeader>
         <p className="text-xs text-gray-500 -mt-1">
-          Dit lesmoment keert elke week terug op de gekozen dag, van vandaag tot
-          het einde van de reeks. Losse lessen beheer je op de pagina Losse
-          lessen.
+          {isEdit
+            ? "De wijziging geldt voor dit weekslot én al z'n lessen, zodat de planning meegaat. De dag ligt vast."
+            : "Dit lesmoment keert elke week terug op de gekozen dag, van vandaag tot het einde van de reeks. Losse lessen beheer je op de pagina Losse lessen."}
         </p>
 
         <div className="space-y-3">
@@ -89,7 +116,8 @@ export function AddWeekSlotDialog({
             <NativeSelect
               value={String(dayOfWeek)}
               onChange={(e) => setDayOfWeek(parseInt(e.target.value))}
-              className="w-full"
+              disabled={isEdit}
+              className="w-full disabled:opacity-60"
             >
               {WEEKDAY_NAMES.map((name, index) => (
                 <option key={index} value={index}>
@@ -189,7 +217,7 @@ export function AddWeekSlotDialog({
             disabled={saving || !isValid}
             className="px-4 py-2 rounded-lg bg-tennis-green text-white text-sm font-medium hover:bg-tennis-green/90 transition-colors disabled:opacity-50"
           >
-            {saving ? "Bezig…" : "Toevoegen"}
+            {saving ? "Bezig…" : isEdit ? "Opslaan" : "Toevoegen"}
           </button>
         </DialogFooter>
       </DialogContent>

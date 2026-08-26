@@ -193,6 +193,26 @@ export async function deleteWeekSlot(
   await apiClient.delete(`/lessonseries/${seriesId}/weekly-template/${weeklyTemplateEntryId}`);
 }
 
+export interface UpdateWeekSlotRequest {
+  startTime: string;
+  endTime: string;
+  trainerId?: string | null;
+  courtName?: string;
+  maxStudents: number;
+}
+
+/** Past een weekslot aan (tijd/trainer/baan/capaciteit) — geldt voor het slot én al z'n lessen. */
+export async function updateWeekSlot(
+  seriesId: string,
+  weeklyTemplateEntryId: string,
+  request: UpdateWeekSlotRequest,
+): Promise<void> {
+  await apiClient.put(
+    `/lessonseries/${seriesId}/weekly-template/${weeklyTemplateEntryId}`,
+    request,
+  );
+}
+
 // ─── Wizard API ───────────────────────────────────────────────────────────────
 
 export interface WizardSlotRequest {

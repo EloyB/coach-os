@@ -646,6 +646,59 @@ public class LessonSerieService(
         return Result.Ok();
     }
 
+    public async Task<Result> UpdateWeekSlotAsync(
+        Guid seriesId, Guid weeklyTemplateEntryId, Guid organizationId,
+        UpdateWeekSlotRequest request, CancellationToken ct = default)
+    {
+        Domain.Entities.LessonSerie? series = await lessonSeriesRepo.GetByIdAsync(seriesId, organizationId, ct);
+        if (series is null)
+            return Result.Fail(new Error(ErrorCodes.NotFound, "Lesreeks niet gevonden."));
+
+        Domain.Entities.WeeklyTemplateEntry? entry =
+            series.WeeklyTemplate.FirstOrDefault(w => w.Id == weeklyTemplateEntryId);
+        if (entry is null)
+            return Result.Fail(new Error(ErrorCodes.NotFound, "Weekslot niet gevonden."));
+
+        if (request.TrainerId.HasValue)
+        {
+            bool isValid = await userLookup.IsActiveTrainerAsync(request.TrainerId.Value, organizationId, ct);
+            if (!isValid)
+                return Result.Fail(new Error(ErrorCodes.Validation, "Deze trainer behoort niet tot deze organisatie."));
+        }
+
+        TimeOnly start = TimeOnly.ParseExact(request.StartTime, "HH:mm");
+        TimeOnly end = TimeOnly.ParseExact(request.EndTime, "HH:mm");
+        if (end <= start)
+            return Result.Fail(new Error(ErrorCodes.Validation, "Eindtijd moet na de starttijd liggen."));
+        TimeSpan duration = end.ToTimeSpan() - start.ToTimeSpan();
+        if (duration.TotalMinutes < 15)
+            return Result.Fail(new Error(ErrorCodes.Validation, "Een lesmoment moet minstens 15 minuten duren."));
+        if (duration.TotalHours > 4)
+            return Result.Fail(new Error(ErrorCodes.Validation, "Een lesmoment mag maximaal 4 uur duren."));
+
+        string? court = NormalizeCourt(request.CourtName) is { Length: > 0 } c ? c : null;
+
+        // Slot + alle niet-geannuleerde lessen ervan bijwerken → planning gaat mee. Eén SaveChanges.
+        entry.StartTime = start;
+        entry.EndTime = end;
+        entry.TrainerId = request.TrainerId;
+        entry.CourtName = court;
+        entry.MaxStudents = request.MaxStudents;
+
+        foreach (Domain.Entities.Lesson lesson in series.Lessons.Where(l =>
+            l.WeeklyTemplateEntryId == weeklyTemplateEntryId && !l.IsCancelled))
+        {
+            lesson.StartTime = start;
+            lesson.EndTime = end;
+            lesson.TrainerId = request.TrainerId;
+            lesson.CourtName = court;
+            lesson.MaxStudents = request.MaxStudents;
+        }
+
+        await lessonSeriesRepo.SaveChangesAsync(ct);
+        return Result.Ok();
+    }
+
     public async Task<Result<Guid>> GetClubIdAsync(
         Guid id, Guid organizationId, CancellationToken ct = default)
     {
