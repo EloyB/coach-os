@@ -102,51 +102,62 @@ export function TimeslotDetailDialog({
       <DialogContent
         className="flex max-h-[85vh] max-w-md flex-col gap-0 overflow-hidden p-0"
         aria-describedby={undefined}
+        showCloseButton={false}
       >
-        {/* Sticky header (dag + uren; scrollt niet mee) */}
-        <DialogHeader className="shrink-0 border-b border-gray-100 px-6 pb-3 pt-6">
-          <DialogTitle className="pr-16">
-            {DAY_NAMES_FULL[slot.dayOfWeek]} {slot.startTime}–{slot.endTime}
-          </DialogTitle>
-        </DialogHeader>
-
-        {/* Slot-acties: ⋮-menu, uitgelijnd links naast de sluit-X (die op top-4 right-4 staat) */}
-        {!readOnly && (onEditSlot || onDeleteSlot) && (
-          <Popover>
-            <PopoverTrigger asChild>
+        {/* Sticky header: titel links, acties (⋮ + custom sluit-X) rechts — samen uitgelijnd */}
+        <DialogHeader className="shrink-0 border-b border-gray-100 px-6 pb-3 pt-5">
+          <div className="flex items-center justify-between gap-2">
+            <DialogTitle>
+              {DAY_NAMES_FULL[slot.dayOfWeek]} {slot.startTime}–{slot.endTime}
+            </DialogTitle>
+            <div className="flex shrink-0 items-center gap-0.5">
+              {!readOnly && (onEditSlot || onDeleteSlot) && (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label={t("slotActions")}
+                      className="flex h-8 w-8 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 focus:outline-none"
+                    >
+                      <MoreVertical size={18} />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent align="end" className="w-56 p-1">
+                    {onEditSlot && (
+                      <button
+                        type="button"
+                        onClick={onEditSlot}
+                        className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50"
+                      >
+                        <Pencil size={14} className="shrink-0 text-gray-400" />
+                        {t("editSlot")}
+                      </button>
+                    )}
+                    {onDeleteSlot && (
+                      <button
+                        type="button"
+                        onClick={onDeleteSlot}
+                        disabled={isDeletePending}
+                        className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
+                      >
+                        <Trash2 size={14} className="shrink-0" />
+                        {t("deleteSlot")}
+                      </button>
+                    )}
+                  </PopoverContent>
+                </Popover>
+              )}
               <button
                 type="button"
-                aria-label={t("slotActions")}
-                className="absolute right-11 top-4 z-10 flex h-6 w-6 items-center justify-center rounded-sm text-gray-400 opacity-70 transition-opacity hover:text-gray-600 hover:opacity-100 focus:outline-none"
+                aria-label={t("close")}
+                onClick={() => onOpenChange(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 focus:outline-none"
               >
-                <MoreVertical size={18} />
+                <X size={18} />
               </button>
-            </PopoverTrigger>
-            <PopoverContent align="end" className="w-56 p-1">
-              {onEditSlot && (
-                <button
-                  type="button"
-                  onClick={onEditSlot}
-                  className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50"
-                >
-                  <Pencil size={14} className="shrink-0 text-gray-400" />
-                  {t("editSlot")}
-                </button>
-              )}
-              {onDeleteSlot && (
-                <button
-                  type="button"
-                  onClick={onDeleteSlot}
-                  disabled={isDeletePending}
-                  className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
-                >
-                  <Trash2 size={14} className="shrink-0" />
-                  {t("deleteSlot")}
-                </button>
-              )}
-            </PopoverContent>
-          </Popover>
-        )}
+            </div>
+          </div>
+        </DialogHeader>
 
         {/* Scrollbaar deel */}
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pt-3 pb-2">
