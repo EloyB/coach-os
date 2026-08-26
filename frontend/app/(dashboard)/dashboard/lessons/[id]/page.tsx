@@ -472,10 +472,10 @@ function EditLessonDialog({
   const [endTime, setEndTime] = useState(lesson.endTime);
   const [maxStudents, setMaxStudents] = useState(lesson.maxStudents);
   const [notes, setNotes] = useState(lesson.notes ?? "");
-  // Alleen relevant als de les uit een weekslot komt: past de wijziging op het hele
-  // weekslot toe (default) of enkel op deze les. Datum blijft altijd per les.
+  // Komt de les uit een weekslot, dan vraagt "Opslaan" eerst of de wijziging voor het
+  // hele weekslot geldt of enkel deze les. Datum blijft altijd per les.
   const belongsToWeekSlot = Boolean(lesson.weeklyTemplateEntryId);
-  const [applyTo, setApplyTo] = useState<"lesson" | "slot">("slot");
+  const [confirmScopeOpen, setConfirmScopeOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [cancelling, setCancelling] = useState(false);
@@ -488,7 +488,7 @@ function EditLessonDialog({
   const [rescheduleReason, setRescheduleReason] = useState("");
   const [rescheduling, setRescheduling] = useState(false);
 
-  async function handleSave() {
+  async function doSave(applyTo: "lesson" | "slot" | undefined) {
     setSaving(true);
     try {
       const request: UpdateLessonRequest = {
@@ -499,7 +499,7 @@ function EditLessonDialog({
         endTime,
         maxStudents,
         notes,
-        applyTo: belongsToWeekSlot ? applyTo : undefined,
+        applyTo,
       };
 
       await updateLesson(seriesId, lesson.id, request);
@@ -510,6 +510,15 @@ function EditLessonDialog({
     } finally {
       setSaving(false);
     }
+  }
+
+  function handleSave() {
+    // Komt de les uit een weekslot, vraag eerst de reikwijdte; anders meteen opslaan.
+    if (belongsToWeekSlot) {
+      setConfirmScopeOpen(true);
+      return;
+    }
+    void doSave(undefined);
   }
 
   async function handleDelete() {
@@ -674,44 +683,6 @@ function EditLessonDialog({
             />
           </div>
         </div>
-
-        {/* Reikwijdte: enkel deze les of het hele weekslot (alleen als de les uit een weekslot komt) */}
-        {belongsToWeekSlot && (
-          <div className="rounded-lg border border-gray-200 bg-gray-50/50 p-3">
-            <p className="mb-2 text-xs font-medium text-gray-600">
-              Wijziging toepassen op
-            </p>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setApplyTo("slot")}
-                className={`flex-1 rounded-md px-3 py-2 text-xs font-medium transition-colors ${
-                  applyTo === "slot"
-                    ? "bg-tennis-green text-white"
-                    : "border border-gray-200 text-gray-600 hover:bg-gray-50"
-                }`}
-              >
-                Hele weekslot
-              </button>
-              <button
-                type="button"
-                onClick={() => setApplyTo("lesson")}
-                className={`flex-1 rounded-md px-3 py-2 text-xs font-medium transition-colors ${
-                  applyTo === "lesson"
-                    ? "bg-tennis-green text-white"
-                    : "border border-gray-200 text-gray-600 hover:bg-gray-50"
-                }`}
-              >
-                Enkel deze les
-              </button>
-            </div>
-            <p className="mt-2 text-[11px] leading-relaxed text-gray-400">
-              {applyTo === "slot"
-                ? "Tijd, trainer, baan en capaciteit gelden voor alle lessen van dit weekslot én de planning. De datum blijft enkel voor deze les."
-                : "De wijziging geldt enkel voor deze les. De planning blijft de tijd van het weekslot tonen."}
-            </p>
-          </div>
-        )}
 
         {/* Geannuleerd banner */}
         {lesson.isCancelled && (
@@ -910,6 +881,43 @@ function EditLessonDialog({
             </div>
           </div>
         )}
+
+        {/* Reikwijdte-bevestiging: enkel als de les uit een weekslot komt */}
+        <AlertDialog open={confirmScopeOpen} onOpenChange={setConfirmScopeOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                Wil je dit toepassen voor elk van deze weekslots?
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Tijd, trainer, baan en capaciteit gelden dan voor alle lessen van dit
+                weekslot én de planning. De datum blijft altijd enkel voor deze les.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmScopeOpen(false);
+                  void doSave("lesson");
+                }}
+                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+              >
+                Enkel dit weekslot
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmScopeOpen(false);
+                  void doSave("slot");
+                }}
+                className="rounded-lg bg-tennis-green px-4 py-2 text-sm font-semibold text-white hover:bg-tennis-green/90"
+              >
+                Ja
+              </button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
       </DialogContent>
     </Dialog>
