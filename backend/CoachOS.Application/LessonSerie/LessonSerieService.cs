@@ -638,8 +638,19 @@ public class LessonSerieService(
         // Kinderen vóór de ouder, alles in één SaveChanges = één transactie (alles-of-niets).
         // assignments bevatten hier enkel Proposed/Declined (bevestigd is hierboven geblokkeerd),
         // die hebben geen bevestigings-tokens, dus geen verdere keten nodig.
-        scheduleAssignmentRepo.RemoveRange(assignments);
-        timeSlotPreferenceRepo.RemoveRange(preferences);
+        //
+        // assignments/preferences komen uit een AsNoTracking-query mét Include(WeeklyTemplateEntry):
+        // die meegeladen entry-instances zouden bij RemoveRange botsen met de al-getrackte entry uit
+        // `series` ("cannot be tracked because another instance with the same key is already tracked").
+        // Verwijder daarom via key-only stubs — EF hangt ze puur op hun PK aan als Deleted, zonder
+        // navigatie-graph. Veilig omdat GetByIdAsync geen assignments/preferences trackt.
+        List<Domain.Entities.ScheduleAssignment> assignmentStubs =
+            assignments.Select(a => new Domain.Entities.ScheduleAssignment { Id = a.Id }).ToList();
+        List<Domain.Entities.TimeSlotPreference> preferenceStubs =
+            preferences.Select(p => new Domain.Entities.TimeSlotPreference { Id = p.Id }).ToList();
+
+        scheduleAssignmentRepo.RemoveRange(assignmentStubs);
+        timeSlotPreferenceRepo.RemoveRange(preferenceStubs);
         await lessonRepo.DeleteRangeAsync(slotLessons, ct);
         await lessonSeriesRepo.DeleteWeeklyTemplateRangeAsync([entry], ct);
         await lessonSeriesRepo.SaveChangesAsync(ct);
