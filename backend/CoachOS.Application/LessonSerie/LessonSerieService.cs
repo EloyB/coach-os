@@ -622,7 +622,8 @@ public class LessonSerieService(
                 or ScheduleAssignmentStatus.AwaitingConfirmation))
         {
             return Result.Fail(new Error(ErrorCodes.Conflict,
-                "Dit weekslot heeft bevestigde planning. Maak eerst de planning van dit slot ongedaan."));
+                "Dit weekslot zit al in de planning (bevestigde of nog te bevestigen toewijzingen). " +
+                "Maak eerst de planning van dit slot ongedaan voor je het verwijdert."));
         }
 
         List<Domain.Entities.TimeSlotPreference> preferences =
