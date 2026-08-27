@@ -192,7 +192,7 @@ public class AssignmentService(
         var existing = await scheduleAssignmentRepo.GetBySeriesAsync(seriesId, organizationId, ct);
         var currentCount = existing
             .Where(a => a.WeeklyTemplateEntryId == slotId && a.Id != excludeAssignmentId)
-            .Sum(a => a.EnrollmentGroup?.Members.Count ?? 1);
+            .Sum(PlanningProposalBuilder.GetEffectiveAssignmentSize);
 
         if (currentCount + addSize > slot.MaxStudents)
             return new Error(ErrorCodes.Validation,

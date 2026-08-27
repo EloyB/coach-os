@@ -184,6 +184,7 @@ export default function PlanningPage({
     const map = new Map<string, PlanningAssignmentDto[]>();
     if (!planning) return map;
     for (const a of planning.assignments) {
+      if (a.status === "Declined") continue;
       const list = map.get(a.timeSlotId) ?? [];
       list.push(a);
       map.set(a.timeSlotId, list);

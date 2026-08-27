@@ -119,6 +119,82 @@ public class AssignmentServiceTests
         result.Errors[0].Code.Should().Be("validation");
     }
 
+    [Test]
+    public async Task CreateAssignmentAsync_IgnoresCancelledMembersInExistingGroupCapacity()
+    {
+        var slot = new WeeklyTemplateEntry
+        {
+            Id = SlotId,
+            LessonSerieId = SeriesId,
+            MaxStudents = 4,
+        };
+        var series = new LessonSerie
+        {
+            Id = SeriesId,
+            OrganizationId = OrgId,
+            WeeklyTemplate = [slot],
+        };
+        var cancelledGroup = new EnrollmentGroup
+        {
+            Id = Guid.NewGuid(),
+            LessonSerieId = SeriesId,
+            Members =
+            [
+                new() { Status = EnrollmentStatus.Cancelled },
+                new() { Status = EnrollmentStatus.Cancelled },
+                new() { Status = EnrollmentStatus.Cancelled },
+            ],
+        };
+        var activeExistingEnrollment = new Enrollment
+        {
+            Id = Guid.NewGuid(),
+            LessonSerieId = SeriesId,
+            Status = EnrollmentStatus.Pending,
+            StudentName = "Sven Van Eester",
+        };
+        var activeExistingAssignment = new ScheduleAssignment
+        {
+            Id = Guid.NewGuid(),
+            LessonSerieId = SeriesId,
+            WeeklyTemplateEntryId = SlotId,
+            EnrollmentId = activeExistingEnrollment.Id,
+            Enrollment = activeExistingEnrollment,
+            Status = ScheduleAssignmentStatus.Proposed,
+        };
+        var newEnrollment = new Enrollment
+        {
+            Id = Guid.NewGuid(),
+            LessonSerieId = SeriesId,
+            Status = EnrollmentStatus.Pending,
+            StudentName = "Wim Schippers",
+        };
+
+        _seriesRepo.Setup(r => r.GetByIdAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+        _enrollmentRepo.Setup(r => r.GetByIdAsync(newEnrollment.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(newEnrollment);
+        _assignmentRepo.Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([
+                new ScheduleAssignment
+                {
+                    Id = Guid.NewGuid(),
+                    LessonSerieId = SeriesId,
+                    WeeklyTemplateEntryId = SlotId,
+                    EnrollmentGroupId = cancelledGroup.Id,
+                    EnrollmentGroup = cancelledGroup,
+                    Status = ScheduleAssignmentStatus.Proposed,
+                },
+                activeExistingAssignment,
+            ]);
+
+        var result = await _service.CreateAssignmentAsync(
+            SeriesId,
+            new CreateAssignmentRequest { EnrollmentId = newEnrollment.Id, WeeklyTemplateEntryId = SlotId },
+            OrgId);
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
     // ── DissolveGroupAsync ───────────────────────────────────────────────────
 
     [Test]
