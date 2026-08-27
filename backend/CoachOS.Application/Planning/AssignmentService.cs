@@ -40,7 +40,11 @@ public class AssignmentService(
                 return Result<bool>.Fail(new Error(ErrorCodes.Validation, "Groep is al toegewezen."));
 
             groupId = group.Id;
-            addSize = group.Members.Count;
+            addSize = PlanningProposalBuilder.GetEffectiveAssignmentSize(new ScheduleAssignment
+            {
+                EnrollmentGroup = group,
+                Status = ScheduleAssignmentStatus.Proposed,
+            });
         }
         else
         {
@@ -92,7 +96,7 @@ public class AssignmentService(
 
         var capacityError = await EnsureSlotCapacityAsync(
             seriesId, organizationId, request.WeeklyTemplateEntryId,
-            addSize: assignment.EnrollmentGroup?.Members.Count ?? 1,
+            addSize: PlanningProposalBuilder.GetEffectiveAssignmentSize(assignment),
             excludeAssignmentId: assignment.Id, ct);
         if (capacityError is not null)
             return Result<bool>.Fail(capacityError);

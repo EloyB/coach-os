@@ -199,6 +199,37 @@ public class PlanningServiceTests
         captured!.Should().NotContain(a => a.EnrollmentId == anna.Id);
     }
 
+    [Test]
+    public async Task GenerateProposalAsync_DeclinedAssignmentDoesNotSuppressNoViableSlotConflict()
+    {
+        var series = BuildSeries(withSlots: true);
+        var enrollment = BuildEnrollment("Declined student");
+        var declined = new ScheduleAssignment
+        {
+            EnrollmentId = enrollment.Id,
+            Status = ScheduleAssignmentStatus.Declined,
+            WeeklyTemplateEntryId = SlotId,
+            Enrollment = enrollment,
+        };
+
+        _seriesRepo.Setup(r => r.GetByIdAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+        _enrollmentRepo.Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([enrollment]);
+        _groupRepo.Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+        _prefRepo.Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+        _assignmentRepo.Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([declined]);
+
+        var result = await _service.GenerateProposalAsync(SeriesId, OrgId);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Conflicts.Should().ContainSingle(c =>
+            c.EnrollmentId == enrollment.Id && c.Type == "no_viable_slot");
+    }
+
     // ── Assignment locking ───────────────────────────────────────────────────
 
     [Test]

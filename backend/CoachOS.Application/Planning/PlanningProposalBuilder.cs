@@ -101,6 +101,7 @@ internal static class PlanningProposalBuilder
         var conflicts = new List<PlanningConflictDto>();
 
         var assignedEnrollmentIds = assignments
+            .Where(a => a.Status != ScheduleAssignmentStatus.Declined)
             .SelectMany(a => a.EnrollmentGroup is not null
                 ? a.EnrollmentGroup.Members.Select(m => m.Id)
                 : a.EnrollmentId.HasValue ? [a.EnrollmentId.Value] : Array.Empty<Guid>())

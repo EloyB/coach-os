@@ -195,6 +195,90 @@ public class AssignmentServiceTests
         result.IsSuccess.Should().BeTrue();
     }
 
+    [Test]
+    public async Task CreateAssignmentAsync_UsesActiveMemberCountForNewGroupCapacity()
+    {
+        var series = PlanningServiceTests.BuildSeries(withSlots: true, slotId: SlotId);
+        var group = new EnrollmentGroup
+        {
+            Id = Guid.NewGuid(),
+            LessonSerieId = SeriesId,
+            Members =
+            [
+                new() { Status = EnrollmentStatus.Confirmed },
+                new() { Status = EnrollmentStatus.Cancelled },
+                new() { Status = EnrollmentStatus.Cancelled },
+            ],
+        };
+        var existing = Enumerable.Range(0, 3).Select(_ => new ScheduleAssignment
+        {
+            Id = Guid.NewGuid(),
+            LessonSerieId = SeriesId,
+            WeeklyTemplateEntryId = SlotId,
+            Enrollment = new Enrollment { Status = EnrollmentStatus.Confirmed },
+            Status = ScheduleAssignmentStatus.Proposed,
+        }).ToList();
+
+        _seriesRepo.Setup(r => r.GetByIdAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+        _groupRepo.Setup(r => r.GetByIdAsync(group.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(group);
+        _assignmentRepo.Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existing);
+
+        var result = await _service.CreateAssignmentAsync(
+            SeriesId,
+            new CreateAssignmentRequest { GroupId = group.Id, WeeklyTemplateEntryId = SlotId },
+            OrgId);
+
+        result.IsSuccess.Should().BeTrue(string.Join("; ", result.Errors.Select(e => e.Message)));
+    }
+
+    [Test]
+    public async Task UpdateAssignmentAsync_UsesActiveMemberCountForMovedGroup()
+    {
+        var newSlotId = Guid.NewGuid();
+        var series = PlanningServiceTests.BuildSeries(withSlots: true, slotId: SlotId);
+        series.WeeklyTemplate.Add(new WeeklyTemplateEntry { Id = newSlotId, MaxStudents = 4 });
+        var assignment = new ScheduleAssignment
+        {
+            Id = Guid.NewGuid(),
+            LessonSerieId = SeriesId,
+            WeeklyTemplateEntryId = SlotId,
+            EnrollmentGroup = new EnrollmentGroup
+            {
+                Members =
+                [
+                    new() { Status = EnrollmentStatus.Confirmed },
+                    new() { Status = EnrollmentStatus.Cancelled },
+                    new() { Status = EnrollmentStatus.Cancelled },
+                ],
+            },
+            Status = ScheduleAssignmentStatus.Proposed,
+        };
+        var existing = Enumerable.Range(0, 3).Select(_ => new ScheduleAssignment
+        {
+            Id = Guid.NewGuid(),
+            LessonSerieId = SeriesId,
+            WeeklyTemplateEntryId = newSlotId,
+            Enrollment = new Enrollment { Status = EnrollmentStatus.Confirmed },
+            Status = ScheduleAssignmentStatus.Proposed,
+        }).Append(assignment).ToList();
+
+        _seriesRepo.Setup(r => r.GetByIdAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+        _assignmentRepo.Setup(r => r.GetByIdAsync(assignment.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(assignment);
+        _assignmentRepo.Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existing);
+
+        var result = await _service.UpdateAssignmentAsync(
+            SeriesId, assignment.Id,
+            new UpdateAssignmentRequest { WeeklyTemplateEntryId = newSlotId }, OrgId);
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
     // ── DissolveGroupAsync ───────────────────────────────────────────────────
 
     [Test]
