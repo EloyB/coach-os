@@ -75,4 +75,15 @@ public class LessonInvitationRepository(ApplicationDbContext context) : ILessonI
                     .SetProperty(i => i.UpdatedAt, now),
                 ct);
     }
+
+    public async Task<bool> AnyByLessonIdsAsync(
+        IReadOnlyCollection<Guid> lessonIds, CancellationToken ct = default)
+    {
+        if (lessonIds.Count == 0)
+            return false;
+
+        return await context.LessonInvitations
+            .AsNoTracking()
+            .AnyAsync(i => lessonIds.Contains(i.LessonId), ct);
+    }
 }

@@ -9,11 +9,13 @@ public class UpdateWeekSlotRequestValidator : AbstractValidator<UpdateWeekSlotRe
     {
         RuleFor(x => x.StartTime)
             .NotEmpty().WithMessage("Starttijd is verplicht.")
-            .Matches(@"^\d{2}:\d{2}$").WithMessage("Starttijd moet het formaat HH:mm hebben.");
+            .Matches(@"^\d{2}:\d{2}$").WithMessage("Starttijd moet het formaat HH:mm hebben.")
+            .Must(t => TimeOnly.TryParseExact(t, "HH:mm", out _)).WithMessage("Ongeldige starttijd.");
 
         RuleFor(x => x.EndTime)
             .NotEmpty().WithMessage("Eindtijd is verplicht.")
-            .Matches(@"^\d{2}:\d{2}$").WithMessage("Eindtijd moet het formaat HH:mm hebben.");
+            .Matches(@"^\d{2}:\d{2}$").WithMessage("Eindtijd moet het formaat HH:mm hebben.")
+            .Must(t => TimeOnly.TryParseExact(t, "HH:mm", out _)).WithMessage("Ongeldige eindtijd.");
 
         RuleFor(x => x)
             .Must(x => string.Compare(x.EndTime, x.StartTime, StringComparison.Ordinal) > 0)

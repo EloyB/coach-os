@@ -16,6 +16,7 @@ public class LessonSerieService(
     IMollieConnectionRepository mollieConnectionRepo,
     IScheduleAssignmentRepository scheduleAssignmentRepo,
     ITimeSlotPreferenceRepository timeSlotPreferenceRepo,
+    ILessonInvitationRepository lessonInvitationRepo,
     ApplicationMapper mapper) : ILessonSerieService
 {
     public async Task<Result<List<LessonSerieDto>>> GetAllAsync(
@@ -453,14 +454,25 @@ public class LessonSerieService(
                 series.WeeklyTemplate.FirstOrDefault(w => w.Id == templateEntryId);
             if (entry is not null)
             {
+                List<Domain.Entities.Lesson> siblings = series.Lessons.Where(l =>
+                    l.WeeklyTemplateEntryId == templateEntryId && l.Id != lesson.Id && !l.IsCancelled).ToList();
+
+                // De bewerkte les is hierboven al op conflicten gecheckt; controleer nu ook élke
+                // zusterles die dezelfde nieuwe tijd/trainer/baan krijgt, zodat de propagatie geen
+                // trainer- of baanconflict verstopt. Nog niets opgeslagen → atomair afbreken bij conflict.
+                Error? slotConflict = await CheckSlotConflictsAsync(
+                    organizationId, siblings, lesson.TrainerId, lesson.StartTime, lesson.EndTime,
+                    lesson.CourtName, ct);
+                if (slotConflict is not null)
+                    return Result<LessonDto>.Fail(slotConflict);
+
                 entry.StartTime = lesson.StartTime;
                 entry.EndTime = lesson.EndTime;
                 entry.TrainerId = lesson.TrainerId;
                 entry.CourtName = lesson.CourtName;
                 entry.MaxStudents = lesson.MaxStudents;
 
-                foreach (Domain.Entities.Lesson sibling in series.Lessons.Where(l =>
-                    l.WeeklyTemplateEntryId == templateEntryId && l.Id != lesson.Id && !l.IsCancelled))
+                foreach (Domain.Entities.Lesson sibling in siblings)
                 {
                     sibling.StartTime = lesson.StartTime;
                     sibling.EndTime = lesson.EndTime;
@@ -572,6 +584,36 @@ public class LessonSerieService(
             $"{courtName.Trim()} is op {conflict.Date:dd/MM/yyyy} van {conflictTime} al bezet door reeks {seriesName}.");
     }
 
+    /// <summary>
+    /// Valideert trainer- en baanconflicten voor de VOLLEDIGE set lessen die door een
+    /// slot-wijziging nieuwe tijd/trainer/baan krijgen — niet enkel de bewerkte les. Elke les zit
+    /// op een eigen datum (weekritme), dus we checken per datum tegen de rest van de DB (de les
+    /// zelf uitgesloten). Zonder deze check kan een slot-wijziging een trainer dubbel boeken of
+    /// twee lessen op dezelfde baan zetten zonder dat het opgemerkt wordt.
+    /// </summary>
+    private async Task<Error?> CheckSlotConflictsAsync(
+        Guid organizationId, IEnumerable<Domain.Entities.Lesson> affected,
+        Guid? trainerId, TimeOnly startTime, TimeOnly endTime, string? courtName, CancellationToken ct)
+    {
+        foreach (Domain.Entities.Lesson lesson in affected)
+        {
+            if (trainerId.HasValue)
+            {
+                Error? trainerConflict = await CheckTrainerConflictAsync(
+                    trainerId.Value, lesson.Date, startTime, endTime, lesson.Id, ct);
+                if (trainerConflict is not null)
+                    return trainerConflict;
+            }
+
+            Error? courtConflict = await CheckCourtConflictAsync(
+                organizationId, courtName, lesson.Date, startTime, endTime, lesson.Id, ct);
+            if (courtConflict is not null)
+                return courtConflict;
+        }
+
+        return null;
+    }
+
     public async Task<Result> DeleteLessonAsync(
         Guid seriesId, Guid lessonId, Guid organizationId, bool wholeSlot = false, CancellationToken ct = default)
     {
@@ -635,6 +677,21 @@ public class LessonSerieService(
             .Where(l => l.WeeklyTemplateEntryId == templateEntryId)
             .ToList();
 
+        // Lessen kunnen rechtstreeks gekoppelde inschrijvingen (Enrollment.LessonId) of uitnodigingen
+        // (LessonInvitation.LessonId) hebben; beide FK's staan op Restrict. Zonder deze check zou het
+        // verwijderen van de lessen een rauwe FK-schending → HTTP 500 geven. Blokkeer met een nette
+        // conflictmelding, net zoals het verwijderen van één los lesmoment doet bij inschrijvingen.
+        List<Guid> slotLessonIds = slotLessons.Select(l => l.Id).ToList();
+        if (slotLessonIds.Count > 0)
+        {
+            bool hasEnrollments = await enrollmentRepo.AnyByLessonIdsAsync(slotLessonIds, ct);
+            bool hasInvitations = await lessonInvitationRepo.AnyByLessonIdsAsync(slotLessonIds, ct);
+            if (hasEnrollments || hasInvitations)
+                return Result.Fail(new Error(ErrorCodes.Conflict,
+                    "Dit weekslot heeft lessen met gekoppelde inschrijvingen of uitnodigingen. " +
+                    "Verwijder of verplaats die eerst voor je het weekslot verwijdert."));
+        }
+
         // Kinderen vóór de ouder, alles in één SaveChanges = één transactie (alles-of-niets).
         // assignments bevatten hier enkel Proposed/Declined (bevestigd is hierboven geblokkeerd),
         // die hebben geen bevestigings-tokens, dus geen verdere keten nodig.
@@ -678,8 +735,12 @@ public class LessonSerieService(
                 return Result.Fail(new Error(ErrorCodes.Validation, "Deze trainer behoort niet tot deze organisatie."));
         }
 
-        TimeOnly start = TimeOnly.ParseExact(request.StartTime, "HH:mm");
-        TimeOnly end = TimeOnly.ParseExact(request.EndTime, "HH:mm");
+        // Defensief parsen: de validator checkt het HH:mm-formaat, maar een niet-bestaande tijd
+        // (bv. "25:00") mag nooit als een rauwe FormatException → HTTP 500 doorlekken.
+        if (!TimeOnly.TryParseExact(request.StartTime, "HH:mm", out TimeOnly start)
+            || !TimeOnly.TryParseExact(request.EndTime, "HH:mm", out TimeOnly end))
+            return Result.Fail(new Error(ErrorCodes.Validation,
+                "Ongeldige tijd. Gebruik het formaat HH:mm (00:00–23:59)."));
         if (end <= start)
             return Result.Fail(new Error(ErrorCodes.Validation, "Eindtijd moet na de starttijd liggen."));
         TimeSpan duration = end.ToTimeSpan() - start.ToTimeSpan();
@@ -690,6 +751,17 @@ public class LessonSerieService(
 
         string? court = NormalizeCourt(request.CourtName) is { Length: > 0 } c ? c : null;
 
+        List<Domain.Entities.Lesson> affected = series.Lessons
+            .Where(l => l.WeeklyTemplateEntryId == weeklyTemplateEntryId && !l.IsCancelled)
+            .ToList();
+
+        // Valideer trainer/baan-conflicten over de VOLLEDIGE set lessen vóór we iets muteren,
+        // anders kan een slot-wijziging stil overlappende lessen voor de trainer of baan maken.
+        Error? slotConflict = await CheckSlotConflictsAsync(
+            organizationId, affected, request.TrainerId, start, end, court, ct);
+        if (slotConflict is not null)
+            return Result.Fail(slotConflict);
+
         // Slot + alle niet-geannuleerde lessen ervan bijwerken → planning gaat mee. Eén SaveChanges.
         entry.StartTime = start;
         entry.EndTime = end;
@@ -697,8 +769,7 @@ public class LessonSerieService(
         entry.CourtName = court;
         entry.MaxStudents = request.MaxStudents;
 
-        foreach (Domain.Entities.Lesson lesson in series.Lessons.Where(l =>
-            l.WeeklyTemplateEntryId == weeklyTemplateEntryId && !l.IsCancelled))
+        foreach (Domain.Entities.Lesson lesson in affected)
         {
             lesson.StartTime = start;
             lesson.EndTime = end;

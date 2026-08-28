@@ -28,6 +28,7 @@ public class LessonSlotScopeUpdateTests
     private Mock<IMollieConnectionRepository> _mollieConnectionRepo = null!;
     private Mock<IScheduleAssignmentRepository> _scheduleAssignmentRepo = null!;
     private Mock<ITimeSlotPreferenceRepository> _timeSlotPreferenceRepo = null!;
+    private Mock<ILessonInvitationRepository> _invitationRepo = null!;
     private ApplicationMapper _mapper = null!;
     private LessonSerieService _service = null!;
 
@@ -45,13 +46,14 @@ public class LessonSlotScopeUpdateTests
         _mollieConnectionRepo = new Mock<IMollieConnectionRepository>();
         _scheduleAssignmentRepo = new Mock<IScheduleAssignmentRepository>();
         _timeSlotPreferenceRepo = new Mock<ITimeSlotPreferenceRepository>();
+        _invitationRepo = new Mock<ILessonInvitationRepository>();
         _mapper = new ApplicationMapper();
 
         _service = new LessonSerieService(
             _serieRepo.Object, _lessonRepo.Object, _enrollmentRepo.Object,
             _tennisClubRepo.Object, _userLookup.Object, _emailService.Object,
             _mollieConnectionRepo.Object, _scheduleAssignmentRepo.Object,
-            _timeSlotPreferenceRepo.Object, _mapper);
+            _timeSlotPreferenceRepo.Object, _invitationRepo.Object, _mapper);
 
         _userLookup
             .Setup(u => u.IsActiveTrainerAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
@@ -244,5 +246,112 @@ public class LessonSlotScopeUpdateTests
             It.IsAny<IEnumerable<WeeklyTemplateEntry>>(), It.IsAny<CancellationToken>()), Times.Never);
         _lessonRepo.Verify(r => r.DeleteRangeAsync(
             It.IsAny<IEnumerable<Lesson>>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task DeleteLessonAsync_WholeSlot_LinkedEnrollment_ReturnsConflictAndDeletesNothing()
+    {
+        (Guid seriesId, Lesson lesson, WeeklyTemplateEntry _) = SetupSlotForDelete(ScheduleAssignmentStatus.Proposed);
+        // Een les van het slot heeft nog een rechtstreeks gekoppelde inschrijving (Enrollment.LessonId, Restrict).
+        _enrollmentRepo
+            .Setup(r => r.AnyByLessonIdsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        Result result = await _service.DeleteLessonAsync(seriesId, lesson.Id, OrgId, wholeSlot: true, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.Code == ErrorCodes.Conflict);
+        _lessonRepo.Verify(r => r.DeleteRangeAsync(
+            It.IsAny<IEnumerable<Lesson>>(), It.IsAny<CancellationToken>()), Times.Never);
+        _serieRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task DeleteLessonAsync_WholeSlot_LinkedInvitation_ReturnsConflictAndDeletesNothing()
+    {
+        (Guid seriesId, Lesson lesson, WeeklyTemplateEntry _) = SetupSlotForDelete(ScheduleAssignmentStatus.Proposed);
+        // Een les van het slot heeft nog een uitnodiging (LessonInvitation.LessonId, Restrict).
+        _invitationRepo
+            .Setup(r => r.AnyByLessonIdsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        Result result = await _service.DeleteLessonAsync(seriesId, lesson.Id, OrgId, wholeSlot: true, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.Code == ErrorCodes.Conflict);
+        _lessonRepo.Verify(r => r.DeleteRangeAsync(
+            It.IsAny<IEnumerable<Lesson>>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    // ── Conflictchecks bij slot-wijziging (fix: whole-slot updates sloegen ze over) ──
+
+    [Test]
+    public async Task UpdateWeekSlotAsync_TrainerConflict_ReturnsConflictAndDoesNotSave()
+    {
+        (LessonSerie series, _, _, _, WeeklyTemplateEntry entry) = BuildSlotScenario();
+        Guid trainerId = Guid.NewGuid();
+        // Eén van de geraakte lessen botst met een bestaande les van dezelfde trainer.
+        _lessonRepo
+            .Setup(r => r.FindTrainerConflictAsync(trainerId, It.IsAny<DateOnly>(), It.IsAny<TimeOnly>(),
+                It.IsAny<TimeOnly>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Lesson
+            {
+                Id = Guid.NewGuid(), Date = new DateOnly(2026, 12, 14),
+                StartTime = new TimeOnly(18, 0), EndTime = new TimeOnly(19, 30),
+            });
+        UpdateWeekSlotRequest request = new()
+        {
+            StartTime = "18:00", EndTime = "19:30", MaxStudents = 6, TrainerId = trainerId,
+        };
+
+        Result result = await _service.UpdateWeekSlotAsync(series.Id, entry.Id, OrgId, request, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.Code == ErrorCodes.Conflict);
+        entry.EndTime.Should().Be(new TimeOnly(19, 0)); // niets gemuteerd
+        _serieRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task UpdateWeekSlotAsync_MalformedTime_ReturnsValidationNotUnhandled()
+    {
+        (LessonSerie series, _, _, _, WeeklyTemplateEntry entry) = BuildSlotScenario();
+        // "25:00" matcht wel HH:mm-vorm maar is geen geldige tijd → mag geen FormatException/500 geven.
+        UpdateWeekSlotRequest request = new() { StartTime = "25:00", EndTime = "26:00", MaxStudents = 4 };
+
+        Result result = await _service.UpdateWeekSlotAsync(series.Id, entry.Id, OrgId, request, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.Code == ErrorCodes.Validation);
+        _serieRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task UpdateLessonAsync_SlotScope_SiblingCourtConflict_ReturnsConflict()
+    {
+        (LessonSerie series, Lesson edited, Lesson sibling, _, WeeklyTemplateEntry entry) = BuildSlotScenario();
+        // Bewerkte les (7 dec) is baanvrij, maar de zusterles (14 dec) botst op dezelfde baan.
+        _lessonRepo
+            .Setup(r => r.FindCourtConflictAsync(OrgId, "Baan 1", new DateOnly(2026, 12, 14),
+                It.IsAny<TimeOnly>(), It.IsAny<TimeOnly>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Lesson
+            {
+                Id = Guid.NewGuid(), Date = new DateOnly(2026, 12, 14),
+                StartTime = new TimeOnly(18, 0), EndTime = new TimeOnly(19, 30),
+            });
+        UpdateLessonRequest request = new()
+        {
+            StartTime = "18:00", EndTime = "19:30", MaxStudents = 4, CourtName = "Baan 1", ApplyTo = "slot",
+        };
+
+        Result<LessonDto> result = await _service.UpdateLessonAsync(
+            series.Id, edited.Id, OrgId, request, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.Code == ErrorCodes.Conflict);
+        // Propagatie afgebroken vóór mutatie: template + zusje ongemoeid, niets opgeslagen.
+        entry.EndTime.Should().Be(new TimeOnly(19, 0));
+        sibling.EndTime.Should().Be(new TimeOnly(19, 0));
+        _lessonRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 }

@@ -75,6 +75,7 @@ public class LessonCourtConflictTests
             _mollieConnectionRepo.Object,
             _scheduleAssignmentRepo.Object,
             _timeSlotPreferenceRepo.Object,
+            _invitationRepo.Object,
             _mapper);
 
         _standaloneService = new StandaloneLessonService(
