@@ -822,6 +822,50 @@ public class LessonSerieServiceTests
         entry.MaxStudents.Should().Be(4);
     }
 
+    // Regressie: twee onbenoemde parallelle weekslots (zelfde dag+start, geen baan — toegestaan
+    // voor "2 velden, baan later toewijzen") mogen NIET willekeurig aan één van de twee gekoppeld
+    // worden. Zonder deze fix zou FirstOrDefault beide lessen aan hetzelfde weekslot hangen en het
+    // andere weekslot zonder lessen achterlaten — met foute "pas hele weekslot aan"-updates tot gevolg.
+    [Test]
+    public async Task CreateAsync_AmbiguousUnnamedParallelSlots_LeavesLessonsUnlinkedRatherThanGuessing()
+    {
+        LessonSerie? captured = null;
+        CreateLessonSerieRequest request = new()
+        {
+            Name = "Twee parallelle onbenoemde velden",
+            Price = 100m,
+            StartDate = "2026-06-01",
+            EndDate = "2026-08-31",
+            TennisClubId = ClubId,
+            WeeklyTemplate =
+            [
+                new WeeklyTemplateEntryRequest { DayOfWeek = 0, StartTime = "18:00", EndTime = "19:00", TrainerId = TrainerId, CourtName = null, MaxStudents = 4 },
+                new WeeklyTemplateEntryRequest { DayOfWeek = 0, StartTime = "18:00", EndTime = "19:00", TrainerId = TrainerId, CourtName = null, MaxStudents = 4 },
+            ],
+            Lessons =
+            [
+                new CreateLessonRequest { TrainerId = TrainerId, Date = "2026-06-01", StartTime = "18:00", EndTime = "19:00", CourtName = null, MaxStudents = 4 },
+                new CreateLessonRequest { TrainerId = TrainerId, Date = "2026-06-01", StartTime = "18:00", EndTime = "19:00", CourtName = null, MaxStudents = 4 },
+            ],
+        };
+
+        _tennisClubRepo
+            .Setup(r => r.ExistsAsync(ClubId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        _lessonSeriesRepo
+            .Setup(r => r.AddAsync(It.IsAny<LessonSerie>(), It.IsAny<CancellationToken>()))
+            .Callback<LessonSerie, CancellationToken>((s, _) => captured = s)
+            .Returns(Task.CompletedTask);
+
+        Result<Guid> result = await _service.CreateAsync(OrgId, request);
+
+        result.IsSuccess.Should().BeTrue();
+        captured.Should().NotBeNull();
+        captured!.WeeklyTemplate.Should().HaveCount(2);
+        captured.Lessons.Should().HaveCount(2);
+        captured.Lessons.Should().OnlyContain(l => l.WeeklyTemplateEntry == null);
+    }
+
     [Test]
     public async Task CreateAsync_ReturnsValidation_WhenWeeklyTemplateHasExactDuplicateSlot()
     {
