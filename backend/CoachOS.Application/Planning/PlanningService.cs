@@ -79,7 +79,7 @@ public class PlanningService(
             .GroupBy(a => a.WeeklyTemplateEntryId)
             .ToDictionary(
                 g => g.Key,
-                g => g.Sum(a => a.EnrollmentGroup?.Members.Count ?? 1));
+                g => g.Sum(PlanningProposalBuilder.GetEffectiveAssignmentSize));
 
         var (units, _) = PlanningProposalBuilder.BuildUnits(
             activeEnrollments, groups, prefsByEnrollment, lockedGroupIds, lockedEnrollmentIds);
