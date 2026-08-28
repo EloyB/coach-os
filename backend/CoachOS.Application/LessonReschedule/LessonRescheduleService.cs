@@ -52,9 +52,10 @@ public class LessonRescheduleService(
                     "Trainer heeft al een les op dit nieuwe tijdstip."));
         }
 
-        // Baan-conflict (binnen de org, en binnen de club als de les bij een reeks hoort — baannamen
-        // zijn vrije tekst per club). Sluit de huidige les uit, want die wordt geannuleerd.
-        Guid? tennisClubId = null;
+        // Baan-conflict (binnen de org, en binnen de club — baannamen zijn vrije tekst per club).
+        // Reeks-lessen bepalen hun club via de reeks; losse lessen dragen hun eigen (mogelijk
+        // legacy-null) TennisClubId. Sluit de huidige les uit, want die wordt geannuleerd.
+        Guid? tennisClubId = lesson.TennisClubId;
         if (!string.IsNullOrWhiteSpace(lesson.CourtName) && lesson.LessonSerieId.HasValue)
         {
             Domain.Entities.LessonSerie? lessonSeries =
@@ -78,6 +79,7 @@ public class LessonRescheduleService(
             Id = Guid.NewGuid(),
             OrganizationId = organizationId,
             LessonSerieId = lesson.LessonSerieId,
+            TennisClubId = lesson.TennisClubId,
             Date = newDate,
             StartTime = newStart,
             EndTime = newEnd,

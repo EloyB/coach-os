@@ -388,19 +388,24 @@ def simple_enrollments(api: ApiClient, students: list[dict],
 
 
 def create_standalone_lessons(api: ApiClient, specs: list[dict],
-                              trainer_id: str, today: date) -> None:
+                              club_ids: list[str], trainer_id: str, today: date) -> None:
     """Creates losse lessen + uitnodigingen via /standalone-lessons."""
     print("\n9. Creating standalone lessons...")
     if not specs:
         print("   None configured - skipping.")
         return
+    if not club_ids:
+        print("   No clubs — skipping standalone lessons.")
+        return
     created = 0
     for spec in specs:
+        club_idx = min(spec.get("clubIndex", 0), len(club_ids) - 1)
         body = {
             "date": iso_date(today + timedelta(days=spec["startOffsetDays"])),
             "startTime": spec["startTime"],
             "durationMinutes": spec["durationMinutes"],
             "courtName": spec["courtName"],
+            "tennisClubId": club_ids[club_idx],
             "level": spec.get("level"),
             "trainerId": trainer_id,
             "maxParticipants": spec["maxParticipants"],
@@ -724,7 +729,7 @@ def main() -> int:
         generate_and_confirm_planning(api, planning_id)
 
     create_standalone_lessons(
-        api, data.get("standaloneLessons", []), trainer_id, today)
+        api, data.get("standaloneLessons", []), club_ids, trainer_id, today)
 
     create_camps(api, club_ids, trainer_id, today, deadline_iso)
 

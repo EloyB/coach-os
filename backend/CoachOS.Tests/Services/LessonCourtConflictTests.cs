@@ -81,6 +81,7 @@ public class LessonCourtConflictTests
         _standaloneService = new StandaloneLessonService(
             _lessonRepo.Object,
             _invitationRepo.Object,
+            _tennisClubRepo.Object,
             _userLookup.Object,
             _emailService.Object,
             _mapper,
@@ -432,6 +433,7 @@ public class LessonCourtConflictTests
             StartTime = "10:00",
             DurationMinutes = 60,
             CourtName = courtName,
+            TennisClubId = ClubId,
             Level = (int)LessonLevel.Beginner,
             TrainerId = TrainerId,
             MaxParticipants = 4,
@@ -507,13 +509,14 @@ public class LessonCourtConflictTests
 
     // ── LessonRescheduleService.RescheduleAsync ──────────────────────────────
 
-    private Lesson BuildReschedulableLesson(string? courtName, Guid? orgId = null)
+    private Lesson BuildReschedulableLesson(string? courtName, Guid? orgId = null, Guid? tennisClubId = null)
     {
         Lesson lesson = new()
         {
             Id = Guid.NewGuid(),
             OrganizationId = orgId ?? OrgId,
             LessonSerieId = null,
+            TennisClubId = tennisClubId,
             Date = LessonDate.AddDays(-7),
             StartTime = new TimeOnly(10, 0),
             EndTime = new TimeOnly(11, 0),
@@ -599,5 +602,38 @@ public class LessonCourtConflictTests
             OtherOrgId, lesson.Id, BuildRescheduleRequest(), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
+    }
+
+    [Test]
+    public async Task RescheduleAsync_StandaloneLesson_ScopesCourtConflictCheckToOwnClub()
+    {
+        // Regressie: een losse les draagt sinds de club-koppeling haar eigen TennisClubId — het
+        // verplaatsen moet die club doorgeven aan de conflictcheck, niet org-breed checken.
+        Lesson lesson = BuildReschedulableLesson("Baan 1", tennisClubId: ClubId);
+
+        await _rescheduleService.RescheduleAsync(
+            OrgId, lesson.Id, BuildRescheduleRequest(), CancellationToken.None);
+
+        _lessonRepo.Verify(r => r.FindCourtConflictAsync(
+            OrgId, "Baan 1", LessonDate, It.IsAny<TimeOnly>(), It.IsAny<TimeOnly>(),
+            lesson.Id, ClubId, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task RescheduleAsync_CopiesTennisClubIdToNewLesson()
+    {
+        Lesson lesson = BuildReschedulableLesson("Baan 1", tennisClubId: ClubId);
+
+        Lesson? captured = null;
+        _lessonRepo
+            .Setup(r => r.AddAsync(It.IsAny<Lesson>(), It.IsAny<CancellationToken>()))
+            .Callback<Lesson, CancellationToken>((l, _) => captured = l)
+            .Returns(Task.CompletedTask);
+
+        await _rescheduleService.RescheduleAsync(
+            OrgId, lesson.Id, BuildRescheduleRequest(), CancellationToken.None);
+
+        captured.Should().NotBeNull();
+        captured!.TennisClubId.Should().Be(ClubId);
     }
 }

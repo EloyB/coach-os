@@ -32,8 +32,12 @@ public interface ILessonRepository
     /// Checks if a court is already occupied by another lesson overlapping the given date + time range.
     /// Scoped to a single organization AND, when <paramref name="tennisClubId"/> is given, to that
     /// club: court names are free text chosen per club, so "Baan 2" at club A is a different court
-    /// than "Baan 2" at club B even within the same organization. When <paramref name="tennisClubId"/>
-    /// is null (e.g. a standalone lesson with no club), the check falls back to organization-wide.
+    /// than "Baan 2" at club B even within the same organization. A candidate lesson's own club is its
+    /// series' TennisClubId when it belongs to a series, otherwise its own (nullable) TennisClubId for
+    /// standalone lessons. A candidate with an unknown club (legacy standalone lesson, TennisClubId
+    /// null) is treated as a conflict rather than silently allowed — safer than risking a double
+    /// booking. When <paramref name="tennisClubId"/> itself is null, the check falls back to
+    /// organization-wide (used when the lesson being checked has no known club either).
     /// CourtName is free text, so comparison is trimmed + case-insensitive.
     /// Optionally excludes a specific lesson (for updates).
     /// </summary>

@@ -20,6 +20,7 @@ public class CreateStandaloneLessonRequestValidatorTests
         StartTime = "10:00",
         DurationMinutes = 60,
         CourtName = "Baan 1",
+        TennisClubId = Guid.NewGuid(),
         Level = 1,
         TrainerId = Guid.NewGuid(),
         MaxParticipants = 4,
@@ -87,6 +88,13 @@ public class CreateStandaloneLessonRequestValidatorTests
     {
         CreateStandaloneLessonRequest req = Valid() with { Level = null };
         _validator.Validate(req).IsValid.Should().BeTrue();
+    }
+
+    [Test]
+    public void TennisClubId_Empty_Fails()
+    {
+        CreateStandaloneLessonRequest req = Valid() with { TennisClubId = Guid.Empty };
+        _validator.Validate(req).IsValid.Should().BeFalse();
     }
 
     [Test]

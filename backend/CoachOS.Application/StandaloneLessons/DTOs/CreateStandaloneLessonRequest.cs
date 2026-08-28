@@ -11,6 +11,9 @@ public record CreateStandaloneLessonRequest
     public string StartTime { get; init; } = string.Empty;
     public int DurationMinutes { get; init; }
     public string CourtName { get; init; } = string.Empty;
+
+    /// <summary>De club waar deze losse les doorgaat. Moet bestaan binnen de organisatie.</summary>
+    public Guid TennisClubId { get; init; }
     public int? Level { get; init; }
     public Guid TrainerId { get; init; }
     public int MaxParticipants { get; init; }
