@@ -32,5 +32,8 @@ public class LessonSerieEnrollmentDto
 
     public bool IsOpenToGrouping { get; set; }
 
+    /// <summary>Gekozen prijsoptie (null = geen optie/legacy prijs). Voor de aanpas-dialog.</summary>
+    public Guid? SelectedPriceOptionId { get; set; }
+
     public List<EnrollmentResponseItemDto> FormResponses { get; set; } = new();
 }

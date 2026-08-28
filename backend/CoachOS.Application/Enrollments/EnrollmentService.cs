@@ -136,6 +136,7 @@ public class EnrollmentService(
             IsGroupLeader = e.EnrollmentGroupId.HasValue
                 && groupsById.GetValueOrDefault(e.EnrollmentGroupId.Value)?.LeaderEnrollmentId == e.Id,
             IsOpenToGrouping = e.IsOpenToGrouping,
+            SelectedPriceOptionId = e.SelectedPriceOptionId,
             FormResponses = e.FormResponses
                 .OrderBy(r => r.FormField.Order)
                 .Select(r => new EnrollmentResponseItemDto
@@ -675,6 +676,7 @@ public class EnrollmentService(
             },
             EnrollmentGroupId = enrollment.EnrollmentGroupId,
             IsOpenToGrouping = enrollment.IsOpenToGrouping,
+            SelectedPriceOptionId = enrollment.SelectedPriceOptionId,
         };
 
         logger.LogInformation(
