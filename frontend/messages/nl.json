@@ -240,7 +240,11 @@
     "toastMarkedPaid": "Inschrijving gemarkeerd als betaald",
     "toastGroupCancelled": "Groep geannuleerd",
     "toastGroupCancelError": "Kon de groep niet annuleren",
-    "toastUpdated": "Inschrijving bijgewerkt"
+    "toastUpdated": "Inschrijving bijgewerkt",
+    "priceOptionLabel": "Prijsoptie",
+    "priceOptionNone": "Geen prijsoptie",
+    "priceOptionLocked": "Vergrendeld: deze inschrijving is al betaald of bevestigd.",
+    "priceOptionGroupHint": "Geldt voor de hele groep."
   },
   "enrollmentDetail": {
     "title": "Details inschrijving",

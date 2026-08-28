@@ -64,6 +64,8 @@ export interface LessonSeriesEnrollmentDto {
   /** True als deze inschrijving de groepsleider is (draagt de gedeelde betaling). */
   isGroupLeader: boolean;
   isOpenToGrouping: boolean;
+  /** Gekozen prijsoptie (null = geen/legacy). */
+  selectedPriceOptionId: string | null;
   formResponses: EnrollmentResponseItem[];
 }
 
@@ -74,6 +76,8 @@ export interface UpdateBasicEnrollmentRequest {
   studentPhone?: string | null;
   dateOfBirth: string;
   isOpenToGrouping: boolean;
+  /** Nieuwe prijsoptie (weglaten = ongemoeid). */
+  selectedPriceOptionId?: string | null;
 }
 
 export interface SaveFormFieldRequest {

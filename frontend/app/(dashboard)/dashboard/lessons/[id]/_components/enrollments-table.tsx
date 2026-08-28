@@ -50,6 +50,7 @@ import {
   updateBasicEnrollment,
 } from "@/lib/api/enrollments";
 import type { LessonSeriesEnrollmentDto } from "@/lib/api/enrollments";
+import { getLessonSeriePrices } from "@/lib/api/lessonSeriePrices";
 import { EnrollmentDetailDialog } from "./enrollment-detail-dialog";
 import { isHeadTrainerViewer } from "@/lib/auth";
 
@@ -943,6 +944,7 @@ const basicEnrollmentSchema = z.object({
   studentPhone: z.string(),
   dateOfBirth: z.string().min(1, "Geboortedatum is verplicht"),
   isOpenToGrouping: z.boolean(),
+  selectedPriceOptionId: z.string().optional(),
 });
 
 type BasicEnrollmentFormValues = z.infer<typeof basicEnrollmentSchema>;
@@ -960,6 +962,19 @@ function EditEnrollmentDialog({
 }) {
   const t = useTranslations("enrollmentsTable");
   const queryClient = useQueryClient();
+
+  const { data: priceOptions = [] } = useQuery({
+    queryKey: ["lessonSeriePrices", seriesId],
+    queryFn: () => getLessonSeriePrices(seriesId),
+  });
+
+  // Prijsoptie is vergrendeld zodra er betaald/bevestigd is of een betaling loopt.
+  const priceLocked =
+    enrollment.status === "Confirmed" ||
+    enrollment.status === "PendingPayment" ||
+    enrollment.status === "Cancelled";
+  const inGroup = enrollment.enrollmentGroupId !== null;
+
   const form = useForm<BasicEnrollmentFormValues>({
     resolver: zodResolver(basicEnrollmentSchema),
     values: {
@@ -969,6 +984,7 @@ function EditEnrollmentDialog({
       studentPhone: enrollment.studentPhone ?? "",
       dateOfBirth: enrollment.dateOfBirth ?? "",
       isOpenToGrouping: enrollment.isOpenToGrouping,
+      selectedPriceOptionId: enrollment.selectedPriceOptionId ?? undefined,
     },
   });
 
@@ -981,6 +997,7 @@ function EditEnrollmentDialog({
         studentPhone: values.studentPhone?.trim() ? values.studentPhone : null,
         dateOfBirth: values.dateOfBirth,
         isOpenToGrouping: values.isOpenToGrouping,
+        selectedPriceOptionId: values.selectedPriceOptionId,
       }),
     onSuccess: () => {
       toast.success(t("toastUpdated"));
@@ -1041,6 +1058,39 @@ function EditEnrollmentDialog({
               <FieldError message={form.formState.errors.dateOfBirth?.message} />
             </div>
           </div>
+          {priceOptions.length > 0 && (
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">
+                {t("priceOptionLabel")}
+              </label>
+              {priceLocked ? (
+                <p className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
+                  {priceOptions.find((o) => o.id === enrollment.selectedPriceOptionId)?.label
+                    ?? t("priceOptionNone")}
+                  <span className="mt-1 block text-xs text-gray-400">{t("priceOptionLocked")}</span>
+                </p>
+              ) : (
+                <>
+                  <select
+                    {...form.register("selectedPriceOptionId")}
+                    className={inputClass}
+                  >
+                    {priceOptions
+                      .slice()
+                      .sort((a, b) => a.sortOrder - b.sortOrder)
+                      .map((o) => (
+                        <option key={o.id} value={o.id}>
+                          {o.label} — €{o.totalPrice}
+                        </option>
+                      ))}
+                  </select>
+                  {inGroup && (
+                    <p className="mt-1 text-xs text-gray-400">{t("priceOptionGroupHint")}</p>
+                  )}
+                </>
+              )}
+            </div>
+          )}
           <label className="flex items-center gap-2 text-xs text-gray-600">
             <input type="checkbox" {...form.register("isOpenToGrouping")} />
             Open voor groepering met andere deelnemers
