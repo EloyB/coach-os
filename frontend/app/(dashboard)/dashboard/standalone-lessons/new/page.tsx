@@ -14,6 +14,7 @@ import {
   ALLOWED_DURATIONS,
 } from "@/lib/api/standaloneLessons";
 import { getTrainers, isAssignableTrainer } from "@/lib/api/trainers";
+import { getTennisClubs } from "@/lib/api/tennisClubs";
 import { DatePicker } from "@/components/ui/date-picker";
 import { NativeSelect } from "@/components/ui/native-select";
 import { FieldError } from "@/components/forms/field-error";
@@ -32,6 +33,7 @@ const schema = z.object({
       message: "Ongeldige duur",
     }),
   courtName: z.string().min(1, "Baan is verplicht").max(100),
+  tennisClubId: z.string().min(1, "Club is verplicht"),
   level: z.number().int().min(1).max(3).nullable(),
   trainerId: z.string().min(1, "Trainer is verplicht"),
   maxParticipants: z.number().int().min(0, "Mag niet negatief zijn"),
@@ -68,6 +70,11 @@ export default function NewStandaloneLessonPage() {
     queryFn: getTrainers,
   });
 
+  const { data: tennisClubs, isLoading: clubsLoading } = useQuery({
+    queryKey: ["tennisClubs"],
+    queryFn: getTennisClubs,
+  });
+
   const assignableTrainers = (trainers ?? []).filter(isAssignableTrainer);
 
   const {
@@ -82,6 +89,7 @@ export default function NewStandaloneLessonPage() {
       startTime: "",
       durationMinutes: 60,
       courtName: "",
+      tennisClubId: "",
       level: null,
       trainerId: "",
       maxParticipants: 4,
@@ -105,6 +113,7 @@ export default function NewStandaloneLessonPage() {
       startTime: values.startTime,
       durationMinutes: values.durationMinutes,
       courtName: values.courtName,
+      tennisClubId: values.tennisClubId,
       level: values.level,
       trainerId: values.trainerId,
       maxParticipants: values.maxParticipants,
@@ -191,6 +200,37 @@ export default function NewStandaloneLessonPage() {
               />
               <FieldError message={errors.courtName?.message} />
             </div>
+          </div>
+
+          {/* Row 2b: Club */}
+          <div>
+            <Label required>{t("fieldClub")}</Label>
+            {clubsLoading ? (
+              <div className="h-10 rounded-lg bg-canvas animate-pulse" />
+            ) : (tennisClubs ?? []).length === 0 ? (
+              <p className="text-[12px] text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+                {t("noClubs")}
+              </p>
+            ) : (
+              <Controller
+                control={control}
+                name="tennisClubId"
+                render={({ field }) => (
+                  <NativeSelect
+                    value={field.value}
+                    onChange={(e) => field.onChange(e.target.value)}
+                  >
+                    <option value="">{t("selectClub")}</option>
+                    {(tennisClubs ?? []).map((club) => (
+                      <option key={club.id} value={club.id}>
+                        {club.name}
+                      </option>
+                    ))}
+                  </NativeSelect>
+                )}
+              />
+            )}
+            <FieldError message={errors.tennisClubId?.message} />
           </div>
 
           {/* Row 3: Level + Max participants */}

@@ -25,6 +25,9 @@ public class CreateStandaloneLessonRequestValidator : AbstractValidator<CreateSt
             .NotEmpty().WithMessage("Baan is verplicht.")
             .MaximumLength(100).WithMessage("Baannaam mag maximaal 100 karakters zijn.");
 
+        RuleFor(x => x.TennisClubId)
+            .NotEmpty().WithMessage("Club is verplicht.");
+
         RuleFor(x => x.Level)
             .InclusiveBetween(1, 3).WithMessage("Niveau moet tussen 1 en 3 liggen.")
             .When(x => x.Level.HasValue);

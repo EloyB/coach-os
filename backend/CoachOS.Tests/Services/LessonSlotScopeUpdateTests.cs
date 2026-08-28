@@ -67,7 +67,7 @@ public class LessonSlotScopeUpdateTests
         _lessonRepo
             .Setup(r => r.FindCourtConflictAsync(
                 It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<TimeOnly>(),
-                It.IsAny<TimeOnly>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
+                It.IsAny<TimeOnly>(), It.IsAny<Guid?>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Lesson?)null);
     }
 
@@ -171,6 +171,22 @@ public class LessonSlotScopeUpdateTests
         sibling.EndTime.Should().Be(new TimeOnly(19, 30));
         cancelledSibling.EndTime.Should().Be(new TimeOnly(19, 0));
         _serieRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task UpdateWeekSlotAsync_ScopesCourtConflictCheckToSeriesClub()
+    {
+        // Regressie: het wijzigen van een weekslot-baan mag alleen botsen met lessen van dezelfde
+        // club. Zonder deze scoping flipt "Baan 2" om 19u bij club A onterecht tegen een gelijknamige
+        // baan bij club B binnen dezelfde organisatie.
+        (LessonSerie series, _, _, _, WeeklyTemplateEntry entry) = BuildSlotScenario();
+        UpdateWeekSlotRequest request = new() { StartTime = "18:00", EndTime = "19:30", MaxStudents = 6, CourtName = "Baan 2" };
+
+        await _service.UpdateWeekSlotAsync(series.Id, entry.Id, OrgId, request, CancellationToken.None);
+
+        _lessonRepo.Verify(r => r.FindCourtConflictAsync(
+            OrgId, "Baan 2", It.IsAny<DateOnly>(), It.IsAny<TimeOnly>(), It.IsAny<TimeOnly>(),
+            It.IsAny<Guid?>(), series.TennisClubId, It.IsAny<CancellationToken>()), Times.AtLeastOnce);
     }
 
     // ── DeleteLessonAsync (wholeSlot) ─────────────────────────────────────────
@@ -333,7 +349,7 @@ public class LessonSlotScopeUpdateTests
         // Bewerkte les (7 dec) is baanvrij, maar de zusterles (14 dec) botst op dezelfde baan.
         _lessonRepo
             .Setup(r => r.FindCourtConflictAsync(OrgId, "Baan 1", new DateOnly(2026, 12, 14),
-                It.IsAny<TimeOnly>(), It.IsAny<TimeOnly>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
+                It.IsAny<TimeOnly>(), It.IsAny<TimeOnly>(), It.IsAny<Guid?>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Lesson
             {
                 Id = Guid.NewGuid(), Date = new DateOnly(2026, 12, 14),

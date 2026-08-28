@@ -1,3 +1,4 @@
+using CoachOS.Application.Common;
 using CoachOS.Application.LessonSerie.DTOs;
 using CoachOS.Application.Mappings;
 using CoachOS.Domain.Enums;
@@ -261,8 +262,9 @@ public class LessonSerieService(
                 return Result<Guid>.Fail(conflictError);
         }
 
-        Error? courtConflictError = await CheckCourtConflictAsync(
-            organizationId, request.CourtName, lessonDate, lessonStart, lessonEnd, ct: ct);
+        Error? courtConflictError = await lessonRepo.CheckCourtConflictAsync(
+            organizationId, request.CourtName, lessonDate, lessonStart, lessonEnd,
+            tennisClubId: series.TennisClubId, ct: ct);
         if (courtConflictError is not null)
             return Result<Guid>.Fail(courtConflictError);
 
@@ -419,9 +421,9 @@ public class LessonSerieService(
             : NormalizeCourt(request.CourtName) is { Length: > 0 } normalizedCourt
                 ? normalizedCourt
                 : null;
-        Error? courtConflictError = await CheckCourtConflictAsync(
+        Error? courtConflictError = await lessonRepo.CheckCourtConflictAsync(
             organizationId, effectiveCourtName, lesson.Date, lesson.StartTime, lesson.EndTime,
-            lesson.Id, ct);
+            lesson.Id, series.TennisClubId, ct);
         if (courtConflictError is not null)
             return Result<LessonDto>.Fail(courtConflictError);
 
@@ -462,7 +464,7 @@ public class LessonSerieService(
                 // trainer- of baanconflict verstopt. Nog niets opgeslagen → atomair afbreken bij conflict.
                 Error? slotConflict = await CheckSlotConflictsAsync(
                     organizationId, siblings, lesson.TrainerId, lesson.StartTime, lesson.EndTime,
-                    lesson.CourtName, ct);
+                    lesson.CourtName, series.TennisClubId, ct);
                 if (slotConflict is not null)
                     return Result<LessonDto>.Fail(slotConflict);
 
@@ -564,26 +566,6 @@ public class LessonSerieService(
             $"Deze trainer heeft al een les op {conflict.Date:dd/MM/yyyy} van {conflictTime} ({seriesName}).");
     }
 
-    private async Task<Error?> CheckCourtConflictAsync(
-        Guid organizationId, string? courtName, DateOnly date, TimeOnly startTime, TimeOnly endTime,
-        Guid? excludeLessonId = null, CancellationToken ct = default)
-    {
-        // Geen baan opgegeven → geen bezetting mogelijk.
-        if (string.IsNullOrWhiteSpace(courtName))
-            return null;
-
-        Domain.Entities.Lesson? conflict = await lessonRepo.FindCourtConflictAsync(
-            organizationId, courtName, date, startTime, endTime, excludeLessonId, ct);
-
-        if (conflict is null)
-            return null;
-
-        string seriesName = conflict.LessonSerie?.Name ?? "onbekende reeks";
-        string conflictTime = $"{conflict.StartTime:HH:mm}–{conflict.EndTime:HH:mm}";
-        return new Error(ErrorCodes.Conflict,
-            $"{courtName.Trim()} is op {conflict.Date:dd/MM/yyyy} van {conflictTime} al bezet door reeks {seriesName}.");
-    }
-
     /// <summary>
     /// Valideert trainer- en baanconflicten voor de VOLLEDIGE set lessen die door een
     /// slot-wijziging nieuwe tijd/trainer/baan krijgen — niet enkel de bewerkte les. Elke les zit
@@ -593,7 +575,8 @@ public class LessonSerieService(
     /// </summary>
     private async Task<Error?> CheckSlotConflictsAsync(
         Guid organizationId, IEnumerable<Domain.Entities.Lesson> affected,
-        Guid? trainerId, TimeOnly startTime, TimeOnly endTime, string? courtName, CancellationToken ct)
+        Guid? trainerId, TimeOnly startTime, TimeOnly endTime, string? courtName,
+        Guid? tennisClubId, CancellationToken ct)
     {
         foreach (Domain.Entities.Lesson lesson in affected)
         {
@@ -605,8 +588,8 @@ public class LessonSerieService(
                     return trainerConflict;
             }
 
-            Error? courtConflict = await CheckCourtConflictAsync(
-                organizationId, courtName, lesson.Date, startTime, endTime, lesson.Id, ct);
+            Error? courtConflict = await lessonRepo.CheckCourtConflictAsync(
+                organizationId, courtName, lesson.Date, startTime, endTime, lesson.Id, tennisClubId, ct);
             if (courtConflict is not null)
                 return courtConflict;
         }
@@ -758,7 +741,7 @@ public class LessonSerieService(
         // Valideer trainer/baan-conflicten over de VOLLEDIGE set lessen vóór we iets muteren,
         // anders kan een slot-wijziging stil overlappende lessen voor de trainer of baan maken.
         Error? slotConflict = await CheckSlotConflictsAsync(
-            organizationId, affected, request.TrainerId, start, end, court, ct);
+            organizationId, affected, request.TrainerId, start, end, court, series.TennisClubId, ct);
         if (slotConflict is not null)
             return Result.Fail(slotConflict);
 

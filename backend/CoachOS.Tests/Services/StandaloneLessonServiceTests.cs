@@ -19,6 +19,7 @@ public class StandaloneLessonServiceTests
 {
     private Mock<ILessonRepository> _lessonRepo = null!;
     private Mock<ILessonInvitationRepository> _invitationRepo = null!;
+    private Mock<ITennisClubRepository> _tennisClubRepo = null!;
     private Mock<IUserLookupService> _userLookup = null!;
     private Mock<IEmailService> _emailService = null!;
     private ApplicationMapper _mapper = null!;
@@ -26,12 +27,14 @@ public class StandaloneLessonServiceTests
 
     private static readonly Guid OrgId = Guid.NewGuid();
     private static readonly Guid TrainerId = Guid.NewGuid();
+    private static readonly Guid ClubId = Guid.NewGuid();
 
     [SetUp]
     public void SetUp()
     {
         _lessonRepo = new Mock<ILessonRepository>();
         _invitationRepo = new Mock<ILessonInvitationRepository>();
+        _tennisClubRepo = new Mock<ITennisClubRepository>();
         _userLookup = new Mock<IUserLookupService>();
         _emailService = new Mock<IEmailService>();
         _mapper = new ApplicationMapper();
@@ -44,6 +47,7 @@ public class StandaloneLessonServiceTests
         _service = new StandaloneLessonService(
             _lessonRepo.Object,
             _invitationRepo.Object,
+            _tennisClubRepo.Object,
             _userLookup.Object,
             _emailService.Object,
             _mapper,
@@ -54,6 +58,14 @@ public class StandaloneLessonServiceTests
         _userLookup
             .Setup(u => u.IsActiveTrainerAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
+
+        // Default: club bestaat binnen de organisatie.
+        _tennisClubRepo
+            .Setup(r => r.ExistsAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        _tennisClubRepo
+            .Setup(r => r.GetByOrganizationAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<TennisClub>());
 
         _userLookup
             .Setup(u => u.GetUserNameByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
@@ -89,6 +101,7 @@ public class StandaloneLessonServiceTests
             StartTime = "10:00",
             DurationMinutes = duration,
             CourtName = "Baan 1",
+            TennisClubId = ClubId,
             Level = level,
             TrainerId = TrainerId,
             MaxParticipants = 4,
@@ -115,6 +128,7 @@ public class StandaloneLessonServiceTests
                 l.TrainerId == TrainerId &&
                 l.MaxStudents == 4 &&
                 l.CourtName == "Baan 1" &&
+                l.TennisClubId == ClubId &&
                 l.Level == LessonLevel.Beginner),
             It.IsAny<CancellationToken>()), Times.Once);
 
@@ -203,6 +217,20 @@ public class StandaloneLessonServiceTests
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.Conflict);
+        _lessonRepo.Verify(r => r.AddAsync(It.IsAny<Lesson>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task CreateAsync_RejectsClubFromOtherOrganization()
+    {
+        _tennisClubRepo
+            .Setup(r => r.ExistsAsync(ClubId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        Result<Guid> result = await _service.CreateAsync(OrgId, BuildCreateRequest(), CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.Validation);
         _lessonRepo.Verify(r => r.AddAsync(It.IsAny<Lesson>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 

@@ -30,6 +30,15 @@ public class LessonConfiguration : IEntityTypeConfiguration<Lesson>
             .OnDelete(DeleteBehavior.Restrict)
             .IsRequired(false);
 
+        // Enkel gezet voor losse lessen (LessonSerieId == null); reeks-lessen bepalen hun club
+        // via LessonSerie.TennisClubId. Nullable: legacy losse lessen van vóór deze kolom hebben
+        // geen bekende club.
+        builder.HasOne(l => l.TennisClub)
+            .WithMany()
+            .HasForeignKey(l => l.TennisClubId)
+            .OnDelete(DeleteBehavior.Restrict)
+            .IsRequired(false);
+
         builder.HasOne(l => l.RescheduledToLesson)
             .WithOne()
             .HasForeignKey<Lesson>(l => l.RescheduledToLessonId)
@@ -47,6 +56,7 @@ public class LessonConfiguration : IEntityTypeConfiguration<Lesson>
         builder.HasIndex(l => l.WeeklyTemplateEntryId);
 
         builder.HasIndex(l => l.OrganizationId);
+        builder.HasIndex(l => l.TennisClubId);
         builder.HasIndex(l => l.TrainerId);
         builder.HasIndex(l => l.Date);
         builder.HasIndex(l => new { l.OrganizationId, l.Date });
