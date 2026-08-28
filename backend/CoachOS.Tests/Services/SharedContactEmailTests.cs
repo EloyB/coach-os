@@ -28,6 +28,7 @@ public class SharedContactEmailTests
     private Mock<IOrganizationSettingsRepository> _orgSettingsRepo = null!;
     private Mock<IUserLookupService> _userLookup = null!;
     private Mock<IEmailOutboxRepository> _emailOutboxRepository = null!;
+    private Mock<ILessonSeriePriceRepository> _priceRepo = null!;
     private ApplicationMapper _mapper = null!;
     private Mock<ILogger<EnrollmentService>> _logger = null!;
     private EnrollmentService _service = null!;
@@ -46,6 +47,7 @@ public class SharedContactEmailTests
         _orgSettingsRepo = new Mock<IOrganizationSettingsRepository>();
         _userLookup = new Mock<IUserLookupService>();
         _emailOutboxRepository = new Mock<IEmailOutboxRepository>();
+        _priceRepo = new Mock<ILessonSeriePriceRepository>();
         _mapper = new ApplicationMapper();
         _logger = new Mock<ILogger<EnrollmentService>>();
 
@@ -83,6 +85,7 @@ public class SharedContactEmailTests
             _orgSettingsRepo.Object,
             _userLookup.Object,
             _emailOutboxRepository.Object,
+            _priceRepo.Object,
             _mapper,
             _logger.Object);
     }
