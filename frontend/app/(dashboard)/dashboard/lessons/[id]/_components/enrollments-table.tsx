@@ -984,7 +984,7 @@ function EditEnrollmentDialog({
       studentPhone: enrollment.studentPhone ?? "",
       dateOfBirth: enrollment.dateOfBirth ?? "",
       isOpenToGrouping: enrollment.isOpenToGrouping,
-      selectedPriceOptionId: enrollment.selectedPriceOptionId ?? undefined,
+      selectedPriceOptionId: enrollment.selectedPriceOptionId ?? "",
     },
   });
 
@@ -997,7 +997,7 @@ function EditEnrollmentDialog({
         studentPhone: values.studentPhone?.trim() ? values.studentPhone : null,
         dateOfBirth: values.dateOfBirth,
         isOpenToGrouping: values.isOpenToGrouping,
-        selectedPriceOptionId: values.selectedPriceOptionId,
+        selectedPriceOptionId: values.selectedPriceOptionId || undefined,
       }),
     onSuccess: () => {
       toast.success(t("toastUpdated"));
@@ -1064,17 +1064,18 @@ function EditEnrollmentDialog({
                 {t("priceOptionLabel")}
               </label>
               {priceLocked ? (
-                <p className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
+                <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
                   {priceOptions.find((o) => o.id === enrollment.selectedPriceOptionId)?.label
                     ?? t("priceOptionNone")}
-                  <span className="mt-1 block text-xs text-gray-400">{t("priceOptionLocked")}</span>
-                </p>
+                  <div className="mt-1 text-xs text-gray-400">{t("priceOptionLocked")}</div>
+                </div>
               ) : (
                 <>
                   <select
                     {...form.register("selectedPriceOptionId")}
                     className={inputClass}
                   >
+                    <option value="">{t("priceOptionNone")}</option>
                     {priceOptions
                       .slice()
                       .sort((a, b) => a.sortOrder - b.sortOrder)
