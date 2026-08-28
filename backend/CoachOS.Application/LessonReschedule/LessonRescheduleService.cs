@@ -1,4 +1,5 @@
 using System.Globalization;
+using CoachOS.Application.Common;
 using CoachOS.Application.LessonReschedule.DTOs;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
@@ -51,20 +52,21 @@ public class LessonRescheduleService(
                     "Trainer heeft al een les op dit nieuwe tijdstip."));
         }
 
-        // Baan-conflict (binnen de org). Sluit de huidige les uit, want die wordt geannuleerd.
-        if (!string.IsNullOrWhiteSpace(lesson.CourtName))
+        // Baan-conflict (binnen de org, en binnen de club als de les bij een reeks hoort — baannamen
+        // zijn vrije tekst per club). Sluit de huidige les uit, want die wordt geannuleerd.
+        Guid? tennisClubId = null;
+        if (!string.IsNullOrWhiteSpace(lesson.CourtName) && lesson.LessonSerieId.HasValue)
         {
-            Lesson? courtConflict = await lessonRepo.FindCourtConflictAsync(
-                organizationId, lesson.CourtName, newDate, newStart, newEnd,
-                excludeLessonId: lesson.Id, ct);
-            if (courtConflict is not null)
-            {
-                string seriesName = courtConflict.LessonSerie?.Name ?? "onbekende reeks";
-                string conflictTime = $"{courtConflict.StartTime:HH:mm}–{courtConflict.EndTime:HH:mm}";
-                return Result<RescheduleLessonResultDto>.Fail(new Error(ErrorCodes.Conflict,
-                    $"{lesson.CourtName.Trim()} is op {courtConflict.Date:dd/MM/yyyy} van {conflictTime} al bezet door reeks {seriesName}."));
-            }
+            Domain.Entities.LessonSerie? lessonSeries =
+                await serieRepo.GetByIdAsync(lesson.LessonSerieId.Value, organizationId, ct);
+            tennisClubId = lessonSeries?.TennisClubId;
         }
+
+        Error? courtConflictError = await lessonRepo.CheckCourtConflictAsync(
+            organizationId, lesson.CourtName, newDate, newStart, newEnd,
+            excludeLessonId: lesson.Id, tennisClubId: tennisClubId, ct: ct);
+        if (courtConflictError is not null)
+            return Result<RescheduleLessonResultDto>.Fail(courtConflictError);
 
         string? trimmedReason = string.IsNullOrWhiteSpace(request.Reason)
             ? null

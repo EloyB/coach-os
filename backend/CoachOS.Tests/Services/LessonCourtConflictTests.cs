@@ -119,7 +119,7 @@ public class LessonCourtConflictTests
         _lessonRepo
             .Setup(r => r.FindCourtConflictAsync(
                 It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<DateOnly>(),
-                It.IsAny<TimeOnly>(), It.IsAny<TimeOnly>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
+                It.IsAny<TimeOnly>(), It.IsAny<TimeOnly>(), It.IsAny<Guid?>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Lesson?)null);
 
         _invitationRepo
@@ -152,9 +152,9 @@ public class LessonCourtConflictTests
         _lessonRepo
             .Setup(r => r.FindCourtConflictAsync(
                 It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<DateOnly>(),
-                It.IsAny<TimeOnly>(), It.IsAny<TimeOnly>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
+                It.IsAny<TimeOnly>(), It.IsAny<TimeOnly>(), It.IsAny<Guid?>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Guid orgId, string courtName, DateOnly date, TimeOnly start, TimeOnly end,
-                Guid? excludeId, CancellationToken _) =>
+                Guid? excludeId, Guid? _, CancellationToken _) =>
             {
                 if (orgId != occupying.OrganizationId) return null;
                 if (date != occupying.Date) return null;
@@ -252,7 +252,7 @@ public class LessonCourtConflictTests
         result.IsSuccess.Should().BeTrue();
         _lessonRepo.Verify(r => r.FindCourtConflictAsync(
             It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<TimeOnly>(),
-            It.IsAny<TimeOnly>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()), Times.Never);
+            It.IsAny<TimeOnly>(), It.IsAny<Guid?>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Test]
@@ -267,7 +267,7 @@ public class LessonCourtConflictTests
         result.IsSuccess.Should().BeTrue();
         _lessonRepo.Verify(r => r.FindCourtConflictAsync(
             It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<TimeOnly>(),
-            It.IsAny<TimeOnly>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()), Times.Never);
+            It.IsAny<TimeOnly>(), It.IsAny<Guid?>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Test]
@@ -293,7 +293,24 @@ public class LessonCourtConflictTests
         result.IsSuccess.Should().BeTrue();
         _lessonRepo.Verify(r => r.FindCourtConflictAsync(
             OtherOrgId, "Baan 1", LessonDate, It.IsAny<TimeOnly>(), It.IsAny<TimeOnly>(),
-            It.IsAny<Guid?>(), It.IsAny<CancellationToken>()), Times.Once);
+            It.IsAny<Guid?>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task AddLessonAsync_ScopesCourtConflictCheckToSeriesClub()
+    {
+        // Regressie: een baan-conflictcheck mag alleen botsen binnen dezelfde club. Zonder deze
+        // scoping flipt "Baan 2" om 19u bij club A onterecht tegen een gelijknamige baan bij club B
+        // binnen dezelfde organisatie.
+        Domain.Entities.LessonSerie series = BuildSeries();
+        SetupOccupiedCourt("Baan 1");
+
+        await _serieService.AddLessonAsync(
+            series.Id, OrgId, BuildCreateLessonRequest("Baan 1"), CancellationToken.None);
+
+        _lessonRepo.Verify(r => r.FindCourtConflictAsync(
+            OrgId, "Baan 1", LessonDate, It.IsAny<TimeOnly>(), It.IsAny<TimeOnly>(),
+            It.IsAny<Guid?>(), series.TennisClubId, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     // ── LessonSerieService.UpdateLessonAsync ─────────────────────────────────
@@ -361,9 +378,9 @@ public class LessonCourtConflictTests
         _lessonRepo
             .Setup(r => r.FindCourtConflictAsync(
                 It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<TimeOnly>(),
-                It.IsAny<TimeOnly>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
+                It.IsAny<TimeOnly>(), It.IsAny<Guid?>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Guid _, string _, DateOnly _, TimeOnly _, TimeOnly _,
-                Guid? excludeId, CancellationToken _) => excludeId == self.Id ? null : self);
+                Guid? excludeId, Guid? _, CancellationToken _) => excludeId == self.Id ? null : self);
 
         UpdateLessonRequest request = new() { TrainerId = TrainerId, Notes = "gewijzigd" };
 
@@ -373,7 +390,7 @@ public class LessonCourtConflictTests
         result.IsSuccess.Should().BeTrue();
         _lessonRepo.Verify(r => r.FindCourtConflictAsync(
             OrgId, "Baan 1", LessonDate, It.IsAny<TimeOnly>(), It.IsAny<TimeOnly>(),
-            lesson.Id, It.IsAny<CancellationToken>()), Times.Once);
+            lesson.Id, It.IsAny<Guid?>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Test]
@@ -403,7 +420,7 @@ public class LessonCourtConflictTests
         result.IsSuccess.Should().BeTrue();
         _lessonRepo.Verify(r => r.FindCourtConflictAsync(
             It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<TimeOnly>(),
-            It.IsAny<TimeOnly>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()), Times.Never);
+            It.IsAny<TimeOnly>(), It.IsAny<Guid?>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     // ── StandaloneLessonService.CreateAsync ──────────────────────────────────
@@ -471,7 +488,7 @@ public class LessonCourtConflictTests
         result.IsSuccess.Should().BeTrue();
         _lessonRepo.Verify(r => r.FindCourtConflictAsync(
             It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<TimeOnly>(),
-            It.IsAny<TimeOnly>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()), Times.Never);
+            It.IsAny<TimeOnly>(), It.IsAny<Guid?>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Test]
@@ -485,7 +502,7 @@ public class LessonCourtConflictTests
         result.IsSuccess.Should().BeTrue();
         _lessonRepo.Verify(r => r.FindCourtConflictAsync(
             OtherOrgId, "Baan 1", LessonDate, It.IsAny<TimeOnly>(), It.IsAny<TimeOnly>(),
-            null, It.IsAny<CancellationToken>()), Times.Once);
+            null, It.IsAny<Guid?>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     // ── LessonRescheduleService.RescheduleAsync ──────────────────────────────
@@ -555,7 +572,7 @@ public class LessonCourtConflictTests
         result.IsSuccess.Should().BeTrue();
         _lessonRepo.Verify(r => r.FindCourtConflictAsync(
             It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<TimeOnly>(),
-            It.IsAny<TimeOnly>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()), Times.Never);
+            It.IsAny<TimeOnly>(), It.IsAny<Guid?>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Test]
@@ -569,7 +586,7 @@ public class LessonCourtConflictTests
 
         _lessonRepo.Verify(r => r.FindCourtConflictAsync(
             OrgId, "Baan 1", LessonDate, It.IsAny<TimeOnly>(), It.IsAny<TimeOnly>(),
-            lesson.Id, It.IsAny<CancellationToken>()), Times.Once);
+            lesson.Id, It.IsAny<Guid?>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Test]

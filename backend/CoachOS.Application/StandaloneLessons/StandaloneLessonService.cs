@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using CoachOS.Application.Common;
 using CoachOS.Application.Configuration;
 using CoachOS.Application.Mappings;
 using CoachOS.Application.StandaloneLessons.DTOs;
@@ -49,19 +50,11 @@ public class StandaloneLessonService(
             return Result<Guid>.Fail(new Error(ErrorCodes.Conflict,
                 "Trainer heeft al een les op dit tijdstip."));
 
-        // Baan-conflict check (binnen de organisatie: een baan hoort bij één org).
-        if (!string.IsNullOrWhiteSpace(request.CourtName))
-        {
-            Lesson? courtConflict = await lessonRepo.FindCourtConflictAsync(
-                organizationId, request.CourtName, date, startTime, endTime, excludeLessonId: null, ct);
-            if (courtConflict is not null)
-            {
-                string seriesName = courtConflict.LessonSerie?.Name ?? "onbekende reeks";
-                string conflictTime = $"{courtConflict.StartTime:HH:mm}–{courtConflict.EndTime:HH:mm}";
-                return Result<Guid>.Fail(new Error(ErrorCodes.Conflict,
-                    $"{request.CourtName.Trim()} is op {courtConflict.Date:dd/MM/yyyy} van {conflictTime} al bezet door reeks {seriesName}."));
-            }
-        }
+        // Baan-conflict check. Een losse les hoort niet bij een club, dus blijft de check org-breed.
+        Error? courtConflictError = await lessonRepo.CheckCourtConflictAsync(
+            organizationId, request.CourtName, date, startTime, endTime, ct: ct);
+        if (courtConflictError is not null)
+            return Result<Guid>.Fail(courtConflictError);
 
         // Deelnemers normaliseren + dedupen.
         List<string> normalizedEmails = NormalizeAndDedup(request.ParticipantEmails);

@@ -30,14 +30,16 @@ public interface ILessonRepository
 
     /// <summary>
     /// Checks if a court is already occupied by another lesson overlapping the given date + time range.
-    /// Scoped to a single organization: a court belongs to one organization, unlike a trainer
-    /// who must be unique across organizations.
+    /// Scoped to a single organization AND, when <paramref name="tennisClubId"/> is given, to that
+    /// club: court names are free text chosen per club, so "Baan 2" at club A is a different court
+    /// than "Baan 2" at club B even within the same organization. When <paramref name="tennisClubId"/>
+    /// is null (e.g. a standalone lesson with no club), the check falls back to organization-wide.
     /// CourtName is free text, so comparison is trimmed + case-insensitive.
     /// Optionally excludes a specific lesson (for updates).
     /// </summary>
     Task<Lesson?> FindCourtConflictAsync(
         Guid organizationId, string courtName, DateOnly date, TimeOnly startTime, TimeOnly endTime,
-        Guid? excludeLessonId = null, CancellationToken ct = default);
+        Guid? excludeLessonId = null, Guid? tennisClubId = null, CancellationToken ct = default);
 
     Task AddAsync(Lesson lesson, CancellationToken ct = default);
     Task DeleteAsync(Lesson lesson, CancellationToken ct = default);
