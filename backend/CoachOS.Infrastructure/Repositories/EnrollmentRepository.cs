@@ -37,6 +37,17 @@ public class EnrollmentRepository(ApplicationDbContext context) : IEnrollmentRep
                 ct);
     }
 
+    public async Task<bool> AnyByLessonIdsAsync(
+        IReadOnlyCollection<Guid> lessonIds, CancellationToken ct = default)
+    {
+        if (lessonIds.Count == 0)
+            return false;
+
+        return await context.Enrollments
+            .AsNoTracking()
+            .AnyAsync(e => e.LessonId != null && lessonIds.Contains(e.LessonId.Value), ct);
+    }
+
     public async Task<List<Enrollment>> GetBySeriesAsync(
         Guid lessonSeriesId, Guid organizationId, CancellationToken ct = default)
     {

@@ -1,7 +1,16 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Users, User, Mail, Lock, Unlock, X } from "lucide-react";
+import {
+  Users,
+  User,
+  Mail,
+  Lock,
+  Unlock,
+  X,
+  Trash2,
+  Pencil,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -42,6 +51,11 @@ interface TimeslotDetailDialogProps {
   isLockPending: boolean;
   isOfferPending: boolean;
   isUnassignPending: boolean;
+  /** Verwijdert dit weekslot uit de weektemplate (tijdelijk, o.a. voor legacy slots). */
+  onDeleteSlot?: () => void;
+  isDeletePending?: boolean;
+  /** Opent de aanpas-dialog voor dit weekslot. */
+  onEditSlot?: () => void;
 }
 
 export function TimeslotDetailDialog({
@@ -59,6 +73,9 @@ export function TimeslotDetailDialog({
   isLockPending,
   isOfferPending,
   isUnassignPending,
+  onDeleteSlot,
+  isDeletePending = false,
+  onEditSlot,
 }: TimeslotDetailDialogProps) {
   const t = useTranslations("planning");
 
@@ -76,13 +93,55 @@ export function TimeslotDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md" aria-describedby={undefined}>
-        <DialogHeader>
-          <DialogTitle>
-            {DAY_NAMES_FULL[slot.dayOfWeek]} {slot.startTime}–{slot.endTime}
-          </DialogTitle>
+      <DialogContent
+        className="flex max-h-[85vh] max-w-md flex-col gap-0 overflow-hidden p-0"
+        aria-describedby={undefined}
+        showCloseButton={false}
+      >
+        {/* Sticky header: titel links, acties (⋮ + custom sluit-X) rechts — samen uitgelijnd */}
+        <DialogHeader className="shrink-0 border-b border-gray-100 px-6 pb-3 pt-5">
+          <div className="flex items-center justify-between gap-2">
+            <DialogTitle>
+              {DAY_NAMES_FULL[slot.dayOfWeek]} {slot.startTime}–{slot.endTime}
+            </DialogTitle>
+            <div className="flex shrink-0 items-center gap-0.5">
+              {!readOnly && onEditSlot && (
+                <button
+                  type="button"
+                  aria-label={t("editSlot")}
+                  title={t("editSlot")}
+                  onClick={onEditSlot}
+                  className="flex h-8 w-8 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 focus:outline-none"
+                >
+                  <Pencil size={17} />
+                </button>
+              )}
+              {!readOnly && onDeleteSlot && (
+                <button
+                  type="button"
+                  aria-label={t("deleteSlot")}
+                  title={t("deleteSlot")}
+                  onClick={onDeleteSlot}
+                  disabled={isDeletePending}
+                  className="flex h-8 w-8 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 focus:outline-none disabled:opacity-50"
+                >
+                  <Trash2 size={17} />
+                </button>
+              )}
+              <button
+                type="button"
+                aria-label={t("close")}
+                onClick={() => onOpenChange(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 focus:outline-none"
+              >
+                <X size={18} />
+              </button>
+            </div>
+          </div>
         </DialogHeader>
 
+        {/* Scrollbaar deel */}
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pt-3 pb-2">
         {/* Slot meta */}
         <div className="mt-1 flex items-center justify-between gap-3">
           <span className="text-sm text-gray-500">{subtitle ?? " "}</span>
@@ -232,8 +291,10 @@ export function TimeslotDetailDialog({
           })}
         </div>
 
-        {/* Footer */}
-        <div className="mt-4 flex justify-end border-t border-gray-100 pt-4">
+        </div>
+
+        {/* Footer (sticky onderaan; scrollt niet mee) */}
+        <div className="flex shrink-0 items-center justify-end border-t border-gray-100 bg-background px-6 py-4">
           <button
             type="button"
             onClick={() => onOpenChange(false)}

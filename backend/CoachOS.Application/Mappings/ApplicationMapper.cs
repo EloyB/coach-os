@@ -85,6 +85,7 @@ public partial class ApplicationMapper
             Notes = lesson.Notes,
             IsCancelled = lesson.IsCancelled,
             CancellationReason = lesson.CancellationReason,
+            WeeklyTemplateEntryId = lesson.WeeklyTemplateEntryId,
         };
     }
 

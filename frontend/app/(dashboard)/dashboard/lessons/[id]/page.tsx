@@ -17,11 +17,8 @@ import {
   X,
   Trash2,
   Plus,
-  Clock,
   CalendarDays,
   Euro,
-  UserCheck,
-  BarChart2,
   AlertTriangle,
   Building2,
   ClipboardList,
@@ -51,7 +48,6 @@ import {
   updateLessonSeries,
   deleteLessonSeries,
   exportSeriePlanning,
-  addWeeklyTemplateEntry,
   LessonDto,
 } from "@/lib/api/lessonSeries";
 import { downloadBlob } from "@/lib/download";
@@ -442,8 +438,6 @@ function dayOfWeekFromDate(dateStr: string, weekDays: string[]): number {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -472,6 +466,11 @@ function EditLessonDialog({
   const [endTime, setEndTime] = useState(lesson.endTime);
   const [maxStudents, setMaxStudents] = useState(lesson.maxStudents);
   const [notes, setNotes] = useState(lesson.notes ?? "");
+  // Komt de les uit een weekslot, dan vraagt "Opslaan" eerst of de wijziging voor het
+  // hele weekslot geldt of enkel deze les. Datum blijft altijd per les.
+  const belongsToWeekSlot = Boolean(lesson.weeklyTemplateEntryId);
+  const [confirmScopeOpen, setConfirmScopeOpen] = useState(false);
+  const [confirmDeleteScopeOpen, setConfirmDeleteScopeOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [cancelling, setCancelling] = useState(false);
@@ -484,7 +483,7 @@ function EditLessonDialog({
   const [rescheduleReason, setRescheduleReason] = useState("");
   const [rescheduling, setRescheduling] = useState(false);
 
-  async function handleSave() {
+  async function doSave(applyTo: "lesson" | "slot" | undefined) {
     setSaving(true);
     try {
       const request: UpdateLessonRequest = {
@@ -495,6 +494,7 @@ function EditLessonDialog({
         endTime,
         maxStudents,
         notes,
+        applyTo,
       };
 
       await updateLesson(seriesId, lesson.id, request);
@@ -507,11 +507,20 @@ function EditLessonDialog({
     }
   }
 
-  async function handleDelete() {
+  function handleSave() {
+    // Komt de les uit een weekslot, vraag eerst de reikwijdte; anders meteen opslaan.
+    if (belongsToWeekSlot) {
+      setConfirmScopeOpen(true);
+      return;
+    }
+    void doSave(undefined);
+  }
+
+  async function doDelete(wholeSlot: boolean) {
     setDeleting(true);
     try {
       const { deleteLesson } = await import("@/lib/api/lessonSeries");
-      await deleteLesson(seriesId, lesson.id);
+      await deleteLesson(seriesId, lesson.id, wholeSlot);
       queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
       onClose();
     } finally {
@@ -787,7 +796,7 @@ function EditLessonDialog({
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={handleDelete}
+                onClick={() => doDelete(false)}
                 disabled={deleting}
                 className="px-3 py-1.5 bg-red-600 text-white text-xs font-semibold rounded-lg hover:bg-red-700 disabled:opacity-60"
               >
@@ -856,7 +865,15 @@ function EditLessonDialog({
                   )}
                   <button
                     type="button"
-                    onClick={() => { setShowActionsMenu(false); setActiveAction("delete"); }}
+                    onClick={() => {
+                      setShowActionsMenu(false);
+                      // Weekslot-les: vraag de reikwijdte; losse les: inline bevestiging.
+                      if (belongsToWeekSlot) {
+                        setConfirmDeleteScopeOpen(true);
+                      } else {
+                        setActiveAction("delete");
+                      }
+                    }}
                     className="w-full flex items-center gap-2 px-3 py-2 text-red-600 hover:bg-red-50 text-left"
                   >
                     <Trash2 size={13} />
@@ -868,185 +885,83 @@ function EditLessonDialog({
           </div>
         )}
 
-      </DialogContent>
-    </Dialog>
-  );
-}
+        {/* Reikwijdte-bevestiging: enkel als de les uit een weekslot komt */}
+        <AlertDialog open={confirmScopeOpen} onOpenChange={setConfirmScopeOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                Wil je dit toepassen voor elk van deze weekslots?
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Tijd, trainer, baan en capaciteit gelden dan voor alle lessen van dit
+                weekslot én de planning. De datum blijft altijd enkel voor deze les.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmScopeOpen(false);
+                  void doSave("lesson");
+                }}
+                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+              >
+                Enkel dit weekslot
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmScopeOpen(false);
+                  void doSave("slot");
+                }}
+                className="rounded-lg bg-tennis-green px-4 py-2 text-sm font-semibold text-white hover:bg-tennis-green/90"
+              >
+                Ja
+              </button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
-const WEEKDAY_NAMES = [
-  "Maandag",
-  "Dinsdag",
-  "Woensdag",
-  "Donderdag",
-  "Vrijdag",
-  "Zaterdag",
-  "Zondag",
-];
+        {/* Reikwijdte-bevestiging bij verwijderen (enkel weekslot-lessen) */}
+        <AlertDialog open={confirmDeleteScopeOpen} onOpenChange={setConfirmDeleteScopeOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                Wil je dit verwijderen voor elk van deze weekslots?
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                &ldquo;Ja&rdquo; verwijdert het hele weekslot: alle lessen ervan én de
+                planning-plaatsing verdwijnen. De inschrijvingen zelf blijven bestaan.
+                Kies &ldquo;Enkel dit weekslot&rdquo; om alleen deze les te verwijderen.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={() => {
+                  setConfirmDeleteScopeOpen(false);
+                  void doDelete(false);
+                }}
+                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-60"
+              >
+                Enkel dit weekslot
+              </button>
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={() => {
+                  setConfirmDeleteScopeOpen(false);
+                  void doDelete(true);
+                }}
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+              >
+                Ja
+              </button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
-function AddWeekSlotDialog({
-  seriesId,
-  trainers,
-  onClose,
-  onSaved,
-}: {
-  seriesId: string;
-  trainers: TrainerDto[];
-  onClose: () => void;
-  onSaved: () => void;
-}) {
-  const [dayOfWeek, setDayOfWeek] = useState(0);
-  const [trainerId, setTrainerId] = useState("");
-  const [courtName, setCourtName] = useState("");
-  const [startTime, setStartTime] = useState("18:00");
-  const [endTime, setEndTime] = useState("19:00");
-  const [maxStudents, setMaxStudents] = useState(4);
-  const [saving, setSaving] = useState(false);
-
-  const isValid = startTime !== "" && endTime < "24:00" && endTime > startTime;
-
-  async function handleSave() {
-    setSaving(true);
-    try {
-      await addWeeklyTemplateEntry(seriesId, {
-        dayOfWeek,
-        startTime,
-        endTime,
-        trainerId: trainerId || null,
-        courtName: courtName.trim() || undefined,
-        maxStudents,
-      });
-      toast.success("Weekslot toegevoegd");
-      onSaved();
-    } catch {
-      // Error toast wordt al getoond door de axios interceptor
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Weekslot toevoegen</DialogTitle>
-        </DialogHeader>
-        <p className="text-xs text-gray-500 -mt-1">
-          Dit lesmoment keert elke week terug op de gekozen dag, van vandaag tot
-          het einde van de reeks. Losse lessen beheer je op de pagina Losse
-          lessen.
-        </p>
-
-        <div className="space-y-3">
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">
-              Dag van de week
-            </label>
-            <NativeSelect
-              value={String(dayOfWeek)}
-              onChange={(e) => setDayOfWeek(parseInt(e.target.value))}
-              className="w-full"
-            >
-              {WEEKDAY_NAMES.map((name, index) => (
-                <option key={index} value={index}>
-                  {name}
-                </option>
-              ))}
-            </NativeSelect>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
-                Starttijd
-              </label>
-              <input
-                type="time"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                className={inputClass}
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
-                Eindtijd
-              </label>
-              <input
-                type="time"
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-                className={inputClass}
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">
-              Trainer
-            </label>
-            <NativeSelect
-              value={trainerId}
-              onChange={(e) => setTrainerId(e.target.value)}
-              className="w-full"
-            >
-              <option value="">Geen trainer</option>
-              {trainers.filter(isAssignableTrainer).map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.firstName} {t.lastName}
-                </option>
-              ))}
-            </NativeSelect>
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">
-              Baan
-            </label>
-            <input
-              type="text"
-              value={courtName}
-              onChange={(e) => setCourtName(e.target.value)}
-              placeholder="Baan 1"
-              className={inputClass}
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">
-              Max. leerlingen
-            </label>
-            <input
-              type="number"
-              min={1}
-              value={maxStudents}
-              onChange={(e) => setMaxStudents(parseInt(e.target.value) || 1)}
-              className={inputClass}
-            />
-          </div>
-        </div>
-
-        {endTime <= startTime && (
-          <p className="text-xs text-red-600">
-            De eindtijd moet na de starttijd liggen.
-          </p>
-        )}
-
-        <DialogFooter>
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors"
-          >
-            Annuleren
-          </button>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={saving || !isValid}
-            className="px-4 py-2 rounded-lg bg-tennis-green text-white text-sm font-medium hover:bg-tennis-green/90 transition-colors disabled:opacity-50"
-          >
-            {saving ? "Bezig…" : "Toevoegen"}
-          </button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
@@ -1078,7 +993,6 @@ function LessonWeekView({
   })();
   const [weekIndex, setWeekIndex] = useState(initialWeekIndex);
   const [editingLesson, setEditingLesson] = useState<LessonDto | null>(null);
-  const [addingLesson, setAddingLesson] = useState(false);
   const queryClient = useQueryClient();
   const currentWeek = weeks[weekIndex];
 
@@ -1142,14 +1056,6 @@ function LessonWeekView({
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setAddingLesson(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 mr-1 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
-          >
-            <Plus size={12} />
-            Weekslot toevoegen
-          </button>
           <span className="text-xs text-gray-500">
             Week {weekIndex + 1} van {weeks.length}
           </span>
@@ -1194,20 +1100,6 @@ function LessonWeekView({
       />
 
       {/* Add week-slot dialog */}
-      {addingLesson && (
-        <AddWeekSlotDialog
-          seriesId={seriesId}
-          trainers={trainers}
-          onClose={() => setAddingLesson(false)}
-          onSaved={() => {
-            setAddingLesson(false);
-            queryClient.invalidateQueries({
-              queryKey: ["lessonSeries", seriesId],
-            });
-          }}
-        />
-      )}
-
       {/* Edit lesson dialog */}
       {editingLesson && (
         <EditLessonDialog

@@ -22,9 +22,17 @@ public class Lesson : LessonSlotBase
     /// <summary>Verwijst naar de nieuwe les die deze (geannuleerde) les vervangt.</summary>
     public Guid? RescheduledToLessonId { get; set; }
 
+    /// <summary>
+    /// Het weekslot (<see cref="WeeklyTemplateEntry"/>) waaruit deze les gegenereerd is.
+    /// Null voor losse lessen die niet uit een weekslot komen. Maakt "pas het hele weekslot aan"
+    /// deterministisch: alle lessen van één slot delen deze id, en de planning leest de template.
+    /// </summary>
+    public Guid? WeeklyTemplateEntryId { get; set; }
+
     // Navigation properties
     public Organization Organization { get; set; } = null!;
     public LessonSerie? LessonSerie { get; set; }
     public ICollection<Enrollment> Enrollments { get; set; } = new List<Enrollment>();
     public Lesson? RescheduledToLesson { get; set; }
+    public WeeklyTemplateEntry? WeeklyTemplateEntry { get; set; }
 }

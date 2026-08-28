@@ -50,6 +50,14 @@ public interface IEnrollmentRepository
     Task<int> ReassignLessonLinkAsync(
         Guid fromLessonId, Guid toLessonId, CancellationToken ct = default);
 
+    /// <summary>
+    /// Bestaat er een inschrijving die rechtstreeks aan één van deze lessen hangt
+    /// (<see cref="Enrollment.LessonId"/>)? Gebruikt om te blokkeren dat een weekslot met
+    /// nog-gekoppelde inschrijvingen verwijderd wordt — de FK staat op Restrict.
+    /// </summary>
+    Task<bool> AnyByLessonIdsAsync(
+        IReadOnlyCollection<Guid> lessonIds, CancellationToken ct = default);
+
     Task AddAsync(Enrollment enrollment, CancellationToken ct = default);
 
     Task AddFormResponseAsync(FormResponse response, CancellationToken ct = default);

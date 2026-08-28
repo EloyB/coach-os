@@ -12,6 +12,8 @@ export interface LessonDto {
   notes?: string;
   isCancelled: boolean;
   cancellationReason?: string | null;
+  /** Het weekslot waaruit deze les komt; null voor losse lessen. */
+  weeklyTemplateEntryId?: string | null;
 }
 
 export interface LessonSeriesDto {
@@ -165,6 +167,8 @@ export interface UpdateLessonRequest {
   notes?: string;
   isCancelled?: boolean;
   cancellationReason?: string;
+  /** "slot" past tijd/trainer/baan/capaciteit toe op het hele weekslot; "lesson" (of leeg) enkel deze les. */
+  applyTo?: "lesson" | "slot";
 }
 
 export async function updateLesson(seriesId: string, lessonId: string, request: UpdateLessonRequest): Promise<LessonDto> {
@@ -172,8 +176,41 @@ export async function updateLesson(seriesId: string, lessonId: string, request: 
   return data;
 }
 
-export async function deleteLesson(seriesId: string, lessonId: string): Promise<void> {
-  await apiClient.delete(`/lessonseries/${seriesId}/lessons/${lessonId}`);
+export async function deleteLesson(
+  seriesId: string,
+  lessonId: string,
+  wholeSlot = false,
+): Promise<void> {
+  const qs = wholeSlot ? "?applyTo=slot" : "";
+  await apiClient.delete(`/lessonseries/${seriesId}/lessons/${lessonId}${qs}`);
+}
+
+/** Verwijdert een weekslot rechtstreeks uit de weektemplate (incl. lessen/voorkeuren/voorgestelde toewijzingen). */
+export async function deleteWeekSlot(
+  seriesId: string,
+  weeklyTemplateEntryId: string,
+): Promise<void> {
+  await apiClient.delete(`/lessonseries/${seriesId}/weekly-template/${weeklyTemplateEntryId}`);
+}
+
+export interface UpdateWeekSlotRequest {
+  startTime: string;
+  endTime: string;
+  trainerId?: string | null;
+  courtName?: string;
+  maxStudents: number;
+}
+
+/** Past een weekslot aan (tijd/trainer/baan/capaciteit) — geldt voor het slot én al z'n lessen. */
+export async function updateWeekSlot(
+  seriesId: string,
+  weeklyTemplateEntryId: string,
+  request: UpdateWeekSlotRequest,
+): Promise<void> {
+  await apiClient.put(
+    `/lessonseries/${seriesId}/weekly-template/${weeklyTemplateEntryId}`,
+    request,
+  );
 }
 
 // ─── Wizard API ───────────────────────────────────────────────────────────────

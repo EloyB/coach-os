@@ -21,6 +21,9 @@ public class LessonSerieServiceTests
     private Mock<IUserLookupService> _userLookup = null!;
     private Mock<IEmailService> _emailService = null!;
     private Mock<IMollieConnectionRepository> _mollieConnectionRepo = null!;
+    private Mock<IScheduleAssignmentRepository> _scheduleAssignmentRepo = null!;
+    private Mock<ITimeSlotPreferenceRepository> _timeSlotPreferenceRepo = null!;
+    private Mock<ILessonInvitationRepository> _invitationRepo = null!;
     private ApplicationMapper _mapper = null!;
     private LessonSerieService _service = null!;
 
@@ -38,6 +41,9 @@ public class LessonSerieServiceTests
         _userLookup = new Mock<IUserLookupService>();
         _emailService = new Mock<IEmailService>();
         _mollieConnectionRepo = new Mock<IMollieConnectionRepository>();
+        _scheduleAssignmentRepo = new Mock<IScheduleAssignmentRepository>();
+        _timeSlotPreferenceRepo = new Mock<ITimeSlotPreferenceRepository>();
+        _invitationRepo = new Mock<ILessonInvitationRepository>();
         _mapper = new ApplicationMapper();
         _service = new LessonSerieService(
             _lessonSeriesRepo.Object,
@@ -47,6 +53,9 @@ public class LessonSerieServiceTests
             _userLookup.Object,
             _emailService.Object,
             _mollieConnectionRepo.Object,
+            _scheduleAssignmentRepo.Object,
+            _timeSlotPreferenceRepo.Object,
+            _invitationRepo.Object,
             _mapper);
 
         // Default: enrollment counts returnen lege dictionary (geen inschrijvingen).
