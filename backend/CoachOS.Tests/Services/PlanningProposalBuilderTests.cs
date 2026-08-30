@@ -54,4 +54,22 @@ public class PlanningProposalBuilderTests
 
         PlanningProposalBuilder.GetSharedAgeCategory(members).Should().BeNull();
     }
+
+    [Test]
+    public void GetSharedAgeCategory_MemberWithWhitespaceAnswer_ReturnsNull()
+    {
+        // A whitespace-only response must count as "no answer", not a distinct bucket.
+        var members = new List<Enrollment> { MemberWithAge("8-10 jaar"), MemberWithAge("   ") };
+
+        PlanningProposalBuilder.GetSharedAgeCategory(members).Should().BeNull();
+    }
+
+    [Test]
+    public void GetSharedAgeCategory_PaddedAnswersMatch_ReturnsTrimmedBucket()
+    {
+        // Surrounding whitespace is normalized so equal buckets still agree.
+        var members = new List<Enrollment> { MemberWithAge(" 8-10 jaar "), MemberWithAge("8-10 jaar") };
+
+        PlanningProposalBuilder.GetSharedAgeCategory(members).Should().Be("8-10 jaar");
+    }
 }

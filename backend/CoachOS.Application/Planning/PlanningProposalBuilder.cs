@@ -153,9 +153,15 @@ internal static class PlanningProposalBuilder
     /// null as unconstrained.
     /// </summary>
     private static string? GetAgeCategory(Enrollment enrollment)
-        => enrollment.FormResponses
+    {
+        string? value = enrollment.FormResponses
             .FirstOrDefault(r => r.FormField?.Type == FormFieldType.AgeCategory)
             ?.Value;
+
+        // Normalize: a whitespace-only (or empty) answer is "no answer", not a bucket — otherwise
+        // a legacy/forged blank value would lock a slot to whitespace and split off valid answers.
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
 
     /// <summary>
     /// The shared age bucket of a pre-formed group: the single bucket if every member agrees,
