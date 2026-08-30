@@ -162,15 +162,16 @@ internal static class PlanningProposalBuilder
     /// otherwise null. A mixed-age group is the user's explicit choice, so it stays unconstrained
     /// rather than blocking the group.
     /// </summary>
-    private static string? GetSharedAgeCategory(List<Enrollment> members)
+    internal static string? GetSharedAgeCategory(List<Enrollment> members)
     {
-        var buckets = members
-            .Select(GetAgeCategory)
-            .Where(c => !string.IsNullOrEmpty(c))
-            .Distinct()
-            .ToList();
+        var buckets = members.Select(GetAgeCategory).ToList();
 
-        return buckets.Count == 1 ? buckets[0] : null;
+        // Every member must have answered: a missing bucket means we cannot claim the group
+        // shares one, so it stays unconstrained rather than being locked to a partial answer.
+        if (buckets.Count == 0 || buckets.Any(string.IsNullOrEmpty))
+            return null;
+
+        return buckets.Distinct().Count() == 1 ? buckets[0] : null;
     }
 
     public static int GetEffectiveAssignmentSize(ScheduleAssignment assignment)
