@@ -9,8 +9,6 @@ namespace CoachOS.Tests.Validators;
 [TestFixture]
 public class SubmitEnrollmentRequestValidatorTests
 {
-    private const string DuplicateEmailMessage = "Elk groepslid moet een uniek e-mailadres hebben";
-
     private SubmitEnrollmentRequestValidator _validator = null!;
 
     [SetUp]
@@ -40,56 +38,61 @@ public class SubmitEnrollmentRequestValidatorTests
     }
 
     [Test]
-    public void Validate_MemberEmailEqualsLeaderEmail_Fails()
+    public void Validate_GroupMembersMayShareTheLeaderEmail()
     {
+        // Een ouder of vriend mag de communicatie voor meerdere deelnemers dragen:
+        // hetzelfde adres, maar verschillende personen.
         SubmitEnrollmentRequest request = ValidGroup() with
         {
+            StudentEmail = "ouder@test.be",
             GroupMembers = new()
             {
-                new() { StudentName = "Member A", StudentEmail = "leader@test.be" },
+                new() { StudentName = "Lotte Peeters", StudentEmail = "ouder@test.be", DateOfBirth = YouthBirthDate },
             },
         };
 
-        ValidationResult result = _validator.Validate(request);
-
-        result.IsValid.Should().BeFalse();
-        result.Errors.Should().Contain(e => e.ErrorMessage == DuplicateEmailMessage);
+        _validator.Validate(request).IsValid.Should().BeTrue();
     }
 
     [Test]
-    public void Validate_TwoMembersShareEmail_Fails()
+    public void Validate_GroupMemberWithoutOwnEmail_IsValid()
     {
         SubmitEnrollmentRequest request = ValidGroup() with
         {
             GroupMembers = new()
             {
-                new() { StudentName = "Member A", StudentEmail = "same@test.be" },
-                new() { StudentName = "Member B", StudentEmail = "same@test.be" },
+                new() { StudentName = "Lotte Peeters", StudentEmail = null, DateOfBirth = YouthBirthDate },
             },
         };
 
-        ValidationResult result = _validator.Validate(request);
-
-        result.IsValid.Should().BeFalse();
-        result.Errors.Should().Contain(e => e.ErrorMessage == DuplicateEmailMessage);
+        _validator.Validate(request).IsValid.Should().BeTrue();
     }
 
     [Test]
-    public void Validate_DuplicateEmailDifferentCasingAndWhitespace_Fails()
+    public void Validate_SameParticipantTwiceInOneGroup_IsRejected()
     {
-        // De DB-index is hoofdlettergevoelig, maar functioneel is dit hetzelfde adres.
+        // Zelfde persoon (naam + geboortedatum) mag niet twee keer, ook niet met
+        // afwijkende spatiëring/hoofdletters in de naam.
         SubmitEnrollmentRequest request = ValidGroup() with
         {
+            StudentName = "Lotte Peeters",
+            DateOfBirth = YouthBirthDate,
             GroupMembers = new()
             {
-                new() { StudentName = "Member A", StudentEmail = " Leader@Test.be " },
+                new() { StudentName = "  lotte peeters ", StudentEmail = null, DateOfBirth = YouthBirthDate },
             },
         };
 
-        ValidationResult result = _validator.Validate(request);
+        _validator.Validate(request).Errors
+            .Should().Contain(e => e.ErrorMessage == "Deze deelnemer staat al in de groep.");
+    }
 
-        result.IsValid.Should().BeFalse();
-        result.Errors.Should().Contain(e => e.ErrorMessage == DuplicateEmailMessage);
+    [Test]
+    public void Validate_LeaderEmailRemainsRequired()
+    {
+        SubmitEnrollmentRequest request = ValidGroup() with { StudentEmail = "" };
+
+        _validator.Validate(request).IsValid.Should().BeFalse();
     }
 
     [Test]

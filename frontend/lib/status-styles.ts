@@ -21,4 +21,8 @@ export const enrollmentStatusStyles: Record<string, EnrollmentStatusStyle> = {
   Pending: { className: "bg-amber-100 text-amber-700", label: "In afwachting" },
   Cancelled: { className: "bg-red-100 text-red-700", label: "Geannuleerd" },
   Waitlisted: { className: "bg-blue-100 text-blue-700", label: "Wachtlijst" },
+  PendingPayment: {
+    className: "bg-orange-100 text-orange-700",
+    label: "Betaling in afwachting",
+  },
 };

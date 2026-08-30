@@ -4,7 +4,14 @@ public class LessonSerieEnrollmentDto
 {
     public Guid Id { get; set; }
     public string StudentName { get; set; } = string.Empty;
-    public string StudentEmail { get; set; } = string.Empty;
+    public string? StudentEmail { get; set; }
+    public string? StudentPhone { get; set; }
+
+    /// <summary>Adres waar de communicatie voor deze inschrijving heen gaat.</summary>
+    public string ContactEmail { get; set; } = string.Empty;
+
+    /// <summary>False = communicatie loopt via de contactpersoon van de groep.</summary>
+    public bool HasOwnEmail { get; set; }
     public string Status { get; set; } = string.Empty;
     public DateTime EnrolledAt { get; set; }
     public string? Notes { get; set; }
@@ -16,5 +23,14 @@ public class LessonSerieEnrollmentDto
     public int? Category { get; set; }
 
     public string? CategoryLabel { get; set; }
+
+    /// <summary>Null = solo-inschrijving; anders de groep waartoe deze inschrijving hoort.</summary>
+    public Guid? EnrollmentGroupId { get; set; }
+
+    /// <summary>True als deze inschrijving de groepsleider is (draagt de gedeelde betaling).</summary>
+    public bool IsGroupLeader { get; set; }
+
+    public bool IsOpenToGrouping { get; set; }
+
     public List<EnrollmentResponseItemDto> FormResponses { get; set; } = new();
 }

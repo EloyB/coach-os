@@ -20,10 +20,22 @@ export interface AuthUser {
   role: string;
   memberships?: OrganizationMembershipInfo[];
   isSuperAdmin?: boolean;
+  /** Tennisclub-id's waarvan de trainer hoofdtrainer is: read-only toegang tot inschrijvingen + planning voor die clubs. */
+  headTrainerClubIds?: string[];
 }
 
 export function isStudent(): boolean {
   return getAuthUser()?.role === "Student";
+}
+
+/**
+ * Hoofdtrainer-viewer: een trainer met read-only rechten op inschrijvingen + planning.
+ * De frontend gebruikt dit om bewerk-/actieknoppen te verbergen (de backend blijft
+ * de echte poortwachter).
+ */
+export function isHeadTrainerViewer(): boolean {
+  const u = getAuthUser();
+  return u?.role === "Trainer" && (u?.headTrainerClubIds?.length ?? 0) > 0;
 }
 
 export function isSuperAdmin(): boolean {

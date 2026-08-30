@@ -5,13 +5,28 @@ namespace CoachOS.Application.LessonSerie;
 
 public interface ILessonSerieService
 {
-    Task<Result<List<LessonSerieDto>>> GetAllAsync(Guid organizationId, Guid? trainerId = null, CancellationToken ct = default);
+    Task<Result<List<LessonSerieDto>>> GetAllAsync(Guid organizationId, Guid? trainerId, IReadOnlyList<Guid> headTrainerClubIds, CancellationToken ct = default);
     Task<Result<LessonSerieDto>> GetByIdAsync(Guid id, Guid organizationId, CancellationToken ct = default);
     Task<Result<List<LessonSerieMemberDto>>> GetMembersAsync(Guid organizationId, CancellationToken ct = default);
     Task<Result<Guid>> CreateAsync(Guid organizationId, CreateLessonSerieRequest request, CancellationToken ct = default);
     Task<Result<LessonSerieDto>> UpdateAsync(Guid id, Guid organizationId, UpdateLessonSerieRequest request, CancellationToken ct = default);
     Task<Result> DeleteAsync(Guid id, Guid organizationId, CancellationToken ct = default);
     Task<Result<Guid>> AddLessonAsync(Guid seriesId, Guid organizationId, CreateLessonRequest request, CancellationToken ct = default);
+    Task<Result<Guid>> AddWeeklyTemplateEntryAsync(Guid seriesId, Guid organizationId, AddWeeklyTemplateEntryRequest request, CancellationToken ct = default);
     Task<Result<LessonDto>> UpdateLessonAsync(Guid seriesId, Guid lessonId, Guid organizationId, UpdateLessonRequest request, CancellationToken ct = default);
-    Task<Result> DeleteLessonAsync(Guid seriesId, Guid lessonId, Guid organizationId, CancellationToken ct = default);
+    Task<Result> DeleteLessonAsync(Guid seriesId, Guid lessonId, Guid organizationId, bool wholeSlot = false, CancellationToken ct = default);
+
+    /// <summary>
+    /// Verwijdert een weekslot (<see cref="WeeklyTemplateEntry"/>) rechtstreeks uit de weektemplate,
+    /// inclusief z'n lessen, voorkeuren en nog-voorgestelde toewijzingen. Bedoeld voor de planning-view
+    /// (o.a. legacy slots zonder lessen). Blokkeert bij bevestigde/te-bevestigen toewijzingen.
+    /// </summary>
+    Task<Result> DeleteWeekSlotAsync(Guid seriesId, Guid weeklyTemplateEntryId, Guid organizationId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Past een weekslot aan vanuit de planning-view: tijd/trainer/baan/capaciteit van de
+    /// <see cref="WeeklyTemplateEntry"/> én al z'n niet-geannuleerde lessen, zodat de planning meegaat.
+    /// </summary>
+    Task<Result> UpdateWeekSlotAsync(Guid seriesId, Guid weeklyTemplateEntryId, Guid organizationId, UpdateWeekSlotRequest request, CancellationToken ct = default);
+    Task<Result<Guid>> GetClubIdAsync(Guid id, Guid organizationId, CancellationToken ct = default);
 }

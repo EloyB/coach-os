@@ -8,6 +8,9 @@ public interface IConfirmationOrchestrationService
     Task<Result<bool>> ConfirmScheduleAsync(
         Guid seriesId, Guid organizationId, CancellationToken ct = default);
 
+    Task<Result<bool>> SendAssignmentConfirmationAsync(
+        Guid seriesId, Guid assignmentId, Guid organizationId, CancellationToken ct = default);
+
     Task<Result<List<NonResponderDto>>> GetNonRespondersAsync(
         Guid seriesId, Guid organizationId, CancellationToken ct = default);
 

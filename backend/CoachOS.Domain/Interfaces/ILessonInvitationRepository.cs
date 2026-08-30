@@ -38,4 +38,12 @@ public interface ILessonInvitationRepository
     /// </summary>
     Task<int> ReassignToLessonAsync(
         Guid fromLessonId, Guid toLessonId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Bestaat er een uitnodiging die aan één van deze lessen hangt
+    /// (<see cref="LessonInvitation.LessonId"/>)? Gebruikt om te blokkeren dat een weekslot
+    /// met nog-gekoppelde uitnodigingen verwijderd wordt — de FK staat op Restrict.
+    /// </summary>
+    Task<bool> AnyByLessonIdsAsync(
+        IReadOnlyCollection<Guid> lessonIds, CancellationToken ct = default);
 }

@@ -103,6 +103,7 @@ internal static class PlanningProposalBuilder
         var conflicts = new List<PlanningConflictDto>();
 
         var assignedEnrollmentIds = assignments
+            .Where(a => a.Status != ScheduleAssignmentStatus.Declined)
             .SelectMany(a => a.EnrollmentGroup is not null
                 ? a.EnrollmentGroup.Members.Select(m => m.Id)
                 : a.EnrollmentId.HasValue ? [a.EnrollmentId.Value] : Array.Empty<Guid>())
@@ -132,7 +133,7 @@ internal static class PlanningProposalBuilder
         {
             var count = assignments
                 .Where(a => a.WeeklyTemplateEntryId == slot.Id)
-                .Sum(a => a.EnrollmentGroup?.Members.Count ?? 1);
+                .Sum(GetEffectiveAssignmentSize);
 
             if (count > slot.MaxStudents)
                 conflicts.Add(new PlanningConflictDto
@@ -171,6 +172,24 @@ internal static class PlanningProposalBuilder
 
         return buckets.Count == 1 ? buckets[0] : null;
     }
+
+    public static int GetEffectiveAssignmentSize(ScheduleAssignment assignment)
+    {
+        if (assignment.Status == ScheduleAssignmentStatus.Declined)
+            return 0;
+
+        if (assignment.EnrollmentGroup is not null)
+            return assignment.EnrollmentGroup.Members.Count(IsActiveEnrollment);
+
+        return assignment.Enrollment is not null && IsActiveEnrollment(assignment.Enrollment)
+            ? 1
+            : 0;
+    }
+
+    private static bool IsActiveEnrollment(Enrollment enrollment)
+        => enrollment.Status is EnrollmentStatus.Confirmed
+            or EnrollmentStatus.Pending
+            or EnrollmentStatus.PendingPayment;
 
     private static Dictionary<Guid, SlotPreference> IntersectPreferences(
         List<Dictionary<Guid, SlotPreference>> memberPrefs)

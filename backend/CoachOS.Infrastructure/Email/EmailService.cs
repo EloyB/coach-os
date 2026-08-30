@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Mail;
+using System.Text;
 using CoachOS.Domain.Interfaces;
+using CoachOS.Domain.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -44,25 +46,58 @@ public class EmailService(
             $"Je bent uitgenodigd als beheerder van {organizationName}", html, ct);
     }
 
+    /// <summary>
+    /// "Ingeschreven: A, B, C"-regel voor een gedeeld contactadres. Leeg bij één
+    /// deelnemer, zodat de contactpersoon bij een groep ziet wie er onder valt.
+    /// </summary>
+    private static string ParticipantsLine(IReadOnlyList<string>? names, string label)
+        => names is { Count: > 1 } ? $"{label}: {string.Join(", ", names)}" : string.Empty;
+
     public async Task SendEnrollmentConfirmationAsync(
         string studentEmail, string studentName, string seriesName, string trainerName,
-        CancellationToken ct = default)
+        IReadOnlyList<string>? participantNames = null, CancellationToken ct = default)
     {
+        string trainerDescription = string.IsNullOrWhiteSpace(trainerName)
+            ? "Je club neemt indien nodig contact met je op."
+            : $"Trainer {trainerName} neemt indien nodig contact met je op.";
+        string trainerLine = string.IsNullOrWhiteSpace(trainerName)
+            ? string.Empty
+            : $"Trainer: {trainerName}";
+
         var html = renderer.Render("enrollment-confirmation", new Dictionary<string, string>
         {
             ["studentName"] = studentName,
             ["seriesName"] = seriesName,
-            ["trainerName"] = trainerName,
+            ["trainerDescription"] = trainerDescription,
+            ["trainerLine"] = trainerLine,
+            ["participantsLine"] = ParticipantsLine(participantNames, "Ingeschreven"),
             ["year"] = DateTime.UtcNow.Year.ToString(),
         });
         await SendAsync(studentEmail, studentName,
             $"Inschrijving bevestigd: {seriesName}", html, ct);
     }
 
+    public async Task SendEnrollmentPendingCashAsync(
+        string studentEmail, string studentName, string seriesName, decimal amount,
+        IReadOnlyList<string>? participantNames = null, CancellationToken ct = default)
+    {
+        string html = renderer.Render("enrollment-pending-cash", new Dictionary<string, string>
+        {
+            ["studentName"] = studentName,
+            ["seriesName"] = seriesName,
+            ["amount"] = $"€ {amount.ToString("0.00", System.Globalization.CultureInfo.GetCultureInfo("nl-BE"))}",
+            ["participantsLine"] = ParticipantsLine(participantNames, "Ingeschreven"),
+            ["year"] = DateTime.UtcNow.Year.ToString(),
+        });
+        await SendAsync(studentEmail, studentName,
+            $"Plek gereserveerd: {seriesName}", html, ct);
+    }
+
     public async Task SendScheduleConfirmationAsync(
         string studentEmail, string studentName, string seriesName,
         int dayOfWeek, string startTime, string endTime, string? courtName,
-        string confirmationUrl, CancellationToken ct = default)
+        string confirmationUrl, IReadOnlyList<string>? participantNames = null,
+        CancellationToken ct = default)
     {
         // dayOfWeek arriveert in EU-conventie (0 = maandag, 6 = zondag) vanuit
         // WeeklyTemplateEntry. DaysNl is .NET-conventie (0 = zondag). Converteren
@@ -80,11 +115,51 @@ public class EmailService(
             ["startTime"] = startTime,
             ["endTime"] = endTime,
             ["courtLine"] = courtLine,
+            ["participantsLine"] = ParticipantsLine(participantNames, "Deze les is voor"),
             ["confirmationUrl"] = confirmationUrl,
             ["year"] = DateTime.UtcNow.Year.ToString(),
         });
         await SendAsync(studentEmail, studentName,
             $"Bevestig je lesmoment: {seriesName}", html, ct);
+    }
+
+    public async Task SendScheduleConfirmationBundleAsync(
+        string contactEmail, string seriesName,
+        IReadOnlyList<ScheduleConfirmationItem> items, CancellationToken ct = default)
+    {
+        var blocks = new StringBuilder();
+        foreach (ScheduleConfirmationItem item in items)
+        {
+            int safeEu = Math.Clamp(item.DayOfWeek, 0, 6);
+            string dayName = DaysNl[(safeEu + 1) % 7];
+            string courtLine = string.IsNullOrWhiteSpace(item.CourtName)
+                ? string.Empty
+                : $"Baan: {WebUtility.HtmlEncode(item.CourtName)}";
+
+            // Handmatig encoderen: dit blok gaat als raw: token de renderer in,
+            // dus de automatische encoding van Render() slaat het over.
+            blocks.Append($"""
+                <div style="background:#FAFAF8;border-left:4px solid #D0FF14;border-radius:8px;padding:16px 20px;margin:16px 0">
+                  <div style="font-size:14px;font-weight:600;color:#111827">{WebUtility.HtmlEncode(item.ParticipantName)}</div>
+                  <div style="font-size:14px;color:#111827;padding-top:4px">{dayName} {WebUtility.HtmlEncode(item.StartTime)} — {WebUtility.HtmlEncode(item.EndTime)}</div>
+                  <div style="font-size:13px;color:#6b7280;padding-top:4px">{courtLine}</div>
+                  <a href="{WebUtility.HtmlEncode(item.ConfirmationUrl)}" style="display:inline-block;margin-top:12px;background:#2D5016;color:#FFFFFF;border-radius:8px;font-weight:600;font-size:14px;padding:10px 20px;text-decoration:none">Bevestigen of wijzigen</a>
+                </div>
+                """);
+        }
+
+        string names = string.Join(", ", items.Select(i => i.ParticipantName));
+
+        var html = renderer.Render("schedule-confirmation-multi", new Dictionary<string, string>
+        {
+            ["seriesName"] = seriesName,
+            ["participantNames"] = names,
+            ["raw:participantBlocks"] = blocks.ToString(),
+            ["year"] = DateTime.UtcNow.Year.ToString(),
+        });
+
+        await SendAsync(contactEmail, names,
+            $"Bevestig de lesmomenten voor {names} — {seriesName}", html, ct);
     }
 
     public async Task SendStudentMagicLinkAsync(

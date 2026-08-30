@@ -1,3 +1,4 @@
+using CoachOS.Application.Common;
 using CoachOS.Application.LessonSerie.DTOs;
 using CoachOS.Application.Mappings;
 using CoachOS.Domain.Enums;
@@ -13,13 +14,17 @@ public class LessonSerieService(
     ITennisClubRepository tennisClubRepo,
     IUserLookupService userLookup,
     IEmailService emailService,
+    IMollieConnectionRepository mollieConnectionRepo,
+    IScheduleAssignmentRepository scheduleAssignmentRepo,
+    ITimeSlotPreferenceRepository timeSlotPreferenceRepo,
+    ILessonInvitationRepository lessonInvitationRepo,
     ApplicationMapper mapper) : ILessonSerieService
 {
     public async Task<Result<List<LessonSerieDto>>> GetAllAsync(
-        Guid organizationId, Guid? trainerId = null, CancellationToken ct = default)
+        Guid organizationId, Guid? trainerId, IReadOnlyList<Guid> headTrainerClubIds, CancellationToken ct = default)
     {
         IReadOnlyList<Domain.Entities.LessonSerie> seriesList =
-            await lessonSeriesRepo.GetByOrganizationAsync(organizationId, trainerId, ct);
+            await lessonSeriesRepo.GetByOrganizationAsync(organizationId, trainerId, headTrainerClubIds, ct);
 
         if (seriesList.Count == 0)
             return Result<List<LessonSerieDto>>.Ok([]);
@@ -89,29 +94,41 @@ public class LessonSerieService(
         if (!clubExists)
             return Result<Guid>.Fail(new Error(ErrorCodes.NotFound, "Tennisclub niet gevonden."));
 
+        Error? onlinePaymentError =
+            await ValidateOnlinePaymentAsync(organizationId, request.AcceptOnlinePayment, ct);
+        if (onlinePaymentError is not null)
+            return Result<Guid>.Fail(onlinePaymentError);
+
         var trainerIds = request.WeeklyTemplate.Select(t => t.TrainerId)
             .Concat(request.Lessons.Select(l => l.TrainerId));
         var trainerError = await ValidateTrainerIdsAsync(trainerIds, organizationId, ct);
         if (trainerError is not null)
             return Result<Guid>.Fail(trainerError);
 
-        // Reject duplicate weekly template entries (same day + start time + court = same slot).
-        // The key MUST match the unique index IX_WeeklyTemplateEntries_LessonSerieId_DayOfWeek_StartTime_CourtName
-        // (which does NOT include EndTime); otherwise a same-start/different-end collision slips past this guard
-        // and surfaces as a raw DbUpdateException → HTTP 500 instead of this clean validation error.
-        var duplicates = request.WeeklyTemplate
-            .GroupBy(t => (t.DayOfWeek, t.StartTime, CourtName: t.CourtName ?? ""))
-            .Where(g => g.Count() > 1)
+        // Reject duplicate weekly template entries when a court is known.
+        // Multiple unnamed parallel lessons are allowed; the club can assign courts later. The key MUST match the unique index
+        // IX_WeeklyTemplateEntries_LessonSerieId_DayOfWeek_StartTime_CourtName (die GEEN EndTime bevat);
+        // anders glipt een same-start/different-end collision hier langs en wordt het een rauwe
+        // DbUpdateException → HTTP 500 in plaats van deze nette validatiefout.
+        static string NormalizeCourt(string? court) =>
+            string.IsNullOrWhiteSpace(court) ? "" : court.Trim();
+
+        List<(int DayOfWeek, string StartTime, string CourtName)> duplicateKeys = request.WeeklyTemplate
+            .GroupBy(t => (t.DayOfWeek, t.StartTime, CourtName: NormalizeCourt(t.CourtName)))
+            .Where(g => g.Key.CourtName != "" && g.Count() > 1)
             .Select(g => g.Key)
             .ToList();
 
-        if (duplicates.Count > 0)
+        if (duplicateKeys.Count > 0)
         {
             string[] dayNames = ["ma", "di", "wo", "do", "vr", "za", "zo"];
-            var slots = string.Join(", ", duplicates.Select(d =>
-                $"{dayNames[d.DayOfWeek]} {d.StartTime}" + (d.CourtName != "" ? $" ({d.CourtName})" : "")));
+            string SlotLabel((int DayOfWeek, string StartTime, string CourtName) key) =>
+                $"{dayNames[key.DayOfWeek]} {key.StartTime}";
+
+            // Echte duplicaat: dezelfde dag + starttijd + baannaam expliciet herhaald.
+            string dupSlots = string.Join(", ", duplicateKeys.Select(d => $"{SlotLabel(d)} ({d.CourtName})"));
             return Result<Guid>.Fail(new Error(ErrorCodes.Validation,
-                $"Dubbele tijdsloten in weekindeling: {slots}. Verwijder de duplicaten."));
+                $"Dubbele tijdsloten in weekindeling: {dupSlots}. Verwijder de duplicaten."));
         }
 
         Domain.Entities.LessonSerie series = mapper.ToLessonSerie(request, organizationId);
@@ -119,12 +136,37 @@ public class LessonSerieService(
         foreach (WeeklyTemplateEntryRequest templateRequest in request.WeeklyTemplate)
         {
             Domain.Entities.WeeklyTemplateEntry entry = mapper.ToWeeklyTemplateEntry(templateRequest, series);
+            entry.CourtName = NormalizeCourt(templateRequest.CourtName) is { Length: > 0 } normalizedCourt
+                ? normalizedCourt
+                : null;
             series.WeeklyTemplate.Add(entry);
         }
 
         foreach (var lessonRequest in request.Lessons)
         {
             var lesson = mapper.ToLesson(lessonRequest, series);
+            lesson.CourtName = NormalizeCourt(lessonRequest.CourtName) is { Length: > 0 } normalizedCourt
+                ? normalizedCourt
+                : null;
+
+            // Koppel de les aan z'n weekslot (match op dag + starttijd + baan) zodat "pas hele
+            // weekslot aan" én de planning-synchronisatie werken. Onze DayOfWeek: 0=maandag,
+            // System.DayOfWeek: 0=zondag → (dow + 6) % 7.
+            // Meerdere parallelle weekslots ZONDER baannaam op hetzelfde dag+start zijn toegestaan
+            // (2 velden, baan later toewijzen) — dan matchen twee (of meer) entries evenveel goed en
+            // is er geen manier om te weten welke bij deze les hoort. Blindelings de eerste kiezen
+            // (FirstOrDefault) zou alle lessen van dat moment aan één entry hangen en de andere(n)
+            // zonder lessen achterlaten, met foute "pas hele weekslot aan"-updates tot gevolg.
+            // Bij zo'n ambiguïteit dus NIET koppelen (net als bij een echte losse les) — geen match
+            // is altijd veiliger dan een gegokte, mogelijk foute match.
+            int lessonDow = ((int)lesson.Date.DayOfWeek + 6) % 7;
+            List<Domain.Entities.WeeklyTemplateEntry> matchingEntries = series.WeeklyTemplate.Where(e =>
+                e.DayOfWeek == lessonDow
+                && e.StartTime == lesson.StartTime
+                && NormalizeCourt(e.CourtName) == NormalizeCourt(lesson.CourtName))
+                .ToList();
+            lesson.WeeklyTemplateEntry = matchingEntries.Count == 1 ? matchingEntries[0] : null;
+
             series.Lessons.Add(lesson);
         }
 
@@ -147,6 +189,11 @@ public class LessonSerieService(
         if (!clubExists)
             return Result<LessonSerieDto>.Fail(new Error(ErrorCodes.NotFound, "Tennisclub niet gevonden."));
 
+        Error? onlinePaymentError =
+            await ValidateOnlinePaymentAsync(organizationId, request.AcceptOnlinePayment, ct);
+        if (onlinePaymentError is not null)
+            return Result<LessonSerieDto>.Fail(onlinePaymentError);
+
         series.Name = request.Name;
         series.Description = request.Description;
         series.Level = request.Level.HasValue ? (LessonLevel)request.Level.Value : null;
@@ -154,7 +201,13 @@ public class LessonSerieService(
         series.RegistrationDeadline = DateTime.SpecifyKind(request.RegistrationDeadline, DateTimeKind.Utc);
         series.IsActive = request.IsActive;
         series.MaxRegistrations = request.MaxRegistrations;
+        series.MinAge = request.MinAge;
+        series.MaxAge = request.MaxAge;
         series.TennisClubId = request.TennisClubId;
+        series.AllowSoloEnrollment = request.AllowSoloEnrollment;
+        series.AllowGroupEnrollment = request.AllowGroupEnrollment;
+        series.AcceptOnlinePayment = request.AcceptOnlinePayment;
+        series.AcceptManualPayment = request.AcceptManualPayment;
 
         await lessonSeriesRepo.UpdateAsync(series, ct);
         await lessonSeriesRepo.SaveChangesAsync(ct);
@@ -182,6 +235,9 @@ public class LessonSerieService(
         if (series.Enrollments.Count > 0)
             return Result.Fail(new Error(ErrorCodes.Conflict, "Verwijderen niet mogelijk: er zijn nog inschrijvingen op deze serie."));
 
+        // WeeklyTemplateEntry-rijen staan op DeleteBehavior.Restrict en worden niet automatisch opgeruimd;
+        // expliciet mee verwijderen, anders faalt SaveChanges met een FK-violation (HTTP 500).
+        await lessonSeriesRepo.DeleteWeeklyTemplateRangeAsync(series.WeeklyTemplate, ct);
         await lessonRepo.DeleteRangeAsync(series.Lessons, ct);
         await lessonSeriesRepo.DeleteAsync(series, ct);
         await lessonSeriesRepo.SaveChangesAsync(ct);
@@ -215,8 +271,9 @@ public class LessonSerieService(
                 return Result<Guid>.Fail(conflictError);
         }
 
-        Error? courtConflictError = await CheckCourtConflictAsync(
-            organizationId, request.CourtName, lessonDate, lessonStart, lessonEnd, ct: ct);
+        Error? courtConflictError = await lessonRepo.CheckCourtConflictAsync(
+            organizationId, request.CourtName, lessonDate, lessonStart, lessonEnd,
+            tennisClubId: series.TennisClubId, ct: ct);
         if (courtConflictError is not null)
             return Result<Guid>.Fail(courtConflictError);
 
@@ -226,6 +283,89 @@ public class LessonSerieService(
 
         return Result<Guid>.Ok(lesson.Id);
     }
+
+    public async Task<Result<Guid>> AddWeeklyTemplateEntryAsync(
+        Guid seriesId, Guid organizationId, AddWeeklyTemplateEntryRequest request, CancellationToken ct = default)
+    {
+        Domain.Entities.LessonSerie? series = await lessonSeriesRepo.GetByIdAsync(seriesId, organizationId, ct);
+        if (series is null)
+            return Result<Guid>.Fail(new Error(ErrorCodes.NotFound, "LessonSerie niet gevonden."));
+
+        if (request.TrainerId.HasValue)
+        {
+            bool isValid = await userLookup.IsActiveTrainerAsync(request.TrainerId.Value, organizationId, ct);
+            if (!isValid)
+                return Result<Guid>.Fail(
+                    new Error(ErrorCodes.Validation, "Deze trainer behoort niet tot deze organisatie."));
+        }
+
+        TimeOnly startTime = TimeOnly.ParseExact(request.StartTime, "HH:mm");
+        TimeOnly endTime = TimeOnly.ParseExact(request.EndTime, "HH:mm");
+        string newCourt = NormalizeCourt(request.CourtName);
+
+        // Parallelle weekslots op hetzelfde moment (2 trainers/velden) worden onderscheiden via de baannaam;
+        // een botsing met een bestaand weekslot op dezelfde dag+start+baan is een duplicaat.
+        bool collides = newCourt != "" && series.WeeklyTemplate.Any(e =>
+            e.DayOfWeek == request.DayOfWeek
+            && e.StartTime == startTime
+            && NormalizeCourt(e.CourtName) == newCourt);
+
+        if (collides)
+        {
+            string[] dayNames = ["ma", "di", "wo", "do", "vr", "za", "zo"];
+            string slot = $"{dayNames[request.DayOfWeek]} {request.StartTime}";
+            return newCourt == ""
+                ? Result<Guid>.Fail(new Error(ErrorCodes.Validation,
+                    $"Er staat al een weekslot op {slot} zonder baannaam. " +
+                    "Geef dit weekslot een eigen baannaam om het te onderscheiden."))
+                : Result<Guid>.Fail(new Error(ErrorCodes.Conflict,
+                    $"Er bestaat al een weekslot op {slot} ({newCourt})."));
+        }
+
+        Domain.Entities.WeeklyTemplateEntry entry = new()
+        {
+            LessonSerieId = series.Id,
+            DayOfWeek = request.DayOfWeek,
+            StartTime = startTime,
+            EndTime = endTime,
+            TrainerId = request.TrainerId,
+            CourtName = newCourt is { Length: > 0 } ? newCourt : null,
+            MaxStudents = request.MaxStudents,
+        };
+        series.WeeklyTemplate.Add(entry);
+
+        // Expandeer naar concrete lesmomenten vanaf vandaag (of de startdatum als die later valt)
+        // tot en met de einddatum van de reeks. Zo verschijnt het weekslot zowel in de planning
+        // (uit de weekindeling) als in de lesmomenten-kalender (uit de Lesson-rijen).
+        LessonLevel? level = request.Level.HasValue ? (LessonLevel)request.Level.Value : null;
+        DateOnly today = DateOnly.FromDateTime(DateTime.UtcNow);
+        DateOnly from = series.StartDate > today ? series.StartDate : today;
+
+        foreach (DateOnly date in WeeklyLessonExpander.MatchingDates(request.DayOfWeek, from, series.EndDate))
+        {
+            series.Lessons.Add(new Domain.Entities.Lesson
+            {
+                OrganizationId = series.OrganizationId,
+                LessonSerieId = series.Id,
+                TrainerId = request.TrainerId,
+                CourtName = newCourt is { Length: > 0 } ? newCourt : null,
+                Date = date,
+                StartTime = startTime,
+                EndTime = endTime,
+                Level = level,
+                MaxStudents = request.MaxStudents,
+                IsCancelled = false,
+                // Navigatie zetten (niet de Id): EF lost de FK op ongeacht Id-generatietiming.
+                WeeklyTemplateEntry = entry,
+            });
+        }
+
+        await lessonSeriesRepo.SaveChangesAsync(ct);
+        return Result<Guid>.Ok(entry.Id);
+    }
+
+    private static string NormalizeCourt(string? court) =>
+        string.IsNullOrWhiteSpace(court) ? "" : court.Trim();
 
     public async Task<Result<LessonDto>> UpdateLessonAsync(
         Guid seriesId, Guid lessonId, Guid organizationId, UpdateLessonRequest request, CancellationToken ct = default)
@@ -285,15 +425,19 @@ public class LessonSerieService(
         }
 
         // Baanbezetting: check op de effectieve baannaam (request wint, anders de bestaande).
-        string? effectiveCourtName = request.CourtName ?? lesson.CourtName;
-        Error? courtConflictError = await CheckCourtConflictAsync(
+        string? effectiveCourtName = request.CourtName is null
+            ? lesson.CourtName
+            : NormalizeCourt(request.CourtName) is { Length: > 0 } normalizedCourt
+                ? normalizedCourt
+                : null;
+        Error? courtConflictError = await lessonRepo.CheckCourtConflictAsync(
             organizationId, effectiveCourtName, lesson.Date, lesson.StartTime, lesson.EndTime,
-            lesson.Id, ct);
+            lesson.Id, series.TennisClubId, ct);
         if (courtConflictError is not null)
             return Result<LessonDto>.Fail(courtConflictError);
 
         if (request.CourtName is not null)
-            lesson.CourtName = request.CourtName;
+            lesson.CourtName = effectiveCourtName;
         if (request.MaxStudents.HasValue)
             lesson.MaxStudents = request.MaxStudents.Value;
         if (request.Notes is not null)
@@ -309,6 +453,47 @@ public class LessonSerieService(
                 lesson.CancellationReason = null;
         }
 
+        // Slot-scope: pas de recurring attributen (tijd, trainer, baan, capaciteit) toe op het
+        // hele weekslot — de WeeklyTemplateEntry én alle niet-geannuleerde lessen ervan — zodat de
+        // planning (die de template leest) meteen meegaat. Datum en annulering blijven per les.
+        // series.WeeklyTemplate en series.Lessons zijn door dezelfde DbContext getrackt als `lesson`,
+        // dus deze mutaties gaan mee in één SaveChanges (atomair).
+        if (string.Equals(request.ApplyTo, "slot", StringComparison.OrdinalIgnoreCase)
+            && lesson.WeeklyTemplateEntryId is Guid templateEntryId)
+        {
+            Domain.Entities.WeeklyTemplateEntry? entry =
+                series.WeeklyTemplate.FirstOrDefault(w => w.Id == templateEntryId);
+            if (entry is not null)
+            {
+                List<Domain.Entities.Lesson> siblings = series.Lessons.Where(l =>
+                    l.WeeklyTemplateEntryId == templateEntryId && l.Id != lesson.Id && !l.IsCancelled).ToList();
+
+                // De bewerkte les is hierboven al op conflicten gecheckt; controleer nu ook élke
+                // zusterles die dezelfde nieuwe tijd/trainer/baan krijgt, zodat de propagatie geen
+                // trainer- of baanconflict verstopt. Nog niets opgeslagen → atomair afbreken bij conflict.
+                Error? slotConflict = await CheckSlotConflictsAsync(
+                    organizationId, siblings, lesson.TrainerId, lesson.StartTime, lesson.EndTime,
+                    lesson.CourtName, series.TennisClubId, ct);
+                if (slotConflict is not null)
+                    return Result<LessonDto>.Fail(slotConflict);
+
+                entry.StartTime = lesson.StartTime;
+                entry.EndTime = lesson.EndTime;
+                entry.TrainerId = lesson.TrainerId;
+                entry.CourtName = lesson.CourtName;
+                entry.MaxStudents = lesson.MaxStudents;
+
+                foreach (Domain.Entities.Lesson sibling in siblings)
+                {
+                    sibling.StartTime = lesson.StartTime;
+                    sibling.EndTime = lesson.EndTime;
+                    sibling.TrainerId = lesson.TrainerId;
+                    sibling.CourtName = lesson.CourtName;
+                    sibling.MaxStudents = lesson.MaxStudents;
+                }
+            }
+        }
+
         await lessonRepo.SaveChangesAsync(ct);
 
         if (newlyCancelled && lesson.LessonSerieId.HasValue)
@@ -322,10 +507,12 @@ public class LessonSerieService(
                     or Domain.Enums.EnrollmentStatus.PendingPayment)
                 .ToList();
 
-            foreach (Domain.Entities.Enrollment enrollment in activeEnrollments)
+            // Eén mail per contactadres: een ouder met drie kinderen in de reeks hoort
+            // één annuleringsbericht te krijgen, geen drie.
+            foreach (Domain.Entities.Enrollment enrollment in activeEnrollments.DistinctBy(e => e.ContactEmail))
             {
                 _ = emailService.SendLessonCancellationAsync(
-                    enrollment.StudentEmail,
+                    enrollment.ContactEmail,
                     enrollment.StudentName,
                     series.Name,
                     lesson.Date,
@@ -336,6 +523,21 @@ public class LessonSerieService(
 
         LessonDto dto = mapper.ToLessonDto(lesson, seriesId);
         return Result<LessonDto>.Ok(dto);
+    }
+
+    private async Task<Error?> ValidateOnlinePaymentAsync(
+        Guid organizationId, bool acceptOnlinePayment, CancellationToken ct)
+    {
+        if (!acceptOnlinePayment)
+            return null;
+
+        Domain.Entities.MollieConnection? connection =
+            await mollieConnectionRepo.GetByOrganizationReadOnlyAsync(organizationId, ct);
+        if (connection is null)
+            return new Error(ErrorCodes.Validation,
+                "Online betalen kan pas aangezet worden nadat de organisatie met Mollie verbonden is.");
+
+        return null;
     }
 
     private async Task<Error?> ValidateTrainerIdsAsync(
@@ -373,34 +575,49 @@ public class LessonSerieService(
             $"Deze trainer heeft al een les op {conflict.Date:dd/MM/yyyy} van {conflictTime} ({seriesName}).");
     }
 
-    private async Task<Error?> CheckCourtConflictAsync(
-        Guid organizationId, string? courtName, DateOnly date, TimeOnly startTime, TimeOnly endTime,
-        Guid? excludeLessonId = null, CancellationToken ct = default)
+    /// <summary>
+    /// Valideert trainer- en baanconflicten voor de VOLLEDIGE set lessen die door een
+    /// slot-wijziging nieuwe tijd/trainer/baan krijgen — niet enkel de bewerkte les. Elke les zit
+    /// op een eigen datum (weekritme), dus we checken per datum tegen de rest van de DB (de les
+    /// zelf uitgesloten). Zonder deze check kan een slot-wijziging een trainer dubbel boeken of
+    /// twee lessen op dezelfde baan zetten zonder dat het opgemerkt wordt.
+    /// </summary>
+    private async Task<Error?> CheckSlotConflictsAsync(
+        Guid organizationId, IEnumerable<Domain.Entities.Lesson> affected,
+        Guid? trainerId, TimeOnly startTime, TimeOnly endTime, string? courtName,
+        Guid? tennisClubId, CancellationToken ct)
     {
-        // Geen baan opgegeven → geen bezetting mogelijk.
-        if (string.IsNullOrWhiteSpace(courtName))
-            return null;
+        foreach (Domain.Entities.Lesson lesson in affected)
+        {
+            if (trainerId.HasValue)
+            {
+                Error? trainerConflict = await CheckTrainerConflictAsync(
+                    trainerId.Value, lesson.Date, startTime, endTime, lesson.Id, ct);
+                if (trainerConflict is not null)
+                    return trainerConflict;
+            }
 
-        Domain.Entities.Lesson? conflict = await lessonRepo.FindCourtConflictAsync(
-            organizationId, courtName, date, startTime, endTime, excludeLessonId, ct);
+            Error? courtConflict = await lessonRepo.CheckCourtConflictAsync(
+                organizationId, courtName, lesson.Date, startTime, endTime, lesson.Id, tennisClubId, ct);
+            if (courtConflict is not null)
+                return courtConflict;
+        }
 
-        if (conflict is null)
-            return null;
-
-        string seriesName = conflict.LessonSerie?.Name ?? "onbekende reeks";
-        string conflictTime = $"{conflict.StartTime:HH:mm}–{conflict.EndTime:HH:mm}";
-        return new Error(ErrorCodes.Conflict,
-            $"{courtName.Trim()} is op {conflict.Date:dd/MM/yyyy} van {conflictTime} al bezet door reeks {seriesName}.");
+        return null;
     }
 
     public async Task<Result> DeleteLessonAsync(
-        Guid seriesId, Guid lessonId, Guid organizationId, CancellationToken ct = default)
+        Guid seriesId, Guid lessonId, Guid organizationId, bool wholeSlot = false, CancellationToken ct = default)
     {
         var lesson =
             await lessonRepo.GetByIdWithEnrollmentsAsync(lessonId, seriesId, organizationId, ct);
 
         if (lesson is null)
             return Result.Fail(new Error(ErrorCodes.NotFound, "Lesmoment niet gevonden."));
+
+        // Hele weekslot verwijderen (enkel als de les uit een weekslot komt).
+        if (wholeSlot && lesson.WeeklyTemplateEntryId is Guid templateEntryId)
+            return await DeleteWeekSlotAsync(seriesId, templateEntryId, organizationId, ct);
 
         if (lesson.Enrollments.Count > 0)
             return Result.Fail(new Error(ErrorCodes.Conflict, "Verwijderen niet mogelijk: er zijn nog inschrijvingen op dit lesmoment."));
@@ -409,5 +626,163 @@ public class LessonSerieService(
         await lessonRepo.SaveChangesAsync(ct);
 
         return Result.Ok();
+    }
+
+    /// <summary>
+    /// Verwijdert een volledig weekslot over de hele reeks: de <see cref="WeeklyTemplateEntry"/>,
+    /// al z'n lessen, z'n beschikbaarheid-voorkeuren en z'n nog-voorgestelde planning-toewijzingen —
+    /// in één transactie, zodat het slot ook uit de planning verdwijnt. Blokkeert wanneer het slot
+    /// bevestigde of te-bevestigen toewijzingen heeft (geen student verliest stil een bevestigde plaats).
+    /// De inschrijvingen zelf zitten op de reeks en blijven bestaan.
+    /// </summary>
+    public async Task<Result> DeleteWeekSlotAsync(
+        Guid seriesId, Guid templateEntryId, Guid organizationId, CancellationToken ct = default)
+    {
+        Domain.Entities.LessonSerie? series = await lessonSeriesRepo.GetByIdAsync(seriesId, organizationId, ct);
+        if (series is null)
+            return Result.Fail(new Error(ErrorCodes.NotFound, "Lesreeks niet gevonden."));
+
+        Domain.Entities.WeeklyTemplateEntry? entry =
+            series.WeeklyTemplate.FirstOrDefault(w => w.Id == templateEntryId);
+        if (entry is null)
+            return Result.Fail(new Error(ErrorCodes.NotFound, "Weekslot niet gevonden."));
+
+        List<Domain.Entities.ScheduleAssignment> assignments =
+            (await scheduleAssignmentRepo.GetBySeriesAsync(seriesId, organizationId, ct))
+            .Where(a => a.WeeklyTemplateEntryId == templateEntryId)
+            .ToList();
+
+        if (assignments.Any(a => a.Status is ScheduleAssignmentStatus.Confirmed
+                or ScheduleAssignmentStatus.AwaitingConfirmation))
+        {
+            return Result.Fail(new Error(ErrorCodes.Conflict,
+                "Dit weekslot zit al in de planning (bevestigde of nog te bevestigen toewijzingen). " +
+                "Maak eerst de planning van dit slot ongedaan voor je het verwijdert."));
+        }
+
+        List<Domain.Entities.TimeSlotPreference> preferences =
+            (await timeSlotPreferenceRepo.GetBySeriesAsync(seriesId, organizationId, ct))
+            .Where(p => p.WeeklyTemplateEntryId == templateEntryId)
+            .ToList();
+
+        List<Domain.Entities.Lesson> slotLessons = series.Lessons
+            .Where(l => l.WeeklyTemplateEntryId == templateEntryId)
+            .ToList();
+
+        // Lessen kunnen rechtstreeks gekoppelde inschrijvingen (Enrollment.LessonId) of uitnodigingen
+        // (LessonInvitation.LessonId) hebben; beide FK's staan op Restrict. Zonder deze check zou het
+        // verwijderen van de lessen een rauwe FK-schending → HTTP 500 geven. Blokkeer met een nette
+        // conflictmelding, net zoals het verwijderen van één los lesmoment doet bij inschrijvingen.
+        List<Guid> slotLessonIds = slotLessons.Select(l => l.Id).ToList();
+        if (slotLessonIds.Count > 0)
+        {
+            bool hasEnrollments = await enrollmentRepo.AnyByLessonIdsAsync(slotLessonIds, ct);
+            bool hasInvitations = await lessonInvitationRepo.AnyByLessonIdsAsync(slotLessonIds, ct);
+            if (hasEnrollments || hasInvitations)
+                return Result.Fail(new Error(ErrorCodes.Conflict,
+                    "Dit weekslot heeft lessen met gekoppelde inschrijvingen of uitnodigingen. " +
+                    "Verwijder of verplaats die eerst voor je het weekslot verwijdert."));
+        }
+
+        // Kinderen vóór de ouder, alles in één SaveChanges = één transactie (alles-of-niets).
+        // assignments bevatten hier enkel Proposed/Declined (bevestigd is hierboven geblokkeerd),
+        // die hebben geen bevestigings-tokens, dus geen verdere keten nodig.
+        //
+        // assignments/preferences komen uit een AsNoTracking-query mét Include(WeeklyTemplateEntry):
+        // die meegeladen entry-instances zouden bij RemoveRange botsen met de al-getrackte entry uit
+        // `series` ("cannot be tracked because another instance with the same key is already tracked").
+        // Verwijder daarom via key-only stubs — EF hangt ze puur op hun PK aan als Deleted, zonder
+        // navigatie-graph. Veilig omdat GetByIdAsync geen assignments/preferences trackt.
+        List<Domain.Entities.ScheduleAssignment> assignmentStubs =
+            assignments.Select(a => new Domain.Entities.ScheduleAssignment { Id = a.Id }).ToList();
+        List<Domain.Entities.TimeSlotPreference> preferenceStubs =
+            preferences.Select(p => new Domain.Entities.TimeSlotPreference { Id = p.Id }).ToList();
+
+        scheduleAssignmentRepo.RemoveRange(assignmentStubs);
+        timeSlotPreferenceRepo.RemoveRange(preferenceStubs);
+        await lessonRepo.DeleteRangeAsync(slotLessons, ct);
+        await lessonSeriesRepo.DeleteWeeklyTemplateRangeAsync([entry], ct);
+        await lessonSeriesRepo.SaveChangesAsync(ct);
+
+        return Result.Ok();
+    }
+
+    public async Task<Result> UpdateWeekSlotAsync(
+        Guid seriesId, Guid weeklyTemplateEntryId, Guid organizationId,
+        UpdateWeekSlotRequest request, CancellationToken ct = default)
+    {
+        Domain.Entities.LessonSerie? series = await lessonSeriesRepo.GetByIdAsync(seriesId, organizationId, ct);
+        if (series is null)
+            return Result.Fail(new Error(ErrorCodes.NotFound, "Lesreeks niet gevonden."));
+
+        Domain.Entities.WeeklyTemplateEntry? entry =
+            series.WeeklyTemplate.FirstOrDefault(w => w.Id == weeklyTemplateEntryId);
+        if (entry is null)
+            return Result.Fail(new Error(ErrorCodes.NotFound, "Weekslot niet gevonden."));
+
+        if (request.TrainerId.HasValue)
+        {
+            bool isValid = await userLookup.IsActiveTrainerAsync(request.TrainerId.Value, organizationId, ct);
+            if (!isValid)
+                return Result.Fail(new Error(ErrorCodes.Validation, "Deze trainer behoort niet tot deze organisatie."));
+        }
+
+        // Defensief parsen: de validator checkt het HH:mm-formaat, maar een niet-bestaande tijd
+        // (bv. "25:00") mag nooit als een rauwe FormatException → HTTP 500 doorlekken.
+        if (!TimeOnly.TryParseExact(request.StartTime, "HH:mm", out TimeOnly start)
+            || !TimeOnly.TryParseExact(request.EndTime, "HH:mm", out TimeOnly end))
+            return Result.Fail(new Error(ErrorCodes.Validation,
+                "Ongeldige tijd. Gebruik het formaat HH:mm (00:00–23:59)."));
+        if (end <= start)
+            return Result.Fail(new Error(ErrorCodes.Validation, "Eindtijd moet na de starttijd liggen."));
+        TimeSpan duration = end.ToTimeSpan() - start.ToTimeSpan();
+        if (duration.TotalMinutes < 15)
+            return Result.Fail(new Error(ErrorCodes.Validation, "Een lesmoment moet minstens 15 minuten duren."));
+        if (duration.TotalHours > 4)
+            return Result.Fail(new Error(ErrorCodes.Validation, "Een lesmoment mag maximaal 4 uur duren."));
+
+        string? court = NormalizeCourt(request.CourtName) is { Length: > 0 } c ? c : null;
+
+        List<Domain.Entities.Lesson> affected = series.Lessons
+            .Where(l => l.WeeklyTemplateEntryId == weeklyTemplateEntryId && !l.IsCancelled)
+            .ToList();
+
+        // Valideer trainer/baan-conflicten over de VOLLEDIGE set lessen vóór we iets muteren,
+        // anders kan een slot-wijziging stil overlappende lessen voor de trainer of baan maken.
+        Error? slotConflict = await CheckSlotConflictsAsync(
+            organizationId, affected, request.TrainerId, start, end, court, series.TennisClubId, ct);
+        if (slotConflict is not null)
+            return Result.Fail(slotConflict);
+
+        // Slot + alle niet-geannuleerde lessen ervan bijwerken → planning gaat mee. Eén SaveChanges.
+        entry.StartTime = start;
+        entry.EndTime = end;
+        entry.TrainerId = request.TrainerId;
+        entry.CourtName = court;
+        entry.MaxStudents = request.MaxStudents;
+
+        foreach (Domain.Entities.Lesson lesson in affected)
+        {
+            lesson.StartTime = start;
+            lesson.EndTime = end;
+            lesson.TrainerId = request.TrainerId;
+            lesson.CourtName = court;
+            lesson.MaxStudents = request.MaxStudents;
+        }
+
+        await lessonSeriesRepo.SaveChangesAsync(ct);
+        return Result.Ok();
+    }
+
+    public async Task<Result<Guid>> GetClubIdAsync(
+        Guid id, Guid organizationId, CancellationToken ct = default)
+    {
+        Domain.Entities.LessonSerie? series =
+            await lessonSeriesRepo.GetByIdAsync(id, organizationId, ct);
+
+        if (series is null)
+            return Result<Guid>.Fail(new Error(ErrorCodes.NotFound, "LessonSerie niet gevonden."));
+
+        return Result<Guid>.Ok(series.TennisClubId);
     }
 }

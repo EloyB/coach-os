@@ -12,6 +12,8 @@ export interface LessonDto {
   notes?: string;
   isCancelled: boolean;
   cancellationReason?: string | null;
+  /** Het weekslot waaruit deze les komt; null voor losse lessen. */
+  weeklyTemplateEntryId?: string | null;
 }
 
 export interface LessonSeriesDto {
@@ -34,8 +36,14 @@ export interface LessonSeriesDto {
   lessonCount: number;
   enrolledCount: number;
   totalCapacity: number;
+  minAge: number;
+  maxAge: number;
   createdAt: string;
   lessons: LessonDto[];
+  allowSoloEnrollment: boolean;
+  allowGroupEnrollment: boolean;
+  acceptOnlinePayment: boolean;
+  acceptManualPayment: boolean;
 }
 
 export interface CreateLessonSeriesRequest {
@@ -48,6 +56,10 @@ export interface CreateLessonSeriesRequest {
   endDate: string;
   durationMinutes: number;
   tennisClubId: string;
+  allowSoloEnrollment: boolean;
+  allowGroupEnrollment: boolean;
+  acceptOnlinePayment: boolean;
+  acceptManualPayment: boolean;
 }
 
 export interface UpdateLessonSeriesRequest {
@@ -57,6 +69,12 @@ export interface UpdateLessonSeriesRequest {
   isActive: boolean;
   tennisClubId: string;
   registrationDeadline?: string;
+  minAge: number;
+  maxAge: number;
+  allowSoloEnrollment: boolean;
+  allowGroupEnrollment: boolean;
+  acceptOnlinePayment: boolean;
+  acceptManualPayment: boolean;
 }
 
 export interface CreateLessonRequest {
@@ -115,6 +133,30 @@ export async function createLesson(seriesId: string, request: CreateLessonReques
   return data;
 }
 
+export interface AddWeeklyTemplateEntryRequest {
+  /** 0 = maandag … 6 = zondag. */
+  dayOfWeek: number;
+  startTime: string;
+  /** Verplicht in de backend (formaat HH:mm). */
+  endTime: string;
+  trainerId?: string | null;
+  courtName?: string;
+  maxStudents: number;
+  level?: number | null;
+}
+
+/**
+ * Voegt een wekelijks terugkerend weekslot toe aan een reeks. De backend maakt de weekindeling-entry
+ * (zichtbaar in de planning) én genereert de concrete lesmomenten vanaf vandaag tot de einddatum.
+ */
+export async function addWeeklyTemplateEntry(
+  seriesId: string,
+  request: AddWeeklyTemplateEntryRequest,
+): Promise<string> {
+  const { data } = await apiClient.post<string>(`/lessonseries/${seriesId}/weekly-template`, request);
+  return data;
+}
+
 export interface UpdateLessonRequest {
   trainerId?: string | null;
   date?: string;
@@ -125,6 +167,8 @@ export interface UpdateLessonRequest {
   notes?: string;
   isCancelled?: boolean;
   cancellationReason?: string;
+  /** "slot" past tijd/trainer/baan/capaciteit toe op het hele weekslot; "lesson" (of leeg) enkel deze les. */
+  applyTo?: "lesson" | "slot";
 }
 
 export async function updateLesson(seriesId: string, lessonId: string, request: UpdateLessonRequest): Promise<LessonDto> {
@@ -132,8 +176,41 @@ export async function updateLesson(seriesId: string, lessonId: string, request: 
   return data;
 }
 
-export async function deleteLesson(seriesId: string, lessonId: string): Promise<void> {
-  await apiClient.delete(`/lessonseries/${seriesId}/lessons/${lessonId}`);
+export async function deleteLesson(
+  seriesId: string,
+  lessonId: string,
+  wholeSlot = false,
+): Promise<void> {
+  const qs = wholeSlot ? "?applyTo=slot" : "";
+  await apiClient.delete(`/lessonseries/${seriesId}/lessons/${lessonId}${qs}`);
+}
+
+/** Verwijdert een weekslot rechtstreeks uit de weektemplate (incl. lessen/voorkeuren/voorgestelde toewijzingen). */
+export async function deleteWeekSlot(
+  seriesId: string,
+  weeklyTemplateEntryId: string,
+): Promise<void> {
+  await apiClient.delete(`/lessonseries/${seriesId}/weekly-template/${weeklyTemplateEntryId}`);
+}
+
+export interface UpdateWeekSlotRequest {
+  startTime: string;
+  endTime: string;
+  trainerId?: string | null;
+  courtName?: string;
+  maxStudents: number;
+}
+
+/** Past een weekslot aan (tijd/trainer/baan/capaciteit) — geldt voor het slot én al z'n lessen. */
+export async function updateWeekSlot(
+  seriesId: string,
+  weeklyTemplateEntryId: string,
+  request: UpdateWeekSlotRequest,
+): Promise<void> {
+  await apiClient.put(
+    `/lessonseries/${seriesId}/weekly-template/${weeklyTemplateEntryId}`,
+    request,
+  );
 }
 
 // ─── Wizard API ───────────────────────────────────────────────────────────────
@@ -161,12 +238,18 @@ export interface CreateLessonSeriesWizardRequest {
   name: string;
   price: number;
   maxRegistrations: number;
+  minAge: number;
+  maxAge: number;
   tennisClubId: string;
   startDate: string;
   endDate: string;
   registrationDeadline: string;
   weeklyTemplate: WizardSlotRequest[];
   lessons: LessonRequest[];
+  allowSoloEnrollment: boolean;
+  allowGroupEnrollment: boolean;
+  acceptOnlinePayment: boolean;
+  acceptManualPayment: boolean;
 }
 
 export async function createLessonSeriesWizard(

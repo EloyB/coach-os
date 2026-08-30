@@ -13,6 +13,12 @@ public class StudentLessonDto
     public string? CourtName { get; set; }
     public string? TrainerName { get; set; }
     public string Status { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Naam van de deelnemer. Nodig zodra één contactadres meerdere deelnemers draagt:
+    /// anders staan er in het portaal meerdere identieke rijen.
+    /// </summary>
+    public string ParticipantName { get; set; } = string.Empty;
     public bool IsGroup { get; set; }
     public int GroupSize { get; set; }
     public decimal Price { get; set; }

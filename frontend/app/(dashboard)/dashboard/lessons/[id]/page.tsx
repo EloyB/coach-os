@@ -18,16 +18,10 @@ import {
   X,
   Trash2,
   Plus,
-  Clock,
   CalendarDays,
   Euro,
-  UserCheck,
-  BarChart2,
   AlertTriangle,
   Building2,
-  Users,
-  Copy,
-  CheckCircle2,
   ClipboardList,
   MoreVertical,
   Download,
@@ -55,43 +49,57 @@ import {
   updateLessonSeries,
   deleteLessonSeries,
   exportSeriePlanning,
-  createLesson,
   LessonDto,
 } from "@/lib/api/lessonSeries";
 import { downloadBlob } from "@/lib/download";
 import {
-  getLessonSeriesEnrollments,
   getEnrollmentForm,
   saveEnrollmentForm,
-  cancelEnrollment,
 } from "@/lib/api/enrollments";
 import type {
-  LessonSeriesEnrollmentDto,
-  FormFieldDto,
   SaveFormFieldRequest,
 } from "@/lib/api/enrollments";
 
 import { getTennisClubs } from "@/lib/api/tennisClubs";
+import { getMollieConnectionStatus } from "@/lib/api/mollieConnect";
 import { getAuthUser } from "@/lib/auth";
 import { FieldError } from "@/components/forms/field-error";
 import { DatePicker } from "@/components/ui/date-picker";
 import { NativeSelect } from "@/components/ui/native-select";
 import { inputClass } from "@/lib/styles";
 import { formatDateShort, formatDateNL } from "@/lib/date-utils";
-import { enrollmentStatusStyles } from "@/lib/status-styles";
-import { Badge } from "@/components/ui/badge";
 import { PriceMatrixSection } from "./_components/price-matrix-section";
+import { EnrollmentsSection } from "./_components/enrollments-table";
 
 // ─── Edit Series Form ─────────────────────────────────────────────────────────
 
-const editSchema = z.object({
-  name: z.string().min(1, "Naam is verplicht").max(200),
-  description: z.string().max(1000).optional(),
-  tennisClubId: z.string().min(1, "Tennisclub is verplicht"),
-  price: z.number().min(0),
-  registrationDeadline: z.string().optional(),
-  isActive: z.boolean(),
-});
+const editSchema = z
+  .object({
+    name: z.string().min(1, "Naam is verplicht").max(200),
+    description: z.string().max(1000).optional(),
+    tennisClubId: z.string().min(1, "Tennisclub is verplicht"),
+    price: z.number().min(0),
+    registrationDeadline: z.string().optional(),
+    isActive: z.boolean(),
+    minAge: z.number().int().min(0).max(120),
+    maxAge: z.number().int().min(0).max(120),
+    allowSoloEnrollment: z.boolean(),
+    allowGroupEnrollment: z.boolean(),
+    acceptOnlinePayment: z.boolean(),
+    acceptManualPayment: z.boolean(),
+  })
+  .refine((d) => d.minAge <= d.maxAge, {
+    message: "Minimumleeftijd mag niet groter zijn dan de maximumleeftijd",
+    path: ["maxAge"],
+  })
+  .refine((d) => d.allowSoloEnrollment || d.allowGroupEnrollment, {
+    message: "Kies minstens één inschrijfwijze",
+    path: ["allowGroupEnrollment"],
+  })
+  .refine((d) => d.acceptOnlinePayment || d.acceptManualPayment, {
+    message: "Kies minstens één betaalmethode",
+    path: ["acceptManualPayment"],
+  });
 
 type EditFormValues = z.infer<typeof editSchema>;
 
@@ -111,6 +119,11 @@ function EditSeriesForm({
     queryKey: ["tennisClubs"],
     queryFn: getTennisClubs,
   });
+  const { data: mollie } = useQuery({
+    queryKey: ["mollieStatus"],
+    queryFn: getMollieConnectionStatus,
+  });
+  const mollieConnected = mollie?.connected ?? false;
 
   const mutation = useMutation({
     mutationFn: (data: EditFormValues) =>
@@ -121,6 +134,12 @@ function EditSeriesForm({
         price: data.price,
         registrationDeadline: data.registrationDeadline || undefined,
         isActive: data.isActive,
+        minAge: data.minAge,
+        maxAge: data.maxAge,
+        allowSoloEnrollment: data.allowSoloEnrollment,
+        allowGroupEnrollment: data.allowGroupEnrollment,
+        acceptOnlinePayment: data.acceptOnlinePayment,
+        acceptManualPayment: data.acceptManualPayment,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
@@ -133,11 +152,20 @@ function EditSeriesForm({
     register,
     control,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<EditFormValues>({
     resolver: zodResolver(editSchema),
     defaultValues,
   });
+
+  // Als de Mollie-koppeling niet (meer) actief is, kan online betalen nooit
+  // aangevinkt staan — forceer dit zodra de status binnen is.
+  useEffect(() => {
+    if (mollie && !mollieConnected) {
+      setValue("acceptOnlinePayment", false);
+    }
+  }, [mollie, mollieConnected, setValue]);
 
   return (
     <form
@@ -217,6 +245,34 @@ function EditSeriesForm({
             />
           </div>
         </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              Min. leeftijd
+            </label>
+            <input
+              {...register("minAge", { valueAsNumber: true })}
+              type="number"
+              min={0}
+              max={120}
+              className={inputClass}
+            />
+            <FieldError message={errors.minAge?.message} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              Max. leeftijd
+            </label>
+            <input
+              {...register("maxAge", { valueAsNumber: true })}
+              type="number"
+              min={0}
+              max={120}
+              className={inputClass}
+            />
+            <FieldError message={errors.maxAge?.message} />
+          </div>
+        </div>
         <div className="flex items-center gap-2">
           <input
             {...register("isActive")}
@@ -228,6 +284,65 @@ function EditSeriesForm({
             Actief
           </label>
         </div>
+
+        {/* Inschrijfwijze */}
+        <fieldset>
+          <legend className="block text-xs font-medium text-gray-600 mb-1">
+            Inschrijfwijze
+          </legend>
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              {...register("allowSoloEnrollment")}
+              className="w-4 h-4 accent-tennis-green"
+            />
+            Solo inschrijven
+          </label>
+          <label className="flex items-center gap-2 text-sm text-gray-700 mt-1">
+            <input
+              type="checkbox"
+              {...register("allowGroupEnrollment")}
+              className="w-4 h-4 accent-tennis-green"
+            />
+            In groep inschrijven
+          </label>
+          <FieldError message={errors.allowGroupEnrollment?.message} />
+        </fieldset>
+
+        {/* Betaalmethodes */}
+        <fieldset>
+          <legend className="block text-xs font-medium text-gray-600 mb-1">
+            Betaalmethodes
+          </legend>
+          <label
+            className={`flex items-center gap-2 text-sm text-gray-700 ${!mollieConnected ? "opacity-50" : ""}`}
+          >
+            <input
+              type="checkbox"
+              disabled={!mollieConnected}
+              {...register("acceptOnlinePayment")}
+              className="w-4 h-4 accent-tennis-green"
+            />
+            Online betalen (Mollie)
+          </label>
+          {!mollieConnected && (
+            <p className="text-xs text-gray-500 mt-1">
+              Online betalen kan pas nadat je met Mollie verbonden bent.{" "}
+              <Link href="/dashboard/settings" className="underline">
+                Verbind Mollie in instellingen
+              </Link>
+            </p>
+          )}
+          <label className="flex items-center gap-2 text-sm text-gray-700 mt-2">
+            <input
+              type="checkbox"
+              {...register("acceptManualPayment")}
+              className="w-4 h-4 accent-tennis-green"
+            />
+            Overschrijving
+          </label>
+          <FieldError message={errors.acceptManualPayment?.message} />
+        </fieldset>
       </div>
 
       {mutation.isError && (
@@ -324,7 +439,6 @@ function dayOfWeekFromDate(dateStr: string, weekDays: string[]): number {
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -353,6 +467,11 @@ function EditLessonDialog({
   const [endTime, setEndTime] = useState(lesson.endTime);
   const [maxStudents, setMaxStudents] = useState(lesson.maxStudents);
   const [notes, setNotes] = useState(lesson.notes ?? "");
+  // Komt de les uit een weekslot, dan vraagt "Opslaan" eerst of de wijziging voor het
+  // hele weekslot geldt of enkel deze les. Datum blijft altijd per les.
+  const belongsToWeekSlot = Boolean(lesson.weeklyTemplateEntryId);
+  const [confirmScopeOpen, setConfirmScopeOpen] = useState(false);
+  const [confirmDeleteScopeOpen, setConfirmDeleteScopeOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [cancelling, setCancelling] = useState(false);
@@ -365,7 +484,7 @@ function EditLessonDialog({
   const [rescheduleReason, setRescheduleReason] = useState("");
   const [rescheduling, setRescheduling] = useState(false);
 
-  async function handleSave() {
+  async function doSave(applyTo: "lesson" | "slot" | undefined) {
     setSaving(true);
     try {
       const request: UpdateLessonRequest = {
@@ -376,6 +495,7 @@ function EditLessonDialog({
         endTime,
         maxStudents,
         notes,
+        applyTo,
       };
 
       await updateLesson(seriesId, lesson.id, request);
@@ -388,11 +508,20 @@ function EditLessonDialog({
     }
   }
 
-  async function handleDelete() {
+  function handleSave() {
+    // Komt de les uit een weekslot, vraag eerst de reikwijdte; anders meteen opslaan.
+    if (belongsToWeekSlot) {
+      setConfirmScopeOpen(true);
+      return;
+    }
+    void doSave(undefined);
+  }
+
+  async function doDelete(wholeSlot: boolean) {
     setDeleting(true);
     try {
       const { deleteLesson } = await import("@/lib/api/lessonSeries");
-      await deleteLesson(seriesId, lesson.id);
+      await deleteLesson(seriesId, lesson.id, wholeSlot);
       queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
       onClose();
     } finally {
@@ -668,7 +797,7 @@ function EditLessonDialog({
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={handleDelete}
+                onClick={() => doDelete(false)}
                 disabled={deleting}
                 className="px-3 py-1.5 bg-red-600 text-white text-xs font-semibold rounded-lg hover:bg-red-700 disabled:opacity-60"
               >
@@ -737,7 +866,15 @@ function EditLessonDialog({
                   )}
                   <button
                     type="button"
-                    onClick={() => { setShowActionsMenu(false); setActiveAction("delete"); }}
+                    onClick={() => {
+                      setShowActionsMenu(false);
+                      // Weekslot-les: vraag de reikwijdte; losse les: inline bevestiging.
+                      if (belongsToWeekSlot) {
+                        setConfirmDeleteScopeOpen(true);
+                      } else {
+                        setActiveAction("delete");
+                      }
+                    }}
                     className="w-full flex items-center gap-2 px-3 py-2 text-red-600 hover:bg-red-50 text-left"
                   >
                     <Trash2 size={13} />
@@ -749,176 +886,83 @@ function EditLessonDialog({
           </div>
         )}
 
-      </DialogContent>
-    </Dialog>
-  );
-}
+        {/* Reikwijdte-bevestiging: enkel als de les uit een weekslot komt */}
+        <AlertDialog open={confirmScopeOpen} onOpenChange={setConfirmScopeOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                Wil je dit toepassen voor elk van deze weekslots?
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Tijd, trainer, baan en capaciteit gelden dan voor alle lessen van dit
+                weekslot én de planning. De datum blijft altijd enkel voor deze les.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmScopeOpen(false);
+                  void doSave("lesson");
+                }}
+                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+              >
+                Enkel dit weekslot
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmScopeOpen(false);
+                  void doSave("slot");
+                }}
+                className="rounded-lg bg-tennis-green px-4 py-2 text-sm font-semibold text-white hover:bg-tennis-green/90"
+              >
+                Ja
+              </button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
-function AddLessonDialog({
-  seriesId,
-  trainers,
-  defaultDate,
-  onClose,
-  onSaved,
-}: {
-  seriesId: string;
-  trainers: TrainerDto[];
-  defaultDate: string;
-  onClose: () => void;
-  onSaved: () => void;
-}) {
-  const [date, setDate] = useState(defaultDate);
-  const [trainerId, setTrainerId] = useState("");
-  const [courtName, setCourtName] = useState("");
-  const [startTime, setStartTime] = useState("18:00");
-  const [endTime, setEndTime] = useState("19:00");
-  const [maxStudents, setMaxStudents] = useState(4);
-  const [notes, setNotes] = useState("");
-  const [saving, setSaving] = useState(false);
+        {/* Reikwijdte-bevestiging bij verwijderen (enkel weekslot-lessen) */}
+        <AlertDialog open={confirmDeleteScopeOpen} onOpenChange={setConfirmDeleteScopeOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                Wil je dit verwijderen voor elk van deze weekslots?
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                &ldquo;Ja&rdquo; verwijdert het hele weekslot: alle lessen ervan én de
+                planning-plaatsing verdwijnen. De inschrijvingen zelf blijven bestaan.
+                Kies &ldquo;Enkel dit weekslot&rdquo; om alleen deze les te verwijderen.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={() => {
+                  setConfirmDeleteScopeOpen(false);
+                  void doDelete(false);
+                }}
+                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-60"
+              >
+                Enkel dit weekslot
+              </button>
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={() => {
+                  setConfirmDeleteScopeOpen(false);
+                  void doDelete(true);
+                }}
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+              >
+                Ja
+              </button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
-  const isValid = date !== "" && startTime !== "" && endTime < "24:00" && endTime > startTime;
-
-  async function handleSave() {
-    setSaving(true);
-    try {
-      await createLesson(seriesId, {
-        date,
-        startTime,
-        endTime,
-        trainerId: trainerId || null,
-        courtName: courtName.trim() || undefined,
-        maxStudents,
-        notes: notes.trim() || undefined,
-      });
-      toast.success("Lesmoment toegevoegd");
-      onSaved();
-    } catch {
-      // Error toast wordt al getoond door de axios interceptor
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Lesmoment toevoegen</DialogTitle>
-        </DialogHeader>
-
-        <div className="space-y-3">
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">
-              Datum
-            </label>
-            <DatePicker value={date} onChange={setDate} />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
-                Starttijd
-              </label>
-              <input
-                type="time"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                className={inputClass}
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
-                Eindtijd
-              </label>
-              <input
-                type="time"
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-                className={inputClass}
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">
-              Trainer
-            </label>
-            <NativeSelect
-              value={trainerId}
-              onChange={(e) => setTrainerId(e.target.value)}
-              className="w-full"
-            >
-              <option value="">Geen trainer</option>
-              {trainers.filter(isAssignableTrainer).map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.firstName} {t.lastName}
-                </option>
-              ))}
-            </NativeSelect>
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">
-              Baan
-            </label>
-            <input
-              type="text"
-              value={courtName}
-              onChange={(e) => setCourtName(e.target.value)}
-              placeholder="Baan 1"
-              className={inputClass}
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">
-              Max. leerlingen
-            </label>
-            <input
-              type="number"
-              min={1}
-              value={maxStudents}
-              onChange={(e) => setMaxStudents(parseInt(e.target.value) || 1)}
-              className={inputClass}
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">
-              Notities
-            </label>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={2}
-              className={inputClass + " resize-none"}
-            />
-          </div>
-        </div>
-
-        {endTime <= startTime && (
-          <p className="text-xs text-red-600">
-            De eindtijd moet na de starttijd liggen.
-          </p>
-        )}
-
-        <DialogFooter>
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors"
-          >
-            Annuleren
-          </button>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={saving || !isValid}
-            className="px-4 py-2 rounded-lg bg-tennis-green text-white text-sm font-medium hover:bg-tennis-green/90 transition-colors disabled:opacity-50"
-          >
-            {saving ? "Bezig…" : "Toevoegen"}
-          </button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
@@ -950,7 +994,6 @@ function LessonWeekView({
   })();
   const [weekIndex, setWeekIndex] = useState(initialWeekIndex);
   const [editingLesson, setEditingLesson] = useState<LessonDto | null>(null);
-  const [addingLesson, setAddingLesson] = useState(false);
   const queryClient = useQueryClient();
   const currentWeek = weeks[weekIndex];
 
@@ -1014,14 +1057,6 @@ function LessonWeekView({
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setAddingLesson(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 mr-1 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
-          >
-            <Plus size={12} />
-            Lesmoment toevoegen
-          </button>
           <span className="text-xs text-gray-500">
             Week {weekIndex + 1} van {weeks.length}
           </span>
@@ -1065,22 +1100,7 @@ function LessonWeekView({
         }}
       />
 
-      {/* Add lesson dialog */}
-      {addingLesson && (
-        <AddLessonDialog
-          seriesId={seriesId}
-          trainers={trainers}
-          defaultDate={currentWeek.startDate}
-          onClose={() => setAddingLesson(false)}
-          onSaved={() => {
-            setAddingLesson(false);
-            queryClient.invalidateQueries({
-              queryKey: ["lessonSeries", seriesId],
-            });
-          }}
-        />
-      )}
-
+      {/* Add week-slot dialog */}
       {/* Edit lesson dialog */}
       {editingLesson && (
         <EditLessonDialog
@@ -1490,209 +1510,6 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
   );
 }
 
-// ─── Enrollments Section ──────────────────────────────────────────────────────
-
-function EnrollmentRow({
-  enrollment,
-  seriesId,
-}: {
-  enrollment: LessonSeriesEnrollmentDto;
-  seriesId: string;
-}) {
-  const queryClient = useQueryClient();
-  const [expanded, setExpanded] = useState(false);
-  const [cancelling, setCancelling] = useState(false);
-  const hasResponses = enrollment.formResponses.length > 0;
-  const isCancelled = enrollment.status === "Cancelled";
-
-  async function handleCancelEnrollment() {
-    setCancelling(true);
-    try {
-      await cancelEnrollment(seriesId, enrollment.id);
-      toast.success("Inschrijving geannuleerd");
-      queryClient.invalidateQueries({ queryKey: ["enrollments", seriesId] });
-      queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
-    } catch {
-      // Error toast wordt al getoond door de axios interceptor
-    } finally {
-      setCancelling(false);
-    }
-  }
-
-  return (
-    <div className="border-b border-gray-50 last:border-b-0">
-      <div
-        className={`flex items-center justify-between px-5 py-3 ${hasResponses ? "cursor-pointer hover:bg-gray-50/50" : ""} ${isCancelled ? "opacity-50" : ""}`}
-        onClick={() => hasResponses && setExpanded((v) => !v)}
-      >
-        <div className="flex-1 min-w-0">
-          <p
-            className={`text-sm font-medium text-gray-800 truncate ${isCancelled ? "line-through" : ""}`}
-          >
-            {enrollment.studentName}
-          </p>
-          <p className="text-xs text-gray-400 truncate">
-            {enrollment.studentEmail}
-          </p>
-        </div>
-        <div className="flex items-center gap-3 ml-4">
-          {enrollment.categoryLabel && (
-            <Badge
-              className={`border-0 text-xs ${
-                enrollment.category === 2
-                  ? "bg-sky-100 text-sky-700"
-                  : "bg-gray-100 text-gray-600"
-              }`}
-            >
-              {enrollment.categoryLabel}
-            </Badge>
-          )}
-          <span className="text-xs text-gray-400">
-            {new Date(enrollment.enrolledAt).toLocaleDateString("nl-BE")}
-          </span>
-          {enrollmentStatusStyles[enrollment.status] && (
-            <Badge
-              className={`${enrollmentStatusStyles[enrollment.status].className} border-0 text-xs`}
-            >
-              {enrollmentStatusStyles[enrollment.status].label}
-            </Badge>
-          )}
-          {!isCancelled && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <button
-                  onClick={(e) => e.stopPropagation()}
-                  disabled={cancelling}
-                  aria-label={`Inschrijving van ${enrollment.studentName} annuleren`}
-                  className="p-1 rounded-md text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
-                >
-                  <Trash2 size={13} />
-                </button>
-              </AlertDialogTrigger>
-              <AlertDialogContent onClick={(e) => e.stopPropagation()}>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Inschrijving annuleren?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    De inschrijving van {enrollment.studentName} wordt op
-                    geannuleerd gezet en de plaats komt weer vrij. De
-                    formulierantwoorden blijven bewaard.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Terug</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleCancelEnrollment}
-                    className="bg-red-600 hover:bg-red-700"
-                  >
-                    Annuleren
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
-          {hasResponses &&
-            (expanded ? (
-              <ChevronUp size={13} className="text-gray-400" />
-            ) : (
-              <ChevronDown size={13} className="text-gray-400" />
-            ))}
-        </div>
-      </div>
-
-      {expanded && hasResponses && (
-        <div className="px-5 pb-3">
-          <dl className="space-y-1.5 bg-[#FAFAF8] rounded-lg p-3">
-            {enrollment.formResponses.map((r, i) => (
-              <div key={i} className="flex gap-3 text-xs">
-                <dt className="text-gray-500 shrink-0 min-w-[120px]">
-                  {r.fieldLabel}
-                </dt>
-                <dd className="text-gray-800 font-medium">{r.value}</dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function EnrollmentsSection({ seriesId }: { seriesId: string }) {
-  const [copied, setCopied] = useState(false);
-
-  const { data: enrollments = [], isLoading } = useQuery({
-    queryKey: ["enrollments", seriesId],
-    queryFn: () => getLessonSeriesEnrollments(seriesId),
-  });
-
-  function handleCopyLink() {
-    const url = `${window.location.origin}/enroll/${seriesId}`;
-    navigator.clipboard.writeText(url);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }
-
-  const active = enrollments.filter(
-    (e) => e.status === "Confirmed" || e.status === "Pending",
-  );
-
-  return (
-    <div
-      id="enrollments"
-      className="bg-white rounded-xl shadow-sm shadow-gray-100 overflow-hidden scroll-mt-20"
-    >
-      <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <h2 className="text-sm font-semibold text-gray-800">
-            Inschrijvingen
-          </h2>
-          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-tennis-green/10 text-tennis-green text-xs font-bold">
-            {active.length}
-          </span>
-        </div>
-        <button
-          onClick={handleCopyLink}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
-        >
-          {copied ? (
-            <>
-              <CheckCircle2 size={12} className="text-green-500" />
-              Link gekopieerd
-            </>
-          ) : (
-            <>
-              <Copy size={12} />
-              Inschrijflink
-            </>
-          )}
-        </button>
-      </div>
-
-      {isLoading ? (
-        <div className="p-8 text-center">
-          <div className="w-4 h-4 border-2 border-tennis-green/30 border-t-tennis-green rounded-full animate-spin mx-auto" />
-        </div>
-      ) : enrollments.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-10 text-center">
-          <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center mb-2">
-            <Users size={15} className="text-gray-400" />
-          </div>
-          <p className="text-sm text-gray-400">Nog geen inschrijvingen</p>
-        </div>
-      ) : (
-        <div>
-          {enrollments.map((enrollment) => (
-            <EnrollmentRow
-              key={enrollment.id}
-              enrollment={enrollment}
-              seriesId={seriesId}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ─── Page Skeleton ────────────────────────────────────────────────────────────
 
@@ -1885,6 +1702,12 @@ export default function LessonSeriesDetailPage({
                   registrationDeadline:
                     series.registrationDeadline?.split("T")[0] ?? "",
                   isActive: series.isActive,
+                  minAge: series.minAge ?? 3,
+                  maxAge: series.maxAge ?? 99,
+                  allowSoloEnrollment: series.allowSoloEnrollment,
+                  allowGroupEnrollment: series.allowGroupEnrollment,
+                  acceptOnlinePayment: series.acceptOnlinePayment,
+                  acceptManualPayment: series.acceptManualPayment,
                 }}
                 onCancel={() => setEditing(false)}
                 onSaved={() => setEditing(false)}
@@ -1901,11 +1724,13 @@ export default function LessonSeriesDetailPage({
             seriesId={id}
           />
 
-          {/* ── Section 4: Prijzen per categorie en groepsgrootte ── */}
-          <PriceMatrixSection seriesId={id} legacyPrice={series.price} />
+          {/* ── Section 4: Prijzen per categorie en groepsgrootte (admin only) ── */}
+          {isAdmin && (
+            <PriceMatrixSection seriesId={id} legacyPrice={series.price} />
+          )}
 
-          {/* ── Section 5: Form builder ── */}
-          <FormBuilderSection seriesId={id} />
+          {/* ── Section 5: Form builder (admin only) ── */}
+          {isAdmin && <FormBuilderSection seriesId={id} />}
 
           {/* ── Section 5: Enrollments ── */}
           <EnrollmentsSection seriesId={id} />

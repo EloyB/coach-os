@@ -25,6 +25,14 @@ public interface IPaymentRepository
     Task<Payment?> GetLatestByEnrollmentIdAsync(Guid enrollmentId, CancellationToken ct = default);
 
     /// <summary>
+    /// Meest recente Pending/Paid payment voor een enrollment. Gebruikt als
+    /// idempotency guard zodat dubbelklikken of dubbele webrequests geen tweede
+    /// Mollie-betaling voor dezelfde betaler aanmaken.
+    /// </summary>
+    Task<Payment?> GetLatestOpenOrPaidByEnrollmentIdAsync(
+        Guid enrollmentId, Guid organizationId, CancellationToken ct = default);
+
+    /// <summary>
     /// Meest recente payment voor een kamp-inschrijving (op CreatedAt desc).
     /// Gebruikt door de publieke thank-you-page status polling.
     /// </summary>
@@ -37,6 +45,14 @@ public interface IPaymentRepository
     /// </summary>
     Task<Payment?> GetLatestPendingCashByCampEnrollmentIdAsync(
         Guid campEnrollmentId, Guid organizationId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Meest recente openstaande (Pending) cash-betaling voor een reeks-inschrijving,
+    /// getrackt en org-gescoped. Gebruikt wanneer de admin de overschrijving als betaald
+    /// markeert. Tracked zodat de status-mutatie wordt opgeslagen.
+    /// </summary>
+    Task<Payment?> GetLatestPendingCashByEnrollmentIdAsync(
+        Guid enrollmentId, Guid organizationId, CancellationToken ct = default);
 
     /// <summary>
     /// Meest recente betaalmethode + status per kamp-inschrijving, in één query

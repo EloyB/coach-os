@@ -8,10 +8,10 @@ using LessonSerieEntity = CoachOS.Domain.Entities.LessonSerie;
 namespace CoachOS.Application.Pricing;
 
 /// <summary>
-/// Centrale prijsberekening. Vóór deze service stond de formule
-/// <c>Price * groepsgrootte</c> vijf keer gedupliceerd verspreid over vier services,
-/// met één afwijkende (foute) variant in PaymentService. Alle callsites routeren
-/// nu hierheen.
+/// Prijsberekening voor een lessenreeks. Simpel model: elke reeks heeft een lijst
+/// benoemde prijsopties waaruit de speler er één kiest (per deelnemer). Bestaan er
+/// geen opties, of koos niemand er een, dan valt de berekening terug op het legacy
+/// veld <see cref="LessonSerie.Price"/> (per persoon × groepsgrootte).
 /// </summary>
 public class PricingService(
     ILessonSerieRepository lessonSeries,
@@ -33,55 +33,40 @@ public class PricingService(
                 ErrorCodes.NotFound, "Lessenreeks niet gevonden."));
         }
 
-        IReadOnlyList<LessonSeriePrice> matrix = await prices.GetBySeriesPublicAsync(lessonSerieId, ct);
+        IReadOnlyList<LessonSeriePrice> options = await prices.GetBySeriesPublicAsync(lessonSerieId, ct);
         int groupSize = participants.Count;
 
-        // Geen matrix ingesteld → legacy gedrag: LessonSerie.Price geldt per persoon.
-        if (matrix.Count == 0)
-        {
-            decimal legacyTotal = Round(series.Price * groupSize);
-            return Result<PriceBreakdown>.Ok(new PriceBreakdown
-            {
-                Total = legacyTotal,
-                GroupSize = groupSize,
-                UsedLegacyPrice = true,
-                Lines =
-                [
-                    new PriceLine
-                    {
-                        Category = ParticipantCategory.Adult,
-                        Count = groupSize,
-                        Amount = legacyTotal,
-                    }
-                ],
-            });
-        }
+        if (options.Count == 0)
+            return Legacy(series, groupSize);
 
-        // Matrix geeft een TOTAAL per groep. Bij een gemengde groep bestaat er geen
-        // enkele juiste rij, dus nemen we per categorie het pro-rata aandeel:
-        // aandeel per persoon = rij.TotalPrice / rij.GroupSize.
+        Result<PriceBreakdown>? chosen = CalculateChosenOptions(options, participants, groupSize);
+        return chosen ?? Legacy(series, groupSize);
+    }
+
+    /// <summary>
+    /// Rekent op basis van de door de deelnemers gekozen prijsopties: bedrag per optie
+    /// × aantal deelnemers dat die koos. Geeft null terug wanneer niemand een optie koos
+    /// (dan volgt de legacy-fallback).
+    /// </summary>
+    private static Result<PriceBreakdown>? CalculateChosenOptions(
+        IReadOnlyList<LessonSeriePrice> options, IReadOnlyList<Enrollment> participants, int groupSize)
+    {
+        if (participants.All(p => p.SelectedPriceOptionId is null)) return null;
+
+        Dictionary<Guid, LessonSeriePrice> optionsById = options.ToDictionary(p => p.Id);
+
         List<PriceLine> lines = [];
         decimal total = 0m;
-
-        IEnumerable<IGrouping<ParticipantCategory, Enrollment>> byCategory = participants
-            .GroupBy(p => p.Category ?? ParticipantCategory.Adult)
-            .OrderBy(g => g.Key);
-
-        foreach (IGrouping<ParticipantCategory, Enrollment> group in byCategory)
+        foreach (IGrouping<Guid?, Enrollment> selectedGroup in participants.GroupBy(p => p.SelectedPriceOptionId))
         {
-            LessonSeriePrice? row = SelectRow(matrix, group.Key, groupSize);
-
-            decimal amount = row is null
-                // Categorie ontbreekt volledig in de matrix → legacy prijs per persoon.
-                ? Round(series.Price * group.Count())
-                : Round(row.TotalPrice / row.GroupSize * group.Count());
-
-            lines.Add(new PriceLine
+            if (selectedGroup.Key is null || !optionsById.TryGetValue(selectedGroup.Key.Value, out LessonSeriePrice? option))
             {
-                Category = group.Key,
-                Count = group.Count(),
-                Amount = amount,
-            });
+                return Result<PriceBreakdown>.Fail(new Error(
+                    ErrorCodes.Validation, "Geselecteerde prijsoptie is niet geldig voor deze lessenreeks."));
+            }
+
+            decimal amount = Round(option.TotalPrice * selectedGroup.Count());
+            lines.Add(Line(option, selectedGroup.Count(), amount));
             total += amount;
         }
 
@@ -94,29 +79,36 @@ public class PricingService(
         });
     }
 
-    /// <summary>
-    /// Kiest de tariefrij voor een categorie. Exacte match op groepsgrootte wint.
-    /// Bestaat die niet, dan de dichtstbijzijnde gedefinieerde grootte — bij gelijke
-    /// afstand de grotere groep, omdat dat het goedkopere tarief per persoon oplevert
-    /// en we de klant niet willen overvragen op een grootte die de club niet instelde.
-    /// </summary>
-    private static LessonSeriePrice? SelectRow(
-        IReadOnlyList<LessonSeriePrice> matrix, ParticipantCategory category, int groupSize)
+    private static Result<PriceBreakdown> Legacy(LessonSerieEntity series, int groupSize)
     {
-        List<LessonSeriePrice> forCategory = matrix.Where(p => p.Category == category).ToList();
-        if (forCategory.Count == 0) return null;
-
-        return forCategory
-            .OrderBy(p => Math.Abs(p.GroupSize - groupSize))
-            .ThenByDescending(p => p.GroupSize)
-            .First();
+        decimal legacyTotal = Round(series.Price * groupSize);
+        return Result<PriceBreakdown>.Ok(new PriceBreakdown
+        {
+            Total = legacyTotal,
+            GroupSize = groupSize,
+            UsedLegacyPrice = true,
+            Lines =
+            [
+                new PriceLine
+                {
+                    Label = "Standaardprijs",
+                    Category = ParticipantCategory.Adult,
+                    Count = groupSize,
+                    Amount = legacyTotal,
+                }
+            ],
+        });
     }
 
-    /// <summary>
-    /// Mollie weigert bedragen met meer dan 2 decimalen. Per regel afronden i.p.v.
-    /// op het eindtotaal, zodat de getoonde specificatie exact optelt tot het
-    /// aangerekende bedrag.
-    /// </summary>
+    private static PriceLine Line(LessonSeriePrice option, int count, decimal amount) => new()
+    {
+        Label = string.IsNullOrWhiteSpace(option.Label) ? "Prijsoptie" : option.Label,
+        Description = option.Description,
+        Category = null,
+        Count = count,
+        Amount = amount,
+    };
+
     private static decimal Round(decimal value)
         => Math.Round(value, 2, MidpointRounding.AwayFromZero);
 }

@@ -5,11 +5,11 @@ import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
   CalendarDays,
-  Clock,
   MapPin,
   User,
   Users,
   Euro,
+  Cake,
   CheckCircle2,
   Copy,
   Plus,
@@ -30,17 +30,17 @@ import type {
 import { getPublicTimeSlots } from "@/lib/api/timeSlots";
 import type { TimeSlotDto } from "@/lib/api/timeSlots";
 import { LESSON_LEVELS } from "@/lib/api/lessonSeries";
+import { type LessonSeriePriceDto } from "@/lib/api/lessonSeriePrices";
 import { getAuthUser } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { TennisBallIcon } from "@/components/ui/tennis-ball-icon";
+import { LogoMark } from "@/components/ui/logo-mark";
 import { Spinner } from "@/components/ui/spinner";
 import { formatDateNL } from "@/lib/date-utils";
 import Link from "next/link";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const FIELD_TYPE_TEXT = 1;
 const FIELD_TYPE_MULTIPLE_CHOICE = 2;
 const FIELD_TYPE_YES_NO = 3;
 const FIELD_TYPE_AGE_CATEGORY = 4;
@@ -59,7 +59,12 @@ const DAY_NAMES = [
   "Zondag",
 ];
 
-type GroupMember = { name: string; email: string; dateOfBirth: string };
+type GroupMember = {
+  name: string;
+  email: string;
+  dateOfBirth: string;
+  hasOwnEmail: boolean;
+};
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -83,6 +88,18 @@ function validateBirthDate(value: string): string | undefined {
   if (parsed < oldest) return "Controleer de geboortedatum";
 
   return undefined;
+}
+
+/** Leeftijd in hele jaren op een peildatum (yyyy-MM-dd strings). */
+function ageOn(dob: string, onDate: string): number | null {
+  if (!dob || !onDate) return null;
+  const b = new Date(dob + "T00:00:00");
+  const d = new Date(onDate + "T00:00:00");
+  if (Number.isNaN(b.getTime()) || Number.isNaN(d.getTime())) return null;
+  let age = d.getFullYear() - b.getFullYear();
+  const m = d.getMonth() - b.getMonth();
+  if (m < 0 || (m === 0 && d.getDate() < b.getDate())) age--;
+  return age;
 }
 
 function inputClass(hasError: boolean) {
@@ -127,12 +144,15 @@ export default function EnrollPage() {
   // Availability preferences
   const [preferences, setPreferences] = useState<Record<string, number>>({});
 
-  // Enrollment type
+  // Enrollment type. De reeks bepaalt welke wijzen toegelaten zijn; "solo" is
+  // hier enkel een placeholder tot de reeks geladen is (zie loadData hieronder,
+  // die het type corrigeert naar de eerst-toegelaten wijze).
   const [enrollmentType, setEnrollmentType] = useState<"solo" | "group">(
     "solo"
   );
   const [isOpenToGrouping, setIsOpenToGrouping] = useState(false);
   const [groupMembers, setGroupMembers] = useState<GroupMember[]>([]);
+  const [selectedPriceOptionId, setSelectedPriceOptionId] = useState<string>("");
   const [memberErrors, setMemberErrors] = useState<
     Record<number, { name?: string; email?: string; dateOfBirth?: string }>
   >({});
@@ -151,6 +171,14 @@ export default function EnrollPage() {
         setSeries(seriesData);
         setForm(formData);
         setTimeSlots(slotsData);
+        // Default naar de eerst-toegelaten inschrijfwijze zodra de reeks bekend is.
+        setEnrollmentType(
+          seriesData.allowSoloEnrollment ? "solo" : "group"
+        );
+        // Eén optie? Automatisch geselecteerd. Meerdere? De speler kiest.
+        setSelectedPriceOptionId(
+          seriesData.priceOptions.length === 1 ? seriesData.priceOptions[0].id : ""
+        );
       } catch {
         setError("Lessenreeks niet gevonden.");
       } finally {
@@ -159,6 +187,37 @@ export default function EnrollPage() {
     }
     loadData();
   }, [seriesId]);
+
+  // Reset alle formuliervelden zodat iemand meteen een nieuwe inschrijving kan
+  // doen zonder de pagina te verversen. Ververst ook de reeks zodat het aantal
+  // ingeschrevenen/vrije plekken klopt na de vorige inschrijving.
+  async function resetForm() {
+    setSubmitted(false);
+    setSubmitError(null);
+    setFirstName("");
+    setLastName("");
+    setEmail("");
+    setPhone("");
+    setDateOfBirth("");
+    setFieldValues({});
+    setFieldErrors({});
+    setBaseErrors({});
+    setPreferences({});
+    setIsOpenToGrouping(false);
+    setGroupMembers([]);
+    setMemberErrors({});
+    setEnrollmentType(series?.allowSoloEnrollment ? "solo" : "group");
+    setSelectedPriceOptionId(
+      series && series.priceOptions.length === 1 ? series.priceOptions[0].id : ""
+    );
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    try {
+      const fresh = await getPublicLessonSeries(seriesId);
+      setSeries(fresh);
+    } catch {
+      // Niet fataal — het formulier is al gereset.
+    }
+  }
 
   // ─── Field helpers ──────────────────────────────────────────────────────
 
@@ -179,7 +238,10 @@ export default function EnrollPage() {
 
   function addGroupMember() {
     if (groupMembers.length >= 3) return;
-    setGroupMembers((prev) => [...prev, { name: "", email: "", dateOfBirth: "" }]);
+    setGroupMembers((prev) => [
+      ...prev,
+      { name: "", email: "", dateOfBirth: "", hasOwnEmail: false },
+    ]);
   }
 
   function removeGroupMember(index: number) {
@@ -208,6 +270,22 @@ export default function EnrollPage() {
     }
   }
 
+  function toggleMemberOwnEmail(index: number, hasOwnEmail: boolean) {
+    setGroupMembers((prev) =>
+      prev.map((m, i) =>
+        i === index ? { ...m, hasOwnEmail, email: hasOwnEmail ? m.email : "" } : m
+      )
+    );
+  }
+
+  function priceOptions(): LessonSeriePriceDto[] {
+    return series?.priceOptions ?? [];
+  }
+
+  function formatPriceOption(option: LessonSeriePriceDto): string {
+    return `€${option.totalPrice.toFixed(2)} per deelnemer`;
+  }
+
   // ─── Validation ─────────────────────────────────────────────────────────
 
   function validate(): boolean {
@@ -219,6 +297,12 @@ export default function EnrollPage() {
       errors.email = "Ongeldig e-mailadres";
     const dobError = validateBirthDate(dateOfBirth);
     if (dobError) errors.dateOfBirth = dobError;
+    if (series) {
+      const leaderAge = ageOn(dateOfBirth, series.startDate);
+      if (leaderAge !== null && (leaderAge < series.minAge || leaderAge > series.maxAge)) {
+        errors.dateOfBirth = `Leeftijd moet tussen ${series.minAge} en ${series.maxAge} jaar zijn`;
+      }
+    }
     setBaseErrors(errors);
 
     const fErrors: Record<string, string> = {};
@@ -239,15 +323,45 @@ export default function EnrollPage() {
       groupMembers.forEach((m, i) => {
         const e: { name?: string; email?: string; dateOfBirth?: string } = {};
         if (!m.name.trim()) e.name = "Naam is verplicht";
-        if (!m.email.trim()) e.email = "E-mailadres is verplicht";
-        else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(m.email))
-          e.email = "Ongeldig e-mailadres";
+        if (m.hasOwnEmail) {
+          if (!m.email.trim()) e.email = "E-mailadres is verplicht";
+          else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(m.email))
+            e.email = "Ongeldig e-mailadres";
+        }
         const memberDobError = validateBirthDate(m.dateOfBirth);
         if (memberDobError) e.dateOfBirth = memberDobError;
+        if (series) {
+          const memberAge = ageOn(m.dateOfBirth, series.startDate);
+          if (memberAge !== null && (memberAge < series.minAge || memberAge > series.maxAge)) {
+            e.dateOfBirth = `Leeftijd moet tussen ${series.minAge} en ${series.maxAge} jaar zijn`;
+          }
+        }
         if (e.name || e.email || e.dateOfBirth) mErrors[i] = e;
+      });
+
+      // Dubbele deelnemer (naam + geboortedatum) — spiegelt de backend zonder
+      // server-lookup, dus zonder te lekken wie al ingeschreven is.
+      const people = [
+        `${firstName.trim().toLowerCase()} ${lastName.trim().toLowerCase()}|${dateOfBirth}`,
+        ...groupMembers.map(
+          (m) => `${m.name.trim().toLowerCase()}|${m.dateOfBirth}`
+        ),
+      ];
+      groupMembers.forEach((m, i) => {
+        if (!m.name.trim() || !m.dateOfBirth) return;
+        const key = `${m.name.trim().toLowerCase()}|${m.dateOfBirth}`;
+        if (people.filter((p) => p === key).length > 1) {
+          mErrors[i] = { ...mErrors[i], name: t("duplicate_participant") };
+        }
       });
     }
     setMemberErrors(mErrors);
+
+    const requiresPriceChoice = priceOptions().length > 0;
+    if (requiresPriceChoice && !selectedPriceOptionId) {
+      setSubmitError("Kies een prijsoptie om verder te gaan.");
+      return false;
+    }
 
     return (
       Object.keys(errors).length === 0 &&
@@ -286,11 +400,12 @@ export default function EnrollPage() {
           timeSlotPreferences.length > 0 ? timeSlotPreferences : undefined,
         enrollmentType,
         isOpenToGrouping,
+        selectedPriceOptionId: selectedPriceOptionId || undefined,
         groupMembers:
           enrollmentType === "group" && groupMembers.length > 0
             ? groupMembers.map((m) => ({
                 studentName: m.name.trim(),
-                studentEmail: m.email.trim(),
+                studentEmail: m.hasOwnEmail ? m.email.trim() : null,
                 dateOfBirth: m.dateOfBirth,
                 responses: [],
               }))
@@ -466,6 +581,10 @@ export default function EnrollPage() {
     (a, b) => a.dayOfWeek - b.dayOfWeek || a.startTime.localeCompare(b.startTime)
   );
 
+  // Niveau is optioneel — geen badge tonen als het niet ingevuld is
+  const levelLabel =
+    series.level != null ? LESSON_LEVELS[series.level] : undefined;
+
   // ─── Render ─────────────────────────────────────────────────────────────
 
   return (
@@ -473,17 +592,17 @@ export default function EnrollPage() {
       <div className="max-w-2xl mx-auto px-4 py-8">
         {/* Logo */}
         <div className="flex items-center gap-2 mb-8">
-          <div className="w-8 h-8 bg-tennis-green rounded-full flex items-center justify-center">
-            <TennisBallIcon className="w-4 h-4 text-white" strokeWidth={2} />
-          </div>
+          <LogoMark className="h-8 w-8" markPx={22} />
           <span className="font-semibold text-lg text-tennis-green">CoachOS</span>
         </div>
 
         {/* Series info card */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 mb-6">
-          <Badge className="bg-tennis-lime/20 text-tennis-green border-0 mb-2 text-xs font-semibold">
-            {LESSON_LEVELS[series.level] ?? "Niveau " + series.level}
-          </Badge>
+          {levelLabel && (
+            <Badge className="bg-tennis-lime/20 text-tennis-green border-0 mb-2 text-xs font-semibold">
+              {levelLabel}
+            </Badge>
+          )}
           <h1 className="text-2xl font-bold text-gray-900 mb-2">{series.name}</h1>
           {series.description && (
             <p className="text-gray-600 text-sm mb-4 leading-relaxed">
@@ -504,7 +623,15 @@ export default function EnrollPage() {
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <Euro className="w-4 h-4 text-gray-400 shrink-0" />
-              <span>€{series.price.toFixed(2)} per reeks</span>
+              <span>
+                {series.priceOptions.length > 0
+                  ? `${series.priceOptions.length} prijsoptie${series.priceOptions.length === 1 ? "" : "s"}`
+                  : `€${series.price.toFixed(2)} per deelnemer`}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <Cake className="w-4 h-4 text-gray-400 shrink-0" />
+              <span>Leeftijd: {series.minAge}–{series.maxAge} jaar</span>
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <Users className="w-4 h-4 text-gray-400 shrink-0" />
@@ -536,6 +663,43 @@ export default function EnrollPage() {
           </div>
         </div>
 
+        {!submitted && series.priceOptions.length > 0 && (
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 mb-6">
+            <div className="flex items-center gap-2 mb-3">
+              <Euro className="w-4 h-4 text-tennis-green" />
+              <h2 className="text-sm font-semibold text-gray-900">Prijsopties</h2>
+            </div>
+            {priceOptions().length > 0 && (
+              <div>
+                <p className="text-xs text-gray-500 mb-2">Kies de prijsoptie die voor jou van toepassing is.</p>
+                <div className="space-y-2">
+                  {priceOptions().map((option) => (
+                    <label key={option.id} className="block cursor-pointer rounded-lg border border-gray-200 p-3 hover:border-tennis-green/40">
+                      <div className="flex items-start gap-3">
+                        <input
+                          type="radio"
+                          name="selectedPriceOption"
+                          value={option.id}
+                          checked={selectedPriceOptionId === option.id}
+                          onChange={() => setSelectedPriceOptionId(option.id)}
+                          className="mt-1 w-4 h-4 text-tennis-green focus:ring-tennis-green"
+                        />
+                        <div className="flex-1">
+                          <div className="flex items-start justify-between gap-3">
+                            <span className="text-sm font-medium text-gray-800">{option.label}</span>
+                            <span className="text-sm font-semibold text-tennis-green whitespace-nowrap">{formatPriceOption(option)}</span>
+                          </div>
+                          {option.description && <p className="text-xs text-gray-500 mt-1">{option.description}</p>}
+                        </div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Enrollment form card */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
           {submitted ? (
@@ -547,6 +711,13 @@ export default function EnrollPage() {
                 {t("enroll_success_title")}
               </h2>
               <p className="text-sm text-gray-500">{t("enroll_success_body")}</p>
+              <button
+                type="button"
+                onClick={resetForm}
+                className="mt-6 text-sm font-medium text-tennis-green hover:underline"
+              >
+                {t("enroll_again")}
+              </button>
             </div>
           ) : (
             <form onSubmit={handleSubmit} noValidate>
@@ -677,71 +848,81 @@ export default function EnrollPage() {
                 <hr className="border-gray-100" />
 
                 {/* ── Enrollment type ── */}
+                {/* Enkel tonen als er echt een keuze is: bij één toegelaten wijze staat
+                    enrollmentType al vast (zie loadData) en is er niets te kiezen. */}
                 <div>
-                  <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-                    {t("enrollment_type")}
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <label
-                      className={`border-2 rounded-lg p-4 cursor-pointer transition ${
-                        enrollmentType === "solo"
-                          ? "border-tennis-green bg-tennis-green/5"
-                          : "border-gray-200 hover:border-tennis-green/30"
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="enrollType"
-                        value="solo"
-                        checked={enrollmentType === "solo"}
-                        onChange={() => setEnrollmentType("solo")}
-                        className="sr-only"
-                      />
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
-                          <User className="w-5 h-5 text-gray-600" />
-                        </div>
-                        <div>
-                          <div className="font-medium text-gray-900 text-sm">
-                            {t("type_solo")}
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            Ik schrijf mezelf in
-                          </div>
-                        </div>
-                      </div>
-                    </label>
+                  {series.allowSoloEnrollment && series.allowGroupEnrollment && (
+                    <>
+                      <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                        {t("enrollment_type")}
+                      </h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {series.allowSoloEnrollment && (
+                          <label
+                            className={`border-2 rounded-lg p-4 cursor-pointer transition ${
+                              enrollmentType === "solo"
+                                ? "border-tennis-green bg-tennis-green/5"
+                                : "border-gray-200 hover:border-tennis-green/30"
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name="enrollType"
+                              value="solo"
+                              checked={enrollmentType === "solo"}
+                              onChange={() => setEnrollmentType("solo")}
+                              className="sr-only"
+                            />
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
+                                <User className="w-5 h-5 text-gray-600" />
+                              </div>
+                              <div>
+                                <div className="font-medium text-gray-900 text-sm">
+                                  {t("type_solo")}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  Ik schrijf mezelf in
+                                </div>
+                              </div>
+                            </div>
+                          </label>
+                        )}
 
-                    <label
-                      className={`border-2 rounded-lg p-4 cursor-pointer transition ${
-                        enrollmentType === "group"
-                          ? "border-tennis-green bg-tennis-green/5"
-                          : "border-gray-200 hover:border-tennis-green/30"
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="enrollType"
-                        value="group"
-                        checked={enrollmentType === "group"}
-                        onChange={() => setEnrollmentType("group")}
-                        className="sr-only"
-                      />
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
-                          <Users className="w-5 h-5 text-gray-600" />
-                        </div>
-                        <div>
-                          <div className="font-medium text-gray-900 text-sm">
-                            {t("type_group")}
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            Ik schrijf meerdere personen in
-                          </div>
-                        </div>
+                        {series.allowGroupEnrollment && (
+                          <label
+                            className={`border-2 rounded-lg p-4 cursor-pointer transition ${
+                              enrollmentType === "group"
+                                ? "border-tennis-green bg-tennis-green/5"
+                                : "border-gray-200 hover:border-tennis-green/30"
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name="enrollType"
+                              value="group"
+                              checked={enrollmentType === "group"}
+                              onChange={() => setEnrollmentType("group")}
+                              className="sr-only"
+                            />
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
+                                <Users className="w-5 h-5 text-gray-600" />
+                              </div>
+                              <div>
+                                <div className="font-medium text-gray-900 text-sm">
+                                  {t("type_group")}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  Ik schrijf meerdere personen in
+                                </div>
+                              </div>
+                            </div>
+                          </label>
+                        )}
                       </div>
-                    </label>
-                  </div>
+                    </>
+                  )}
 
                   {/* Open to grouping (both solo and group) */}
                   {(enrollmentType === "solo" || enrollmentType === "group") && (
@@ -758,8 +939,7 @@ export default function EnrollPage() {
                             {t("open_to_grouping")}
                           </div>
                           <div className="text-xs text-gray-500 mt-0.5">
-                            Het systeem kan je automatisch koppelen aan andere
-                            leerlingen met dezelfde beschikbaarheid
+                            {t("open_to_grouping_desc")}
                           </div>
                         </div>
                       </label>
@@ -784,6 +964,10 @@ export default function EnrollPage() {
                           </button>
                         )}
                       </div>
+
+                      <p className="text-xs text-gray-500">
+                        {t("group_contact_explainer")}
+                      </p>
 
                       {groupMembers.map((member, i) => (
                         <div
@@ -823,23 +1007,45 @@ export default function EnrollPage() {
                                 </p>
                               )}
                             </div>
-                            <div>
-                              <input
-                                type="email"
-                                value={member.email}
-                                onChange={(e) =>
-                                  updateGroupMember(i, "email", e.target.value)
-                                }
-                                placeholder={t("member_email")}
-                                className={inputClass(!!memberErrors[i]?.email)}
-                              />
-                              {memberErrors[i]?.email && (
-                                <p className="text-xs text-red-500 mt-1">
-                                  {memberErrors[i].email}
+                            <div className="sm:col-span-2">
+                              <label className="flex items-center gap-2 text-xs text-gray-600">
+                                <input
+                                  type="checkbox"
+                                  checked={member.hasOwnEmail}
+                                  onChange={(e) =>
+                                    toggleMemberOwnEmail(i, e.target.checked)
+                                  }
+                                  className="rounded border-gray-300 text-tennis-green focus:ring-tennis-green/20"
+                                />
+                                {t("member_has_own_email")}
+                              </label>
+
+                              {member.hasOwnEmail ? (
+                                <div className="mt-2">
+                                  <input
+                                    type="email"
+                                    value={member.email}
+                                    onChange={(e) =>
+                                      updateGroupMember(i, "email", e.target.value)
+                                    }
+                                    placeholder={t("member_email")}
+                                    className={inputClass(!!memberErrors[i]?.email)}
+                                  />
+                                  {memberErrors[i]?.email && (
+                                    <p className="text-xs text-red-500 mt-1">
+                                      {memberErrors[i].email}
+                                    </p>
+                                  )}
+                                </div>
+                              ) : (
+                                <p className="text-xs text-gray-400 mt-1">
+                                  {t("member_contact_via_leader", {
+                                    email: email.trim() || "…",
+                                  })}
                                 </p>
                               )}
                             </div>
-                            <div>
+                            <div className="sm:col-span-2">
                               <label className="block text-xs text-gray-500 mb-1">
                                 {t("form_member_date_of_birth")} *
                               </label>

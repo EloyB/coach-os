@@ -15,14 +15,14 @@ public class StudentLessonsService(
     public async Task<Result<List<StudentLessonDto>>> GetMyLessonsAsync(
         string email, CancellationToken ct = default)
     {
-        var assignments = await assignmentRepo.GetByStudentEmailAsync(email, ct);
+        var assignments = await assignmentRepo.GetByContactEmailAsync(email, ct);
         return await BuildDtosAsync(assignments, ct);
     }
 
     public async Task<Result<StudentLessonDto>> GetMyLessonAsync(
         string email, Guid assignmentId, CancellationToken ct = default)
     {
-        var assignments = await assignmentRepo.GetByStudentEmailAsync(email, ct);
+        var assignments = await assignmentRepo.GetByContactEmailAsync(email, ct);
         var match = assignments.FirstOrDefault(a => a.Id == assignmentId);
         if (match is null)
             return Result<StudentLessonDto>.Fail(new Error(ErrorCodes.NotFound, "Les niet gevonden."));
@@ -103,6 +103,9 @@ public class StudentLessonsService(
                         ? trainerNames.GetValueOrDefault(slot.TrainerId.Value)
                         : null,
                     Status = a.Status.ToString(),
+                    ParticipantName = a.Enrollment?.StudentName
+                        ?? a.EnrollmentGroup?.Members.FirstOrDefault()?.StudentName
+                        ?? string.Empty,
                     IsGroup = isGroup,
                     GroupSize = size,
                     Price = priceByAssignment[a.Id],

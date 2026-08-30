@@ -20,8 +20,20 @@ public interface IEnrollmentRepository
     Task<List<Enrollment>> GetBySeriesAsync(
         Guid lessonSeriesId, Guid organizationId, CancellationToken ct = default);
 
-    Task<bool> IsDuplicateAsync(
-        Guid lessonSeriesId, string studentEmail, CancellationToken ct = default);
+    /// <summary>
+    /// Staat deze persoon al in de reeks? Identiteit = contactadres + genormaliseerde
+    /// naam + geboortedatum, zodat twee kinderen op het adres van hun ouder allebei
+    /// mogen inschrijven maar dezelfde persoon niet twee keer.
+    /// Zonder geboortedatum is de persoon niet te identificeren; dan `false`, in lijn
+    /// met de partiële unique index IX_Enrollments_Participant.
+    /// </summary>
+    Task<bool> IsDuplicateParticipantAsync(
+        Guid lessonSeriesId, string contactEmail, string studentName,
+        DateOnly? dateOfBirth, CancellationToken ct = default);
+
+    Task<bool> IsDuplicateParticipantExceptAsync(
+        Guid lessonSeriesId, Guid excludedEnrollmentId, string contactEmail,
+        string studentName, DateOnly? dateOfBirth, CancellationToken ct = default);
 
     Task<int> CountActiveBySeriesAsync(Guid lessonSeriesId, CancellationToken ct = default);
 
@@ -37,6 +49,14 @@ public interface IEnrollmentRepository
     /// </summary>
     Task<int> ReassignLessonLinkAsync(
         Guid fromLessonId, Guid toLessonId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Bestaat er een inschrijving die rechtstreeks aan één van deze lessen hangt
+    /// (<see cref="Enrollment.LessonId"/>)? Gebruikt om te blokkeren dat een weekslot met
+    /// nog-gekoppelde inschrijvingen verwijderd wordt — de FK staat op Restrict.
+    /// </summary>
+    Task<bool> AnyByLessonIdsAsync(
+        IReadOnlyCollection<Guid> lessonIds, CancellationToken ct = default);
 
     Task AddAsync(Enrollment enrollment, CancellationToken ct = default);
 

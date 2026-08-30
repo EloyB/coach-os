@@ -201,7 +201,7 @@ Loop deze punten af en vink aan wat klopt:
 - [ ] **Dubbele inschrijving**: een tweede inschrijving met **hetzelfde e-mailadres** voor hetzelfde kamp wordt geweigerd.
 - [ ] **Inschrijfdeadline**: na de deadline kan er niet meer ingeschreven worden.
 - [ ] **Rollen**: een **beheerder** kan bewerken en verwijderen, een **trainer** ziet alles read-only (geen bewerk-, opslaan- of verwijderknoppen).
-- [ ] **Bevestigingsmails**: na een inschrijving en na bevestiging worden de juiste e-mails verstuurd. Lokaal lees je die in smtp4dev op http://localhost:3001.
+- [ ] **Bevestigingsmails**: na een inschrijving en na bevestiging worden de juiste e-mails verstuurd. Lokaal lees je die in Mailpit op http://localhost:3001.
 
 ---
 

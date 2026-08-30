@@ -32,7 +32,7 @@ public class ScheduleAssignmentRepository(ApplicationDbContext context) : ISched
             .FirstOrDefaultAsync(a => a.Id == id && a.OrganizationId == organizationId, ct);
     }
 
-    public async Task<List<ScheduleAssignment>> GetByStudentEmailAsync(
+    public async Task<List<ScheduleAssignment>> GetByContactEmailAsync(
         string email, CancellationToken ct = default)
     {
         var normalized = email.Trim().ToLower();
@@ -47,9 +47,9 @@ public class ScheduleAssignmentRepository(ApplicationDbContext context) : ISched
             .Where(a => a.Status != ScheduleAssignmentStatus.Declined
                 && a.LessonSerie.IsActive
                 && (
-                    (a.Enrollment != null && a.Enrollment.StudentEmail.ToLower() == normalized)
+                    (a.Enrollment != null && a.Enrollment.ContactEmail.ToLower() == normalized)
                     || (a.EnrollmentGroup != null
-                        && a.EnrollmentGroup.Members.Any(m => m.StudentEmail.ToLower() == normalized))
+                        && a.EnrollmentGroup.Members.Any(m => m.ContactEmail.ToLower() == normalized))
                 ))
             .ToListAsync(ct);
     }

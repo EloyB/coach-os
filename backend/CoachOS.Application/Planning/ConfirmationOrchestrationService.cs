@@ -88,17 +88,51 @@ public class ConfirmationOrchestrationService(
             return Result<bool>.Fail(new Error(ErrorCodes.Unexpected, "Planning kon niet bevestigd worden. Probeer het opnieuw."));
         }
 
-        foreach (var (recipient, assignment, rawToken) in emailsToSend)
-        {
-            if (!slotById.TryGetValue(assignment.WeeklyTemplateEntryId, out var slot)) continue;
+        // Groeperen op contactadres: wie meerdere deelnemers draagt, krijgt één mail
+        // met een eigen bevestigingsknop per deelnemer. Tokens blijven per toewijzing.
+        var byContact = emailsToSend
+            .Where(x => slotById.ContainsKey(x.assignment.WeeklyTemplateEntryId))
+            .GroupBy(x => x.recipient.ContactEmail.Trim().ToLowerInvariant());
 
+        var baseUrl = appOptions.Value.ConfirmationBaseUrl.TrimEnd('/');
+
+        foreach (var group in byContact)
+        {
+            var entries = group.ToList();
             try
             {
-                await SendConfirmationEmailAsync(recipient, series, slot, rawToken, ct);
+                if (entries.Count == 1)
+                {
+                    var (recipient, assignment, rawToken) = entries[0];
+                    await SendConfirmationEmailAsync(
+                        recipient, series, slotById[assignment.WeeklyTemplateEntryId], rawToken,
+                        GroupParticipantNames(assignment), ct);
+                    continue;
+                }
+
+                List<ScheduleConfirmationItem> items = entries
+                    .Select(e =>
+                    {
+                        WeeklyTemplateEntry slot = slotById[e.assignment.WeeklyTemplateEntryId];
+                        return new ScheduleConfirmationItem(
+                            e.recipient.StudentName,
+                            slot.DayOfWeek,
+                            slot.StartTime.ToString("HH:mm"),
+                            slot.EndTime.ToString("HH:mm"),
+                            slot.CourtName,
+                            $"{baseUrl}/{e.rawToken}");
+                    })
+                    .ToList();
+
+                await emailService.SendScheduleConfirmationBundleAsync(
+                    group.Key, series.Name, items, ct);
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "E-mail voor toewijzing {AssignmentId} mislukt.", assignment.Id);
+                // Eén fout raakt nu meerdere deelnemers; log daarom alle assignment-id's,
+                // anders is niet te achterhalen wie geen mail kreeg.
+                logger.LogError(ex, "E-mail naar {ContactEmail} mislukt voor toewijzingen {AssignmentIds}.",
+                    group.Key, string.Join(", ", entries.Select(e => e.assignment.Id)));
             }
         }
 
@@ -106,6 +140,73 @@ public class ConfirmationOrchestrationService(
             "Planning bevestigd voor reeks {SeriesId}: {Count} toewijzingen, {TokenCount} tokens verzonden",
             seriesId, proposedAssignments.Count, tokens.Count);
 
+        return Result<bool>.Ok(true);
+    }
+
+    public async Task<Result<bool>> SendAssignmentConfirmationAsync(
+        Guid seriesId, Guid assignmentId, Guid organizationId, CancellationToken ct = default)
+    {
+        var series = await lessonSeriesRepo.GetByIdAsync(seriesId, organizationId, ct);
+        if (series is null)
+            return Result<bool>.Fail(new Error(ErrorCodes.NotFound, "Lessenreeks niet gevonden."));
+
+        if (series.PlanningStatus is not (PlanningStatus.Planning or PlanningStatus.AwaitingConfirmation))
+            return Result<bool>.Fail(
+                new Error(ErrorCodes.Validation, "Planning moet eerst gegenereerd worden."));
+
+        var assignment = await scheduleAssignmentRepo.GetByIdAsync(assignmentId, organizationId, ct);
+        if (assignment is null || assignment.LessonSerieId != seriesId)
+            return Result<bool>.Fail(new Error(ErrorCodes.NotFound, "Toewijzing niet gevonden."));
+
+        if (assignment.Status != ScheduleAssignmentStatus.Proposed)
+            return Result<bool>.Fail(
+                new Error(ErrorCodes.Validation, "Alleen concepttoewijzingen kunnen definitief aangeboden worden."));
+
+        var slot = series.WeeklyTemplate.FirstOrDefault(s => s.Id == assignment.WeeklyTemplateEntryId);
+        if (slot is null)
+            return Result<bool>.Fail(new Error(ErrorCodes.NotFound, "Tijdslot niet gevonden."));
+
+        var recipient = ResolveRecipient(assignment);
+        if (recipient is null)
+            return Result<bool>.Fail(new Error(ErrorCodes.Validation, "Geen ontvanger gevonden voor deze toewijzing."));
+
+        var rawToken = GenerateRawToken();
+        var token = new AssignmentConfirmationToken
+        {
+            OrganizationId = organizationId,
+            ScheduleAssignmentId = assignment.Id,
+            EnrollmentId = recipient.Id,
+            TokenHash = HashToken(rawToken),
+            ExpiresAt = DateTime.UtcNow.AddHours(72),
+            Response = ConfirmationResponse.Pending,
+        };
+
+        assignment.Status = ScheduleAssignmentStatus.AwaitingConfirmation;
+        assignment.IsLocked = true;
+
+        await tokenRepo.AddRangeAsync([token], ct);
+
+        var allAssignments = await scheduleAssignmentRepo.GetBySeriesAsync(seriesId, organizationId, ct);
+        bool hasRemainingProposed = allAssignments.Any(a =>
+            a.Id != assignment.Id && a.Status == ScheduleAssignmentStatus.Proposed);
+        if (!hasRemainingProposed)
+            series.PlanningStatus = PlanningStatus.AwaitingConfirmation;
+
+        await lessonSeriesRepo.SaveChangesAsync(ct);
+
+        try
+        {
+            await SendConfirmationEmailAsync(
+                recipient, series, slot, rawToken, GroupParticipantNames(assignment), ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Vroege bevestigingsmail voor toewijzing {AssignmentId} mislukt.", assignment.Id);
+            return Result<bool>.Fail(
+                new Error(ErrorCodes.Validation, "E-mail kon niet verzonden worden. Probeer opnieuw of contacteer de lesnemer handmatig."));
+        }
+
+        logger.LogInformation("Toewijzing {AssignmentId} definitief aangeboden voor reeks {SeriesId}.", assignment.Id, seriesId);
         return Result<bool>.Ok(true);
     }
 
@@ -140,7 +241,8 @@ public class ConfirmationOrchestrationService(
                 AssignmentId = token.ScheduleAssignmentId,
                 EnrollmentId = token.EnrollmentId,
                 StudentName = token.Enrollment.StudentName,
-                StudentEmail = token.Enrollment.StudentEmail,
+                // Contactadres: dat is waar de bevestigingsmail heen ging.
+                StudentEmail = token.Enrollment.ContactEmail,
                 StudentPhone = token.Enrollment.StudentPhone,
                 IsGroup = isGroup,
                 GroupSize = groupSize,
@@ -202,7 +304,8 @@ public class ConfirmationOrchestrationService(
 
         try
         {
-            await SendConfirmationEmailAsync(recipient, series, slot, rawToken, ct);
+            await SendConfirmationEmailAsync(
+                recipient, series, slot, rawToken, GroupParticipantNames(assignment), ct);
         }
         catch (Exception ex)
         {
@@ -331,11 +434,12 @@ public class ConfirmationOrchestrationService(
         CoachOS.Domain.Entities.LessonSerie series,
         WeeklyTemplateEntry slot,
         string rawToken,
+        IReadOnlyList<string>? participantNames,
         CancellationToken ct)
     {
         var baseUrl = appOptions.Value.ConfirmationBaseUrl.TrimEnd('/');
         return emailService.SendScheduleConfirmationAsync(
-            recipient.StudentEmail,
+            recipient.ContactEmail,
             recipient.StudentName,
             series.Name,
             slot.DayOfWeek,
@@ -343,8 +447,21 @@ public class ConfirmationOrchestrationService(
             slot.EndTime.ToString("HH:mm"),
             slot.CourtName,
             $"{baseUrl}/{rawToken}",
+            participantNames,
             ct);
     }
+
+    /// <summary>
+    /// Namen van alle deelnemers van de toewijzing wanneer het een groep is; anders
+    /// null (solo hoeft niet benoemd te worden). Voor de enkelvoudige planningsmail
+    /// bij een groep, zodat de contactpersoon ziet dat de les voor de hele groep geldt.
+    /// </summary>
+    private static IReadOnlyList<string>? GroupParticipantNames(ScheduleAssignment assignment)
+        => assignment.EnrollmentGroupId.HasValue
+           && assignment.EnrollmentGroup is not null
+           && assignment.EnrollmentGroup.Members.Count > 0
+            ? assignment.EnrollmentGroup.Members.Select(m => m.StudentName).ToList()
+            : null;
 
     internal static string GenerateRawToken()
     {

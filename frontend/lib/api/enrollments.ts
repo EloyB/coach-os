@@ -1,12 +1,14 @@
 import apiClient from '@/lib/api-client';
+import publicApiClient from '@/lib/public-api-client';
 import type { LessonDto } from './lessonSeries';
+import type { LessonSeriePriceDto } from './lessonSeriePrices';
 
 export interface PublicLessonSeriesDto {
   id: string;
   name: string;
   description: string | null;
   trainerName: string;
-  level: number;
+  level: number | null;
   price: number;
   startDate: string;
   endDate: string;
@@ -14,6 +16,11 @@ export interface PublicLessonSeriesDto {
   tennisClubName: string;
   enrollmentCount: number;
   maxRegistrations: number | null;
+  minAge: number;
+  maxAge: number;
+  allowSoloEnrollment: boolean;
+  allowGroupEnrollment: boolean;
+  priceOptions: LessonSeriePriceDto[];
   lessons: LessonDto[];
 }
 
@@ -40,7 +47,10 @@ export interface EnrollmentResponseItem {
 export interface LessonSeriesEnrollmentDto {
   id: string;
   studentName: string;
-  studentEmail: string;
+  studentEmail: string | null;
+  studentPhone: string | null;
+  contactEmail: string;
+  hasOwnEmail: boolean;
   status: string;
   enrolledAt: string;
   notes: string | null;
@@ -49,7 +59,21 @@ export interface LessonSeriesEnrollmentDto {
   /** 1 = volwassenen, 2 = jeugd, null = onbekend. */
   category: number | null;
   categoryLabel: string | null;
+  /** Null = solo-inschrijving; anders de groep waartoe deze inschrijving hoort. */
+  enrollmentGroupId: string | null;
+  /** True als deze inschrijving de groepsleider is (draagt de gedeelde betaling). */
+  isGroupLeader: boolean;
+  isOpenToGrouping: boolean;
   formResponses: EnrollmentResponseItem[];
+}
+
+export interface UpdateBasicEnrollmentRequest {
+  studentName: string;
+  contactEmail: string;
+  studentEmail?: string | null;
+  studentPhone?: string | null;
+  dateOfBirth: string;
+  isOpenToGrouping: boolean;
 }
 
 export interface SaveFormFieldRequest {
@@ -68,7 +92,8 @@ export interface TimeSlotPreferenceRequest {
 
 export interface GroupMemberRequest {
   studentName: string;
-  studentEmail: string;
+  /** Weglaten of null = communicatie loopt via de groepsleider. */
+  studentEmail?: string | null;
   studentPhone?: string;
   /** yyyy-MM-dd — verplicht, bepaalt het tarief (volwassene/jeugd). */
   dateOfBirth: string;
@@ -85,16 +110,17 @@ export interface SubmitEnrollmentRequest {
   timeSlotPreferences?: TimeSlotPreferenceRequest[];
   enrollmentType?: string; // "solo" | "group"
   isOpenToGrouping?: boolean;
+  selectedPriceOptionId?: string;
   groupMembers?: GroupMemberRequest[];
 }
 
 export async function getPublicLessonSeries(id: string): Promise<PublicLessonSeriesDto> {
-  const { data } = await apiClient.get<PublicLessonSeriesDto>(`/public/lessonseries/${id}`);
+  const { data } = await publicApiClient.get<PublicLessonSeriesDto>(`/public/lessonseries/${id}`);
   return data;
 }
 
 export async function getEnrollmentForm(seriesId: string): Promise<EnrollmentFormDto | null> {
-  const { data } = await apiClient.get<EnrollmentFormDto | null>(`/public/lessonseries/${seriesId}/form`);
+  const { data } = await publicApiClient.get<EnrollmentFormDto | null>(`/public/lessonseries/${seriesId}/form`);
   return data;
 }
 
@@ -104,12 +130,52 @@ export async function saveEnrollmentForm(seriesId: string, fields: SaveFormField
 }
 
 export async function submitEnrollment(seriesId: string, request: SubmitEnrollmentRequest): Promise<string> {
-  const { data } = await apiClient.post<string>(`/public/lessonseries/${seriesId}/enroll`, request);
+  const { data } = await publicApiClient.post<string>(`/public/lessonseries/${seriesId}/enroll`, request);
   return data;
 }
 
 export async function getLessonSeriesEnrollments(seriesId: string): Promise<LessonSeriesEnrollmentDto[]> {
   const { data } = await apiClient.get<LessonSeriesEnrollmentDto[]>(`/lessonseries/${seriesId}/enrollments`);
+  return data;
+}
+
+/** Tijdslot-voorkeur: 1 = Beschikbaar, 2 = Voorkeur, 3 = Niet beschikbaar. */
+export interface EnrollmentTimeSlotPreferenceDto {
+  weeklyTemplateEntryId: string;
+  preference: number;
+}
+
+export interface EnrollmentWithPreferencesDto {
+  id: string;
+  studentName: string;
+  studentEmail: string | null;
+  status: string;
+  isOpenToGrouping: boolean;
+  enrollmentGroupId: string | null;
+  groupName: string | null;
+  isGroupLeader: boolean;
+  preferences: EnrollmentTimeSlotPreferenceDto[];
+}
+
+/** Inschrijvingen mét hun tijdslot-voorkeuren (admin) — voor de detail-weergave. */
+export async function getEnrollmentsWithPreferences(
+  seriesId: string,
+): Promise<EnrollmentWithPreferencesDto[]> {
+  const { data } = await apiClient.get<EnrollmentWithPreferencesDto[]>(
+    `/lessonseries/${seriesId}/enrollments/planning`,
+  );
+  return data;
+}
+
+export async function updateBasicEnrollment(
+  seriesId: string,
+  enrollmentId: string,
+  request: UpdateBasicEnrollmentRequest,
+): Promise<LessonSeriesEnrollmentDto> {
+  const { data } = await apiClient.put<LessonSeriesEnrollmentDto>(
+    `/lessonseries/${seriesId}/enrollments/${enrollmentId}`,
+    request,
+  );
   return data;
 }
 
@@ -120,4 +186,18 @@ export async function getLessonSeriesEnrollments(seriesId: string): Promise<Less
  */
 export async function cancelEnrollment(seriesId: string, enrollmentId: string): Promise<void> {
   await apiClient.delete(`/lessonseries/${seriesId}/enrollments/${enrollmentId}`);
+}
+
+/** Annuleert een volledige groep in één atomaire backend-transactie (alles-of-niets). */
+export async function cancelEnrollmentGroup(seriesId: string, groupId: string): Promise<void> {
+  await apiClient.delete(`/lessonseries/${seriesId}/enrollment-groups/${groupId}`);
+}
+
+/**
+ * Markeert de openstaande overschrijving van een reeksinschrijving als betaald.
+ * Bevestigt de inschrijving en verstuurt de bevestigingsmail. Faalt met NotFound
+ * als er geen openstaande cash-betaling is voor deze inschrijving.
+ */
+export async function markEnrollmentCashPaid(enrollmentId: string): Promise<void> {
+  await apiClient.post(`/enrollments/${enrollmentId}/mark-cash-paid`);
 }

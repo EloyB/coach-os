@@ -28,10 +28,16 @@ export type Step1Data = {
   name: string;
   price: number;
   maxRegistrations: number;
+  minAge: number;
+  maxAge: number;
   tennisClubId: string;
   startDate: string;
   endDate: string;
   registrationDeadline: string;
+  allowSoloEnrollment: boolean;
+  allowGroupEnrollment: boolean;
+  acceptOnlinePayment: boolean;
+  acceptManualPayment: boolean;
 };
 
 export type WizardData = Step1Data & {

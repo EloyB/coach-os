@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using CoachOS.Application.Common;
 using CoachOS.Application.Configuration;
 using CoachOS.Application.Mappings;
 using CoachOS.Application.StandaloneLessons.DTOs;
@@ -15,6 +16,7 @@ namespace CoachOS.Application.StandaloneLessons;
 public class StandaloneLessonService(
     ILessonRepository lessonRepo,
     ILessonInvitationRepository invitationRepo,
+    ITennisClubRepository tennisClubRepo,
     IUserLookupService userLookup,
     IEmailService emailService,
     ApplicationMapper mapper,
@@ -31,6 +33,11 @@ public class StandaloneLessonService(
         bool trainerOk = await userLookup.IsActiveTrainerAsync(request.TrainerId, organizationId, ct);
         if (!trainerOk)
             return Result<Guid>.Fail(new Error(ErrorCodes.Validation, "Geselecteerde trainer is geen actief lid van deze organisatie."));
+
+        // Club moet bestaan binnen deze organisatie (voorkomt cross-org club-ids).
+        bool clubOk = await tennisClubRepo.ExistsAsync(request.TennisClubId, organizationId, ct);
+        if (!clubOk)
+            return Result<Guid>.Fail(new Error(ErrorCodes.Validation, "Geselecteerde club behoort niet tot deze organisatie."));
 
         // Datum + tijd parsen (validator garandeert formaat).
         DateOnly date = DateOnly.ParseExact(request.Date, "yyyy-MM-dd");
@@ -49,19 +56,12 @@ public class StandaloneLessonService(
             return Result<Guid>.Fail(new Error(ErrorCodes.Conflict,
                 "Trainer heeft al een les op dit tijdstip."));
 
-        // Baan-conflict check (binnen de organisatie: een baan hoort bij één org).
-        if (!string.IsNullOrWhiteSpace(request.CourtName))
-        {
-            Lesson? courtConflict = await lessonRepo.FindCourtConflictAsync(
-                organizationId, request.CourtName, date, startTime, endTime, excludeLessonId: null, ct);
-            if (courtConflict is not null)
-            {
-                string seriesName = courtConflict.LessonSerie?.Name ?? "onbekende reeks";
-                string conflictTime = $"{courtConflict.StartTime:HH:mm}–{courtConflict.EndTime:HH:mm}";
-                return Result<Guid>.Fail(new Error(ErrorCodes.Conflict,
-                    $"{request.CourtName.Trim()} is op {courtConflict.Date:dd/MM/yyyy} van {conflictTime} al bezet door reeks {seriesName}."));
-            }
-        }
+        // Baan-conflict check, gescoped tot de club van deze losse les.
+        Error? courtConflictError = await lessonRepo.CheckCourtConflictAsync(
+            organizationId, request.CourtName, date, startTime, endTime,
+            tennisClubId: request.TennisClubId, ct: ct);
+        if (courtConflictError is not null)
+            return Result<Guid>.Fail(courtConflictError);
 
         // Deelnemers normaliseren + dedupen.
         List<string> normalizedEmails = NormalizeAndDedup(request.ParticipantEmails);
@@ -73,6 +73,7 @@ public class StandaloneLessonService(
         {
             OrganizationId = organizationId,
             LessonSerieId = null,
+            TennisClubId = request.TennisClubId,
             Date = date,
             StartTime = startTime,
             EndTime = endTime,
@@ -143,6 +144,10 @@ public class StandaloneLessonService(
             .ToList();
         Dictionary<Guid, string> trainerNames = await userLookup.GetUserNamesByIdsAsync(trainerIds, ct);
 
+        // Club-namen in één keer ophalen (klein aantal clubs per organisatie).
+        IReadOnlyList<TennisClub> clubs = await tennisClubRepo.GetByOrganizationAsync(organizationId, ct);
+        Dictionary<Guid, string> clubNames = clubs.ToDictionary(c => c.Id, c => c.Name);
+
         List<StandaloneLessonListItemDto> result = new();
         foreach (Lesson lesson in lessons)
         {
@@ -151,6 +156,8 @@ public class StandaloneLessonService(
 
             string? trainerName = lesson.TrainerId.HasValue
                 && trainerNames.TryGetValue(lesson.TrainerId.Value, out string? n) ? n : null;
+            string? clubName = lesson.TennisClubId.HasValue
+                && clubNames.TryGetValue(lesson.TennisClubId.Value, out string? cn) ? cn : null;
 
             result.Add(new StandaloneLessonListItemDto
             {
@@ -162,6 +169,8 @@ public class StandaloneLessonService(
                 Level = lesson.Level.HasValue ? (int)lesson.Level.Value : null,
                 TrainerId = lesson.TrainerId,
                 TrainerName = trainerName,
+                TennisClubId = lesson.TennisClubId,
+                TennisClubName = clubName,
                 MaxParticipants = lesson.MaxStudents,
                 InvitedCount = invs.Count,
                 AcceptedCount = accepted,
@@ -183,6 +192,12 @@ public class StandaloneLessonService(
         string? trainerName = lesson.TrainerId.HasValue
             ? await userLookup.GetUserNameByIdAsync(lesson.TrainerId.Value, ct)
             : null;
+        string? clubName = null;
+        if (lesson.TennisClubId.HasValue)
+        {
+            TennisClub? club = await tennisClubRepo.GetByIdAsync(lesson.TennisClubId.Value, organizationId, ct);
+            clubName = club?.Name;
+        }
 
         int duration = (int)(lesson.EndTime - lesson.StartTime).TotalMinutes;
 
@@ -197,6 +212,8 @@ public class StandaloneLessonService(
             Level = lesson.Level.HasValue ? (int)lesson.Level.Value : null,
             TrainerId = lesson.TrainerId,
             TrainerName = trainerName,
+            TennisClubId = lesson.TennisClubId,
+            TennisClubName = clubName,
             MaxParticipants = lesson.MaxStudents,
             Notes = lesson.Notes,
             IsCancelled = lesson.IsCancelled,

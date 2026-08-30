@@ -56,6 +56,24 @@ public class PaymentService(
                 "Online betaling is alleen ondersteund voor inschrijvingen op een lesreeks."));
         }
 
+        PaymentEntity? existingPayment = await payments.GetLatestOpenOrPaidByEnrollmentIdAsync(
+            enrollmentId, organizationId, ct);
+        if (existingPayment is not null)
+        {
+            if (existingPayment.Status == PaymentStatus.Pending
+                && !string.IsNullOrWhiteSpace(existingPayment.MollieCheckoutUrl))
+            {
+                return Result<CreatePaymentResultDto>.Ok(new CreatePaymentResultDto(
+                    existingPayment.Id, existingPayment.MollieCheckoutUrl));
+            }
+
+            return Result<CreatePaymentResultDto>.Fail(new Error(
+                ErrorCodes.Conflict,
+                existingPayment.Status == PaymentStatus.Paid
+                    ? "Deze inschrijving is al betaald."
+                    : "Er loopt al een betaling voor deze inschrijving."));
+        }
+
         LessonSerieEntity? series = await lessonSeries.GetByIdPublicAsync(seriesId, ct);
         if (series is null)
         {
@@ -441,10 +459,13 @@ public class PaymentService(
         try
         {
             await emailService.SendEnrollmentConfirmationAsync(
-                enrollment.StudentEmail,
+                enrollment.ContactEmail,
                 enrollment.StudentName,
                 series?.Name ?? string.Empty,
                 trainerName: string.Empty,
+                // toConfirm = alle leden van de groep (of de solo-inschrijving); zo ziet
+                // de betalende contactpersoon voor wie de bevestiging geldt.
+                participantNames: toConfirm.Select(e => e.StudentName).ToList(),
                 ct);
         }
         catch (Exception ex)

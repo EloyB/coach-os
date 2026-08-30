@@ -10,12 +10,11 @@ import {
   RefreshCw,
   Check,
   Users,
-  User,
   Mail,
   Phone,
   MessageCircle,
-  X,
   Lock,
+  Plus,
 } from "lucide-react";
 import {
   Popover,
@@ -39,15 +38,21 @@ import {
   confirmPlanning,
   createAssignment,
   deleteAssignment,
+  lockAssignment,
+  unlockAssignment,
+  sendAssignmentConfirmation,
 } from "@/lib/api/planning";
 import type {
-  PlanningOverviewDto,
-  PlanningTimeSlotDto,
   PlanningEnrollmentDto,
   PlanningAssignmentDto,
   PlanningGroupDto,
 } from "@/lib/api/planning";
-import { getLessonSeriesById } from "@/lib/api/lessonSeries";
+import { getLessonSeriesById, deleteWeekSlot } from "@/lib/api/lessonSeries";
+import { getTrainers } from "@/lib/api/trainers";
+import {
+  AddWeekSlotDialog,
+  type WeekSlotEditData,
+} from "../_components/add-week-slot-dialog";
 import { NonRespondersPanel } from "@/components/dashboard/non-responders-panel";
 import {
   CalendarGrid,
@@ -56,38 +61,13 @@ import {
   layoutDaySlots,
   type CalendarSlot,
 } from "@/components/calendar/calendar-grid";
+import { getInitials, getAvatarColor } from "@/lib/planning-avatars";
+import { TimeslotDetailDialog } from "./_components/timeslot-detail-dialog";
+import { isHeadTrainerViewer } from "@/lib/auth";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const DAY_NAMES_SHORT = ["Ma", "Di", "Wo", "Do", "Vr", "Za", "Zo"];
-
-const AVATAR_COLORS = [
-  { bg: "bg-tennis-green", text: "text-white" },
-  { bg: "bg-blue-100", text: "text-blue-700" },
-  { bg: "bg-purple-100", text: "text-purple-700" },
-  { bg: "bg-orange-100", text: "text-orange-700" },
-  { bg: "bg-pink-100", text: "text-pink-700" },
-  { bg: "bg-teal-100", text: "text-teal-700" },
-  { bg: "bg-indigo-100", text: "text-indigo-700" },
-  { bg: "bg-emerald-100", text: "text-emerald-700" },
-];
-
-function hashStr(s: string): number {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
-  return Math.abs(h);
-}
-
-function getInitials(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length >= 2)
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-  return name.slice(0, 2).toUpperCase();
-}
-
-function getAvatarColor(name: string) {
-  return AVATAR_COLORS[hashStr(name) % AVATAR_COLORS.length];
-}
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 
@@ -100,10 +80,19 @@ export default function PlanningPage({
   const t = useTranslations("planning");
   const router = useRouter();
   const queryClient = useQueryClient();
+  // Hoofdtrainer = read-only: enkel de planning raadplegen, geen bewerkacties.
+  // Reactief via effect zodat het na hydration klopt (localStorage is er niet bij SSR).
+  const [readOnly, setReadOnly] = useState(false);
+  useEffect(() => setReadOnly(isHeadTrainerViewer()), []);
 
   const { data: series } = useQuery({
     queryKey: ["lessonSeries", id],
     queryFn: () => getLessonSeriesById(id),
+  });
+
+  const { data: trainers = [] } = useQuery({
+    queryKey: ["trainers"],
+    queryFn: getTrainers,
   });
 
   const {
@@ -130,6 +119,22 @@ export default function PlanningPage({
     },
   });
 
+  const lockMutation = useMutation({
+    mutationFn: ({ assignmentId, isLocked }: { assignmentId: string; isLocked: boolean }) =>
+      isLocked ? unlockAssignment(id, assignmentId) : lockAssignment(id, assignmentId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["planning", id] });
+    },
+  });
+
+  const sendConfirmationMutation = useMutation({
+    mutationFn: (assignmentId: string) => sendAssignmentConfirmation(id, assignmentId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["planning", id] });
+      queryClient.invalidateQueries({ queryKey: ["lessonSeries", id] });
+    },
+  });
+
   const confirmMutation = useMutation({
     mutationFn: () => confirmPlanning(id),
     onSuccess: () => {
@@ -142,9 +147,23 @@ export default function PlanningPage({
   // Manual assign
   const [assigningEnrollmentId, setAssigningEnrollmentId] = useState<string | null>(null);
 
-  // Slot hover popover
+  // Slot hover popover (read-only peek)
   const [hoveredSlotId, setHoveredSlotId] = useState<string | null>(null);
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Slot detail dialog (click to open)
+  const [openSlotId, setOpenSlotId] = useState<string | null>(null);
+  const [addingSlot, setAddingSlot] = useState(false);
+  const [editingSlot, setEditingSlot] = useState<WeekSlotEditData | null>(null);
+
+  const deleteSlotMutation = useMutation({
+    mutationFn: (entryId: string) => deleteWeekSlot(id, entryId),
+    onSuccess: () => {
+      setOpenSlotId(null);
+      queryClient.invalidateQueries({ queryKey: ["planning", id] });
+      queryClient.invalidateQueries({ queryKey: ["lessonSeries", id] });
+    },
+  });
 
   const assignMutation = useMutation({
     mutationFn: ({ enrollmentId, groupId, slotId }: { enrollmentId?: string; groupId?: string; slotId: string }) =>
@@ -156,13 +175,14 @@ export default function PlanningPage({
   });
 
   // Auto-generate only once, only when status is "Enrollment" (never generated before)
-  const [hasAutoGenerated, setHasAutoGenerated] = useState(false);
+  const hasAutoGeneratedRef = useRef(false);
   useEffect(() => {
-    if (!hasAutoGenerated && planning && planning.planningStatus === "Enrollment") {
-      setHasAutoGenerated(true);
+    if (isHeadTrainerViewer()) return;
+    if (!hasAutoGeneratedRef.current && planning && planning.planningStatus === "Enrollment") {
+      hasAutoGeneratedRef.current = true;
       generateMutation.mutate(false);
     }
-  }, [planning]);
+  }, [planning, generateMutation]);
 
   // ─── Derived data ───────────────────────────────────────────────────────
 
@@ -186,6 +206,7 @@ export default function PlanningPage({
     const map = new Map<string, PlanningAssignmentDto[]>();
     if (!planning) return map;
     for (const a of planning.assignments) {
+      if (a.status === "Declined") continue;
       const list = map.get(a.timeSlotId) ?? [];
       list.push(a);
       map.set(a.timeSlotId, list);
@@ -262,12 +283,13 @@ export default function PlanningPage({
   }, [planning]);
 
   // Stats
-  const totalAssigned = assignedEnrollmentIds.size;
   const totalUnassigned = unassignedSolos.length + unassignedGroups.length;
   const totalSlots = planning?.timeSlots.length ?? 0;
   const totalCapacity =
     planning?.timeSlots.reduce((sum, s) => sum + s.maxCapacity, 0) ?? 0;
   const totalEnrollments = planning?.enrollments.length ?? 0;
+  const lockedAssignmentsCount =
+    planning?.assignments.filter((assignment) => assignment.isLocked).length ?? 0;
 
   // Helper: get names for a slot's assignments
   function getSlotNames(slotId: string): string[] {
@@ -368,8 +390,16 @@ export default function PlanningPage({
             </span>
           )}
         </div>
-        {planning.planningStatus !== "Scheduled" && (
+        {!readOnly && planning.planningStatus !== "Scheduled" && (
           <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setAddingSlot(true)}
+              className="inline-flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
+            >
+              <Plus size={15} />
+              {t("addSlot")}
+            </button>
             <Link
               href={`/dashboard/lessons/${id}`}
               className="inline-flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
@@ -472,6 +502,26 @@ export default function PlanningPage({
         </div>
       </div>
 
+      {!readOnly && planning.planningStatus !== "Scheduled" && (
+        <div className="bg-amber-50 border-b border-amber-100 px-8 py-3 shrink-0">
+          <div className="flex items-center gap-3 text-sm text-amber-900">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+              <Lock size={16} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold">{t("lockHelpTitle")}</p>
+              <p className="text-xs text-amber-700">{t("lockHelpDesc")}</p>
+            </div>
+            {lockedAssignmentsCount > 0 && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-tennis-green shadow-sm">
+                <Lock size={12} />
+                {t("lockedCount", { count: lockedAssignmentsCount })}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Calendar + Sidebar */}
       <div className="flex-1 flex overflow-hidden">
         {/* Calendar area */}
@@ -517,16 +567,21 @@ export default function PlanningPage({
                     const currentCount = getSlotCurrentCount(slot.id);
                     const hasProposed = slotHasProposed(slot.id);
                     const hasAutoMerged = slotAssignments.some((a) => a.isAutoMerged);
-                    const borderColor = hasAutoMerged
-                      ? "border-blue-300"
-                      : hasProposed
-                        ? "border-amber-300"
-                        : "border-green-300";
-                    const bgColor = hasAutoMerged
-                      ? "bg-blue-50"
-                      : hasProposed
-                        ? "bg-amber-50"
-                        : "bg-green-50";
+                    const lockedAssignment = slotAssignments.find((a) => a.isLocked);
+                    const borderColor = lockedAssignment
+                      ? "border-tennis-green"
+                      : hasAutoMerged
+                        ? "border-blue-300"
+                        : hasProposed
+                          ? "border-amber-300"
+                          : "border-green-300";
+                    const bgColor = lockedAssignment
+                      ? "bg-green-50"
+                      : hasAutoMerged
+                        ? "bg-blue-50"
+                        : hasProposed
+                          ? "bg-amber-50"
+                          : "bg-green-50";
 
                     return (
                       <div
@@ -540,6 +595,7 @@ export default function PlanningPage({
                           left: `calc(${col.colIndex * colWidthPct}% + 1px)`,
                           width: `calc(${colWidthPct}% - 2px)`,
                         }}
+                        onClick={() => setOpenSlotId(slot.id)}
                         onMouseEnter={() => {
                           if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
                           if (slotAssignments.length > 0) setHoveredSlotId(slot.id);
@@ -548,7 +604,7 @@ export default function PlanningPage({
                           hoverTimeoutRef.current = setTimeout(() => setHoveredSlotId(null), 200);
                         }}
                       >
-                        {/* Hover popover */}
+                        {/* Hover popover — read-only peek; klik op de tegel voor acties */}
                         {hoveredSlotId === slot.id && (
                           <div
                             className="absolute left-full top-0 ml-2 z-50 bg-white border border-gray-200 rounded-xl shadow-lg p-3 w-60"
@@ -591,39 +647,25 @@ export default function PlanningPage({
 
                                 return (
                                   <div key={assignment.id}>
-                                    <div className="flex items-center gap-1.5 mb-1">
-                                      {gName ? (
-                                        <>
-                                          <Users size={10} className="text-gray-400 shrink-0" />
+                                    {(gName || assignment.isLocked) && (
+                                      <div className="flex items-center gap-1.5 mb-1">
+                                        {gName && (
                                           <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
                                             assignment.isAutoMerged ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700"
                                           }`}>
                                             {gName}
                                           </span>
-                                          {assignment.isAutoMerged && <span className="text-[9px] text-blue-500 italic">auto</span>}
-                                        </>
-                                      ) : (
-                                        <>
-                                          <User size={10} className="text-gray-400 shrink-0" />
-                                          <span className="text-[10px] text-gray-500">Individueel</span>
-                                          {assignment.isAutoMerged && <span className="text-[9px] text-blue-500 italic">auto</span>}
-                                        </>
-                                      )}
-                                      {assignment.isLocked && <Lock size={9} className="text-gray-400 shrink-0" />}
-                                      <button
-                                        type="button"
-                                        title={t("unassign")}
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          unassignMutation.mutate(assignment.id);
-                                        }}
-                                        disabled={unassignMutation.isPending}
-                                        className="ml-auto shrink-0 w-5 h-5 flex items-center justify-center rounded text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
-                                      >
-                                        <X size={11} />
-                                      </button>
-                                    </div>
-                                    <div className="space-y-1 pl-4">
+                                        )}
+                                        {assignment.isAutoMerged && <span className="text-[9px] text-blue-500 italic">auto</span>}
+                                        {assignment.isLocked && (
+                                          <span className="inline-flex items-center gap-1 rounded bg-green-100 px-1.5 py-0.5 text-[9px] font-semibold text-green-700">
+                                            <Lock size={9} />
+                                            {t("locked")}
+                                          </span>
+                                        )}
+                                      </div>
+                                    )}
+                                    <div className={`space-y-1 ${gName ? "pl-2" : ""}`}>
                                       {aNames.map((name, ni) => {
                                         const aColor = getAvatarColor(name);
                                         return (
@@ -641,7 +683,7 @@ export default function PlanningPage({
                               })}
                             </div>
                             <div className="mt-2 pt-2 border-t border-gray-100 text-[10px] text-gray-400">
-                              {currentCount}/{slot.maxCapacity} bezet
+                              {t("occupied", { count: currentCount, max: slot.maxCapacity })}
                             </div>
                           </div>
                         )}
@@ -658,17 +700,19 @@ export default function PlanningPage({
                               </span>
                             )}
                           </div>
-                          <span
-                            className={`text-[10px] shrink-0 ${
-                              hasAutoMerged
-                                ? "text-blue-600"
-                                : hasProposed
-                                  ? "text-amber-600"
-                                  : "text-green-600"
-                            }`}
-                          >
-                            {currentCount}/{slot.maxCapacity}
-                          </span>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <span
+                              className={`text-[10px] ${
+                                hasAutoMerged
+                                  ? "text-blue-600"
+                                  : hasProposed
+                                    ? "text-amber-600"
+                                    : "text-green-600"
+                              }`}
+                            >
+                              {currentCount}/{slot.maxCapacity}
+                            </span>
+                          </div>
                         </div>
 
                         {/* Assigned people — flat list of avatars */}
@@ -848,7 +892,7 @@ export default function PlanningPage({
                       )}
 
                       {/* Manual assign for group */}
-                      {leader && (
+                      {!readOnly && leader && (
                         assigningEnrollmentId === group.id ? (
                           <div className="mt-2 space-y-1.5">
                             <p className="text-[10px] text-gray-500 font-medium">Kies een tijdslot:</p>
@@ -1018,7 +1062,8 @@ export default function PlanningPage({
                       )}
 
                       {/* Manual assign: slot picker */}
-                      {assigningEnrollmentId === enrollment.id ? (
+                      {!readOnly &&
+                        (assigningEnrollmentId === enrollment.id ? (
                         <div className="mt-2 space-y-1.5">
                           <p className="text-[10px] text-gray-500 font-medium">Kies een tijdslot:</p>
                           <div className="space-y-1">
@@ -1058,7 +1103,7 @@ export default function PlanningPage({
                         >
                           {t("assignManually")} →
                         </button>
-                      )}
+                      ))}
                     </div>
                   );
                 })}
@@ -1087,23 +1132,35 @@ export default function PlanningPage({
                     (a) => a.groupId === group.id
                   );
                   const isAutoMerged = groupAssignment?.isAutoMerged ?? false;
+                  const isLocked = groupAssignment?.isLocked ?? false;
+                  const canOfferDefinitively = groupAssignment?.status === "Proposed";
 
                   return (
                     <div
                       key={group.id}
                       className={`border rounded-lg p-3 ${
-                        isAutoMerged
-                          ? "border-blue-200 bg-blue-50/30"
-                          : "border-gray-200"
+                        isLocked
+                          ? "border-tennis-green bg-green-50/50"
+                          : isAutoMerged
+                            ? "border-blue-200 bg-blue-50/30"
+                            : "border-gray-200"
                       }`}
                     >
                       <div className="flex items-center justify-between mb-1.5">
                         <span className="text-[10px] font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded">
                           {group.name}
                         </span>
-                        <span className={`text-[10px] ${isAutoMerged ? "text-blue-500 italic" : "text-gray-400"}`}>
-                          {isAutoMerged ? t("autoGrouped") : t("preFormed")}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          {isLocked && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-tennis-green shadow-sm">
+                              <Lock size={10} />
+                              {t("locked")}
+                            </span>
+                          )}
+                          <span className={`text-[10px] ${isAutoMerged ? "text-blue-500 italic" : "text-gray-400"}`}>
+                            {isAutoMerged ? t("autoGrouped") : t("preFormed")}
+                          </span>
+                        </div>
                       </div>
                       <div className="text-[10px] text-gray-600">
                         {memberNames}
@@ -1113,6 +1170,23 @@ export default function PlanningPage({
                           <Check size={12} className="text-green-500" />
                           {slotLabel}
                         </div>
+                      )}
+                      {isLocked && (
+                        <div className="mt-1.5 flex items-center gap-1 text-[10px] font-medium text-tennis-green">
+                          <Lock size={11} />
+                          {t("lockedKeepsOnRegenerate")}
+                        </div>
+                      )}
+                      {!readOnly && canOfferDefinitively && groupAssignment && (
+                        <button
+                          type="button"
+                          onClick={() => sendConfirmationMutation.mutate(groupAssignment.id)}
+                          disabled={sendConfirmationMutation.isPending}
+                          className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-md bg-tennis-green px-2 py-1.5 text-[11px] font-semibold text-white hover:bg-tennis-green/90 disabled:opacity-50"
+                        >
+                          <Mail size={12} />
+                          {t("offerDefinitively")}
+                        </button>
                       )}
                     </div>
                   );
@@ -1182,6 +1256,68 @@ export default function PlanningPage({
           </div>
         </aside>
       </div>
+
+      <TimeslotDetailDialog
+        readOnly={readOnly}
+        open={openSlotId !== null}
+        onOpenChange={(o) => !o && setOpenSlotId(null)}
+        slot={
+          openSlotId
+            ? planning.timeSlots.find((s) => s.id === openSlotId) ?? null
+            : null
+        }
+        assignments={openSlotId ? assignmentsBySlot.get(openSlotId) ?? [] : []}
+        enrollmentMap={enrollmentMap}
+        groupMap={groupMap}
+        currentCount={openSlotId ? getSlotCurrentCount(openSlotId) : 0}
+        onLock={(assignmentId, isLocked) =>
+          lockMutation.mutate({ assignmentId, isLocked })
+        }
+        onOffer={(assignmentId) => sendConfirmationMutation.mutate(assignmentId)}
+        onUnassign={(assignmentId) => unassignMutation.mutate(assignmentId)}
+        isLockPending={lockMutation.isPending}
+        isOfferPending={sendConfirmationMutation.isPending}
+        isUnassignPending={unassignMutation.isPending}
+        onDeleteSlot={
+          openSlotId ? () => deleteSlotMutation.mutate(openSlotId) : undefined
+        }
+        isDeletePending={deleteSlotMutation.isPending}
+        onEditSlot={() => {
+          const s = openSlotId
+            ? planning.timeSlots.find((x) => x.id === openSlotId)
+            : null;
+          if (!s) return;
+          setEditingSlot({
+            id: s.id,
+            dayOfWeek: s.dayOfWeek,
+            startTime: s.startTime,
+            endTime: s.endTime,
+            trainerId: s.trainerId,
+            courtName: s.courtName,
+            maxStudents: s.maxCapacity,
+            plannedCount: getSlotCurrentCount(s.id),
+          });
+          setOpenSlotId(null);
+        }}
+      />
+
+      {(addingSlot || editingSlot) && (
+        <AddWeekSlotDialog
+          seriesId={id}
+          trainers={trainers}
+          editEntry={editingSlot ?? undefined}
+          onClose={() => {
+            setAddingSlot(false);
+            setEditingSlot(null);
+          }}
+          onSaved={() => {
+            setAddingSlot(false);
+            setEditingSlot(null);
+            queryClient.invalidateQueries({ queryKey: ["planning", id] });
+            queryClient.invalidateQueries({ queryKey: ["lessonSeries", id] });
+          }}
+        />
+      )}
     </div>
   );
 }

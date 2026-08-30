@@ -12,6 +12,7 @@ export interface StudentLesson {
   courtName: string | null;
   trainerName: string | null;
   status: string;
+  participantName: string;
   isGroup: boolean;
   groupSize: number;
   price: number;

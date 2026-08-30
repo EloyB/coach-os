@@ -1,0 +1,62 @@
+<mjml>
+  <mj-head>
+    <mj-title>Bevestig de lesmomenten: {{seriesName}}</mj-title>
+    <mj-preview>Bevestig de lesmomenten voor {{seriesName}}</mj-preview>
+    <mj-attributes>
+      <mj-all font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" />
+      <mj-text color="#6b7280" font-size="15px" line-height="1.6" />
+      <mj-class name="heading" font-size="26px" font-weight="700" color="#111827" letter-spacing="-0.5px" line-height="1.2" />
+      <mj-class name="fine" font-size="13px" color="#9ca3af" />
+      <mj-class name="brand" color="#FFFFFF" font-size="22px" font-weight="700" letter-spacing="-0.5px" />
+      <mj-class name="tagline" color="#D0FF14" font-size="11px" letter-spacing="2px" font-weight="600" text-transform="uppercase" />
+    </mj-attributes>
+  </mj-head>
+  <mj-body background-color="#FAFAF8" width="600px">
+    <mj-section css-class="cos-header" background-color="#2D5016" padding="28px 40px" border-radius="12px 12px 0 0">
+      <mj-column>
+        <mj-text mj-class="brand">Coach<span style="color:#D0FF14">OS</span></mj-text>
+        <mj-text mj-class="tagline" padding-top="8px">Tennis &amp; Padel</mj-text>
+      </mj-column>
+    </mj-section>
+
+    <mj-section css-class="cos-card" background-color="#FFFFFF" padding="40px 40px 8px">
+      <mj-column>
+        <mj-text mj-class="heading">Bevestig de lesmomenten</mj-text>
+        <mj-text padding-top="16px">
+          Hoi, we hebben tijdsloten gereserveerd voor {{participantNames}} in
+          <strong style="color:#111827">{{seriesName}}</strong>. Bevestig elk lesmoment
+          binnen 72 uur.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Deelnemersblokken in een eigen sectie: mj-raw alleen in de kolom, en de
+         volgorde t.o.v. intro en slotzin wordt door de sectie-volgorde afgedwongen
+         (mj-raw tussen mj-text-siblings wordt door MJML naar boven gehesen). -->
+    <mj-section background-color="#FFFFFF" padding="0 40px">
+      <mj-column>
+        <mj-raw>{{participantBlocks}}</mj-raw>
+      </mj-column>
+    </mj-section>
+
+    <mj-section background-color="#FFFFFF" padding="8px 40px 40px">
+      <mj-column>
+        <mj-text mj-class="fine">
+          Geen antwoord binnen 72 uur? Dan neemt je club contact op.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <mj-section css-class="cos-info" background-color="#FAFAF8" padding="24px 40px">
+      <mj-column>
+        <mj-text mj-class="fine" align="center">
+          Verstuurd door CoachOS — vragen?
+          <a href="mailto:support@coach-hq.com" style="color:#2D5016;text-decoration:none;font-weight:600">support@coach-hq.com</a>
+        </mj-text>
+        <mj-text font-size="11px" color="#d1d5db" align="center" padding-top="8px">
+          © {{year}} CoachOS · Studio Swyft
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

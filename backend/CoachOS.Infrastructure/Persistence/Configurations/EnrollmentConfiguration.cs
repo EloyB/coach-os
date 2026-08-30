@@ -17,9 +17,17 @@ public class EnrollmentConfiguration : IEntityTypeConfiguration<Enrollment>
             .IsRequired()
             .HasMaxLength(200);
 
-        builder.Property(e => e.StudentEmail)
+        builder.Property(e => e.ContactEmail)
             .IsRequired()
             .HasMaxLength(200);
+
+        builder.Property(e => e.StudentEmail)
+            .HasMaxLength(200);
+
+        // Genormaliseerde naam als stored computed kolom: de unique index hieronder
+        // moet deterministisch zijn en mag niet van de Postgres-collatie afhangen.
+        builder.Property<string>("StudentNameNormalized")
+            .HasComputedColumnSql("lower(btrim(\"StudentName\"))", stored: true);
 
         builder.Property(e => e.StudentPhone)
             .HasMaxLength(30);
@@ -32,6 +40,8 @@ public class EnrollmentConfiguration : IEntityTypeConfiguration<Enrollment>
         builder.Property(e => e.DateOfBirth);
 
         builder.Property(e => e.Category);
+
+        builder.Property(e => e.SelectedPriceOptionId);
 
         builder.HasOne(e => e.Organization)
             .WithMany()
@@ -57,13 +67,18 @@ public class EnrollmentConfiguration : IEntityTypeConfiguration<Enrollment>
             .IsRequired(false);
 
         builder.HasIndex(e => e.OrganizationId);
-        builder.HasIndex(e => e.StudentEmail);
+        builder.HasIndex(e => e.ContactEmail);
         builder.HasIndex(e => e.LessonId);
         builder.HasIndex(e => e.LessonSerieId);
 
-        // Prevent duplicate active enrollments for the same email + series
-        builder.HasIndex(e => new { e.LessonSerieId, e.StudentEmail })
+        // Dezelfde persoon mag niet twee keer in dezelfde reeks staan; verschillende
+        // personen op één contactadres mogen wél. Partieel op DateOfBirth: rijen van
+        // vóór de geboortedatum-feature zouden de index anders blokkeren.
+        // Statussen 1, 2, 5 = Pending, Confirmed, PendingPayment.
+        builder.HasIndex(nameof(Enrollment.LessonSerieId), nameof(Enrollment.ContactEmail),
+                "StudentNameNormalized", nameof(Enrollment.DateOfBirth))
             .IsUnique()
-            .HasFilter("\"Status\" IN (1, 2)");
+            .HasDatabaseName("IX_Enrollments_Participant")
+            .HasFilter("\"DateOfBirth\" IS NOT NULL AND \"Status\" IN (1, 2, 5)");
     }
 }

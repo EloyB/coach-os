@@ -31,6 +31,7 @@
           <mj-column>
             <mj-text font-size="14px" font-weight="600" color="#111827" padding="0">{{dayName}} {{startTime}} — {{endTime}}</mj-text>
             <mj-text font-size="13px" color="#6b7280" padding="4px 0 0">{{courtLine}}</mj-text>
+            <mj-text font-size="13px" color="#6b7280" padding="4px 0 0">{{participantsLine}}</mj-text>
           </mj-column>
         </mj-section>
 

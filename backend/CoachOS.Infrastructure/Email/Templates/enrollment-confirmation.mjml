@@ -24,13 +24,14 @@
         <mj-text mj-class="heading">Je bent ingeschreven!</mj-text>
         <mj-text padding-top="16px">
           Hoi {{studentName}}, je inschrijving voor <strong style="color:#111827">{{seriesName}}</strong>
-          is bevestigd. Trainer <strong style="color:#111827">{{trainerName}}</strong> neemt indien nodig contact met je op.
+          is bevestigd. {{trainerDescription}}
         </mj-text>
 
         <mj-section background-color="#FAFAF8" border-left="4px solid #D0FF14" border-radius="8px" padding="16px 20px">
           <mj-column>
             <mj-text font-size="14px" font-weight="600" color="#111827" padding="0">{{seriesName}}</mj-text>
-            <mj-text font-size="13px" color="#6b7280" padding="4px 0 0">Trainer: {{trainerName}}</mj-text>
+            <mj-text font-size="13px" color="#6b7280" padding="4px 0 0">{{trainerLine}}</mj-text>
+            <mj-text font-size="13px" color="#6b7280" padding="4px 0 0">{{participantsLine}}</mj-text>
           </mj-column>
         </mj-section>
 

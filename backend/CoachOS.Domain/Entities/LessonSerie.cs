@@ -26,6 +26,13 @@ public class LessonSerie : BaseEntity
     public DateTime RegistrationDeadline { get; set; }
     public bool IsActive { get; set; } = true;
     public int? MaxRegistrations { get; set; }
+
+    /// <summary>Minimumleeftijd (inclusief) op de startdatum van de reeks.</summary>
+    public int MinAge { get; set; } = 3;
+
+    /// <summary>Maximumleeftijd (inclusief) op de startdatum van de reeks.</summary>
+    public int MaxAge { get; set; } = 99;
+
     public PlanningStatus PlanningStatus { get; set; } = PlanningStatus.Enrollment;
 
     /// <summary>
@@ -34,6 +41,18 @@ public class LessonSerie : BaseEntity
     /// een betaal-link per mail.
     /// </summary>
     public PaymentMode PaymentMode { get; set; } = PaymentMode.Immediate;
+
+    /// <summary>Leerling mag zich solo inschrijven op deze reeks.</summary>
+    public bool AllowSoloEnrollment { get; set; } = true;
+
+    /// <summary>Leerling mag zich als groep inschrijven op deze reeks.</summary>
+    public bool AllowGroupEnrollment { get; set; } = true;
+
+    /// <summary>Online betalen via Mollie toegestaan. Enkel true wanneer de org een MollieConnection heeft.</summary>
+    public bool AcceptOnlinePayment { get; set; } = true;
+
+    /// <summary>Handmatig betalen (overschrijving/cash) toegestaan; bevestigd door de admin.</summary>
+    public bool AcceptManualPayment { get; set; }
 
     public Guid TennisClubId { get; set; }
 

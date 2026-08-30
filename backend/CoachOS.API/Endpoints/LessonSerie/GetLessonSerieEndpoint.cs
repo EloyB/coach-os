@@ -11,7 +11,7 @@ public class GetLessonSerieEndpoint : IEndpoint
         {
             var orgId = ctx.GetOrganizationId();
             Guid? trainerId = ctx.IsTrainer() ? ctx.GetUserId() : null;
-            var result = await service.GetAllAsync(orgId, trainerId, ct);
+            var result = await service.GetAllAsync(orgId, trainerId, ctx.GetHeadTrainerClubIds(), ct);
             return result.IsSuccess ? Results.Ok(result.Value) : result.ToErrorResult();
         })
         .RequireAuthorization()

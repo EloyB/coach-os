@@ -155,6 +155,59 @@ public class PaymentServiceTests
     }
 
     [Test]
+    public async Task CreatePayment_ExistingPendingPayment_ReturnsExistingCheckoutAndDoesNotCreateDuplicate()
+    {
+        ArrangeEnrollment(price: 50m);
+        Payment existing = new()
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = OrgId,
+            EnrollmentId = EnrollmentId,
+            Amount = 50m,
+            Status = PaymentStatus.Pending,
+            Method = PaymentMethod.Online,
+            MollieCheckoutUrl = "https://www.mollie.com/checkout/existing",
+        };
+        _payments.Setup(p => p.GetLatestOpenOrPaidByEnrollmentIdAsync(EnrollmentId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existing);
+
+        Result<CreatePaymentResultDto> result = await _sut.CreatePaymentForEnrollmentAsync(EnrollmentId, OrgId);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.PaymentId.Should().Be(existing.Id);
+        result.Value.CheckoutUrl.Should().Be("https://www.mollie.com/checkout/existing");
+        _mollie.Verify(m => m.CreatePaymentAsync(
+                It.IsAny<string>(), It.IsAny<MolliePaymentRequest>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+        _payments.Verify(p => p.AddAsync(It.IsAny<Payment>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task CreatePayment_ExistingPaidPayment_FailsConflictAndDoesNotCreateDuplicate()
+    {
+        ArrangeEnrollment(price: 50m);
+        _payments.Setup(p => p.GetLatestOpenOrPaidByEnrollmentIdAsync(EnrollmentId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Payment
+            {
+                Id = Guid.NewGuid(),
+                OrganizationId = OrgId,
+                EnrollmentId = EnrollmentId,
+                Amount = 50m,
+                Status = PaymentStatus.Paid,
+                Method = PaymentMethod.Online,
+            });
+
+        Result<CreatePaymentResultDto> result = await _sut.CreatePaymentForEnrollmentAsync(EnrollmentId, OrgId);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.Conflict);
+        _mollie.Verify(m => m.CreatePaymentAsync(
+                It.IsAny<string>(), It.IsAny<MolliePaymentRequest>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+        _payments.Verify(p => p.AddAsync(It.IsAny<Payment>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
     public async Task CreatePayment_GroupOfFour_ChargesPricePerParticipant()
     {
         // Regressie: online betalingen rekenden enkel series.Price aan, terwijl de
@@ -399,6 +452,7 @@ public class PaymentServiceTests
             OrganizationId = OrgId,
             LessonSerieId = SeriesId,
             StudentEmail = "student@example.com",
+            ContactEmail = "student@example.com",
             StudentName = "Test Student",
             Status = EnrollmentStatus.PendingPayment,
         };
@@ -421,7 +475,8 @@ public class PaymentServiceTests
         payment.PaidAt.Should().NotBeNull();
         enrollment.Status.Should().Be(EnrollmentStatus.Confirmed);
         _email.Verify(e => e.SendEnrollmentConfirmationAsync(
-            "student@example.com", "Test Student", "Voorjaar 2026", string.Empty, It.IsAny<CancellationToken>()),
+            "student@example.com", "Test Student", "Voorjaar 2026", string.Empty,
+            It.IsAny<IReadOnlyList<string>?>(), It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -441,6 +496,7 @@ public class PaymentServiceTests
             OrganizationId = OrgId,
             LessonSerieId = SeriesId,
             StudentEmail = "leider@example.com",
+            ContactEmail = "leider@example.com",
             StudentName = "De Leider",
             Status = EnrollmentStatus.PendingPayment,
             EnrollmentGroupId = groupId,
@@ -451,6 +507,7 @@ public class PaymentServiceTests
             OrganizationId = OrgId,
             LessonSerieId = SeriesId,
             StudentEmail = "lid@example.com",
+            ContactEmail = "lid@example.com",
             StudentName = "Het Lid",
             Status = EnrollmentStatus.PendingPayment,
             EnrollmentGroupId = groupId,

@@ -79,7 +79,7 @@ public class PlanningService(
             .GroupBy(a => a.WeeklyTemplateEntryId)
             .ToDictionary(
                 g => g.Key,
-                g => g.Sum(a => a.EnrollmentGroup?.Members.Count ?? 1));
+                g => g.Sum(PlanningProposalBuilder.GetEffectiveAssignmentSize));
 
         var (units, _) = PlanningProposalBuilder.BuildUnits(
             activeEnrollments, groups, prefsByEnrollment, lockedGroupIds, lockedEnrollmentIds);
@@ -173,7 +173,7 @@ public class PlanningService(
             {
                 Id = e.Id,
                 StudentName = e.StudentName,
-                StudentEmail = e.StudentEmail,
+                StudentEmail = e.ContactEmail,
                 StudentPhone = e.StudentPhone,
                 IsOpenToGrouping = e.IsOpenToGrouping,
                 GroupId = e.EnrollmentGroupId,
@@ -223,6 +223,33 @@ public class PlanningService(
             Groups = groupDtos,
             Assignments = assignmentDtos,
             Conflicts = conflicts,
+        });
+    }
+
+    public async Task<Result<PlanningAssignmentDto>> SetAssignmentLockAsync(
+        Guid seriesId, Guid assignmentId, Guid organizationId, bool isLocked, CancellationToken ct = default)
+    {
+        var assignment = await scheduleAssignmentRepo.GetByIdAsync(assignmentId, organizationId, ct);
+        if (assignment is null || assignment.LessonSerieId != seriesId)
+            return Result<PlanningAssignmentDto>.Fail(
+                new Error(ErrorCodes.NotFound, "Toewijzing niet gevonden."));
+
+        if (assignment.Status != ScheduleAssignmentStatus.Proposed)
+            return Result<PlanningAssignmentDto>.Fail(
+                new Error(ErrorCodes.Validation, "Alleen concepttoewijzingen kunnen vastgezet of vrijgegeven worden."));
+
+        assignment.IsLocked = isLocked;
+        await scheduleAssignmentRepo.SaveChangesAsync(ct);
+
+        return Result<PlanningAssignmentDto>.Ok(new PlanningAssignmentDto
+        {
+            Id = assignment.Id,
+            TimeSlotId = assignment.WeeklyTemplateEntryId,
+            EnrollmentId = assignment.EnrollmentId,
+            GroupId = assignment.EnrollmentGroupId,
+            Status = assignment.Status.ToString(),
+            IsAutoMerged = assignment.IsAutoMerged,
+            IsLocked = assignment.IsLocked,
         });
     }
 }

@@ -307,8 +307,6 @@ export function CalendarGrid({
                     colIndex: 0,
                     totalCols: 1,
                   };
-                  const colWidthPct = 100 / col.totalCols;
-
                   const cancelled = slot.isCancelled === true;
                   const slotBg = cancelled ? "rgba(156,163,175,0.15)" : color.bg;
                   const slotBorder = cancelled ? "#9CA3AF" : color.border;

@@ -15,4 +15,6 @@ public record AssignmentDetailsDto
     public List<string> GroupMemberNames { get; init; } = new();
     public string Status { get; init; } = string.Empty; // Pending | Confirmed | Declined | Expired
     public DateTime ExpiresAt { get; init; }
+    public bool AcceptOnlinePayment { get; init; }
+    public bool AcceptManualPayment { get; init; }
 }

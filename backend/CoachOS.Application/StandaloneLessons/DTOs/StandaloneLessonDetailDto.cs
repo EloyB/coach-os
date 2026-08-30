@@ -14,6 +14,11 @@ public record StandaloneLessonDetailDto
 
     public Guid? TrainerId { get; init; }
     public string? TrainerName { get; init; }
+
+    /// <summary>Null voor legacy losse lessen van vóór de club-koppeling.</summary>
+    public Guid? TennisClubId { get; init; }
+    public string? TennisClubName { get; init; }
+
     public int MaxParticipants { get; init; }
     public string? Notes { get; init; }
     public bool IsCancelled { get; init; }

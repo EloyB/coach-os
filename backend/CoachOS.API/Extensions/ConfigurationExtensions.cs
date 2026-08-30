@@ -98,6 +98,15 @@ public static class ConfigurationExtensions
                 options.AddPolicy(AuthorizationPolicies.SuperAdmin, policy =>
                     policy.RequireAuthenticatedUser()
                           .RequireClaim(CoachOsClaims.IsSuperAdmin, "true"));
+
+                // Read-only inschrijvingen + planning: Admin, of een hoofdtrainer
+                // (Trainer met ≥1 headTrainerClub-claim). De fijne per-reeks club-check
+                // gebeurt in HeadTrainerAccess in de endpoints.
+                options.AddPolicy(AuthorizationPolicies.EnrollmentsPlanningRead, policy =>
+                    policy.RequireAuthenticatedUser()
+                          .RequireAssertion(ctx =>
+                              ctx.User.IsInRole("Admin") ||
+                              ctx.User.HasClaim(c => c.Type == CoachOsClaims.HeadTrainerClub)));
             });
 
             return services;

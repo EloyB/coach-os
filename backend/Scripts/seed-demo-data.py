@@ -13,9 +13,11 @@ Default API_BASE is http://localhost:5142/api.
 from __future__ import annotations
 
 import json
+import re
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
@@ -24,6 +26,9 @@ from typing import Any
 
 
 DEFAULT_API_BASE = "http://localhost:5142/api"
+# Mailpit (docker-compose service 'mailpit') — SMTP catcher for local dev.
+# Web UI + JSON API both live on this port (see docker-compose.yml).
+MAILPIT_BASE = "http://localhost:3001"
 SCRIPT_DIR = Path(__file__).resolve().parent
 DATA_FILE = SCRIPT_DIR / "seed-data.json"
 
@@ -34,6 +39,11 @@ DATA_FILE = SCRIPT_DIR / "seed-data.json"
 class ApiClient:
     base: str
     token: str | None = None
+    # HTTP status of the last request — some endpoints (e.g. the head-trainer
+    # promotion below) respond 204 No Content on success, which decodes to the
+    # same `None` as a failed request; callers that need to tell the two apart
+    # read this instead of the return value.
+    last_status: int | None = None
 
     def post(self, path: str, body: dict[str, Any] | list[Any] | None = None,
              auth: bool = True) -> Any:
@@ -59,9 +69,11 @@ class ApiClient:
                 f"{self.base}{path}", data=data, method=method, headers=headers)
             try:
                 with urllib.request.urlopen(req, timeout=30) as resp:
+                    self.last_status = resp.status
                     raw = resp.read().decode("utf-8")
                     return json.loads(raw) if raw else None
             except urllib.error.HTTPError as e:
+                self.last_status = e.code
                 if e.code == 429 and attempt < 2:
                     print(f"  Rate limited on {method} {path} "
                           f"— waiting 62s before retry {attempt + 2}/3...",
@@ -73,6 +85,7 @@ class ApiClient:
                       file=sys.stderr)
                 return None
             except urllib.error.URLError as e:
+                self.last_status = None
                 print(f"  ERROR on {method} {path}: {e.reason}", file=sys.stderr)
                 return None
         return None
@@ -184,6 +197,82 @@ def invite_trainers_and_pick_id(api: ApiClient, trainers: list[dict],
     return active[0]["id"] if active else fallback_user_id
 
 
+def fetch_invite_token_from_mailpit(email: str, retries: int = 15) -> str | None:
+    """Haalt de meest recente trainer-invite-token voor `email` op via de lokale
+    Mailpit API (docker-compose service 'mailpit', web/API op MAILPIT_BASE).
+    Nodig omdat de invite-flow het wachtwoord-token enkel per mail verstuurt —
+    er is geen dev-bootstrap-shortcut zoals voor de super-admin. Polls kort
+    omdat de mail asynchroon via SMTP wordt afgeleverd."""
+    query = urllib.parse.quote(f"to:{email}")
+    for _ in range(retries):
+        try:
+            with urllib.request.urlopen(
+                    f"{MAILPIT_BASE}/api/v1/search?query={query}", timeout=10) as resp:
+                result = json.loads(resp.read().decode("utf-8"))
+        except (urllib.error.URLError, urllib.error.HTTPError):
+            time.sleep(1)
+            continue
+        messages = sorted(result.get("messages", []),
+                          key=lambda m: m.get("Created", ""), reverse=True)
+        if messages:
+            with urllib.request.urlopen(
+                    f"{MAILPIT_BASE}/api/v1/message/{messages[0]['ID']}", timeout=10) as resp2:
+                msg = json.loads(resp2.read().decode("utf-8"))
+            match = re.search(r"/invite/([a-f0-9]{32})", msg.get("Text") or "")
+            if match:
+                return match.group(1)
+        time.sleep(1)
+    return None
+
+
+def activate_and_promote_head_trainer(api: ApiClient, trainers: list[dict],
+                                      cfg: dict, club_ids: list[str]) -> dict | None:
+    """Activeert een uitgenodigde demo-trainer (accept-invite via de Mailpit
+    invite-mail, zie fetch_invite_token_from_mailpit) en promoot haar tot
+    hoofdtrainer van een club via PUT /trainers/{id}/head-trainer-clubs.
+    Levert een inlogbare hoofdtrainer op voor de club-scoping E2E-check
+    (zie backend/CLAUDE.md — reset-flow). Retourneert credentials of None
+    bij falen; faalt nooit hard zodat de rest van de seed kan doorlopen."""
+    print("\n5. Activating demo trainer as head-trainer of a club...")
+    if not club_ids:
+        print("   No clubs - skipping head-trainer promotion.")
+        return None
+
+    trainer_spec = trainers[cfg["trainerIndex"]]
+    email = trainer_spec["email"]
+    password = cfg["password"]
+
+    token = fetch_invite_token_from_mailpit(email)
+    if not token:
+        print(f"   Could not find invite mail for {email} in Mailpit "
+              f"({MAILPIT_BASE}) - skipping head-trainer promotion.",
+              file=sys.stderr)
+        return None
+
+    accepted = api.post("/trainers/accept-invite",
+                        {"token": token, "password": password}, auth=False)
+    if not accepted or not accepted.get("token"):
+        print(f"   accept-invite failed for {email} - skipping promotion.",
+              file=sys.stderr)
+        return None
+    print(f"   Activated: {email}")
+
+    trainer_list = api.get("/trainers") or []
+    trainer = next((t for t in trainer_list if t.get("email") == email), None)
+    if not trainer:
+        print(f"   Could not find trainer {email} after activation.", file=sys.stderr)
+        return None
+
+    club_idx = min(cfg.get("clubIndex", 0), len(club_ids) - 1)
+    club_id = club_ids[club_idx]
+    api.put(f"/trainers/{trainer['id']}/head-trainer-clubs", {"clubIds": [club_id]})
+    print(f"   Promoted {email} to head-trainer of club {club_id} "
+          f"-> HTTP {api.last_status}")
+
+    return {"id": trainer["id"], "email": email, "password": password,
+            "clubId": club_id}
+
+
 def create_trainer_availabilities(api: ApiClient, club_ids: list[str]) -> None:
     """Legt per actieve trainer een paar vaste beschikbaarheden vast (demo-data).
     Club x weekdag x tijdvak. dayOfWeek: 0 = maandag ... 6 = zondag. De twee
@@ -257,8 +346,14 @@ def create_simple_series(api: ApiClient, series_specs: list[dict],
             "endDate": iso_date(end),
             "registrationDeadline": deadline_iso,
             "maxRegistrations": spec["maxRegistrations"],
+            "minAge": spec.get("minAge", 3),
+            "maxAge": spec.get("maxAge", 99),
             "weeklyTemplate": template,
             "lessons": lessons,
+            "allowSoloEnrollment": spec.get("allowSoloEnrollment", True),
+            "allowGroupEnrollment": spec.get("allowGroupEnrollment", True),
+            "acceptOnlinePayment": spec.get("acceptOnlinePayment", False),
+            "acceptManualPayment": spec.get("acceptManualPayment", True),
         }
         sid = strip_quotes(api.post("/lessonseries", body))
         if sid:
@@ -293,19 +388,24 @@ def simple_enrollments(api: ApiClient, students: list[dict],
 
 
 def create_standalone_lessons(api: ApiClient, specs: list[dict],
-                              trainer_id: str, today: date) -> None:
+                              club_ids: list[str], trainer_id: str, today: date) -> None:
     """Creates losse lessen + uitnodigingen via /standalone-lessons."""
     print("\n9. Creating standalone lessons...")
     if not specs:
         print("   None configured - skipping.")
         return
+    if not club_ids:
+        print("   No clubs — skipping standalone lessons.")
+        return
     created = 0
     for spec in specs:
+        club_idx = min(spec.get("clubIndex", 0), len(club_ids) - 1)
         body = {
             "date": iso_date(today + timedelta(days=spec["startOffsetDays"])),
             "startTime": spec["startTime"],
             "durationMinutes": spec["durationMinutes"],
             "courtName": spec["courtName"],
+            "tennisClubId": club_ids[club_idx],
             "level": spec.get("level"),
             "trainerId": trainer_id,
             "maxParticipants": spec["maxParticipants"],
@@ -347,8 +447,14 @@ def create_planning_series(api: ApiClient, spec: dict, club_ids: list[str],
         "endDate": iso_date(end),
         "registrationDeadline": deadline_iso,
         "maxRegistrations": spec["maxRegistrations"],
+        "minAge": spec.get("minAge", 3),
+        "maxAge": spec.get("maxAge", 99),
         "weeklyTemplate": template_unassigned,
         "lessons": lessons,
+        "allowSoloEnrollment": spec.get("allowSoloEnrollment", True),
+        "allowGroupEnrollment": spec.get("allowGroupEnrollment", True),
+        "acceptOnlinePayment": spec.get("acceptOnlinePayment", False),
+        "acceptManualPayment": spec.get("acceptManualPayment", True),
     }
     sid = strip_quotes(api.post("/lessonseries", body))
     if not sid:
@@ -660,6 +766,11 @@ def main() -> int:
         api, data["trainers"], auth["userId"])
     create_trainer_availabilities(api, club_ids)
 
+    head_trainer = None
+    if "headTrainer" in data:
+        head_trainer = activate_and_promote_head_trainer(
+            api, data["trainers"], data["headTrainer"], club_ids)
+
     simple_ids = create_simple_series(
         api, data["simpleSeries"], club_ids, trainer_id, today, deadline_iso)
     simple_enrollments(api, data["simpleEnrollments"], simple_ids)
@@ -675,7 +786,7 @@ def main() -> int:
         generate_and_confirm_planning(api, planning_id)
 
     create_standalone_lessons(
-        api, data.get("standaloneLessons", []), trainer_id, today)
+        api, data.get("standaloneLessons", []), club_ids, trainer_id, today)
 
     create_camps(api, club_ids, trainer_id, today, deadline_iso)
 
@@ -692,6 +803,10 @@ def main() -> int:
     if "secondOrg" in data:
         print(f"\n  Second org admin: {data['secondOrg']['admin']['email']}")
         print(f"  Jan is lid van beide orgs - org-switcher zichtbaar in topbar")
+    if head_trainer:
+        print(f"\n  Head-trainer (club {head_trainer['clubId']}): "
+              f"{head_trainer['email']}")
+        print(f"  Password: {head_trainer['password']}")
     print("\nURLs:")
     print("  Frontend:  http://localhost:5317")
     print("  API:       http://localhost:5142/swagger")

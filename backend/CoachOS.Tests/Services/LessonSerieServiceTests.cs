@@ -20,6 +20,10 @@ public class LessonSerieServiceTests
     private Mock<ITennisClubRepository> _tennisClubRepo = null!;
     private Mock<IUserLookupService> _userLookup = null!;
     private Mock<IEmailService> _emailService = null!;
+    private Mock<IMollieConnectionRepository> _mollieConnectionRepo = null!;
+    private Mock<IScheduleAssignmentRepository> _scheduleAssignmentRepo = null!;
+    private Mock<ITimeSlotPreferenceRepository> _timeSlotPreferenceRepo = null!;
+    private Mock<ILessonInvitationRepository> _invitationRepo = null!;
     private ApplicationMapper _mapper = null!;
     private LessonSerieService _service = null!;
 
@@ -36,6 +40,10 @@ public class LessonSerieServiceTests
         _tennisClubRepo = new Mock<ITennisClubRepository>();
         _userLookup = new Mock<IUserLookupService>();
         _emailService = new Mock<IEmailService>();
+        _mollieConnectionRepo = new Mock<IMollieConnectionRepository>();
+        _scheduleAssignmentRepo = new Mock<IScheduleAssignmentRepository>();
+        _timeSlotPreferenceRepo = new Mock<ITimeSlotPreferenceRepository>();
+        _invitationRepo = new Mock<ILessonInvitationRepository>();
         _mapper = new ApplicationMapper();
         _service = new LessonSerieService(
             _lessonSeriesRepo.Object,
@@ -44,6 +52,10 @@ public class LessonSerieServiceTests
             _tennisClubRepo.Object,
             _userLookup.Object,
             _emailService.Object,
+            _mollieConnectionRepo.Object,
+            _scheduleAssignmentRepo.Object,
+            _timeSlotPreferenceRepo.Object,
+            _invitationRepo.Object,
             _mapper);
 
         // Default: enrollment counts returnen lege dictionary (geen inschrijvingen).
@@ -56,6 +68,13 @@ public class LessonSerieServiceTests
         _userLookup
             .Setup(u => u.IsActiveTrainerAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
+
+        // Default: organisatie is verbonden met Mollie, zodat bestaande tests (die AcceptOnlinePayment
+        // niet expliciet zetten en dus de default `true` gebruiken) niet stuklopen op de gating-check.
+        // Individuele tests overriden dit naar null om het "niet verbonden"-scenario te simuleren.
+        _mollieConnectionRepo
+            .Setup(r => r.GetByOrganizationReadOnlyAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new MollieConnection { Id = Guid.NewGuid(), OrganizationId = OrgId });
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
@@ -141,10 +160,10 @@ public class LessonSerieServiceTests
     public async Task GetAllAsync_ReturnsEmptyList_WhenNoSeries()
     {
         _lessonSeriesRepo
-            .Setup(r => r.GetByOrganizationAsync(OrgId, null, It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetByOrganizationAsync(OrgId, null, Array.Empty<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<LessonSerie>());
 
-        var result = await _service.GetAllAsync(OrgId);
+        var result = await _service.GetAllAsync(OrgId, null, Array.Empty<Guid>());
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().BeEmpty();
@@ -155,14 +174,14 @@ public class LessonSerieServiceTests
     {
         var series = BuildSeries();
         _lessonSeriesRepo
-            .Setup(r => r.GetByOrganizationAsync(OrgId, null, It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetByOrganizationAsync(OrgId, null, Array.Empty<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<LessonSerie> { series });
 
         _lessonRepo
             .Setup(r => r.GetLessonCountsBySeriesIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Dictionary<Guid, int> { { series.Id, 3 } });
 
-        var result = await _service.GetAllAsync(OrgId);
+        var result = await _service.GetAllAsync(OrgId, null, Array.Empty<Guid>());
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().HaveCount(1);
@@ -176,19 +195,43 @@ public class LessonSerieServiceTests
     {
         var series = BuildSeries();
         _lessonSeriesRepo
-            .Setup(r => r.GetByOrganizationAsync(OrgId, TrainerId, It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetByOrganizationAsync(OrgId, TrainerId, Array.Empty<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<LessonSerie> { series });
 
         _lessonRepo
             .Setup(r => r.GetLessonCountsBySeriesIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Dictionary<Guid, int> { { series.Id, 1 } });
 
-        var result = await _service.GetAllAsync(OrgId, TrainerId);
+        var result = await _service.GetAllAsync(OrgId, TrainerId, Array.Empty<Guid>());
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().HaveCount(1);
         _lessonSeriesRepo.Verify(
-            r => r.GetByOrganizationAsync(OrgId, TrainerId, It.IsAny<CancellationToken>()),
+            r => r.GetByOrganizationAsync(OrgId, TrainerId, Array.Empty<Guid>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Test]
+    public async Task GetAllAsync_ForwardsHeadTrainerClubIds_ToRepository()
+    {
+        // Regressietest voor de union-uitbreiding: het service laagje mag de meegegeven
+        // hoofdtrainer-club-ids ongewijzigd doorgeven aan de repository — de eigenlijke
+        // union-query zelf wordt gedekt door de reset+seed E2E-check (Task 8), niet hier.
+        _lessonSeriesRepo
+            .Setup(r => r.GetByOrganizationAsync(OrgId, TrainerId, It.IsAny<IReadOnlyList<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<LessonSerie>());
+
+        List<Guid> headTrainerClubIds = [ClubId];
+
+        var result = await _service.GetAllAsync(OrgId, TrainerId, headTrainerClubIds);
+
+        result.IsSuccess.Should().BeTrue();
+        _lessonSeriesRepo.Verify(
+            r => r.GetByOrganizationAsync(
+                OrgId,
+                TrainerId,
+                It.Is<IReadOnlyList<Guid>>(ids => ids.Count == 1 && ids[0] == ClubId),
+                It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -396,6 +439,34 @@ public class LessonSerieServiceTests
         _lessonSeriesRepo.Verify(r => r.AddAsync(It.IsAny<LessonSerie>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
+    [Test]
+    public async Task CreateAsync_RejectsOnlinePayment_WhenNoMollieConnection()
+    {
+        CreateLessonSerieRequest request = new()
+        {
+            Name = "Zonder Mollie",
+            Level = (int)LessonLevel.Beginner,
+            StartDate = "2026-06-01",
+            EndDate = "2026-08-31",
+            TennisClubId = ClubId,
+            AcceptOnlinePayment = true,
+        };
+
+        _tennisClubRepo
+            .Setup(r => r.ExistsAsync(ClubId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        _mollieConnectionRepo
+            .Setup(r => r.GetByOrganizationReadOnlyAsync(OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((MollieConnection?)null);
+
+        var result = await _service.CreateAsync(OrgId, request);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.Code == ErrorCodes.Validation);
+        _lessonSeriesRepo.Verify(r => r.AddAsync(It.IsAny<LessonSerie>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     // ── UpdateAsync ───────────────────────────────────────────────────────────
 
     [Test]
@@ -484,6 +555,37 @@ public class LessonSerieServiceTests
         result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.NotFound);
     }
 
+    [Test]
+    public async Task UpdateAsync_RejectsOnlinePayment_WhenNoMollieConnection()
+    {
+        var series = BuildSeries();
+        UpdateLessonSerieRequest request = new()
+        {
+            Name = "Zonder Mollie",
+            Level = (int)LessonLevel.Beginner,
+            TennisClubId = ClubId,
+            AcceptOnlinePayment = true,
+        };
+
+        _lessonSeriesRepo
+            .Setup(r => r.GetByIdAsync(series.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+
+        _tennisClubRepo
+            .Setup(r => r.ExistsAsync(ClubId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        _mollieConnectionRepo
+            .Setup(r => r.GetByOrganizationReadOnlyAsync(OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((MollieConnection?)null);
+
+        var result = await _service.UpdateAsync(series.Id, OrgId, request);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.Code == ErrorCodes.Validation);
+        _lessonSeriesRepo.Verify(r => r.UpdateAsync(It.IsAny<LessonSerie>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     // ── DeleteAsync ───────────────────────────────────────────────────────────
 
     [Test]
@@ -498,6 +600,25 @@ public class LessonSerieServiceTests
 
         result.IsSuccess.Should().BeTrue();
         _lessonRepo.Verify(r => r.DeleteRangeAsync(series.Lessons, It.IsAny<CancellationToken>()), Times.Once);
+        _lessonSeriesRepo.Verify(r => r.DeleteAsync(series, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    // Regressie: een reeks met weekindeling verwijderen faalde met HTTP 500 omdat de WeeklyTemplateEntry-rijen
+    // op DeleteBehavior.Restrict staan en niet werden opgeruimd. DeleteAsync moet ze expliciet mee verwijderen.
+    [Test]
+    public async Task DeleteAsync_AlsoRemovesWeeklyTemplateEntries()
+    {
+        var series = BuildSeries(enrollments: 0, lessons: 2, templateEntries: 3);
+        _lessonSeriesRepo
+            .Setup(r => r.GetByIdWithEnrollmentsAsync(series.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+
+        var result = await _service.DeleteAsync(series.Id, OrgId);
+
+        result.IsSuccess.Should().BeTrue();
+        _lessonSeriesRepo.Verify(
+            r => r.DeleteWeeklyTemplateRangeAsync(series.WeeklyTemplate, It.IsAny<CancellationToken>()),
+            Times.Once);
         _lessonSeriesRepo.Verify(r => r.DeleteAsync(series, It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -701,6 +822,50 @@ public class LessonSerieServiceTests
         entry.MaxStudents.Should().Be(4);
     }
 
+    // Regressie: twee onbenoemde parallelle weekslots (zelfde dag+start, geen baan — toegestaan
+    // voor "2 velden, baan later toewijzen") mogen NIET willekeurig aan één van de twee gekoppeld
+    // worden. Zonder deze fix zou FirstOrDefault beide lessen aan hetzelfde weekslot hangen en het
+    // andere weekslot zonder lessen achterlaten — met foute "pas hele weekslot aan"-updates tot gevolg.
+    [Test]
+    public async Task CreateAsync_AmbiguousUnnamedParallelSlots_LeavesLessonsUnlinkedRatherThanGuessing()
+    {
+        LessonSerie? captured = null;
+        CreateLessonSerieRequest request = new()
+        {
+            Name = "Twee parallelle onbenoemde velden",
+            Price = 100m,
+            StartDate = "2026-06-01",
+            EndDate = "2026-08-31",
+            TennisClubId = ClubId,
+            WeeklyTemplate =
+            [
+                new WeeklyTemplateEntryRequest { DayOfWeek = 0, StartTime = "18:00", EndTime = "19:00", TrainerId = TrainerId, CourtName = null, MaxStudents = 4 },
+                new WeeklyTemplateEntryRequest { DayOfWeek = 0, StartTime = "18:00", EndTime = "19:00", TrainerId = TrainerId, CourtName = null, MaxStudents = 4 },
+            ],
+            Lessons =
+            [
+                new CreateLessonRequest { TrainerId = TrainerId, Date = "2026-06-01", StartTime = "18:00", EndTime = "19:00", CourtName = null, MaxStudents = 4 },
+                new CreateLessonRequest { TrainerId = TrainerId, Date = "2026-06-01", StartTime = "18:00", EndTime = "19:00", CourtName = null, MaxStudents = 4 },
+            ],
+        };
+
+        _tennisClubRepo
+            .Setup(r => r.ExistsAsync(ClubId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        _lessonSeriesRepo
+            .Setup(r => r.AddAsync(It.IsAny<LessonSerie>(), It.IsAny<CancellationToken>()))
+            .Callback<LessonSerie, CancellationToken>((s, _) => captured = s)
+            .Returns(Task.CompletedTask);
+
+        Result<Guid> result = await _service.CreateAsync(OrgId, request);
+
+        result.IsSuccess.Should().BeTrue();
+        captured.Should().NotBeNull();
+        captured!.WeeklyTemplate.Should().HaveCount(2);
+        captured.Lessons.Should().HaveCount(2);
+        captured.Lessons.Should().OnlyContain(l => l.WeeklyTemplateEntry == null);
+    }
+
     [Test]
     public async Task CreateAsync_ReturnsValidation_WhenWeeklyTemplateHasExactDuplicateSlot()
     {
@@ -758,6 +923,93 @@ public class LessonSerieServiceTests
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.Validation);
+        _lessonSeriesRepo.Verify(r => r.AddAsync(It.IsAny<LessonSerie>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    // Parallelle lessen mogen eerst zonder baannaam worden aangemaakt; de club kan de baan later invullen.
+    [Test]
+    public async Task CreateAsync_AllowsParallelSlotsWithoutCourtName()
+    {
+        CreateLessonSerieRequest request = new()
+        {
+            Name = "Parallel zonder baan",
+            Price = 100m,
+            StartDate = "2026-06-01",
+            EndDate = "2026-08-31",
+            TennisClubId = ClubId,
+            WeeklyTemplate =
+            [
+                new WeeklyTemplateEntryRequest { DayOfWeek = 0, StartTime = "20:00", EndTime = "21:00", TrainerId = TrainerId, MaxStudents = 4 },
+                new WeeklyTemplateEntryRequest { DayOfWeek = 0, StartTime = "20:00", EndTime = "21:00", TrainerId = TrainerId, MaxStudents = 4 },
+            ],
+        };
+
+        _tennisClubRepo
+            .Setup(r => r.ExistsAsync(ClubId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var result = await _service.CreateAsync(OrgId, request);
+
+        result.IsSuccess.Should().BeTrue();
+        _lessonSeriesRepo.Verify(r => r.AddAsync(It.IsAny<LessonSerie>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    // Whitespace-only baannamen worden als null opgeslagen, zodat ze dezelfde betekenis hebben als leeg.
+    [Test]
+    public async Task CreateAsync_NormalizesWhitespaceCourtNamesToNull()
+    {
+        CreateLessonSerieRequest request = new()
+        {
+            Name = "Parallel met spatie-baan",
+            Price = 100m,
+            StartDate = "2026-06-01",
+            EndDate = "2026-08-31",
+            TennisClubId = ClubId,
+            WeeklyTemplate =
+            [
+                new WeeklyTemplateEntryRequest { DayOfWeek = 2, StartTime = "19:00", EndTime = "20:00", TrainerId = TrainerId, CourtName = "  ", MaxStudents = 4 },
+                new WeeklyTemplateEntryRequest { DayOfWeek = 2, StartTime = "19:00", EndTime = "20:00", TrainerId = TrainerId, CourtName = null, MaxStudents = 4 },
+            ],
+        };
+
+        _tennisClubRepo
+            .Setup(r => r.ExistsAsync(ClubId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var result = await _service.CreateAsync(OrgId, request);
+
+        result.IsSuccess.Should().BeTrue();
+        _lessonSeriesRepo.Verify(r => r.AddAsync(
+            It.Is<LessonSerie>(s => s.WeeklyTemplate.All(e => e.CourtName == null)),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    // Échte duplicaat (zelfde baannaam expliciet herhaald) blijft de "verwijder de duplicaten"-melding houden.
+    [Test]
+    public async Task CreateAsync_ReturnsRemoveDuplicatesMessage_WhenSameCourtRepeated()
+    {
+        CreateLessonSerieRequest request = new()
+        {
+            Name = "Echte duplicaat",
+            Price = 100m,
+            StartDate = "2026-06-01",
+            EndDate = "2026-08-31",
+            TennisClubId = ClubId,
+            WeeklyTemplate =
+            [
+                new WeeklyTemplateEntryRequest { DayOfWeek = 0, StartTime = "10:00", EndTime = "11:00", TrainerId = TrainerId, CourtName = "Baan 1", MaxStudents = 4 },
+                new WeeklyTemplateEntryRequest { DayOfWeek = 0, StartTime = "10:00", EndTime = "11:00", TrainerId = TrainerId, CourtName = "Baan 1", MaxStudents = 4 },
+            ],
+        };
+
+        _tennisClubRepo
+            .Setup(r => r.ExistsAsync(ClubId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var result = await _service.CreateAsync(OrgId, request);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Message.Should().Contain("Verwijder de duplicaten");
         _lessonSeriesRepo.Verify(r => r.AddAsync(It.IsAny<LessonSerie>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -904,18 +1156,21 @@ public class LessonSerieServiceTests
             {
                 Id = Guid.NewGuid(), OrganizationId = OrgId,
                 StudentName = "Jan Janssen", StudentEmail = "jan@example.com",
+                ContactEmail = "jan@example.com",
                 Status = Domain.Enums.EnrollmentStatus.Confirmed,
             },
             new Domain.Entities.Enrollment
             {
                 Id = Guid.NewGuid(), OrganizationId = OrgId,
                 StudentName = "Sofie Peeters", StudentEmail = "sofie@example.com",
+                ContactEmail = "sofie@example.com",
                 Status = Domain.Enums.EnrollmentStatus.Pending,
             },
             new Domain.Entities.Enrollment
             {
                 Id = Guid.NewGuid(), OrganizationId = OrgId,
                 StudentName = "Marc Dubois", StudentEmail = "marc@example.com",
+                ContactEmail = "marc@example.com",
                 Status = Domain.Enums.EnrollmentStatus.Cancelled,
             },
         ];
@@ -1006,5 +1261,116 @@ public class LessonSerieServiceTests
         result.IsSuccess.Should().BeTrue();
         result.Value!.IsCancelled.Should().BeFalse();
         result.Value.CancellationReason.Should().BeNull();
+    }
+
+    // ── AddWeeklyTemplateEntryAsync ───────────────────────────────────────────
+
+    [Test]
+    public async Task AddWeeklyTemplateEntryAsync_AddsEntryAndExpandsFutureLessons()
+    {
+        // Reeks volledig in de toekomst zodat "vanaf vandaag" de volledige periode dekt.
+        LessonSerie series = BuildSeries(templateEntries: 0);
+        DateOnly start = new(2099, 1, 5);
+        DateOnly end = new(2099, 3, 1);
+        series.StartDate = start;
+        series.EndDate = end;
+        _lessonSeriesRepo
+            .Setup(r => r.GetByIdAsync(series.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+
+        AddWeeklyTemplateEntryRequest request = new()
+        {
+            DayOfWeek = 0,
+            StartTime = "20:00",
+            EndTime = "21:00",
+            CourtName = "Baan 1",
+            MaxStudents = 4,
+        };
+
+        Result<Guid> result = await _service.AddWeeklyTemplateEntryAsync(series.Id, OrgId, request);
+
+        result.IsSuccess.Should().BeTrue();
+        series.WeeklyTemplate.Should().HaveCount(1);
+        series.WeeklyTemplate.Single().DayOfWeek.Should().Be(0);
+
+        IReadOnlyList<DateOnly> expectedDates = WeeklyLessonExpander.MatchingDates(0, start, end);
+        expectedDates.Should().NotBeEmpty();
+        series.Lessons.Select(l => l.Date).Should().BeEquivalentTo(expectedDates);
+        // Elke gegenereerde les valt op maandag (app-dag 0) en erft de slot-gegevens.
+        series.Lessons.Should().OnlyContain(l => ((int)l.Date.DayOfWeek + 6) % 7 == 0 && l.CourtName == "Baan 1");
+        _lessonSeriesRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task AddWeeklyTemplateEntryAsync_ReturnsNotFound_WhenSeriesMissing()
+    {
+        _lessonSeriesRepo
+            .Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((LessonSerie?)null);
+
+        Result<Guid> result = await _service.AddWeeklyTemplateEntryAsync(
+            Guid.NewGuid(), OrgId,
+            new AddWeeklyTemplateEntryRequest { DayOfWeek = 0, StartTime = "20:00", EndTime = "21:00", MaxStudents = 4 });
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.NotFound);
+    }
+
+    [Test]
+    public async Task AddWeeklyTemplateEntryAsync_AllowsParallelSlotWithoutCourt()
+    {
+        LessonSerie series = BuildSeries(templateEntries: 0);
+        series.StartDate = new DateOnly(2099, 1, 5);
+        series.EndDate = new DateOnly(2099, 3, 1);
+        series.WeeklyTemplate.Add(new WeeklyTemplateEntry
+        {
+            Id = Guid.NewGuid(),
+            LessonSerieId = series.Id,
+            DayOfWeek = 0,
+            StartTime = new TimeOnly(20, 0),
+            EndTime = new TimeOnly(21, 0),
+            MaxStudents = 4,
+        });
+        _lessonSeriesRepo
+            .Setup(r => r.GetByIdAsync(series.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+
+        Result<Guid> result = await _service.AddWeeklyTemplateEntryAsync(
+            series.Id, OrgId,
+            new AddWeeklyTemplateEntryRequest { DayOfWeek = 0, StartTime = "20:00", EndTime = "21:00", MaxStudents = 4 });
+
+        result.IsSuccess.Should().BeTrue();
+        series.WeeklyTemplate.Should().HaveCount(2);
+        series.WeeklyTemplate.Last().CourtName.Should().BeNull();
+        _lessonSeriesRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task AddWeeklyTemplateEntryAsync_Succeeds_WhenSameTimeDifferentCourt()
+    {
+        LessonSerie series = BuildSeries(templateEntries: 0);
+        series.StartDate = new DateOnly(2099, 1, 5);
+        series.EndDate = new DateOnly(2099, 1, 12);
+        series.WeeklyTemplate.Add(new WeeklyTemplateEntry
+        {
+            Id = Guid.NewGuid(),
+            LessonSerieId = series.Id,
+            DayOfWeek = 0,
+            StartTime = new TimeOnly(20, 0),
+            EndTime = new TimeOnly(21, 0),
+            CourtName = "Baan 1",
+            MaxStudents = 4,
+        });
+        _lessonSeriesRepo
+            .Setup(r => r.GetByIdAsync(series.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+
+        Result<Guid> result = await _service.AddWeeklyTemplateEntryAsync(
+            series.Id, OrgId,
+            new AddWeeklyTemplateEntryRequest { DayOfWeek = 0, StartTime = "20:00", EndTime = "21:00", CourtName = "Baan 2", MaxStudents = 4 });
+
+        result.IsSuccess.Should().BeTrue();
+        series.WeeklyTemplate.Should().HaveCount(2);
+        _lessonSeriesRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 }

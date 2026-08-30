@@ -18,7 +18,7 @@ public class DashboardService(
         Guid organizationId, CancellationToken ct = default)
     {
         var allSeries =
-            await lessonSeriesRepo.GetByOrganizationAsync(organizationId, ct: ct);
+            await lessonSeriesRepo.GetByOrganizationAsync(organizationId, null, Array.Empty<Guid>(), ct);
 
         var activeSeriesCount = allSeries.Count(s => s.IsActive);
 
@@ -119,7 +119,7 @@ public class DashboardService(
 
         // 2. Underbooked series
         IReadOnlyList<LessonSerieEntity> allSeries =
-            await lessonSeriesRepo.GetByOrganizationAsync(organizationId, ct: ct);
+            await lessonSeriesRepo.GetByOrganizationAsync(organizationId, null, Array.Empty<Guid>(), ct);
 
         List<LessonSerieEntity> activeSeries = allSeries
             .Where(s => s.IsActive && s.MaxRegistrations.HasValue && s.MaxRegistrations.Value > 0)
@@ -185,7 +185,7 @@ public class DashboardService(
 
         // OccupancyPct: enrolled / maxRegistrations for series active in each week
         IReadOnlyList<LessonSerieEntity> allSeries =
-            await lessonSeriesRepo.GetByOrganizationAsync(organizationId, ct: ct);
+            await lessonSeriesRepo.GetByOrganizationAsync(organizationId, null, Array.Empty<Guid>(), ct);
         List<LessonSerieEntity> metricalSeries = allSeries
             .Where(s => s.IsActive && s.MaxRegistrations.HasValue && s.MaxRegistrations.Value > 0)
             .ToList();

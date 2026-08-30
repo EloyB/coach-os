@@ -19,6 +19,9 @@ export interface StandaloneLessonListItemDto {
   level: number | null;
   trainerId: string | null;
   trainerName: string | null;
+  /** Null voor legacy losse lessen van vóór de club-koppeling. */
+  tennisClubId: string | null;
+  tennisClubName: string | null;
   maxParticipants: number;
   invitedCount: number;
   acceptedCount: number;
@@ -35,6 +38,9 @@ export interface StandaloneLessonDetailDto {
   level: number | null;
   trainerId: string | null;
   trainerName: string | null;
+  /** Null voor legacy losse lessen van vóór de club-koppeling. */
+  tennisClubId: string | null;
+  tennisClubName: string | null;
   maxParticipants: number;
   notes: string | null;
   isCancelled: boolean;
@@ -46,6 +52,7 @@ export interface CreateStandaloneLessonRequest {
   startTime: string;
   durationMinutes: number;
   courtName: string;
+  tennisClubId: string;
   level: number | null;
   trainerId: string;
   maxParticipants: number;

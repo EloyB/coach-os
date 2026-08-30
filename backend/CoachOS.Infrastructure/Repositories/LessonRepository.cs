@@ -94,7 +94,7 @@ public class LessonRepository(ApplicationDbContext context) : ILessonRepository
 
     public async Task<Lesson?> FindCourtConflictAsync(
         Guid organizationId, string courtName, DateOnly date, TimeOnly startTime, TimeOnly endTime,
-        Guid? excludeLessonId = null, CancellationToken ct = default)
+        Guid? excludeLessonId = null, Guid? tennisClubId = null, CancellationToken ct = default)
     {
         // Geen baan opgegeven → geen bezetting mogelijk.
         if (string.IsNullOrWhiteSpace(courtName))
@@ -113,7 +113,22 @@ public class LessonRepository(ApplicationDbContext context) : ILessonRepository
                 && !l.IsCancelled
                 && l.StartTime < endTime
                 && l.EndTime > startTime
-                && (excludeLessonId == null || l.Id != excludeLessonId))
+                && (excludeLessonId == null || l.Id != excludeLessonId)
+                // Baannamen zijn vrije tekst per club: "Baan 2" bij club A is een andere baan dan
+                // "Baan 2" bij club B, ook al horen ze bij dezelfde organisatie. Zonder deze filter
+                // botst het wijzigen van een tijdslot bij club A onterecht met een gelijknamige baan
+                // op hetzelfde tijdstip bij club B. Zonder tennisClubId (les zonder gekende club)
+                // blijft de check org-breed, zoals voorheen.
+                //
+                // De "effectieve club" van de kandidaat-les: voor reeks-lessen is dat altijd
+                // LessonSerie.TennisClubId; voor losse lessen is dat Lesson.TennisClubId, wat null
+                // kan zijn voor legacy losse lessen van vóór deze kolom. Zo'n legacy les met
+                // onbekende club wordt VEILIG als conflict behandeld (we kunnen niet bewijzen dat
+                // hij aan een andere club plaatsvindt) i.p.v. stilzwijgend toe te laten.
+                && (tennisClubId == null
+                    || (l.LessonSerieId != null
+                        ? l.LessonSerie != null && l.LessonSerie.TennisClubId == tennisClubId
+                        : l.TennisClubId == null || l.TennisClubId == tennisClubId)))
             .FirstOrDefaultAsync(ct);
     }
 

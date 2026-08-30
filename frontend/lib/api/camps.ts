@@ -1,4 +1,5 @@
 import apiClient from "@/lib/api-client";
+import publicApiClient from "@/lib/public-api-client";
 
 export interface CampDayTrainerDto {
   trainerId: string;
@@ -173,7 +174,7 @@ export async function deleteCamp(id: string): Promise<void> {
   await apiClient.delete(`/camps/${id}`);
 }
 export async function getCampForm(campId: string): Promise<CampEnrollmentFormDto | null> {
-  const { data } = await apiClient.get<CampEnrollmentFormDto | null>(`/public/camps/${campId}/form`);
+  const { data } = await publicApiClient.get<CampEnrollmentFormDto | null>(`/public/camps/${campId}/form`);
   return data;
 }
 export async function saveCampForm(campId: string, fields: SaveCampFormFieldRequest[]): Promise<string> {
@@ -193,23 +194,23 @@ export async function markCampEnrollmentCashPaid(
 
 // ── Public ──
 export async function getPublicCamp(id: string): Promise<PublicCampDto> {
-  const { data } = await apiClient.get<PublicCampDto>(`/public/camps/${id}`);
+  const { data } = await publicApiClient.get<PublicCampDto>(`/public/camps/${id}`);
   return data;
 }
 export async function submitCampEnrollment(
   campId: string, request: SubmitCampEnrollmentRequest
 ): Promise<SubmitCampEnrollmentResult> {
-  const { data } = await apiClient.post<SubmitCampEnrollmentResult>(`/public/camps/${campId}/enroll`, request);
+  const { data } = await publicApiClient.post<SubmitCampEnrollmentResult>(`/public/camps/${campId}/enroll`, request);
   return data;
 }
 export async function getCampPaymentOptions(campId: string): Promise<CampPaymentOptions> {
-  const { data } = await apiClient.get<CampPaymentOptions>(`/public/camps/${campId}/payment-options`);
+  const { data } = await publicApiClient.get<CampPaymentOptions>(`/public/camps/${campId}/payment-options`);
   return data;
 }
 export async function chooseCampPayment(
   campEnrollmentId: string, method: number
 ): Promise<{ checkoutUrl: string | null }> {
-  const { data } = await apiClient.post<{ checkoutUrl: string | null }>(
+  const { data } = await publicApiClient.post<{ checkoutUrl: string | null }>(
     `/public/camp-enrollments/${campEnrollmentId}/pay`,
     { method }
   );
