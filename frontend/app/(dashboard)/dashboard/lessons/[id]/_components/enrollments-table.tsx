@@ -220,19 +220,6 @@ function PersonRow({
     },
   });
 
-  const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
-  const removeMemberMutation = useMutation({
-    mutationFn: () =>
-      removeGroupMember(seriesId, enrollment.enrollmentGroupId!, enrollment.id),
-    onSuccess: () => {
-      toast.success(t("removeFromGroupSuccess"));
-      queryClient.invalidateQueries({ queryKey: ["enrollments", seriesId] });
-      queryClient.invalidateQueries({ queryKey: ["planning", seriesId] });
-      queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
-    },
-    onError: () => toast.error(t("removeFromGroupError")),
-  });
-
   return (
     <>
       <tr
@@ -366,20 +353,6 @@ function PersonRow({
                     {t("cancelAction")}
                   </button>
                 )}
-                {canManage && !isCancelled && enrollment.enrollmentGroupId && (
-                  <button
-                    type="button"
-                    disabled={removeMemberMutation.isPending}
-                    onClick={() => {
-                      setOpenMenuId(null);
-                      setConfirmRemoveOpen(true);
-                    }}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-gray-700 hover:bg-tennis-green/5 hover:text-tennis-green disabled:opacity-50"
-                  >
-                    <UserMinus size={13} />
-                    {t("removeFromGroup")}
-                  </button>
-                )}
               </div>
             )}
           </div>
@@ -419,26 +392,6 @@ function PersonRow({
               className="bg-red-600 hover:bg-red-700"
             >
               {t("confirmCancel")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={confirmRemoveOpen} onOpenChange={setConfirmRemoveOpen}>
-        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t("removeFromGroupTitle")}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("removeFromGroupBody", { name: enrollment.studentName })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t("back")}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => removeMemberMutation.mutate()}
-              className="bg-tennis-green hover:bg-tennis-green/90"
-            >
-              {t("removeFromGroupConfirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -632,6 +585,8 @@ function GroupBlockRows({
           <MemberRow
             key={m.id}
             enrollment={m}
+            seriesId={seriesId}
+            canManage={canManage}
             isLeader={m.id === leader.id}
             isDuplicate={duplicateIds.has(m.id)}
             isMatch={matchedIds?.has(m.id) ?? false}
@@ -684,20 +639,39 @@ function GroupBlockRows({
 
 function MemberRow({
   enrollment,
+  seriesId,
+  canManage,
   isLeader,
   isDuplicate,
   isMatch,
 }: {
   enrollment: LessonSeriesEnrollmentDto;
+  seriesId: string;
+  canManage: boolean;
   isLeader: boolean;
   isDuplicate: boolean;
   isMatch: boolean;
 }) {
   const t = useTranslations("enrollmentsTable");
+  const queryClient = useQueryClient();
+  const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
   const isCancelled = enrollment.status === "Cancelled";
   const age = computeAge(enrollment.dateOfBirth);
 
+  const removeMemberMutation = useMutation({
+    mutationFn: () =>
+      removeGroupMember(seriesId, enrollment.enrollmentGroupId!, enrollment.id),
+    onSuccess: () => {
+      toast.success(t("removeFromGroupSuccess"));
+      queryClient.invalidateQueries({ queryKey: ["enrollments", seriesId] });
+      queryClient.invalidateQueries({ queryKey: ["planning", seriesId] });
+      queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
+    },
+    onError: () => toast.error(t("removeFromGroupError")),
+  });
+
   return (
+    <>
     <tr
       className={`border-t border-gray-50 ${isCancelled ? "opacity-50" : ""} ${
         isMatch ? "bg-tennis-lime/10" : ""
@@ -745,8 +719,42 @@ function MemberRow({
           </Badge>
         )}
       </td>
-      <td className="px-4 py-2.5" />
+      <td className="px-4 py-2.5 text-right whitespace-nowrap">
+        {canManage && !isCancelled && (
+          <button
+            type="button"
+            disabled={removeMemberMutation.isPending}
+            onClick={() => setConfirmRemoveOpen(true)}
+            aria-label={t("removeFromGroup")}
+            title={t("removeFromGroup")}
+            className="flex h-7 w-7 items-center justify-center rounded text-gray-400 hover:bg-tennis-green/5 hover:text-tennis-green disabled:opacity-50"
+          >
+            <UserMinus size={13} />
+          </button>
+        )}
+      </td>
     </tr>
+
+    <AlertDialog open={confirmRemoveOpen} onOpenChange={setConfirmRemoveOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{t("removeFromGroupTitle")}</AlertDialogTitle>
+          <AlertDialogDescription>
+            {t("removeFromGroupBody", { name: enrollment.studentName })}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>{t("back")}</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => removeMemberMutation.mutate()}
+            className="bg-tennis-green hover:bg-tennis-green/90"
+          >
+            {t("removeFromGroupConfirm")}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
 
