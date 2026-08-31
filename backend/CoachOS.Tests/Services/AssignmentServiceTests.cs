@@ -3,6 +3,7 @@ using CoachOS.Application.Planning.DTOs;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
 using CoachOS.Domain.Interfaces;
+using CoachOS.Domain.Models;
 using FluentAssertions;
 using Moq;
 using NUnit.Framework;
@@ -321,5 +322,125 @@ public class AssignmentServiceTests
         result.IsSuccess.Should().BeTrue();
         group.Members.Should().AllSatisfy(m => m.EnrollmentGroupId.Should().BeNull());
         _groupRepo.Verify(r => r.Delete(group), Times.Once);
+    }
+
+    // ── RemoveMemberFromGroupAsync ───────────────────────────────────────────
+
+    private (EnrollmentGroup Group, Enrollment Leader, List<Enrollment> Members) BuildGroup(
+        int size, EnrollmentStatus status = EnrollmentStatus.Pending)
+    {
+        Guid groupId = Guid.NewGuid();
+        List<Enrollment> members = [];
+        for (int i = 0; i < size; i++)
+        {
+            members.Add(new Enrollment
+            {
+                Id = Guid.NewGuid(), OrganizationId = OrgId, LessonSerieId = SeriesId,
+                StudentName = $"Lid {i}", EnrolledAt = new DateTime(2026, 1, 1).AddDays(i),
+                Status = status, EnrollmentGroupId = groupId,
+            });
+        }
+        EnrollmentGroup group = new()
+        {
+            Id = groupId, OrganizationId = OrgId, LessonSerieId = SeriesId,
+            Name = "Groep A", LeaderEnrollmentId = members[0].Id, Members = members,
+        };
+        _groupRepo.Setup(r => r.GetByIdAsync(groupId, OrgId, It.IsAny<CancellationToken>())).ReturnsAsync(group);
+        _assignmentRepo.Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ScheduleAssignment>());
+        return (group, members[0], members);
+    }
+
+    [Test]
+    public async Task RemoveMember_GroupOf3_RegularMember_DetachesOnly()
+    {
+        var (group, leader, members) = BuildGroup(3);
+        Enrollment target = members[2]; // geen leider
+
+        Result<bool> result = await _service.RemoveMemberFromGroupAsync(
+            SeriesId, group.Id, target.Id, OrgId, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        target.EnrollmentGroupId.Should().BeNull();
+        group.LeaderEnrollmentId.Should().Be(leader.Id);           // leider onveranderd
+        _groupRepo.Verify(r => r.Delete(It.IsAny<EnrollmentGroup>()), Times.Never); // niet ontbonden
+        _assignmentRepo.Verify(r => r.RemoveRange(It.IsAny<IEnumerable<ScheduleAssignment>>()), Times.Never);
+        _groupRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task RemoveMember_GroupOf3_Leader_PromotesEarliestEnrolled()
+    {
+        var (group, leader, members) = BuildGroup(3);
+        // members[1] is vroeger ingeschreven dan members[2] (EnrolledAt oplopend) -> die wordt leider
+
+        Result<bool> result = await _service.RemoveMemberFromGroupAsync(
+            SeriesId, group.Id, leader.Id, OrgId, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        leader.EnrollmentGroupId.Should().BeNull();
+        group.LeaderEnrollmentId.Should().Be(members[1].Id);
+        _groupRepo.Verify(r => r.Delete(It.IsAny<EnrollmentGroup>()), Times.Never);
+    }
+
+    [Test]
+    public async Task RemoveMember_GroupOf2_Dissolves_AndConvertsAssignmentToRemainingMember()
+    {
+        var (group, leader, members) = BuildGroup(2);
+        Enrollment remaining = members[1];
+        // groep is ingepland: één groeps-toewijzing (Proposed)
+        ScheduleAssignment groupAssignment = new()
+        {
+            Id = Guid.NewGuid(), OrganizationId = OrgId, LessonSerieId = SeriesId,
+            WeeklyTemplateEntryId = Guid.NewGuid(), EnrollmentGroupId = group.Id,
+            Status = ScheduleAssignmentStatus.Proposed, IsLocked = false,
+        };
+        _assignmentRepo.Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ScheduleAssignment> { groupAssignment });
+
+        List<ScheduleAssignment>? added = null;
+        _assignmentRepo.Setup(r => r.AddRangeAsync(It.IsAny<IEnumerable<ScheduleAssignment>>(), It.IsAny<CancellationToken>()))
+            .Callback<IEnumerable<ScheduleAssignment>, CancellationToken>((a, _) => added = a.ToList())
+            .Returns(Task.CompletedTask);
+
+        Result<bool> result = await _service.RemoveMemberFromGroupAsync(
+            SeriesId, group.Id, leader.Id, OrgId, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        remaining.EnrollmentGroupId.Should().BeNull();                       // laatste lid wordt solo
+        _groupRepo.Verify(r => r.Delete(group), Times.Once);                 // groep ontbonden
+        _assignmentRepo.Verify(r => r.RemoveRange(It.IsAny<IEnumerable<ScheduleAssignment>>()), Times.Once);
+        added.Should().NotBeNull();
+        added!.Should().ContainSingle();
+        added![0].EnrollmentId.Should().Be(remaining.Id);                    // plek behouden als individueel
+        added![0].EnrollmentGroupId.Should().BeNull();
+        added![0].WeeklyTemplateEntryId.Should().Be(groupAssignment.WeeklyTemplateEntryId);
+        added![0].Status.Should().Be(ScheduleAssignmentStatus.Proposed);
+    }
+
+    [Test]
+    public async Task RemoveMember_Confirmed_ReturnsConflict()
+    {
+        var (group, leader, members) = BuildGroup(3, EnrollmentStatus.Confirmed);
+
+        Result<bool> result = await _service.RemoveMemberFromGroupAsync(
+            SeriesId, group.Id, members[2].Id, OrgId, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.Code == ErrorCodes.Conflict);
+        members[2].EnrollmentGroupId.Should().Be(group.Id);                 // niets gemuteerd
+        _groupRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task RemoveMember_NotAMember_ReturnsNotFound()
+    {
+        var (group, _, _) = BuildGroup(3);
+
+        Result<bool> result = await _service.RemoveMemberFromGroupAsync(
+            SeriesId, group.Id, Guid.NewGuid(), OrgId, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.Code == ErrorCodes.NotFound);
     }
 }
