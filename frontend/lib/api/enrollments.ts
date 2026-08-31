@@ -76,6 +76,14 @@ export interface UpdateBasicEnrollmentRequest {
   isOpenToGrouping: boolean;
 }
 
+export interface CreateManualEnrollmentRequest {
+  studentName: string;
+  contactEmail: string;
+  studentEmail?: string | null;
+  studentPhone?: string | null;
+  dateOfBirth: string;
+  responses?: { formFieldId: string; value: string }[];
+}
 export interface SaveFormFieldRequest {
   id?: string;
   label: string;
@@ -134,6 +142,16 @@ export async function submitEnrollment(seriesId: string, request: SubmitEnrollme
   return data;
 }
 
+export async function createManualEnrollment(
+  seriesId: string,
+  request: CreateManualEnrollmentRequest,
+): Promise<string> {
+  const { data } = await apiClient.post<string>(
+    `/lessonseries/${seriesId}/enrollments/manual`,
+    request,
+  );
+  return data;
+}
 export async function getLessonSeriesEnrollments(seriesId: string): Promise<LessonSeriesEnrollmentDto[]> {
   const { data } = await apiClient.get<LessonSeriesEnrollmentDto[]>(`/lessonseries/${seriesId}/enrollments`);
   return data;

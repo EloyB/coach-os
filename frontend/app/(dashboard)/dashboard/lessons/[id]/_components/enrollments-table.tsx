@@ -51,7 +51,8 @@ import {
 } from "@/lib/api/enrollments";
 import type { LessonSeriesEnrollmentDto } from "@/lib/api/enrollments";
 import { EnrollmentDetailDialog } from "./enrollment-detail-dialog";
-import { isHeadTrainerViewer } from "@/lib/auth";
+import { isEnrollmentManager, isHeadTrainerViewer } from "@/lib/auth";
+import { ManualEnrollmentDialog } from "./manual-enrollment-dialog";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -185,7 +186,13 @@ function PersonRow({
   // Hoofdtrainer = read-only: geen bewerk-/annuleer-/betaalacties. Reactief zodat
   // het na hydratie klopt (localStorage is null tijdens SSR).
   const [readOnly, setReadOnly] = useState(false);
-  useEffect(() => setReadOnly(isHeadTrainerViewer()), []);
+  const [canManage, setCanManage] = useState(false);
+  useEffect(() => {
+    // Auth staat alleen in localStorage; pas na hydration kunnen acties zichtbaar worden.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setReadOnly(isHeadTrainerViewer());
+    setCanManage(isEnrollmentManager());
+  }, []);
   const showActionsMenu = openMenuId === enrollment.id;
 
   const isCancelled = enrollment.status === "Cancelled";
@@ -330,7 +337,7 @@ function PersonRow({
                     {t("editAction")}
                   </button>
                 )}
-                {!readOnly && !isCancelled && (
+                {canManage && !isCancelled && (
                   <button
                     type="button"
                     disabled={cancelMutation.isPending}
@@ -419,7 +426,13 @@ function GroupBlockRows({
     useState<LessonSeriesEnrollmentDto | null>(null);
   // Hoofdtrainer = read-only: geen betaal-/annuleer-acties op groepsniveau.
   const [readOnly, setReadOnly] = useState(false);
-  useEffect(() => setReadOnly(isHeadTrainerViewer()), []);
+  const [canManage, setCanManage] = useState(false);
+  useEffect(() => {
+    // Auth staat alleen in localStorage; pas na hydration kunnen acties zichtbaar worden.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setReadOnly(isHeadTrainerViewer());
+    setCanManage(isEnrollmentManager());
+  }, []);
   const expanded = forceExpanded || open;
 
   const { leader, members } = block;
@@ -545,7 +558,7 @@ function GroupBlockRows({
                     {t("markPaid")}
                   </button>
                 )}
-                {!readOnly && (
+                {canManage && (
                 <button
                   type="button"
                   disabled={cancelGroupMutation.isPending}
@@ -869,6 +882,13 @@ function EnrollmentsTable({
 export function EnrollmentsSection({ seriesId }: { seriesId: string }) {
   const t = useTranslations("enrollmentsTable");
   const [copied, setCopied] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
+  const [canManage, setCanManage] = useState(false);
+  useEffect(() => {
+    // Auth staat alleen in localStorage; pas na hydration kunnen acties zichtbaar worden.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCanManage(isEnrollmentManager());
+  }, []);
 
   const { data: enrollments = [], isLoading } = useQuery({
     queryKey: ["enrollments", seriesId],
@@ -898,10 +918,20 @@ export function EnrollmentsSection({ seriesId }: { seriesId: string }) {
             {activeCount}
           </span>
         </div>
-        <button
-          onClick={handleCopyLink}
-          className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
-        >
+        <div className="flex items-center gap-2">
+          {canManage && (
+            <button
+              type="button"
+              onClick={() => setManualOpen(true)}
+              className="rounded-lg bg-tennis-green px-3 py-1.5 text-xs font-semibold text-white hover:bg-tennis-green/90"
+            >
+              {t("manualAdd")}
+            </button>
+          )}
+          <button
+            onClick={handleCopyLink}
+            className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
+          >
           {copied ? (
             <>
               <CheckCircle2 size={12} className="text-green-500" />
@@ -913,7 +943,8 @@ export function EnrollmentsSection({ seriesId }: { seriesId: string }) {
               {t("copyLink")}
             </>
           )}
-        </button>
+          </button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -930,6 +961,11 @@ export function EnrollmentsSection({ seriesId }: { seriesId: string }) {
       ) : (
         <EnrollmentsTable enrollments={enrollments} seriesId={seriesId} />
       )}
+      <ManualEnrollmentDialog
+        seriesId={seriesId}
+        open={manualOpen}
+        onOpenChange={setManualOpen}
+      />
     </div>
   );
 }

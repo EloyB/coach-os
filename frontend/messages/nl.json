@@ -240,6 +240,16 @@
     "toastMarkedPaid": "Inschrijving gemarkeerd als betaald",
     "toastGroupCancelled": "Groep geannuleerd",
     "toastGroupCancelError": "Kon de groep niet annuleren",
+    "manualAdd": "Manueel toevoegen",
+    "manualTitle": "Inschrijving manueel toevoegen",
+    "manualDescription": "De deelnemer wordt ingeschreven, maar nog niet ingepland. Er start geen betaalflow.",
+    "manualName": "Naam deelnemer",
+    "manualEmail": "E-mailadres",
+    "manualPhone": "Telefoonnummer (optioneel)",
+    "manualBirthDate": "Geboortedatum",
+    "manualSubmit": "Inschrijven",
+    "manualSuccess": "Inschrijving toegevoegd en bevestigingsmail klaargezet",
+    "manualError": "Kon de inschrijving niet toevoegen",
     "toastUpdated": "Inschrijving bijgewerkt"
   },
   "enrollmentDetail": {
