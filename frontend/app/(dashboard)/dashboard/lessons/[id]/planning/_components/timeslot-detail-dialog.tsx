@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import {
   Users,
@@ -17,6 +18,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { getInitials, getAvatarColor } from "@/lib/planning-avatars";
 import type {
   PlanningTimeSlotDto,
@@ -78,6 +89,8 @@ export function TimeslotDetailDialog({
   onEditSlot,
 }: TimeslotDetailDialogProps) {
   const t = useTranslations("planning");
+  // Bevestiging vóór 'Definitief aanbieden': dit verstuurt meteen een e-mail-aanbod.
+  const [offerTarget, setOfferTarget] = useState<{ id: string; name: string } | null>(null);
 
   if (!slot) return null;
 
@@ -92,6 +105,7 @@ export function TimeslotDetailDialog({
         : "text-green-600";
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className="flex max-h-[85vh] max-w-md flex-col gap-0 overflow-hidden p-0"
@@ -277,7 +291,12 @@ export function TimeslotDetailDialog({
                     </button>
                     <button
                       type="button"
-                      onClick={() => onOffer(assignment.id)}
+                      onClick={() =>
+                        setOfferTarget({
+                          id: assignment.id,
+                          name: groupName ?? names[0] ?? "",
+                        })
+                      }
                       disabled={isOfferPending}
                       className="inline-flex items-center gap-1.5 rounded-md bg-tennis-green px-2.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-tennis-green/90 disabled:opacity-50"
                     >
@@ -305,5 +324,32 @@ export function TimeslotDetailDialog({
         </div>
       </DialogContent>
     </Dialog>
+
+    <AlertDialog
+      open={offerTarget !== null}
+      onOpenChange={(open) => !open && setOfferTarget(null)}
+    >
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{t("offerConfirmTitle")}</AlertDialogTitle>
+          <AlertDialogDescription>
+            {t("offerConfirmBody", { name: offerTarget?.name ?? "" })}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>{t("offerConfirmCancel")}</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => {
+              if (offerTarget) onOffer(offerTarget.id);
+              setOfferTarget(null);
+            }}
+            className="bg-tennis-green hover:bg-tennis-green/90"
+          >
+            {t("offerConfirmButton")}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
