@@ -211,6 +211,17 @@ export async function cancelEnrollmentGroup(seriesId: string, groupId: string): 
   await apiClient.delete(`/lessonseries/${seriesId}/enrollment-groups/${groupId}`);
 }
 
+/** Haalt één lid uit een groep; het lid blijft bestaan als losse inschrijving. */
+export async function removeGroupMember(
+  seriesId: string,
+  groupId: string,
+  enrollmentId: string,
+): Promise<void> {
+  await apiClient.delete(
+    `/lessonseries/${seriesId}/enrollment-groups/${groupId}/members/${enrollmentId}`,
+  );
+}
+
 /**
  * Markeert de openstaande overschrijving van een reeksinschrijving als betaald.
  * Bevestigt de inschrijving en verstuurt de bevestigingsmail. Faalt met NotFound

@@ -20,6 +20,7 @@ import {
   Copy,
   CheckCircle2,
   MoreVertical,
+  UserMinus,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -46,6 +47,7 @@ import {
   getLessonSeriesEnrollments,
   cancelEnrollment,
   cancelEnrollmentGroup,
+  removeGroupMember,
   markEnrollmentCashPaid,
   updateBasicEnrollment,
 } from "@/lib/api/enrollments";
@@ -218,6 +220,19 @@ function PersonRow({
     },
   });
 
+  const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
+  const removeMemberMutation = useMutation({
+    mutationFn: () =>
+      removeGroupMember(seriesId, enrollment.enrollmentGroupId!, enrollment.id),
+    onSuccess: () => {
+      toast.success(t("removeFromGroupSuccess"));
+      queryClient.invalidateQueries({ queryKey: ["enrollments", seriesId] });
+      queryClient.invalidateQueries({ queryKey: ["planning", seriesId] });
+      queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
+    },
+    onError: () => toast.error(t("removeFromGroupError")),
+  });
+
   return (
     <>
       <tr
@@ -351,6 +366,20 @@ function PersonRow({
                     {t("cancelAction")}
                   </button>
                 )}
+                {canManage && !isCancelled && enrollment.enrollmentGroupId && (
+                  <button
+                    type="button"
+                    disabled={removeMemberMutation.isPending}
+                    onClick={() => {
+                      setOpenMenuId(null);
+                      setConfirmRemoveOpen(true);
+                    }}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-gray-700 hover:bg-tennis-green/5 hover:text-tennis-green disabled:opacity-50"
+                  >
+                    <UserMinus size={13} />
+                    {t("removeFromGroup")}
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -390,6 +419,26 @@ function PersonRow({
               className="bg-red-600 hover:bg-red-700"
             >
               {t("confirmCancel")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmRemoveOpen} onOpenChange={setConfirmRemoveOpen}>
+        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("removeFromGroupTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("removeFromGroupBody", { name: enrollment.studentName })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("back")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => removeMemberMutation.mutate()}
+              className="bg-tennis-green hover:bg-tennis-green/90"
+            >
+              {t("removeFromGroupConfirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
