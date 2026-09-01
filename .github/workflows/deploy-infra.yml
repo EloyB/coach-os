@@ -119,7 +119,14 @@ jobs:
             # AND upstream DNS cache is reset. 'nginx -s reload' sometimes leaves
             # the process in a half-broken state when upstreams transitioned
             # down→up during a prior reload; a fresh container avoids this.
-            docker compose up -d --force-recreate nginx
+            #
+            # Same for grafana: its dashboard/datasource provisioning config is
+            # also bind-mounted, and Grafana only scans
+            # /etc/grafana/provisioning/dashboards/*.yaml for NEW providers at
+            # process startup — 'docker compose up -d' alone won't recreate it
+            # when only those bind-mounted files changed, so a newly added
+            # dashboard silently never appears until a real restart.
+            docker compose up -d --force-recreate nginx grafana
 
             sleep 5
             docker compose ps
