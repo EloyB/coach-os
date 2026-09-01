@@ -353,10 +353,11 @@ public class StudentConfirmationService(
         // Calculate next occurrence of this DayOfWeek in Europe/Brussels timezone.
         DateOnly today = timeProvider.GetBrusselsToday();
 
-        // DayOfWeek in the entity is int (0=Sunday or 1=Monday depending on convention).
-        // .NET DayOfWeek: 0=Sunday, 1=Monday, ..., 6=Saturday.
-        DayOfWeek targetDay = (DayOfWeek)slot.DayOfWeek;
-        int daysUntil = ((int)targetDay - (int)today.DayOfWeek + 7) % 7;
+        // slot.DayOfWeek gebruikt de app-conventie (0=maandag ... 6=zondag, zie
+        // LessonSerieService), niet System.DayOfWeek (0=zondag) — vandaar de conversie
+        // hieronder in plaats van een rechtstreekse (DayOfWeek)-cast.
+        int todayAppDayOfWeek = ((int)today.DayOfWeek + 6) % 7;
+        int daysUntil = (slot.DayOfWeek - todayAppDayOfWeek + 7) % 7;
         if (daysUntil == 0) daysUntil = 7; // always next week if today is the same day
         DateOnly nextDate = today.AddDays(daysUntil);
 
