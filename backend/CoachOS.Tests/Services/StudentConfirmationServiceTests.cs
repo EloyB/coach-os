@@ -88,7 +88,8 @@ public class StudentConfirmationServiceTests
             _pricingService.Object,
             _enrollmentRepo.Object,
             _emailService.Object,
-            _logger.Object);
+            _logger.Object,
+            TimeProvider.System);
     }
 
     [Test]

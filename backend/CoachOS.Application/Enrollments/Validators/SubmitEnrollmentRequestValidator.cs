@@ -1,14 +1,16 @@
 using CoachOS.Application.Enrollments;
 using CoachOS.Application.Enrollments.DTOs;
 using CoachOS.Application.Common;
+using CoachOS.Domain.Common;
 using FluentValidation;
 
 namespace CoachOS.Application.Enrollments.Validators;
 
 public class SubmitEnrollmentRequestValidator : AbstractValidator<SubmitEnrollmentRequest>
 {
-    public SubmitEnrollmentRequestValidator()
+    public SubmitEnrollmentRequestValidator(TimeProvider timeProvider)
     {
+        DateOnly today = timeProvider.GetBrusselsToday();
         RuleFor(x => x.StudentName)
             .NotEmpty().WithMessage("Naam is verplicht")
             .MaximumLength(200).WithMessage("Naam mag maximaal 200 karakters zijn")
@@ -27,8 +29,8 @@ public class SubmitEnrollmentRequestValidator : AbstractValidator<SubmitEnrollme
         RuleFor(x => x.DateOfBirth)
             .NotEmpty().WithMessage("Geboortedatum is verplicht")
             .Must(DateOfBirthRules.IsParseable).WithMessage("Geboortedatum moet het formaat yyyy-MM-dd hebben")
-            .Must(DateOfBirthRules.IsNotInFuture).WithMessage("Geboortedatum kan niet in de toekomst liggen")
-            .Must(DateOfBirthRules.IsRealistic).WithMessage("Controleer de geboortedatum");
+            .Must(v => DateOfBirthRules.IsNotInFuture(v, today)).WithMessage("Geboortedatum kan niet in de toekomst liggen")
+            .Must(v => DateOfBirthRules.IsRealistic(v, today)).WithMessage("Controleer de geboortedatum");
 
         RuleForEach(x => x.Responses).ChildRules(r =>
         {
@@ -84,8 +86,8 @@ public class SubmitEnrollmentRequestValidator : AbstractValidator<SubmitEnrollme
                 m.RuleFor(v => v.DateOfBirth)
                     .NotEmpty().WithMessage("Geboortedatum is verplicht")
                     .Must(DateOfBirthRules.IsParseable).WithMessage("Geboortedatum moet het formaat yyyy-MM-dd hebben")
-                    .Must(DateOfBirthRules.IsNotInFuture).WithMessage("Geboortedatum kan niet in de toekomst liggen")
-                    .Must(DateOfBirthRules.IsRealistic).WithMessage("Controleer de geboortedatum");
+                    .Must(v => DateOfBirthRules.IsNotInFuture(v, today)).WithMessage("Geboortedatum kan niet in de toekomst liggen")
+                    .Must(v => DateOfBirthRules.IsRealistic(v, today)).WithMessage("Controleer de geboortedatum");
             });
         });
     }

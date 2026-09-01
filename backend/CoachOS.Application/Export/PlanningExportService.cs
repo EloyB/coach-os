@@ -1,3 +1,4 @@
+using CoachOS.Domain.Common;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
 using CoachOS.Domain.Interfaces;
@@ -37,7 +38,7 @@ public class PlanningExportService(
 
         Dictionary<Guid, string> trainerNames = await ResolveTrainerNamesAsync(series, ct);
 
-        DateOnly today = DateOnly.FromDateTime(timeProvider.GetLocalNow().DateTime);
+        DateOnly today = timeProvider.GetBrusselsToday();
 
         PlanningExportModel model = new()
         {
