@@ -6,7 +6,7 @@ export interface StudentLesson {
   seriesName: string;
   seriesStartDate: string;
   seriesEndDate: string;
-  dayOfWeek: number;
+  dayOfWeek: number; // app-conventie: 0=maandag..6=zondag (niet JS Date.getDay())
   startTime: string;
   endTime: string;
   courtName: string | null;
