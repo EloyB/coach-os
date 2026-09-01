@@ -126,7 +126,15 @@ jobs:
             # process startup — 'docker compose up -d' alone won't recreate it
             # when only those bind-mounted files changed, so a newly added
             # dashboard silently never appears until a real restart.
-            docker compose up -d --force-recreate nginx grafana
+            #
+            # Same reasoning for alloy (alloy-config.alloy) and loki
+            # (loki-config.yml): both configs are bind-mounted too, and a
+            # config-only change (e.g. the container-label relabel fix) never
+            # reaches the running process without a restart — confirmed live
+            # after the previous deploy, where grafana/nginx got recreated but
+            # alloy kept running its stale config for 2+ hours, so Loki kept
+            # rejecting every log batch as unlabeled.
+            docker compose up -d --force-recreate nginx grafana alloy loki
 
             sleep 5
             docker compose ps
