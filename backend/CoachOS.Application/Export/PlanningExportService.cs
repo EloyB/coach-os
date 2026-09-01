@@ -192,9 +192,10 @@ public class PlanningExportService(
 
     private static IEnumerable<DateOnly> ExpandDates(DateOnly start, DateOnly end, int dayOfWeek)
     {
-        // WeeklyTemplateEntry.DayOfWeek (0 = zondag) lijnt 1-op-1 op System.DayOfWeek.
+        // WeeklyTemplateEntry.DayOfWeek gebruikt de app-conventie (0=maandag ... 6=zondag),
+        // niet System.DayOfWeek (0=zondag) — vandaar de conversie i.p.v. een rechtstreekse vergelijking.
         for (DateOnly d = start; d <= end; d = d.AddDays(1))
-            if ((int)d.DayOfWeek == dayOfWeek)
+            if (((int)d.DayOfWeek + 6) % 7 == dayOfWeek)
                 yield return d;
     }
 

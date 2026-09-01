@@ -24,10 +24,11 @@ import { Mono } from "@/components/ui/mono";
 import { SlashLabel } from "@/components/ui/slash-label";
 import { InkHeroCard } from "@/components/ui/ink-hero-card";
 
+// Backend-conventie: 0=maandag ... 6=zondag (zie CoachOS.Application/LessonSerie/LessonSerieService.cs).
 const DAY_NAMES = [
-  "Zondag", "Maandag", "Dinsdag", "Woensdag", "Donderdag", "Vrijdag", "Zaterdag",
+  "Maandag", "Dinsdag", "Woensdag", "Donderdag", "Vrijdag", "Zaterdag", "Zondag",
 ];
-const DAY_SHORT = ["Zo", "Ma", "Di", "Wo", "Do", "Vr", "Za"];
+const DAY_SHORT = ["Ma", "Di", "Wo", "Do", "Vr", "Za", "Zo"];
 
 function Spinner() {
   return (
