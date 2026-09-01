@@ -8,6 +8,7 @@ using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
 using CoachOS.Domain.Interfaces;
 using CoachOS.Domain.Models;
+using CoachOS.Tests.TestHelpers;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -90,6 +91,78 @@ public class StudentConfirmationServiceTests
             _emailService.Object,
             _logger.Object,
             TimeProvider.System);
+    }
+
+    /// <summary>
+    /// Regressietest voor een DayOfWeek-conventiebug: <c>slot.DayOfWeek</c> gebruikt de
+    /// app-conventie (0=maandag ... 6=zondag), niet System.DayOfWeek (0=zondag). Een
+    /// rechtstreekse (DayOfWeek)-cast interpreteerde woensdag (2) als dinsdag, waardoor
+    /// de kalenderdownload (en de "Wachten op bevestiging"-weergave elders) de verkeerde
+    /// dag toonde — reëel voorgevallen in productie (Evy Hertogs: Wo 19:00 getoond als Di 19:00).
+    /// </summary>
+    [Test]
+    public async Task GenerateCalendarAsync_SlotOnWednesday_NextOccurrenceFallsOnWednesday()
+    {
+        const string rawToken = "calendar-raw-token";
+        string hash = HashToken(rawToken);
+
+        LessonSerie series = PlanningServiceTests.BuildSeries(withSlots: true, SeriesId, OrgId, SlotId);
+        WeeklyTemplateEntry slot = series.WeeklyTemplate.First();
+        slot.DayOfWeek = 2; // Woensdag in app-conventie
+        slot.StartTime = new TimeOnly(19, 0);
+        slot.EndTime = new TimeOnly(20, 0);
+
+        Enrollment enrollment = PlanningServiceTests.BuildEnrollment("Evy", OrgId, SeriesId);
+
+        ScheduleAssignment assignment = new()
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = OrgId,
+            LessonSerieId = SeriesId,
+            WeeklyTemplateEntryId = SlotId,
+            EnrollmentId = enrollment.Id,
+            Enrollment = enrollment,
+            Status = ScheduleAssignmentStatus.Confirmed,
+        };
+
+        AssignmentConfirmationToken token = new()
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = OrgId,
+            ScheduleAssignmentId = assignment.Id,
+            EnrollmentId = enrollment.Id,
+            TokenHash = hash,
+            Response = ConfirmationResponse.Confirmed,
+            ExpiresAt = DateTime.UtcNow.AddHours(72),
+            ScheduleAssignment = assignment,
+            Enrollment = enrollment,
+        };
+
+        _tokenRepo.Setup(r => r.GetByTokenHashAsync(hash, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(token);
+        _seriesRepo.Setup(r => r.GetByIdAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+
+        // "Vandaag" vastgezet op maandag 1 juni 2026 (Brussels tijd) — de eerstvolgende
+        // woensdag daarna is 3 juni 2026.
+        FixedTimeProvider fixedTime = new(new DateTimeOffset(2026, 6, 1, 10, 0, 0, TimeSpan.Zero));
+        StudentConfirmationService sut = new(
+            _tokenRepo.Object,
+            _assignmentRepo.Object,
+            _seriesRepo.Object,
+            _paymentRepo.Object,
+            _paymentService.Object,
+            _pricingService.Object,
+            _enrollmentRepo.Object,
+            _emailService.Object,
+            _logger.Object,
+            fixedTime);
+
+        Result<string> result = await sut.GenerateCalendarAsync(rawToken, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        // 19:00 CEST (zomertijd, UTC+2) op 3 juni 2026 = 17:00 UTC.
+        result.Value.Should().Contain("DTSTART:20260603T170000Z");
     }
 
     [Test]
