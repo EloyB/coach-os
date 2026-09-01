@@ -4,7 +4,7 @@
   "tags": ["coachos", "loki"],
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 1,
+  "version": 2,
   "refresh": "30s",
   "time": { "from": "now-6h", "to": "now" },
   "templating": {
@@ -46,14 +46,15 @@
     {
       "id": 2,
       "type": "timeseries",
-      "title": "Fouten per container (bevat error/exception/fail)",
+      "title": "Fouten per container (echte error/exception/fail als los woord)",
+      "description": "Woordgrens-regex i.p.v. platte substring: \\bLastError\\b matcht bv. niet meer op de kolomnaam 'LastError' in routinematige SQL (dat gaf voorheen valse spikes).",
       "gridPos": { "h": 8, "w": 24, "x": 0, "y": 8 },
       "datasource": { "type": "loki", "uid": "loki" },
       "targets": [
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "sum by (container) (count_over_time({container=~\"$container\"} |~ \"(?i)(error|exception|fail)\" [$__auto]))",
+          "expr": "sum by (container) (count_over_time({container=~\"$container\"} |~ \"(?i)\\\\b(error|exception|fail(ed|ure)?)\\\\b\" [$__auto]))",
           "legendFormat": "{{container}}",
           "queryType": "range"
         }
@@ -67,10 +68,40 @@
       }
     },
     {
+      "id": 4,
+      "type": "timeseries",
+      "title": "HTTP 4xx/5xx (nginx access log)",
+      "description": "Aparte teller per statuscode-klasse uit nginx' access log — surfaced los van de generieke woordfilter, want een 503/404 bevat zelf niet het woord 'error'.",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "sum(count_over_time({container=\"coach-os-nginx\"} |~ \"\\\" 4[0-9]{2} \" [$__auto]))",
+          "legendFormat": "4xx",
+          "queryType": "range"
+        },
+        {
+          "refId": "B",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "sum(count_over_time({container=\"coach-os-nginx\"} |~ \"\\\" 5[0-9]{2} \" [$__auto]))",
+          "legendFormat": "5xx",
+          "queryType": "range"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "bars", "fillOpacity": 60, "stacking": { "mode": "normal" } }
+        },
+        "overrides": []
+      }
+    },
+    {
       "id": 3,
       "type": "logs",
       "title": "Live logs",
-      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 16 },
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 24 },
       "datasource": { "type": "loki", "uid": "loki" },
       "options": {
         "showTime": true,
