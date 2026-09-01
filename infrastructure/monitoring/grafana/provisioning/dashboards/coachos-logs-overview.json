@@ -4,7 +4,7 @@
   "tags": ["coachos", "loki"],
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 3,
+  "version": 5,
   "refresh": "30s",
   "time": { "from": "now-6h", "to": "now" },
   "templating": {
@@ -100,22 +100,22 @@
     {
       "id": 5,
       "type": "timeseries",
-      "title": "Requestduur per route (nginx rt=, p50/p95)",
-      "description": "Tijd tussen binnenkomst bij nginx en antwoord van de upstream — de facto FE-naar-BE-duur. Route is de eerste twee padsegmenten (bv. /_grafana/api), zodat losse IDs/tokens niet elk hun eigen lijn krijgen.",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 24 },
+      "title": "Requestduur per API-resource (nginx rt=, p50/p95)",
+      "description": "Enkel echte backend-calls (/api/...) — Grafana's eigen verkeer, statische assets en bot-scans vallen hier per definitie buiten. Route = de eerste twee padsegmenten na /api/ (bv. 'public/lessonseries'), dus geen losse ID's/tokens per lijn meer.",
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 24 },
       "datasource": { "type": "loki", "uid": "loki" },
       "targets": [
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "quantile_over_time(0.5, {container=\"coach-os-nginx\"} | regexp `\"(?P<method>[A-Z]+) (?P<route>/[^/?\" ]*/[^/?\" ]*)` | regexp `rt=(?P<rt>[0-9.]+)` | unwrap rt [$__auto]) by (route)",
+          "expr": "quantile_over_time(0.5, {container=\"coach-os-nginx\"} |~ `\"[A-Z]+ /api/` | regexp `\"[A-Z]+ /api/(?P<route>[^/?\" ]+(?:/[^/?\" ]+)?)` | regexp `rt=(?P<rt>[0-9.]+)` | unwrap rt [$__auto]) by (route)",
           "legendFormat": "p50 {{route}}",
           "queryType": "range"
         },
         {
           "refId": "B",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "quantile_over_time(0.95, {container=\"coach-os-nginx\"} | regexp `\"(?P<method>[A-Z]+) (?P<route>/[^/?\" ]*/[^/?\" ]*)` | regexp `rt=(?P<rt>[0-9.]+)` | unwrap rt [$__auto]) by (route)",
+          "expr": "quantile_over_time(0.95, {container=\"coach-os-nginx\"} |~ `\"[A-Z]+ /api/` | regexp `\"[A-Z]+ /api/(?P<route>[^/?\" ]+(?:/[^/?\" ]+)?)` | regexp `rt=(?P<rt>[0-9.]+)` | unwrap rt [$__auto]) by (route)",
           "legendFormat": "p95 {{route}}",
           "queryType": "range"
         }
@@ -123,14 +123,18 @@
       "fieldConfig": {
         "defaults": { "unit": "s", "custom": { "drawStyle": "line", "fillOpacity": 10 } },
         "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max"] },
+        "tooltip": { "mode": "multi" }
       }
     },
     {
       "id": 3,
       "type": "logs",
       "title": "Live logs",
-      "description": "SQL-commandologging (EF Core) wordt hier uitgefilterd — sinds de logging-config-fix logt de API die sowieso niet meer op Information-niveau, dit is enkel extra bescherming voor historische regels binnen de tijdrange.",
-      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 32 },
+      "description": "Filtert SQL-commandologging (extra bescherming voor historische regels; de API zelf logt dit niet meer op Information-niveau sinds de logging-fix) én Grafana's eigen verkeer naar zichzelf (anders overspoelt het bekijken van dit dashboard de feed met z'n eigen queries).",
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 33 },
       "datasource": { "type": "loki", "uid": "loki" },
       "options": {
         "showTime": true,
@@ -143,7 +147,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "{container=~\"$container\"} != \"Executed DbCommand\"",
+          "expr": "{container=~\"$container\", container!=\"coach-os-grafana\"} != \"Executed DbCommand\" !~ `(?i)_grafana`",
           "queryType": "range"
         }
       ]
