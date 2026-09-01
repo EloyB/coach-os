@@ -1,13 +1,15 @@
 using CoachOS.Application.Common;
 using CoachOS.Application.Enrollments.DTOs;
+using CoachOS.Domain.Common;
 using FluentValidation;
 
 namespace CoachOS.Application.Enrollments.Validators;
 
 public class UpdateBasicEnrollmentRequestValidator : AbstractValidator<UpdateBasicEnrollmentRequest>
 {
-    public UpdateBasicEnrollmentRequestValidator()
+    public UpdateBasicEnrollmentRequestValidator(TimeProvider timeProvider)
     {
+        DateOnly today = timeProvider.GetBrusselsToday();
         RuleFor(x => x.StudentName)
             .NotEmpty().WithMessage("Naam is verplicht")
             .MaximumLength(200);
@@ -28,7 +30,7 @@ public class UpdateBasicEnrollmentRequestValidator : AbstractValidator<UpdateBas
         RuleFor(x => x.DateOfBirth)
             .NotEmpty().WithMessage("Geboortedatum is verplicht")
             .Must(DateOfBirthRules.IsParseable).WithMessage("Geboortedatum moet het formaat yyyy-MM-dd hebben")
-            .Must(DateOfBirthRules.IsNotInFuture).WithMessage("Geboortedatum kan niet in de toekomst liggen")
-            .Must(DateOfBirthRules.IsRealistic).WithMessage("Controleer de geboortedatum");
+            .Must(v => DateOfBirthRules.IsNotInFuture(v, today)).WithMessage("Geboortedatum kan niet in de toekomst liggen")
+            .Must(v => DateOfBirthRules.IsRealistic(v, today)).WithMessage("Controleer de geboortedatum");
     }
 }

@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using CoachOS.Application.Pricing;
 using CoachOS.Application.StudentConfirmation.DTOs;
+using CoachOS.Domain.Common;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
 using CoachOS.Domain.Interfaces;
@@ -19,7 +20,8 @@ public class StudentConfirmationService(
     IPricingService pricingService,
     IEnrollmentRepository enrollmentRepo,
     IEmailService emailService,
-    ILogger<StudentConfirmationService> logger) : IStudentConfirmationService
+    ILogger<StudentConfirmationService> logger,
+    TimeProvider timeProvider) : IStudentConfirmationService
 {
     public async Task<Result<AssignmentDetailsDto>> GetByTokenAsync(
         string rawToken, CancellationToken ct = default)
@@ -349,9 +351,7 @@ public class StudentConfirmationService(
                 : $"{slot.CourtName}, {clubName}";
 
         // Calculate next occurrence of this DayOfWeek in Europe/Brussels timezone.
-        TimeZoneInfo brusselsTz = TimeZoneInfo.FindSystemTimeZoneById("Europe/Brussels");
-        DateTimeOffset nowBrussels = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, brusselsTz);
-        DateOnly today = DateOnly.FromDateTime(nowBrussels.DateTime);
+        DateOnly today = timeProvider.GetBrusselsToday();
 
         // DayOfWeek in the entity is int (0=Sunday or 1=Monday depending on convention).
         // .NET DayOfWeek: 0=Sunday, 1=Monday, ..., 6=Saturday.
@@ -363,8 +363,8 @@ public class StudentConfirmationService(
         // Build UTC DateTimes from the local date + time in Brussels timezone.
         DateTime localStart = nextDate.ToDateTime(slot.StartTime);
         DateTime localEnd = nextDate.ToDateTime(slot.EndTime);
-        DateTimeOffset startUtc = new DateTimeOffset(localStart, brusselsTz.GetUtcOffset(localStart)).ToUniversalTime();
-        DateTimeOffset endUtc = new DateTimeOffset(localEnd, brusselsTz.GetUtcOffset(localEnd)).ToUniversalTime();
+        DateTimeOffset startUtc = new DateTimeOffset(localStart, TimeProviderExtensions.BrusselsTimeZone.GetUtcOffset(localStart)).ToUniversalTime();
+        DateTimeOffset endUtc = new DateTimeOffset(localEnd, TimeProviderExtensions.BrusselsTimeZone.GetUtcOffset(localEnd)).ToUniversalTime();
 
         string dtStart = startUtc.ToString("yyyyMMdd'T'HHmmss'Z'");
         string dtEnd = endUtc.ToString("yyyyMMdd'T'HHmmss'Z'");

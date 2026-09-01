@@ -12,7 +12,7 @@ public class SubmitEnrollmentRequestValidatorTests
     private SubmitEnrollmentRequestValidator _validator = null!;
 
     [SetUp]
-    public void SetUp() => _validator = new SubmitEnrollmentRequestValidator();
+    public void SetUp() => _validator = new SubmitEnrollmentRequestValidator(TimeProvider.System);
 
     private const string AdultBirthDate = "1990-05-12";
     private const string YouthBirthDate = "2012-05-12";

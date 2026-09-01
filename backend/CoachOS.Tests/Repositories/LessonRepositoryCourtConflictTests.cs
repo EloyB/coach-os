@@ -42,7 +42,7 @@ public class LessonRepositoryCourtConflictTests
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
         _db = new ApplicationDbContext(options, new NoTenantContext());
-        _repo = new LessonRepository(_db);
+        _repo = new LessonRepository(_db, TimeProvider.System);
     }
 
     [TearDown]

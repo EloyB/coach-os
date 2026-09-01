@@ -4,6 +4,7 @@ using CoachOS.Application.Common;
 using CoachOS.Application.Configuration;
 using CoachOS.Application.Mappings;
 using CoachOS.Application.StandaloneLessons.DTOs;
+using CoachOS.Domain.Common;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
 using CoachOS.Domain.Interfaces;
@@ -21,7 +22,8 @@ public class StandaloneLessonService(
     IEmailService emailService,
     ApplicationMapper mapper,
     IOptions<AppOptions> appOptions,
-    ILogger<StandaloneLessonService> logger)
+    ILogger<StandaloneLessonService> logger,
+    TimeProvider timeProvider)
     : IStandaloneLessonService
 {
     private readonly AppOptions _app = appOptions.Value;
@@ -45,7 +47,7 @@ public class StandaloneLessonService(
         TimeOnly endTime = startTime.AddMinutes(request.DurationMinutes);
 
         // Datum mag niet in het verleden liggen (today + later allowed).
-        DateOnly today = DateOnly.FromDateTime(DateTime.UtcNow);
+        DateOnly today = timeProvider.GetBrusselsToday();
         if (date < today)
             return Result<Guid>.Fail(new Error(ErrorCodes.Validation, "Lesdatum mag niet in het verleden liggen."));
 
