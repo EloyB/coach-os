@@ -84,6 +84,8 @@ export default function PlanningPage({
   // Reactief via effect zodat het na hydration klopt (localStorage is er niet bij SSR).
   const [readOnly, setReadOnly] = useState(false);
   useEffect(() => setReadOnly(isHeadTrainerViewer()), []);
+  // Bevestiging vóór 'Definitief aanbieden' van een groep: verstuurt meteen een e-mail-aanbod.
+  const [offerTarget, setOfferTarget] = useState<{ id: string; name: string } | null>(null);
 
   const { data: series } = useQuery({
     queryKey: ["lessonSeries", id],
@@ -1180,7 +1182,9 @@ export default function PlanningPage({
                       {!readOnly && canOfferDefinitively && groupAssignment && (
                         <button
                           type="button"
-                          onClick={() => sendConfirmationMutation.mutate(groupAssignment.id)}
+                          onClick={() =>
+                            setOfferTarget({ id: groupAssignment.id, name: memberNames })
+                          }
                           disabled={sendConfirmationMutation.isPending}
                           className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-md bg-tennis-green px-2 py-1.5 text-[11px] font-semibold text-white hover:bg-tennis-green/90 disabled:opacity-50"
                         >
@@ -1318,6 +1322,32 @@ export default function PlanningPage({
           }}
         />
       )}
+
+      <AlertDialog
+        open={offerTarget !== null}
+        onOpenChange={(open) => !open && setOfferTarget(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("offerConfirmTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("offerConfirmBody", { name: offerTarget?.name ?? "" })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("offerConfirmCancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (offerTarget) sendConfirmationMutation.mutate(offerTarget.id);
+                setOfferTarget(null);
+              }}
+              className="bg-tennis-green hover:bg-tennis-green/90"
+            >
+              {t("offerConfirmButton")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
