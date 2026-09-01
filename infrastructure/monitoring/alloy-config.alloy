@@ -10,6 +10,17 @@ discovery.relabel "containers" {
     regex         = "/(coach-os-loki|coach-os-alloy)"
     action        = "drop"
   }
+
+  // Docker container names carry a leading slash (Docker API convention);
+  // strip it and promote to a real "container" label. Without this, every
+  // stream has zero labels and Loki rejects the whole batch with
+  // "at least one label pair is required per stream" — silently dropping
+  // ALL logs.
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "container"
+  }
 }
 
 loki.source.docker "containers" {
