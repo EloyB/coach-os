@@ -129,7 +129,7 @@ services:
         max-file: "3"
 
   loki:
-    image: grafana/loki:latest
+    image: grafana/loki:3.1.1
     container_name: coach-os-loki
     restart: unless-stopped
     command: -config.file=/etc/loki/config.yml
@@ -145,7 +145,7 @@ services:
         max-file: "3"
 
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:11.2.0
     container_name: coach-os-grafana
     restart: unless-stopped
 
@@ -166,8 +166,14 @@ services:
     networks:
       - coach-os-network
 
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   alloy:
-    image: grafana/alloy:latest
+    image: grafana/alloy:v1.4.1
     container_name: coach-os-alloy
     restart: unless-stopped
     command:
@@ -181,6 +187,12 @@ services:
       - loki
     networks:
       - coach-os-network
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   nginx:
     image: nginx:alpine

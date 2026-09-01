@@ -6,6 +6,7 @@ on:
     paths:
       - 'infrastructure/docker-compose.yml'
       - 'infrastructure/nginx/**'
+      - 'infrastructure/monitoring/**'
       - '.github/workflows/deploy-infra.yml'
   workflow_dispatch:
 
@@ -42,6 +43,11 @@ jobs:
             set -euo pipefail
             cd /app
 
+            # Refuse to deploy an unauthenticated Grafana instance. Checked before
+            # anything on disk is touched, so a missing secret is a true no-op.
+            : "${GRAFANA_ADMIN_USER:?GRAFANA_ADMIN_USER secret is required}"
+            : "${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD secret is required}"
+
             # Backup current config
             mkdir -p backups
             TIMESTAMP=$(date +%Y%m%d_%H%M%S)
@@ -60,10 +66,6 @@ jobs:
             cp -v /tmp/infra/infrastructure/nginx/conf.d/*.conf ./nginx/conf.d/
             rm -rf ./monitoring
             cp -rv /tmp/infra/infrastructure/monitoring ./monitoring
-
-            # Refuse to deploy an unauthenticated Grafana instance.
-            : "${GRAFANA_ADMIN_USER:?GRAFANA_ADMIN_USER secret is required}"
-            : "${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD secret is required}"
 
             # Write env file consumed by docker-compose interpolation.
             # umask 077 ensures only root can read.
