@@ -211,14 +211,19 @@ export async function cancelEnrollmentGroup(seriesId: string, groupId: string): 
   await apiClient.delete(`/lessonseries/${seriesId}/enrollment-groups/${groupId}`);
 }
 
-/** Haalt één lid uit een groep; het lid blijft bestaan als losse inschrijving. */
+/**
+ * Haalt één lid uit een groep. Standaard blijft het lid bestaan als losse inschrijving;
+ * met `cancel=true` wordt de inschrijving ook geannuleerd.
+ */
 export async function removeGroupMember(
   seriesId: string,
   groupId: string,
   enrollmentId: string,
+  cancel = false,
 ): Promise<void> {
+  const query = cancel ? "?cancel=true" : "";
   await apiClient.delete(
-    `/lessonseries/${seriesId}/enrollment-groups/${groupId}/members/${enrollmentId}`,
+    `/lessonseries/${seriesId}/enrollment-groups/${groupId}/members/${enrollmentId}${query}`,
   );
 }
 

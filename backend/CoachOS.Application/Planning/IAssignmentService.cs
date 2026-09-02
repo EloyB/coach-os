@@ -23,5 +23,6 @@ public interface IAssignmentService
         Guid seriesId, Guid groupId, Guid organizationId, CancellationToken ct = default);
 
     Task<Result<bool>> RemoveMemberFromGroupAsync(
-        Guid seriesId, Guid groupId, Guid enrollmentId, Guid organizationId, CancellationToken ct = default);
+        Guid seriesId, Guid groupId, Guid enrollmentId, Guid organizationId,
+        bool cancelEnrollment = false, CancellationToken ct = default);
 }

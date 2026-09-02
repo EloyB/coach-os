@@ -186,7 +186,8 @@ public class AssignmentService(
     }
 
     public async Task<Result<bool>> RemoveMemberFromGroupAsync(
-        Guid seriesId, Guid groupId, Guid enrollmentId, Guid organizationId, CancellationToken ct = default)
+        Guid seriesId, Guid groupId, Guid enrollmentId, Guid organizationId,
+        bool cancelEnrollment = false, CancellationToken ct = default)
     {
         EnrollmentGroup? group = await enrollmentGroupRepo.GetByIdAsync(groupId, organizationId, ct);
         if (group is null || group.LessonSerieId != seriesId)
@@ -197,12 +198,17 @@ public class AssignmentService(
             return Result<bool>.Fail(new Error(ErrorCodes.NotFound, "Dit lid zit niet in deze groep."));
 
         // Gate: een betaalde/bevestigde groep niet meer herschikken (de groep deelt de status).
+        // Geldt voor beide modes; annuleren van een betaalde inschrijving loopt via de aparte flow.
         if (member.Status is EnrollmentStatus.Confirmed or EnrollmentStatus.PendingPayment)
             return Result<bool>.Fail(new Error(ErrorCodes.Conflict,
                 "Dit lid kan niet uit de groep gehaald worden: de groep is al betaald of bevestigd."));
 
-        // Detach het lid → wordt een losse (solo) inschrijving.
+        // Detach het lid uit de groep. Bij cancelEnrollment wordt het lid bovendien geannuleerd
+        // (soft-cancel: status Cancelled, formulierantwoorden blijven); anders blijft het een
+        // actieve losse (solo) inschrijving.
         member.EnrollmentGroupId = null;
+        if (cancelEnrollment)
+            member.Status = EnrollmentStatus.Cancelled;
 
         List<Enrollment> remaining = group.Members.Where(m => m.Id != enrollmentId).ToList();
 

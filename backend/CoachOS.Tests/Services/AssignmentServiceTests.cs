@@ -358,13 +358,31 @@ public class AssignmentServiceTests
         Enrollment target = members[2]; // geen leider
 
         Result<bool> result = await _service.RemoveMemberFromGroupAsync(
-            SeriesId, group.Id, target.Id, OrgId, CancellationToken.None);
+            SeriesId, group.Id, target.Id, OrgId, ct: CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         target.EnrollmentGroupId.Should().BeNull();
+        target.Status.Should().Be(EnrollmentStatus.Pending);       // niet geannuleerd: blijft actieve solo
         group.LeaderEnrollmentId.Should().Be(leader.Id);           // leider onveranderd
         _groupRepo.Verify(r => r.Delete(It.IsAny<EnrollmentGroup>()), Times.Never); // niet ontbonden
         _assignmentRepo.Verify(r => r.RemoveRange(It.IsAny<IEnumerable<ScheduleAssignment>>()), Times.Never);
+        _groupRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task RemoveMember_GroupOf3_RegularMember_WithCancel_DetachesAndCancels()
+    {
+        var (group, leader, members) = BuildGroup(3);
+        Enrollment target = members[2];
+
+        Result<bool> result = await _service.RemoveMemberFromGroupAsync(
+            SeriesId, group.Id, target.Id, OrgId, cancelEnrollment: true, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        target.EnrollmentGroupId.Should().BeNull();
+        target.Status.Should().Be(EnrollmentStatus.Cancelled);     // ook geannuleerd
+        group.LeaderEnrollmentId.Should().Be(leader.Id);
+        _groupRepo.Verify(r => r.Delete(It.IsAny<EnrollmentGroup>()), Times.Never);
         _groupRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -375,7 +393,7 @@ public class AssignmentServiceTests
         // members[1] is vroeger ingeschreven dan members[2] (EnrolledAt oplopend) -> die wordt leider
 
         Result<bool> result = await _service.RemoveMemberFromGroupAsync(
-            SeriesId, group.Id, leader.Id, OrgId, CancellationToken.None);
+            SeriesId, group.Id, leader.Id, OrgId, ct: CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         leader.EnrollmentGroupId.Should().BeNull();
@@ -404,7 +422,7 @@ public class AssignmentServiceTests
             .Returns(Task.CompletedTask);
 
         Result<bool> result = await _service.RemoveMemberFromGroupAsync(
-            SeriesId, group.Id, leader.Id, OrgId, CancellationToken.None);
+            SeriesId, group.Id, leader.Id, OrgId, ct: CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         remaining.EnrollmentGroupId.Should().BeNull();                       // laatste lid wordt solo
@@ -424,7 +442,7 @@ public class AssignmentServiceTests
         var (group, leader, members) = BuildGroup(3, EnrollmentStatus.Confirmed);
 
         Result<bool> result = await _service.RemoveMemberFromGroupAsync(
-            SeriesId, group.Id, members[2].Id, OrgId, CancellationToken.None);
+            SeriesId, group.Id, members[2].Id, OrgId, ct: CancellationToken.None);
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().Contain(e => e.Code == ErrorCodes.Conflict);
@@ -438,7 +456,7 @@ public class AssignmentServiceTests
         var (group, _, _) = BuildGroup(3);
 
         Result<bool> result = await _service.RemoveMemberFromGroupAsync(
-            SeriesId, group.Id, Guid.NewGuid(), OrgId, CancellationToken.None);
+            SeriesId, group.Id, Guid.NewGuid(), OrgId, ct: CancellationToken.None);
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().Contain(e => e.Code == ErrorCodes.NotFound);

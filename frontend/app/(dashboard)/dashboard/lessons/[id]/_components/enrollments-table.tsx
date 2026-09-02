@@ -455,10 +455,10 @@ function GroupBlockRows({
 
   // Lid uit de groep halen vanuit de detail-dialog (zelfde actie als het icoon op de ledenrij).
   const removeMemberMutation = useMutation({
-    mutationFn: (member: LessonSeriesEnrollmentDto) =>
-      removeGroupMember(seriesId, member.enrollmentGroupId!, member.id),
-    onSuccess: () => {
-      toast.success(t("removeFromGroupSuccess"));
+    mutationFn: ({ member, cancel }: { member: LessonSeriesEnrollmentDto; cancel: boolean }) =>
+      removeGroupMember(seriesId, member.enrollmentGroupId!, member.id, cancel),
+    onSuccess: (_data, { cancel }) => {
+      toast.success(cancel ? t("removeFromGroupCancelSuccess") : t("removeFromGroupSuccess"));
       setMemberToRemove(null);
       queryClient.invalidateQueries({ queryKey: ["enrollments", seriesId] });
       queryClient.invalidateQueries({ queryKey: ["planning", seriesId] });
@@ -631,13 +631,25 @@ function GroupBlockRows({
               {t("removeFromGroupBody", { name: memberToRemove?.studentName ?? "" })}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
             <AlertDialogCancel>{t("back")}</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => memberToRemove && removeMemberMutation.mutate(memberToRemove)}
+              onClick={() =>
+                memberToRemove &&
+                removeMemberMutation.mutate({ member: memberToRemove, cancel: true })
+              }
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {t("removeFromGroupCancel")}
+            </AlertDialogAction>
+            <AlertDialogAction
+              onClick={() =>
+                memberToRemove &&
+                removeMemberMutation.mutate({ member: memberToRemove, cancel: false })
+              }
               className="bg-tennis-green hover:bg-tennis-green/90"
             >
-              {t("removeFromGroupConfirm")}
+              {t("removeFromGroupDetach")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -699,10 +711,10 @@ function MemberRow({
   const age = computeAge(enrollment.dateOfBirth);
 
   const removeMemberMutation = useMutation({
-    mutationFn: () =>
-      removeGroupMember(seriesId, enrollment.enrollmentGroupId!, enrollment.id),
-    onSuccess: () => {
-      toast.success(t("removeFromGroupSuccess"));
+    mutationFn: (cancel: boolean) =>
+      removeGroupMember(seriesId, enrollment.enrollmentGroupId!, enrollment.id, cancel),
+    onSuccess: (_data, cancel) => {
+      toast.success(cancel ? t("removeFromGroupCancelSuccess") : t("removeFromGroupSuccess"));
       queryClient.invalidateQueries({ queryKey: ["enrollments", seriesId] });
       queryClient.invalidateQueries({ queryKey: ["planning", seriesId] });
       queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
@@ -783,13 +795,19 @@ function MemberRow({
             {t("removeFromGroupBody", { name: enrollment.studentName })}
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <AlertDialogFooter>
+        <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
           <AlertDialogCancel>{t("back")}</AlertDialogCancel>
           <AlertDialogAction
-            onClick={() => removeMemberMutation.mutate()}
+            onClick={() => removeMemberMutation.mutate(true)}
+            className="bg-red-600 hover:bg-red-700"
+          >
+            {t("removeFromGroupCancel")}
+          </AlertDialogAction>
+          <AlertDialogAction
+            onClick={() => removeMemberMutation.mutate(false)}
             className="bg-tennis-green hover:bg-tennis-green/90"
           >
-            {t("removeFromGroupConfirm")}
+            {t("removeFromGroupDetach")}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
