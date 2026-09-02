@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { Pencil, X } from "lucide-react";
+import { Pencil, UserMinus, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -45,6 +45,7 @@ export function EnrollmentDetailDialog({
   onEdit,
   groupMembers,
   onEditMember,
+  onRemoveMember,
 }: {
   enrollment: LessonSeriesEnrollmentDto;
   seriesId: string;
@@ -55,6 +56,8 @@ export function EnrollmentDetailDialog({
   groupMembers?: LessonSeriesEnrollmentDto[];
   /** Wanneer gezet: toon per lid een bewerk-knop die dit lid opent. */
   onEditMember?: (member: LessonSeriesEnrollmentDto) => void;
+  /** Wanneer gezet: toon per lid een 'uit groep halen'-knop. */
+  onRemoveMember?: (member: LessonSeriesEnrollmentDto) => void;
 }) {
   const t = useTranslations("enrollmentDetail");
 
@@ -228,15 +231,30 @@ export function EnrollmentDetailDialog({
                         .join(" · ")}
                     </div>
                   </div>
-                  {!readOnly && onEditMember && (
-                    <button
-                      type="button"
-                      onClick={() => onEditMember(m)}
-                      aria-label={t("editMemberLabel", { name: m.studentName })}
-                      className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-gray-400 hover:bg-gray-50 hover:text-tennis-green"
-                    >
-                      <Pencil size={13} />
-                    </button>
+                  {!readOnly && (onEditMember || onRemoveMember) && (
+                    <div className="mt-0.5 flex shrink-0 items-center gap-0.5">
+                      {onEditMember && (
+                        <button
+                          type="button"
+                          onClick={() => onEditMember(m)}
+                          aria-label={t("editMemberLabel", { name: m.studentName })}
+                          className="flex h-7 w-7 items-center justify-center rounded-md text-gray-400 hover:bg-gray-50 hover:text-tennis-green"
+                        >
+                          <Pencil size={13} />
+                        </button>
+                      )}
+                      {onRemoveMember && m.status !== "Cancelled" && (
+                        <button
+                          type="button"
+                          onClick={() => onRemoveMember(m)}
+                          aria-label={t("removeMemberLabel", { name: m.studentName })}
+                          title={t("removeMemberLabel", { name: m.studentName })}
+                          className="flex h-7 w-7 items-center justify-center rounded-md text-gray-400 hover:bg-tennis-green/5 hover:text-tennis-green"
+                        >
+                          <UserMinus size={13} />
+                        </button>
+                      )}
+                    </div>
                   )}
                 </li>
               );

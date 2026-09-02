@@ -426,6 +426,8 @@ function GroupBlockRows({
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
   const [editingMember, setEditingMember] =
     useState<LessonSeriesEnrollmentDto | null>(null);
+  const [memberToRemove, setMemberToRemove] =
+    useState<LessonSeriesEnrollmentDto | null>(null);
   // Hoofdtrainer = read-only: geen betaal-/annuleer-acties op groepsniveau.
   const [readOnly, setReadOnly] = useState(false);
   const [canManage, setCanManage] = useState(false);
@@ -449,6 +451,20 @@ function GroupBlockRows({
       queryClient.invalidateQueries({ queryKey: ["enrollments", seriesId] });
       queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
     },
+  });
+
+  // Lid uit de groep halen vanuit de detail-dialog (zelfde actie als het icoon op de ledenrij).
+  const removeMemberMutation = useMutation({
+    mutationFn: (member: LessonSeriesEnrollmentDto) =>
+      removeGroupMember(seriesId, member.enrollmentGroupId!, member.id),
+    onSuccess: () => {
+      toast.success(t("removeFromGroupSuccess"));
+      setMemberToRemove(null);
+      queryClient.invalidateQueries({ queryKey: ["enrollments", seriesId] });
+      queryClient.invalidateQueries({ queryKey: ["planning", seriesId] });
+      queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
+    },
+    onError: () => toast.error(t("removeFromGroupError")),
   });
 
   const cancelGroupMutation = useMutation({
@@ -601,7 +617,31 @@ function GroupBlockRows({
         onEdit={() => {}}
         groupMembers={members}
         onEditMember={setEditingMember}
+        onRemoveMember={canManage ? setMemberToRemove : undefined}
       />
+
+      <AlertDialog
+        open={memberToRemove !== null}
+        onOpenChange={(o) => !o && setMemberToRemove(null)}
+      >
+        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("removeFromGroupTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("removeFromGroupBody", { name: memberToRemove?.studentName ?? "" })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("back")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => memberToRemove && removeMemberMutation.mutate(memberToRemove)}
+              className="bg-tennis-green hover:bg-tennis-green/90"
+            >
+              {t("removeFromGroupConfirm")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {editingMember && (
         <EditEnrollmentDialog
