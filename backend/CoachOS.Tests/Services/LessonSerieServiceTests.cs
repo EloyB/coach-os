@@ -56,6 +56,7 @@ public class LessonSerieServiceTests
             _scheduleAssignmentRepo.Object,
             _timeSlotPreferenceRepo.Object,
             _invitationRepo.Object,
+            TimeProvider.System,
             _mapper);
 
         // Default: enrollment counts returnen lege dictionary (geen inschrijvingen).

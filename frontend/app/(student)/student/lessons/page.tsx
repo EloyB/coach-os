@@ -11,7 +11,8 @@ import { SlashLabel } from "@/components/ui/slash-label";
 import { Mono } from "@/components/ui/mono";
 import { Card, CardContent } from "@/components/ui/card";
 
-const DAYS_NL = ["zo", "ma", "di", "wo", "do", "vr", "za"];
+// Backend-conventie: 0=maandag ... 6=zondag (zie CoachOS.Application/LessonSerie/LessonSerieService.cs).
+const DAYS_NL = ["ma", "di", "wo", "do", "vr", "za", "zo"];
 const STATUS_LABELS: Record<string, string> = {
   Confirmed: "Bevestigd",
   AwaitingConfirmation: "Wacht op bevestiging",

@@ -1,6 +1,7 @@
 using CoachOS.Application.Common;
 using CoachOS.Application.LessonSerie.DTOs;
 using CoachOS.Application.Mappings;
+using CoachOS.Domain.Common;
 using CoachOS.Domain.Enums;
 using CoachOS.Domain.Interfaces;
 using CoachOS.Domain.Models;
@@ -18,6 +19,7 @@ public class LessonSerieService(
     IScheduleAssignmentRepository scheduleAssignmentRepo,
     ITimeSlotPreferenceRepository timeSlotPreferenceRepo,
     ILessonInvitationRepository lessonInvitationRepo,
+    TimeProvider timeProvider,
     ApplicationMapper mapper) : ILessonSerieService
 {
     public async Task<Result<List<LessonSerieDto>>> GetAllAsync(
@@ -338,7 +340,7 @@ public class LessonSerieService(
         // tot en met de einddatum van de reeks. Zo verschijnt het weekslot zowel in de planning
         // (uit de weekindeling) als in de lesmomenten-kalender (uit de Lesson-rijen).
         LessonLevel? level = request.Level.HasValue ? (LessonLevel)request.Level.Value : null;
-        DateOnly today = DateOnly.FromDateTime(DateTime.UtcNow);
+        DateOnly today = timeProvider.GetBrusselsToday();
         DateOnly from = series.StartDate > today ? series.StartDate : today;
 
         foreach (DateOnly date in WeeklyLessonExpander.MatchingDates(request.DayOfWeek, from, series.EndDate))

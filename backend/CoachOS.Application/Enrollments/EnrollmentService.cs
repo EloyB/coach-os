@@ -27,7 +27,8 @@ public class EnrollmentService(
     IUserLookupService userLookup,
     IEmailOutboxRepository emailOutboxRepository,
     ApplicationMapper mapper,
-    ILogger<EnrollmentService> logger) : IEnrollmentService
+    ILogger<EnrollmentService> logger,
+    TimeProvider timeProvider) : IEnrollmentService
 {
     public async Task<Result<PublicLessonSerieDto>> GetPublicLessonSerieAsync(
         Guid lessonSeriesId, CancellationToken ct = default)
@@ -275,7 +276,7 @@ public class EnrollmentService(
         OrganizationSettingsEntity? orgSettings =
             await orgSettingsRepo.GetByOrganizationReadOnlyAsync(series.OrganizationId, ct);
         int youthMaxAge = orgSettings?.YouthMaxAge ?? 17;
-        DateOnly enrolledOn = DateOnly.FromDateTime(DateTime.UtcNow);
+        DateOnly enrolledOn = timeProvider.GetBrusselsToday();
 
         // Prepare notification payloads before opening the transaction. The messages themselves
         // are persisted inside the transaction below, so a committed enrollment always has
@@ -843,7 +844,7 @@ public class EnrollmentService(
         OrganizationSettingsEntity? orgSettings =
             await orgSettingsRepo.GetByOrganizationReadOnlyAsync(organizationId, ct);
         int youthMaxAge = orgSettings?.YouthMaxAge ?? 17;
-        DateOnly updatedOn = DateOnly.FromDateTime(DateTime.UtcNow);
+        DateOnly updatedOn = timeProvider.GetBrusselsToday();
 
         enrollment.StudentName = studentName;
         enrollment.ContactEmail = contactEmail;

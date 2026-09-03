@@ -6,7 +6,7 @@ import publicApiClient from "@/lib/public-api-client";
 export interface AssignmentDetailsDto {
   assignmentId: string;
   seriesName: string;
-  dayOfWeek: number; // 0=sunday..6=saturday
+  dayOfWeek: number; // app-conventie: 0=maandag..6=zondag (niet JS Date.getDay())
   startTime: string; // "HH:mm"
   endTime: string; // "HH:mm"
   courtName: string | null;

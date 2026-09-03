@@ -1,3 +1,4 @@
+using CoachOS.Domain.Common;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Interfaces;
 using CoachOS.Infrastructure.Persistence;
@@ -5,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CoachOS.Infrastructure.Repositories;
 
-public class LessonRepository(ApplicationDbContext context) : ILessonRepository
+public class LessonRepository(ApplicationDbContext context, TimeProvider timeProvider) : ILessonRepository
 {
     public async Task<Lesson?> GetByIdAsync(
         Guid lessonId, Guid seriesId, Guid organizationId, CancellationToken ct = default)
@@ -145,7 +146,7 @@ public class LessonRepository(ApplicationDbContext context) : ILessonRepository
     public async Task<Dictionary<string, int>> CountByOrganizationWeeksAsync(
         Guid organizationId, int weeks, CancellationToken ct = default)
     {
-        DateOnly today = DateOnly.FromDateTime(DateTime.UtcNow);
+        DateOnly today = timeProvider.GetBrusselsToday();
         int dayOfWeek = ((int)today.DayOfWeek + 6) % 7; // Monday=0
         DateOnly currentWeekStart = today.AddDays(-dayOfWeek);
         DateOnly rangeStart = currentWeekStart.AddDays(-7 * (weeks - 1));
