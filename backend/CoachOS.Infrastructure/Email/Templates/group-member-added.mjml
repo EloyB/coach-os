@@ -31,7 +31,7 @@
         <mj-section background-color="#FAFAF8" border-left="4px solid #D0FF14" border-radius="8px" padding="16px 20px">
           <mj-column>
             <mj-text font-size="14px" font-weight="600" color="#111827" padding="0">{{seriesName}}</mj-text>
-            <mj-text font-size="13px" color="#6b7280" padding="4px 0 0">Groep: {{groupName}}</mj-text>
+            <mj-text font-size="13px" color="#6b7280" padding="4px 0 0">{{groupName}}</mj-text>
           </mj-column>
         </mj-section>
 

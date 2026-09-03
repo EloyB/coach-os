@@ -747,7 +747,8 @@ public class EnrollmentService(
                     EnrollmentId = enrollment.Id,
                     Type = EmailOutboxMessageTypes.GroupMemberAdded,
                     Payload = JsonSerializer.Serialize(new GroupMemberAddedEmailPayload(
-                        contactEmail, enrollment.StudentName, series.Name, group.Name)),
+                        contactEmail, enrollment.StudentName, series.Name,
+                        $"Groep van {leader.StudentName}")),
                 }
             ], ct);
             await emailOutboxRepository.SaveChangesAsync(ct);
