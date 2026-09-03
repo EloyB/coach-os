@@ -41,6 +41,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { FieldError } from "@/components/forms/field-error";
 import { inputClass } from "@/lib/styles";
 import { enrollmentStatusStyles } from "@/lib/status-styles";
@@ -285,30 +290,32 @@ function PersonRow({
 
         {/* Acties */}
         <td className="px-4 py-2.5 text-right whitespace-nowrap">
-          <div className="relative inline-block">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setOpenMenuId(showActionsMenu ? null : enrollment.id);
-              }}
-              aria-label={t("actionsLabel", { name: enrollment.studentName })}
-              className="flex h-8 w-8 items-center justify-center rounded-md border border-gray-100 text-gray-400 hover:bg-gray-50 hover:text-gray-700"
-            >
-              <MoreVertical size={15} />
-            </button>
-            {showActionsMenu && (
-              <div
+          <Popover
+            open={showActionsMenu}
+            onOpenChange={(o) => setOpenMenuId(o ? enrollment.id : null)}
+          >
+            <PopoverTrigger asChild>
+              <button
+                type="button"
                 onClick={(e) => e.stopPropagation()}
-                className="absolute right-0 top-full z-50 mt-1 min-w-48 rounded-lg border border-gray-100 bg-white py-1 text-sm shadow-lg"
+                aria-label={t("actionsLabel", { name: enrollment.studentName })}
+                className="flex h-8 w-8 items-center justify-center rounded-md border border-gray-100 text-gray-400 hover:bg-gray-50 hover:text-gray-700"
               >
+                <MoreVertical size={15} />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="end"
+              onClick={(e) => e.stopPropagation()}
+              className="w-52 p-1 text-sm"
+            >
                 <button
                   type="button"
                   onClick={() => {
                     setOpenMenuId(null);
                     setDetailOpen(true);
                   }}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                  className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
                 >
                   <Eye size={13} />
                   {t("viewDetails")}
@@ -354,9 +361,8 @@ function PersonRow({
                     {t("cancelAction")}
                   </button>
                 )}
-              </div>
-            )}
-          </div>
+            </PopoverContent>
+          </Popover>
         </td>
       </tr>
 
@@ -536,30 +542,32 @@ function GroupBlockRows({
 
         {/* Acties — groepsniveau */}
         <td className="px-4 py-2.5 text-right whitespace-nowrap">
-          <div className="relative inline-block">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setOpenMenuId(showActionsMenu ? null : menuId);
-              }}
-              aria-label={t("actionsLabelGroup", { name: leader.studentName })}
-              className="flex h-8 w-8 items-center justify-center rounded-md border border-gray-100 text-gray-400 hover:bg-gray-50 hover:text-gray-700"
-            >
-              <MoreVertical size={15} />
-            </button>
-            {showActionsMenu && (
-              <div
+          <Popover
+            open={showActionsMenu}
+            onOpenChange={(o) => setOpenMenuId(o ? menuId : null)}
+          >
+            <PopoverTrigger asChild>
+              <button
+                type="button"
                 onClick={(e) => e.stopPropagation()}
-                className="absolute right-0 top-full z-50 mt-1 min-w-48 rounded-lg border border-gray-100 bg-white py-1 text-sm shadow-lg"
+                aria-label={t("actionsLabelGroup", { name: leader.studentName })}
+                className="flex h-8 w-8 items-center justify-center rounded-md border border-gray-100 text-gray-400 hover:bg-gray-50 hover:text-gray-700"
               >
+                <MoreVertical size={15} />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="end"
+              onClick={(e) => e.stopPropagation()}
+              className="w-52 p-1 text-sm"
+            >
                 <button
                   type="button"
                   onClick={() => {
                     setOpenMenuId(null);
                     setDetailOpen(true);
                   }}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                  className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
                 >
                   <Eye size={13} />
                   {t("viewDetails")}
@@ -605,9 +613,8 @@ function GroupBlockRows({
                   {t("cancelGroup")}
                 </button>
                 )}
-              </div>
-            )}
-          </div>
+            </PopoverContent>
+          </Popover>
         </td>
       </tr>
 
@@ -850,19 +857,9 @@ function EnrollmentsTable({
   const t = useTranslations("enrollmentsTable");
   const [query, setQuery] = useState("");
   const [showCancelled, setShowCancelled] = useState(false);
-  // Eén open acties-menu tegelijk (rij-id), gedeeld over alle rijen.
+  // Eén open acties-menu tegelijk (rij-id), gedeeld over alle rijen. Radix Popover
+  // sluit zelf bij klik-buiten/Escape en portalt de inhoud buiten de scroll-container.
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-
-  // Klik buiten het open menu sluit het. De toggle-knop en het menu zelf doen
-  // stopPropagation, dus deze document-listener vangt enkel klikken erbuiten.
-  useEffect(() => {
-    if (openMenuId === null) return;
-    function handleOutside() {
-      setOpenMenuId(null);
-    }
-    document.addEventListener("click", handleOutside);
-    return () => document.removeEventListener("click", handleOutside);
-  }, [openMenuId]);
 
   const cancelledCount = useMemo(
     () => enrollments.filter((e) => e.status === "Cancelled").length,
