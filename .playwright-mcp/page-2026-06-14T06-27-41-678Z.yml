@@ -1,0 +1,10 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e138]:
+    - img [ref=e140]
+    - generic [ref=e143]:
+      - heading "Inschrijving geregistreerd" [level=1] [ref=e144]
+      - paragraph [ref=e145]: Je inschrijving is geregistreerd. Betaal cash ter plaatse; je plek is gereserveerd in afwachting van bevestiging door de club.
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e11] [cursor=pointer]:
+    - img [ref=e12]
+  - alert [ref=e15]

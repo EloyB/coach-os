@@ -1,0 +1,136 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - img [ref=e4]
+      - generic [ref=e6]:
+        - generic [ref=e7]:
+          - generic "CoachOS" [ref=e8]:
+            - img [ref=e9]
+          - generic [ref=e13]: CoachOS
+        - button "T Organisatie TC De Aces" [ref=e15] [cursor=pointer]:
+          - generic [ref=e17]: T
+          - generic [ref=e18]:
+            - paragraph [ref=e19]: Organisatie
+            - paragraph [ref=e20]: TC De Aces
+          - img [ref=e21]
+      - navigation [ref=e23]:
+        - paragraph [ref=e24]: Werk
+        - link "Vandaag" [ref=e25] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e26]
+          - generic [ref=e31]: Vandaag
+        - link "Lesreeksen" [ref=e32] [cursor=pointer]:
+          - /url: /dashboard/lessons
+          - img [ref=e33]
+          - generic [ref=e35]: Lesreeksen
+        - link "Losse lessen" [ref=e36] [cursor=pointer]:
+          - /url: /dashboard/standalone-lessons
+          - img [ref=e37]
+          - generic [ref=e39]: Losse lessen
+        - link "Kampen" [ref=e40] [cursor=pointer]:
+          - /url: /dashboard/camps
+          - img [ref=e41]
+          - generic [ref=e45]: Kampen
+        - link "Trainers" [ref=e46] [cursor=pointer]:
+          - /url: /dashboard/trainers
+          - img [ref=e47]
+          - generic [ref=e50]: Trainers
+        - link "Instellingen" [ref=e51] [cursor=pointer]:
+          - /url: /dashboard/settings
+          - img [ref=e52]
+          - generic [ref=e55]: Instellingen
+      - generic [ref=e56]:
+        - generic [ref=e58]: JJ
+        - generic [ref=e59]:
+          - paragraph [ref=e60]: Jan Janssen
+          - paragraph [ref=e61]: Beheerder
+        - button "Uitloggen" [ref=e62] [cursor=pointer]:
+          - img [ref=e63]
+    - generic [ref=e66]:
+      - banner [ref=e67]:
+        - paragraph [ref=e68]: ZO · 14 JUN 2026 · WEEK 24
+      - main [ref=e69]:
+        - generic [ref=e70]:
+          - link "Terug naar kampen" [ref=e71] [cursor=pointer]:
+            - /url: /dashboard/camps
+            - img [ref=e72]
+            - text: Terug naar kampen
+          - generic [ref=e74]:
+            - heading "Nieuw kamp aanmaken" [level=1] [ref=e75]
+            - paragraph [ref=e76]: Plan een meerdaags kamp met dagen, trainers en inschrijfformulier.
+          - generic [ref=e77]:
+            - generic [ref=e79]:
+              - img [ref=e719]
+              - generic [ref=e81]: Basis
+            - generic [ref=e84]:
+              - img [ref=e818]
+              - generic [ref=e86]: Dagen & trainers
+            - generic [ref=e89]:
+              - generic [ref=e90]: "3"
+              - generic [ref=e91]: Controle
+          - generic [ref=e820]:
+            - generic [ref=e821]:
+              - heading "Testkamp" [level=2] [ref=e822]
+              - paragraph [ref=e823]: Voorbeeldkamp voor de testgids.
+              - generic [ref=e824]:
+                - generic [ref=e825]:
+                  - img [ref=e826]
+                  - text: €95
+                - generic [ref=e828]:
+                  - img [ref=e829]
+                  - text: 20/07/2026 - 24/07/2026
+                - generic [ref=e831]:
+                  - img [ref=e832]
+                  - text: Gevorderd
+                - generic [ref=e835]:
+                  - img [ref=e836]
+                  - text: TC De Aces
+                - generic [ref=e840]:
+                  - img [ref=e841]
+                  - text: "Max. deelnemers: 16"
+                - generic [ref=e846]:
+                  - img [ref=e847]
+                  - text: "Inschrijven kan tot: 30/06/2026"
+            - generic [ref=e850]:
+              - heading "Dagen & trainers" [level=2] [ref=e852]
+              - generic [ref=e853]:
+                - generic [ref=e854]:
+                  - generic [ref=e855]:
+                    - generic [ref=e856]: maandag 20 juli
+                    - generic [ref=e857]: 09:00 - 16:00
+                  - list [ref=e858]:
+                    - listitem [ref=e859]:
+                      - generic [ref=e860]: Jan Janssen
+                      - generic [ref=e861]: 09:00 - 12:00
+                    - listitem [ref=e862]:
+                      - generic [ref=e863]: Pieter Mertens
+                      - generic [ref=e864]: 12:00 - 16:00
+                - generic [ref=e865]:
+                  - generic [ref=e866]:
+                    - generic [ref=e867]: dinsdag 21 juli
+                    - generic [ref=e868]: 09:00 - 16:00
+                  - paragraph [ref=e869]: "Trainers: -"
+                - generic [ref=e870]:
+                  - generic [ref=e871]:
+                    - generic [ref=e872]: woensdag 22 juli
+                    - generic [ref=e873]: 09:00 - 16:00
+                  - paragraph [ref=e874]: "Trainers: -"
+                - generic [ref=e875]:
+                  - generic [ref=e876]:
+                    - generic [ref=e877]: donderdag 23 juli
+                    - generic [ref=e878]: 09:00 - 16:00
+                  - paragraph [ref=e879]: "Trainers: -"
+                - generic [ref=e880]:
+                  - generic [ref=e881]:
+                    - generic [ref=e882]: vrijdag 24 juli
+                    - generic [ref=e883]: 09:00 - 16:00
+                  - paragraph [ref=e884]: "Trainers: -"
+            - generic [ref=e885]:
+              - button "Terug" [ref=e886]:
+                - img [ref=e887]
+                - text: Terug
+              - button "Kamp aanmaken" [ref=e889]
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e148] [cursor=pointer]:
+    - img [ref=e149]
+  - alert [ref=e152]

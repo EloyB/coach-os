@@ -1,0 +1,245 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - img [ref=e4]
+      - generic [ref=e6]:
+        - generic [ref=e7]:
+          - generic "CoachOS" [ref=e8]:
+            - img [ref=e9]
+          - generic [ref=e13]: CoachOS
+        - button "T Organisatie TC De Aces" [ref=e15] [cursor=pointer]:
+          - generic [ref=e17]: T
+          - generic [ref=e18]:
+            - paragraph [ref=e19]: Organisatie
+            - paragraph [ref=e20]: TC De Aces
+          - img [ref=e21]
+      - navigation [ref=e23]:
+        - paragraph [ref=e24]: Werk
+        - link "Vandaag" [ref=e25] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e26]
+          - generic [ref=e31]: Vandaag
+        - link "Lesreeksen" [ref=e32] [cursor=pointer]:
+          - /url: /dashboard/lessons
+          - img [ref=e33]
+          - generic [ref=e35]: Lesreeksen
+        - link "Losse lessen" [ref=e36] [cursor=pointer]:
+          - /url: /dashboard/standalone-lessons
+          - img [ref=e37]
+          - generic [ref=e39]: Losse lessen
+        - link "Kampen" [ref=e40] [cursor=pointer]:
+          - /url: /dashboard/camps
+          - img [ref=e41]
+          - generic [ref=e45]: Kampen
+        - link "Trainers" [ref=e46] [cursor=pointer]:
+          - /url: /dashboard/trainers
+          - img [ref=e47]
+          - generic [ref=e50]: Trainers
+        - link "Instellingen" [ref=e51] [cursor=pointer]:
+          - /url: /dashboard/settings
+          - img [ref=e52]
+          - generic [ref=e55]: Instellingen
+      - generic [ref=e56]:
+        - generic [ref=e58]: JJ
+        - generic [ref=e59]:
+          - paragraph [ref=e60]: Jan Janssen
+          - paragraph [ref=e61]: Beheerder
+        - button "Uitloggen" [ref=e62] [cursor=pointer]:
+          - img [ref=e63]
+    - generic [ref=e66]:
+      - banner [ref=e67]:
+        - paragraph [ref=e68]: ZO · 14 JUN 2026 · WEEK 24
+      - main [ref=e69]:
+        - generic [ref=e70]:
+          - link "Terug naar kampen" [ref=e71] [cursor=pointer]:
+            - /url: /dashboard/camps
+            - img [ref=e72]
+            - text: Terug naar kampen
+          - generic [ref=e74]:
+            - heading "Nieuw kamp aanmaken" [level=1] [ref=e75]
+            - paragraph [ref=e76]: Plan een meerdaags kamp met dagen, trainers en inschrijfformulier.
+          - generic [ref=e77]:
+            - generic [ref=e79]:
+              - generic [ref=e80]: "1"
+              - generic [ref=e81]: Basis
+            - generic [ref=e84]:
+              - generic [ref=e85]: "2"
+              - generic [ref=e86]: Dagen & trainers
+            - generic [ref=e89]:
+              - generic [ref=e90]: "3"
+              - generic [ref=e91]: Controle
+          - generic [ref=e92]:
+            - generic [ref=e94]:
+              - generic [ref=e95]:
+                - generic [ref=e96]: Naam*
+                - textbox "Bijv. Zomerstage week 1" [ref=e97]: Testkamp
+              - generic [ref=e98]:
+                - generic [ref=e99]: Omschrijving
+                - textbox "Extra info voor deelnemers..." [ref=e100]: Voorbeeldkamp voor de testgids.
+              - generic [ref=e101]:
+                - generic [ref=e102]:
+                  - generic [ref=e103]: Club*
+                  - combobox [ref=e104]:
+                    - generic: TC De Aces
+                    - img
+                  - combobox [ref=e153]
+                - generic [ref=e106]:
+                  - generic [ref=e107]: Niveau
+                  - combobox [ref=e108]:
+                    - generic: Gevorderd
+                    - img
+                  - combobox [ref=e109]
+              - generic [ref=e110]:
+                - generic [ref=e111]:
+                  - generic [ref=e112]: Prijs*
+                  - generic [ref=e113]:
+                    - generic: €
+                    - spinbutton [ref=e114]: "95"
+                  - paragraph [ref=e115]: 0 = gratis (geen betaalstap)
+                - generic [ref=e116]:
+                  - generic [ref=e117]: Max. deelnemers
+                  - spinbutton [ref=e118]: "16"
+                  - paragraph [ref=e119]: Leeg = onbeperkt
+              - generic [ref=e120]:
+                - generic [ref=e121]:
+                  - generic [ref=e122]: Startdatum*
+                  - button "20 jul. 2026" [ref=e512]:
+                    - generic [ref=e124]: 20 jul. 2026
+                    - img [ref=e125]
+                - generic [ref=e127]:
+                  - generic [ref=e128]: Einddatum*
+                  - button "24 jul. 2026" [ref=e613]:
+                    - generic [ref=e130]: 24 jul. 2026
+                    - img [ref=e131]
+              - generic [ref=e133]:
+                - generic [ref=e134]: Inschrijfdeadline*
+                - button "Kies een datum" [expanded] [ref=e135]:
+                  - generic [ref=e136]: Kies een datum
+                  - img [ref=e137]
+            - button "Volgende" [ref=e140]:
+              - text: Volgende
+              - img [ref=e141]
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e148] [cursor=pointer]:
+    - img [ref=e149]
+  - alert [ref=e152]
+  - dialog [ref=e615]:
+    - generic [ref=e616]:
+      - generic [ref=e617]:
+        - button [active] [ref=e618]:
+          - img [ref=e619]
+        - generic [ref=e621]:
+          - generic [ref=e622]:
+            - combobox [ref=e623] [cursor=pointer]:
+              - option "Januari"
+              - option "Februari"
+              - option "Maart"
+              - option "April"
+              - option "Mei"
+              - option "Juni" [selected]
+              - option "Juli"
+              - option "Augustus"
+              - option "September"
+              - option "Oktober"
+              - option "November"
+              - option "December"
+            - img
+          - generic [ref=e624]:
+            - combobox [ref=e625] [cursor=pointer]:
+              - option "2024"
+              - option "2025"
+              - option "2026" [selected]
+              - option "2027"
+              - option "2028"
+              - option "2029"
+              - option "2030"
+              - option "2031"
+            - img
+        - button [ref=e626]:
+          - img [ref=e627]
+      - grid "juni 2026" [ref=e632]:
+        - rowgroup [ref=e633]:
+          - row [ref=e634]:
+            - columnheader [ref=e635]: ma
+            - columnheader [ref=e636]: di
+            - columnheader [ref=e637]: wo
+            - columnheader [ref=e638]: do
+            - columnheader [ref=e639]: vr
+            - columnheader [ref=e640]: za
+            - columnheader [ref=e641]: zo
+        - rowgroup [ref=e642]:
+          - row "maandag 1 juni 2026 dinsdag 2 juni 2026 woensdag 3 juni 2026 donderdag 4 juni 2026 vrijdag 5 juni 2026 zaterdag 6 juni 2026 zondag 7 juni 2026" [ref=e643]:
+            - gridcell "maandag 1 juni 2026" [ref=e644]:
+              - button "maandag 1 juni 2026" [ref=e645] [cursor=pointer]: "1"
+            - gridcell "dinsdag 2 juni 2026" [ref=e646]:
+              - button "dinsdag 2 juni 2026" [ref=e647] [cursor=pointer]: "2"
+            - gridcell "woensdag 3 juni 2026" [ref=e648]:
+              - button "woensdag 3 juni 2026" [ref=e649] [cursor=pointer]: "3"
+            - gridcell "donderdag 4 juni 2026" [ref=e650]:
+              - button "donderdag 4 juni 2026" [ref=e651] [cursor=pointer]: "4"
+            - gridcell "vrijdag 5 juni 2026" [ref=e652]:
+              - button "vrijdag 5 juni 2026" [ref=e653] [cursor=pointer]: "5"
+            - gridcell "zaterdag 6 juni 2026" [ref=e654]:
+              - button "zaterdag 6 juni 2026" [ref=e655] [cursor=pointer]: "6"
+            - gridcell "zondag 7 juni 2026" [ref=e656]:
+              - button "zondag 7 juni 2026" [ref=e657] [cursor=pointer]: "7"
+          - row "maandag 8 juni 2026 dinsdag 9 juni 2026 woensdag 10 juni 2026 donderdag 11 juni 2026 vrijdag 12 juni 2026 zaterdag 13 juni 2026 Today, zondag 14 juni 2026" [ref=e658]:
+            - gridcell "maandag 8 juni 2026" [ref=e659]:
+              - button "maandag 8 juni 2026" [ref=e660] [cursor=pointer]: "8"
+            - gridcell "dinsdag 9 juni 2026" [ref=e661]:
+              - button "dinsdag 9 juni 2026" [ref=e662] [cursor=pointer]: "9"
+            - gridcell "woensdag 10 juni 2026" [ref=e663]:
+              - button "woensdag 10 juni 2026" [ref=e664] [cursor=pointer]: "10"
+            - gridcell "donderdag 11 juni 2026" [ref=e665]:
+              - button "donderdag 11 juni 2026" [ref=e666] [cursor=pointer]: "11"
+            - gridcell "vrijdag 12 juni 2026" [ref=e667]:
+              - button "vrijdag 12 juni 2026" [ref=e668] [cursor=pointer]: "12"
+            - gridcell "zaterdag 13 juni 2026" [ref=e669]:
+              - button "zaterdag 13 juni 2026" [ref=e670] [cursor=pointer]: "13"
+            - gridcell "Today, zondag 14 juni 2026" [ref=e671]:
+              - button "Today, zondag 14 juni 2026" [ref=e672] [cursor=pointer]: "14"
+          - row "maandag 15 juni 2026 dinsdag 16 juni 2026 woensdag 17 juni 2026 donderdag 18 juni 2026 vrijdag 19 juni 2026 zaterdag 20 juni 2026 zondag 21 juni 2026" [ref=e673]:
+            - gridcell "maandag 15 juni 2026" [ref=e674]:
+              - button "maandag 15 juni 2026" [ref=e675] [cursor=pointer]: "15"
+            - gridcell "dinsdag 16 juni 2026" [ref=e676]:
+              - button "dinsdag 16 juni 2026" [ref=e677] [cursor=pointer]: "16"
+            - gridcell "woensdag 17 juni 2026" [ref=e678]:
+              - button "woensdag 17 juni 2026" [ref=e679] [cursor=pointer]: "17"
+            - gridcell "donderdag 18 juni 2026" [ref=e680]:
+              - button "donderdag 18 juni 2026" [ref=e681] [cursor=pointer]: "18"
+            - gridcell "vrijdag 19 juni 2026" [ref=e682]:
+              - button "vrijdag 19 juni 2026" [ref=e683] [cursor=pointer]: "19"
+            - gridcell "zaterdag 20 juni 2026" [ref=e684]:
+              - button "zaterdag 20 juni 2026" [ref=e685] [cursor=pointer]: "20"
+            - gridcell "zondag 21 juni 2026" [ref=e686]:
+              - button "zondag 21 juni 2026" [ref=e687] [cursor=pointer]: "21"
+          - row "maandag 22 juni 2026 dinsdag 23 juni 2026 woensdag 24 juni 2026 donderdag 25 juni 2026 vrijdag 26 juni 2026 zaterdag 27 juni 2026 zondag 28 juni 2026" [ref=e688]:
+            - gridcell "maandag 22 juni 2026" [ref=e689]:
+              - button "maandag 22 juni 2026" [ref=e690] [cursor=pointer]: "22"
+            - gridcell "dinsdag 23 juni 2026" [ref=e691]:
+              - button "dinsdag 23 juni 2026" [ref=e692] [cursor=pointer]: "23"
+            - gridcell "woensdag 24 juni 2026" [ref=e693]:
+              - button "woensdag 24 juni 2026" [ref=e694] [cursor=pointer]: "24"
+            - gridcell "donderdag 25 juni 2026" [ref=e695]:
+              - button "donderdag 25 juni 2026" [ref=e696] [cursor=pointer]: "25"
+            - gridcell "vrijdag 26 juni 2026" [ref=e697]:
+              - button "vrijdag 26 juni 2026" [ref=e698] [cursor=pointer]: "26"
+            - gridcell "zaterdag 27 juni 2026" [ref=e699]:
+              - button "zaterdag 27 juni 2026" [ref=e700] [cursor=pointer]: "27"
+            - gridcell "zondag 28 juni 2026" [ref=e701]:
+              - button "zondag 28 juni 2026" [ref=e702] [cursor=pointer]: "28"
+          - row "maandag 29 juni 2026 dinsdag 30 juni 2026 woensdag 1 juli 2026 donderdag 2 juli 2026 vrijdag 3 juli 2026 zaterdag 4 juli 2026 zondag 5 juli 2026" [ref=e703]:
+            - gridcell "maandag 29 juni 2026" [ref=e704]:
+              - button "maandag 29 juni 2026" [ref=e705] [cursor=pointer]: "29"
+            - gridcell "dinsdag 30 juni 2026" [ref=e706]:
+              - button "dinsdag 30 juni 2026" [ref=e707] [cursor=pointer]: "30"
+            - gridcell "woensdag 1 juli 2026" [ref=e708]:
+              - button "woensdag 1 juli 2026" [ref=e709] [cursor=pointer]: "1"
+            - gridcell "donderdag 2 juli 2026" [ref=e710]:
+              - button "donderdag 2 juli 2026" [ref=e711] [cursor=pointer]: "2"
+            - gridcell "vrijdag 3 juli 2026" [ref=e712]:
+              - button "vrijdag 3 juli 2026" [ref=e713] [cursor=pointer]: "3"
+            - gridcell "zaterdag 4 juli 2026" [ref=e714]:
+              - button "zaterdag 4 juli 2026" [ref=e715] [cursor=pointer]: "4"
+            - gridcell "zondag 5 juli 2026" [ref=e716]:
+              - button "zondag 5 juli 2026" [ref=e717] [cursor=pointer]: "5"
