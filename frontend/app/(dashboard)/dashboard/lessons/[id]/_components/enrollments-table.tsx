@@ -21,6 +21,7 @@ import {
   CheckCircle2,
   MoreVertical,
   UserMinus,
+  UserPlus,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -424,6 +425,7 @@ function GroupBlockRows({
   const [open, setOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
+  const [addMemberOpen, setAddMemberOpen] = useState(false);
   const [editingMember, setEditingMember] =
     useState<LessonSeriesEnrollmentDto | null>(null);
   const [memberToRemove, setMemberToRemove] =
@@ -562,6 +564,19 @@ function GroupBlockRows({
                   <Eye size={13} />
                   {t("viewDetails")}
                 </button>
+                {canManage && leader.status !== "Confirmed" && leader.status !== "PendingPayment" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpenMenuId(null);
+                      setAddMemberOpen(true);
+                    }}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                  >
+                    <UserPlus size={13} />
+                    {t("addMember")}
+                  </button>
+                )}
                 {!readOnly && leaderPendingPayment && (
                   <button
                     type="button"
@@ -618,6 +633,13 @@ function GroupBlockRows({
         groupMembers={members}
         onEditMember={setEditingMember}
         onRemoveMember={canManage ? setMemberToRemove : undefined}
+      />
+
+      <ManualEnrollmentDialog
+        seriesId={seriesId}
+        groupId={block.groupId}
+        open={addMemberOpen}
+        onOpenChange={setAddMemberOpen}
       />
 
       <AlertDialog

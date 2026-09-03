@@ -152,6 +152,19 @@ export async function createManualEnrollment(
   );
   return data;
 }
+/** Voegt een lid toe aan een bestaande groep (erft status + prijsoptie van de groep). */
+export async function addGroupMember(
+  seriesId: string,
+  groupId: string,
+  request: CreateManualEnrollmentRequest,
+): Promise<string> {
+  const { data } = await apiClient.post<string>(
+    `/lessonseries/${seriesId}/enrollment-groups/${groupId}/members`,
+    request,
+  );
+  return data;
+}
+
 export async function getLessonSeriesEnrollments(seriesId: string): Promise<LessonSeriesEnrollmentDto[]> {
   const { data } = await apiClient.get<LessonSeriesEnrollmentDto[]>(`/lessonseries/${seriesId}/enrollments`);
   return data;

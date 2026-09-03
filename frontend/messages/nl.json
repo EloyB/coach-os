@@ -258,7 +258,12 @@
     "manualSubmit": "Inschrijven",
     "manualSuccess": "Inschrijving toegevoegd en bevestigingsmail klaargezet",
     "manualError": "Kon de inschrijving niet toevoegen",
-    "toastUpdated": "Inschrijving bijgewerkt"
+    "toastUpdated": "Inschrijving bijgewerkt",
+    "addMember": "Lid toevoegen",
+    "addMemberTitle": "Lid toevoegen aan groep",
+    "addMemberDescription": "De deelnemer wordt aan deze groep toegevoegd en erft de status en prijsoptie van de groep.",
+    "addMemberSubmit": "Toevoegen",
+    "addMemberSuccess": "Lid toegevoegd aan de groep"
   },
   "enrollmentDetail": {
     "title": "Details inschrijving",
