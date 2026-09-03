@@ -655,8 +655,11 @@ public class EnrollmentService(
         if (group is null || group.LessonSerieId != lessonSeriesId)
             return Result<Guid>.Fail(new Error(ErrorCodes.NotFound, "Groep niet gevonden."));
 
-        Domain.Entities.Enrollment leader =
-            group.Members.FirstOrDefault(m => m.Id == group.LeaderEnrollmentId) ?? group.Members.First();
+        Domain.Entities.Enrollment? leader =
+            group.Members.FirstOrDefault(m => m.Id == group.LeaderEnrollmentId)
+            ?? group.Members.FirstOrDefault();
+        if (leader is null)
+            return Result<Guid>.Fail(new Error(ErrorCodes.NotFound, "Deze groep heeft geen leden."));
 
         // Gate: geen lid toevoegen aan een al betaalde/bevestigde groep.
         if (leader.Status is EnrollmentStatus.Confirmed or EnrollmentStatus.PendingPayment)

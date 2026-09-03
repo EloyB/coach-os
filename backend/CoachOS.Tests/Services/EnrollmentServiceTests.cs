@@ -1444,4 +1444,29 @@ public class EnrollmentServiceTests
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().Contain(e => e.Code == ErrorCodes.NotFound);
     }
+
+    [Test]
+    public async Task AddGroupMember_GroupWithoutMembers_ReturnsNotFound_WithoutThrowing()
+    {
+        Guid groupId = Guid.NewGuid();
+        Domain.Entities.LessonSerie series = new()
+        {
+            Id = SeriesIdG, OrganizationId = OrgIdG, Name = "Reeks", TennisClubId = Guid.NewGuid(),
+            StartDate = new DateOnly(2026, 9, 1), MinAge = 3, MaxAge = 99, MaxRegistrations = 100,
+        };
+        Domain.Entities.EnrollmentGroup group = new()
+        {
+            Id = groupId, OrganizationId = OrgIdG, LessonSerieId = SeriesIdG, Name = "Groep A",
+            LeaderEnrollmentId = Guid.NewGuid(), Members = new List<Domain.Entities.Enrollment>(),
+        };
+        _lessonSeriesRepo.Setup(r => r.GetByIdPublicAsync(SeriesIdG, It.IsAny<CancellationToken>())).ReturnsAsync(series);
+        _enrollmentGroupRepo.Setup(r => r.GetByIdAsync(groupId, OrgIdG, It.IsAny<CancellationToken>())).ReturnsAsync(group);
+
+        Result<Guid> result = await _service.AddGroupMemberAsync(
+            SeriesIdG, groupId, MemberRequest(), OrgIdG, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.Code == ErrorCodes.NotFound);
+        _enrollmentRepo.Verify(r => r.AddAsync(It.IsAny<Domain.Entities.Enrollment>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
 }
