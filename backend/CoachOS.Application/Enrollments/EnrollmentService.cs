@@ -643,6 +643,108 @@ public class EnrollmentService(
         }
     }
 
+    public async Task<Result<Guid>> AddGroupMemberAsync(
+        Guid lessonSeriesId, Guid groupId, CreateManualEnrollmentRequest request,
+        Guid organizationId, CancellationToken ct = default)
+    {
+        Domain.Entities.LessonSerie? series = await lessonSeriesRepo.GetByIdPublicAsync(lessonSeriesId, ct);
+        if (series is null || series.OrganizationId != organizationId)
+            return Result<Guid>.Fail(new Error(ErrorCodes.NotFound, "Lessenreeks niet gevonden."));
+
+        Domain.Entities.EnrollmentGroup? group = await enrollmentGroupRepo.GetByIdAsync(groupId, organizationId, ct);
+        if (group is null || group.LessonSerieId != lessonSeriesId)
+            return Result<Guid>.Fail(new Error(ErrorCodes.NotFound, "Groep niet gevonden."));
+
+        Domain.Entities.Enrollment leader =
+            group.Members.FirstOrDefault(m => m.Id == group.LeaderEnrollmentId) ?? group.Members.First();
+
+        // Gate: geen lid toevoegen aan een al betaalde/bevestigde groep.
+        if (leader.Status is EnrollmentStatus.Confirmed or EnrollmentStatus.PendingPayment)
+            return Result<Guid>.Fail(new Error(ErrorCodes.Conflict,
+                "Je kan geen lid toevoegen aan een groep die al betaald of bevestigd is."));
+
+        if (!DateOfBirthRules.TryParse(request.DateOfBirth, out DateOnly dateOfBirth))
+            return Result<Guid>.Fail(new Error(ErrorCodes.Validation, "Geboortedatum is ongeldig."));
+
+        Error? ageError = CheckAgeEligibility(
+            new SubmitEnrollmentRequest { StudentName = request.StudentName, DateOfBirth = request.DateOfBirth }, series);
+        if (ageError is not null)
+            return Result<Guid>.Fail(ageError);
+
+        EnrollmentForm? form = await enrollmentFormRepo.GetBySeriesIdReadOnlyAsync(lessonSeriesId, ct);
+        if (form is not null)
+        {
+            Error? formError = FormResponseValidator.Validate(
+                form.Fields.Select(f => (f.Id, f.IsRequired, f.Label)),
+                request.Responses.Select(r => (r.FormFieldId, r.Value)));
+            if (formError is not null) return Result<Guid>.Fail(formError);
+        }
+
+        OrganizationSettingsEntity? settings =
+            await orgSettingsRepo.GetByOrganizationReadOnlyAsync(organizationId, ct);
+        int youthMaxAge = settings?.YouthMaxAge ?? 17;
+        string contactEmail = EnrollmentEmails.Normalize(request.ContactEmail);
+
+        await enrollmentRepo.BeginTransactionAsync(IsolationLevel.Serializable, ct);
+        try
+        {
+            if (series.MaxRegistrations.HasValue &&
+                await enrollmentRepo.CountActiveBySeriesAsync(lessonSeriesId, ct) >= series.MaxRegistrations.Value)
+            {
+                await enrollmentRepo.RollbackTransactionAsync(ct);
+                return Result<Guid>.Fail(new Error(ErrorCodes.Conflict, "Deze lessenreeks is volzet."));
+            }
+
+            if (await enrollmentRepo.IsDuplicateParticipantAsync(
+                    lessonSeriesId, contactEmail, request.StudentName, dateOfBirth, ct))
+            {
+                await enrollmentRepo.RollbackTransactionAsync(ct);
+                return Result<Guid>.Fail(new Error(
+                    ErrorCodes.Conflict, $"{request.StudentName} is al ingeschreven voor deze lessenreeks."));
+            }
+
+            Enrollment enrollment = new()
+            {
+                OrganizationId = organizationId,
+                LessonSerieId = lessonSeriesId,
+                EnrollmentGroupId = groupId,
+                StudentName = request.StudentName.Trim(),
+                ContactEmail = contactEmail,
+                StudentEmail = string.IsNullOrWhiteSpace(request.StudentEmail)
+                    ? null
+                    : EnrollmentEmails.Normalize(request.StudentEmail),
+                StudentPhone = request.StudentPhone,
+                DateOfBirth = dateOfBirth,
+                Category = ResolveCategory(request.DateOfBirth, youthMaxAge, DateOnly.FromDateTime(DateTime.UtcNow)),
+                Status = leader.Status,                                // status geërfd van de groep
+                SelectedPriceOptionId = leader.SelectedPriceOptionId,  // prijsoptie geërfd
+                EnrolledAt = DateTime.UtcNow,
+                IsOpenToGrouping = false,
+            };
+            await enrollmentRepo.AddAsync(enrollment, ct);
+
+            foreach (FormResponseValueDto responseDto in request.Responses)
+            {
+                await enrollmentRepo.AddFormResponseAsync(new FormResponse
+                {
+                    EnrollmentId = enrollment.Id,
+                    FormFieldId = responseDto.FormFieldId,
+                    Value = responseDto.Value,
+                }, ct);
+            }
+
+            await enrollmentRepo.SaveChangesAsync(ct);
+            // Bewust geen bevestigingsmail: het lid is nog niet bevestigd; die mail volgt met de groep.
+            await enrollmentRepo.CommitTransactionAsync(ct);
+            return Result<Guid>.Ok(enrollment.Id);
+        }
+        catch
+        {
+            await enrollmentRepo.RollbackTransactionAsync(ct);
+            throw;
+        }
+    }
+
     public async Task<Result<List<PublicTimeSlotDto>>> GetPublicTimeSlotsAsync(
         Guid lessonSeriesId, CancellationToken ct = default)
     {
