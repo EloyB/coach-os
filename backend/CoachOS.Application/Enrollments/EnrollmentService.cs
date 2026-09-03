@@ -26,6 +26,7 @@ public class EnrollmentService(
     IOrganizationSettingsRepository orgSettingsRepo,
     IUserLookupService userLookup,
     IEmailOutboxRepository emailOutboxRepository,
+    ILessonSeriePriceRepository priceRepo,
     ApplicationMapper mapper,
     ILogger<EnrollmentService> logger,
     TimeProvider timeProvider) : IEnrollmentService
@@ -137,6 +138,7 @@ public class EnrollmentService(
             IsGroupLeader = e.EnrollmentGroupId.HasValue
                 && groupsById.GetValueOrDefault(e.EnrollmentGroupId.Value)?.LeaderEnrollmentId == e.Id,
             IsOpenToGrouping = e.IsOpenToGrouping,
+            SelectedPriceOptionId = e.SelectedPriceOptionId,
             FormResponses = e.FormResponses
                 .OrderBy(r => r.FormField.Order)
                 .Select(r => new EnrollmentResponseItemDto
@@ -870,6 +872,44 @@ public class EnrollmentService(
         enrollment.IsOpenToGrouping = request.IsOpenToGrouping;
         enrollment.UpdatedAt = DateTime.UtcNow;
 
+        // Prijsoptie: enkel behandelen wanneer ze effectief wijzigt.
+        if (request.SelectedPriceOptionId != enrollment.SelectedPriceOptionId)
+        {
+            // Gate: niet meer aanpasbaar zodra betaald/bevestigd of een betaling loopt.
+            if (enrollment.Status is EnrollmentStatus.Confirmed
+                or EnrollmentStatus.PendingPayment or EnrollmentStatus.Cancelled)
+                return Result<LessonSerieEnrollmentDto>.Fail(new Error(ErrorCodes.Conflict,
+                    "De prijsoptie kan niet meer aangepast worden: deze inschrijving is al betaald, bevestigd of geannuleerd."));
+
+            // Validatie: een gekozen optie moet bij deze reeks horen (null = optie wissen, toegestaan).
+            if (request.SelectedPriceOptionId is Guid optionId)
+            {
+                IReadOnlyList<LessonSeriePrice> options =
+                    await priceRepo.GetBySeriesAsync(lessonSeriesId, organizationId, ct);
+                if (options.All(o => o.Id != optionId))
+                    return Result<LessonSerieEnrollmentDto>.Fail(new Error(ErrorCodes.Validation,
+                        "Geselecteerde prijsoptie hoort niet bij deze lessenreeks."));
+            }
+
+            // Propagatie: groep → alle leden; solo → enkel deze inschrijving.
+            if (enrollment.EnrollmentGroupId is not null)
+            {
+                Enrollment? withGroup =
+                    await enrollmentRepo.GetByIdWithGroupAsync(enrollmentId, organizationId, ct);
+                List<Enrollment> members =
+                    withGroup?.EnrollmentGroup?.Members.ToList() ?? [enrollment];
+                foreach (Enrollment member in members)
+                {
+                    member.SelectedPriceOptionId = request.SelectedPriceOptionId;
+                    member.UpdatedAt = DateTime.UtcNow;
+                }
+            }
+            else
+            {
+                enrollment.SelectedPriceOptionId = request.SelectedPriceOptionId;
+            }
+        }
+
         await enrollmentRepo.SaveChangesAsync(ct);
 
         LessonSerieEnrollmentDto dto = new()
@@ -893,6 +933,7 @@ public class EnrollmentService(
             },
             EnrollmentGroupId = enrollment.EnrollmentGroupId,
             IsOpenToGrouping = enrollment.IsOpenToGrouping,
+            SelectedPriceOptionId = enrollment.SelectedPriceOptionId,
         };
 
         logger.LogInformation(

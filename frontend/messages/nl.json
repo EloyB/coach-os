@@ -248,6 +248,7 @@
     "toastMarkedPaid": "Inschrijving gemarkeerd als betaald",
     "toastGroupCancelled": "Groep geannuleerd",
     "toastGroupCancelError": "Kon de groep niet annuleren",
+    "toastUpdated": "Inschrijving bijgewerkt",
     "manualAdd": "Manueel toevoegen",
     "manualTitle": "Inschrijving manueel toevoegen",
     "manualDescription": "De deelnemer wordt ingeschreven, maar nog niet ingepland. Er start geen betaalflow.",
@@ -258,12 +259,15 @@
     "manualSubmit": "Inschrijven",
     "manualSuccess": "Inschrijving toegevoegd en bevestigingsmail klaargezet",
     "manualError": "Kon de inschrijving niet toevoegen",
-    "toastUpdated": "Inschrijving bijgewerkt",
     "addMember": "Lid toevoegen",
     "addMemberTitle": "Lid toevoegen aan groep",
     "addMemberDescription": "De deelnemer wordt aan deze groep toegevoegd en erft de status en prijsoptie van de groep.",
     "addMemberSubmit": "Toevoegen",
-    "addMemberSuccess": "Lid toegevoegd aan de groep"
+    "addMemberSuccess": "Lid toegevoegd aan de groep",
+    "priceOptionLabel": "Prijsoptie",
+    "priceOptionNone": "Geen prijsoptie",
+    "priceOptionLocked": "Vergrendeld: deze inschrijving is al betaald of bevestigd.",
+    "priceOptionGroupHint": "Geldt voor de hele groep."
   },
   "enrollmentDetail": {
     "title": "Details inschrijving",

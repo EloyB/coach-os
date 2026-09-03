@@ -24,6 +24,7 @@ public class EnrollmentServiceTests
     private Mock<IUserLookupService> _userLookup = null!;
     private Mock<IEmailService> _emailService = null!;
     private Mock<IEmailOutboxRepository> _emailOutboxRepository = null!;
+    private Mock<ILessonSeriePriceRepository> _priceRepo = null!;
     private ApplicationMapper _mapper = null!;
     private Mock<ILogger<EnrollmentService>> _logger = null!;
     private EnrollmentService _service = null!;
@@ -44,6 +45,7 @@ public class EnrollmentServiceTests
         _userLookup = new Mock<IUserLookupService>();
         _emailService = new Mock<IEmailService>();
         _emailOutboxRepository = new Mock<IEmailOutboxRepository>();
+        _priceRepo = new Mock<ILessonSeriePriceRepository>();
         _mapper = new ApplicationMapper();
         _logger = new Mock<ILogger<EnrollmentService>>();
 
@@ -56,6 +58,7 @@ public class EnrollmentServiceTests
             _orgSettingsRepo.Object,
             _userLookup.Object,
             _emailOutboxRepository.Object,
+            _priceRepo.Object,
             _mapper,
             _logger.Object,
             TimeProvider.System);
