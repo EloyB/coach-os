@@ -77,6 +77,21 @@ public class EmailService(
             $"Inschrijving bevestigd: {seriesName}", html, ct);
     }
 
+    public async Task SendGroupMemberAddedAsync(
+        string studentEmail, string studentName, string seriesName, string groupName,
+        CancellationToken ct = default)
+    {
+        var html = renderer.Render("group-member-added", new Dictionary<string, string>
+        {
+            ["studentName"] = studentName,
+            ["seriesName"] = seriesName,
+            ["groupName"] = groupName,
+            ["year"] = DateTime.UtcNow.Year.ToString(),
+        });
+        await SendAsync(studentEmail, studentName,
+            $"Toegevoegd aan {groupName}: {seriesName}", html, ct);
+    }
+
     public async Task SendEnrollmentPendingCashAsync(
         string studentEmail, string studentName, string seriesName, decimal amount,
         IReadOnlyList<string>? participantNames = null, CancellationToken ct = default)

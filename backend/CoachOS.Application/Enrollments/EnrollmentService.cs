@@ -738,7 +738,19 @@ public class EnrollmentService(
             }
 
             await enrollmentRepo.SaveChangesAsync(ct);
-            // Bewust geen bevestigingsmail: het lid is nog niet bevestigd; die mail volgt met de groep.
+            // Informatieve "toegevoegd aan groep"-mail (geen bevestiging/betaling — het lid is nog
+            // Pending; de bevestigings-/betaalmail volgt bij de normale groeps-bevestiging).
+            await emailOutboxRepository.AddRangeAsync([
+                new EmailOutboxMessage
+                {
+                    OrganizationId = organizationId,
+                    EnrollmentId = enrollment.Id,
+                    Type = EmailOutboxMessageTypes.GroupMemberAdded,
+                    Payload = JsonSerializer.Serialize(new GroupMemberAddedEmailPayload(
+                        contactEmail, enrollment.StudentName, series.Name, group.Name)),
+                }
+            ], ct);
+            await emailOutboxRepository.SaveChangesAsync(ct);
             await enrollmentRepo.CommitTransactionAsync(ct);
             return Result<Guid>.Ok(enrollment.Id);
         }

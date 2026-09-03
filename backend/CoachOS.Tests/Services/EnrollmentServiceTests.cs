@@ -1388,8 +1388,11 @@ public class EnrollmentServiceTests
         added!.EnrollmentGroupId.Should().Be(group.Id);
         added.Status.Should().Be(EnrollmentStatus.Pending);        // status geërfd
         added.SelectedPriceOptionId.Should().Be(opt);              // prijsoptie geërfd
+        // Informatieve "toegevoegd aan groep"-mail wordt in de outbox gezet.
         _emailOutboxRepository.Verify(r => r.AddRangeAsync(
-            It.IsAny<IEnumerable<EmailOutboxMessage>>(), It.IsAny<CancellationToken>()), Times.Never); // geen mail
+            It.Is<IEnumerable<EmailOutboxMessage>>(m =>
+                m.Any(x => x.Type == EmailOutboxMessageTypes.GroupMemberAdded)),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Test]

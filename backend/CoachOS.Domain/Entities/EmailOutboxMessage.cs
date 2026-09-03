@@ -31,4 +31,5 @@ public static class EmailOutboxMessageTypes
 {
     public const string EnrollmentConfirmation = "enrollment-confirmation";
     public const string TrainerNotification = "trainer-notification";
+    public const string GroupMemberAdded = "group-member-added";
 }
