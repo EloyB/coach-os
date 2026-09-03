@@ -124,6 +124,14 @@ public sealed class EmailOutboxWorker(
                     payload.ParticipantNames, ct);
                 break;
             }
+            case EmailOutboxMessageTypes.GroupMemberAdded:
+            {
+                var payload = JsonSerializer.Deserialize<GroupMemberAddedEmailPayload>(message.Payload)
+                    ?? throw new InvalidOperationException("Invalid group member added payload");
+                await emailService.SendGroupMemberAddedAsync(
+                    payload.Email, payload.Name, payload.SeriesName, payload.GroupName, ct);
+                break;
+            }
             case EmailOutboxMessageTypes.TrainerNotification:
             {
                 var payload = JsonSerializer.Deserialize<TrainerEnrollmentNotificationEmailPayload>(message.Payload)

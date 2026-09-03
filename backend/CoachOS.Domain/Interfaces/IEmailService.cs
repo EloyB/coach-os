@@ -16,6 +16,13 @@ public interface IEmailService
         IReadOnlyList<string>? participantNames = null,
         CancellationToken ct = default);
 
+    Task SendGroupMemberAddedAsync(
+        string studentEmail,
+        string studentName,
+        string seriesName,
+        string groupName,
+        CancellationToken ct = default);
+
     Task SendEnrollmentPendingCashAsync(
         string studentEmail,
         string studentName,
