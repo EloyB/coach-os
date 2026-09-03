@@ -38,6 +38,11 @@ export function isHeadTrainerViewer(): boolean {
   return u?.role === "Trainer" && (u?.headTrainerClubIds?.length ?? 0) > 0;
 }
 
+export function isEnrollmentManager(): boolean {
+  const u = getAuthUser();
+  return u?.role === "Admin" || isHeadTrainerViewer();
+}
+
 export function isSuperAdmin(): boolean {
   return getAuthUser()?.isSuperAdmin === true;
 }

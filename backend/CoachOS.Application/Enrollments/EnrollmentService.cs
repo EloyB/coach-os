@@ -545,6 +545,105 @@ public class EnrollmentService(
         return Result<Guid>.Ok(enrollment.Id);
     }
 
+    public async Task<Result<Guid>> CreateManualEnrollmentAsync(
+        Guid lessonSeriesId, CreateManualEnrollmentRequest request, Guid organizationId,
+        CancellationToken ct = default)
+    {
+        Domain.Entities.LessonSerie? series = await lessonSeriesRepo.GetByIdPublicAsync(lessonSeriesId, ct);
+        if (series is null || series.OrganizationId != organizationId)
+            return Result<Guid>.Fail(new Error(ErrorCodes.NotFound, "Lessenreeks niet gevonden."));
+
+        if (!DateOfBirthRules.TryParse(request.DateOfBirth, out DateOnly dateOfBirth))
+            return Result<Guid>.Fail(new Error(ErrorCodes.Validation, "Geboortedatum is ongeldig."));
+
+        Error? ageError = CheckAgeEligibility(
+            new SubmitEnrollmentRequest { StudentName = request.StudentName, DateOfBirth = request.DateOfBirth }, series);
+        if (ageError is not null)
+            return Result<Guid>.Fail(ageError);
+
+        EnrollmentForm? form = await enrollmentFormRepo.GetBySeriesIdReadOnlyAsync(lessonSeriesId, ct);
+        if (form is not null)
+        {
+            Error? formError = FormResponseValidator.Validate(
+                form.Fields.Select(f => (f.Id, f.IsRequired, f.Label)),
+                request.Responses.Select(r => (r.FormFieldId, r.Value)));
+            if (formError is not null) return Result<Guid>.Fail(formError);
+        }
+
+        OrganizationSettingsEntity? settings =
+            await orgSettingsRepo.GetByOrganizationReadOnlyAsync(organizationId, ct);
+        int youthMaxAge = settings?.YouthMaxAge ?? 17;
+        string contactEmail = EnrollmentEmails.Normalize(request.ContactEmail);
+
+        await enrollmentRepo.BeginTransactionAsync(IsolationLevel.Serializable, ct);
+        try
+        {
+            if (series.MaxRegistrations.HasValue &&
+                await enrollmentRepo.CountActiveBySeriesAsync(lessonSeriesId, ct) >= series.MaxRegistrations.Value)
+            {
+                await enrollmentRepo.RollbackTransactionAsync(ct);
+                return Result<Guid>.Fail(new Error(ErrorCodes.Conflict, "Deze lessenreeks is volzet."));
+            }
+
+            if (await enrollmentRepo.IsDuplicateParticipantAsync(
+                    lessonSeriesId, contactEmail, request.StudentName, dateOfBirth, ct))
+            {
+                await enrollmentRepo.RollbackTransactionAsync(ct);
+                return Result<Guid>.Fail(new Error(
+                    ErrorCodes.Conflict, $"{request.StudentName} is al ingeschreven voor deze lessenreeks."));
+            }
+
+            Enrollment enrollment = new()
+            {
+                OrganizationId = organizationId,
+                LessonSerieId = lessonSeriesId,
+                StudentName = request.StudentName.Trim(),
+                ContactEmail = contactEmail,
+                StudentEmail = string.IsNullOrWhiteSpace(request.StudentEmail)
+                    ? null
+                    : EnrollmentEmails.Normalize(request.StudentEmail),
+                StudentPhone = request.StudentPhone,
+                DateOfBirth = dateOfBirth,
+                Category = ResolveCategory(request.DateOfBirth, youthMaxAge, DateOnly.FromDateTime(DateTime.UtcNow)),
+                Status = EnrollmentStatus.Confirmed,
+                EnrolledAt = DateTime.UtcNow,
+                IsOpenToGrouping = false,
+            };
+            await enrollmentRepo.AddAsync(enrollment, ct);
+
+            foreach (FormResponseValueDto responseDto in request.Responses)
+            {
+                await enrollmentRepo.AddFormResponseAsync(new FormResponse
+                {
+                    EnrollmentId = enrollment.Id,
+                    FormFieldId = responseDto.FormFieldId,
+                    Value = responseDto.Value,
+                }, ct);
+            }
+
+            await enrollmentRepo.SaveChangesAsync(ct);
+            await emailOutboxRepository.AddRangeAsync([
+                new EmailOutboxMessage
+                {
+                    OrganizationId = organizationId,
+                    EnrollmentId = enrollment.Id,
+                    Type = EmailOutboxMessageTypes.EnrollmentConfirmation,
+                    Payload = JsonSerializer.Serialize(new EnrollmentConfirmationEmailPayload(
+                        contactEmail, enrollment.StudentName, series.Name, string.Empty,
+                        [enrollment.StudentName])),
+                }
+            ], ct);
+            await emailOutboxRepository.SaveChangesAsync(ct);
+            await enrollmentRepo.CommitTransactionAsync(ct);
+            return Result<Guid>.Ok(enrollment.Id);
+        }
+        catch
+        {
+            await enrollmentRepo.RollbackTransactionAsync(ct);
+            throw;
+        }
+    }
+
     public async Task<Result<List<PublicTimeSlotDto>>> GetPublicTimeSlotsAsync(
         Guid lessonSeriesId, CancellationToken ct = default)
     {

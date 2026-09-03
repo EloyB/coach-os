@@ -1274,4 +1274,55 @@ public class EnrollmentServiceTests
         result.Errors.Should().Contain(e => e.Code == ErrorCodes.Validation);
         _enrollmentGroupRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
+
+    [Test]
+    public async Task CreateManualEnrollmentAsync_CreatesConfirmedSoloAndQueuesConfirmationEmail()
+    {
+        LessonSerie series = BuildActiveSeries();
+        _lessonSeriesRepo
+            .Setup(r => r.GetByIdPublicAsync(SeriesId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+        _enrollmentRepo
+            .Setup(r => r.CountActiveBySeriesAsync(SeriesId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(0);
+        _enrollmentRepo
+            .Setup(r => r.IsDuplicateParticipantAsync(
+                SeriesId, "parent@example.com", "Nieuwe speler", It.IsAny<DateOnly?>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+        _enrollmentFormRepo
+            .Setup(r => r.GetBySeriesIdReadOnlyAsync(SeriesId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((EnrollmentForm?)null);
+        _orgSettingsRepo
+            .Setup(r => r.GetByOrganizationReadOnlyAsync(OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((OrganizationSettings?)null);
+        _enrollmentRepo
+            .Setup(r => r.AddAsync(It.IsAny<Enrollment>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        _emailOutboxRepository
+            .Setup(r => r.AddRangeAsync(It.IsAny<IEnumerable<EmailOutboxMessage>>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        Result<Guid> result = await _service.CreateManualEnrollmentAsync(
+            SeriesId,
+            new CreateManualEnrollmentRequest
+            {
+                StudentName = "Nieuwe speler",
+                ContactEmail = "parent@example.com",
+                DateOfBirth = "2010-05-10",
+            },
+            OrgId);
+
+        result.IsSuccess.Should().BeTrue();
+        _enrollmentRepo.Verify(r => r.AddAsync(
+            It.Is<Enrollment>(e => e.Status == EnrollmentStatus.Confirmed
+                && e.EnrollmentGroupId == null
+                && e.StudentName == "Nieuwe speler"),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _emailOutboxRepository.Verify(r => r.AddRangeAsync(
+            It.Is<IEnumerable<EmailOutboxMessage>>(messages => messages.Any(m =>
+                m.Type == EmailOutboxMessageTypes.EnrollmentConfirmation
+                && m.Payload.Contains("parent@example.com"))),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
 }
