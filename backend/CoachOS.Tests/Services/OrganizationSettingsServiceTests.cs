@@ -30,7 +30,7 @@ public class OrganizationSettingsServiceTests
                 It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(0);
         _mapper = new ApplicationMapper();
-        _sut = new OrganizationSettingsService(_repo.Object, _lessonRepo.Object, _mapper);
+        _sut = new OrganizationSettingsService(_repo.Object, _lessonRepo.Object, _mapper, TimeProvider.System);
     }
 
     [Test]

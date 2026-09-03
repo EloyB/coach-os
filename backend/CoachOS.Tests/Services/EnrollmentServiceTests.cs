@@ -60,7 +60,8 @@ public class EnrollmentServiceTests
             _emailOutboxRepository.Object,
             _priceRepo.Object,
             _mapper,
-            _logger.Object);
+            _logger.Object,
+            TimeProvider.System);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

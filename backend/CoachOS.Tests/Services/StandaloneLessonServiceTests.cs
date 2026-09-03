@@ -52,7 +52,8 @@ public class StandaloneLessonServiceTests
             _emailService.Object,
             _mapper,
             appOptions,
-            NullLogger<StandaloneLessonService>.Instance);
+            NullLogger<StandaloneLessonService>.Instance,
+            TimeProvider.System);
 
         // Default: trainer is actief lid van de organisatie.
         _userLookup

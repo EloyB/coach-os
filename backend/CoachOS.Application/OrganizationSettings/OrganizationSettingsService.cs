@@ -1,5 +1,6 @@
 using CoachOS.Application.Mappings;
 using CoachOS.Application.OrganizationSettings.DTOs;
+using CoachOS.Domain.Common;
 using CoachOS.Domain.Interfaces;
 using CoachOS.Domain.Models;
 
@@ -8,7 +9,8 @@ namespace CoachOS.Application.OrganizationSettings;
 public class OrganizationSettingsService(
     IOrganizationSettingsRepository repo,
     ILessonRepository lessonRepo,
-    ApplicationMapper mapper) : IOrganizationSettingsService
+    ApplicationMapper mapper,
+    TimeProvider timeProvider) : IOrganizationSettingsService
 {
     public async Task<Result<OrganizationSettingsDto>> GetAsync(
         Guid organizationId,
@@ -51,7 +53,7 @@ public class OrganizationSettingsService(
 
     private Task<int> CountUpcomingForCurrentUserAsync(Guid userId, Guid organizationId, CancellationToken ct)
     {
-        DateOnly today = DateOnly.FromDateTime(DateTime.UtcNow);
+        DateOnly today = timeProvider.GetBrusselsToday();
         return lessonRepo.CountUpcomingForTrainerAsync(userId, organizationId, today, ct);
     }
 }

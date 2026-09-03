@@ -1,0 +1,156 @@
+{
+  "uid": "coachos-logs-overview",
+  "title": "CoachOS — Logs Overview",
+  "tags": ["coachos", "loki"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 5,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "container",
+        "type": "query",
+        "label": "Container",
+        "datasource": { "type": "loki", "uid": "loki" },
+        "query": "label_values(container)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "current": { "text": "All", "value": "$__all" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Logvolume per container",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 0 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "sum by (container) (count_over_time({container=~\"$container\"}[$__auto]))",
+          "legendFormat": "{{container}}",
+          "queryType": "range"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "custom": { "drawStyle": "bars", "fillOpacity": 60, "stacking": { "mode": "normal" } } },
+        "overrides": []
+      }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Fouten per container (echte error/exception/fail als los woord)",
+      "description": "Woordgrens-regex i.p.v. platte substring: \\bLastError\\b matcht bv. niet meer op de kolomnaam 'LastError' in routinematige SQL (dat gaf voorheen valse spikes).",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 8 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "sum by (container) (count_over_time({container=~\"$container\"} |~ \"(?i)\\\\b(error|exception|fail(ed|ure)?)\\\\b\" [$__auto]))",
+          "legendFormat": "{{container}}",
+          "queryType": "range"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "bars", "fillOpacity": 60, "stacking": { "mode": "normal" } },
+          "color": { "mode": "fixed", "fixedColor": "red" }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "HTTP 4xx/5xx (nginx access log)",
+      "description": "Aparte teller per statuscode-klasse uit nginx' access log — surfaced los van de generieke woordfilter, want een 503/404 bevat zelf niet het woord 'error'.",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "sum(count_over_time({container=\"coach-os-nginx\"} |~ \"\\\" 4[0-9]{2} \" [$__auto]))",
+          "legendFormat": "4xx",
+          "queryType": "range"
+        },
+        {
+          "refId": "B",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "sum(count_over_time({container=\"coach-os-nginx\"} |~ \"\\\" 5[0-9]{2} \" [$__auto]))",
+          "legendFormat": "5xx",
+          "queryType": "range"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "bars", "fillOpacity": 60, "stacking": { "mode": "normal" } }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Requestduur per API-resource (nginx rt=, p50/p95)",
+      "description": "Enkel echte backend-calls (/api/...) — Grafana's eigen verkeer, statische assets en bot-scans vallen hier per definitie buiten. Route = de eerste twee padsegmenten na /api/ (bv. 'public/lessonseries'), dus geen losse ID's/tokens per lijn meer.",
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 24 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "quantile_over_time(0.5, {container=\"coach-os-nginx\"} |~ `\"[A-Z]+ /api/` | regexp `\"[A-Z]+ /api/(?P<route>[^/?\" ]+(?:/[^/?\" ]+)?)` | regexp `rt=(?P<rt>[0-9.]+)` | unwrap rt [$__auto]) by (route)",
+          "legendFormat": "p50 {{route}}",
+          "queryType": "range"
+        },
+        {
+          "refId": "B",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "quantile_over_time(0.95, {container=\"coach-os-nginx\"} |~ `\"[A-Z]+ /api/` | regexp `\"[A-Z]+ /api/(?P<route>[^/?\" ]+(?:/[^/?\" ]+)?)` | regexp `rt=(?P<rt>[0-9.]+)` | unwrap rt [$__auto]) by (route)",
+          "legendFormat": "p95 {{route}}",
+          "queryType": "range"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "s", "custom": { "drawStyle": "line", "fillOpacity": 10 } },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max"] },
+        "tooltip": { "mode": "multi" }
+      }
+    },
+    {
+      "id": 3,
+      "type": "logs",
+      "title": "Live logs",
+      "description": "Filtert SQL-commandologging (extra bescherming voor historische regels; de API zelf logt dit niet meer op Information-niveau sinds de logging-fix) én Grafana's eigen verkeer naar zichzelf (anders overspoelt het bekijken van dit dashboard de feed met z'n eigen queries).",
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 33 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "wrapLogMessage": true,
+        "sortOrder": "Descending",
+        "enableLogDetails": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "{container=~\"$container\", container!=\"coach-os-grafana\"} != \"Executed DbCommand\" !~ `(?i)_grafana`",
+          "queryType": "range"
+        }
+      ]
+    }
+  ]
+}

@@ -76,6 +76,7 @@ public class LessonCourtConflictTests
             _scheduleAssignmentRepo.Object,
             _timeSlotPreferenceRepo.Object,
             _invitationRepo.Object,
+            TimeProvider.System,
             _mapper);
 
         _standaloneService = new StandaloneLessonService(
@@ -89,7 +90,8 @@ public class LessonCourtConflictTests
             {
                 StandaloneLessonInvitationBaseUrl = "http://localhost:5317/invitation"
             }),
-            NullLogger<StandaloneLessonService>.Instance);
+            NullLogger<StandaloneLessonService>.Instance,
+            TimeProvider.System);
 
         _rescheduleService = new LessonRescheduleService(
             _lessonRepo.Object,

@@ -1,4 +1,5 @@
 using CoachOS.Application.Dashboard.DTOs;
+using CoachOS.Domain.Common;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Interfaces;
 using CoachOS.Domain.Models;
@@ -12,7 +13,8 @@ public class DashboardService(
     IEnrollmentRepository enrollmentRepo,
     ITennisClubRepository tennisClubRepo,
     IUserLookupService userLookup,
-    IAssignmentConfirmationTokenRepository confirmationTokenRepo) : IDashboardService
+    IAssignmentConfirmationTokenRepository confirmationTokenRepo,
+    TimeProvider timeProvider) : IDashboardService
 {
     public async Task<Result<DashboardSummaryDto>> GetSummaryAsync(
         Guid organizationId, CancellationToken ct = default)
@@ -23,7 +25,7 @@ public class DashboardService(
         var activeSeriesCount = allSeries.Count(s => s.IsActive);
 
         // Lessons this week
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = timeProvider.GetBrusselsToday();
         var dayOfWeek = ((int)today.DayOfWeek + 6) % 7; // Monday=0
         var weekStart = today.AddDays(-dayOfWeek);
         var weekEnd = weekStart.AddDays(6);
@@ -197,7 +199,7 @@ public class DashboardService(
             Dictionary<Guid, int> enrollmentCounts =
                 await enrollmentRepo.CountActiveBySeriesIdsAsync(seriesIds, ct);
 
-            DateOnly today = DateOnly.FromDateTime(DateTime.UtcNow);
+            DateOnly today = timeProvider.GetBrusselsToday();
             int dayOfWeekOffset = ((int)today.DayOfWeek + 6) % 7;
             DateOnly currentWeekStart = today.AddDays(-dayOfWeekOffset);
 

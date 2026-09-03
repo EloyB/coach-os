@@ -1,6 +1,7 @@
 using CoachOS.Application.Common;
 using CoachOS.Application.LessonSerie.DTOs;
 using CoachOS.Application.Mappings;
+using CoachOS.Domain.Common;
 using CoachOS.Domain.Enums;
 using CoachOS.Domain.Interfaces;
 using CoachOS.Domain.Models;
@@ -18,6 +19,7 @@ public class LessonSerieService(
     IScheduleAssignmentRepository scheduleAssignmentRepo,
     ITimeSlotPreferenceRepository timeSlotPreferenceRepo,
     ILessonInvitationRepository lessonInvitationRepo,
+    TimeProvider timeProvider,
     ApplicationMapper mapper) : ILessonSerieService
 {
     public async Task<Result<List<LessonSerieDto>>> GetAllAsync(
@@ -151,12 +153,21 @@ public class LessonSerieService(
 
             // Koppel de les aan z'n weekslot (match op dag + starttijd + baan) zodat "pas hele
             // weekslot aan" én de planning-synchronisatie werken. Onze DayOfWeek: 0=maandag,
-            // System.DayOfWeek: 0=zondag → (dow + 6) % 7. Geen match (losse les) → null.
+            // System.DayOfWeek: 0=zondag → (dow + 6) % 7.
+            // Meerdere parallelle weekslots ZONDER baannaam op hetzelfde dag+start zijn toegestaan
+            // (2 velden, baan later toewijzen) — dan matchen twee (of meer) entries evenveel goed en
+            // is er geen manier om te weten welke bij deze les hoort. Blindelings de eerste kiezen
+            // (FirstOrDefault) zou alle lessen van dat moment aan één entry hangen en de andere(n)
+            // zonder lessen achterlaten, met foute "pas hele weekslot aan"-updates tot gevolg.
+            // Bij zo'n ambiguïteit dus NIET koppelen (net als bij een echte losse les) — geen match
+            // is altijd veiliger dan een gegokte, mogelijk foute match.
             int lessonDow = ((int)lesson.Date.DayOfWeek + 6) % 7;
-            lesson.WeeklyTemplateEntry = series.WeeklyTemplate.FirstOrDefault(e =>
+            List<Domain.Entities.WeeklyTemplateEntry> matchingEntries = series.WeeklyTemplate.Where(e =>
                 e.DayOfWeek == lessonDow
                 && e.StartTime == lesson.StartTime
-                && NormalizeCourt(e.CourtName) == NormalizeCourt(lesson.CourtName));
+                && NormalizeCourt(e.CourtName) == NormalizeCourt(lesson.CourtName))
+                .ToList();
+            lesson.WeeklyTemplateEntry = matchingEntries.Count == 1 ? matchingEntries[0] : null;
 
             series.Lessons.Add(lesson);
         }
@@ -329,7 +340,7 @@ public class LessonSerieService(
         // tot en met de einddatum van de reeks. Zo verschijnt het weekslot zowel in de planning
         // (uit de weekindeling) als in de lesmomenten-kalender (uit de Lesson-rijen).
         LessonLevel? level = request.Level.HasValue ? (LessonLevel)request.Level.Value : null;
-        DateOnly today = DateOnly.FromDateTime(DateTime.UtcNow);
+        DateOnly today = timeProvider.GetBrusselsToday();
         DateOnly from = series.StartDate > today ? series.StartDate : today;
 
         foreach (DateOnly date in WeeklyLessonExpander.MatchingDates(request.DayOfWeek, from, series.EndDate))

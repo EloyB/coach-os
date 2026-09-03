@@ -1,0 +1,36 @@
+discovery.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+}
+
+discovery.relabel "containers" {
+  targets = discovery.docker.containers.targets
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(coach-os-loki|coach-os-alloy)"
+    action        = "drop"
+  }
+
+  // Docker container names carry a leading slash (Docker API convention);
+  // strip it and promote to a real "container" label. Without this, every
+  // stream has zero labels and Loki rejects the whole batch with
+  // "at least one label pair is required per stream" — silently dropping
+  // ALL logs.
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "container"
+  }
+}
+
+loki.source.docker "containers" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.containers.output
+  forward_to = [loki.write.default.receiver]
+}
+
+loki.write "default" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

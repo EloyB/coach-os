@@ -26,7 +26,8 @@ import { getNonResponders } from "@/lib/api/confirmation";
 import { resendConfirmation, adminConfirm } from "@/lib/api/planning";
 import type { NonResponderDto } from "@/lib/api/confirmation";
 
-const DAY_NAMES_SHORT = ["Zo", "Ma", "Di", "Wo", "Do", "Vr", "Za"];
+// Backend-conventie: 0=maandag ... 6=zondag (zie CoachOS.Application/LessonSerie/LessonSerieService.cs).
+const DAY_NAMES_SHORT = ["Ma", "Di", "Wo", "Do", "Vr", "Za", "Zo"];
 
 function formatRelativeExpiry(expiresAt: string): string {
   const now = new Date();
