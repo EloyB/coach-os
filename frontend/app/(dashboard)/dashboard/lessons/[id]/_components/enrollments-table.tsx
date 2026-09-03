@@ -476,6 +476,26 @@ function GroupBlockRows({
     onError: () => toast.error(t("removeFromGroupError")),
   });
 
+  // Prijsoptie voor de hele groep: bewerk ze op de leider; de backend propageert naar alle leden.
+  const changeGroupPriceMutation = useMutation({
+    mutationFn: (optionId: string | null) =>
+      updateBasicEnrollment(seriesId, leader.id, {
+        studentName: leader.studentName,
+        contactEmail: leader.contactEmail,
+        studentEmail: leader.studentEmail,
+        studentPhone: leader.studentPhone,
+        dateOfBirth: leader.dateOfBirth ?? "",
+        isOpenToGrouping: leader.isOpenToGrouping,
+        selectedPriceOptionId: optionId,
+      }),
+    onSuccess: () => {
+      toast.success(t("groupPriceSuccess"));
+      queryClient.invalidateQueries({ queryKey: ["enrollments", seriesId] });
+      queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
+    },
+    onError: () => toast.error(t("groupPriceError")),
+  });
+
   const cancelGroupMutation = useMutation({
     mutationFn: () => cancelEnrollmentGroup(seriesId, block.groupId),
     onSuccess: () => {
@@ -641,6 +661,9 @@ function GroupBlockRows({
         groupMembers={members}
         onEditMember={setEditingMember}
         onRemoveMember={canManage ? setMemberToRemove : undefined}
+        onChangeGroupPriceOption={
+          canManage ? (id) => changeGroupPriceMutation.mutate(id) : undefined
+        }
       />
 
       <ManualEnrollmentDialog

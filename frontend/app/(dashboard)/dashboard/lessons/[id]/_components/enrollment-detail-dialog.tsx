@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { enrollmentStatusStyles } from "@/lib/status-styles";
 import { getEnrollmentsWithPreferences } from "@/lib/api/enrollments";
 import type { LessonSeriesEnrollmentDto } from "@/lib/api/enrollments";
+import { getLessonSeriePrices } from "@/lib/api/lessonSeriePrices";
 import { getPublicTimeSlots } from "@/lib/api/timeSlots";
 import { isHeadTrainerViewer } from "@/lib/auth";
 import type { TimeSlotDto } from "@/lib/api/timeSlots";
@@ -46,6 +47,7 @@ export function EnrollmentDetailDialog({
   groupMembers,
   onEditMember,
   onRemoveMember,
+  onChangeGroupPriceOption,
 }: {
   enrollment: LessonSeriesEnrollmentDto;
   seriesId: string;
@@ -58,6 +60,8 @@ export function EnrollmentDetailDialog({
   onEditMember?: (member: LessonSeriesEnrollmentDto) => void;
   /** Wanneer gezet: toon per lid een 'uit groep halen'-knop. */
   onRemoveMember?: (member: LessonSeriesEnrollmentDto) => void;
+  /** Wanneer gezet (bij een groep): toon een prijsoptie-selector voor de hele groep. */
+  onChangeGroupPriceOption?: (optionId: string | null) => void;
 }) {
   const t = useTranslations("enrollmentDetail");
 
@@ -72,6 +76,19 @@ export function EnrollmentDetailDialog({
     queryFn: () => getPublicTimeSlots(seriesId),
     enabled: open,
   });
+
+  const { data: priceOptions = [] } = useQuery({
+    queryKey: ["lessonSeriePrices", seriesId],
+    queryFn: () => getLessonSeriePrices(seriesId),
+    enabled: open && onChangeGroupPriceOption != null,
+  });
+
+  // De prijsoptie is één gedeelde waarde voor de groep (de leider = `enrollment` draagt de
+  // betaling). Vergrendeld zodra de groep betaald/bevestigd/geannuleerd is — gelijk aan de gate.
+  const groupPriceLocked =
+    enrollment.status === "Confirmed" ||
+    enrollment.status === "PendingPayment" ||
+    enrollment.status === "Cancelled";
 
   // Voorkeuren van déze inschrijving, geïndexeerd op slot-id.
   const prefMap = useMemo(() => {
@@ -192,7 +209,40 @@ export function EnrollmentDetailDialog({
 
         {/* Tab: Groepsleden */}
         {activeTab === "leden" && hasGroup && (
-          <ul className="divide-y divide-gray-50 rounded-lg border border-gray-100">
+          <div className="space-y-4">
+            {onChangeGroupPriceOption && priceOptions.length > 0 && (
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">
+                  {t("groupPriceLabel")}
+                </label>
+                {groupPriceLocked ? (
+                  <p className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
+                    {priceOptions.find((o) => o.id === enrollment.selectedPriceOptionId)?.label
+                      ?? t("groupPriceNone")}
+                    <span className="mt-1 block text-xs text-gray-400">{t("groupPriceLocked")}</span>
+                  </p>
+                ) : (
+                  <select
+                    value={enrollment.selectedPriceOptionId ?? ""}
+                    onChange={(e) => onChangeGroupPriceOption(e.target.value || null)}
+                    className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:border-tennis-green focus:outline-none"
+                  >
+                    <option value="">{t("groupPriceNone")}</option>
+                    {priceOptions
+                      .slice()
+                      .sort((a, b) => a.sortOrder - b.sortOrder)
+                      .map((o) => (
+                        <option key={o.id} value={o.id}>
+                          {o.label} — €{o.totalPrice}
+                        </option>
+                      ))}
+                  </select>
+                )}
+                <p className="mt-1 text-xs text-gray-400">{t("groupPriceHint")}</p>
+              </div>
+            )}
+
+            <ul className="divide-y divide-gray-50 rounded-lg border border-gray-100">
             {groupMembers!.map((m) => {
               const mAge = computeAge(m.dateOfBirth);
               const mContact = m.hasOwnEmail
@@ -259,7 +309,8 @@ export function EnrollmentDetailDialog({
                 </li>
               );
             })}
-          </ul>
+            </ul>
+          </div>
         )}
 
         {/* Tab: Beschikbaarheden */}
