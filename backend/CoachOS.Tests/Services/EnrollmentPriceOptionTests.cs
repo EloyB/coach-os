@@ -134,6 +134,23 @@ public class EnrollmentPriceOptionTests
     }
 
     [Test]
+    public async Task Cancelled_ChangeOption_ReturnsConflict()
+    {
+        // Frontend maakt geannuleerde inschrijvingen read-only; de backend-gate moet ze ook
+        // blokkeren zodat een directe API-call de prijsoptie niet stil wijzigt.
+        Enrollment e = SoloEnrollment(EnrollmentStatus.Cancelled, OptionA);
+        _enrollmentRepo.Setup(r => r.GetByIdAsync(e.Id, OrgId, It.IsAny<CancellationToken>())).ReturnsAsync(e);
+
+        Result<LessonSerieEnrollmentDto> result =
+            await _service.UpdateBasicEnrollmentAsync(SeriesId, e.Id, OrgId, Request(OptionB), CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().Contain(x => x.Code == ErrorCodes.Conflict);
+        e.SelectedPriceOptionId.Should().Be(OptionA);
+        _enrollmentRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
     public async Task PendingPayment_ChangeOption_ReturnsConflict()
     {
         Enrollment e = SoloEnrollment(EnrollmentStatus.PendingPayment, OptionA);

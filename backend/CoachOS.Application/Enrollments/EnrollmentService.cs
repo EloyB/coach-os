@@ -863,9 +863,10 @@ public class EnrollmentService(
         if (request.SelectedPriceOptionId != enrollment.SelectedPriceOptionId)
         {
             // Gate: niet meer aanpasbaar zodra betaald/bevestigd of een betaling loopt.
-            if (enrollment.Status is EnrollmentStatus.Confirmed or EnrollmentStatus.PendingPayment)
+            if (enrollment.Status is EnrollmentStatus.Confirmed
+                or EnrollmentStatus.PendingPayment or EnrollmentStatus.Cancelled)
                 return Result<LessonSerieEnrollmentDto>.Fail(new Error(ErrorCodes.Conflict,
-                    "De prijsoptie kan niet meer aangepast worden: deze inschrijving is al betaald of bevestigd."));
+                    "De prijsoptie kan niet meer aangepast worden: deze inschrijving is al betaald, bevestigd of geannuleerd."));
 
             // Validatie: een gekozen optie moet bij deze reeks horen (null = optie wissen, toegestaan).
             if (request.SelectedPriceOptionId is Guid optionId)
