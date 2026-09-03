@@ -51,7 +51,8 @@ public class EnrollmentPriceOptionTests
         _service = new EnrollmentService(
             _enrollmentRepo.Object, _enrollmentFormRepo.Object, _lessonSeriesRepo.Object,
             _enrollmentGroupRepo.Object, _timeSlotPreferenceRepo.Object, _orgSettingsRepo.Object,
-            _userLookup.Object, _emailOutboxRepository.Object, _priceRepo.Object, _mapper, _logger.Object);
+            _userLookup.Object, _emailOutboxRepository.Object, _priceRepo.Object, _mapper, _logger.Object,
+            TimeProvider.System);
 
         // Geen duplicaat; reeks bevat OptionA en OptionB.
         _enrollmentRepo
