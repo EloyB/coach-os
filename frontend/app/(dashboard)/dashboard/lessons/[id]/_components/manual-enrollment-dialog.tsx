@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
-import { createManualEnrollment } from "@/lib/api/enrollments";
+import { addGroupMember, createManualEnrollment } from "@/lib/api/enrollments";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -12,8 +12,13 @@ import {
 } from "@/components/ui/dialog";
 
 export function ManualEnrollmentDialog({
-  seriesId, open, onOpenChange,
-}: { seriesId: string; open: boolean; onOpenChange: (open: boolean) => void }) {
+  seriesId, open, onOpenChange, groupId,
+}: {
+  seriesId: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  groupId?: string;
+}) {
   const t = useTranslations("enrollmentsTable");
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
@@ -21,13 +26,20 @@ export function ManualEnrollmentDialog({
   const [phone, setPhone] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
   const mutation = useMutation({
-    mutationFn: () => createManualEnrollment(seriesId, {
-      studentName: name, contactEmail: email, studentPhone: phone || null, dateOfBirth,
-    }),
+    mutationFn: () => (groupId
+      ? addGroupMember(seriesId, groupId, {
+        studentName: name, contactEmail: email, studentPhone: phone || null, dateOfBirth,
+      })
+      : createManualEnrollment(seriesId, {
+        studentName: name, contactEmail: email, studentPhone: phone || null, dateOfBirth,
+      })),
     onSuccess: () => {
-      toast.success(t("manualSuccess"));
+      toast.success(groupId ? t("addMemberSuccess") : t("manualSuccess"));
       queryClient.invalidateQueries({ queryKey: ["enrollments", seriesId] });
       queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
+      if (groupId) {
+        queryClient.invalidateQueries({ queryKey: ["planning", seriesId] });
+      }
       onOpenChange(false);
       setName(""); setEmail(""); setPhone(""); setDateOfBirth("");
     },
@@ -38,8 +50,8 @@ export function ManualEnrollmentDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{t("manualTitle")}</DialogTitle>
-          <DialogDescription>{t("manualDescription")}</DialogDescription>
+          <DialogTitle>{groupId ? t("addMemberTitle") : t("manualTitle")}</DialogTitle>
+          <DialogDescription>{groupId ? t("addMemberDescription") : t("manualDescription")}</DialogDescription>
         </DialogHeader>
         <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); mutation.mutate(); }}>
           <label className="block text-sm font-medium">{t("manualName")}
@@ -56,7 +68,7 @@ export function ManualEnrollmentDialog({
           </label>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{t("back")}</Button>
-            <Button type="submit" disabled={mutation.isPending}>{t("manualSubmit")}</Button>
+            <Button type="submit" disabled={mutation.isPending}>{groupId ? t("addMemberSubmit") : t("manualSubmit")}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

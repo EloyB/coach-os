@@ -185,6 +185,92 @@ public class AssignmentService(
         return Result<bool>.Ok(true);
     }
 
+    public async Task<Result<bool>> RemoveMemberFromGroupAsync(
+        Guid seriesId, Guid groupId, Guid enrollmentId, Guid organizationId,
+        bool cancelEnrollment = false, CancellationToken ct = default)
+    {
+        EnrollmentGroup? group = await enrollmentGroupRepo.GetByIdAsync(groupId, organizationId, ct);
+        if (group is null || group.LessonSerieId != seriesId)
+            return Result<bool>.Fail(new Error(ErrorCodes.NotFound, "Groep niet gevonden."));
+
+        Enrollment? member = group.Members.FirstOrDefault(m => m.Id == enrollmentId);
+        if (member is null)
+            return Result<bool>.Fail(new Error(ErrorCodes.NotFound, "Dit lid zit niet in deze groep."));
+
+        // Gate: een betaalde/bevestigde groep niet meer herschikken (de groep deelt de status).
+        // Geldt voor beide modes; annuleren van een betaalde inschrijving loopt via de aparte flow.
+        if (member.Status is EnrollmentStatus.Confirmed or EnrollmentStatus.PendingPayment)
+            return Result<bool>.Fail(new Error(ErrorCodes.Conflict,
+                "Dit lid kan niet uit de groep gehaald worden: de groep is al betaald of bevestigd."));
+
+        // Detach het lid uit de groep. Bij cancelEnrollment wordt het lid bovendien geannuleerd
+        // (soft-cancel: status Cancelled, formulierantwoorden blijven); anders blijft het een
+        // actieve losse (solo) inschrijving.
+        member.EnrollmentGroupId = null;
+        if (cancelEnrollment)
+            member.Status = EnrollmentStatus.Cancelled;
+
+        List<Enrollment> remaining = group.Members.Where(m => m.Id != enrollmentId).ToList();
+
+        if (remaining.Count <= 1)
+        {
+            // Ontbinden: laatste lid (indien er één is) wordt ook solo, en behoudt z'n planningsplek
+            // doordat de groeps-toewijzing omgezet wordt naar een individuele toewijzing.
+            Enrollment? last = remaining.FirstOrDefault();
+            if (last is not null)
+                last.EnrollmentGroupId = null;
+
+            List<ScheduleAssignment> groupAssignments =
+                (await scheduleAssignmentRepo.GetBySeriesAsync(seriesId, organizationId, ct))
+                .Where(a => a.EnrollmentGroupId == groupId)
+                .ToList();
+
+            if (groupAssignments.Count > 0)
+            {
+                // Verwijder via key-only stubs (GetBySeriesAsync is AsNoTracking mét includes:
+                // de include-dragende instances zouden botsen met de getrackte group/members).
+                scheduleAssignmentRepo.RemoveRange(
+                    groupAssignments.Select(a => new ScheduleAssignment { Id = a.Id }).ToList());
+
+                if (last is not null)
+                {
+                    // Zet elke groeps-toewijzing om naar een individuele toewijzing voor het overblijvende lid.
+                    List<ScheduleAssignment> individual = groupAssignments.Select(a => new ScheduleAssignment
+                    {
+                        Id = Guid.NewGuid(),
+                        OrganizationId = a.OrganizationId,
+                        LessonSerieId = a.LessonSerieId,
+                        WeeklyTemplateEntryId = a.WeeklyTemplateEntryId,
+                        EnrollmentGroupId = null,
+                        EnrollmentId = last.Id,
+                        Status = a.Status,
+                        IsAutoMerged = false,
+                        IsLocked = a.IsLocked,
+                    }).ToList();
+                    await scheduleAssignmentRepo.AddRangeAsync(individual, ct);
+                }
+            }
+
+            enrollmentGroupRepo.Delete(group);
+        }
+        else
+        {
+            // ≥2 leden blijven: groeps-toewijzing ongemoeid (het lid valt er automatisch uit).
+            // Was het verwijderde lid de leider, promoveer het vroegst-ingeschreven overblijvende lid.
+            if (group.LeaderEnrollmentId == enrollmentId)
+            {
+                Enrollment newLeader = remaining
+                    .OrderBy(m => m.EnrolledAt)
+                    .ThenBy(m => m.StudentName)
+                    .First();
+                group.LeaderEnrollmentId = newLeader.Id;
+            }
+        }
+
+        await enrollmentGroupRepo.SaveChangesAsync(ct);
+        return Result<bool>.Ok(true);
+    }
+
     private async Task<Error?> EnsureSlotCapacityAsync(
         Guid seriesId, Guid organizationId, Guid slotId, int addSize,
         Guid? excludeAssignmentId, CancellationToken ct)

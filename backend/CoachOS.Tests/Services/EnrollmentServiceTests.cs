@@ -1325,4 +1325,149 @@ public class EnrollmentServiceTests
                 && m.Payload.Contains("parent@example.com"))),
             It.IsAny<CancellationToken>()), Times.Once);
     }
+
+    // ── AddGroupMemberAsync ──────────────────────────────────────────────────
+
+    private static readonly Guid OrgIdG = Guid.NewGuid();
+    private static readonly Guid SeriesIdG = Guid.NewGuid();
+
+    private (Domain.Entities.LessonSerie Series, Domain.Entities.EnrollmentGroup Group, Domain.Entities.Enrollment Leader)
+        SetupGroup(EnrollmentStatus leaderStatus = EnrollmentStatus.Pending, Guid? priceOptionId = null)
+    {
+        Domain.Entities.LessonSerie series = new()
+        {
+            Id = SeriesIdG, OrganizationId = OrgIdG, Name = "Reeks", TennisClubId = Guid.NewGuid(),
+            StartDate = new DateOnly(2026, 9, 1), MinAge = 3, MaxAge = 99, MaxRegistrations = 100,
+        };
+        Guid groupId = Guid.NewGuid();
+        Domain.Entities.Enrollment leader = new()
+        {
+            Id = Guid.NewGuid(), OrganizationId = OrgIdG, LessonSerieId = SeriesIdG,
+            StudentName = "Leider", ContactEmail = "leider@test.local", EnrollmentGroupId = groupId,
+            Status = leaderStatus, SelectedPriceOptionId = priceOptionId, EnrolledAt = DateTime.UtcNow,
+        };
+        Domain.Entities.EnrollmentGroup group = new()
+        {
+            Id = groupId, OrganizationId = OrgIdG, LessonSerieId = SeriesIdG, Name = "Groep A",
+            LeaderEnrollmentId = leader.Id, Members = new List<Domain.Entities.Enrollment> { leader },
+        };
+        _lessonSeriesRepo.Setup(r => r.GetByIdPublicAsync(SeriesIdG, It.IsAny<CancellationToken>())).ReturnsAsync(series);
+        _enrollmentGroupRepo.Setup(r => r.GetByIdAsync(groupId, OrgIdG, It.IsAny<CancellationToken>())).ReturnsAsync(group);
+        _enrollmentFormRepo.Setup(r => r.GetBySeriesIdReadOnlyAsync(SeriesIdG, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((EnrollmentForm?)null);
+        _orgSettingsRepo.Setup(r => r.GetByOrganizationReadOnlyAsync(OrgIdG, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((OrganizationSettings?)null);
+        _enrollmentRepo.Setup(r => r.CountActiveBySeriesAsync(SeriesIdG, It.IsAny<CancellationToken>())).ReturnsAsync(3);
+        _enrollmentRepo.Setup(r => r.IsDuplicateParticipantAsync(
+            SeriesIdG, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+        return (series, group, leader);
+    }
+
+    private static CreateManualEnrollmentRequest MemberRequest() => new()
+    {
+        StudentName = "Nieuw Lid", ContactEmail = "nieuw@test.local",
+        StudentPhone = "+32470000000", DateOfBirth = "2005-05-05", Responses = new(),
+    };
+
+    [Test]
+    public async Task AddGroupMember_PendingGroup_CreatesMemberInheritingStatusAndPriceOption()
+    {
+        Guid opt = Guid.NewGuid();
+        var (_, group, _) = SetupGroup(EnrollmentStatus.Pending, opt);
+        Domain.Entities.Enrollment? added = null;
+        _enrollmentRepo.Setup(r => r.AddAsync(It.IsAny<Domain.Entities.Enrollment>(), It.IsAny<CancellationToken>()))
+            .Callback<Domain.Entities.Enrollment, CancellationToken>((e, _) => added = e)
+            .Returns(Task.CompletedTask);
+
+        Result<Guid> result = await _service.AddGroupMemberAsync(
+            SeriesIdG, group.Id, MemberRequest(), OrgIdG, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        added.Should().NotBeNull();
+        added!.EnrollmentGroupId.Should().Be(group.Id);
+        added.Status.Should().Be(EnrollmentStatus.Pending);        // status geërfd
+        added.SelectedPriceOptionId.Should().Be(opt);              // prijsoptie geërfd
+        _emailOutboxRepository.Verify(r => r.AddRangeAsync(
+            It.IsAny<IEnumerable<EmailOutboxMessage>>(), It.IsAny<CancellationToken>()), Times.Never); // geen mail
+    }
+
+    [Test]
+    public async Task AddGroupMember_ConfirmedGroup_ReturnsConflict()
+    {
+        var (_, group, _) = SetupGroup(EnrollmentStatus.Confirmed);
+
+        Result<Guid> result = await _service.AddGroupMemberAsync(
+            SeriesIdG, group.Id, MemberRequest(), OrgIdG, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.Code == ErrorCodes.Conflict);
+        _enrollmentRepo.Verify(r => r.AddAsync(It.IsAny<Domain.Entities.Enrollment>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task AddGroupMember_PendingPaymentGroup_ReturnsConflict()
+    {
+        var (_, group, _) = SetupGroup(EnrollmentStatus.PendingPayment);
+
+        Result<Guid> result = await _service.AddGroupMemberAsync(
+            SeriesIdG, group.Id, MemberRequest(), OrgIdG, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.Code == ErrorCodes.Conflict);
+    }
+
+    [Test]
+    public async Task AddGroupMember_DuplicateParticipant_ReturnsConflict()
+    {
+        var (_, group, _) = SetupGroup(EnrollmentStatus.Pending);
+        _enrollmentRepo.Setup(r => r.IsDuplicateParticipantAsync(
+            SeriesIdG, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        Result<Guid> result = await _service.AddGroupMemberAsync(
+            SeriesIdG, group.Id, MemberRequest(), OrgIdG, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.Code == ErrorCodes.Conflict);
+    }
+
+    [Test]
+    public async Task AddGroupMember_GroupNotInSeries_ReturnsNotFound()
+    {
+        var (_, group, _) = SetupGroup(EnrollmentStatus.Pending);
+        _enrollmentGroupRepo.Setup(r => r.GetByIdAsync(group.Id, OrgIdG, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Domain.Entities.EnrollmentGroup?)null);
+
+        Result<Guid> result = await _service.AddGroupMemberAsync(
+            SeriesIdG, group.Id, MemberRequest(), OrgIdG, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.Code == ErrorCodes.NotFound);
+    }
+
+    [Test]
+    public async Task AddGroupMember_GroupWithoutMembers_ReturnsNotFound_WithoutThrowing()
+    {
+        Guid groupId = Guid.NewGuid();
+        Domain.Entities.LessonSerie series = new()
+        {
+            Id = SeriesIdG, OrganizationId = OrgIdG, Name = "Reeks", TennisClubId = Guid.NewGuid(),
+            StartDate = new DateOnly(2026, 9, 1), MinAge = 3, MaxAge = 99, MaxRegistrations = 100,
+        };
+        Domain.Entities.EnrollmentGroup group = new()
+        {
+            Id = groupId, OrganizationId = OrgIdG, LessonSerieId = SeriesIdG, Name = "Groep A",
+            LeaderEnrollmentId = Guid.NewGuid(), Members = new List<Domain.Entities.Enrollment>(),
+        };
+        _lessonSeriesRepo.Setup(r => r.GetByIdPublicAsync(SeriesIdG, It.IsAny<CancellationToken>())).ReturnsAsync(series);
+        _enrollmentGroupRepo.Setup(r => r.GetByIdAsync(groupId, OrgIdG, It.IsAny<CancellationToken>())).ReturnsAsync(group);
+
+        Result<Guid> result = await _service.AddGroupMemberAsync(
+            SeriesIdG, groupId, MemberRequest(), OrgIdG, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.Code == ErrorCodes.NotFound);
+        _enrollmentRepo.Verify(r => r.AddAsync(It.IsAny<Domain.Entities.Enrollment>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
 }
