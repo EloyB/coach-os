@@ -80,6 +80,14 @@ export interface UpdateBasicEnrollmentRequest {
   selectedPriceOptionId?: string | null;
 }
 
+export interface CreateManualEnrollmentRequest {
+  studentName: string;
+  contactEmail: string;
+  studentEmail?: string | null;
+  studentPhone?: string | null;
+  dateOfBirth: string;
+  responses?: { formFieldId: string; value: string }[];
+}
 export interface SaveFormFieldRequest {
   id?: string;
   label: string;
@@ -135,6 +143,29 @@ export async function saveEnrollmentForm(seriesId: string, fields: SaveFormField
 
 export async function submitEnrollment(seriesId: string, request: SubmitEnrollmentRequest): Promise<string> {
   const { data } = await publicApiClient.post<string>(`/public/lessonseries/${seriesId}/enroll`, request);
+  return data;
+}
+
+export async function createManualEnrollment(
+  seriesId: string,
+  request: CreateManualEnrollmentRequest,
+): Promise<string> {
+  const { data } = await apiClient.post<string>(
+    `/lessonseries/${seriesId}/enrollments/manual`,
+    request,
+  );
+  return data;
+}
+/** Voegt een lid toe aan een bestaande groep (erft status + prijsoptie van de groep). */
+export async function addGroupMember(
+  seriesId: string,
+  groupId: string,
+  request: CreateManualEnrollmentRequest,
+): Promise<string> {
+  const { data } = await apiClient.post<string>(
+    `/lessonseries/${seriesId}/enrollment-groups/${groupId}/members`,
+    request,
+  );
   return data;
 }
 
@@ -195,6 +226,22 @@ export async function cancelEnrollment(seriesId: string, enrollmentId: string): 
 /** Annuleert een volledige groep in één atomaire backend-transactie (alles-of-niets). */
 export async function cancelEnrollmentGroup(seriesId: string, groupId: string): Promise<void> {
   await apiClient.delete(`/lessonseries/${seriesId}/enrollment-groups/${groupId}`);
+}
+
+/**
+ * Haalt één lid uit een groep. Standaard blijft het lid bestaan als losse inschrijving;
+ * met `cancel=true` wordt de inschrijving ook geannuleerd.
+ */
+export async function removeGroupMember(
+  seriesId: string,
+  groupId: string,
+  enrollmentId: string,
+  cancel = false,
+): Promise<void> {
+  const query = cancel ? "?cancel=true" : "";
+  await apiClient.delete(
+    `/lessonseries/${seriesId}/enrollment-groups/${groupId}/members/${enrollmentId}${query}`,
+  );
 }
 
 /**

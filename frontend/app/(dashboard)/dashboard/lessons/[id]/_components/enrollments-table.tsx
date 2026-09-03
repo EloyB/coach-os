@@ -20,6 +20,8 @@ import {
   Copy,
   CheckCircle2,
   MoreVertical,
+  UserMinus,
+  UserPlus,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -39,6 +41,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { FieldError } from "@/components/forms/field-error";
 import { inputClass } from "@/lib/styles";
 import { enrollmentStatusStyles } from "@/lib/status-styles";
@@ -46,13 +53,15 @@ import {
   getLessonSeriesEnrollments,
   cancelEnrollment,
   cancelEnrollmentGroup,
+  removeGroupMember,
   markEnrollmentCashPaid,
   updateBasicEnrollment,
 } from "@/lib/api/enrollments";
 import type { LessonSeriesEnrollmentDto } from "@/lib/api/enrollments";
 import { getLessonSeriePrices } from "@/lib/api/lessonSeriePrices";
 import { EnrollmentDetailDialog } from "./enrollment-detail-dialog";
-import { isHeadTrainerViewer } from "@/lib/auth";
+import { isEnrollmentManager, isHeadTrainerViewer } from "@/lib/auth";
+import { ManualEnrollmentDialog } from "./manual-enrollment-dialog";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -186,7 +195,13 @@ function PersonRow({
   // Hoofdtrainer = read-only: geen bewerk-/annuleer-/betaalacties. Reactief zodat
   // het na hydratie klopt (localStorage is null tijdens SSR).
   const [readOnly, setReadOnly] = useState(false);
-  useEffect(() => setReadOnly(isHeadTrainerViewer()), []);
+  const [canManage, setCanManage] = useState(false);
+  useEffect(() => {
+    // Auth staat alleen in localStorage; pas na hydration kunnen acties zichtbaar worden.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setReadOnly(isHeadTrainerViewer());
+    setCanManage(isEnrollmentManager());
+  }, []);
   const showActionsMenu = openMenuId === enrollment.id;
 
   const isCancelled = enrollment.status === "Cancelled";
@@ -276,30 +291,32 @@ function PersonRow({
 
         {/* Acties */}
         <td className="px-4 py-2.5 text-right whitespace-nowrap">
-          <div className="relative inline-block">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setOpenMenuId(showActionsMenu ? null : enrollment.id);
-              }}
-              aria-label={t("actionsLabel", { name: enrollment.studentName })}
-              className="flex h-8 w-8 items-center justify-center rounded-md border border-gray-100 text-gray-400 hover:bg-gray-50 hover:text-gray-700"
-            >
-              <MoreVertical size={15} />
-            </button>
-            {showActionsMenu && (
-              <div
+          <Popover
+            open={showActionsMenu}
+            onOpenChange={(o) => setOpenMenuId(o ? enrollment.id : null)}
+          >
+            <PopoverTrigger asChild>
+              <button
+                type="button"
                 onClick={(e) => e.stopPropagation()}
-                className="absolute right-0 top-full z-50 mt-1 min-w-48 rounded-lg border border-gray-100 bg-white py-1 text-sm shadow-lg"
+                aria-label={t("actionsLabel", { name: enrollment.studentName })}
+                className="flex h-8 w-8 items-center justify-center rounded-md border border-gray-100 text-gray-400 hover:bg-gray-50 hover:text-gray-700"
               >
+                <MoreVertical size={15} />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="end"
+              onClick={(e) => e.stopPropagation()}
+              className="w-52 p-1 text-sm"
+            >
                 <button
                   type="button"
                   onClick={() => {
                     setOpenMenuId(null);
                     setDetailOpen(true);
                   }}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                  className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
                 >
                   <Eye size={13} />
                   {t("viewDetails")}
@@ -331,7 +348,7 @@ function PersonRow({
                     {t("editAction")}
                   </button>
                 )}
-                {!readOnly && !isCancelled && (
+                {canManage && !isCancelled && (
                   <button
                     type="button"
                     disabled={cancelMutation.isPending}
@@ -345,9 +362,8 @@ function PersonRow({
                     {t("cancelAction")}
                   </button>
                 )}
-              </div>
-            )}
-          </div>
+            </PopoverContent>
+          </Popover>
         </td>
       </tr>
 
@@ -416,11 +432,20 @@ function GroupBlockRows({
   const [open, setOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
+  const [addMemberOpen, setAddMemberOpen] = useState(false);
   const [editingMember, setEditingMember] =
+    useState<LessonSeriesEnrollmentDto | null>(null);
+  const [memberToRemove, setMemberToRemove] =
     useState<LessonSeriesEnrollmentDto | null>(null);
   // Hoofdtrainer = read-only: geen betaal-/annuleer-acties op groepsniveau.
   const [readOnly, setReadOnly] = useState(false);
-  useEffect(() => setReadOnly(isHeadTrainerViewer()), []);
+  const [canManage, setCanManage] = useState(false);
+  useEffect(() => {
+    // Auth staat alleen in localStorage; pas na hydration kunnen acties zichtbaar worden.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setReadOnly(isHeadTrainerViewer());
+    setCanManage(isEnrollmentManager());
+  }, []);
   const expanded = forceExpanded || open;
 
   const { leader, members } = block;
@@ -435,6 +460,20 @@ function GroupBlockRows({
       queryClient.invalidateQueries({ queryKey: ["enrollments", seriesId] });
       queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
     },
+  });
+
+  // Lid uit de groep halen vanuit de detail-dialog (zelfde actie als het icoon op de ledenrij).
+  const removeMemberMutation = useMutation({
+    mutationFn: ({ member, cancel }: { member: LessonSeriesEnrollmentDto; cancel: boolean }) =>
+      removeGroupMember(seriesId, member.enrollmentGroupId!, member.id, cancel),
+    onSuccess: (_data, { cancel }) => {
+      toast.success(cancel ? t("removeFromGroupCancelSuccess") : t("removeFromGroupSuccess"));
+      setMemberToRemove(null);
+      queryClient.invalidateQueries({ queryKey: ["enrollments", seriesId] });
+      queryClient.invalidateQueries({ queryKey: ["planning", seriesId] });
+      queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
+    },
+    onError: () => toast.error(t("removeFromGroupError")),
   });
 
   const cancelGroupMutation = useMutation({
@@ -504,34 +543,49 @@ function GroupBlockRows({
 
         {/* Acties — groepsniveau */}
         <td className="px-4 py-2.5 text-right whitespace-nowrap">
-          <div className="relative inline-block">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setOpenMenuId(showActionsMenu ? null : menuId);
-              }}
-              aria-label={t("actionsLabelGroup", { name: leader.studentName })}
-              className="flex h-8 w-8 items-center justify-center rounded-md border border-gray-100 text-gray-400 hover:bg-gray-50 hover:text-gray-700"
-            >
-              <MoreVertical size={15} />
-            </button>
-            {showActionsMenu && (
-              <div
+          <Popover
+            open={showActionsMenu}
+            onOpenChange={(o) => setOpenMenuId(o ? menuId : null)}
+          >
+            <PopoverTrigger asChild>
+              <button
+                type="button"
                 onClick={(e) => e.stopPropagation()}
-                className="absolute right-0 top-full z-50 mt-1 min-w-48 rounded-lg border border-gray-100 bg-white py-1 text-sm shadow-lg"
+                aria-label={t("actionsLabelGroup", { name: leader.studentName })}
+                className="flex h-8 w-8 items-center justify-center rounded-md border border-gray-100 text-gray-400 hover:bg-gray-50 hover:text-gray-700"
               >
+                <MoreVertical size={15} />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="end"
+              onClick={(e) => e.stopPropagation()}
+              className="w-52 p-1 text-sm"
+            >
                 <button
                   type="button"
                   onClick={() => {
                     setOpenMenuId(null);
                     setDetailOpen(true);
                   }}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                  className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
                 >
                   <Eye size={13} />
                   {t("viewDetails")}
                 </button>
+                {canManage && leader.status !== "Confirmed" && leader.status !== "PendingPayment" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpenMenuId(null);
+                      setAddMemberOpen(true);
+                    }}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                  >
+                    <UserPlus size={13} />
+                    {t("addMember")}
+                  </button>
+                )}
                 {!readOnly && leaderPendingPayment && (
                   <button
                     type="button"
@@ -546,7 +600,7 @@ function GroupBlockRows({
                     {t("markPaid")}
                   </button>
                 )}
-                {!readOnly && (
+                {canManage && (
                 <button
                   type="button"
                   disabled={cancelGroupMutation.isPending}
@@ -560,9 +614,8 @@ function GroupBlockRows({
                   {t("cancelGroup")}
                 </button>
                 )}
-              </div>
-            )}
-          </div>
+            </PopoverContent>
+          </Popover>
         </td>
       </tr>
 
@@ -571,6 +624,8 @@ function GroupBlockRows({
           <MemberRow
             key={m.id}
             enrollment={m}
+            seriesId={seriesId}
+            canManage={canManage}
             isLeader={m.id === leader.id}
             isDuplicate={duplicateIds.has(m.id)}
             isMatch={matchedIds?.has(m.id) ?? false}
@@ -585,7 +640,50 @@ function GroupBlockRows({
         onEdit={() => {}}
         groupMembers={members}
         onEditMember={setEditingMember}
+        onRemoveMember={canManage ? setMemberToRemove : undefined}
       />
+
+      <ManualEnrollmentDialog
+        seriesId={seriesId}
+        groupId={block.groupId}
+        open={addMemberOpen}
+        onOpenChange={setAddMemberOpen}
+      />
+
+      <AlertDialog
+        open={memberToRemove !== null}
+        onOpenChange={(o) => !o && setMemberToRemove(null)}
+      >
+        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("removeFromGroupTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("removeFromGroupBody", { name: memberToRemove?.studentName ?? "" })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
+            <AlertDialogCancel>{t("back")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() =>
+                memberToRemove &&
+                removeMemberMutation.mutate({ member: memberToRemove, cancel: true })
+              }
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {t("removeFromGroupCancel")}
+            </AlertDialogAction>
+            <AlertDialogAction
+              onClick={() =>
+                memberToRemove &&
+                removeMemberMutation.mutate({ member: memberToRemove, cancel: false })
+              }
+              className="bg-tennis-green hover:bg-tennis-green/90"
+            >
+              {t("removeFromGroupDetach")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {editingMember && (
         <EditEnrollmentDialog
@@ -623,20 +721,39 @@ function GroupBlockRows({
 
 function MemberRow({
   enrollment,
+  seriesId,
+  canManage,
   isLeader,
   isDuplicate,
   isMatch,
 }: {
   enrollment: LessonSeriesEnrollmentDto;
+  seriesId: string;
+  canManage: boolean;
   isLeader: boolean;
   isDuplicate: boolean;
   isMatch: boolean;
 }) {
   const t = useTranslations("enrollmentsTable");
+  const queryClient = useQueryClient();
+  const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
   const isCancelled = enrollment.status === "Cancelled";
   const age = computeAge(enrollment.dateOfBirth);
 
+  const removeMemberMutation = useMutation({
+    mutationFn: (cancel: boolean) =>
+      removeGroupMember(seriesId, enrollment.enrollmentGroupId!, enrollment.id, cancel),
+    onSuccess: (_data, cancel) => {
+      toast.success(cancel ? t("removeFromGroupCancelSuccess") : t("removeFromGroupSuccess"));
+      queryClient.invalidateQueries({ queryKey: ["enrollments", seriesId] });
+      queryClient.invalidateQueries({ queryKey: ["planning", seriesId] });
+      queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
+    },
+    onError: () => toast.error(t("removeFromGroupError")),
+  });
+
   return (
+    <>
     <tr
       className={`border-t border-gray-50 ${isCancelled ? "opacity-50" : ""} ${
         isMatch ? "bg-tennis-lime/10" : ""
@@ -684,8 +801,48 @@ function MemberRow({
           </Badge>
         )}
       </td>
-      <td className="px-4 py-2.5" />
+      <td className="px-4 py-2.5 text-right whitespace-nowrap">
+        {canManage && !isCancelled && (
+          <button
+            type="button"
+            disabled={removeMemberMutation.isPending}
+            onClick={() => setConfirmRemoveOpen(true)}
+            aria-label={t("removeFromGroup")}
+            title={t("removeFromGroup")}
+            className="flex h-7 w-7 items-center justify-center rounded text-gray-400 hover:bg-tennis-green/5 hover:text-tennis-green disabled:opacity-50"
+          >
+            <UserMinus size={13} />
+          </button>
+        )}
+      </td>
     </tr>
+
+    <AlertDialog open={confirmRemoveOpen} onOpenChange={setConfirmRemoveOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{t("removeFromGroupTitle")}</AlertDialogTitle>
+          <AlertDialogDescription>
+            {t("removeFromGroupBody", { name: enrollment.studentName })}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
+          <AlertDialogCancel>{t("back")}</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => removeMemberMutation.mutate(true)}
+            className="bg-red-600 hover:bg-red-700"
+          >
+            {t("removeFromGroupCancel")}
+          </AlertDialogAction>
+          <AlertDialogAction
+            onClick={() => removeMemberMutation.mutate(false)}
+            className="bg-tennis-green hover:bg-tennis-green/90"
+          >
+            {t("removeFromGroupDetach")}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
 
@@ -701,19 +858,9 @@ function EnrollmentsTable({
   const t = useTranslations("enrollmentsTable");
   const [query, setQuery] = useState("");
   const [showCancelled, setShowCancelled] = useState(false);
-  // Eén open acties-menu tegelijk (rij-id), gedeeld over alle rijen.
+  // Eén open acties-menu tegelijk (rij-id), gedeeld over alle rijen. Radix Popover
+  // sluit zelf bij klik-buiten/Escape en portalt de inhoud buiten de scroll-container.
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-
-  // Klik buiten het open menu sluit het. De toggle-knop en het menu zelf doen
-  // stopPropagation, dus deze document-listener vangt enkel klikken erbuiten.
-  useEffect(() => {
-    if (openMenuId === null) return;
-    function handleOutside() {
-      setOpenMenuId(null);
-    }
-    document.addEventListener("click", handleOutside);
-    return () => document.removeEventListener("click", handleOutside);
-  }, [openMenuId]);
 
   const cancelledCount = useMemo(
     () => enrollments.filter((e) => e.status === "Cancelled").length,
@@ -870,6 +1017,13 @@ function EnrollmentsTable({
 export function EnrollmentsSection({ seriesId }: { seriesId: string }) {
   const t = useTranslations("enrollmentsTable");
   const [copied, setCopied] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
+  const [canManage, setCanManage] = useState(false);
+  useEffect(() => {
+    // Auth staat alleen in localStorage; pas na hydration kunnen acties zichtbaar worden.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCanManage(isEnrollmentManager());
+  }, []);
 
   const { data: enrollments = [], isLoading } = useQuery({
     queryKey: ["enrollments", seriesId],
@@ -899,10 +1053,20 @@ export function EnrollmentsSection({ seriesId }: { seriesId: string }) {
             {activeCount}
           </span>
         </div>
-        <button
-          onClick={handleCopyLink}
-          className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
-        >
+        <div className="flex items-center gap-2">
+          {canManage && (
+            <button
+              type="button"
+              onClick={() => setManualOpen(true)}
+              className="rounded-lg bg-tennis-green px-3 py-1.5 text-xs font-semibold text-white hover:bg-tennis-green/90"
+            >
+              {t("manualAdd")}
+            </button>
+          )}
+          <button
+            onClick={handleCopyLink}
+            className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
+          >
           {copied ? (
             <>
               <CheckCircle2 size={12} className="text-green-500" />
@@ -914,7 +1078,8 @@ export function EnrollmentsSection({ seriesId }: { seriesId: string }) {
               {t("copyLink")}
             </>
           )}
-        </button>
+          </button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -931,6 +1096,11 @@ export function EnrollmentsSection({ seriesId }: { seriesId: string }) {
       ) : (
         <EnrollmentsTable enrollments={enrollments} seriesId={seriesId} />
       )}
+      <ManualEnrollmentDialog
+        seriesId={seriesId}
+        open={manualOpen}
+        onOpenChange={setManualOpen}
+      />
     </div>
   );
 }
