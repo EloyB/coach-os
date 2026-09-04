@@ -60,7 +60,7 @@ import {
 import type { LessonSeriesEnrollmentDto } from "@/lib/api/enrollments";
 import { getLessonSeriePrices } from "@/lib/api/lessonSeriePrices";
 import { EnrollmentDetailDialog } from "./enrollment-detail-dialog";
-import { isEnrollmentManager, isHeadTrainerViewer } from "@/lib/auth";
+import { canEditEnrollment, isEnrollmentManager, isHeadTrainerViewer } from "@/lib/auth";
 import { ManualEnrollmentDialog } from "./manual-enrollment-dialog";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -440,11 +440,15 @@ function GroupBlockRows({
   // Hoofdtrainer = read-only: geen betaal-/annuleer-acties op groepsniveau.
   const [readOnly, setReadOnly] = useState(false);
   const [canManage, setCanManage] = useState(false);
+  // Prijsoptie wijzigen is Admin-only (endpoint = RequireRole("Admin")); hoofdtrainers
+  // zien de selector dus niet i.p.v. een gegarandeerde 403 bij het opslaan.
+  const [canEdit, setCanEdit] = useState(false);
   useEffect(() => {
     // Auth staat alleen in localStorage; pas na hydration kunnen acties zichtbaar worden.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setReadOnly(isHeadTrainerViewer());
     setCanManage(isEnrollmentManager());
+    setCanEdit(canEditEnrollment());
   }, []);
   const expanded = forceExpanded || open;
 
@@ -662,7 +666,7 @@ function GroupBlockRows({
         onEditMember={setEditingMember}
         onRemoveMember={canManage ? setMemberToRemove : undefined}
         onChangeGroupPriceOption={
-          canManage ? (id) => changeGroupPriceMutation.mutate(id) : undefined
+          canEdit ? (id) => changeGroupPriceMutation.mutate(id) : undefined
         }
       />
 
