@@ -196,11 +196,15 @@ function PersonRow({
   // het na hydratie klopt (localStorage is null tijdens SSR).
   const [readOnly, setReadOnly] = useState(false);
   const [canManage, setCanManage] = useState(false);
+  // Inschrijving bewerken is Admin-only (endpoint = RequireRole("Admin")); gewone
+  // trainers zien de bewerk-knop dus niet i.p.v. een gegarandeerde 403 bij opslaan.
+  const [canEdit, setCanEdit] = useState(false);
   useEffect(() => {
     // Auth staat alleen in localStorage; pas na hydration kunnen acties zichtbaar worden.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setReadOnly(isHeadTrainerViewer());
     setCanManage(isEnrollmentManager());
+    setCanEdit(canEditEnrollment());
   }, []);
   const showActionsMenu = openMenuId === enrollment.id;
 
@@ -335,7 +339,7 @@ function PersonRow({
                     {t("markPaid")}
                   </button>
                 )}
-                {!readOnly && !isCancelled && (
+                {canEdit && !isCancelled && (
                   <button
                     type="button"
                     onClick={() => {

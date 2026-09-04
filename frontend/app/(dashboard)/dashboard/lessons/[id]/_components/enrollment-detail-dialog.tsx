@@ -16,7 +16,7 @@ import { getEnrollmentsWithPreferences } from "@/lib/api/enrollments";
 import type { LessonSeriesEnrollmentDto } from "@/lib/api/enrollments";
 import { getLessonSeriePrices } from "@/lib/api/lessonSeriePrices";
 import { getPublicTimeSlots } from "@/lib/api/timeSlots";
-import { isHeadTrainerViewer } from "@/lib/auth";
+import { canEditEnrollment, isHeadTrainerViewer } from "@/lib/auth";
 import type { TimeSlotDto } from "@/lib/api/timeSlots";
 
 const DAY_NAMES_SHORT = ["Ma", "Di", "Wo", "Do", "Vr", "Za", "Zo"];
@@ -113,7 +113,14 @@ export function EnrollmentDetailDialog({
   const [activeTab, setActiveTab] = useState<TabId>("gegevens");
   // Hoofdtrainer = read-only: geen bewerk-affordances in de detail-dialog.
   const [readOnly, setReadOnly] = useState(false);
-  useEffect(() => setReadOnly(isHeadTrainerViewer()), []);
+  // Inschrijving bewerken is Admin-only (endpoint = RequireRole("Admin")); gewone
+  // trainers zien de bewerk-knop dus niet i.p.v. een gegarandeerde 403 bij opslaan.
+  const [canEdit, setCanEdit] = useState(false);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setReadOnly(isHeadTrainerViewer());
+    setCanEdit(canEditEnrollment());
+  }, []);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -281,9 +288,9 @@ export function EnrollmentDetailDialog({
                         .join(" · ")}
                     </div>
                   </div>
-                  {!readOnly && (onEditMember || onRemoveMember) && (
+                  {((canEdit && onEditMember) || (!readOnly && onRemoveMember)) && (
                     <div className="mt-0.5 flex shrink-0 items-center gap-0.5">
-                      {onEditMember && (
+                      {canEdit && onEditMember && (
                         <button
                           type="button"
                           onClick={() => onEditMember(m)}
@@ -293,7 +300,7 @@ export function EnrollmentDetailDialog({
                           <Pencil size={13} />
                         </button>
                       )}
-                      {onRemoveMember && m.status !== "Cancelled" && (
+                      {!readOnly && onRemoveMember && m.status !== "Cancelled" && (
                         <button
                           type="button"
                           onClick={() => onRemoveMember(m)}
@@ -335,7 +342,7 @@ export function EnrollmentDetailDialog({
           >
             {t("close")}
           </button>
-          {!readOnly && !groupMembers && (
+          {canEdit && !groupMembers && (
             <button
               type="button"
               onClick={onEdit}
