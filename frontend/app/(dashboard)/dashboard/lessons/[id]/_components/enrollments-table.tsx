@@ -60,7 +60,7 @@ import {
 import type { LessonSeriesEnrollmentDto } from "@/lib/api/enrollments";
 import { getLessonSeriePrices } from "@/lib/api/lessonSeriePrices";
 import { EnrollmentDetailDialog } from "./enrollment-detail-dialog";
-import { isEnrollmentManager, isHeadTrainerViewer } from "@/lib/auth";
+import { canEditEnrollment, isEnrollmentManager, isHeadTrainerViewer } from "@/lib/auth";
 import { ManualEnrollmentDialog } from "./manual-enrollment-dialog";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -196,11 +196,15 @@ function PersonRow({
   // het na hydratie klopt (localStorage is null tijdens SSR).
   const [readOnly, setReadOnly] = useState(false);
   const [canManage, setCanManage] = useState(false);
+  // Inschrijving bewerken is Admin-only (endpoint = RequireRole("Admin")); gewone
+  // trainers zien de bewerk-knop dus niet i.p.v. een gegarandeerde 403 bij opslaan.
+  const [canEdit, setCanEdit] = useState(false);
   useEffect(() => {
     // Auth staat alleen in localStorage; pas na hydration kunnen acties zichtbaar worden.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setReadOnly(isHeadTrainerViewer());
     setCanManage(isEnrollmentManager());
+    setCanEdit(canEditEnrollment());
   }, []);
   const showActionsMenu = openMenuId === enrollment.id;
 
@@ -335,7 +339,7 @@ function PersonRow({
                     {t("markPaid")}
                   </button>
                 )}
-                {!readOnly && !isCancelled && (
+                {canEdit && !isCancelled && (
                   <button
                     type="button"
                     onClick={() => {
@@ -440,11 +444,15 @@ function GroupBlockRows({
   // Hoofdtrainer = read-only: geen betaal-/annuleer-acties op groepsniveau.
   const [readOnly, setReadOnly] = useState(false);
   const [canManage, setCanManage] = useState(false);
+  // Prijsoptie wijzigen is Admin-only (endpoint = RequireRole("Admin")); hoofdtrainers
+  // zien de selector dus niet i.p.v. een gegarandeerde 403 bij het opslaan.
+  const [canEdit, setCanEdit] = useState(false);
   useEffect(() => {
     // Auth staat alleen in localStorage; pas na hydration kunnen acties zichtbaar worden.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setReadOnly(isHeadTrainerViewer());
     setCanManage(isEnrollmentManager());
+    setCanEdit(canEditEnrollment());
   }, []);
   const expanded = forceExpanded || open;
 
@@ -474,6 +482,26 @@ function GroupBlockRows({
       queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
     },
     onError: () => toast.error(t("removeFromGroupError")),
+  });
+
+  // Prijsoptie voor de hele groep: bewerk ze op de leider; de backend propageert naar alle leden.
+  const changeGroupPriceMutation = useMutation({
+    mutationFn: (optionId: string | null) =>
+      updateBasicEnrollment(seriesId, leader.id, {
+        studentName: leader.studentName,
+        contactEmail: leader.contactEmail,
+        studentEmail: leader.studentEmail,
+        studentPhone: leader.studentPhone,
+        dateOfBirth: leader.dateOfBirth ?? "",
+        isOpenToGrouping: leader.isOpenToGrouping,
+        selectedPriceOptionId: optionId,
+      }),
+    onSuccess: () => {
+      toast.success(t("groupPriceSuccess"));
+      queryClient.invalidateQueries({ queryKey: ["enrollments", seriesId] });
+      queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
+    },
+    onError: () => toast.error(t("groupPriceError")),
   });
 
   const cancelGroupMutation = useMutation({
@@ -641,6 +669,9 @@ function GroupBlockRows({
         groupMembers={members}
         onEditMember={setEditingMember}
         onRemoveMember={canManage ? setMemberToRemove : undefined}
+        onChangeGroupPriceOption={
+          canEdit ? (id) => changeGroupPriceMutation.mutate(id) : undefined
+        }
       />
 
       <ManualEnrollmentDialog
