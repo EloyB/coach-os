@@ -306,6 +306,39 @@ public class EnrollmentServiceTests
         _enrollmentFormRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
+    [Test]
+    public async Task SaveForm_PersistsGroupMemberFlag_OnNewField()
+    {
+        _lessonSeriesRepo
+            .Setup(r => r.ExistsAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        _enrollmentFormRepo
+            .Setup(r => r.GetBySeriesIdWithFieldsAsync(SeriesId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((EnrollmentForm?)null);
+
+        SaveEnrollmentFormRequest request = new()
+        {
+            Fields = new()
+            {
+                new()
+                {
+                    Label = "Ervaring",
+                    Type = (int)FormFieldType.Text,
+                    IsRequired = false,
+                    IsForEachGroupMember = true,
+                },
+            },
+        };
+
+        await _service.SaveFormAsync(SeriesId, OrgId, request);
+
+        _enrollmentFormRepo.Verify(
+            r => r.AddAsync(
+                It.Is<EnrollmentForm>(form => form.Fields.Single().IsForEachGroupMember),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
     // ── SubmitEnrollmentAsync ────────────────────────────────────────────────
 
     [Test]

@@ -6,6 +6,7 @@ public class FormFieldDto
     public string Label { get; set; } = string.Empty;
     public int Type { get; set; }
     public bool IsRequired { get; set; }
+    public bool IsForEachGroupMember { get; set; }
     public int Order { get; set; }
     public List<string>? Options { get; set; }
 }
