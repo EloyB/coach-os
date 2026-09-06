@@ -1,8 +1,9 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm, Controller } from "react-hook-form";
@@ -1153,9 +1154,23 @@ function LessonWeekView({
 // ─── Form Builder Section ─────────────────────────────────────────────────────
 
 const FIELD_TYPES = [
-  { value: 1, label: "Vrije tekst" },
-  { value: 2, label: "Meerkeuze" },
-  { value: 3, label: "Ja/Nee" },
+  { value: 1, labelKey: "type_text" },
+  { value: 2, labelKey: "type_multiple_choice" },
+  { value: 3, labelKey: "type_yes_no" },
+  { value: 4, labelKey: "type_age_category" },
+] as const;
+
+// Field types that carry a list of choices stored in `options`.
+const OPTION_FIELD_TYPES = [2, 4];
+
+// Starter buckets for the age-category question that every new enrollment form
+// gets by default. The admin can edit these or remove the field entirely.
+const DEFAULT_AGE_BUCKETS = [
+  "6-8 jaar",
+  "9-11 jaar",
+  "12-14 jaar",
+  "15-17 jaar",
+  "Volwassenen",
 ];
 
 interface DraftField extends SaveFormFieldRequest {
@@ -1163,9 +1178,15 @@ interface DraftField extends SaveFormFieldRequest {
 }
 
 function FormBuilderSection({ seriesId }: { seriesId: string }) {
+  const t = useTranslations("formBuilder");
   const queryClient = useQueryClient();
   const [fields, setFields] = useState<DraftField[]>([]);
   const [loaded, setLoaded] = useState(false);
+  // Set when we seed the default age question for a series with no form yet,
+  // so we can persist it automatically (no manual "save" needed).
+  const [pendingAutoSave, setPendingAutoSave] = useState(false);
+  // Guards against a double auto-save (React StrictMode re-runs effects in dev).
+  const autoSaveStarted = useRef(false);
 
   const { data: existingForm } = useQuery({
     queryKey: ["enrollmentForm", seriesId],
@@ -1176,6 +1197,7 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
   useEffect(() => {
     if (!loaded && existingForm !== undefined) {
       if (existingForm) {
+        // Respect what was saved — including an admin who removed the age field.
         setFields(
           existingForm.fields.map((f) => ({
             _key: f.id,
@@ -1187,10 +1209,25 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
             options: f.options ?? undefined,
           })),
         );
+      } else {
+        // No form configured yet: pre-add a default (removable) age-category
+        // question so age-aware matching is on by default, and persist it
+        // automatically so the public enrollment form has it without a manual save.
+        setFields([
+          {
+            _key: Math.random().toString(36).slice(2),
+            label: t("type_age_category"),
+            type: 4,
+            isRequired: true,
+            order: 0,
+            options: [...DEFAULT_AGE_BUCKETS],
+          },
+        ]);
+        setPendingAutoSave(true);
       }
       setLoaded(true);
     }
-  }, [existingForm, loaded]);
+  }, [existingForm, loaded, t]);
 
   const saveMutation = useMutation({
     mutationFn: () => {
@@ -1198,9 +1235,10 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
         id: f.id,
         label: f.label,
         type: f.type,
-        isRequired: f.isRequired,
+        // The age-category question is always mandatory (the server enforces this too).
+        isRequired: f.type === 4 ? true : f.isRequired,
         order: i,
-        options: f.type === 2 ? f.options : undefined,
+        options: OPTION_FIELD_TYPES.includes(f.type) ? f.options : undefined,
       }));
       return saveEnrollmentForm(seriesId, payload);
     },
@@ -1208,6 +1246,16 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
       queryClient.invalidateQueries({ queryKey: ["enrollmentForm", seriesId] });
     },
   });
+
+  // Persist the seeded default age question once, so it goes live on the public
+  // enrollment form without the admin having to press save.
+  useEffect(() => {
+    if (pendingAutoSave && fields.length > 0 && !autoSaveStarted.current) {
+      autoSaveStarted.current = true;
+      setPendingAutoSave(false);
+      saveMutation.mutate();
+    }
+  }, [pendingAutoSave, fields, saveMutation]);
 
   function addField() {
     setFields((prev) => [
@@ -1283,7 +1331,7 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
           <ClipboardList size={13} className="text-tennis-green" />
         </div>
         <h2 className="text-sm font-semibold text-gray-800">
-          Inschrijfformulier
+          {t("title")}
         </h2>
       </div>
 
@@ -1291,15 +1339,15 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
         {/* Predefined fields badge list */}
         <div>
           <p className="text-xs text-gray-400 mb-2">
-            Vaste velden (altijd zichtbaar)
+            {t("predefined_fields_hint")}
           </p>
           <div className="flex flex-wrap gap-2">
             {[
-              "Voornaam",
-              "Achternaam",
-              "E-mailadres",
-              "Inschrijvingstype",
-              "Beschikbaarheid",
+              t("pf_firstname"),
+              t("pf_lastname"),
+              t("pf_email"),
+              t("pf_enrollment_type"),
+              t("pf_availability"),
             ].map((f) => (
               <span
                 key={f}
@@ -1313,10 +1361,7 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
 
         {/* Custom fields */}
         {fields.length === 0 && (
-          <p className="text-xs text-gray-400 py-2">
-            Nog geen aangepaste velden. Klik &apos;Veld toevoegen&apos; om te
-            beginnen.
-          </p>
+          <p className="text-xs text-gray-400 py-2">{t("no_fields")}</p>
         )}
 
         <div className="space-y-3">
@@ -1328,7 +1373,7 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
               {/* Row 1: label (full width) */}
               <input
                 type="text"
-                placeholder="Veldlabel, bijv. 'Telefoonnummer'"
+                placeholder={t("field_label_placeholder")}
                 value={field.label}
                 onChange={(e) =>
                   updateField(field._key, { label: e.target.value })
@@ -1340,16 +1385,19 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
               <div className="flex items-center gap-2">
                 <NativeSelect
                   value={field.type}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const newType = parseInt(e.target.value);
                     updateField(field._key, {
-                      type: parseInt(e.target.value),
-                      options: undefined,
-                    })
-                  }
+                      type: newType,
+                      // Age categories start with two empty buckets; other types drop options.
+                      options: newType === 4 ? ["", ""] : undefined,
+                      isRequired: newType === 4 ? true : field.isRequired,
+                    });
+                  }}
                 >
-                  {FIELD_TYPES.map((t) => (
-                    <option key={t.value} value={t.value}>
-                      {t.label}
+                  {FIELD_TYPES.map((ft) => (
+                    <option key={ft.value} value={ft.value}>
+                      {t(ft.labelKey)}
                     </option>
                   ))}
                 </NativeSelect>
@@ -1357,13 +1405,14 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
                 <label className="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer select-none">
                   <input
                     type="checkbox"
-                    checked={field.isRequired}
+                    checked={field.type === 4 ? true : field.isRequired}
+                    disabled={field.type === 4}
                     onChange={(e) =>
                       updateField(field._key, { isRequired: e.target.checked })
                     }
-                    className="accent-tennis-green"
+                    className="accent-tennis-green disabled:opacity-60"
                   />
-                  Verplicht
+                  {t("field_required")}
                 </label>
 
                 <div className="flex items-center gap-1 ml-auto">
@@ -1393,14 +1442,14 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
                 </div>
               </div>
 
-              {/* Options for MultipleChoice */}
-              {field.type === 2 && (
+              {/* Options for MultipleChoice and Age category buckets */}
+              {OPTION_FIELD_TYPES.includes(field.type) && (
                 <div className="space-y-2 pt-1 border-t border-gray-100">
                   {(field.options ?? []).map((opt, optIdx) => (
                     <div key={optIdx} className="flex items-center gap-2">
                       <input
                         type="text"
-                        placeholder={`Optie ${optIdx + 1}`}
+                        placeholder={t("option_placeholder", { number: optIdx + 1 })}
                         value={opt}
                         onChange={(e) =>
                           updateOption(field._key, optIdx, e.target.value)
@@ -1422,7 +1471,7 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
                     className="flex items-center gap-1 text-xs text-tennis-green hover:underline"
                   >
                     <Plus size={11} />
-                    Optie toevoegen
+                    {t("add_option")}
                   </button>
                 </div>
               )}
@@ -1437,7 +1486,7 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
             className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 text-xs font-medium text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"
           >
             <Plus size={12} />
-            Veld toevoegen
+            {t("add_field")}
           </button>
           <button
             type="button"
@@ -1446,17 +1495,15 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
             className="flex items-center gap-1.5 px-4 py-2 bg-tennis-green text-white text-xs font-semibold rounded-lg hover:bg-tennis-green/90 transition-colors disabled:opacity-60"
           >
             {saveMutation.isPending
-              ? "Opslaan..."
+              ? t("saving")
               : saveMutation.isSuccess
-                ? "Opgeslagen ✓"
-                : "Formulier opslaan"}
+                ? `${t("saved")} ✓`
+                : t("save_form")}
           </button>
         </div>
 
         {saveMutation.isError && (
-          <p className="text-xs text-red-500">
-            Opslaan mislukt. Probeer opnieuw.
-          </p>
+          <p className="text-xs text-red-500">{t("save_error")}</p>
         )}
       </div>
     </div>

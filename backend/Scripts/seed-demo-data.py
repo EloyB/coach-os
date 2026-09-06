@@ -464,6 +464,36 @@ def create_planning_series(api: ApiClient, spec: dict, club_ids: list[str],
     return sid
 
 
+def setup_planning_form(api: ApiClient, planning_series_id: str,
+                        options: list[str]) -> str | None:
+    """Adds a mandatory age-category question to the planning series so the
+    age-aware matching path is exercised end to end. Returns the field id so
+    enrollments can answer it (the question is required, so they must)."""
+    print("\n7b. Adding age-category question to planning series...")
+    saved = api.put(
+        f"/lessonseries/{planning_series_id}/form",
+        {"fields": [
+            {"label": "Leeftijdscategorie", "type": 4, "isRequired": True,
+             "order": 0, "options": options},
+        ]},
+    )
+    if saved is None:
+        print("   WARNING: could not set planning form (see stderr).",
+              file=sys.stderr)
+        return None
+
+    form = api.get(f"/public/lessonseries/{planning_series_id}/form", auth=False)
+    field_id = next(
+        (f["id"] for f in (form or {}).get("fields", []) if f.get("type") == 4),
+        None)
+    if field_id is None:
+        print("   WARNING: age-category field not found after save.",
+              file=sys.stderr)
+    else:
+        print(f"   Age-category question added ({len(options)} buckets)")
+    return field_id
+
+
 def setup_second_org(api_base: str, cfg: dict) -> None:
     """Registreert een tweede organisatie met eigen admin en nodigt de eerste
     admin uit als trainer in die nieuwe org. Omdat die user al globaal actief
@@ -513,13 +543,29 @@ def generate_and_confirm_planning(api: ApiClient, planning_series_id: str) -> No
 
 
 def planning_enrollments(api: ApiClient, planning_series_id: str,
-                         enrollments: list[dict]) -> None:
+                         enrollments: list[dict],
+                         age_field_id: str | None = None) -> None:
     print("   Fetching time slots...")
     slots = api.get(f"/public/lessonseries/{planning_series_id}/timeslots",
                     auth=False) or []
     slots.sort(key=lambda s: (s["dayOfWeek"], s["startTime"], s.get("courtName") or ""))
     slot_ids = [s["id"] for s in slots]
     print(f"   Found {len(slot_ids)} time slots")
+
+    # Coverage guard: when the age question is configured, at least one group must
+    # span multiple age categories so the reset+seed exercises mixed-age matching
+    # (GetSharedAgeCategory -> null, so PlanningProposalBuilder treats the group as
+    # unconstrained). Fails loudly if someone flattens the seed buckets and silently
+    # drops this path.
+    if age_field_id:
+        has_mixed_age_group = any(
+            len({e.get("ageCategory")}
+                | {m.get("ageCategory") for m in e["groupMembers"]}) > 1
+            for e in enrollments if e.get("groupMembers")
+        )
+        assert has_mixed_age_group, (
+            "seed must include a group whose members span multiple age categories "
+            "to cover age-aware matching of mixed-age groups")
 
     print("\n8. Creating planning enrollments...")
     for e in enrollments:
@@ -529,6 +575,13 @@ def planning_enrollments(api: ApiClient, planning_series_id: str,
             for i, pref in enumerate(prefs)
             if i < len(slot_ids)
         ]
+        # The age-category question is mandatory once configured, so every
+        # enrollment (and group member) must answer it.
+        def age_responses(spec: dict) -> list[dict]:
+            if age_field_id and spec.get("ageCategory"):
+                return [{"formFieldId": age_field_id, "value": spec["ageCategory"]}]
+            return []
+
         body = {
             "studentName":  e["studentName"],
             "studentEmail": e["studentEmail"],
@@ -537,11 +590,11 @@ def planning_enrollments(api: ApiClient, planning_series_id: str,
             "enrollmentType": e.get("enrollmentType", "solo"),
             "isOpenToGrouping": e.get("isOpenToGrouping", False),
             "timeSlotPreferences": time_slot_prefs,
-            "responses": [],
+            "responses": age_responses(e),
         }
         if e.get("groupMembers"):
             body["groupMembers"] = [
-                {**m, "responses": []} for m in e["groupMembers"]
+                {**m, "responses": age_responses(m)} for m in e["groupMembers"]
             ]
         result = api.post(f"/public/lessonseries/{planning_series_id}/enroll",
                           body, auth=False)
@@ -725,7 +778,11 @@ def main() -> int:
     planning_id = create_planning_series(
         api, data["planningSeries"], club_ids, trainer_id, today, deadline_iso)
     if planning_id:
-        planning_enrollments(api, planning_id, data["planningEnrollments"])
+        age_options = data["planningSeries"].get("ageCategoryOptions", [])
+        age_field_id = (setup_planning_form(api, planning_id, age_options)
+                        if age_options else None)
+        planning_enrollments(api, planning_id, data["planningEnrollments"],
+                             age_field_id)
         generate_and_confirm_planning(api, planning_id)
 
     create_standalone_lessons(

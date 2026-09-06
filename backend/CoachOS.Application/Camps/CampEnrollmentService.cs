@@ -73,7 +73,7 @@ public class CampEnrollmentService(
         if (form is not null)
         {
             Error? formError = FormResponseValidator.Validate(
-                form.Fields.Select(f => (f.Id, f.IsRequired, f.Label)),
+                form.Fields.Select(f => (f.Id, f.IsRequired, f.Label, ChoiceOptions(f.Type, f.Options))),
                 request.Responses.Select(r => (r.CampFormFieldId, r.Value)));
             if (formError is not null)
                 return Result<SubmitCampEnrollmentResultDto>.Fail(formError);
@@ -310,4 +310,13 @@ public class CampEnrollmentService(
             return null;
         }
     }
+
+    /// <summary>
+    /// The set of values a choice field accepts (its configured options), used to reject
+    /// submitted responses that aren't one of the offered options. Null for non-choice fields.
+    /// </summary>
+    private IReadOnlyList<string>? ChoiceOptions(FormFieldType type, string? optionsJson)
+        => type is FormFieldType.MultipleChoice or FormFieldType.AgeCategory
+            ? DeserializeOptions(optionsJson)
+            : null;
 }

@@ -322,11 +322,21 @@
     "type_text": "Vrije tekst",
     "type_multiple_choice": "Meerkeuze",
     "type_yes_no": "Ja/Nee",
+    "type_age_category": "Leeftijdscategorie",
     "options": "Opties",
     "add_option": "Optie toevoegen",
     "no_fields": "Nog geen aangepaste velden. Voeg een veld toe.",
     "saving": "Opslaan...",
-    "saved": "Formulier opgeslagen"
+    "saved": "Formulier opgeslagen",
+    "predefined_fields_hint": "Vaste velden (altijd zichtbaar)",
+    "pf_firstname": "Voornaam",
+    "pf_lastname": "Achternaam",
+    "pf_email": "E-mailadres",
+    "pf_enrollment_type": "Inschrijvingstype",
+    "pf_availability": "Beschikbaarheid",
+    "field_label_placeholder": "Veldlabel, bijv. 'Telefoonnummer'",
+    "option_placeholder": "Optie {number}",
+    "save_error": "Opslaan mislukt. Probeer opnieuw."
   },
   "lessonWizard": {
     "availableBadge": "beschikbaar",
