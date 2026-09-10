@@ -77,7 +77,8 @@ public class LessonCourtConflictTests
             _timeSlotPreferenceRepo.Object,
             _invitationRepo.Object,
             TimeProvider.System,
-            _mapper);
+            _mapper,
+            NullLogger<LessonSerieService>.Instance);
 
         _standaloneService = new StandaloneLessonService(
             _lessonRepo.Object,

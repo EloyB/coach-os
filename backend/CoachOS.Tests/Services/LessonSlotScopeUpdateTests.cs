@@ -6,6 +6,7 @@ using CoachOS.Domain.Enums;
 using CoachOS.Domain.Interfaces;
 using CoachOS.Domain.Models;
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using NUnit.Framework;
 
@@ -53,7 +54,8 @@ public class LessonSlotScopeUpdateTests
             _serieRepo.Object, _lessonRepo.Object, _enrollmentRepo.Object,
             _tennisClubRepo.Object, _userLookup.Object, _emailService.Object,
             _mollieConnectionRepo.Object, _scheduleAssignmentRepo.Object,
-            _timeSlotPreferenceRepo.Object, _invitationRepo.Object, TimeProvider.System, _mapper);
+            _timeSlotPreferenceRepo.Object, _invitationRepo.Object, TimeProvider.System, _mapper,
+            NullLogger<LessonSerieService>.Instance);
 
         _userLookup
             .Setup(u => u.IsActiveTrainerAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
