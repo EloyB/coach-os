@@ -6,6 +6,13 @@ export interface MollieConnectionStatusDto {
   connectedAt: string | null;
 }
 
+/**
+ * Eén gedeelde query key voor de Mollie-status. Instellingen, de lessenreeks-wizard en
+ * lessenreeks-bewerken lezen dezelfde status; met één key raakt een invalidate na
+ * (ont)koppelen ook de "online betalen"-checkbox in de andere schermen.
+ */
+export const MOLLIE_CONNECTION_QUERY_KEY = ["mollieConnection"] as const;
+
 export interface StartConnectResponse {
   authorizationUrl: string;
 }

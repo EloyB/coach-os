@@ -15,7 +15,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { getTennisClubs } from "@/lib/api/tennisClubs";
-import { getMollieConnectionStatus } from "@/lib/api/mollieConnect";
+import {
+  MOLLIE_CONNECTION_QUERY_KEY,
+  getMollieConnectionStatus,
+} from "@/lib/api/mollieConnect";
 import { FieldError } from "@/components/forms/field-error";
 import { DatePicker } from "@/components/ui/date-picker";
 import { inputClass } from "@/lib/styles";
@@ -115,7 +118,7 @@ export function Step1Basisinfo({ defaultValues, onNext }: Step1Props) {
   });
 
   const { data: mollie } = useQuery({
-    queryKey: ["mollieStatus"],
+    queryKey: MOLLIE_CONNECTION_QUERY_KEY,
     queryFn: getMollieConnectionStatus,
   });
   const mollieConnected = mollie?.connected ?? false;
