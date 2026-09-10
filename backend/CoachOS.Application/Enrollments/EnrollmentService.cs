@@ -606,7 +606,7 @@ public class EnrollmentService(
                     : EnrollmentEmails.Normalize(request.StudentEmail),
                 StudentPhone = request.StudentPhone,
                 DateOfBirth = dateOfBirth,
-                Category = ResolveCategory(request.DateOfBirth, youthMaxAge, DateOnly.FromDateTime(DateTime.UtcNow)),
+                Category = ResolveCategory(request.DateOfBirth, youthMaxAge, timeProvider.GetBrusselsToday()),
                 Status = EnrollmentStatus.Confirmed,
                 EnrolledAt = DateTime.UtcNow,
                 IsOpenToGrouping = false,
@@ -721,7 +721,7 @@ public class EnrollmentService(
                     : EnrollmentEmails.Normalize(request.StudentEmail),
                 StudentPhone = request.StudentPhone,
                 DateOfBirth = dateOfBirth,
-                Category = ResolveCategory(request.DateOfBirth, youthMaxAge, DateOnly.FromDateTime(DateTime.UtcNow)),
+                Category = ResolveCategory(request.DateOfBirth, youthMaxAge, timeProvider.GetBrusselsToday()),
                 Status = leader.Status,                                // status geërfd van de groep
                 SelectedPriceOptionId = leader.SelectedPriceOptionId,  // prijsoptie geërfd
                 EnrolledAt = DateTime.UtcNow,
