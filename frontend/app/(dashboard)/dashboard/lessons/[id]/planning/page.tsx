@@ -47,6 +47,7 @@ import type {
   PlanningEnrollmentDto,
   PlanningAssignmentDto,
   PlanningGroupDto,
+  PlanningTimeSlotDto,
 } from "@/lib/api/planning";
 import { getLessonSeriesById, deleteWeekSlot } from "@/lib/api/lessonSeries";
 import { getTrainers } from "@/lib/api/trainers";
@@ -69,6 +70,27 @@ import { isHeadTrainerViewer } from "@/lib/auth";
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const DAY_NAMES_SHORT = ["Ma", "Di", "Wo", "Do", "Vr", "Za", "Zo"];
+
+// Parallelle banen op hetzelfde uur delen dezelfde voorkeur — toon één badge per
+// uur (dayOfWeek|startTime|endTime) i.p.v. één per baan.
+function collapsedPreferences(
+  preferences: Record<string, string>,
+  timeSlots: PlanningTimeSlotDto[]
+): { key: string; dayOfWeek: number; startTime: string; pref: string }[] {
+  const byKey = new Map<
+    string,
+    { key: string; dayOfWeek: number; startTime: string; pref: string }
+  >();
+  for (const [slotId, pref] of Object.entries(preferences)) {
+    const slot = timeSlots.find((s) => s.id === slotId);
+    if (!slot) continue;
+    const key = `${slot.dayOfWeek}|${slot.startTime}|${slot.endTime}`;
+    if (!byKey.has(key)) {
+      byKey.set(key, { key, dayOfWeek: slot.dayOfWeek, startTime: slot.startTime, pref });
+    }
+  }
+  return Array.from(byKey.values());
+}
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 
@@ -956,26 +978,26 @@ export default function PlanningPage({
                       {/* Leader's preferences */}
                       {leader && Object.keys(leader.preferences).length > 0 && (
                         <div className="flex flex-wrap gap-1 mb-2">
-                          {Object.entries(leader.preferences).map(([slotId, pref]) => {
-                            const slot = planning.timeSlots.find((s) => s.id === slotId);
-                            if (!slot) return null;
-                            const isAvailable = pref === "Available" || pref === "Preferred";
-                            return (
-                              <span
-                                key={slotId}
-                                className={`text-[10px] px-1.5 py-0.5 rounded ${
-                                  pref === "Preferred"
-                                    ? "bg-green-100 text-green-700"
-                                    : pref === "Available"
-                                      ? "bg-blue-100 text-blue-700"
-                                      : "bg-gray-100 text-gray-400"
-                                }`}
-                              >
-                                {DAY_NAMES_SHORT[slot.dayOfWeek]} {slot.startTime.replace(":00", "")}{" "}
-                                {isAvailable ? (pref === "Preferred" ? "★" : "✓") : "✕"}
-                              </span>
-                            );
-                          })}
+                          {collapsedPreferences(leader.preferences, planning.timeSlots).map(
+                            ({ key, dayOfWeek, startTime, pref }) => {
+                              const isAvailable = pref === "Available" || pref === "Preferred";
+                              return (
+                                <span
+                                  key={key}
+                                  className={`text-[10px] px-1.5 py-0.5 rounded ${
+                                    pref === "Preferred"
+                                      ? "bg-green-100 text-green-700"
+                                      : pref === "Available"
+                                        ? "bg-blue-100 text-blue-700"
+                                        : "bg-gray-100 text-gray-400"
+                                  }`}
+                                >
+                                  {DAY_NAMES_SHORT[dayOfWeek]} {startTime.replace(":00", "")}{" "}
+                                  {isAvailable ? (pref === "Preferred" ? "★" : "✓") : "✕"}
+                                </span>
+                              );
+                            }
+                          )}
                         </div>
                       )}
 
@@ -1124,14 +1146,12 @@ export default function PlanningPage({
                       {/* Preference badges */}
                       {Object.keys(enrollment.preferences).length > 0 && (
                         <div className="flex flex-wrap gap-1">
-                          {Object.entries(enrollment.preferences).map(
-                            ([slotId, pref]) => {
-                              const slot = planning.timeSlots.find((s) => s.id === slotId);
-                              if (!slot) return null;
+                          {collapsedPreferences(enrollment.preferences, planning.timeSlots).map(
+                            ({ key, dayOfWeek, startTime, pref }) => {
                               const isAvailable = pref === "Available" || pref === "Preferred";
                               return (
                                 <span
-                                  key={slotId}
+                                  key={key}
                                   className={`text-[10px] px-1.5 py-0.5 rounded ${
                                     pref === "Preferred"
                                       ? "bg-green-100 text-green-700"
@@ -1140,7 +1160,7 @@ export default function PlanningPage({
                                         : "bg-gray-100 text-gray-400"
                                   }`}
                                 >
-                                  {DAY_NAMES_SHORT[slot.dayOfWeek]} {slot.startTime.replace(":00", "")}{" "}
+                                  {DAY_NAMES_SHORT[dayOfWeek]} {startTime.replace(":00", "")}{" "}
                                   {isAvailable ? (pref === "Preferred" ? "★" : "✓") : "✕"}
                                 </span>
                               );
