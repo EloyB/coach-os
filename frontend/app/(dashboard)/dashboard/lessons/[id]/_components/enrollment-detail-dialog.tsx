@@ -437,19 +437,19 @@ function AvailabilityGrid({
                 </td>
                 {days.map((d) => {
                   const slots = cells.get(`${range}|${d}`) ?? [];
+                  // Parallelle banen op hetzelfde uur delen dezelfde voorkeur —
+                  // toon één bolletje i.p.v. één per baan. De baannamen blijven
+                  // in de tooltip als info voor de trainer/admin.
                   return (
                     <td key={d} className="px-2 py-3.5 text-center">
                       {slots.length === 0 ? (
                         <span className="text-gray-200">·</span>
                       ) : (
-                        <span className="inline-flex items-center justify-center gap-1">
-                          {slots.map((s) => (
-                            <PrefDot
-                              key={s.id}
-                              pref={prefMap.get(s.id)}
-                              title={s.courtName}
-                            />
-                          ))}
+                        <span className="inline-flex items-center justify-center">
+                          <PrefDot
+                            pref={prefMap.get(slots[0].id)}
+                            title={slots.map((s) => s.courtName).join(", ")}
+                          />
                         </span>
                       )}
                     </td>
