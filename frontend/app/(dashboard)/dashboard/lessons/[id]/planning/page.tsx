@@ -40,7 +40,6 @@ import type {
   PlanningEnrollmentDto,
   PlanningAssignmentDto,
   PlanningGroupDto,
-  PlanningTimeSlotDto,
 } from "@/lib/api/planning";
 import { getLessonSeriesById, deleteWeekSlot } from "@/lib/api/lessonSeries";
 import { getTrainers } from "@/lib/api/trainers";
@@ -65,45 +64,12 @@ import {
   type CalendarSlot,
 } from "@/components/calendar/calendar-grid";
 import { getInitials, getAvatarColor } from "@/lib/planning-avatars";
-import { collapseParallelPrefs, MIXED_PREF } from "@/lib/preferences";
 import { TimeslotDetailDialog } from "./_components/timeslot-detail-dialog";
 import { isHeadTrainerViewer } from "@/lib/auth";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const DAY_NAMES_SHORT = ["Ma", "Di", "Wo", "Do", "Vr", "Za", "Zo"];
-
-// Parallelle banen op hetzelfde uur delen normaal dezelfde voorkeur — toon één
-// badge per uur (dayOfWeek|startTime|endTime) i.p.v. één per baan. Verschillen de
-// banen tóch (legacy-data), dan wordt de badge 'mixed' zodat het conflict niet
-// stilzwijgend verborgen wordt.
-function collapsedPreferences(
-  preferences: Record<string, string>,
-  timeSlots: PlanningTimeSlotDto[]
-): { key: string; dayOfWeek: number; startTime: string; pref: string }[] {
-  const byKey = new Map<
-    string,
-    { key: string; dayOfWeek: number; startTime: string; prefs: string[] }
-  >();
-  for (const [slotId, pref] of Object.entries(preferences)) {
-    const slot = timeSlots.find((s) => s.id === slotId);
-    if (!slot) continue;
-    const key = `${slot.dayOfWeek}|${slot.startTime}|${slot.endTime}`;
-    const group = byKey.get(key);
-    if (group) {
-      group.prefs.push(pref);
-    } else {
-      byKey.set(key, { key, dayOfWeek: slot.dayOfWeek, startTime: slot.startTime, prefs: [pref] });
-    }
-  }
-  return Array.from(byKey.values()).map(({ key, dayOfWeek, startTime, prefs }) => ({
-    key,
-    dayOfWeek,
-    startTime,
-    // Elke groep heeft ≥1 pref, dus nooit null.
-    pref: collapseParallelPrefs(prefs) ?? MIXED_PREF,
-  }));
-}
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 
