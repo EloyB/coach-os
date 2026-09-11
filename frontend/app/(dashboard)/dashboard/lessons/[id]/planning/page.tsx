@@ -64,6 +64,7 @@ import {
   type CalendarSlot,
 } from "@/components/calendar/calendar-grid";
 import { getInitials, getAvatarColor } from "@/lib/planning-avatars";
+import { collapseParallelPrefs, MIXED_PREF } from "@/lib/preferences";
 import { TimeslotDetailDialog } from "./_components/timeslot-detail-dialog";
 import { isHeadTrainerViewer } from "@/lib/auth";
 
@@ -71,25 +72,36 @@ import { isHeadTrainerViewer } from "@/lib/auth";
 
 const DAY_NAMES_SHORT = ["Ma", "Di", "Wo", "Do", "Vr", "Za", "Zo"];
 
-// Parallelle banen op hetzelfde uur delen dezelfde voorkeur — toon één badge per
-// uur (dayOfWeek|startTime|endTime) i.p.v. één per baan.
+// Parallelle banen op hetzelfde uur delen normaal dezelfde voorkeur — toon één
+// badge per uur (dayOfWeek|startTime|endTime) i.p.v. één per baan. Verschillen de
+// banen tóch (legacy-data), dan wordt de badge 'mixed' zodat het conflict niet
+// stilzwijgend verborgen wordt.
 function collapsedPreferences(
   preferences: Record<string, string>,
   timeSlots: PlanningTimeSlotDto[]
 ): { key: string; dayOfWeek: number; startTime: string; pref: string }[] {
   const byKey = new Map<
     string,
-    { key: string; dayOfWeek: number; startTime: string; pref: string }
+    { key: string; dayOfWeek: number; startTime: string; prefs: string[] }
   >();
   for (const [slotId, pref] of Object.entries(preferences)) {
     const slot = timeSlots.find((s) => s.id === slotId);
     if (!slot) continue;
     const key = `${slot.dayOfWeek}|${slot.startTime}|${slot.endTime}`;
-    if (!byKey.has(key)) {
-      byKey.set(key, { key, dayOfWeek: slot.dayOfWeek, startTime: slot.startTime, pref });
+    const group = byKey.get(key);
+    if (group) {
+      group.prefs.push(pref);
+    } else {
+      byKey.set(key, { key, dayOfWeek: slot.dayOfWeek, startTime: slot.startTime, prefs: [pref] });
     }
   }
-  return Array.from(byKey.values());
+  return Array.from(byKey.values()).map(({ key, dayOfWeek, startTime, prefs }) => ({
+    key,
+    dayOfWeek,
+    startTime,
+    // Elke groep heeft ≥1 pref, dus nooit null.
+    pref: collapseParallelPrefs(prefs) ?? MIXED_PREF,
+  }));
 }
 
 // ─── Page ────────────────────────────────────────────────────────────────────
@@ -980,20 +992,31 @@ export default function PlanningPage({
                         <div className="flex flex-wrap gap-1 mb-2">
                           {collapsedPreferences(leader.preferences, planning.timeSlots).map(
                             ({ key, dayOfWeek, startTime, pref }) => {
-                              const isAvailable = pref === "Available" || pref === "Preferred";
+                              const isMixed = pref === MIXED_PREF;
+                              const isAvailable =
+                                pref === "Available" || pref === "Preferred";
                               return (
                                 <span
                                   key={key}
+                                  title={isMixed ? t("mixedPreference") : undefined}
                                   className={`text-[10px] px-1.5 py-0.5 rounded ${
-                                    pref === "Preferred"
-                                      ? "bg-green-100 text-green-700"
-                                      : pref === "Available"
-                                        ? "bg-blue-100 text-blue-700"
-                                        : "bg-gray-100 text-gray-400"
+                                    isMixed
+                                      ? "bg-amber-100 text-amber-700"
+                                      : pref === "Preferred"
+                                        ? "bg-green-100 text-green-700"
+                                        : pref === "Available"
+                                          ? "bg-blue-100 text-blue-700"
+                                          : "bg-gray-100 text-gray-400"
                                   }`}
                                 >
                                   {DAY_NAMES_SHORT[dayOfWeek]} {startTime.replace(":00", "")}{" "}
-                                  {isAvailable ? (pref === "Preferred" ? "★" : "✓") : "✕"}
+                                  {isMixed
+                                    ? "~"
+                                    : isAvailable
+                                      ? pref === "Preferred"
+                                        ? "★"
+                                        : "✓"
+                                      : "✕"}
                                 </span>
                               );
                             }
@@ -1148,20 +1171,31 @@ export default function PlanningPage({
                         <div className="flex flex-wrap gap-1">
                           {collapsedPreferences(enrollment.preferences, planning.timeSlots).map(
                             ({ key, dayOfWeek, startTime, pref }) => {
-                              const isAvailable = pref === "Available" || pref === "Preferred";
+                              const isMixed = pref === MIXED_PREF;
+                              const isAvailable =
+                                pref === "Available" || pref === "Preferred";
                               return (
                                 <span
                                   key={key}
+                                  title={isMixed ? t("mixedPreference") : undefined}
                                   className={`text-[10px] px-1.5 py-0.5 rounded ${
-                                    pref === "Preferred"
-                                      ? "bg-green-100 text-green-700"
-                                      : pref === "Available"
-                                        ? "bg-blue-100 text-blue-700"
-                                        : "bg-gray-100 text-gray-400"
+                                    isMixed
+                                      ? "bg-amber-100 text-amber-700"
+                                      : pref === "Preferred"
+                                        ? "bg-green-100 text-green-700"
+                                        : pref === "Available"
+                                          ? "bg-blue-100 text-blue-700"
+                                          : "bg-gray-100 text-gray-400"
                                   }`}
                                 >
                                   {DAY_NAMES_SHORT[dayOfWeek]} {startTime.replace(":00", "")}{" "}
-                                  {isAvailable ? (pref === "Preferred" ? "★" : "✓") : "✕"}
+                                  {isMixed
+                                    ? "~"
+                                    : isAvailable
+                                      ? pref === "Preferred"
+                                        ? "★"
+                                        : "✓"
+                                      : "✕"}
                                 </span>
                               );
                             }
