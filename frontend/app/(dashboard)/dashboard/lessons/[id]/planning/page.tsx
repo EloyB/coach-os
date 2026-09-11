@@ -150,6 +150,8 @@ export default function PlanningPage({
   // Manual assign
   const [assigningEnrollmentId, setAssigningEnrollmentId] = useState<string | null>(null);
 
+  // Niet-toegewezen: uitklapbaar, default open (het is de actieve werklijst).
+  const [showUnassigned, setShowUnassigned] = useState(true);
   // Toegewezen-sectie: default ingeklapt; per eenheid een extra-slot-kiezer.
   const [showAssigned, setShowAssigned] = useState(false);
   const [addingSlotForKey, setAddingSlotForKey] = useState<string | null>(null);
@@ -857,20 +859,29 @@ export default function PlanningPage({
             <NonRespondersPanel seriesId={id} />
           )}
 
-          {/* Unassigned */}
+          {/* Unassigned (uitklapbaar) */}
           <div className="p-4 border-b border-gray-100">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-gray-900">
+            <button
+              type="button"
+              onClick={() => setShowUnassigned((v) => !v)}
+              className="mb-3 flex w-full cursor-pointer items-center justify-between"
+            >
+              <span className="flex items-center gap-2 text-sm font-semibold text-gray-900">
                 {t("unassigned")}
-              </h3>
-              {totalUnassigned > 0 && (
-                <span className="text-xs bg-red-100 text-red-700 font-medium px-2 py-0.5 rounded-full">
-                  {totalUnassigned}
-                </span>
-              )}
-            </div>
+                {totalUnassigned > 0 && (
+                  <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+                    {totalUnassigned}
+                  </span>
+                )}
+              </span>
+              <ChevronDown
+                size={16}
+                className={`text-gray-400 transition-transform ${showUnassigned ? "rotate-180" : ""}`}
+              />
+            </button>
 
-            {totalUnassigned === 0 ? (
+            {showUnassigned &&
+              (totalUnassigned === 0 ? (
               <p className="text-xs text-gray-400">
                 Iedereen is toegewezen
               </p>
@@ -1192,7 +1203,7 @@ export default function PlanningPage({
                   );
                 })}
               </div>
-            )}
+            ))}
           </div>
 
           {/* Toegewezen (uitklapbaar, default ingeklapt) */}
