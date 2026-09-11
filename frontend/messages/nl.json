@@ -478,7 +478,8 @@
     "chooseExtraSlot": "Kies een extra tijdslot",
     "noOtherSlotAvailable": "Geen ander tijdslot met plaats",
     "cancel": "Annuleren",
-    "nobodyAssigned": "Nog niemand toegewezen"
+    "nobodyAssigned": "Nog niemand toegewezen",
+    "confirmDisabledUnassigned": "{count, plural, one {Nog # persoon niet toegewezen — wijs iedereen toe om te kunnen bevestigen.} other {Nog # personen niet toegewezen — wijs iedereen toe om te kunnen bevestigen.}}"
   },
   "confirmation": {
     "pageTitle": "Bevestiging",
