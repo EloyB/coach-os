@@ -477,7 +477,8 @@
     "addExtraSlot": "Extra tijdslot",
     "chooseExtraSlot": "Kies een extra tijdslot",
     "noOtherSlotAvailable": "Geen ander tijdslot met plaats",
-    "cancel": "Annuleren"
+    "cancel": "Annuleren",
+    "nobodyAssigned": "Nog niemand toegewezen"
   },
   "confirmation": {
     "pageTitle": "Bevestiging",

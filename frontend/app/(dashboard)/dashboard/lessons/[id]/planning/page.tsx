@@ -15,6 +15,7 @@ import {
   MessageCircle,
   Lock,
   Plus,
+  ChevronDown,
 } from "lucide-react";
 import {
   Popover,
@@ -148,6 +149,10 @@ export default function PlanningPage({
 
   // Manual assign
   const [assigningEnrollmentId, setAssigningEnrollmentId] = useState<string | null>(null);
+
+  // Toegewezen-sectie: default ingeklapt; per eenheid een extra-slot-kiezer.
+  const [showAssigned, setShowAssigned] = useState(false);
+  const [addingSlotForKey, setAddingSlotForKey] = useState<string | null>(null);
 
   // Slot hover popover (read-only peek)
   const [hoveredSlotId, setHoveredSlotId] = useState<string | null>(null);
@@ -283,6 +288,51 @@ export default function PlanningPage({
       calEndHour: Math.min(24, Math.ceil(maxMin / 60) + 1),
     };
   }, [planning]);
+
+  // Toegewezen eenheden (solo of groep), met hun slot(s) — één rij per persoon/groep.
+  const assignedUnits = useMemo(() => {
+    if (!planning) return [];
+    type Unit = {
+      key: string;
+      type: "solo" | "group";
+      name: string;
+      target: { enrollmentId?: string; groupId?: string };
+      rep: PlanningAssignmentDto;
+      slots: { id: string; label: string }[];
+    };
+    const byKey = new Map<string, Unit>();
+    for (const a of planning.assignments) {
+      if (a.status === "Declined") continue;
+      let key: string, type: "solo" | "group", name: string;
+      let target: { enrollmentId?: string; groupId?: string };
+      if (a.groupId) {
+        const g = groupMap.get(a.groupId);
+        if (!g) continue;
+        key = `g:${a.groupId}`;
+        type = "group";
+        name = g.name;
+        target = { groupId: a.groupId };
+      } else if (a.enrollmentId) {
+        const e = enrollmentMap.get(a.enrollmentId);
+        if (!e) continue;
+        key = `e:${a.enrollmentId}`;
+        type = "solo";
+        name = e.studentName;
+        target = { enrollmentId: a.enrollmentId };
+      } else {
+        continue;
+      }
+      const slot = planning.timeSlots.find((s) => s.id === a.timeSlotId);
+      const label = slot ? `${DAY_NAMES_SHORT[slot.dayOfWeek]} ${slot.startTime}` : "?";
+      const existing = byKey.get(key);
+      if (existing) {
+        existing.slots.push({ id: a.timeSlotId, label });
+      } else {
+        byKey.set(key, { key, type, name, target, rep: a, slots: [{ id: a.timeSlotId, label }] });
+      }
+    }
+    return [...byKey.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }, [planning, groupMap, enrollmentMap]);
 
   // Stats
   const totalUnassigned = unassignedSolos.length + unassignedGroups.length;
@@ -1141,6 +1191,124 @@ export default function PlanningPage({
                     </div>
                   );
                 })}
+              </div>
+            )}
+          </div>
+
+          {/* Toegewezen (uitklapbaar, default ingeklapt) */}
+          <div className="p-4 border-b border-gray-100">
+            <button
+              type="button"
+              onClick={() => setShowAssigned((v) => !v)}
+              className="flex w-full cursor-pointer items-center justify-between"
+            >
+              <span className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                {t("assigned")}
+                {assignedUnits.length > 0 && (
+                  <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+                    {assignedUnits.length}
+                  </span>
+                )}
+              </span>
+              <ChevronDown
+                size={16}
+                className={`text-gray-400 transition-transform ${showAssigned ? "rotate-180" : ""}`}
+              />
+            </button>
+
+            {showAssigned && (
+              <div className="mt-3 space-y-2">
+                {assignedUnits.length === 0 ? (
+                  <p className="text-xs text-gray-400">{t("nobodyAssigned")}</p>
+                ) : (
+                  assignedUnits.map((unit) => {
+                    const options = eligibleExtraSlots(unit.rep);
+                    const isOpen = addingSlotForKey === unit.key;
+                    return (
+                      <div key={unit.key} className="rounded-lg border border-gray-200 p-2.5">
+                        <div className="flex items-center gap-2">
+                          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500">
+                            {unit.type === "group" ? (
+                              <Users size={13} />
+                            ) : (
+                              <span className="text-[10px] font-bold">{getInitials(unit.name)}</span>
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate text-xs font-medium text-gray-900">
+                              {unit.name}
+                            </div>
+                            <div className="mt-0.5 flex flex-wrap gap-1">
+                              {unit.slots.map((s, i) => (
+                                <span
+                                  key={i}
+                                  className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-600"
+                                >
+                                  {s.label}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+
+                        {!readOnly && (
+                          <div className="mt-2 border-t border-gray-100 pt-2">
+                            {isOpen ? (
+                              <div className="space-y-1.5">
+                                <p className="text-[10px] font-medium text-gray-500">
+                                  {t("chooseExtraSlot")}
+                                </p>
+                                {options.length === 0 ? (
+                                  <p className="text-[10px] text-gray-400">
+                                    {t("noOtherSlotAvailable")}
+                                  </p>
+                                ) : (
+                                  <div className="space-y-1">
+                                    {options.map((s) => (
+                                      <button
+                                        key={s.id}
+                                        type="button"
+                                        disabled={assignMutation.isPending}
+                                        onClick={() => {
+                                          assignMutation.mutate({ ...unit.target, slotId: s.id });
+                                          setAddingSlotForKey(null);
+                                        }}
+                                        className="w-full cursor-pointer rounded-md border border-gray-200 px-2 py-1.5 text-left text-[10px] text-gray-700 transition-colors hover:border-tennis-green hover:bg-tennis-green/5 disabled:opacity-50"
+                                      >
+                                        <span className="font-medium">
+                                          {DAY_NAMES_SHORT[s.dayOfWeek]} {s.startTime}–{s.endTime}
+                                        </span>
+                                        {s.courtName && (
+                                          <span className="ml-1 text-gray-400">· {s.courtName}</span>
+                                        )}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => setAddingSlotForKey(null)}
+                                  className="cursor-pointer text-[10px] text-gray-400 hover:text-gray-600"
+                                >
+                                  {t("cancel")}
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setAddingSlotForKey(unit.key)}
+                                className="inline-flex cursor-pointer items-center gap-1 text-[11px] font-medium text-tennis-green hover:underline"
+                              >
+                                <Plus size={12} />
+                                {t("addExtraSlot")}
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
               </div>
             )}
           </div>
