@@ -15,6 +15,7 @@ import {
   MessageCircle,
   Lock,
   Plus,
+  ChevronDown,
 } from "lucide-react";
 import {
   Popover,
@@ -84,8 +85,6 @@ export default function PlanningPage({
   // Reactief via effect zodat het na hydration klopt (localStorage is er niet bij SSR).
   const [readOnly, setReadOnly] = useState(false);
   useEffect(() => setReadOnly(isHeadTrainerViewer()), []);
-  // Bevestiging vóór 'Definitief aanbieden' van een groep: verstuurt meteen een e-mail-aanbod.
-  const [offerTarget, setOfferTarget] = useState<{ id: string; name: string } | null>(null);
 
   const { data: series } = useQuery({
     queryKey: ["lessonSeries", id],
@@ -148,6 +147,12 @@ export default function PlanningPage({
 
   // Manual assign
   const [assigningEnrollmentId, setAssigningEnrollmentId] = useState<string | null>(null);
+
+  // Niet-toegewezen: uitklapbaar, default open (het is de actieve werklijst).
+  const [showUnassigned, setShowUnassigned] = useState(true);
+  // Toegewezen-sectie: default ingeklapt; per eenheid een extra-slot-kiezer.
+  const [showAssigned, setShowAssigned] = useState(false);
+  const [addingSlotForKey, setAddingSlotForKey] = useState<string | null>(null);
 
   // Slot hover popover (read-only peek)
   const [hoveredSlotId, setHoveredSlotId] = useState<string | null>(null);
@@ -284,6 +289,51 @@ export default function PlanningPage({
     };
   }, [planning]);
 
+  // Toegewezen eenheden (solo of groep), met hun slot(s) — één rij per persoon/groep.
+  const assignedUnits = useMemo(() => {
+    if (!planning) return [];
+    type Unit = {
+      key: string;
+      type: "solo" | "group";
+      name: string;
+      target: { enrollmentId?: string; groupId?: string };
+      rep: PlanningAssignmentDto;
+      slots: { id: string; label: string }[];
+    };
+    const byKey = new Map<string, Unit>();
+    for (const a of planning.assignments) {
+      if (a.status === "Declined") continue;
+      let key: string, type: "solo" | "group", name: string;
+      let target: { enrollmentId?: string; groupId?: string };
+      if (a.groupId) {
+        const g = groupMap.get(a.groupId);
+        if (!g) continue;
+        key = `g:${a.groupId}`;
+        type = "group";
+        name = g.name;
+        target = { groupId: a.groupId };
+      } else if (a.enrollmentId) {
+        const e = enrollmentMap.get(a.enrollmentId);
+        if (!e) continue;
+        key = `e:${a.enrollmentId}`;
+        type = "solo";
+        name = e.studentName;
+        target = { enrollmentId: a.enrollmentId };
+      } else {
+        continue;
+      }
+      const slot = planning.timeSlots.find((s) => s.id === a.timeSlotId);
+      const label = slot ? `${DAY_NAMES_SHORT[slot.dayOfWeek]} ${slot.startTime}` : "?";
+      const existing = byKey.get(key);
+      if (existing) {
+        existing.slots.push({ id: a.timeSlotId, label });
+      } else {
+        byKey.set(key, { key, type, name, target, rep: a, slots: [{ id: a.timeSlotId, label }] });
+      }
+    }
+    return [...byKey.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }, [planning, groupMap, enrollmentMap]);
+
   // Stats
   const totalUnassigned = unassignedSolos.length + unassignedGroups.length;
   const totalSlots = planning?.timeSlots.length ?? 0;
@@ -318,19 +368,41 @@ export default function PlanningPage({
     return getSlotNames(slotId).length;
   }
 
+  // Multi-slot: slots waar deze persoon/groep nog extra bij kan (niet het huidige
+  // of een reeds toegewezen slot, en met genoeg vrije plaats).
+  function eligibleExtraSlots(assignment: PlanningAssignmentDto) {
+    if (!planning) return [];
+    const size = assignment.groupId
+      ? groupMap.get(assignment.groupId)?.memberEnrollmentIds.length ?? 1
+      : 1;
+    const takenSlotIds = new Set(
+      planning.assignments
+        .filter((a) =>
+          assignment.groupId
+            ? a.groupId === assignment.groupId
+            : a.enrollmentId != null && a.enrollmentId === assignment.enrollmentId
+        )
+        .map((a) => a.timeSlotId)
+    );
+    return planning.timeSlots
+      .filter((s) => !takenSlotIds.has(s.id))
+      .map((s) => ({
+        id: s.id,
+        dayOfWeek: s.dayOfWeek,
+        startTime: s.startTime,
+        endTime: s.endTime,
+        courtName: s.courtName,
+        remaining: s.maxCapacity - getSlotCurrentCount(s.id),
+      }))
+      .filter((s) => s.remaining >= size)
+      .sort(
+        (a, b) => a.dayOfWeek - b.dayOfWeek || a.startTime.localeCompare(b.startTime)
+      );
+  }
+
   function slotHasProposed(slotId: string): boolean {
     const assignments = assignmentsBySlot.get(slotId) ?? [];
     return assignments.some((a) => a.status === "Proposed");
-  }
-
-  // Helper: find which slot a group is assigned to
-  function getGroupSlotLabel(groupId: string): string | null {
-    if (!planning) return null;
-    const assignment = planning.assignments.find((a) => a.groupId === groupId);
-    if (!assignment) return null;
-    const slot = planning.timeSlots.find((s) => s.id === assignment.timeSlotId);
-    if (!slot) return null;
-    return `${DAY_NAMES_SHORT[slot.dayOfWeek]} ${slot.startTime} — ${slot.endTime}`;
   }
 
   // ─── Loading / Error ────────────────────────────────────────────────────
@@ -455,6 +527,11 @@ export default function PlanningPage({
                 <button
                   type="button"
                   disabled={confirmMutation.isPending || totalUnassigned > 0}
+                  title={
+                    totalUnassigned > 0
+                      ? t("confirmDisabledUnassigned", { count: totalUnassigned })
+                      : undefined
+                  }
                   className="inline-flex items-center gap-2 bg-tennis-green text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-tennis-green/90 transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Check size={16} />
@@ -775,20 +852,29 @@ export default function PlanningPage({
             <NonRespondersPanel seriesId={id} />
           )}
 
-          {/* Unassigned */}
+          {/* Unassigned (uitklapbaar) */}
           <div className="p-4 border-b border-gray-100">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-gray-900">
+            <button
+              type="button"
+              onClick={() => setShowUnassigned((v) => !v)}
+              className="mb-3 flex w-full cursor-pointer items-center justify-between"
+            >
+              <span className="flex items-center gap-2 text-sm font-semibold text-gray-900">
                 {t("unassigned")}
-              </h3>
-              {totalUnassigned > 0 && (
-                <span className="text-xs bg-red-100 text-red-700 font-medium px-2 py-0.5 rounded-full">
-                  {totalUnassigned}
-                </span>
-              )}
-            </div>
+                {totalUnassigned > 0 && (
+                  <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+                    {totalUnassigned}
+                  </span>
+                )}
+              </span>
+              <ChevronDown
+                size={16}
+                className={`text-gray-400 transition-transform ${showUnassigned ? "rotate-180" : ""}`}
+              />
+            </button>
 
-            {totalUnassigned === 0 ? (
+            {showUnassigned &&
+              (totalUnassigned === 0 ? (
               <p className="text-xs text-gray-400">
                 Iedereen is toegewezen
               </p>
@@ -1110,91 +1196,123 @@ export default function PlanningPage({
                   );
                 })}
               </div>
-            )}
+            ))}
           </div>
 
-          {/* Groups */}
+          {/* Toegewezen (uitklapbaar, default ingeklapt) */}
           <div className="p-4 border-b border-gray-100">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-gray-900">
-                {t("groups")}
-              </h3>
-            </div>
+            <button
+              type="button"
+              onClick={() => setShowAssigned((v) => !v)}
+              className="flex w-full cursor-pointer items-center justify-between"
+            >
+              <span className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                {t("assigned")}
+                {assignedUnits.length > 0 && (
+                  <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+                    {assignedUnits.length}
+                  </span>
+                )}
+              </span>
+              <ChevronDown
+                size={16}
+                className={`text-gray-400 transition-transform ${showAssigned ? "rotate-180" : ""}`}
+              />
+            </button>
 
-            {planning.groups.length === 0 ? (
-              <p className="text-xs text-gray-400">Geen groepen</p>
-            ) : (
-              <div className="space-y-2">
-                {planning.groups.map((group) => {
-                  const slotLabel = getGroupSlotLabel(group.id);
-                  const memberNames = group.memberEnrollmentIds
-                    .map((id) => enrollmentMap.get(id)?.studentName ?? "?")
-                    .join(", ");
-                  const groupAssignment = planning.assignments.find(
-                    (a) => a.groupId === group.id
-                  );
-                  const isAutoMerged = groupAssignment?.isAutoMerged ?? false;
-                  const isLocked = groupAssignment?.isLocked ?? false;
-                  const canOfferDefinitively = groupAssignment?.status === "Proposed";
+            {showAssigned && (
+              <div className="mt-3 space-y-2">
+                {assignedUnits.length === 0 ? (
+                  <p className="text-xs text-gray-400">{t("nobodyAssigned")}</p>
+                ) : (
+                  assignedUnits.map((unit) => {
+                    const options = eligibleExtraSlots(unit.rep);
+                    const isOpen = addingSlotForKey === unit.key;
+                    return (
+                      <div key={unit.key} className="rounded-lg border border-gray-200 p-2.5">
+                        <div className="flex items-center gap-2">
+                          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500">
+                            {unit.type === "group" ? (
+                              <Users size={13} />
+                            ) : (
+                              <span className="text-[10px] font-bold">{getInitials(unit.name)}</span>
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate text-xs font-medium text-gray-900">
+                              {unit.name}
+                            </div>
+                            <div className="mt-0.5 flex flex-wrap gap-1">
+                              {unit.slots.map((s, i) => (
+                                <span
+                                  key={i}
+                                  className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-600"
+                                >
+                                  {s.label}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
 
-                  return (
-                    <div
-                      key={group.id}
-                      className={`border rounded-lg p-3 ${
-                        isLocked
-                          ? "border-tennis-green bg-green-50/50"
-                          : isAutoMerged
-                            ? "border-blue-200 bg-blue-50/30"
-                            : "border-gray-200"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-[10px] font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded">
-                          {group.name}
-                        </span>
-                        <div className="flex items-center gap-1.5">
-                          {isLocked && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-tennis-green shadow-sm">
-                              <Lock size={10} />
-                              {t("locked")}
-                            </span>
-                          )}
-                          <span className={`text-[10px] ${isAutoMerged ? "text-blue-500 italic" : "text-gray-400"}`}>
-                            {isAutoMerged ? t("autoGrouped") : t("preFormed")}
-                          </span>
-                        </div>
+                        {!readOnly && (
+                          <div className="mt-2 border-t border-gray-100 pt-2">
+                            {isOpen ? (
+                              <div className="space-y-1.5">
+                                <p className="text-[10px] font-medium text-gray-500">
+                                  {t("chooseExtraSlot")}
+                                </p>
+                                {options.length === 0 ? (
+                                  <p className="text-[10px] text-gray-400">
+                                    {t("noOtherSlotAvailable")}
+                                  </p>
+                                ) : (
+                                  <div className="space-y-1">
+                                    {options.map((s) => (
+                                      <button
+                                        key={s.id}
+                                        type="button"
+                                        disabled={assignMutation.isPending}
+                                        onClick={() => {
+                                          assignMutation.mutate({ ...unit.target, slotId: s.id });
+                                          setAddingSlotForKey(null);
+                                        }}
+                                        className="w-full cursor-pointer rounded-md border border-gray-200 px-2 py-1.5 text-left text-[10px] text-gray-700 transition-colors hover:border-tennis-green hover:bg-tennis-green/5 disabled:opacity-50"
+                                      >
+                                        <span className="font-medium">
+                                          {DAY_NAMES_SHORT[s.dayOfWeek]} {s.startTime}–{s.endTime}
+                                        </span>
+                                        {s.courtName && (
+                                          <span className="ml-1 text-gray-400">· {s.courtName}</span>
+                                        )}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => setAddingSlotForKey(null)}
+                                  className="cursor-pointer text-[10px] text-gray-400 hover:text-gray-600"
+                                >
+                                  {t("cancel")}
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setAddingSlotForKey(unit.key)}
+                                className="inline-flex cursor-pointer items-center gap-1 text-[11px] font-medium text-tennis-green hover:underline"
+                              >
+                                <Plus size={12} />
+                                {t("addExtraSlot")}
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </div>
-                      <div className="text-[10px] text-gray-600">
-                        {memberNames}
-                      </div>
-                      {slotLabel && (
-                        <div className="text-[10px] text-gray-400 mt-1.5 flex items-center gap-1">
-                          <Check size={12} className="text-green-500" />
-                          {slotLabel}
-                        </div>
-                      )}
-                      {isLocked && (
-                        <div className="mt-1.5 flex items-center gap-1 text-[10px] font-medium text-tennis-green">
-                          <Lock size={11} />
-                          {t("lockedKeepsOnRegenerate")}
-                        </div>
-                      )}
-                      {!readOnly && canOfferDefinitively && groupAssignment && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setOfferTarget({ id: groupAssignment.id, name: memberNames })
-                          }
-                          disabled={sendConfirmationMutation.isPending}
-                          className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-md bg-tennis-green px-2 py-1.5 text-[11px] font-semibold text-white hover:bg-tennis-green/90 disabled:opacity-50"
-                        >
-                          <Mail size={12} />
-                          {t("offerDefinitively")}
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
+                    );
+                  })
+                )}
               </div>
             )}
           </div>
@@ -1279,6 +1397,11 @@ export default function PlanningPage({
         }
         onOffer={(assignmentId) => sendConfirmationMutation.mutate(assignmentId)}
         onUnassign={(assignmentId) => unassignMutation.mutate(assignmentId)}
+        eligibleSlotsFor={eligibleExtraSlots}
+        onAssignToSlot={(target, slotId) =>
+          assignMutation.mutate({ ...target, slotId })
+        }
+        isAssignPending={assignMutation.isPending}
         isLockPending={lockMutation.isPending}
         isOfferPending={sendConfirmationMutation.isPending}
         isUnassignPending={unassignMutation.isPending}
@@ -1323,31 +1446,6 @@ export default function PlanningPage({
         />
       )}
 
-      <AlertDialog
-        open={offerTarget !== null}
-        onOpenChange={(open) => !open && setOfferTarget(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t("offerConfirmTitle")}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("offerConfirmBody", { name: offerTarget?.name ?? "" })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t("offerConfirmCancel")}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (offerTarget) sendConfirmationMutation.mutate(offerTarget.id);
-                setOfferTarget(null);
-              }}
-              className="bg-tennis-green hover:bg-tennis-green/90"
-            >
-              {t("offerConfirmButton")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

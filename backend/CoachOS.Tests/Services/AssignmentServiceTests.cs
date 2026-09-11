@@ -236,6 +236,84 @@ public class AssignmentServiceTests
     }
 
     [Test]
+    public async Task CreateAssignmentAsync_SameEnrollmentDifferentSlot_Succeeds()
+    {
+        // Multi-slot: een inschrijving die al op slot A staat mag ook op slot B.
+        var slotB = Guid.NewGuid();
+        var series = PlanningServiceTests.BuildSeries(withSlots: true, slotId: SlotId);
+        series.WeeklyTemplate.Add(new WeeklyTemplateEntry
+        {
+            Id = slotB, LessonSerieId = SeriesId, MaxStudents = 4,
+        });
+
+        var enrollment = new Enrollment
+        {
+            Id = Guid.NewGuid(), LessonSerieId = SeriesId,
+            Status = EnrollmentStatus.Pending, StudentName = "Emma Claes",
+        };
+        var existingOnSlotA = new ScheduleAssignment
+        {
+            Id = Guid.NewGuid(), LessonSerieId = SeriesId, WeeklyTemplateEntryId = SlotId,
+            EnrollmentId = enrollment.Id, Enrollment = enrollment,
+            Status = ScheduleAssignmentStatus.Proposed,
+        };
+
+        _seriesRepo.Setup(r => r.GetByIdAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+        _enrollmentRepo.Setup(r => r.GetByIdAsync(enrollment.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(enrollment);
+        _assignmentRepo.Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([existingOnSlotA]);
+
+        var result = await _service.CreateAssignmentAsync(
+            SeriesId,
+            new CreateAssignmentRequest { EnrollmentId = enrollment.Id, WeeklyTemplateEntryId = slotB },
+            OrgId);
+
+        result.IsSuccess.Should().BeTrue(string.Join("; ", result.Errors.Select(e => e.Message)));
+        _assignmentRepo.Verify(r => r.AddRangeAsync(
+            It.Is<IEnumerable<ScheduleAssignment>>(a =>
+                a.Single().EnrollmentId == enrollment.Id
+                && a.Single().WeeklyTemplateEntryId == slotB),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task CreateAssignmentAsync_SameEnrollmentSameSlot_ReturnsValidationError()
+    {
+        // Duplicaat op hetzelfde slot blijft geweigerd.
+        var series = PlanningServiceTests.BuildSeries(withSlots: true, slotId: SlotId);
+        var enrollment = new Enrollment
+        {
+            Id = Guid.NewGuid(), LessonSerieId = SeriesId,
+            Status = EnrollmentStatus.Pending, StudentName = "Emma Claes",
+        };
+        var existingOnSlotA = new ScheduleAssignment
+        {
+            Id = Guid.NewGuid(), LessonSerieId = SeriesId, WeeklyTemplateEntryId = SlotId,
+            EnrollmentId = enrollment.Id, Enrollment = enrollment,
+            Status = ScheduleAssignmentStatus.Proposed,
+        };
+
+        _seriesRepo.Setup(r => r.GetByIdAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+        _enrollmentRepo.Setup(r => r.GetByIdAsync(enrollment.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(enrollment);
+        _assignmentRepo.Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([existingOnSlotA]);
+
+        var result = await _service.CreateAssignmentAsync(
+            SeriesId,
+            new CreateAssignmentRequest { EnrollmentId = enrollment.Id, WeeklyTemplateEntryId = SlotId },
+            OrgId);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be("validation");
+        _assignmentRepo.Verify(r => r.AddRangeAsync(
+            It.IsAny<IEnumerable<ScheduleAssignment>>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
     public async Task UpdateAssignmentAsync_UsesActiveMemberCountForMovedGroup()
     {
         var newSlotId = Guid.NewGuid();
