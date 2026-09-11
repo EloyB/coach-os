@@ -194,7 +194,7 @@ export default function ConfirmationPage({
 
   // ─── Success ──────────────────────────────────────────────────────────
   if (step === "success") {
-    const calendarUrl = `${process.env.NEXT_PUBLIC_API_URL?.replace(/\/api$/, "")}/confirm/${token}/calendar.ics`;
+    const calendarUrl = `${process.env.NEXT_PUBLIC_API_URL}/confirm/${token}/calendar.ics`;
 
     return (
       <Shell>
