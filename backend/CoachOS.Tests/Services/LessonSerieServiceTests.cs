@@ -6,6 +6,7 @@ using CoachOS.Domain.Enums;
 using CoachOS.Domain.Interfaces;
 using CoachOS.Domain.Models;
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using NUnit.Framework;
 
@@ -57,7 +58,8 @@ public class LessonSerieServiceTests
             _timeSlotPreferenceRepo.Object,
             _invitationRepo.Object,
             TimeProvider.System,
-            _mapper);
+            _mapper,
+            NullLogger<LessonSerieService>.Instance);
 
         // Default: enrollment counts returnen lege dictionary (geen inschrijvingen).
         _enrollmentRepo
@@ -1374,4 +1376,87 @@ public class LessonSerieServiceTests
         series.WeeklyTemplate.Should().HaveCount(2);
         _lessonSeriesRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
+
+    // ── Annuleringsmails worden afgewacht (geen fire-and-forget) ─────────────
+
+    private (LessonSerie Series, Lesson Lesson) SetupCancellableLessonWithTwoActiveEnrollments()
+    {
+        LessonSerie series = BuildSeries();
+        Lesson lesson = BuildLesson(series.Id);
+        List<Domain.Entities.Enrollment> enrollments =
+        [
+            new Domain.Entities.Enrollment
+            {
+                Id = Guid.NewGuid(), OrganizationId = OrgId,
+                StudentName = "Jan", ContactEmail = "jan@example.com",
+                Status = Domain.Enums.EnrollmentStatus.Confirmed,
+            },
+            new Domain.Entities.Enrollment
+            {
+                Id = Guid.NewGuid(), OrganizationId = OrgId,
+                StudentName = "Sofie", ContactEmail = "sofie@example.com",
+                Status = Domain.Enums.EnrollmentStatus.Pending,
+            },
+        ];
+        _lessonRepo
+            .Setup(r => r.GetByIdAsync(lesson.Id, series.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(lesson);
+        _lessonSeriesRepo
+            .Setup(r => r.GetByIdAsync(series.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+        _enrollmentRepo
+            .Setup(r => r.GetBySeriesAsync(series.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(enrollments);
+        return (series, lesson);
+    }
+
+    [Test]
+    public async Task UpdateLessonAsync_CancelLesson_WaitsForCancellationEmailsBeforeReturning()
+    {
+        var (series, lesson) = SetupCancellableLessonWithTwoActiveEnrollments();
+        int delivered = 0;
+        _emailService
+            .Setup(e => e.SendLessonCancellationAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<DateOnly>(), It.IsAny<TimeOnly>(), It.IsAny<string?>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(async () =>
+            {
+                await Task.Delay(100);
+                Interlocked.Increment(ref delivered);
+            });
+
+        Result<LessonDto> result = await _service.UpdateLessonAsync(
+            series.Id, lesson.Id, OrgId, new UpdateLessonRequest { IsCancelled = true, CancellationReason = "Storm" });
+
+        result.IsSuccess.Should().BeTrue();
+        // Bij fire-and-forget keert de service terug vóór de mails verstuurd zijn.
+        delivered.Should().Be(2);
+    }
+
+    [Test]
+    public async Task UpdateLessonAsync_CancelLesson_EmailFailureDoesNotFailUpdateAndOthersStillGetMail()
+    {
+        var (series, lesson) = SetupCancellableLessonWithTwoActiveEnrollments();
+        _emailService
+            .Setup(e => e.SendLessonCancellationAsync(
+                "jan@example.com", It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<DateOnly>(), It.IsAny<TimeOnly>(), It.IsAny<string?>(),
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("SMTP down"));
+
+        Result<LessonDto> result = await _service.UpdateLessonAsync(
+            series.Id, lesson.Id, OrgId, new UpdateLessonRequest { IsCancelled = true, CancellationReason = "Storm" });
+
+        // De les is al opgeslagen als geannuleerd; een mailstoring mag dat niet terugdraaien
+        // of als fout aan de admin tonen, en mag de overige ontvangers niet overslaan.
+        result.IsSuccess.Should().BeTrue();
+        _emailService.Verify(
+            e => e.SendLessonCancellationAsync(
+                "sofie@example.com", It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<DateOnly>(), It.IsAny<TimeOnly>(), It.IsAny<string?>(),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
 }

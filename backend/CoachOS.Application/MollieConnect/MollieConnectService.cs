@@ -103,25 +103,26 @@ public class MollieConnectService(
             return Result<Guid>.Fail(orgResult.Errors);
         }
 
-        // Upsert: verwijder eventuele oude connectie (her-connect na disconnect),
-        // dan nieuwe rij. Goedkoper dan in-place update + dekt tabel-state altijd.
-        await connections.DeleteByOrganizationAsync(stored.OrganizationId, ct);
-
-        MollieConnection connection = new()
+        // Upsert in-place: bij her-koppelen wordt de bestaande rij bijgewerkt i.p.v. eerst
+        // gewist en dan opnieuw aangemaakt. Zo kan een fout halverwege (versleuteling, DB)
+        // nooit een werkende koppeling kapotmaken. Connectie + state-verbruik gaan in één
+        // SaveChanges omdat beide repositories dezelfde scoped DbContext delen.
+        MollieConnection? connection = await connections.GetByOrganizationAsync(stored.OrganizationId, ct);
+        if (connection is null)
         {
-            OrganizationId = stored.OrganizationId,
-            MollieOrganizationId = orgResult.Value!.Id,
-            MollieOrganizationName = orgResult.Value!.Name,
-            AccessTokenEncrypted = protector.Protect(tokens.AccessToken),
-            RefreshTokenEncrypted = protector.Protect(tokens.RefreshToken),
-            AccessTokenExpiresAt = utcNow.AddSeconds(tokens.ExpiresInSeconds),
-            ConnectedAt = utcNow,
-        };
-        await connections.AddAsync(connection, ct);
-        await connections.SaveChangesAsync(ct);
+            connection = new MollieConnection { OrganizationId = stored.OrganizationId };
+            await connections.AddAsync(connection, ct);
+        }
+
+        connection.MollieOrganizationId = orgResult.Value!.Id;
+        connection.MollieOrganizationName = orgResult.Value!.Name;
+        connection.AccessTokenEncrypted = protector.Protect(tokens.AccessToken);
+        connection.RefreshTokenEncrypted = protector.Protect(tokens.RefreshToken);
+        connection.AccessTokenExpiresAt = utcNow.AddSeconds(tokens.ExpiresInSeconds);
+        connection.ConnectedAt = utcNow;
 
         await states.DeleteAsync(stored, ct);
-        await states.SaveChangesAsync(ct);
+        await connections.SaveChangesAsync(ct);
 
         return Result<Guid>.Ok(stored.OrganizationId);
     }

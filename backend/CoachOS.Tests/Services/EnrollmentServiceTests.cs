@@ -1476,4 +1476,101 @@ public class EnrollmentServiceTests
         result.Errors.Should().Contain(e => e.Code == ErrorCodes.NotFound);
         _enrollmentRepo.Verify(r => r.AddAsync(It.IsAny<Domain.Entities.Enrollment>(), It.IsAny<CancellationToken>()), Times.Never);
     }
+
+    // ── Categorie op Brusselse datum (niet UTC) ──────────────────────────────
+
+    /// <summary>
+    /// Herbouwt de service met een vaste klok. 2026-06-09 22:30 UTC is in Brussel al
+    /// 2026-06-10 00:30; een deelnemer geboren op 2008-06-10 is dan 18 (volwassene),
+    /// terwijl een naïeve UTC-datum nog 17 (jeugd) oplevert.
+    /// </summary>
+    private void UseBrusselsMidnightClock()
+    {
+        _service = new EnrollmentService(
+            _enrollmentRepo.Object,
+            _enrollmentFormRepo.Object,
+            _lessonSeriesRepo.Object,
+            _enrollmentGroupRepo.Object,
+            _timeSlotPreferenceRepo.Object,
+            _orgSettingsRepo.Object,
+            _userLookup.Object,
+            _emailOutboxRepository.Object,
+            _priceRepo.Object,
+            _mapper,
+            _logger.Object,
+            new TestHelpers.FixedTimeProvider(new DateTimeOffset(2026, 6, 9, 22, 30, 0, TimeSpan.Zero)));
+    }
+
+    /// <summary>
+    /// 2008-06-10: 18 op de Brusselse datum (volwassene) maar 17 op de UTC-datum van de vaste klok.
+    /// 2008-09-01: 17 op de vaste klok (jeugd) maar al 18 op de échte klok — vangt het gebruik van
+    /// <c>DateTime.UtcNow</c> i.p.v. de geïnjecteerde <c>TimeProvider</c>.
+    /// </summary>
+    [TestCase("2008-06-10", ParticipantCategory.Adult)]
+    [TestCase("2008-09-01", ParticipantCategory.Youth)]
+    public async Task CreateManualEnrollmentAsync_ResolvesCategoryOnBrusselsDateFromInjectedClock(
+        string dateOfBirth, ParticipantCategory expected)
+    {
+        UseBrusselsMidnightClock();
+        LessonSerie series = BuildActiveSeries();
+        _lessonSeriesRepo
+            .Setup(r => r.GetByIdPublicAsync(SeriesId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+        _enrollmentRepo
+            .Setup(r => r.CountActiveBySeriesAsync(SeriesId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(0);
+        _enrollmentRepo
+            .Setup(r => r.IsDuplicateParticipantAsync(
+                SeriesId, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateOnly?>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+        _enrollmentFormRepo
+            .Setup(r => r.GetBySeriesIdReadOnlyAsync(SeriesId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((EnrollmentForm?)null);
+        _orgSettingsRepo
+            .Setup(r => r.GetByOrganizationReadOnlyAsync(OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((OrganizationSettings?)null);
+        Enrollment? added = null;
+        _enrollmentRepo
+            .Setup(r => r.AddAsync(It.IsAny<Enrollment>(), It.IsAny<CancellationToken>()))
+            .Callback<Enrollment, CancellationToken>((e, _) => added = e)
+            .Returns(Task.CompletedTask);
+
+        Result<Guid> result = await _service.CreateManualEnrollmentAsync(
+            SeriesId,
+            new CreateManualEnrollmentRequest
+            {
+                StudentName = "Jarige job",
+                ContactEmail = "parent@example.com",
+                DateOfBirth = dateOfBirth,
+            },
+            OrgId);
+
+        result.IsSuccess.Should().BeTrue();
+        added.Should().NotBeNull();
+        added!.Category.Should().Be(expected);
+    }
+
+    [TestCase("2008-06-10", ParticipantCategory.Adult)]
+    [TestCase("2008-09-01", ParticipantCategory.Youth)]
+    public async Task AddGroupMember_ResolvesCategoryOnBrusselsDateFromInjectedClock(
+        string dateOfBirth, ParticipantCategory expected)
+    {
+        UseBrusselsMidnightClock();
+        var (_, group, _) = SetupGroup(EnrollmentStatus.Pending);
+        Domain.Entities.Enrollment? added = null;
+        _enrollmentRepo.Setup(r => r.AddAsync(It.IsAny<Domain.Entities.Enrollment>(), It.IsAny<CancellationToken>()))
+            .Callback<Domain.Entities.Enrollment, CancellationToken>((e, _) => added = e)
+            .Returns(Task.CompletedTask);
+
+        CreateManualEnrollmentRequest request = MemberRequest() with { DateOfBirth = dateOfBirth };
+
+        Result<Guid> result = await _service.AddGroupMemberAsync(
+            SeriesIdG, group.Id, request, OrgIdG, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        added.Should().NotBeNull();
+        added!.Category.Should().Be(expected);
+    }
+
 }

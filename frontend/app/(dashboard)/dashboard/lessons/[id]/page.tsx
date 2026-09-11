@@ -60,7 +60,10 @@ import type {
 } from "@/lib/api/enrollments";
 
 import { getTennisClubs } from "@/lib/api/tennisClubs";
-import { getMollieConnectionStatus } from "@/lib/api/mollieConnect";
+import {
+  MOLLIE_CONNECTION_QUERY_KEY,
+  getMollieConnectionStatus,
+} from "@/lib/api/mollieConnect";
 import { getAuthUser } from "@/lib/auth";
 import { FieldError } from "@/components/forms/field-error";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -119,7 +122,7 @@ function EditSeriesForm({
     queryFn: getTennisClubs,
   });
   const { data: mollie } = useQuery({
-    queryKey: ["mollieStatus"],
+    queryKey: MOLLIE_CONNECTION_QUERY_KEY,
     queryFn: getMollieConnectionStatus,
   });
   const mollieConnected = mollie?.connected ?? false;

@@ -5,6 +5,7 @@ using CoachOS.Domain.Common;
 using CoachOS.Domain.Enums;
 using CoachOS.Domain.Interfaces;
 using CoachOS.Domain.Models;
+using Microsoft.Extensions.Logging;
 
 namespace CoachOS.Application.LessonSerie;
 
@@ -20,7 +21,8 @@ public class LessonSerieService(
     ITimeSlotPreferenceRepository timeSlotPreferenceRepo,
     ILessonInvitationRepository lessonInvitationRepo,
     TimeProvider timeProvider,
-    ApplicationMapper mapper) : ILessonSerieService
+    ApplicationMapper mapper,
+    ILogger<LessonSerieService> logger) : ILessonSerieService
 {
     public async Task<Result<List<LessonSerieDto>>> GetAllAsync(
         Guid organizationId, Guid? trainerId, IReadOnlyList<Guid> headTrainerClubIds, CancellationToken ct = default)
@@ -511,15 +513,28 @@ public class LessonSerieService(
 
             // Eén mail per contactadres: een ouder met drie kinderen in de reeks hoort
             // één annuleringsbericht te krijgen, geen drie.
+            // Best-effort per ontvanger: de annulering is al opgeslagen, dus een mailstoring
+            // mag de update niet laten mislukken en mag de volgende ontvanger niet overslaan.
+            // Wél afwachten (geen fire-and-forget) zodat fouten gelogd worden i.p.v. verdwijnen.
             foreach (Domain.Entities.Enrollment enrollment in activeEnrollments.DistinctBy(e => e.ContactEmail))
             {
-                _ = emailService.SendLessonCancellationAsync(
-                    enrollment.ContactEmail,
-                    enrollment.StudentName,
-                    series.Name,
-                    lesson.Date,
-                    lesson.StartTime,
-                    lesson.CancellationReason);
+                try
+                {
+                    await emailService.SendLessonCancellationAsync(
+                        enrollment.ContactEmail,
+                        enrollment.StudentName,
+                        series.Name,
+                        lesson.Date,
+                        lesson.StartTime,
+                        lesson.CancellationReason,
+                        ct);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex,
+                        "Annuleringsmail faalde voor {Email} (les {LessonId}, reeks {SeriesId})",
+                        enrollment.ContactEmail, lesson.Id, seriesId);
+                }
             }
         }
 

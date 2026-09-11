@@ -166,8 +166,8 @@ public class MollieConnectServiceTests
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().Be(OrgId);
 
-        // Bestaande connectie (her-connect-scenario) wordt eerst opgeruimd.
-        _connections.Verify(c => c.DeleteByOrganizationAsync(OrgId, It.IsAny<CancellationToken>()), Times.Once);
+        // Eerste koppeling: geen bestaande rij, dus een nieuwe wordt toegevoegd; nooit eerst wissen.
+        _connections.Verify(c => c.DeleteByOrganizationAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
 
         saved.Should().NotBeNull();
         saved!.OrganizationId.Should().Be(OrgId);
@@ -296,4 +296,52 @@ public class MollieConnectServiceTests
     {
         public override DateTimeOffset GetUtcNow() => new(utcNow, TimeSpan.Zero);
     }
+
+    [Test]
+    public async Task HandleCallbackAsync_ExistingConnection_UpdatesInPlaceWithoutDeleting()
+    {
+        OAuthState live = new() { OrganizationId = OrgId, State = "good", ExpiresAt = Now.AddMinutes(5) };
+        _states.Setup(s => s.GetByStateAsync("good", It.IsAny<CancellationToken>())).ReturnsAsync(live);
+        _mollie.Setup(m => m.ExchangeCodeForTokenAsync("code", "https://x/", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<MollieTokenResponse>.Ok(new MollieTokenResponse(
+                "access-2", "refresh-2", 3600, "bearer", "payments.read")));
+        _mollie.Setup(m => m.GetOrganizationAsync("access-2", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<MollieOrganizationInfo>.Ok(new MollieOrganizationInfo("org_456", "Nieuwe Club")));
+
+        MollieConnection existing = new()
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = OrgId,
+            MollieOrganizationId = "org_123",
+            MollieOrganizationName = "Oude Club",
+            AccessTokenEncrypted = "enc(old-access)",
+            RefreshTokenEncrypted = "enc(old-refresh)",
+            AccessTokenExpiresAt = Now.AddMinutes(-1),
+            ConnectedAt = Now.AddDays(-30),
+        };
+        _connections.Setup(c => c.GetByOrganizationAsync(OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existing);
+
+        Result<Guid> result = await _sut.HandleCallbackAsync("code", "good", "https://x/");
+
+        result.IsSuccess.Should().BeTrue();
+
+        // Her-koppelen mag de werkende koppeling nooit eerst wissen: geen delete, geen tweede rij,
+        // maar een in-place update van de bestaande rij.
+        _connections.Verify(c => c.DeleteByOrganizationAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _connections.Verify(c => c.AddAsync(It.IsAny<MollieConnection>(), It.IsAny<CancellationToken>()), Times.Never);
+        existing.MollieOrganizationId.Should().Be("org_456");
+        existing.MollieOrganizationName.Should().Be("Nieuwe Club");
+        existing.AccessTokenEncrypted.Should().Be("enc(access-2)");
+        existing.RefreshTokenEncrypted.Should().Be("enc(refresh-2)");
+        existing.AccessTokenExpiresAt.Should().Be(Now.AddSeconds(3600));
+        existing.ConnectedAt.Should().Be(Now);
+
+        // Connectie-update en state-verbruik gaan in één SaveChanges (gedeelde DbContext),
+        // zodat een crash halverwege niets half achterlaat.
+        _states.Verify(s => s.DeleteAsync(live, It.IsAny<CancellationToken>()), Times.Once);
+        _connections.Verify(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _states.Verify(s => s.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
 }

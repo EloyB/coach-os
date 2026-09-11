@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { CreditCard, ExternalLink, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import {
+  MOLLIE_CONNECTION_QUERY_KEY,
   disconnectMollie,
   getMollieConnectionStatus,
   startMollieConnect,
@@ -30,7 +31,7 @@ export function MollieSection() {
   const queryClient = useQueryClient();
 
   const { data: status, isLoading } = useQuery({
-    queryKey: ["mollieConnection"],
+    queryKey: MOLLIE_CONNECTION_QUERY_KEY,
     queryFn: getMollieConnectionStatus,
   });
 
@@ -45,7 +46,7 @@ export function MollieSection() {
 
     if (value === "connected") {
       toast.success(t("toastConnected"));
-      queryClient.invalidateQueries({ queryKey: ["mollieConnection"] });
+      queryClient.invalidateQueries({ queryKey: MOLLIE_CONNECTION_QUERY_KEY });
       // Net Mollie verbonden tijdens onboarding — checklist meteen verversen.
       queryClient.invalidateQueries({ queryKey: ["onboarding"] });
     } else if (value === "error") {
@@ -71,7 +72,7 @@ export function MollieSection() {
   const disconnectMutation = useMutation({
     mutationFn: disconnectMollie,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["mollieConnection"] });
+      queryClient.invalidateQueries({ queryKey: MOLLIE_CONNECTION_QUERY_KEY });
       toast.success(t("toastDisconnected"));
     },
     onError: () => {
