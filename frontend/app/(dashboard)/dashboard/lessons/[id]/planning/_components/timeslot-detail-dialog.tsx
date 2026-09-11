@@ -10,6 +10,7 @@ import {
   Unlock,
   X,
   Plus,
+  UserMinus,
   Trash2,
   Pencil,
 } from "lucide-react";
@@ -76,6 +77,10 @@ interface TimeslotDetailDialogProps {
     slotId: string
   ) => void;
   isAssignPending?: boolean;
+  /** Klik op een persoon → open diens inschrijving-detail. */
+  onOpenPerson?: (enrollmentId: string) => void;
+  /** Klik op een groepsnaam → open de groep-detail. */
+  onOpenGroup?: (groupId: string) => void;
 }
 
 export type ExtraSlotOption = {
@@ -108,6 +113,8 @@ export function TimeslotDetailDialog({
   eligibleSlotsFor,
   onAssignToSlot,
   isAssignPending = false,
+  onOpenPerson,
+  onOpenGroup,
 }: TimeslotDetailDialogProps) {
   const t = useTranslations("planning");
   // Bevestiging vóór 'Definitief aanbieden': dit verstuurt meteen een e-mail-aanbod.
@@ -196,7 +203,7 @@ export function TimeslotDetailDialog({
           )}
 
           {assignments.map((assignment) => {
-            const names: string[] = [];
+            const people: { name: string; enrollmentId: string }[] = [];
             let groupName: string | null = null;
 
             if (assignment.groupId) {
@@ -205,15 +212,16 @@ export function TimeslotDetailDialog({
                 groupName = group.name;
                 for (const mId of group.memberEnrollmentIds) {
                   const e = enrollmentMap.get(mId);
-                  if (e) names.push(e.studentName);
+                  if (e) people.push({ name: e.studentName, enrollmentId: e.id });
                 }
               }
             } else if (assignment.enrollmentId) {
               const e = enrollmentMap.get(assignment.enrollmentId);
-              if (e) names.push(e.studentName);
+              if (e) people.push({ name: e.studentName, enrollmentId: e.id });
             }
 
-            if (names.length === 0) return null;
+            if (people.length === 0) return null;
+            const names = people.map((p) => p.name);
 
             const canOffer = assignment.status === "Proposed";
 
@@ -233,15 +241,19 @@ export function TimeslotDetailDialog({
                   {groupName ? (
                     <>
                       <Users size={13} className="shrink-0 text-gray-400" />
-                      <span
-                        className={`rounded px-1.5 py-0.5 text-[11px] font-bold ${
+                      <button
+                        type="button"
+                        onClick={() =>
+                          assignment.groupId && onOpenGroup?.(assignment.groupId)
+                        }
+                        className={`cursor-pointer rounded px-1.5 py-0.5 text-[11px] font-bold transition-colors hover:underline ${
                           assignment.isAutoMerged
-                            ? "bg-blue-100 text-blue-700"
-                            : "bg-green-100 text-green-700"
+                            ? "bg-blue-100 text-blue-700 hover:bg-blue-200"
+                            : "bg-green-100 text-green-700 hover:bg-green-200"
                         }`}
                       >
                         {groupName}
-                      </span>
+                      </button>
                     </>
                   ) : (
                     <>
@@ -258,73 +270,83 @@ export function TimeslotDetailDialog({
                       {t("locked")}
                     </span>
                   )}
-                  {!readOnly && (
-                    <button
-                      type="button"
-                      title={t("unassign")}
-                      onClick={() => onUnassign(assignment.id)}
-                      disabled={isUnassignPending}
-                      className="ml-auto flex h-6 w-6 shrink-0 items-center justify-center rounded text-gray-300 transition-colors hover:bg-red-50 hover:text-red-500 disabled:opacity-50"
-                    >
-                      <X size={14} />
-                    </button>
-                  )}
                 </div>
 
                 {/* Members */}
                 <div className="space-y-1.5 pl-1">
-                  {names.map((name, ni) => {
-                    const color = getAvatarColor(name);
+                  {people.map((person, ni) => {
+                    const color = getAvatarColor(person.name);
                     return (
-                      <div key={ni} className="flex items-center gap-2">
+                      <button
+                        key={ni}
+                        type="button"
+                        onClick={() => onOpenPerson?.(person.enrollmentId)}
+                        className="group flex w-full cursor-pointer items-center gap-2 rounded-md px-1.5 py-1 text-left transition-colors hover:bg-tennis-green/10"
+                      >
                         <div
                           className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[8px] font-bold ${color.bg} ${color.text}`}
                         >
-                          {getInitials(name)}
+                          {getInitials(person.name)}
                         </div>
-                        <span className="text-sm text-gray-700">{name}</span>
-                      </div>
+                        <span className="text-sm text-gray-700 group-hover:text-tennis-green group-hover:underline">
+                          {person.name}
+                        </span>
+                      </button>
                     );
                   })}
                 </div>
 
                 {/* Actions */}
-                {!readOnly && canOffer && (
+                {!readOnly && (
                   <div className="mt-3 flex items-center gap-2 border-t border-gray-100 pt-3">
+                    {canOffer && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => onLock(assignment.id, assignment.isLocked)}
+                          disabled={isLockPending}
+                          className={`inline-flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold transition-colors disabled:opacity-50 ${
+                            assignment.isLocked
+                              ? "bg-green-100 text-green-700 hover:bg-green-200"
+                              : "border border-gray-200 text-tennis-green hover:bg-tennis-green/5"
+                          }`}
+                        >
+                          {assignment.isLocked ? (
+                            <Unlock size={12} />
+                          ) : (
+                            <Lock size={12} />
+                          )}
+                          {assignment.isLocked
+                            ? t("unlock")
+                            : assignment.groupId
+                              ? t("lockGroup")
+                              : t("lock")}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setOfferTarget({
+                              id: assignment.id,
+                              name: groupName ?? names[0] ?? "",
+                            })
+                          }
+                          disabled={isOfferPending}
+                          className="inline-flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-md bg-tennis-green px-2.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-tennis-green/90 disabled:opacity-50"
+                        >
+                          <Mail size={12} />
+                          {t("offerDefinitively")}
+                        </button>
+                      </>
+                    )}
                     <button
                       type="button"
-                      onClick={() => onLock(assignment.id, assignment.isLocked)}
-                      disabled={isLockPending}
-                      className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold transition-colors disabled:opacity-50 ${
-                        assignment.isLocked
-                          ? "bg-green-100 text-green-700 hover:bg-green-200"
-                          : "border border-gray-200 text-tennis-green hover:bg-tennis-green/5"
-                      }`}
+                      title={t("unassign")}
+                      aria-label={t("unassign")}
+                      onClick={() => onUnassign(assignment.id)}
+                      disabled={isUnassignPending}
+                      className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md border border-gray-200 text-gray-400 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
                     >
-                      {assignment.isLocked ? (
-                        <Unlock size={12} />
-                      ) : (
-                        <Lock size={12} />
-                      )}
-                      {assignment.isLocked
-                        ? t("unlock")
-                        : assignment.groupId
-                          ? t("lockGroup")
-                          : t("lock")}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setOfferTarget({
-                          id: assignment.id,
-                          name: groupName ?? names[0] ?? "",
-                        })
-                      }
-                      disabled={isOfferPending}
-                      className="inline-flex items-center gap-1.5 rounded-md bg-tennis-green px-2.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-tennis-green/90 disabled:opacity-50"
-                    >
-                      <Mail size={12} />
-                      {t("offerDefinitively")}
+                      <UserMinus size={15} />
                     </button>
                   </div>
                 )}
