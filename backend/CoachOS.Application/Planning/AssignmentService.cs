@@ -36,8 +36,12 @@ public class AssignmentService(
             if (group is null || group.LessonSerieId != seriesId)
                 return Result<bool>.Fail(new Error(ErrorCodes.NotFound, "Groep niet gevonden."));
 
-            if (existingAssignments.Any(a => a.EnrollmentGroupId == request.GroupId))
-                return Result<bool>.Fail(new Error(ErrorCodes.Validation, "Groep is al toegewezen."));
+            // Eén groep mag op meerdere DIFFERENT slots staan (multi-slot); enkel
+            // een duplicaat op hetzelfde slot is niet toegelaten (spiegelt de DB-index).
+            if (existingAssignments.Any(a =>
+                    a.EnrollmentGroupId == request.GroupId
+                    && a.WeeklyTemplateEntryId == request.WeeklyTemplateEntryId))
+                return Result<bool>.Fail(new Error(ErrorCodes.Validation, "Groep staat al op dit tijdslot."));
 
             groupId = group.Id;
             addSize = PlanningProposalBuilder.GetEffectiveAssignmentSize(new ScheduleAssignment
@@ -52,8 +56,12 @@ public class AssignmentService(
             if (enrollment is null || enrollment.LessonSerieId != seriesId)
                 return Result<bool>.Fail(new Error(ErrorCodes.NotFound, "Inschrijving niet gevonden."));
 
-            if (existingAssignments.Any(a => a.EnrollmentId == request.EnrollmentId))
-                return Result<bool>.Fail(new Error(ErrorCodes.Validation, "Inschrijving is al toegewezen."));
+            // Eén inschrijving mag op meerdere DIFFERENT slots staan (bv. 2 trainingen
+            // per week); enkel een duplicaat op hetzelfde slot is niet toegelaten.
+            if (existingAssignments.Any(a =>
+                    a.EnrollmentId == request.EnrollmentId
+                    && a.WeeklyTemplateEntryId == request.WeeklyTemplateEntryId))
+                return Result<bool>.Fail(new Error(ErrorCodes.Validation, "Inschrijving staat al op dit tijdslot."));
 
             enrollmentId = enrollment.Id;
             addSize = 1;
