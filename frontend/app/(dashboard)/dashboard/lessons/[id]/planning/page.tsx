@@ -85,8 +85,6 @@ export default function PlanningPage({
   // Reactief via effect zodat het na hydration klopt (localStorage is er niet bij SSR).
   const [readOnly, setReadOnly] = useState(false);
   useEffect(() => setReadOnly(isHeadTrainerViewer()), []);
-  // Bevestiging vóór 'Definitief aanbieden' van een groep: verstuurt meteen een e-mail-aanbod.
-  const [offerTarget, setOfferTarget] = useState<{ id: string; name: string } | null>(null);
 
   const { data: series } = useQuery({
     queryKey: ["lessonSeries", id],
@@ -405,16 +403,6 @@ export default function PlanningPage({
   function slotHasProposed(slotId: string): boolean {
     const assignments = assignmentsBySlot.get(slotId) ?? [];
     return assignments.some((a) => a.status === "Proposed");
-  }
-
-  // Helper: find which slot a group is assigned to
-  function getGroupSlotLabel(groupId: string): string | null {
-    if (!planning) return null;
-    const assignment = planning.assignments.find((a) => a.groupId === groupId);
-    if (!assignment) return null;
-    const slot = planning.timeSlots.find((s) => s.id === assignment.timeSlotId);
-    if (!slot) return null;
-    return `${DAY_NAMES_SHORT[slot.dayOfWeek]} ${slot.startTime} — ${slot.endTime}`;
   }
 
   // ─── Loading / Error ────────────────────────────────────────────────────
@@ -1324,92 +1312,6 @@ export default function PlanningPage({
             )}
           </div>
 
-          {/* Groups */}
-          <div className="p-4 border-b border-gray-100">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-gray-900">
-                {t("groups")}
-              </h3>
-            </div>
-
-            {planning.groups.length === 0 ? (
-              <p className="text-xs text-gray-400">Geen groepen</p>
-            ) : (
-              <div className="space-y-2">
-                {planning.groups.map((group) => {
-                  const slotLabel = getGroupSlotLabel(group.id);
-                  const memberNames = group.memberEnrollmentIds
-                    .map((id) => enrollmentMap.get(id)?.studentName ?? "?")
-                    .join(", ");
-                  const groupAssignment = planning.assignments.find(
-                    (a) => a.groupId === group.id
-                  );
-                  const isAutoMerged = groupAssignment?.isAutoMerged ?? false;
-                  const isLocked = groupAssignment?.isLocked ?? false;
-                  const canOfferDefinitively = groupAssignment?.status === "Proposed";
-
-                  return (
-                    <div
-                      key={group.id}
-                      className={`border rounded-lg p-3 ${
-                        isLocked
-                          ? "border-tennis-green bg-green-50/50"
-                          : isAutoMerged
-                            ? "border-blue-200 bg-blue-50/30"
-                            : "border-gray-200"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-[10px] font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded">
-                          {group.name}
-                        </span>
-                        <div className="flex items-center gap-1.5">
-                          {isLocked && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-tennis-green shadow-sm">
-                              <Lock size={10} />
-                              {t("locked")}
-                            </span>
-                          )}
-                          <span className={`text-[10px] ${isAutoMerged ? "text-blue-500 italic" : "text-gray-400"}`}>
-                            {isAutoMerged ? t("autoGrouped") : t("preFormed")}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="text-[10px] text-gray-600">
-                        {memberNames}
-                      </div>
-                      {slotLabel && (
-                        <div className="text-[10px] text-gray-400 mt-1.5 flex items-center gap-1">
-                          <Check size={12} className="text-green-500" />
-                          {slotLabel}
-                        </div>
-                      )}
-                      {isLocked && (
-                        <div className="mt-1.5 flex items-center gap-1 text-[10px] font-medium text-tennis-green">
-                          <Lock size={11} />
-                          {t("lockedKeepsOnRegenerate")}
-                        </div>
-                      )}
-                      {!readOnly && canOfferDefinitively && groupAssignment && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setOfferTarget({ id: groupAssignment.id, name: memberNames })
-                          }
-                          disabled={sendConfirmationMutation.isPending}
-                          className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-md bg-tennis-green px-2 py-1.5 text-[11px] font-semibold text-white hover:bg-tennis-green/90 disabled:opacity-50"
-                        >
-                          <Mail size={12} />
-                          {t("offerDefinitively")}
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
           {/* Capacity per slot — grouped by day */}
           <div className="p-4">
             <h3 className="text-sm font-semibold text-gray-900 mb-3">
@@ -1539,31 +1441,6 @@ export default function PlanningPage({
         />
       )}
 
-      <AlertDialog
-        open={offerTarget !== null}
-        onOpenChange={(open) => !open && setOfferTarget(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t("offerConfirmTitle")}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("offerConfirmBody", { name: offerTarget?.name ?? "" })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t("offerConfirmCancel")}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (offerTarget) sendConfirmationMutation.mutate(offerTarget.id);
-                setOfferTarget(null);
-              }}
-              className="bg-tennis-green hover:bg-tennis-green/90"
-            >
-              {t("offerConfirmButton")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
