@@ -47,6 +47,7 @@ import type {
   PlanningEnrollmentDto,
   PlanningAssignmentDto,
   PlanningGroupDto,
+  PlanningTimeSlotDto,
 } from "@/lib/api/planning";
 import { getLessonSeriesById, deleteWeekSlot } from "@/lib/api/lessonSeries";
 import { getTrainers } from "@/lib/api/trainers";
@@ -63,12 +64,45 @@ import {
   type CalendarSlot,
 } from "@/components/calendar/calendar-grid";
 import { getInitials, getAvatarColor } from "@/lib/planning-avatars";
+import { collapseParallelPrefs, MIXED_PREF } from "@/lib/preferences";
 import { TimeslotDetailDialog } from "./_components/timeslot-detail-dialog";
 import { isHeadTrainerViewer } from "@/lib/auth";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const DAY_NAMES_SHORT = ["Ma", "Di", "Wo", "Do", "Vr", "Za", "Zo"];
+
+// Parallelle banen op hetzelfde uur delen normaal dezelfde voorkeur — toon één
+// badge per uur (dayOfWeek|startTime|endTime) i.p.v. één per baan. Verschillen de
+// banen tóch (legacy-data), dan wordt de badge 'mixed' zodat het conflict niet
+// stilzwijgend verborgen wordt.
+function collapsedPreferences(
+  preferences: Record<string, string>,
+  timeSlots: PlanningTimeSlotDto[]
+): { key: string; dayOfWeek: number; startTime: string; pref: string }[] {
+  const byKey = new Map<
+    string,
+    { key: string; dayOfWeek: number; startTime: string; prefs: string[] }
+  >();
+  for (const [slotId, pref] of Object.entries(preferences)) {
+    const slot = timeSlots.find((s) => s.id === slotId);
+    if (!slot) continue;
+    const key = `${slot.dayOfWeek}|${slot.startTime}|${slot.endTime}`;
+    const group = byKey.get(key);
+    if (group) {
+      group.prefs.push(pref);
+    } else {
+      byKey.set(key, { key, dayOfWeek: slot.dayOfWeek, startTime: slot.startTime, prefs: [pref] });
+    }
+  }
+  return Array.from(byKey.values()).map(({ key, dayOfWeek, startTime, prefs }) => ({
+    key,
+    dayOfWeek,
+    startTime,
+    // Elke groep heeft ≥1 pref, dus nooit null.
+    pref: collapseParallelPrefs(prefs) ?? MIXED_PREF,
+  }));
+}
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 
@@ -956,26 +990,37 @@ export default function PlanningPage({
                       {/* Leader's preferences */}
                       {leader && Object.keys(leader.preferences).length > 0 && (
                         <div className="flex flex-wrap gap-1 mb-2">
-                          {Object.entries(leader.preferences).map(([slotId, pref]) => {
-                            const slot = planning.timeSlots.find((s) => s.id === slotId);
-                            if (!slot) return null;
-                            const isAvailable = pref === "Available" || pref === "Preferred";
-                            return (
-                              <span
-                                key={slotId}
-                                className={`text-[10px] px-1.5 py-0.5 rounded ${
-                                  pref === "Preferred"
-                                    ? "bg-green-100 text-green-700"
-                                    : pref === "Available"
-                                      ? "bg-blue-100 text-blue-700"
-                                      : "bg-gray-100 text-gray-400"
-                                }`}
-                              >
-                                {DAY_NAMES_SHORT[slot.dayOfWeek]} {slot.startTime.replace(":00", "")}{" "}
-                                {isAvailable ? (pref === "Preferred" ? "★" : "✓") : "✕"}
-                              </span>
-                            );
-                          })}
+                          {collapsedPreferences(leader.preferences, planning.timeSlots).map(
+                            ({ key, dayOfWeek, startTime, pref }) => {
+                              const isMixed = pref === MIXED_PREF;
+                              const isAvailable =
+                                pref === "Available" || pref === "Preferred";
+                              return (
+                                <span
+                                  key={key}
+                                  title={isMixed ? t("mixedPreference") : undefined}
+                                  className={`text-[10px] px-1.5 py-0.5 rounded ${
+                                    isMixed
+                                      ? "bg-amber-100 text-amber-700"
+                                      : pref === "Preferred"
+                                        ? "bg-green-100 text-green-700"
+                                        : pref === "Available"
+                                          ? "bg-blue-100 text-blue-700"
+                                          : "bg-gray-100 text-gray-400"
+                                  }`}
+                                >
+                                  {DAY_NAMES_SHORT[dayOfWeek]} {startTime.replace(":00", "")}{" "}
+                                  {isMixed
+                                    ? "~"
+                                    : isAvailable
+                                      ? pref === "Preferred"
+                                        ? "★"
+                                        : "✓"
+                                      : "✕"}
+                                </span>
+                              );
+                            }
+                          )}
                         </div>
                       )}
 
@@ -1124,24 +1169,33 @@ export default function PlanningPage({
                       {/* Preference badges */}
                       {Object.keys(enrollment.preferences).length > 0 && (
                         <div className="flex flex-wrap gap-1">
-                          {Object.entries(enrollment.preferences).map(
-                            ([slotId, pref]) => {
-                              const slot = planning.timeSlots.find((s) => s.id === slotId);
-                              if (!slot) return null;
-                              const isAvailable = pref === "Available" || pref === "Preferred";
+                          {collapsedPreferences(enrollment.preferences, planning.timeSlots).map(
+                            ({ key, dayOfWeek, startTime, pref }) => {
+                              const isMixed = pref === MIXED_PREF;
+                              const isAvailable =
+                                pref === "Available" || pref === "Preferred";
                               return (
                                 <span
-                                  key={slotId}
+                                  key={key}
+                                  title={isMixed ? t("mixedPreference") : undefined}
                                   className={`text-[10px] px-1.5 py-0.5 rounded ${
-                                    pref === "Preferred"
-                                      ? "bg-green-100 text-green-700"
-                                      : pref === "Available"
-                                        ? "bg-blue-100 text-blue-700"
-                                        : "bg-gray-100 text-gray-400"
+                                    isMixed
+                                      ? "bg-amber-100 text-amber-700"
+                                      : pref === "Preferred"
+                                        ? "bg-green-100 text-green-700"
+                                        : pref === "Available"
+                                          ? "bg-blue-100 text-blue-700"
+                                          : "bg-gray-100 text-gray-400"
                                   }`}
                                 >
-                                  {DAY_NAMES_SHORT[slot.dayOfWeek]} {slot.startTime.replace(":00", "")}{" "}
-                                  {isAvailable ? (pref === "Preferred" ? "★" : "✓") : "✕"}
+                                  {DAY_NAMES_SHORT[dayOfWeek]} {startTime.replace(":00", "")}{" "}
+                                  {isMixed
+                                    ? "~"
+                                    : isAvailable
+                                      ? pref === "Preferred"
+                                        ? "★"
+                                        : "✓"
+                                      : "✕"}
                                 </span>
                               );
                             }

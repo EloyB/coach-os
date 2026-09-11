@@ -16,6 +16,7 @@ import { getEnrollmentsWithPreferences } from "@/lib/api/enrollments";
 import type { LessonSeriesEnrollmentDto } from "@/lib/api/enrollments";
 import { getLessonSeriePrices } from "@/lib/api/lessonSeriePrices";
 import { getPublicTimeSlots } from "@/lib/api/timeSlots";
+import { collapseParallelPrefs, MIXED_PREF } from "@/lib/preferences";
 import { canEditEnrollment, isHeadTrainerViewer } from "@/lib/auth";
 import type { TimeSlotDto } from "@/lib/api/timeSlots";
 
@@ -370,13 +371,31 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 
 // ─── Availability grid (read-only) ──────────────────────────────────────────────
 
-function PrefDot({ pref, title }: { pref: number | undefined; title?: string }) {
+function PrefDot({
+  pref,
+  title,
+}: {
+  pref: number | typeof MIXED_PREF | null | undefined;
+  title?: string;
+}) {
+  // Parallelle banen zijn het onderling oneens (bv. legacy-data) — toon een
+  // aparte 'gemengd'-stip i.p.v. willekeurig de eerste waarde.
+  if (pref === MIXED_PREF)
+    return <span title={title} className="inline-block h-3 w-3 rounded-full bg-amber-400" />;
   if (pref === PREF_PREFERRED)
     return <span title={title} className="inline-block h-3 w-3 rounded-full bg-green-500" />;
   if (pref === PREF_AVAILABLE)
     return <span title={title} className="inline-block h-3 w-3 rounded-full border-2 border-blue-500" />;
-  if (pref === PREF_UNAVAILABLE) return <X size={13} className="text-gray-400" />;
+  if (pref === PREF_UNAVAILABLE) return <X size={13} className="text-gray-400" aria-label={title} />;
   return <span className="text-gray-300">–</span>;
+}
+
+// Korte NL-omschrijving van een voorkeur, voor de per-baan tooltip.
+function prefLabel(pref: number | undefined, t: (k: string) => string): string {
+  if (pref === PREF_PREFERRED) return t("prefPreferred");
+  if (pref === PREF_AVAILABLE) return t("prefAvailable");
+  if (pref === PREF_UNAVAILABLE) return t("prefUnavailable");
+  return "—";
 }
 
 function AvailabilityGrid({
@@ -437,19 +456,23 @@ function AvailabilityGrid({
                 </td>
                 {days.map((d) => {
                   const slots = cells.get(`${range}|${d}`) ?? [];
+                  // Parallelle banen op hetzelfde uur delen normaal dezelfde
+                  // voorkeur → één bolletje. Verschillen ze (legacy-data), dan
+                  // toont de collapse 'mixed'; de per-baan detail staat in de tooltip.
                   return (
                     <td key={d} className="px-2 py-3.5 text-center">
                       {slots.length === 0 ? (
                         <span className="text-gray-200">·</span>
                       ) : (
-                        <span className="inline-flex items-center justify-center gap-1">
-                          {slots.map((s) => (
-                            <PrefDot
-                              key={s.id}
-                              pref={prefMap.get(s.id)}
-                              title={s.courtName}
-                            />
-                          ))}
+                        <span className="inline-flex items-center justify-center">
+                          <PrefDot
+                            pref={collapseParallelPrefs(
+                              slots.map((s) => prefMap.get(s.id))
+                            )}
+                            title={slots
+                              .map((s) => `${s.courtName}: ${prefLabel(prefMap.get(s.id), t)}`)
+                              .join(" · ")}
+                          />
                         </span>
                       )}
                     </td>
@@ -474,6 +497,10 @@ function AvailabilityGrid({
         <span className="flex items-center gap-1.5">
           <X size={13} className="text-gray-400" />
           {t("prefUnavailable")}
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-3 w-3 rounded-full bg-amber-400" />
+          {t("prefMixed")}
         </span>
       </div>
     </div>

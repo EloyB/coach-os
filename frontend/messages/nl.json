@@ -308,7 +308,8 @@
     "loading": "Laden…",
     "close": "Sluiten",
     "edit": "Aanpassen",
-    "unknown": "—"
+    "unknown": "—",
+    "prefMixed": "Gemengd"
   },
   "formBuilder": {
     "title": "Inschrijfformulier",
@@ -479,7 +480,8 @@
     "noOtherSlotAvailable": "Geen ander tijdslot met plaats",
     "cancel": "Annuleren",
     "nobodyAssigned": "Nog niemand toegewezen",
-    "confirmDisabledUnassigned": "{count, plural, one {Nog # persoon niet toegewezen — wijs iedereen toe om te kunnen bevestigen.} other {Nog # personen niet toegewezen — wijs iedereen toe om te kunnen bevestigen.}}"
+    "confirmDisabledUnassigned": "{count, plural, one {Nog # persoon niet toegewezen — wijs iedereen toe om te kunnen bevestigen.} other {Nog # personen niet toegewezen — wijs iedereen toe om te kunnen bevestigen.}}",
+    "mixedPreference": "Gemengd — verschilt per baan"
   },
   "confirmation": {
     "pageTitle": "Bevestiging",
