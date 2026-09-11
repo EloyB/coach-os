@@ -318,6 +318,38 @@ export default function PlanningPage({
     return getSlotNames(slotId).length;
   }
 
+  // Multi-slot: slots waar deze persoon/groep nog extra bij kan (niet het huidige
+  // of een reeds toegewezen slot, en met genoeg vrije plaats).
+  function eligibleExtraSlots(assignment: PlanningAssignmentDto) {
+    if (!planning) return [];
+    const size = assignment.groupId
+      ? groupMap.get(assignment.groupId)?.memberEnrollmentIds.length ?? 1
+      : 1;
+    const takenSlotIds = new Set(
+      planning.assignments
+        .filter((a) =>
+          assignment.groupId
+            ? a.groupId === assignment.groupId
+            : a.enrollmentId != null && a.enrollmentId === assignment.enrollmentId
+        )
+        .map((a) => a.timeSlotId)
+    );
+    return planning.timeSlots
+      .filter((s) => !takenSlotIds.has(s.id))
+      .map((s) => ({
+        id: s.id,
+        dayOfWeek: s.dayOfWeek,
+        startTime: s.startTime,
+        endTime: s.endTime,
+        courtName: s.courtName,
+        remaining: s.maxCapacity - getSlotCurrentCount(s.id),
+      }))
+      .filter((s) => s.remaining >= size)
+      .sort(
+        (a, b) => a.dayOfWeek - b.dayOfWeek || a.startTime.localeCompare(b.startTime)
+      );
+  }
+
   function slotHasProposed(slotId: string): boolean {
     const assignments = assignmentsBySlot.get(slotId) ?? [];
     return assignments.some((a) => a.status === "Proposed");
@@ -1279,6 +1311,11 @@ export default function PlanningPage({
         }
         onOffer={(assignmentId) => sendConfirmationMutation.mutate(assignmentId)}
         onUnassign={(assignmentId) => unassignMutation.mutate(assignmentId)}
+        eligibleSlotsFor={eligibleExtraSlots}
+        onAssignToSlot={(target, slotId) =>
+          assignMutation.mutate({ ...target, slotId })
+        }
+        isAssignPending={assignMutation.isPending}
         isLockPending={lockMutation.isPending}
         isOfferPending={sendConfirmationMutation.isPending}
         isUnassignPending={unassignMutation.isPending}

@@ -473,7 +473,11 @@
     "occupied": "{count}/{max} bezet",
     "slotDialogEmpty": "Nog niemand toegewezen.",
     "close": "Sluiten",
-    "goBack": "Later verder"
+    "goBack": "Later verder",
+    "addExtraSlot": "Extra tijdslot",
+    "chooseExtraSlot": "Kies een extra tijdslot",
+    "noOtherSlotAvailable": "Geen ander tijdslot met plaats",
+    "cancel": "Annuleren"
   },
   "confirmation": {
     "pageTitle": "Bevestiging",
