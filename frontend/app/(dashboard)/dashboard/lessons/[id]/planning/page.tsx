@@ -1269,59 +1269,6 @@ export default function PlanningPage({
                               ))}
                             </div>
                           </div>
-                          {!readOnly && canOffer && (
-                            <div className="flex shrink-0 items-center gap-0.5">
-                              <button
-                                type="button"
-                                title={
-                                  allLocked
-                                    ? t("unlock")
-                                    : unit.type === "group"
-                                      ? t("lockGroup")
-                                      : t("lock")
-                                }
-                                aria-label={allLocked ? t("unlock") : t("lock")}
-                                onClick={() => {
-                                  if (allLocked) {
-                                    proposed
-                                      .filter((a) => a.isLocked)
-                                      .forEach((a) =>
-                                        lockMutation.mutate({ assignmentId: a.id, isLocked: true })
-                                      );
-                                  } else {
-                                    proposed
-                                      .filter((a) => !a.isLocked)
-                                      .forEach((a) =>
-                                        lockMutation.mutate({ assignmentId: a.id, isLocked: false })
-                                      );
-                                  }
-                                }}
-                                disabled={lockMutation.isPending}
-                                className={`inline-flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md transition-colors disabled:opacity-50 ${
-                                  allLocked
-                                    ? "text-tennis-green hover:bg-tennis-green/10"
-                                    : "text-gray-400 hover:bg-tennis-green/5 hover:text-tennis-green"
-                                }`}
-                              >
-                                {allLocked ? <Unlock size={14} /> : <Lock size={14} />}
-                              </button>
-                              <button
-                                type="button"
-                                title={t("offerDefinitively")}
-                                aria-label={t("offerDefinitively")}
-                                onClick={() =>
-                                  setOfferTarget({
-                                    ids: proposed.map((a) => a.id),
-                                    name: unit.name,
-                                  })
-                                }
-                                disabled={sendConfirmationMutation.isPending}
-                                className="inline-flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-tennis-green transition-colors hover:bg-tennis-green/10 disabled:opacity-50"
-                              >
-                                <Mail size={14} />
-                              </button>
-                            </div>
-                          )}
                         </div>
 
                         {!readOnly && (
@@ -1367,14 +1314,69 @@ export default function PlanningPage({
                                 </button>
                               </div>
                             ) : (
-                              <button
-                                type="button"
-                                onClick={() => setAddingSlotForKey(unit.key)}
-                                className="inline-flex cursor-pointer items-center gap-1 text-[11px] font-medium text-tennis-green hover:underline"
-                              >
-                                <Plus size={12} />
-                                {t("addExtraSlot")}
-                              </button>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => setAddingSlotForKey(unit.key)}
+                                  className="inline-flex cursor-pointer items-center gap-1 text-[11px] font-medium text-tennis-green hover:underline"
+                                >
+                                  <Plus size={12} />
+                                  {t("addExtraSlot")}
+                                </button>
+                                {canOffer && (
+                                  <div className="ml-auto flex items-center gap-0.5">
+                                    <button
+                                      type="button"
+                                      title={
+                                        allLocked
+                                          ? t("unlock")
+                                          : unit.type === "group"
+                                            ? t("lockGroup")
+                                            : t("lock")
+                                      }
+                                      aria-label={allLocked ? t("unlock") : t("lock")}
+                                      onClick={() => {
+                                        if (allLocked) {
+                                          proposed
+                                            .filter((a) => a.isLocked)
+                                            .forEach((a) =>
+                                              lockMutation.mutate({ assignmentId: a.id, isLocked: true })
+                                            );
+                                        } else {
+                                          proposed
+                                            .filter((a) => !a.isLocked)
+                                            .forEach((a) =>
+                                              lockMutation.mutate({ assignmentId: a.id, isLocked: false })
+                                            );
+                                        }
+                                      }}
+                                      disabled={lockMutation.isPending}
+                                      className={`inline-flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md transition-colors disabled:opacity-50 ${
+                                        allLocked
+                                          ? "text-tennis-green hover:bg-tennis-green/10"
+                                          : "text-gray-400 hover:bg-tennis-green/5 hover:text-tennis-green"
+                                      }`}
+                                    >
+                                      {allLocked ? <Unlock size={14} /> : <Lock size={14} />}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      title={t("offerDefinitively")}
+                                      aria-label={t("offerDefinitively")}
+                                      onClick={() =>
+                                        setOfferTarget({
+                                          ids: proposed.map((a) => a.id),
+                                          name: unit.name,
+                                        })
+                                      }
+                                      disabled={sendConfirmationMutation.isPending}
+                                      className="inline-flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-tennis-green transition-colors hover:bg-tennis-green/10 disabled:opacity-50"
+                                    >
+                                      <Mail size={14} />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
                             )}
                           </div>
                         )}
