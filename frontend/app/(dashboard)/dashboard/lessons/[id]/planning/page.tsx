@@ -12,6 +12,7 @@ import {
   Users,
   Mail,
   Lock,
+  Unlock,
   Plus,
   ChevronDown,
 } from "lucide-react";
@@ -174,6 +175,9 @@ export default function PlanningPage({
   // Toegewezen-sectie: default ingeklapt; per eenheid een extra-slot-kiezer.
   const [showAssigned, setShowAssigned] = useState(false);
   const [addingSlotForKey, setAddingSlotForKey] = useState<string | null>(null);
+  // Bevestiging vóór 'Definitief aanbieden' vanuit de Toegewezen-sectie
+  // (verstuurt meteen e-mail-aanbod(en) voor alle voorstellen van de eenheid).
+  const [offerTarget, setOfferTarget] = useState<{ ids: string[]; name: string } | null>(null);
 
   // Slot detail dialog (click to open)
   const [openSlotId, setOpenSlotId] = useState<string | null>(null);
@@ -331,6 +335,7 @@ export default function PlanningPage({
       name: string;
       target: { enrollmentId?: string; groupId?: string };
       rep: PlanningAssignmentDto;
+      assignments: PlanningAssignmentDto[];
       slots: { id: string; label: string }[];
     };
     const byKey = new Map<string, Unit>();
@@ -360,8 +365,13 @@ export default function PlanningPage({
       const existing = byKey.get(key);
       if (existing) {
         existing.slots.push({ id: a.timeSlotId, label });
+        existing.assignments.push(a);
       } else {
-        byKey.set(key, { key, type, name, target, rep: a, slots: [{ id: a.timeSlotId, label }] });
+        byKey.set(key, {
+          key, type, name, target, rep: a,
+          assignments: [a],
+          slots: [{ id: a.timeSlotId, label }],
+        });
       }
     }
     return [...byKey.values()].sort((a, b) => a.name.localeCompare(b.name));
@@ -1227,6 +1237,13 @@ export default function PlanningPage({
                   assignedUnits.map((unit) => {
                     const options = eligibleExtraSlots(unit.rep);
                     const isOpen = addingSlotForKey === unit.key;
+                    // Lock/aanbieden werken op alle nog-voorgestelde toewijzingen
+                    // van deze eenheid (kan meerdere slots zijn bij multi-slot).
+                    const proposed = unit.assignments.filter(
+                      (a) => a.status === "Proposed"
+                    );
+                    const canOffer = proposed.length > 0;
+                    const allLocked = canOffer && proposed.every((a) => a.isLocked);
                     return (
                       <div key={unit.key} className="rounded-lg border border-gray-200 p-2.5">
                         <div className="flex items-center gap-2">
@@ -1252,6 +1269,59 @@ export default function PlanningPage({
                               ))}
                             </div>
                           </div>
+                          {!readOnly && canOffer && (
+                            <div className="flex shrink-0 items-center gap-0.5">
+                              <button
+                                type="button"
+                                title={
+                                  allLocked
+                                    ? t("unlock")
+                                    : unit.type === "group"
+                                      ? t("lockGroup")
+                                      : t("lock")
+                                }
+                                aria-label={allLocked ? t("unlock") : t("lock")}
+                                onClick={() => {
+                                  if (allLocked) {
+                                    proposed
+                                      .filter((a) => a.isLocked)
+                                      .forEach((a) =>
+                                        lockMutation.mutate({ assignmentId: a.id, isLocked: true })
+                                      );
+                                  } else {
+                                    proposed
+                                      .filter((a) => !a.isLocked)
+                                      .forEach((a) =>
+                                        lockMutation.mutate({ assignmentId: a.id, isLocked: false })
+                                      );
+                                  }
+                                }}
+                                disabled={lockMutation.isPending}
+                                className={`inline-flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md transition-colors disabled:opacity-50 ${
+                                  allLocked
+                                    ? "text-tennis-green hover:bg-tennis-green/10"
+                                    : "text-gray-400 hover:bg-tennis-green/5 hover:text-tennis-green"
+                                }`}
+                              >
+                                {allLocked ? <Unlock size={14} /> : <Lock size={14} />}
+                              </button>
+                              <button
+                                type="button"
+                                title={t("offerDefinitively")}
+                                aria-label={t("offerDefinitively")}
+                                onClick={() =>
+                                  setOfferTarget({
+                                    ids: proposed.map((a) => a.id),
+                                    name: unit.name,
+                                  })
+                                }
+                                disabled={sendConfirmationMutation.isPending}
+                                className="inline-flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-tennis-green transition-colors hover:bg-tennis-green/10 disabled:opacity-50"
+                              >
+                                <Mail size={14} />
+                              </button>
+                            </div>
+                          )}
                         </div>
 
                         {!readOnly && (
@@ -1451,6 +1521,35 @@ export default function PlanningPage({
           }}
         />
       )}
+
+      {/* Bevestiging vóór definitief aanbieden vanuit de Toegewezen-sectie */}
+      <AlertDialog
+        open={offerTarget !== null}
+        onOpenChange={(open) => !open && setOfferTarget(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("offerConfirmTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("offerConfirmBody", { name: offerTarget?.name ?? "" })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("offerConfirmCancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                offerTarget?.ids.forEach((assignmentId) =>
+                  sendConfirmationMutation.mutate(assignmentId)
+                );
+                setOfferTarget(null);
+              }}
+              className="bg-tennis-green hover:bg-tennis-green/90"
+            >
+              {t("offerConfirmButton")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
     </div>
   );
