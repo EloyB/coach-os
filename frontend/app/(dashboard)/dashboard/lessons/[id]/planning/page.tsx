@@ -488,7 +488,10 @@ export default function PlanningPage({
   // ─── Render ─────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex flex-col h-full -mx-8 -my-8">
+    // Breekt uit de layout-padding (main = px-7 py-6 / lg:pb-6) en vult de volle
+    // hoogte: h = 100% van de content-box + de 3rem verticale padding, zodat de
+    // agenda + zijkolom tot onderaan lopen (geen lege balk).
+    <div className="flex flex-col h-[calc(100%_+_3rem)] -mx-7 -my-6">
       {/* Top bar */}
       <div className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-4">
