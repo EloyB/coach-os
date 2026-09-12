@@ -1114,12 +1114,14 @@ export default function PlanningPage({
                     return count >= slot.maxCapacity;
                   });
                   const noSlotsConfigured = planning.timeSlots.length === 0;
+                  // Toon enkel een statusregel bij een probleem; is de persoon
+                  // gewoon plaatsbaar (heeft opties met plaats), dan geen ruis.
                   const reasonText = noSlotsConfigured
                     ? t("noSlotsAvailable")
                     : allAvailableAreFull
                       ? t("noSlotCapacity")
                       : hasPreferred
-                        ? t("multipleOptions")
+                        ? null
                         : t("noFittingSlot");
 
                   return (
@@ -1149,15 +1151,11 @@ export default function PlanningPage({
                           >
                             {enrollment.studentName}
                           </button>
-                          <div
-                            className={`text-[10px] ${
-                              hasPreferred && !allAvailableAreFull
-                                ? "text-amber-600"
-                                : "text-red-600"
-                            }`}
-                          >
-                            {reasonText}
-                          </div>
+                          {reasonText && (
+                            <div className="text-[10px] text-red-600">
+                              {reasonText}
+                            </div>
+                          )}
                         </div>
                         {!readOnly && (() => {
                           const active =
