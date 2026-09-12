@@ -9,7 +9,6 @@ import {
   Lock,
   Unlock,
   X,
-  Plus,
   UserMinus,
   Trash2,
   Pencil,
@@ -69,28 +68,11 @@ interface TimeslotDetailDialogProps {
   isDeletePending?: boolean;
   /** Opent de aanpas-dialog voor dit weekslot. */
   onEditSlot?: () => void;
-  /** Slots waar deze persoon/groep nog extra aan toegevoegd kan worden (multi-slot). */
-  eligibleSlotsFor?: (assignment: PlanningAssignmentDto) => ExtraSlotOption[];
-  /** Wijst dezelfde persoon/groep aan een extra tijdslot toe. */
-  onAssignToSlot?: (
-    target: { enrollmentId?: string; groupId?: string },
-    slotId: string
-  ) => void;
-  isAssignPending?: boolean;
   /** Klik op een persoon → open diens inschrijving-detail. */
   onOpenPerson?: (enrollmentId: string) => void;
   /** Klik op een groepsnaam → open de groep-detail. */
   onOpenGroup?: (groupId: string) => void;
 }
-
-export type ExtraSlotOption = {
-  id: string;
-  dayOfWeek: number;
-  startTime: string;
-  endTime: string;
-  courtName: string | null;
-  remaining: number;
-};
 
 export function TimeslotDetailDialog({
   readOnly = false,
@@ -110,17 +92,12 @@ export function TimeslotDetailDialog({
   onDeleteSlot,
   isDeletePending = false,
   onEditSlot,
-  eligibleSlotsFor,
-  onAssignToSlot,
-  isAssignPending = false,
   onOpenPerson,
   onOpenGroup,
 }: TimeslotDetailDialogProps) {
   const t = useTranslations("planning");
   // Bevestiging vóór 'Definitief aanbieden': dit verstuurt meteen een e-mail-aanbod.
   const [offerTarget, setOfferTarget] = useState<{ id: string; name: string } | null>(null);
-  // Welke toewijzing heeft de 'extra tijdslot'-kiezer open.
-  const [addingForAssignmentId, setAddingForAssignmentId] = useState<string | null>(null);
 
   if (!slot) return null;
 
@@ -350,72 +327,6 @@ export function TimeslotDetailDialog({
                     </button>
                   </div>
                 )}
-
-                {/* Extra tijdslot (multi-slot) */}
-                {!readOnly && onAssignToSlot && (() => {
-                  const target = assignment.groupId
-                    ? { groupId: assignment.groupId }
-                    : assignment.enrollmentId
-                      ? { enrollmentId: assignment.enrollmentId }
-                      : null;
-                  if (!target) return null;
-                  const options = eligibleSlotsFor?.(assignment) ?? [];
-                  const isOpen = addingForAssignmentId === assignment.id;
-                  return (
-                    <div className="mt-2 border-t border-gray-100 pt-2">
-                      {isOpen ? (
-                        <div className="space-y-1.5">
-                          <p className="text-[11px] font-medium text-gray-500">
-                            {t("chooseExtraSlot")}
-                          </p>
-                          {options.length === 0 ? (
-                            <p className="text-[11px] text-gray-400">
-                              {t("noOtherSlotAvailable")}
-                            </p>
-                          ) : (
-                            <div className="space-y-1">
-                              {options.map((s) => (
-                                <button
-                                  key={s.id}
-                                  type="button"
-                                  disabled={isAssignPending}
-                                  onClick={() => {
-                                    onAssignToSlot(target, s.id);
-                                    setAddingForAssignmentId(null);
-                                  }}
-                                  className="w-full cursor-pointer rounded-md border border-gray-200 px-2 py-1.5 text-left text-[11px] text-gray-700 transition-colors hover:border-tennis-green hover:bg-tennis-green/5 disabled:opacity-50"
-                                >
-                                  <span className="font-medium">
-                                    {DAY_NAMES_FULL[s.dayOfWeek]} {s.startTime}–{s.endTime}
-                                  </span>
-                                  {s.courtName && (
-                                    <span className="ml-1 text-gray-400">· {s.courtName}</span>
-                                  )}
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => setAddingForAssignmentId(null)}
-                            className="cursor-pointer text-[11px] text-gray-400 hover:text-gray-600"
-                          >
-                            {t("cancel")}
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => setAddingForAssignmentId(assignment.id)}
-                          className="inline-flex cursor-pointer items-center gap-1 text-[11px] font-medium text-tennis-green hover:underline"
-                        >
-                          <Plus size={12} />
-                          {t("addExtraSlot")}
-                        </button>
-                      )}
-                    </div>
-                  );
-                })()}
               </div>
             );
           })}

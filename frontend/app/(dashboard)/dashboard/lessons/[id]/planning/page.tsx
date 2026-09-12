@@ -1396,11 +1396,6 @@ export default function PlanningPage({
         }
         onOffer={(assignmentId) => sendConfirmationMutation.mutate(assignmentId)}
         onUnassign={(assignmentId) => unassignMutation.mutate(assignmentId)}
-        eligibleSlotsFor={eligibleExtraSlots}
-        onAssignToSlot={(target, slotId) =>
-          assignMutation.mutate({ ...target, slotId })
-        }
-        isAssignPending={assignMutation.isPending}
         isLockPending={lockMutation.isPending}
         isOfferPending={sendConfirmationMutation.isPending}
         isUnassignPending={unassignMutation.isPending}
