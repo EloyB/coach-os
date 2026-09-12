@@ -273,34 +273,39 @@ export function TimeslotDetailDialog({
                   })}
                 </div>
 
-                {/* Actions */}
+                {/* Actions — compacte icoon-balk, tooltip bij hover */}
                 {!readOnly && (
-                  <div className="mt-3 flex items-center gap-2 border-t border-gray-100 pt-3">
+                  <div className="mt-3 flex items-center justify-end gap-1 border-t border-gray-100 pt-3">
                     {canOffer && (
                       <>
                         <button
                           type="button"
+                          title={
+                            assignment.isLocked
+                              ? t("unlock")
+                              : assignment.groupId
+                                ? t("lockGroup")
+                                : t("lock")
+                          }
+                          aria-label={assignment.isLocked ? t("unlock") : t("lock")}
                           onClick={() => onLock(assignment.id, assignment.isLocked)}
                           disabled={isLockPending}
-                          className={`inline-flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold transition-colors disabled:opacity-50 ${
+                          className={`inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md transition-colors disabled:opacity-50 ${
                             assignment.isLocked
-                              ? "bg-green-100 text-green-700 hover:bg-green-200"
-                              : "border border-gray-200 text-tennis-green hover:bg-tennis-green/5"
+                              ? "text-tennis-green hover:bg-tennis-green/10"
+                              : "text-gray-400 hover:bg-tennis-green/5 hover:text-tennis-green"
                           }`}
                         >
                           {assignment.isLocked ? (
-                            <Unlock size={12} />
+                            <Unlock size={15} />
                           ) : (
-                            <Lock size={12} />
+                            <Lock size={15} />
                           )}
-                          {assignment.isLocked
-                            ? t("unlock")
-                            : assignment.groupId
-                              ? t("lockGroup")
-                              : t("lock")}
                         </button>
                         <button
                           type="button"
+                          title={t("offerDefinitively")}
+                          aria-label={t("offerDefinitively")}
                           onClick={() =>
                             setOfferTarget({
                               id: assignment.id,
@@ -308,10 +313,9 @@ export function TimeslotDetailDialog({
                             })
                           }
                           disabled={isOfferPending}
-                          className="inline-flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-md bg-tennis-green px-2.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-tennis-green/90 disabled:opacity-50"
+                          className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-tennis-green transition-colors hover:bg-tennis-green/10 disabled:opacity-50"
                         >
-                          <Mail size={12} />
-                          {t("offerDefinitively")}
+                          <Mail size={15} />
                         </button>
                       </>
                     )}
@@ -321,7 +325,7 @@ export function TimeslotDetailDialog({
                       aria-label={t("unassign")}
                       onClick={() => onUnassign(assignment.id)}
                       disabled={isUnassignPending}
-                      className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md border border-gray-200 text-gray-400 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                      className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
                     >
                       <UserMinus size={15} />
                     </button>
