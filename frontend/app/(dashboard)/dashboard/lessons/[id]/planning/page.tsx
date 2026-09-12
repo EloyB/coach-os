@@ -44,9 +44,15 @@ import type {
 } from "@/lib/api/planning";
 import { getLessonSeriesById, deleteWeekSlot } from "@/lib/api/lessonSeries";
 import { getTrainers } from "@/lib/api/trainers";
-import { getLessonSeriesEnrollments } from "@/lib/api/enrollments";
+import {
+  getLessonSeriesEnrollments,
+  updateBasicEnrollment,
+  removeGroupMember,
+} from "@/lib/api/enrollments";
 import type { LessonSeriesEnrollmentDto } from "@/lib/api/enrollments";
 import { EnrollmentDetailDialog } from "../_components/enrollment-detail-dialog";
+import { EditEnrollmentDialog } from "../_components/edit-enrollment-dialog";
+import { toast } from "sonner";
 import {
   HoverCard,
   HoverCardTrigger,
@@ -81,6 +87,7 @@ export default function PlanningPage({
 }) {
   const { id } = use(params);
   const t = useTranslations("planning");
+  const te = useTranslations("enrollmentsTable");
   const router = useRouter();
   const queryClient = useQueryClient();
   // Hoofdtrainer = read-only: enkel de planning raadplegen, geen bewerkacties.
@@ -115,11 +122,64 @@ export default function PlanningPage({
     queryFn: () => getLessonSeriesEnrollments(id),
   });
 
-  // Klik op een persoon/groep → detail-dialog in kijkmodus (geen bewerk-callbacks).
+  // Klik op een persoon/groep → detail-dialog. Bewerken kan van hieruit.
   const [detailTarget, setDetailTarget] = useState<{
     enrollment: LessonSeriesEnrollmentDto;
     groupMembers?: LessonSeriesEnrollmentDto[];
   } | null>(null);
+  // Aanpas-dialog voor één inschrijving (solo of groepslid).
+  const [editingEnrollment, setEditingEnrollment] =
+    useState<LessonSeriesEnrollmentDto | null>(null);
+  // Bevestiging vóór een lid uit de groep te halen.
+  const [memberToRemove, setMemberToRemove] =
+    useState<LessonSeriesEnrollmentDto | null>(null);
+
+  // Lid uit de groep halen (losmaken, of losmaken + inschrijving annuleren).
+  const removeMemberMutation = useMutation({
+    mutationFn: ({
+      member,
+      cancel,
+    }: {
+      member: LessonSeriesEnrollmentDto;
+      cancel: boolean;
+    }) => removeGroupMember(id, member.enrollmentGroupId!, member.id, cancel),
+    onSuccess: (_data, { cancel }) => {
+      toast.success(
+        cancel ? te("removeFromGroupCancelSuccess") : te("removeFromGroupSuccess")
+      );
+      setMemberToRemove(null);
+      queryClient.invalidateQueries({ queryKey: ["enrollments", id] });
+      queryClient.invalidateQueries({ queryKey: ["planning", id] });
+      queryClient.invalidateQueries({ queryKey: ["lessonSeries", id] });
+    },
+    onError: () => toast.error(te("removeFromGroupError")),
+  });
+
+  // Prijsoptie voor de hele groep: bewerk op de leider; backend propageert.
+  const changeGroupPriceMutation = useMutation({
+    mutationFn: ({
+      leader,
+      optionId,
+    }: {
+      leader: LessonSeriesEnrollmentDto;
+      optionId: string | null;
+    }) =>
+      updateBasicEnrollment(id, leader.id, {
+        studentName: leader.studentName,
+        contactEmail: leader.contactEmail,
+        studentEmail: leader.studentEmail,
+        studentPhone: leader.studentPhone,
+        dateOfBirth: leader.dateOfBirth ?? "",
+        isOpenToGrouping: leader.isOpenToGrouping,
+        selectedPriceOptionId: optionId,
+      }),
+    onSuccess: () => {
+      toast.success(te("groupPriceSuccess"));
+      queryClient.invalidateQueries({ queryKey: ["enrollments", id] });
+      queryClient.invalidateQueries({ queryKey: ["lessonSeries", id] });
+    },
+    onError: () => toast.error(te("groupPriceError")),
+  });
 
 
   const generateMutation = useMutation({
@@ -1503,8 +1563,79 @@ export default function PlanningPage({
           enrollment={detailTarget.enrollment}
           seriesId={id}
           groupMembers={detailTarget.groupMembers}
+          onEdit={
+            detailTarget.groupMembers
+              ? undefined
+              : () => {
+                  const e = detailTarget.enrollment;
+                  setDetailTarget(null);
+                  setEditingEnrollment(e);
+                }
+          }
+          onEditMember={
+            detailTarget.groupMembers
+              ? (m) => setEditingEnrollment(m)
+              : undefined
+          }
+          onRemoveMember={
+            detailTarget.groupMembers ? (m) => setMemberToRemove(m) : undefined
+          }
+          onChangeGroupPriceOption={
+            detailTarget.groupMembers
+              ? (optionId) =>
+                  changeGroupPriceMutation.mutate({
+                    leader: detailTarget.enrollment,
+                    optionId,
+                  })
+              : undefined
+          }
         />
       )}
+
+      {editingEnrollment && (
+        <EditEnrollmentDialog
+          enrollment={editingEnrollment}
+          seriesId={id}
+          open
+          onOpenChange={(o) => !o && setEditingEnrollment(null)}
+        />
+      )}
+
+      {/* Lid uit de groep halen — bevestiging (losmaken of ook annuleren) */}
+      <AlertDialog
+        open={memberToRemove !== null}
+        onOpenChange={(o) => !o && setMemberToRemove(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{te("removeFromGroupTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {te("removeFromGroupBody", { name: memberToRemove?.studentName ?? "" })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
+            <AlertDialogCancel>{te("back")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() =>
+                memberToRemove &&
+                removeMemberMutation.mutate({ member: memberToRemove, cancel: true })
+              }
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {te("removeFromGroupCancel")}
+            </AlertDialogAction>
+            <AlertDialogAction
+              onClick={() =>
+                memberToRemove &&
+                removeMemberMutation.mutate({ member: memberToRemove, cancel: false })
+              }
+              className="bg-tennis-green hover:bg-tennis-green/90"
+            >
+              {te("removeFromGroupDetach")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {(addingSlot || editingSlot) && (
         <AddWeekSlotDialog
