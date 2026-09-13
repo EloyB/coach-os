@@ -5,6 +5,7 @@ using CoachOS.Domain.Enums;
 using CoachOS.Domain.Interfaces;
 using CoachOS.Domain.Models;
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using NUnit.Framework;
 
@@ -17,6 +18,7 @@ public class AssignmentServiceTests
     private Mock<IEnrollmentRepository> _enrollmentRepo = null!;
     private Mock<IEnrollmentGroupRepository> _groupRepo = null!;
     private Mock<IScheduleAssignmentRepository> _assignmentRepo = null!;
+    private Mock<IEmailService> _emailService = null!;
     private AssignmentService _service = null!;
 
     private static readonly Guid OrgId = Guid.NewGuid();
@@ -30,12 +32,15 @@ public class AssignmentServiceTests
         _enrollmentRepo = new Mock<IEnrollmentRepository>();
         _groupRepo = new Mock<IEnrollmentGroupRepository>();
         _assignmentRepo = new Mock<IScheduleAssignmentRepository>();
+        _emailService = new Mock<IEmailService>();
 
         _service = new AssignmentService(
             _seriesRepo.Object,
             _enrollmentRepo.Object,
             _groupRepo.Object,
-            _assignmentRepo.Object);
+            _assignmentRepo.Object,
+            _emailService.Object,
+            NullLogger<AssignmentService>.Instance);
     }
 
     // ── UpdateAssignmentAsync ────────────────────────────────────────────────
@@ -55,8 +60,11 @@ public class AssignmentServiceTests
     }
 
     [Test]
-    public async Task UpdateAssignmentAsync_ConfirmedAssignment_ReturnsValidationError()
+    public async Task UpdateAssignmentAsync_ConfirmedAssignment_MovesToNewSlot()
     {
+        // Betaling hangt aan de inschrijving, niet aan het slot: een bevestigde toewijzing
+        // mag de admin daarom nog naar een ander tijdslot verplaatsen.
+        var newSlotId = Guid.NewGuid();
         var assignment = new ScheduleAssignment
         {
             Id = Guid.NewGuid(),
@@ -70,10 +78,10 @@ public class AssignmentServiceTests
             .ReturnsAsync(assignment);
 
         var result = await _service.UpdateAssignmentAsync(
-            SeriesId, assignment.Id, new UpdateAssignmentRequest { WeeklyTemplateEntryId = Guid.NewGuid() }, OrgId);
+            SeriesId, assignment.Id, new UpdateAssignmentRequest { WeeklyTemplateEntryId = newSlotId }, OrgId);
 
-        result.IsSuccess.Should().BeFalse();
-        result.Errors[0].Code.Should().Be("validation");
+        result.IsSuccess.Should().BeTrue();
+        assignment.WeeklyTemplateEntryId.Should().Be(newSlotId);
     }
 
     [Test]
@@ -97,6 +105,84 @@ public class AssignmentServiceTests
 
         result.IsSuccess.Should().BeTrue();
         assignment.WeeklyTemplateEntryId.Should().Be(newSlotId);
+    }
+
+    [Test]
+    public async Task UpdateAssignmentAsync_ConfirmedMoveWithNotify_SendsMovedEmail()
+    {
+        var newSlotId = Guid.NewGuid();
+        var oldSlot = new WeeklyTemplateEntry
+        {
+            Id = SlotId, LessonSerieId = SeriesId, DayOfWeek = 2, MaxStudents = 4,
+        };
+        var newSlot = new WeeklyTemplateEntry
+        {
+            Id = newSlotId, LessonSerieId = SeriesId, DayOfWeek = 3, MaxStudents = 4,
+        };
+        var series = new LessonSerie
+        {
+            Id = SeriesId, OrganizationId = OrgId, Name = "Testreeks",
+            WeeklyTemplate = [oldSlot, newSlot],
+        };
+        var enrollment = new Enrollment
+        {
+            Id = Guid.NewGuid(), LessonSerieId = SeriesId,
+            StudentName = "Bram", ContactEmail = "bram@test.be",
+        };
+        var assignment = new ScheduleAssignment
+        {
+            Id = Guid.NewGuid(), OrganizationId = OrgId, LessonSerieId = SeriesId,
+            WeeklyTemplateEntryId = SlotId, WeeklyTemplateEntry = oldSlot,
+            EnrollmentId = enrollment.Id, Enrollment = enrollment,
+            Status = ScheduleAssignmentStatus.Confirmed,
+        };
+
+        _assignmentRepo.Setup(r => r.GetByIdAsync(assignment.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(assignment);
+        _assignmentRepo.Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ScheduleAssignment>());
+        _seriesRepo.Setup(r => r.GetByIdAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+
+        var result = await _service.UpdateAssignmentAsync(
+            SeriesId, assignment.Id,
+            new UpdateAssignmentRequest { WeeklyTemplateEntryId = newSlotId, NotifyStudent = true },
+            OrgId);
+
+        result.IsSuccess.Should().BeTrue();
+        _emailService.Verify(e => e.SendAssignmentMovedAsync(
+            "bram@test.be", "Bram", "Testreeks",
+            2, It.IsAny<string>(), It.IsAny<string>(),
+            3, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(),
+            It.IsAny<IReadOnlyList<string>?>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task UpdateAssignmentAsync_ConfirmedMoveWithoutNotify_DoesNotSendEmail()
+    {
+        var newSlotId = Guid.NewGuid();
+        var assignment = new ScheduleAssignment
+        {
+            Id = Guid.NewGuid(), OrganizationId = OrgId, LessonSerieId = SeriesId,
+            WeeklyTemplateEntryId = SlotId,
+            WeeklyTemplateEntry = new WeeklyTemplateEntry { Id = SlotId, DayOfWeek = 2 },
+            Status = ScheduleAssignmentStatus.Confirmed,
+        };
+
+        _assignmentRepo.Setup(r => r.GetByIdAsync(assignment.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(assignment);
+
+        var result = await _service.UpdateAssignmentAsync(
+            SeriesId, assignment.Id,
+            new UpdateAssignmentRequest { WeeklyTemplateEntryId = newSlotId, NotifyStudent = false },
+            OrgId);
+
+        result.IsSuccess.Should().BeTrue();
+        _emailService.Verify(e => e.SendAssignmentMovedAsync(
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+            It.IsAny<int>(), It.IsAny<string>(), It.IsAny<string>(),
+            It.IsAny<int>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(),
+            It.IsAny<IReadOnlyList<string>?>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     // ── CreateGroupAsync ─────────────────────────────────────────────────────

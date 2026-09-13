@@ -3,6 +3,7 @@ using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
 using CoachOS.Domain.Interfaces;
 using CoachOS.Domain.Models;
+using Microsoft.Extensions.Logging;
 
 namespace CoachOS.Application.Planning;
 
@@ -10,7 +11,9 @@ public class AssignmentService(
     ILessonSerieRepository lessonSeriesRepo,
     IEnrollmentRepository enrollmentRepo,
     IEnrollmentGroupRepository enrollmentGroupRepo,
-    IScheduleAssignmentRepository scheduleAssignmentRepo) : IAssignmentService
+    IScheduleAssignmentRepository scheduleAssignmentRepo,
+    IEmailService emailService,
+    ILogger<AssignmentService> logger) : IAssignmentService
 {
     public async Task<Result<bool>> CreateAssignmentAsync(
         Guid seriesId, CreateAssignmentRequest request,
@@ -98,10 +101,9 @@ public class AssignmentService(
         if (assignment is null || assignment.LessonSerieId != seriesId)
             return Result<bool>.Fail(new Error(ErrorCodes.NotFound, "Toewijzing niet gevonden."));
 
-        if (assignment.Status == ScheduleAssignmentStatus.Confirmed)
-            return Result<bool>.Fail(
-                new Error(ErrorCodes.Validation, "Bevestigde toewijzingen kunnen niet verplaatst worden."));
-
+        // Een bevestigde toewijzing mag de admin nog naar een ander tijdslot verplaatsen: de
+        // betaling hangt aan de inschrijving (niet aan het slot) en blijft dus geldig. Verwijderen
+        // van een bevestigde toewijzing blijft wél geblokkeerd (zie DeleteAssignmentAsync).
         var capacityError = await EnsureSlotCapacityAsync(
             seriesId, organizationId, request.WeeklyTemplateEntryId,
             addSize: PlanningProposalBuilder.GetEffectiveAssignmentSize(assignment),
@@ -109,11 +111,69 @@ public class AssignmentService(
         if (capacityError is not null)
             return Result<bool>.Fail(capacityError);
 
+        // Oud slot vastleggen vóór de wijziging (nodig voor de "verplaatst"-mail).
+        var wasConfirmed = assignment.Status == ScheduleAssignmentStatus.Confirmed;
+        var oldEntry = assignment.WeeklyTemplateEntry;
+
         assignment.WeeklyTemplateEntryId = request.WeeklyTemplateEntryId;
         assignment.IsLocked = true;
         await scheduleAssignmentRepo.SaveChangesAsync(ct);
 
+        // Enkel bij een bevestigde verplaatsing én expliciete keuze de lesnemer mailen.
+        // De verplaatsing is al gecommit: een mislukte mail loggen we, maar draaien we
+        // niet terug (de admin kan altijd handmatig contact opnemen).
+        if (wasConfirmed && request.NotifyStudent && oldEntry is not null)
+            await NotifyAssignmentMovedAsync(
+                seriesId, organizationId, assignment, oldEntry, request.WeeklyTemplateEntryId, ct);
+
         return Result<bool>.Ok(true);
+    }
+
+    private async Task NotifyAssignmentMovedAsync(
+        Guid seriesId, Guid organizationId, ScheduleAssignment assignment,
+        WeeklyTemplateEntry oldEntry, Guid newEntryId, CancellationToken ct)
+    {
+        try
+        {
+            var series = await lessonSeriesRepo.GetByIdAsync(seriesId, organizationId, ct);
+            var newEntry = series?.WeeklyTemplate.FirstOrDefault(s => s.Id == newEntryId);
+            if (series is null || newEntry is null) return;
+
+            string toEmail, toName;
+            IReadOnlyList<string>? participantNames = null;
+
+            if (assignment.EnrollmentGroup is not null)
+            {
+                var leader = assignment.EnrollmentGroup.Members
+                    .FirstOrDefault(m => m.Id == assignment.EnrollmentGroup.LeaderEnrollmentId)
+                    ?? assignment.EnrollmentGroup.Members.FirstOrDefault();
+                if (leader is null) return;
+                toEmail = leader.ContactEmail;
+                toName = assignment.EnrollmentGroup.Name;
+                participantNames = assignment.EnrollmentGroup.Members.Select(m => m.StudentName).ToList();
+            }
+            else if (assignment.Enrollment is not null)
+            {
+                toEmail = assignment.Enrollment.ContactEmail;
+                toName = assignment.Enrollment.StudentName;
+            }
+            else
+            {
+                return;
+            }
+
+            await emailService.SendAssignmentMovedAsync(
+                toEmail, toName, series.Name,
+                oldEntry.DayOfWeek, oldEntry.StartTime.ToString("HH:mm"), oldEntry.EndTime.ToString("HH:mm"),
+                newEntry.DayOfWeek, newEntry.StartTime.ToString("HH:mm"), newEntry.EndTime.ToString("HH:mm"),
+                newEntry.CourtName, participantNames, ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex,
+                "Verplaatst-mail mislukt voor toewijzing {AssignmentId} (verplaatsing is wel gelukt).",
+                assignment.Id);
+        }
     }
 
     public async Task<Result<bool>> DeleteAssignmentAsync(

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import {
   ArrowLeft,
   RefreshCw,
@@ -39,6 +40,7 @@ import {
   confirmPlanning,
   createAssignment,
   deleteAssignment,
+  updateAssignment,
   lockAssignment,
   unlockAssignment,
   sendAssignmentConfirmation,
@@ -152,6 +154,29 @@ export default function PlanningPage({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["planning", id] });
     },
+  });
+
+  // Verplaatst een toewijzing naar een ander tijdslot (in-place). Werkt ook voor bevestigde
+  // toewijzingen — de betaling hangt aan de inschrijving, niet aan het slot.
+  const moveMutation = useMutation({
+    mutationFn: ({
+      assignmentId,
+      slotId,
+      notifyStudent,
+    }: {
+      assignmentId: string;
+      slotId: string;
+      notifyStudent: boolean;
+    }) =>
+      updateAssignment(id, assignmentId, {
+        weeklyTemplateEntryId: slotId,
+        notifyStudent,
+      }),
+    onSuccess: (_data, { notifyStudent }) => {
+      toast.success(notifyStudent ? t("moveSuccessNotified") : t("moveSuccess"));
+      queryClient.invalidateQueries({ queryKey: ["planning", id] });
+    },
+    onError: () => toast.error(t("moveError")),
   });
 
   const lockMutation = useMutation({
@@ -1451,6 +1476,10 @@ export default function PlanningPage({
         }
         onOffer={(assignmentId) => sendConfirmationMutation.mutate(assignmentId)}
         onUnassign={(assignmentId) => unassignMutation.mutate(assignmentId)}
+        onMove={(assignmentId, slotId, notifyStudent) =>
+          moveMutation.mutate({ assignmentId, slotId, notifyStudent })
+        }
+        isMovePending={moveMutation.isPending}
         eligibleSlotsFor={eligibleExtraSlots}
         onAssignToSlot={(target, slotId) =>
           assignMutation.mutate({ ...target, slotId })

@@ -1,7 +1,7 @@
 <mjml>
   <mj-head>
-    <mj-title>Nieuwe inschrijving: {{studentName}} voor {{seriesName}}</mj-title>
-    <mj-preview>Nieuwe inschrijving van {{studentName}}</mj-preview>
+    <mj-title>Je lesmoment is verplaatst: {{seriesName}}</mj-title>
+    <mj-preview>Je wekelijkse lesmoment voor {{seriesName}} is gewijzigd</mj-preview>
     <mj-attributes>
       <mj-all font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" />
       <mj-text color="#6b7280" font-size="15px" line-height="1.6" />
@@ -21,22 +21,34 @@
 
     <mj-section css-class="cos-card" background-color="#FFFFFF" padding="40px">
       <mj-column>
-        <mj-text mj-class="heading">Nieuwe inschrijving</mj-text>
+        <mj-text mj-class="heading">Je lesmoment is verplaatst</mj-text>
         <mj-text padding-top="16px">
-          Hoi {{trainerName}}, er is een nieuwe inschrijving voor
-          <strong style="color:#111827">{{seriesName}}</strong>.
+          Hoi {{studentName}}, je wekelijkse lesmoment voor
+          <strong style="color:#111827">{{seriesName}}</strong> is gewijzigd.
         </mj-text>
 
-        <mj-section background-color="#FAFAF8" border-left="4px solid #2D5016" border-radius="8px" padding="16px 20px">
+        <mj-section background-color="#FAFAF8" border-radius="8px" padding="16px 20px">
           <mj-column>
-            <mj-text font-size="14px" font-weight="600" color="#111827" padding="0">{{studentName}}</mj-text>
-            <mj-text font-size="13px" color="#6b7280" padding="4px 0 0">{{studentEmail}}</mj-text>
+            <mj-text font-size="12px" color="#9ca3af" text-transform="uppercase" letter-spacing="1px" padding="0">Was</mj-text>
+            <mj-text font-size="14px" color="#9ca3af" padding="4px 0 0" text-decoration="line-through">{{oldMoment}}</mj-text>
           </mj-column>
         </mj-section>
 
-        <mj-text font-size="14px" font-weight="600" color="#111827" padding-top="24px">{{responsesLabel}}</mj-text>
-        <mj-text font-size="13px" padding-top="0">
-          {{responsesHtml}}
+        <mj-section background-color="#FAFAF8" border-left="4px solid #D0FF14" border-radius="8px" padding="16px 20px">
+          <mj-column>
+            <mj-text font-size="12px" color="#2D5016" text-transform="uppercase" letter-spacing="1px" font-weight="600" padding="0">Nieuw moment</mj-text>
+            <mj-text font-size="16px" font-weight="700" color="#111827" padding="4px 0 0">{{newMoment}}</mj-text>
+            <mj-text font-size="13px" color="#6b7280" padding="4px 0 0">{{courtLine}}</mj-text>
+            <mj-text font-size="13px" color="#6b7280" padding="4px 0 0">{{participantsLine}}</mj-text>
+          </mj-column>
+        </mj-section>
+
+        <mj-text padding-top="24px">
+          Je inschrijving en betaling blijven gewoon geldig — er is niets dat je hoeft te doen.
+        </mj-text>
+
+        <mj-text mj-class="fine" padding-top="16px">
+          Klopt dit nieuwe moment niet voor jou? Neem dan contact op met je club.
         </mj-text>
       </mj-column>
     </mj-section>

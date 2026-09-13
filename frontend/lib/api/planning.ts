@@ -54,6 +54,8 @@ export interface PlanningOverviewDto {
 
 export interface UpdateAssignmentRequest {
   weeklyTemplateEntryId: string;
+  /** Bij een bevestigde verplaatsing: mail de lesnemer/groep over het nieuwe moment. */
+  notifyStudent?: boolean;
 }
 
 export interface CreateAssignmentRequest {
