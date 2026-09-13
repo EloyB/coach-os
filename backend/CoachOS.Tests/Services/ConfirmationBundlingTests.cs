@@ -119,6 +119,65 @@ public class ConfirmationBundlingTests
         captured!.Select(i => i.ConfirmationUrl).Distinct().Should().HaveCount(2);
     }
 
+    [Test]
+    public async Task GroupMembers_With_Own_Email_Get_Info_Mail_Leader_And_MemberWithoutEmail_Do_Not()
+    {
+        LessonSerie series = PlanningServiceTests.BuildSeries(withSlots: true, SeriesId, OrgId, SlotId);
+        series.PlanningStatus = PlanningStatus.Planning;
+
+        Guid leaderId = Guid.NewGuid();
+        var leader = new Enrollment
+        {
+            Id = leaderId, OrganizationId = OrgId, LessonSerieId = SeriesId,
+            StudentName = "Sofie", ContactEmail = "sofie@x", StudentEmail = "sofie@x",
+        };
+        var memberWithEmail = new Enrollment
+        {
+            Id = Guid.NewGuid(), OrganizationId = OrgId, LessonSerieId = SeriesId,
+            StudentName = "Fien", ContactEmail = "fien@x", StudentEmail = "fien@x",
+        };
+        var memberWithoutEmail = new Enrollment
+        {
+            Id = Guid.NewGuid(), OrganizationId = OrgId, LessonSerieId = SeriesId,
+            StudentName = "Stan", ContactEmail = "sofie@x", StudentEmail = null,
+        };
+        var groupId = Guid.NewGuid();
+        var group = new EnrollmentGroup
+        {
+            Id = groupId, OrganizationId = OrgId, LessonSerieId = SeriesId, Name = "Groep A",
+            LeaderEnrollmentId = leaderId,
+            Members = [leader, memberWithEmail, memberWithoutEmail],
+        };
+        var assignment = new ScheduleAssignment
+        {
+            Id = Guid.NewGuid(), OrganizationId = OrgId, LessonSerieId = SeriesId,
+            WeeklyTemplateEntryId = SlotId, EnrollmentGroupId = groupId, EnrollmentGroup = group,
+            Status = ScheduleAssignmentStatus.Proposed,
+        };
+
+        _seriesRepo.Setup(r => r.GetByIdAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+        _assignmentRepo.Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([assignment]);
+
+        await _service.ConfirmScheduleAsync(SeriesId, OrgId);
+
+        _emailService.Verify(s => s.SendScheduleInfoAsync(
+            "fien@x", "Fien", It.IsAny<string>(), "Groep A",
+            It.IsAny<int>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+            It.IsAny<CancellationToken>()), Times.Once);
+
+        _emailService.Verify(s => s.SendScheduleInfoAsync(
+            It.IsAny<string>(), "Stan", It.IsAny<string>(), It.IsAny<string>(),
+            It.IsAny<int>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+            It.IsAny<CancellationToken>()), Times.Never);
+
+        _emailService.Verify(s => s.SendScheduleInfoAsync(
+            It.IsAny<string>(), "Sofie", It.IsAny<string>(), It.IsAny<string>(),
+            It.IsAny<int>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+            It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     private void SetUpSeriesWithAssignments(params (string Name, string ContactEmail)[] people)
     {
         LessonSerie series = PlanningServiceTests.BuildSeries(withSlots: true, SeriesId, OrgId, SlotId);

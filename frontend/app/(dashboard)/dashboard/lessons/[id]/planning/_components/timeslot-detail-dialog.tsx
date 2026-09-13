@@ -9,9 +9,13 @@ import {
   Lock,
   Unlock,
   X,
+  Plus,
   UserMinus,
   Trash2,
   Pencil,
+  ArrowRightLeft,
+  Check,
+  Clock,
 } from "lucide-react";
 import {
   Dialog,
@@ -60,6 +64,9 @@ interface TimeslotDetailDialogProps {
   onLock: (assignmentId: string, isLocked: boolean) => void;
   onOffer: (assignmentId: string) => void;
   onUnassign: (assignmentId: string) => void;
+  /** Verplaatst een bestaande toewijzing in-place naar een ander tijdslot. */
+  onMove?: (assignmentId: string, slotId: string, notifyStudent: boolean) => void;
+  isMovePending?: boolean;
   isLockPending: boolean;
   isOfferPending: boolean;
   isUnassignPending: boolean;
@@ -68,11 +75,28 @@ interface TimeslotDetailDialogProps {
   isDeletePending?: boolean;
   /** Opent de aanpas-dialog voor dit weekslot. */
   onEditSlot?: () => void;
+  /** Slots waar deze persoon/groep nog extra aan toegevoegd kan worden (multi-slot). */
+  eligibleSlotsFor?: (assignment: PlanningAssignmentDto) => ExtraSlotOption[];
+  /** Wijst dezelfde persoon/groep aan een extra tijdslot toe. */
+  onAssignToSlot?: (
+    target: { enrollmentId?: string; groupId?: string },
+    slotId: string
+  ) => void;
+  isAssignPending?: boolean;
   /** Klik op een persoon → open diens inschrijving-detail. */
   onOpenPerson?: (enrollmentId: string) => void;
   /** Klik op een groepsnaam → open de groep-detail. */
   onOpenGroup?: (groupId: string) => void;
 }
+
+export type ExtraSlotOption = {
+  id: string;
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  courtName: string | null;
+  remaining: number;
+};
 
 export function TimeslotDetailDialog({
   readOnly = false,
@@ -86,18 +110,35 @@ export function TimeslotDetailDialog({
   onLock,
   onOffer,
   onUnassign,
+  onMove,
+  isMovePending = false,
   isLockPending,
   isOfferPending,
   isUnassignPending,
   onDeleteSlot,
   isDeletePending = false,
   onEditSlot,
+  eligibleSlotsFor,
+  onAssignToSlot,
+  isAssignPending = false,
   onOpenPerson,
   onOpenGroup,
 }: TimeslotDetailDialogProps) {
   const t = useTranslations("planning");
   // Bevestiging vóór 'Definitief aanbieden': dit verstuurt meteen een e-mail-aanbod.
   const [offerTarget, setOfferTarget] = useState<{ id: string; name: string } | null>(null);
+  // Welke toewijzing heeft de 'extra tijdslot'-kiezer open.
+  const [addingForAssignmentId, setAddingForAssignmentId] = useState<string | null>(null);
+  // Welke toewijzing heeft de 'verplaatsen'-kiezer open.
+  const [movingForAssignmentId, setMovingForAssignmentId] = useState<string | null>(null);
+  // Bevestiging vóór het verplaatsen van een bevestigd+betaald slot.
+  const [moveConfirm, setMoveConfirm] = useState<{
+    assignmentId: string;
+    slot: ExtraSlotOption;
+    name: string;
+  } | null>(null);
+  // Lesnemer mailen bij het verplaatsen? Default aan.
+  const [notifyOnMove, setNotifyOnMove] = useState(true);
 
   if (!slot) return null;
 
@@ -201,6 +242,8 @@ export function TimeslotDetailDialog({
             const names = people.map((p) => p.name);
 
             const canOffer = assignment.status === "Proposed";
+            const isConfirmed = assignment.status === "Confirmed";
+            const displayName = groupName ?? names[0] ?? "";
 
             return (
               <div
@@ -241,7 +284,24 @@ export function TimeslotDetailDialog({
                   {assignment.isAutoMerged && (
                     <span className="text-[10px] italic text-blue-500">auto</span>
                   )}
-                  {assignment.isLocked && (
+                  {/* Statusbadge: toont in één oogopslag of de lesnemer al bevestigd heeft. */}
+                  {isConfirmed ? (
+                    <span className="inline-flex items-center gap-1 rounded bg-green-100 px-1.5 py-0.5 text-[10px] font-semibold text-green-700">
+                      <Check size={10} />
+                      {t("statusConfirmed")}
+                    </span>
+                  ) : assignment.status === "AwaitingConfirmation" ? (
+                    <span className="inline-flex items-center gap-1 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
+                      <Clock size={10} />
+                      {t("statusOffered")}
+                    </span>
+                  ) : (
+                    <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-500">
+                      {t("statusDraft")}
+                    </span>
+                  )}
+                  {/* Lock enkel tonen bij concept: bij bevestigd/aangeboden is het impliciet. */}
+                  {assignment.isLocked && assignment.status === "Proposed" && (
                     <span className="inline-flex items-center gap-1 rounded bg-green-100 px-1.5 py-0.5 text-[10px] font-semibold text-green-700">
                       <Lock size={10} />
                       {t("locked")}
@@ -273,8 +333,10 @@ export function TimeslotDetailDialog({
                   })}
                 </div>
 
-                {/* Actions — compacte icoon-balk, tooltip bij hover */}
-                {!readOnly && (
+                {/* Actions — compacte icoon-balk, tooltip bij hover.
+                    Bevestigd = niet verwijderbaar (betaald), dus enkel tonen als er
+                    een actie is (aanbieden/vastzetten of verwijderen). */}
+                {!readOnly && (canOffer || !isConfirmed) && (
                   <div className="mt-3 flex items-center justify-end gap-1 border-t border-gray-100 pt-3">
                     {canOffer && (
                       <>
@@ -319,18 +381,159 @@ export function TimeslotDetailDialog({
                         </button>
                       </>
                     )}
-                    <button
-                      type="button"
-                      title={t("unassign")}
-                      aria-label={t("unassign")}
-                      onClick={() => onUnassign(assignment.id)}
-                      disabled={isUnassignPending}
-                      className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
-                    >
-                      <UserMinus size={15} />
-                    </button>
+                    {/* Bevestigde toewijzing niet verwijderbaar — enkel verplaatsen. */}
+                    {!isConfirmed && (
+                      <button
+                        type="button"
+                        title={t("unassign")}
+                        aria-label={t("unassign")}
+                        onClick={() => onUnassign(assignment.id)}
+                        disabled={isUnassignPending}
+                        className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                      >
+                        <UserMinus size={15} />
+                      </button>
+                    )}
                   </div>
                 )}
+
+                {/* Acties: Verplaatsen (bevestigd) + Extra tijdslot — naast elkaar,
+                    visueel onderscheiden (omlijnde knop vs tekstlink). */}
+                {!readOnly && (() => {
+                  const target = assignment.groupId
+                    ? { groupId: assignment.groupId }
+                    : assignment.enrollmentId
+                      ? { enrollmentId: assignment.enrollmentId }
+                      : null;
+                  const showMove = isConfirmed && onMove !== undefined;
+                  const showExtra = onAssignToSlot !== undefined && target !== null;
+                  if (!showMove && !showExtra) return null;
+
+                  const options = eligibleSlotsFor?.(assignment) ?? [];
+                  const moveOpen = movingForAssignmentId === assignment.id;
+                  const extraOpen = addingForAssignmentId === assignment.id;
+
+                  return (
+                    <div className="mt-2 border-t border-gray-100 pt-2">
+                      {/* Triggerrij (verborgen zodra een kiezer open is) */}
+                      {!moveOpen && !extraOpen && (
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                          {showMove && (
+                            <button
+                              type="button"
+                              onClick={() => setMovingForAssignmentId(assignment.id)}
+                              className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-tennis-green/40 px-2 py-1 text-[11px] font-semibold text-tennis-green transition-colors hover:bg-tennis-green/5"
+                            >
+                              <ArrowRightLeft size={12} />
+                              {t("moveAssignment")}
+                            </button>
+                          )}
+                          {showExtra && (
+                            <button
+                              type="button"
+                              onClick={() => setAddingForAssignmentId(assignment.id)}
+                              className="inline-flex cursor-pointer items-center gap-1 text-[11px] font-medium text-gray-500 transition-colors hover:text-tennis-green hover:underline"
+                            >
+                              <Plus size={12} />
+                              {t("addExtraSlot")}
+                            </button>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Verplaats-kiezer */}
+                      {moveOpen && (
+                        <div className="space-y-1.5">
+                          <p className="text-[11px] font-medium text-gray-500">
+                            {t("chooseMoveSlot")}
+                          </p>
+                          {options.length === 0 ? (
+                            <p className="text-[11px] text-gray-400">
+                              {t("noOtherSlotAvailable")}
+                            </p>
+                          ) : (
+                            <div className="space-y-1">
+                              {options.map((s) => (
+                                <button
+                                  key={s.id}
+                                  type="button"
+                                  disabled={isMovePending}
+                                  onClick={() => {
+                                    setNotifyOnMove(true);
+                                    setMoveConfirm({
+                                      assignmentId: assignment.id,
+                                      slot: s,
+                                      name: displayName,
+                                    });
+                                    setMovingForAssignmentId(null);
+                                  }}
+                                  className="w-full cursor-pointer rounded-md border border-gray-200 px-2 py-1.5 text-left text-[11px] text-gray-700 transition-colors hover:border-tennis-green hover:bg-tennis-green/5 disabled:opacity-50"
+                                >
+                                  <span className="font-medium">
+                                    {DAY_NAMES_FULL[s.dayOfWeek]} {s.startTime}–{s.endTime}
+                                  </span>
+                                  {s.courtName && (
+                                    <span className="ml-1 text-gray-400">· {s.courtName}</span>
+                                  )}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => setMovingForAssignmentId(null)}
+                            className="cursor-pointer text-[11px] text-gray-400 hover:text-gray-600"
+                          >
+                            {t("cancel")}
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Extra-tijdslot-kiezer */}
+                      {extraOpen && showExtra && (
+                        <div className="space-y-1.5">
+                          <p className="text-[11px] font-medium text-gray-500">
+                            {t("chooseExtraSlot")}
+                          </p>
+                          {options.length === 0 ? (
+                            <p className="text-[11px] text-gray-400">
+                              {t("noOtherSlotAvailable")}
+                            </p>
+                          ) : (
+                            <div className="space-y-1">
+                              {options.map((s) => (
+                                <button
+                                  key={s.id}
+                                  type="button"
+                                  disabled={isAssignPending}
+                                  onClick={() => {
+                                    onAssignToSlot!(target!, s.id);
+                                    setAddingForAssignmentId(null);
+                                  }}
+                                  className="w-full cursor-pointer rounded-md border border-gray-200 px-2 py-1.5 text-left text-[11px] text-gray-700 transition-colors hover:border-tennis-green hover:bg-tennis-green/5 disabled:opacity-50"
+                                >
+                                  <span className="font-medium">
+                                    {DAY_NAMES_FULL[s.dayOfWeek]} {s.startTime}–{s.endTime}
+                                  </span>
+                                  {s.courtName && (
+                                    <span className="ml-1 text-gray-400">· {s.courtName}</span>
+                                  )}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => setAddingForAssignmentId(null)}
+                            className="cursor-pointer text-[11px] text-gray-400 hover:text-gray-600"
+                          >
+                            {t("cancel")}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             );
           })}
@@ -350,6 +553,47 @@ export function TimeslotDetailDialog({
         </div>
       </DialogContent>
     </Dialog>
+
+    <AlertDialog
+      open={moveConfirm !== null}
+      onOpenChange={(open) => !open && setMoveConfirm(null)}
+    >
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{t("moveConfirmTitle")}</AlertDialogTitle>
+          <AlertDialogDescription>
+            {t("moveConfirmBody", {
+              name: moveConfirm?.name ?? "",
+              day: moveConfirm ? DAY_NAMES_FULL[moveConfirm.slot.dayOfWeek] : "",
+              start: moveConfirm?.slot.startTime ?? "",
+              end: moveConfirm?.slot.endTime ?? "",
+            })}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-sm text-gray-700">
+          <input
+            type="checkbox"
+            checked={notifyOnMove}
+            onChange={(e) => setNotifyOnMove(e.target.checked)}
+            className="mt-0.5 h-4 w-4 shrink-0 accent-tennis-green"
+          />
+          <span>{t("moveNotifyLabel")}</span>
+        </label>
+        <AlertDialogFooter>
+          <AlertDialogCancel>{t("moveConfirmCancel")}</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => {
+              if (moveConfirm)
+                onMove?.(moveConfirm.assignmentId, moveConfirm.slot.id, notifyOnMove);
+              setMoveConfirm(null);
+            }}
+            className="bg-tennis-green hover:bg-tennis-green/90"
+          >
+            {t("moveConfirmButton")}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
 
     <AlertDialog
       open={offerTarget !== null}

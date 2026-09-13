@@ -136,6 +136,14 @@ public class ConfirmationOrchestrationService(
             }
         }
 
+        // Info-mail naar groepsleden met eigen adres (leider kreeg hierboven de echte mail).
+        foreach (var (_, assignment, _) in emailsToSend)
+        {
+            if (assignment.EnrollmentGroup is null) continue;
+            if (!slotById.TryGetValue(assignment.WeeklyTemplateEntryId, out var slot)) continue;
+            await NotifyGroupMembersInfoAsync(series, assignment, slot, ct);
+        }
+
         logger.LogInformation(
             "Planning bevestigd voor reeks {SeriesId}: {Count} toewijzingen, {TokenCount} tokens verzonden",
             seriesId, proposedAssignments.Count, tokens.Count);
@@ -205,6 +213,9 @@ public class ConfirmationOrchestrationService(
             return Result<bool>.Fail(
                 new Error(ErrorCodes.Validation, "E-mail kon niet verzonden worden. Probeer opnieuw of contacteer de lesnemer handmatig."));
         }
+
+        // Info-mail naar groepsleden met eigen adres (leider kreeg zojuist de echte mail).
+        await NotifyGroupMembersInfoAsync(series, assignment, slot, ct);
 
         logger.LogInformation("Toewijzing {AssignmentId} definitief aangeboden voor reeks {SeriesId}.", assignment.Id, seriesId);
         return Result<bool>.Ok(true);
@@ -449,6 +460,43 @@ public class ConfirmationOrchestrationService(
             $"{baseUrl}/{rawToken}",
             participantNames,
             ct);
+    }
+
+    /// <summary>
+    /// Stuurt een informatieve "je lesmoment is ingepland"-mail naar elk groepslid met
+    /// een eigen e-mailadres (de leider uitgezonderd: die krijgt de echte bevestig+betaal-
+    /// mail). Leden zonder eigen adres lopen via de leider en krijgen dus niets apart.
+    /// Fouten per lid worden gelogd, niet doorgeworpen — de bevestiging mag niet falen.
+    /// </summary>
+    private async Task NotifyGroupMembersInfoAsync(
+        CoachOS.Domain.Entities.LessonSerie series, ScheduleAssignment assignment,
+        WeeklyTemplateEntry slot, CancellationToken ct)
+    {
+        if (assignment.EnrollmentGroup is null) return;
+        var group = assignment.EnrollmentGroup;
+
+        foreach (var member in group.Members)
+        {
+            // Enkel leden met een eigen adres: dan is hun ContactEmail hun eigen adres
+            // (bij leden zonder eigen adres wijst ContactEmail naar de leider — die krijgt
+            // al de echte bevestig+betaal-mail, dus die slaan we over).
+            if (member.Id == group.LeaderEnrollmentId) continue;
+            if (string.IsNullOrWhiteSpace(member.StudentEmail)) continue;
+
+            try
+            {
+                await emailService.SendScheduleInfoAsync(
+                    member.ContactEmail, member.StudentName, series.Name, group.Name,
+                    slot.DayOfWeek, slot.StartTime.ToString("HH:mm"), slot.EndTime.ToString("HH:mm"),
+                    slot.CourtName, ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex,
+                    "Info-mail naar groepslid {EnrollmentId} mislukt (bevestiging is wel gelukt).",
+                    member.Id);
+            }
+        }
     }
 
     /// <summary>
