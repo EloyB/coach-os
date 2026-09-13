@@ -13,6 +13,8 @@ import {
   Trash2,
   Pencil,
   ArrowRightLeft,
+  Check,
+  Clock,
 } from "lucide-react";
 import {
   Dialog,
@@ -270,7 +272,24 @@ export function TimeslotDetailDialog({
                   {assignment.isAutoMerged && (
                     <span className="text-[10px] italic text-blue-500">auto</span>
                   )}
-                  {assignment.isLocked && (
+                  {/* Statusbadge: toont in één oogopslag of de lesnemer al bevestigd heeft. */}
+                  {isConfirmed ? (
+                    <span className="inline-flex items-center gap-1 rounded bg-green-100 px-1.5 py-0.5 text-[10px] font-semibold text-green-700">
+                      <Check size={10} />
+                      {t("statusConfirmed")}
+                    </span>
+                  ) : assignment.status === "AwaitingConfirmation" ? (
+                    <span className="inline-flex items-center gap-1 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
+                      <Clock size={10} />
+                      {t("statusOffered")}
+                    </span>
+                  ) : (
+                    <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-500">
+                      {t("statusDraft")}
+                    </span>
+                  )}
+                  {/* Lock enkel tonen bij concept: bij bevestigd/aangeboden is het impliciet. */}
+                  {assignment.isLocked && assignment.status === "Proposed" && (
                     <span className="inline-flex items-center gap-1 rounded bg-green-100 px-1.5 py-0.5 text-[10px] font-semibold text-green-700">
                       <Lock size={10} />
                       {t("locked")}
