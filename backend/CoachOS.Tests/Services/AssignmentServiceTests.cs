@@ -55,8 +55,11 @@ public class AssignmentServiceTests
     }
 
     [Test]
-    public async Task UpdateAssignmentAsync_ConfirmedAssignment_ReturnsValidationError()
+    public async Task UpdateAssignmentAsync_ConfirmedAssignment_MovesToNewSlot()
     {
+        // Betaling hangt aan de inschrijving, niet aan het slot: een bevestigde toewijzing
+        // mag de admin daarom nog naar een ander tijdslot verplaatsen.
+        var newSlotId = Guid.NewGuid();
         var assignment = new ScheduleAssignment
         {
             Id = Guid.NewGuid(),
@@ -70,10 +73,10 @@ public class AssignmentServiceTests
             .ReturnsAsync(assignment);
 
         var result = await _service.UpdateAssignmentAsync(
-            SeriesId, assignment.Id, new UpdateAssignmentRequest { WeeklyTemplateEntryId = Guid.NewGuid() }, OrgId);
+            SeriesId, assignment.Id, new UpdateAssignmentRequest { WeeklyTemplateEntryId = newSlotId }, OrgId);
 
-        result.IsSuccess.Should().BeFalse();
-        result.Errors[0].Code.Should().Be("validation");
+        result.IsSuccess.Should().BeTrue();
+        assignment.WeeklyTemplateEntryId.Should().Be(newSlotId);
     }
 
     [Test]

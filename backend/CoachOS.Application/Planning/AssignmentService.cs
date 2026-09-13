@@ -98,10 +98,9 @@ public class AssignmentService(
         if (assignment is null || assignment.LessonSerieId != seriesId)
             return Result<bool>.Fail(new Error(ErrorCodes.NotFound, "Toewijzing niet gevonden."));
 
-        if (assignment.Status == ScheduleAssignmentStatus.Confirmed)
-            return Result<bool>.Fail(
-                new Error(ErrorCodes.Validation, "Bevestigde toewijzingen kunnen niet verplaatst worden."));
-
+        // Een bevestigde toewijzing mag de admin nog naar een ander tijdslot verplaatsen: de
+        // betaling hangt aan de inschrijving (niet aan het slot) en blijft dus geldig. Verwijderen
+        // van een bevestigde toewijzing blijft wél geblokkeerd (zie DeleteAssignmentAsync).
         var capacityError = await EnsureSlotCapacityAsync(
             seriesId, organizationId, request.WeeklyTemplateEntryId,
             addSize: PlanningProposalBuilder.GetEffectiveAssignmentSize(assignment),

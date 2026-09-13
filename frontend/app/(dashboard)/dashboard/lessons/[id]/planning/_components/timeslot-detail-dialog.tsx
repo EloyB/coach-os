@@ -12,6 +12,7 @@ import {
   Plus,
   Trash2,
   Pencil,
+  ArrowRightLeft,
 } from "lucide-react";
 import {
   Dialog,
@@ -60,6 +61,9 @@ interface TimeslotDetailDialogProps {
   onLock: (assignmentId: string, isLocked: boolean) => void;
   onOffer: (assignmentId: string) => void;
   onUnassign: (assignmentId: string) => void;
+  /** Verplaatst een bestaande toewijzing in-place naar een ander tijdslot. */
+  onMove?: (assignmentId: string, slotId: string) => void;
+  isMovePending?: boolean;
   isLockPending: boolean;
   isOfferPending: boolean;
   isUnassignPending: boolean;
@@ -99,6 +103,8 @@ export function TimeslotDetailDialog({
   onLock,
   onOffer,
   onUnassign,
+  onMove,
+  isMovePending = false,
   isLockPending,
   isOfferPending,
   isUnassignPending,
@@ -114,6 +120,14 @@ export function TimeslotDetailDialog({
   const [offerTarget, setOfferTarget] = useState<{ id: string; name: string } | null>(null);
   // Welke toewijzing heeft de 'extra tijdslot'-kiezer open.
   const [addingForAssignmentId, setAddingForAssignmentId] = useState<string | null>(null);
+  // Welke toewijzing heeft de 'verplaatsen'-kiezer open.
+  const [movingForAssignmentId, setMovingForAssignmentId] = useState<string | null>(null);
+  // Bevestiging vóór het verplaatsen van een bevestigd+betaald slot.
+  const [moveConfirm, setMoveConfirm] = useState<{
+    assignmentId: string;
+    slot: ExtraSlotOption;
+    name: string;
+  } | null>(null);
 
   if (!slot) return null;
 
@@ -216,6 +230,8 @@ export function TimeslotDetailDialog({
             if (names.length === 0) return null;
 
             const canOffer = assignment.status === "Proposed";
+            const isConfirmed = assignment.status === "Confirmed";
+            const displayName = groupName ?? names[0] ?? "";
 
             return (
               <div
@@ -258,7 +274,8 @@ export function TimeslotDetailDialog({
                       {t("locked")}
                     </span>
                   )}
-                  {!readOnly && (
+                  {/* Bevestigde toewijzing niet verwijderbaar (betaald) — enkel verplaatsen. */}
+                  {!readOnly && !isConfirmed && (
                     <button
                       type="button"
                       title={t("unassign")}
@@ -328,6 +345,70 @@ export function TimeslotDetailDialog({
                     </button>
                   </div>
                 )}
+
+                {/* Verplaatsen — voor een bevestigd+betaald slot de enige herschik-actie. */}
+                {!readOnly && isConfirmed && onMove && (() => {
+                  const options = eligibleSlotsFor?.(assignment) ?? [];
+                  const isOpen = movingForAssignmentId === assignment.id;
+                  return (
+                    <div className="mt-2 border-t border-gray-100 pt-2">
+                      {isOpen ? (
+                        <div className="space-y-1.5">
+                          <p className="text-[11px] font-medium text-gray-500">
+                            {t("chooseMoveSlot")}
+                          </p>
+                          {options.length === 0 ? (
+                            <p className="text-[11px] text-gray-400">
+                              {t("noOtherSlotAvailable")}
+                            </p>
+                          ) : (
+                            <div className="space-y-1">
+                              {options.map((s) => (
+                                <button
+                                  key={s.id}
+                                  type="button"
+                                  disabled={isMovePending}
+                                  onClick={() => {
+                                    setMoveConfirm({
+                                      assignmentId: assignment.id,
+                                      slot: s,
+                                      name: displayName,
+                                    });
+                                    setMovingForAssignmentId(null);
+                                  }}
+                                  className="w-full cursor-pointer rounded-md border border-gray-200 px-2 py-1.5 text-left text-[11px] text-gray-700 transition-colors hover:border-tennis-green hover:bg-tennis-green/5 disabled:opacity-50"
+                                >
+                                  <span className="font-medium">
+                                    {DAY_NAMES_FULL[s.dayOfWeek]} {s.startTime}–{s.endTime}
+                                  </span>
+                                  {s.courtName && (
+                                    <span className="ml-1 text-gray-400">· {s.courtName}</span>
+                                  )}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => setMovingForAssignmentId(null)}
+                            className="cursor-pointer text-[11px] text-gray-400 hover:text-gray-600"
+                          >
+                            {t("cancel")}
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setMovingForAssignmentId(assignment.id)}
+                          className="inline-flex cursor-pointer items-center gap-1 text-[11px] font-medium text-tennis-green hover:underline"
+                        >
+                          <ArrowRightLeft size={12} />
+                          {t("moveAssignment")}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {/* Extra tijdslot (multi-slot) */}
                 {!readOnly && onAssignToSlot && (() => {
@@ -413,6 +494,37 @@ export function TimeslotDetailDialog({
         </div>
       </DialogContent>
     </Dialog>
+
+    <AlertDialog
+      open={moveConfirm !== null}
+      onOpenChange={(open) => !open && setMoveConfirm(null)}
+    >
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{t("moveConfirmTitle")}</AlertDialogTitle>
+          <AlertDialogDescription>
+            {t("moveConfirmBody", {
+              name: moveConfirm?.name ?? "",
+              day: moveConfirm ? DAY_NAMES_FULL[moveConfirm.slot.dayOfWeek] : "",
+              start: moveConfirm?.slot.startTime ?? "",
+              end: moveConfirm?.slot.endTime ?? "",
+            })}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>{t("moveConfirmCancel")}</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => {
+              if (moveConfirm) onMove?.(moveConfirm.assignmentId, moveConfirm.slot.id);
+              setMoveConfirm(null);
+            }}
+            className="bg-tennis-green hover:bg-tennis-green/90"
+          >
+            {t("moveConfirmButton")}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
 
     <AlertDialog
       open={offerTarget !== null}
