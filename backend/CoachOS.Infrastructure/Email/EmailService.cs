@@ -177,6 +177,30 @@ public class EmailService(
             $"Bevestig de lesmomenten voor {names} — {seriesName}", html, ct);
     }
 
+    public async Task SendScheduleInfoAsync(
+        string toEmail, string toName, string seriesName, string groupName,
+        int dayOfWeek, string startTime, string endTime, string? courtName,
+        CancellationToken ct = default)
+    {
+        // dayOfWeek in EU-conventie (0 = maandag) → DaysNl is .NET-conventie (0 = zondag).
+        var dayName = DaysNl[(Math.Clamp(dayOfWeek, 0, 6) + 1) % 7];
+        var courtLine = string.IsNullOrWhiteSpace(courtName) ? string.Empty : $"Baan: {courtName}";
+
+        var html = renderer.Render("schedule-info", new Dictionary<string, string>
+        {
+            ["studentName"] = toName,
+            ["seriesName"] = seriesName,
+            ["groupName"] = groupName,
+            ["dayName"] = dayName,
+            ["startTime"] = startTime,
+            ["endTime"] = endTime,
+            ["courtLine"] = courtLine,
+            ["year"] = DateTime.UtcNow.Year.ToString(),
+        });
+        await SendAsync(toEmail, toName,
+            $"Je lesmoment is ingepland: {seriesName}", html, ct);
+    }
+
     public async Task SendAssignmentMovedAsync(
         string toEmail, string toName, string seriesName,
         int oldDayOfWeek, string oldStartTime, string oldEndTime,

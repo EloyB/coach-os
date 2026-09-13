@@ -91,6 +91,22 @@ public interface IEmailService
         CancellationToken ct = default);
 
     /// <summary>
+    /// Informatieve mail naar een groepslid met een eigen e-mailadres wanneer het
+    /// wekelijkse lesmoment is ingepland. Puur ter info — géén bevestig-/betaalknop;
+    /// de groepsleider bevestigt en betaalt voor de hele groep.
+    /// </summary>
+    Task SendScheduleInfoAsync(
+        string toEmail,
+        string toName,
+        string seriesName,
+        string groupName,
+        int dayOfWeek,
+        string startTime,
+        string endTime,
+        string? courtName,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Meldt een lesnemer (of groep) dat hun bevestigde wekelijkse lesmoment naar een
     /// ander tijdslot is verplaatst. Toont oud → nieuw moment. Betaling blijft geldig.
     /// </summary>
