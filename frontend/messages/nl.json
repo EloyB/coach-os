@@ -309,7 +309,10 @@
     "close": "Sluiten",
     "edit": "Aanpassen",
     "unknown": "—",
-    "prefMixed": "Gemengd"
+    "prefMixed": "Gemengd",
+    "contactEmail": "E-mail",
+    "contactCall": "Bellen",
+    "contactWhatsapp": "WhatsApp"
   },
   "formBuilder": {
     "title": "Inschrijfformulier",
@@ -430,8 +433,9 @@
     "noFittingSlot": "Geen passend tijdslot",
     "noSlotCapacity": "Geen plek meer in passende slots",
     "noSlotsAvailable": "Geen tijdslot ingesteld",
-    "multipleOptions": "Meerdere opties",
     "assignManually": "Handmatig toewijzen",
+    "assignShort": "Inplannen",
+    "cancelAssign": "Annuleren",
     "groups": "Groepen",
     "createGroup": "Aanmaken",
     "preFormed": "Pre-formed",
@@ -494,7 +498,8 @@
     "cancel": "Annuleren",
     "nobodyAssigned": "Nog niemand toegewezen",
     "confirmDisabledUnassigned": "{count, plural, one {Nog # persoon niet toegewezen — wijs iedereen toe om te kunnen bevestigen.} other {Nog # personen niet toegewezen — wijs iedereen toe om te kunnen bevestigen.}}",
-    "mixedPreference": "Gemengd — verschilt per baan"
+    "mixedPreference": "Gemengd — verschilt per baan",
+    "notScheduled": "Niet ingepland"
   },
   "confirmation": {
     "pageTitle": "Bevestiging",

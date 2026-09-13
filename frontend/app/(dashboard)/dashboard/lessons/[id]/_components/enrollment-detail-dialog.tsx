@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { Pencil, UserMinus, X } from "lucide-react";
+import { Pencil, UserMinus, X, Mail, Phone, MessageCircle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -54,7 +54,8 @@ export function EnrollmentDetailDialog({
   seriesId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onEdit: () => void;
+  /** Wanneer weggelaten: geen 'Bewerken'-knop (kijkmodus, bv. vanaf de planning). */
+  onEdit?: () => void;
   /** Wanneer gezet: toon een 'Leden'-sectie (groep-detail). `enrollment` = de leider. */
   groupMembers?: LessonSeriesEnrollmentDto[];
   /** Wanneer gezet: toon per lid een bewerk-knop die dit lid opent. */
@@ -104,6 +105,11 @@ export function EnrollmentDetailDialog({
   const contact = enrollment.hasOwnEmail
     ? (enrollment.studentEmail ?? "")
     : t("viaContact", { email: enrollment.contactEmail });
+  // Werkelijk mailadres om te contacteren (leden zonder eigen mail → contactpersoon).
+  const contactEmailAddr = enrollment.hasOwnEmail
+    ? enrollment.studentEmail
+    : enrollment.contactEmail;
+  const waPhone = enrollment.studentPhone?.replace(/[^0-9+]/g, "").replace(/^\+/, "");
 
   const hasGroup = !!(groupMembers && groupMembers.length > 0);
   const tabs: { id: TabId; label: string }[] = [
@@ -167,6 +173,40 @@ export function EnrollmentDetailDialog({
         {/* Tab: Gegevens (basis + formulierantwoorden) */}
         {activeTab === "gegevens" && (
           <div className="space-y-5">
+            {/* Snel contact opnemen */}
+            {(contactEmailAddr || enrollment.studentPhone) && (
+              <div className="flex flex-wrap gap-2">
+                {contactEmailAddr && (
+                  <a
+                    href={`mailto:${contactEmailAddr}`}
+                    className="inline-flex items-center gap-1.5 rounded-md border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                  >
+                    <Mail size={13} className="text-gray-400" />
+                    {t("contactEmail")}
+                  </a>
+                )}
+                {enrollment.studentPhone && (
+                  <>
+                    <a
+                      href={`tel:${enrollment.studentPhone}`}
+                      className="inline-flex items-center gap-1.5 rounded-md border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                    >
+                      <Phone size={13} className="text-gray-400" />
+                      {t("contactCall")}
+                    </a>
+                    <a
+                      href={`https://wa.me/${waPhone}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded-md border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                    >
+                      <MessageCircle size={13} className="text-green-500" />
+                      {t("contactWhatsapp")}
+                    </a>
+                  </>
+                )}
+              </div>
+            )}
             <dl className="space-y-3.5">
               <DetailRow label={t("contact")} value={contact} />
               {enrollment.studentPhone && (
@@ -343,7 +383,7 @@ export function EnrollmentDetailDialog({
           >
             {t("close")}
           </button>
-          {canEdit && !groupMembers && (
+          {canEdit && !groupMembers && onEdit && (
             <button
               type="button"
               onClick={onEdit}
