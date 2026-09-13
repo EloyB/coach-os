@@ -60,7 +60,7 @@
           <a href="mailto:info@coach-os.be" style="color:#2D5016;text-decoration:none;font-weight:600">info@coach-os.be</a>
         </mj-text>
         <mj-text font-size="11px" color="#d1d5db" align="center" padding-top="8px">
-          © {{year}} CoachOS · Studio Swyft
+          © {{year}} CoachOS
         </mj-text>
       </mj-column>
     </mj-section>
