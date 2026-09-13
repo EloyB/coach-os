@@ -348,13 +348,52 @@ export function TimeslotDetailDialog({
                   </div>
                 )}
 
-                {/* Verplaatsen — voor een bevestigd+betaald slot de enige herschik-actie. */}
-                {!readOnly && isConfirmed && onMove && (() => {
+                {/* Acties: Verplaatsen (bevestigd) + Extra tijdslot — naast elkaar,
+                    visueel onderscheiden (omlijnde knop vs tekstlink). */}
+                {!readOnly && (() => {
+                  const target = assignment.groupId
+                    ? { groupId: assignment.groupId }
+                    : assignment.enrollmentId
+                      ? { enrollmentId: assignment.enrollmentId }
+                      : null;
+                  const showMove = isConfirmed && onMove !== undefined;
+                  const showExtra = onAssignToSlot !== undefined && target !== null;
+                  if (!showMove && !showExtra) return null;
+
                   const options = eligibleSlotsFor?.(assignment) ?? [];
-                  const isOpen = movingForAssignmentId === assignment.id;
+                  const moveOpen = movingForAssignmentId === assignment.id;
+                  const extraOpen = addingForAssignmentId === assignment.id;
+
                   return (
                     <div className="mt-2 border-t border-gray-100 pt-2">
-                      {isOpen ? (
+                      {/* Triggerrij (verborgen zodra een kiezer open is) */}
+                      {!moveOpen && !extraOpen && (
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                          {showMove && (
+                            <button
+                              type="button"
+                              onClick={() => setMovingForAssignmentId(assignment.id)}
+                              className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-tennis-green/40 px-2 py-1 text-[11px] font-semibold text-tennis-green transition-colors hover:bg-tennis-green/5"
+                            >
+                              <ArrowRightLeft size={12} />
+                              {t("moveAssignment")}
+                            </button>
+                          )}
+                          {showExtra && (
+                            <button
+                              type="button"
+                              onClick={() => setAddingForAssignmentId(assignment.id)}
+                              className="inline-flex cursor-pointer items-center gap-1 text-[11px] font-medium text-gray-500 transition-colors hover:text-tennis-green hover:underline"
+                            >
+                              <Plus size={12} />
+                              {t("addExtraSlot")}
+                            </button>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Verplaats-kiezer */}
+                      {moveOpen && (
                         <div className="space-y-1.5">
                           <p className="text-[11px] font-medium text-gray-500">
                             {t("chooseMoveSlot")}
@@ -399,33 +438,10 @@ export function TimeslotDetailDialog({
                             {t("cancel")}
                           </button>
                         </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => setMovingForAssignmentId(assignment.id)}
-                          className="inline-flex cursor-pointer items-center gap-1 text-[11px] font-medium text-tennis-green hover:underline"
-                        >
-                          <ArrowRightLeft size={12} />
-                          {t("moveAssignment")}
-                        </button>
                       )}
-                    </div>
-                  );
-                })()}
 
-                {/* Extra tijdslot (multi-slot) */}
-                {!readOnly && onAssignToSlot && (() => {
-                  const target = assignment.groupId
-                    ? { groupId: assignment.groupId }
-                    : assignment.enrollmentId
-                      ? { enrollmentId: assignment.enrollmentId }
-                      : null;
-                  if (!target) return null;
-                  const options = eligibleSlotsFor?.(assignment) ?? [];
-                  const isOpen = addingForAssignmentId === assignment.id;
-                  return (
-                    <div className="mt-2 border-t border-gray-100 pt-2">
-                      {isOpen ? (
+                      {/* Extra-tijdslot-kiezer */}
+                      {extraOpen && showExtra && (
                         <div className="space-y-1.5">
                           <p className="text-[11px] font-medium text-gray-500">
                             {t("chooseExtraSlot")}
@@ -442,7 +458,7 @@ export function TimeslotDetailDialog({
                                   type="button"
                                   disabled={isAssignPending}
                                   onClick={() => {
-                                    onAssignToSlot(target, s.id);
+                                    onAssignToSlot!(target!, s.id);
                                     setAddingForAssignmentId(null);
                                   }}
                                   className="w-full cursor-pointer rounded-md border border-gray-200 px-2 py-1.5 text-left text-[11px] text-gray-700 transition-colors hover:border-tennis-green hover:bg-tennis-green/5 disabled:opacity-50"
@@ -465,15 +481,6 @@ export function TimeslotDetailDialog({
                             {t("cancel")}
                           </button>
                         </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => setAddingForAssignmentId(assignment.id)}
-                          className="inline-flex cursor-pointer items-center gap-1 text-[11px] font-medium text-tennis-green hover:underline"
-                        >
-                          <Plus size={12} />
-                          {t("addExtraSlot")}
-                        </button>
                       )}
                     </div>
                   );
