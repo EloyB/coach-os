@@ -54,7 +54,7 @@
       <mj-column>
         <mj-text mj-class="fine" align="center">
           Verstuurd door CoachOS — vragen?
-          <a href="mailto:support@coach-hq.com" style="color:#2D5016;text-decoration:none;font-weight:600">support@coach-hq.com</a>
+          <a href="mailto:info@coach-os.be" style="color:#2D5016;text-decoration:none;font-weight:600">info@coach-os.be</a>
         </mj-text>
         <mj-text font-size="11px" color="#d1d5db" align="center" padding-top="8px">
           © {{year}} CoachOS · Studio Swyft
