@@ -177,6 +177,31 @@ public class EmailService(
             $"Bevestig de lesmomenten voor {names} — {seriesName}", html, ct);
     }
 
+    public async Task SendAssignmentMovedAsync(
+        string toEmail, string toName, string seriesName,
+        int oldDayOfWeek, string oldStartTime, string oldEndTime,
+        int newDayOfWeek, string newStartTime, string newEndTime, string? newCourtName,
+        IReadOnlyList<string>? participantNames = null, CancellationToken ct = default)
+    {
+        // dayOfWeek in EU-conventie (0 = maandag) → DaysNl is .NET-conventie (0 = zondag).
+        string OldDay() => DaysNl[(Math.Clamp(oldDayOfWeek, 0, 6) + 1) % 7];
+        string NewDay() => DaysNl[(Math.Clamp(newDayOfWeek, 0, 6) + 1) % 7];
+        var courtLine = string.IsNullOrWhiteSpace(newCourtName) ? string.Empty : $"Baan: {newCourtName}";
+
+        var html = renderer.Render("assignment-moved", new Dictionary<string, string>
+        {
+            ["studentName"] = toName,
+            ["seriesName"] = seriesName,
+            ["oldMoment"] = $"{OldDay()} {oldStartTime} — {oldEndTime}",
+            ["newMoment"] = $"{NewDay()} {newStartTime} — {newEndTime}",
+            ["courtLine"] = courtLine,
+            ["participantsLine"] = ParticipantsLine(participantNames, "Deze les is voor"),
+            ["year"] = DateTime.UtcNow.Year.ToString(),
+        });
+        await SendAsync(toEmail, toName,
+            $"Je lesmoment is verplaatst: {seriesName}", html, ct);
+    }
+
     public async Task SendStudentMagicLinkAsync(
         string toEmail, string magicLinkUrl, CancellationToken ct = default)
     {

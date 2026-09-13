@@ -62,7 +62,7 @@ interface TimeslotDetailDialogProps {
   onOffer: (assignmentId: string) => void;
   onUnassign: (assignmentId: string) => void;
   /** Verplaatst een bestaande toewijzing in-place naar een ander tijdslot. */
-  onMove?: (assignmentId: string, slotId: string) => void;
+  onMove?: (assignmentId: string, slotId: string, notifyStudent: boolean) => void;
   isMovePending?: boolean;
   isLockPending: boolean;
   isOfferPending: boolean;
@@ -128,6 +128,8 @@ export function TimeslotDetailDialog({
     slot: ExtraSlotOption;
     name: string;
   } | null>(null);
+  // Lesnemer mailen bij het verplaatsen? Default aan.
+  const [notifyOnMove, setNotifyOnMove] = useState(true);
 
   if (!slot) return null;
 
@@ -369,6 +371,7 @@ export function TimeslotDetailDialog({
                                   type="button"
                                   disabled={isMovePending}
                                   onClick={() => {
+                                    setNotifyOnMove(true);
                                     setMoveConfirm({
                                       assignmentId: assignment.id,
                                       slot: s,
@@ -511,11 +514,21 @@ export function TimeslotDetailDialog({
             })}
           </AlertDialogDescription>
         </AlertDialogHeader>
+        <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-gray-200 bg-gray-50/50 px-3 py-2.5 text-sm text-gray-700">
+          <input
+            type="checkbox"
+            checked={notifyOnMove}
+            onChange={(e) => setNotifyOnMove(e.target.checked)}
+            className="mt-0.5 h-4 w-4 shrink-0 accent-tennis-green"
+          />
+          <span>{t("moveNotifyLabel")}</span>
+        </label>
         <AlertDialogFooter>
           <AlertDialogCancel>{t("moveConfirmCancel")}</AlertDialogCancel>
           <AlertDialogAction
             onClick={() => {
-              if (moveConfirm) onMove?.(moveConfirm.assignmentId, moveConfirm.slot.id);
+              if (moveConfirm)
+                onMove?.(moveConfirm.assignmentId, moveConfirm.slot.id, notifyOnMove);
               setMoveConfirm(null);
             }}
             className="bg-tennis-green hover:bg-tennis-green/90"

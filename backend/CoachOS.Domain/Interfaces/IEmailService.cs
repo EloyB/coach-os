@@ -90,6 +90,24 @@ public interface IEmailService
         string? reason,
         CancellationToken ct = default);
 
+    /// <summary>
+    /// Meldt een lesnemer (of groep) dat hun bevestigde wekelijkse lesmoment naar een
+    /// ander tijdslot is verplaatst. Toont oud → nieuw moment. Betaling blijft geldig.
+    /// </summary>
+    Task SendAssignmentMovedAsync(
+        string toEmail,
+        string toName,
+        string seriesName,
+        int oldDayOfWeek,
+        string oldStartTime,
+        string oldEndTime,
+        int newDayOfWeek,
+        string newStartTime,
+        string newEndTime,
+        string? newCourtName,
+        IReadOnlyList<string>? participantNames = null,
+        CancellationToken ct = default);
+
     Task SendStandaloneLessonInvitationAsync(
         string toEmail,
         string? firstName,
