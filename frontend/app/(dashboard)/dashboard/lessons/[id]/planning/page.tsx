@@ -289,30 +289,22 @@ export default function PlanningPage({
     },
   });
 
-  // Extra tijdslot toevoegen én meteen apart aanbieden (eigen bevestig-/betaalmail).
-  // Voor personen die nog niet (volledig) bevestigd zijn: het extra slot krijgt zo
-  // z'n eigen bevestigingsronde, los van de al lopende bevestiging.
-  const addAndOfferMutation = useMutation({
-    mutationFn: async ({
+  // Extra tijdslot toevoegen aan een nog-niet-bevestigd persoon. Voegt het slot
+  // enkel toe als concept — géén automatische aanbieding/betaalmail. De mailing-flow
+  // voor extra slots bespreken we nog met de testers en finetunen we later.
+  const addExtraSlotMutation = useMutation({
+    mutationFn: ({
       target,
       slotId,
     }: {
       target: { enrollmentId?: string; groupId?: string };
       slotId: string;
-    }) => {
-      const assignmentId = await createAssignment(id, {
-        ...target,
-        weeklyTemplateEntryId: slotId,
-      });
-      await sendAssignmentConfirmation(id, assignmentId);
-    },
+    }) => createAssignment(id, { ...target, weeklyTemplateEntryId: slotId }),
     onSuccess: () => {
-      toast.success(t("extraSlotOfferedSuccess"));
+      toast.success(t("extraSlotAddedSuccess"));
       queryClient.invalidateQueries({ queryKey: ["planning", id] });
-      queryClient.invalidateQueries({ queryKey: ["planning", id, "non-responders"] });
-      queryClient.invalidateQueries({ queryKey: ["lessonSeries", id] });
     },
-    onError: () => toast.error(t("extraSlotOfferedError")),
+    onError: () => toast.error(t("extraSlotAddError")),
   });
 
   // Esc sluit de toewijs-modus.
@@ -1542,9 +1534,9 @@ export default function PlanningPage({
             eligibleSlotsForAssignment={eligibleSlotsForAssignment}
             targetForAssignment={targetForAssignment}
             onAddExtraSlot={(target, slotId) =>
-              addAndOfferMutation.mutate({ target, slotId })
+              addExtraSlotMutation.mutate({ target, slotId })
             }
-            isAddExtraPending={addAndOfferMutation.isPending}
+            isAddExtraPending={addExtraSlotMutation.isPending}
           />
 
           {/* Bevestigd (uitklapbaar) — enkel écht bevestigde (Confirmed) eenheden;
