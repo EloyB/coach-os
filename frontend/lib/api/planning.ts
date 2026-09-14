@@ -100,11 +100,12 @@ export async function deleteAssignment(
 export async function createAssignment(
   seriesId: string,
   request: CreateAssignmentRequest
-): Promise<void> {
-  await apiClient.post(
+): Promise<string> {
+  const { data } = await apiClient.post<string>(
     `/lessonseries/${seriesId}/planning/assignments`,
     request
   );
+  return data;
 }
 
 export async function updateAssignment(

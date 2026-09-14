@@ -289,6 +289,32 @@ export default function PlanningPage({
     },
   });
 
+  // Extra tijdslot toevoegen én meteen apart aanbieden (eigen bevestig-/betaalmail).
+  // Voor personen die nog niet (volledig) bevestigd zijn: het extra slot krijgt zo
+  // z'n eigen bevestigingsronde, los van de al lopende bevestiging.
+  const addAndOfferMutation = useMutation({
+    mutationFn: async ({
+      target,
+      slotId,
+    }: {
+      target: { enrollmentId?: string; groupId?: string };
+      slotId: string;
+    }) => {
+      const assignmentId = await createAssignment(id, {
+        ...target,
+        weeklyTemplateEntryId: slotId,
+      });
+      await sendAssignmentConfirmation(id, assignmentId);
+    },
+    onSuccess: () => {
+      toast.success(t("extraSlotOfferedSuccess"));
+      queryClient.invalidateQueries({ queryKey: ["planning", id] });
+      queryClient.invalidateQueries({ queryKey: ["planning", id, "non-responders"] });
+      queryClient.invalidateQueries({ queryKey: ["lessonSeries", id] });
+    },
+    onError: () => toast.error(t("extraSlotOfferedError")),
+  });
+
   // Esc sluit de toewijs-modus.
   useEffect(() => {
     if (!assignTarget) return;
@@ -576,6 +602,25 @@ export default function PlanningPage({
   function slotHasProposed(slotId: string): boolean {
     const assignments = assignmentsBySlot.get(slotId) ?? [];
     return assignments.some((a) => a.status === "Proposed");
+  }
+
+  // Voor de 'Wachten op bevestiging'-kaarten (die enkel een assignmentId kennen):
+  // resolve de persoon/groep en de vrije extra-slots vanuit de planning-data.
+  function targetForAssignment(
+    assignmentId: string
+  ): { enrollmentId?: string; groupId?: string } | null {
+    const a = planning?.assignments.find((x) => x.id === assignmentId);
+    if (!a) return null;
+    return a.groupId
+      ? { groupId: a.groupId }
+      : a.enrollmentId
+        ? { enrollmentId: a.enrollmentId }
+        : null;
+  }
+
+  function eligibleSlotsForAssignment(assignmentId: string) {
+    const a = planning?.assignments.find((x) => x.id === assignmentId);
+    return a ? eligibleExtraSlots(a) : [];
   }
 
   // ─── Loading / Error ────────────────────────────────────────────────────
@@ -1494,6 +1539,12 @@ export default function PlanningPage({
               const a = planning.assignments.find((x) => x.id === assignmentId);
               if (a) setOpenSlotId(a.timeSlotId);
             }}
+            eligibleSlotsForAssignment={eligibleSlotsForAssignment}
+            targetForAssignment={targetForAssignment}
+            onAddExtraSlot={(target, slotId) =>
+              addAndOfferMutation.mutate({ target, slotId })
+            }
+            isAddExtraPending={addAndOfferMutation.isPending}
           />
 
           {/* Bevestigd (uitklapbaar) — enkel écht bevestigde (Confirmed) eenheden;

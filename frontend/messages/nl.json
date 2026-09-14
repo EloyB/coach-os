@@ -498,6 +498,8 @@
     "moveSuccess": "Toewijzing verplaatst.",
     "moveSuccessNotified": "Toewijzing verplaatst — lesnemer is gemaild.",
     "moveError": "Verplaatsen mislukt.",
+    "extraSlotOfferedSuccess": "Extra tijdslot toegevoegd en aangeboden — lesnemer krijgt een bevestigmail.",
+    "extraSlotOfferedError": "Extra tijdslot toevoegen/aanbieden mislukt.",
     "cancel": "Annuleren",
     "nobodyAssigned": "Nog niemand toegewezen",
     "confirmDisabledUnassigned": "{count, plural, one {Nog # persoon niet toegewezen — wijs iedereen toe om te kunnen bevestigen.} other {Nog # personen niet toegewezen — wijs iedereen toe om te kunnen bevestigen.}}",

@@ -13,6 +13,7 @@ import {
   ChevronDown,
   MoreVertical,
   ExternalLink,
+  Plus,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -35,6 +36,25 @@ import type { NonResponderDto } from "@/lib/api/confirmation";
 
 // Backend-conventie: 0=maandag ... 6=zondag (zie CoachOS.Application/LessonSerie/LessonSerieService.cs).
 const DAY_NAMES_SHORT = ["Ma", "Di", "Wo", "Do", "Vr", "Za", "Zo"];
+const DAY_NAMES_FULL = [
+  "Maandag",
+  "Dinsdag",
+  "Woensdag",
+  "Donderdag",
+  "Vrijdag",
+  "Zaterdag",
+  "Zondag",
+];
+
+type ExtraSlotOption = {
+  id: string;
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  courtName: string | null;
+  remaining: number;
+};
+type Target = { enrollmentId?: string; groupId?: string };
 
 function formatRelativeExpiry(expiresAt: string): string {
   const now = new Date();
@@ -57,12 +77,25 @@ function formatRelativeExpiry(expiresAt: string): string {
 export function NonRespondersPanel({
   seriesId,
   onOpenAssignment,
+  eligibleSlotsForAssignment,
+  targetForAssignment,
+  onAddExtraSlot,
+  isAddExtraPending = false,
 }: {
   seriesId: string;
   /** Klik op een rij → open de tijdslot-dialog van die toewijzing (o.a. voor Verplaatsen). */
   onOpenAssignment?: (assignmentId: string) => void;
+  /** Vrije extra-slots voor de persoon/groep achter deze toewijzing (multi-slot). */
+  eligibleSlotsForAssignment?: (assignmentId: string) => ExtraSlotOption[];
+  /** De persoon/groep achter deze toewijzing (voor het aanmaken van het extra slot). */
+  targetForAssignment?: (assignmentId: string) => Target | null;
+  /** Voegt een extra tijdslot toe én biedt het meteen apart aan (eigen bevestig-/betaalmail). */
+  onAddExtraSlot?: (target: Target, slotId: string) => void;
+  isAddExtraPending?: boolean;
 }) {
   const t = useTranslations("nonResponders");
+  // Extra-tijdslot-kiezer hergebruikt de planning-teksten (addExtraSlot, chooseExtraSlot, …).
+  const tp = useTranslations("planning");
   const queryClient = useQueryClient();
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -70,6 +103,8 @@ export function NonRespondersPanel({
   const [open, setOpen] = useState(true);
   // Welke kaart heeft z'n 3-puntjes-menu open.
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  // Welke kaart toont de extra-tijdslot-kiezer (i.p.v. het menu) in z'n popover.
+  const [extraChooserId, setExtraChooserId] = useState<string | null>(null);
   // Kaart waarvoor de 'manueel bevestigen'-bevestiging openstaat.
   const [confirmAdmin, setConfirmAdmin] = useState<NonResponderDto | null>(null);
 
@@ -207,7 +242,10 @@ export function NonRespondersPanel({
 
               <Popover
                 open={openMenuId === nr.assignmentId}
-                onOpenChange={(o) => setOpenMenuId(o ? nr.assignmentId : null)}
+                onOpenChange={(o) => {
+                  setOpenMenuId(o ? nr.assignmentId : null);
+                  if (!o) setExtraChooserId(null);
+                }}
               >
                 <PopoverTrigger asChild>
                   <button
@@ -218,74 +256,140 @@ export function NonRespondersPanel({
                     <MoreVertical size={15} />
                   </button>
                 </PopoverTrigger>
-                <PopoverContent align="end" className="w-52 p-1 text-sm">
-                  <button
-                    type="button"
-                    disabled={adminConfirmMutation.isPending}
-                    onClick={() => {
-                      setOpenMenuId(null);
-                      setConfirmAdmin(nr);
-                    }}
-                    className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left font-medium text-tennis-green hover:bg-tennis-green/5 disabled:opacity-50"
-                  >
-                    <CheckCircle2 size={13} />
-                    {t("adminConfirm")}
-                  </button>
-
-                  <div className="my-1 border-t border-gray-100" />
-
-                  {nr.studentPhone && (
+                <PopoverContent align="end" className="w-56 p-1 text-sm">
+                  {extraChooserId === nr.assignmentId ? (
+                    (() => {
+                      const options =
+                        eligibleSlotsForAssignment?.(nr.assignmentId) ?? [];
+                      const target = targetForAssignment?.(nr.assignmentId) ?? null;
+                      return (
+                        <div className="space-y-1.5 p-1.5">
+                          <p className="text-[11px] font-medium text-gray-500">
+                            {tp("chooseExtraSlot")}
+                          </p>
+                          {options.length === 0 || !target ? (
+                            <p className="text-[11px] text-gray-400">
+                              {tp("noOtherSlotAvailable")}
+                            </p>
+                          ) : (
+                            <div className="max-h-56 space-y-1 overflow-auto">
+                              {options.map((s) => (
+                                <button
+                                  key={s.id}
+                                  type="button"
+                                  disabled={isAddExtraPending}
+                                  onClick={() => {
+                                    onAddExtraSlot?.(target, s.id);
+                                    setOpenMenuId(null);
+                                    setExtraChooserId(null);
+                                  }}
+                                  className="w-full cursor-pointer rounded-md border border-gray-200 px-2 py-1.5 text-left text-[11px] text-gray-700 transition-colors hover:border-tennis-green hover:bg-tennis-green/5 disabled:opacity-50"
+                                >
+                                  <span className="font-medium">
+                                    {DAY_NAMES_FULL[s.dayOfWeek]} {s.startTime}–
+                                    {s.endTime}
+                                  </span>
+                                  {s.courtName && (
+                                    <span className="ml-1 text-gray-400">
+                                      · {s.courtName}
+                                    </span>
+                                  )}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => setExtraChooserId(null)}
+                            className="cursor-pointer text-[11px] text-gray-400 hover:text-gray-600"
+                          >
+                            {tp("cancel")}
+                          </button>
+                        </div>
+                      );
+                    })()
+                  ) : (
                     <>
-                      <a
-                        href={`tel:${nr.studentPhone}`}
-                        className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-gray-700 hover:bg-gray-50"
-                      >
-                        <Phone size={13} />
-                        {t("call")}
-                      </a>
-                      <a
-                        href={`https://wa.me/${nr.studentPhone.replace(/[^0-9+]/g, "").replace(/^\+/, "")}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-gray-700 hover:bg-gray-50"
-                      >
-                        <MessageCircle size={13} />
-                        {t("whatsapp")}
-                      </a>
-                    </>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => handleCopyEmail(nr)}
-                    className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
-                  >
-                    {copiedId === nr.assignmentId ? (
-                      <>
-                        <Check size={13} className="text-green-500" />
-                        {t("emailCopied")}
-                      </>
-                    ) : (
-                      <>
-                        <Copy size={13} />
-                        {t("copyEmail")}
-                      </>
-                    )}
-                  </button>
-
-                  {onOpenAssignment && (
-                    <>
-                      <div className="my-1 border-t border-gray-100" />
                       <button
                         type="button"
+                        disabled={adminConfirmMutation.isPending}
                         onClick={() => {
                           setOpenMenuId(null);
-                          onOpenAssignment(nr.assignmentId);
+                          setConfirmAdmin(nr);
                         }}
+                        className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left font-medium text-tennis-green hover:bg-tennis-green/5 disabled:opacity-50"
+                      >
+                        <CheckCircle2 size={13} />
+                        {t("adminConfirm")}
+                      </button>
+
+                      <div className="my-1 border-t border-gray-100" />
+
+                      {nr.studentPhone && (
+                        <>
+                          <a
+                            href={`tel:${nr.studentPhone}`}
+                            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-gray-700 hover:bg-gray-50"
+                          >
+                            <Phone size={13} />
+                            {t("call")}
+                          </a>
+                          <a
+                            href={`https://wa.me/${nr.studentPhone.replace(/[^0-9+]/g, "").replace(/^\+/, "")}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-gray-700 hover:bg-gray-50"
+                          >
+                            <MessageCircle size={13} />
+                            {t("whatsapp")}
+                          </a>
+                        </>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleCopyEmail(nr)}
                         className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
                       >
-                        <ExternalLink size={13} />
-                        {t("openAction")}
+                        {copiedId === nr.assignmentId ? (
+                          <>
+                            <Check size={13} className="text-green-500" />
+                            {t("emailCopied")}
+                          </>
+                        ) : (
+                          <>
+                            <Copy size={13} />
+                            {t("copyEmail")}
+                          </>
+                        )}
                       </button>
+
+                      {onAddExtraSlot && targetForAssignment && (
+                        <>
+                          <div className="my-1 border-t border-gray-100" />
+                          <button
+                            type="button"
+                            onClick={() => setExtraChooserId(nr.assignmentId)}
+                            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                          >
+                            <Plus size={13} />
+                            {tp("addExtraSlot")}
+                          </button>
+                        </>
+                      )}
+
+                      {onOpenAssignment && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOpenMenuId(null);
+                            onOpenAssignment(nr.assignmentId);
+                          }}
+                          className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                        >
+                          <ExternalLink size={13} />
+                          {t("openAction")}
+                        </button>
+                      )}
                     </>
                   )}
                 </PopoverContent>
