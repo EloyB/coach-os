@@ -10,12 +10,14 @@ import {
   ArrowLeft,
   RefreshCw,
   Check,
+  Clock,
   Users,
   Mail,
   Lock,
   Unlock,
   Plus,
   ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -258,6 +260,8 @@ export default function PlanningPage({
   const [showUnassigned, setShowUnassigned] = useState(true);
   // Toegewezen-sectie: default ingeklapt; per eenheid een extra-slot-kiezer.
   const [showAssigned, setShowAssigned] = useState(false);
+  // Bevestigd-sectie: default open (verschijnt enkel als er aangeboden/bevestigde zijn).
+  const [showConfirmed, setShowConfirmed] = useState(true);
   const [addingSlotForKey, setAddingSlotForKey] = useState<string | null>(null);
   // Bevestiging vóór 'Definitief aanbieden' vanuit de Toegewezen-sectie
   // (verstuurt meteen e-mail-aanbod(en) voor alle voorstellen van de eenheid).
@@ -460,6 +464,23 @@ export default function PlanningPage({
     }
     return [...byKey.values()].sort((a, b) => a.name.localeCompare(b.name));
   }, [planning, groupMap, enrollmentMap]);
+
+  // "Toegewezen" toont enkel nog concept-eenheden (alle toewijzingen nog Proposed).
+  // Zodra een eenheid minstens één aangeboden/bevestigde toewijzing heeft, verhuist
+  // ze naar de "Bevestigd"-sectie waar je de bevestigingsstatus ziet.
+  const conceptUnits = useMemo(
+    () => assignedUnits.filter((u) => u.assignments.every((a) => a.status === "Proposed")),
+    [assignedUnits]
+  );
+  const confirmedUnits = useMemo(
+    () =>
+      assignedUnits.filter((u) =>
+        u.assignments.some(
+          (a) => a.status === "AwaitingConfirmation" || a.status === "Confirmed"
+        )
+      ),
+    [assignedUnits]
+  );
 
   // Stats
   const totalUnassigned = unassignedSolos.length + unassignedGroups.length;
@@ -1301,9 +1322,9 @@ export default function PlanningPage({
             >
               <span className="flex items-center gap-2 text-sm font-semibold text-gray-900">
                 {t("assigned")}
-                {assignedUnits.length > 0 && (
+                {conceptUnits.length > 0 && (
                   <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
-                    {assignedUnits.length}
+                    {conceptUnits.length}
                   </span>
                 )}
               </span>
@@ -1315,10 +1336,10 @@ export default function PlanningPage({
 
             {showAssigned && (
               <div className="mt-3 space-y-2">
-                {assignedUnits.length === 0 ? (
+                {conceptUnits.length === 0 ? (
                   <p className="text-xs text-gray-400">{t("nobodyAssigned")}</p>
                 ) : (
-                  assignedUnits.map((unit) => {
+                  conceptUnits.map((unit) => {
                     const options = eligibleExtraSlots(unit.rep);
                     const isOpen = addingSlotForKey === unit.key;
                     // Lock/aanbieden werken op alle nog-voorgestelde toewijzingen
@@ -1471,6 +1492,84 @@ export default function PlanningPage({
               </div>
             )}
           </div>
+
+          {/* Bevestigd (uitklapbaar) — verschijnt zodra er aangeboden/bevestigde
+              toewijzingen zijn; klik op een rij opent de tijdslot-dialog met acties. */}
+          {confirmedUnits.length > 0 && (
+            <div className="p-4 border-b border-gray-100">
+              <button
+                type="button"
+                onClick={() => setShowConfirmed((v) => !v)}
+                className="flex w-full cursor-pointer items-center justify-between"
+              >
+                <span className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                  {t("confirmedSection")}
+                  <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                    {confirmedUnits.length}
+                  </span>
+                </span>
+                <ChevronDown
+                  size={16}
+                  className={`text-gray-400 transition-transform ${showConfirmed ? "rotate-180" : ""}`}
+                />
+              </button>
+
+              {showConfirmed && (
+                <div className="mt-3 space-y-2">
+                  {confirmedUnits.map((unit) => {
+                    const hasAwaiting = unit.assignments.some(
+                      (a) => a.status === "AwaitingConfirmation"
+                    );
+                    return (
+                      <button
+                        key={unit.key}
+                        type="button"
+                        onClick={() => setOpenSlotId(unit.rep.timeSlotId)}
+                        className="flex w-full cursor-pointer items-center gap-2 rounded-lg border border-gray-200 p-2.5 text-left transition-colors hover:border-tennis-green hover:bg-tennis-green/5"
+                      >
+                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500">
+                          {unit.type === "group" ? (
+                            <Users size={13} />
+                          ) : (
+                            <span className="text-[10px] font-bold">{getInitials(unit.name)}</span>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5">
+                            <span className="truncate text-xs font-medium text-gray-900">
+                              {unit.name}
+                            </span>
+                            {hasAwaiting ? (
+                              <span className="inline-flex shrink-0 items-center gap-1 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
+                                <Clock size={9} />
+                                {t("statusOffered")}
+                              </span>
+                            ) : (
+                              <span className="inline-flex shrink-0 items-center gap-1 rounded bg-green-100 px-1.5 py-0.5 text-[10px] font-semibold text-green-700">
+                                <Check size={9} />
+                                {t("statusConfirmed")}
+                              </span>
+                            )}
+                          </div>
+                          <div className="mt-0.5 flex flex-wrap gap-1">
+                            {unit.slots.map((s, i) => (
+                              <span
+                                key={i}
+                                className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-600"
+                              >
+                                {s.label}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                        <ChevronRight size={16} className="shrink-0 text-gray-300" />
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Capacity per slot — grouped by day */}
           <div className="p-4">

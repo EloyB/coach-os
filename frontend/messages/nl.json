@@ -422,6 +422,7 @@
     "regenerate": "Opnieuw genereren",
     "confirm": "Planning bevestigen",
     "assigned": "Toegewezen",
+    "confirmedSection": "Bevestigd",
     "unassigned": "Niet toegewezen",
     "conflicts": "Conflicten",
     "enrollments": "inschrijvingen",
