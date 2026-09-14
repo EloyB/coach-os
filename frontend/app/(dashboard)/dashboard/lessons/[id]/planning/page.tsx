@@ -16,7 +16,6 @@ import {
   Unlock,
   Plus,
   ChevronDown,
-  ChevronRight,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -74,6 +73,7 @@ import {
 } from "@/components/calendar/calendar-grid";
 import { getInitials, getAvatarColor } from "@/lib/planning-avatars";
 import { TimeslotDetailDialog } from "./_components/timeslot-detail-dialog";
+import { ConfirmedUnitActions } from "./_components/confirmed-unit-actions";
 import { isHeadTrainerViewer } from "@/lib/auth";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -1520,12 +1520,21 @@ export default function PlanningPage({
               {showConfirmed && (
                 <div className="mt-3 space-y-2">
                   {confirmedUnits.map((unit) => {
+                    const slotEntries = unit.assignments.map((a) => {
+                      const slot = planning.timeSlots.find(
+                        (s) => s.id === a.timeSlotId
+                      );
+                      return {
+                        assignmentId: a.id,
+                        label: slot
+                          ? `${DAY_NAMES_SHORT[slot.dayOfWeek]} ${slot.startTime}`
+                          : "?",
+                      };
+                    });
                     return (
-                      <button
+                      <div
                         key={unit.key}
-                        type="button"
-                        onClick={() => setOpenSlotId(unit.rep.timeSlotId)}
-                        className="flex w-full cursor-pointer items-center gap-2 rounded-lg border border-gray-200 p-2.5 text-left transition-colors hover:border-tennis-green hover:bg-tennis-green/5"
+                        className="flex items-center gap-2 rounded-lg border border-gray-200 p-2.5"
                       >
                         <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500">
                           {unit.type === "group" ? (
@@ -1549,8 +1558,23 @@ export default function PlanningPage({
                             ))}
                           </div>
                         </div>
-                        <ChevronRight size={16} className="shrink-0 text-gray-300" />
-                      </button>
+                        {!readOnly && (
+                          <ConfirmedUnitActions
+                            unitName={unit.name}
+                            slotEntries={slotEntries}
+                            target={unit.target}
+                            options={eligibleExtraSlots(unit.rep)}
+                            onMove={(assignmentId, slotId, notifyStudent) =>
+                              moveMutation.mutate({ assignmentId, slotId, notifyStudent })
+                            }
+                            onAssignExtra={(target, slotId) =>
+                              assignMutation.mutate({ ...target, slotId })
+                            }
+                            isMovePending={moveMutation.isPending}
+                            isAssignPending={assignMutation.isPending}
+                          />
+                        )}
+                      </div>
                     );
                   })}
                 </div>

@@ -423,6 +423,8 @@
     "confirm": "Planning bevestigen",
     "assigned": "Toegewezen",
     "confirmedSection": "Bevestigd",
+    "scheduledOn": "Ingepland op",
+    "actionsFor": "Acties voor {name}",
     "unassigned": "Niet toegewezen",
     "conflicts": "Conflicten",
     "enrollments": "inschrijvingen",
