@@ -10,6 +10,7 @@ import {
   Check,
   RefreshCw,
   CheckCircle2,
+  ChevronDown,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -59,6 +60,8 @@ export function NonRespondersPanel({
   const queryClient = useQueryClient();
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  // Uitklapbaar zoals de andere sidebar-secties; default open (actie vereist).
+  const [open, setOpen] = useState(true);
 
   const { data: nonResponders = [] } = useQuery({
     queryKey: ["planning", seriesId, "non-responders"],
@@ -107,20 +110,32 @@ export function NonRespondersPanel({
 
   return (
     <div className="p-4 border-b border-gray-100">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-gray-900">
-          {t("title")} ({nonResponders.length})
-        </h3>
-      </div>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full cursor-pointer items-center justify-between"
+      >
+        <span className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+          {t("title")}
+          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+            {nonResponders.length}
+          </span>
+        </span>
+        <ChevronDown
+          size={16}
+          className={`text-gray-400 transition-transform ${open ? "rotate-180" : ""}`}
+        />
+      </button>
 
       {/* Toast */}
       {toastMessage && (
-        <div className="mb-3 px-3 py-2 rounded-lg bg-tennis-green/10 border border-tennis-green/20 text-xs text-tennis-green font-medium">
+        <div className="mt-3 px-3 py-2 rounded-lg bg-tennis-green/10 border border-tennis-green/20 text-xs text-tennis-green font-medium">
           {toastMessage}
         </div>
       )}
 
-      <div className="space-y-2">
+      {open && (
+      <div className="mt-3 space-y-2">
         {nonResponders.map((nr) => (
           <div
             key={nr.assignmentId}
@@ -266,6 +281,7 @@ export function NonRespondersPanel({
           </div>
         ))}
       </div>
+      )}
     </div>
   );
 }
