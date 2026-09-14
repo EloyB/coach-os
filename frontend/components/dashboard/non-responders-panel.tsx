@@ -47,7 +47,14 @@ function formatRelativeExpiry(expiresAt: string): string {
   return `${diffM}m`;
 }
 
-export function NonRespondersPanel({ seriesId }: { seriesId: string }) {
+export function NonRespondersPanel({
+  seriesId,
+  onOpenAssignment,
+}: {
+  seriesId: string;
+  /** Klik op een rij → open de tijdslot-dialog van die toewijzing (o.a. voor Verplaatsen). */
+  onOpenAssignment?: (assignmentId: string) => void;
+}) {
   const t = useTranslations("nonResponders");
   const queryClient = useQueryClient();
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -123,10 +130,15 @@ export function NonRespondersPanel({ seriesId }: { seriesId: string }) {
                 : "border-amber-200 bg-amber-50/50"
             }`}
           >
-            {/* Header: name + expiry */}
+            {/* Header: name + expiry. Naam/slot klikbaar → tijdslot-dialog (o.a. Verplaatsen). */}
             <div className="flex items-start justify-between gap-2 mb-1.5">
-              <div className="min-w-0">
-                <div className="text-xs font-medium text-gray-900 truncate">
+              <button
+                type="button"
+                onClick={() => onOpenAssignment?.(nr.assignmentId)}
+                disabled={!onOpenAssignment}
+                className="min-w-0 text-left group enabled:cursor-pointer"
+              >
+                <div className="text-xs font-medium text-gray-900 truncate group-enabled:group-hover:text-tennis-green group-enabled:group-hover:underline">
                   {nr.studentName}
                   {nr.isGroup && (
                     <span className="text-gray-400 font-normal ml-1">
@@ -138,7 +150,7 @@ export function NonRespondersPanel({ seriesId }: { seriesId: string }) {
                   {DAY_NAMES_SHORT[nr.dayOfWeek]} {nr.startTime}
                   {nr.courtName && ` · ${nr.courtName}`}
                 </div>
-              </div>
+              </button>
 
               {nr.isExpired ? (
                 <span className="shrink-0 text-[10px] font-medium px-2 py-0.5 rounded-full bg-red-100 text-red-700">

@@ -10,7 +10,6 @@ import {
   ArrowLeft,
   RefreshCw,
   Check,
-  Clock,
   Users,
   Mail,
   Lock,
@@ -465,9 +464,10 @@ export default function PlanningPage({
     return [...byKey.values()].sort((a, b) => a.name.localeCompare(b.name));
   }, [planning, groupMap, enrollmentMap]);
 
-  // "Toegewezen" toont enkel nog concept-eenheden (alle toewijzingen nog Proposed).
-  // Zodra een eenheid minstens één aangeboden/bevestigde toewijzing heeft, verhuist
-  // ze naar de "Bevestigd"-sectie waar je de bevestigingsstatus ziet.
+  // Sidebar-secties volgen de lifecycle, elke eenheid in exact één sectie:
+  //  - "Toegewezen": concept (alle toewijzingen nog Proposed)
+  //  - "Wachten op bevestiging" (NonRespondersPanel): definitief aangeboden, nog niet bevestigd
+  //  - "Bevestigd": minstens één bevestigde (Confirmed) toewijzing
   const conceptUnits = useMemo(
     () => assignedUnits.filter((u) => u.assignments.every((a) => a.status === "Proposed")),
     [assignedUnits]
@@ -475,9 +475,7 @@ export default function PlanningPage({
   const confirmedUnits = useMemo(
     () =>
       assignedUnits.filter((u) =>
-        u.assignments.some(
-          (a) => a.status === "AwaitingConfirmation" || a.status === "Confirmed"
-        )
+        u.assignments.some((a) => a.status === "Confirmed")
       ),
     [assignedUnits]
   );
@@ -1096,11 +1094,6 @@ export default function PlanningPage({
 
         {/* Right sidebar */}
         <aside className="w-80 bg-white border-l border-gray-200 flex flex-col shrink-0 overflow-auto">
-          {/* Non-responders (only in AwaitingConfirmation) */}
-          {planning.planningStatus === "AwaitingConfirmation" && (
-            <NonRespondersPanel seriesId={id} />
-          )}
-
           {/* Unassigned (uitklapbaar) */}
           <div className="p-4 border-b border-gray-100">
             <button
@@ -1493,8 +1486,18 @@ export default function PlanningPage({
             )}
           </div>
 
-          {/* Bevestigd (uitklapbaar) — verschijnt zodra er aangeboden/bevestigde
-              toewijzingen zijn; klik op een rij opent de tijdslot-dialog met acties. */}
+          {/* Wachten op bevestiging — definitief aangeboden, nog niet bevestigd.
+              Verschijnt zodra er openstaande bevestigingsverzoeken zijn (self-hide bij leeg). */}
+          <NonRespondersPanel
+            seriesId={id}
+            onOpenAssignment={(assignmentId) => {
+              const a = planning.assignments.find((x) => x.id === assignmentId);
+              if (a) setOpenSlotId(a.timeSlotId);
+            }}
+          />
+
+          {/* Bevestigd (uitklapbaar) — enkel écht bevestigde (Confirmed) eenheden;
+              klik op een rij opent de tijdslot-dialog met acties (Verplaatsen). */}
           {confirmedUnits.length > 0 && (
             <div className="p-4 border-b border-gray-100">
               <button
@@ -1517,9 +1520,6 @@ export default function PlanningPage({
               {showConfirmed && (
                 <div className="mt-3 space-y-2">
                   {confirmedUnits.map((unit) => {
-                    const hasAwaiting = unit.assignments.some(
-                      (a) => a.status === "AwaitingConfirmation"
-                    );
                     return (
                       <button
                         key={unit.key}
@@ -1539,17 +1539,10 @@ export default function PlanningPage({
                             <span className="truncate text-xs font-medium text-gray-900">
                               {unit.name}
                             </span>
-                            {hasAwaiting ? (
-                              <span className="inline-flex shrink-0 items-center gap-1 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
-                                <Clock size={9} />
-                                {t("statusOffered")}
-                              </span>
-                            ) : (
-                              <span className="inline-flex shrink-0 items-center gap-1 rounded bg-green-100 px-1.5 py-0.5 text-[10px] font-semibold text-green-700">
-                                <Check size={9} />
-                                {t("statusConfirmed")}
-                              </span>
-                            )}
+                            <span className="inline-flex shrink-0 items-center gap-1 rounded bg-green-100 px-1.5 py-0.5 text-[10px] font-semibold text-green-700">
+                              <Check size={9} />
+                              {t("statusConfirmed")}
+                            </span>
                           </div>
                           <div className="mt-0.5 flex flex-wrap gap-1">
                             {unit.slots.map((s, i) => (
