@@ -1535,14 +1535,8 @@ export default function PlanningPage({
                           )}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5">
-                            <span className="truncate text-xs font-medium text-gray-900">
-                              {unit.name}
-                            </span>
-                            <span className="inline-flex shrink-0 items-center gap-1 rounded bg-green-100 px-1.5 py-0.5 text-[10px] font-semibold text-green-700">
-                              <Check size={9} />
-                              {t("statusConfirmed")}
-                            </span>
+                          <div className="truncate text-xs font-medium text-gray-900">
+                            {unit.name}
                           </div>
                           <div className="mt-0.5 flex flex-wrap gap-1">
                             {unit.slots.map((s, i) => (
