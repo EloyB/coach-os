@@ -7,6 +7,8 @@ import { EnrollmentForm } from "./scenes/EnrollmentForm";
 import { Payments } from "./scenes/Payments";
 import { Closing } from "./scenes/Closing";
 import { MainVideo, SCENE_DURATIONS, TOTAL_DURATION } from "./MainVideo";
+import { Promo } from "./promo/Promo";
+import { PROMO_TOTAL } from "./promo/layout";
 
 const FPS = 30;
 const W = 1920;
@@ -15,6 +17,24 @@ const H = 1080;
 export const RemotionRoot: React.FC = () => {
   return (
     <>
+      <Composition
+        id="Promo"
+        component={Promo}
+        durationInFrames={PROMO_TOTAL}
+        fps={FPS}
+        width={1920}
+        height={1080}
+        defaultProps={{ format: "wide" as const }}
+      />
+      <Composition
+        id="PromoVertical"
+        component={Promo}
+        durationInFrames={PROMO_TOTAL}
+        fps={FPS}
+        width={1080}
+        height={1920}
+        defaultProps={{ format: "tall" as const }}
+      />
       <Composition
         id="MainVideo"
         component={MainVideo}
