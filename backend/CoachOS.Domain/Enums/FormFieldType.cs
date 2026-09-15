@@ -4,5 +4,6 @@ public enum FormFieldType
 {
     Text = 1,
     MultipleChoice = 2,
-    YesNo = 3
+    YesNo = 3,
+    AgeCategory = 4
 }

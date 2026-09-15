@@ -17,6 +17,11 @@ public static class SchedulingAlgorithm
         Dictionary<Guid, int> slotUsed = input.Slots.ToDictionary(s => s.WeeklyTemplateEntryId, _ => 0);
         // Track which slots have assignments and whether they are open to merging
         Dictionary<Guid, bool> slotIsOpenToMerging = new();
+        // Track the age category a slot is locked to. A slot becomes locked the first time an
+        // age-bearing unit is placed in it; afterwards only units of the same bucket (or units
+        // with no age category) may be auto-grouped into it. Slots absent from this map, or
+        // mapped to null, are unconstrained.
+        Dictionary<Guid, string?> slotAgeCategory = new();
         HashSet<Guid> assigned = new(); // unit IDs that have been assigned
 
         List<EnrollmentUnit> groups = input.Units.Where(u => u.IsGroup).ToList();
@@ -31,6 +36,7 @@ public static class SchedulingAlgorithm
                 assignments.Add(new ProposedAssignment(bestSlot.Value, group.GroupId, null, group.Size));
                 slotUsed[bestSlot.Value] += group.Size;
                 slotIsOpenToMerging[bestSlot.Value] = false;
+                LockSlotAge(slotAgeCategory, bestSlot.Value, group.AgeCategory);
                 assigned.Add(group.Id);
             }
         }
@@ -38,12 +44,13 @@ public static class SchedulingAlgorithm
         // Step 2: Lock pre-formed groups that ARE open to grouping
         foreach (EnrollmentUnit group in groups.Where(g => g.IsOpenToGrouping && !assigned.Contains(g.Id)))
         {
-            Guid? bestSlot = GetBestViableSlot(group, slotCapacity, slotUsed);
+            Guid? bestSlot = GetBestViableSlot(group, slotCapacity, slotUsed, slotAgeCategory);
             if (bestSlot.HasValue)
             {
                 assignments.Add(new ProposedAssignment(bestSlot.Value, group.GroupId, null, group.Size));
                 slotUsed[bestSlot.Value] += group.Size;
                 slotIsOpenToMerging[bestSlot.Value] = true;
+                LockSlotAge(slotAgeCategory, bestSlot.Value, group.AgeCategory);
                 assigned.Add(group.Id);
             }
         }
@@ -66,7 +73,8 @@ public static class SchedulingAlgorithm
                 List<EnrollmentUnit> candidates = unassignedSolos
                     .Where(u => !assigned.Contains(u.Id)
                         && u.Preferences.TryGetValue(slotId, out SlotPreference pref)
-                        && pref != SlotPreference.Unavailable)
+                        && pref != SlotPreference.Unavailable
+                        && CanShareSlot(slotAgeCategory, slotId, u.AgeCategory))
                     .ToList();
 
                 if (candidates.Count == 1 && candidates[0].Size <= remaining)
@@ -74,6 +82,7 @@ public static class SchedulingAlgorithm
                     EnrollmentUnit unit = candidates[0];
                     assignments.Add(new ProposedAssignment(slotId, null, unit.EnrollmentIds[0], unit.Size));
                     slotUsed[slotId] += unit.Size;
+                    LockSlotAge(slotAgeCategory, slotId, unit.AgeCategory);
                     assigned.Add(unit.Id);
                     changed = true;
                 }
@@ -87,7 +96,7 @@ public static class SchedulingAlgorithm
 
         if (openUnits.Count >= 2)
         {
-            List<(Guid SlotId, List<EnrollmentUnit> Members)> autoMerged = AutoMergeUnits(openUnits, slotCapacity, slotUsed, slotIsOpenToMerging);
+            List<(Guid SlotId, List<EnrollmentUnit> Members)> autoMerged = AutoMergeUnits(openUnits, slotCapacity, slotUsed, slotIsOpenToMerging, slotAgeCategory);
             foreach ((Guid slotId, List<EnrollmentUnit> members) in autoMerged)
             {
                 foreach (EnrollmentUnit member in members)
@@ -110,13 +119,14 @@ public static class SchedulingAlgorithm
         List<EnrollmentUnit> remainingSolos = unassignedSolos.Where(u => !assigned.Contains(u.Id)).ToList();
         foreach (EnrollmentUnit unit in remainingSolos)
         {
-            Guid? bestSlot = GetBestViableSlot(unit, slotCapacity, slotUsed);
+            Guid? bestSlot = GetBestViableSlot(unit, slotCapacity, slotUsed, slotAgeCategory);
             if (bestSlot.HasValue)
             {
                 // Check if this slot already has assignments that are open to merging
                 bool isMerging = slotIsOpenToMerging.TryGetValue(bestSlot.Value, out bool open) && open && slotUsed[bestSlot.Value] > 0;
                 assignments.Add(new ProposedAssignment(bestSlot.Value, null, unit.EnrollmentIds[0], unit.Size, IsAutoMerged: isMerging));
                 slotUsed[bestSlot.Value] += unit.Size;
+                LockSlotAge(slotAgeCategory, bestSlot.Value, unit.AgeCategory);
                 assigned.Add(unit.Id);
             }
         }
@@ -165,16 +175,39 @@ public static class SchedulingAlgorithm
     private static Guid? GetBestViableSlot(
         EnrollmentUnit unit,
         Dictionary<Guid, int> slotCapacity,
-        Dictionary<Guid, int> slotUsed)
+        Dictionary<Guid, int> slotUsed,
+        Dictionary<Guid, string?> slotAgeCategory)
     {
         return unit.Preferences
             .Where(p => p.Value != SlotPreference.Unavailable
                 && slotCapacity.ContainsKey(p.Key)
-                && slotCapacity[p.Key] - slotUsed[p.Key] >= unit.Size)
+                && slotCapacity[p.Key] - slotUsed[p.Key] >= unit.Size
+                && CanShareSlot(slotAgeCategory, p.Key, unit.AgeCategory))
             .OrderByDescending(p => p.Value)
             .ThenBy(p => slotUsed[p.Key])
             .Select(p => (Guid?)p.Key)
             .FirstOrDefault();
+    }
+
+    /// <summary>
+    /// Whether a unit may join a slot given age-category locking. A unit with no age category is
+    /// unconstrained; an unlocked slot (absent or null) accepts anyone; otherwise buckets must match.
+    /// </summary>
+    private static bool CanShareSlot(Dictionary<Guid, string?> slotAgeCategory, Guid slotId, string? unitAge)
+        => unitAge is null
+            || !slotAgeCategory.TryGetValue(slotId, out string? locked)
+            || locked is null
+            || locked == unitAge;
+
+    /// <summary>
+    /// Lock a slot to a unit's age bucket on first placement. No-op for units without an age
+    /// category or slots already locked to a (non-null) bucket.
+    /// </summary>
+    private static void LockSlotAge(Dictionary<Guid, string?> slotAgeCategory, Guid slotId, string? unitAge)
+    {
+        if (unitAge is null) return;
+        if (!slotAgeCategory.TryGetValue(slotId, out string? locked) || locked is null)
+            slotAgeCategory[slotId] = unitAge;
     }
 
     /// <summary>
@@ -184,7 +217,8 @@ public static class SchedulingAlgorithm
         List<EnrollmentUnit> openUnits,
         Dictionary<Guid, int> slotCapacity,
         Dictionary<Guid, int> slotUsed,
-        Dictionary<Guid, bool> slotIsOpenToMerging)
+        Dictionary<Guid, bool> slotIsOpenToMerging,
+        Dictionary<Guid, string?> slotAgeCategory)
     {
         List<(Guid, List<EnrollmentUnit>)> result = new();
         HashSet<Guid> used = new();
@@ -202,13 +236,29 @@ public static class SchedulingAlgorithm
                 .Where(u => !used.Contains(u.Id)
                     && u.Size <= remaining
                     && u.Preferences.TryGetValue(slotId, out SlotPreference pref)
-                    && pref == SlotPreference.Preferred)
+                    && pref == SlotPreference.Preferred
+                    && CanShareSlot(slotAgeCategory, slotId, u.AgeCategory))
                 .ToList();
 
-            // Greedily pack candidates into the slot
+            // A slot can only hold one age bucket. If already locked, keep that bucket; otherwise
+            // pick the most-represented bucket among candidates so we merge as many as possible.
+            // Units without an age category are compatible with whatever bucket the slot settles on.
+            string? targetBucket = slotAgeCategory.GetValueOrDefault(slotId);
+            targetBucket ??= candidates
+                .Where(c => c.AgeCategory is not null)
+                .GroupBy(c => c.AgeCategory)
+                .OrderByDescending(g => g.Count())
+                .Select(g => g.Key)
+                .FirstOrDefault();
+
+            List<EnrollmentUnit> eligible = targetBucket is null
+                ? candidates
+                : candidates.Where(c => c.AgeCategory == targetBucket || c.AgeCategory is null).ToList();
+
+            // Greedily pack eligible candidates into the slot
             List<EnrollmentUnit> selected = new();
             int filled = 0;
-            foreach (EnrollmentUnit candidate in candidates)
+            foreach (EnrollmentUnit candidate in eligible)
             {
                 if (filled + candidate.Size <= remaining)
                 {
@@ -220,6 +270,7 @@ public static class SchedulingAlgorithm
             if (selected.Count >= 2 || (selected.Count >= 1 && slotUsed[slotId] > 0))
             {
                 result.Add((slotId, selected));
+                LockSlotAge(slotAgeCategory, slotId, targetBucket);
                 foreach (EnrollmentUnit c in selected)
                     used.Add(c.Id);
             }
