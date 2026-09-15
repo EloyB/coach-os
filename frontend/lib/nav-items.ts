@@ -2,7 +2,6 @@ import {
   LayoutDashboard,
   CalendarDays,
   BookOpen,
-  Users,
   GraduationCap,
   Settings,
   Ticket,
@@ -16,12 +15,12 @@ export const navItems = [
     icon: LayoutDashboard,
     exact: true,
   },
-  // {
-  //   label: "Planning",
-  //   href: "/dashboard/planning",
-  //   icon: CalendarDays,
-  //   exact: false,
-  // },
+  {
+    label: "Planning",
+    href: "/dashboard/planning",
+    icon: CalendarDays,
+    exact: true,
+  },
   {
     label: "Lesreeksen",
     href: "/dashboard/lessons",
