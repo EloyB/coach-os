@@ -29,6 +29,7 @@ export interface FormFieldDto {
   label: string;
   type: number;
   isRequired: boolean;
+  isForEachGroupMember: boolean;
   order: number;
   options: string[] | null;
 }
@@ -93,6 +94,7 @@ export interface SaveFormFieldRequest {
   label: string;
   type: number;
   isRequired: boolean;
+  isForEachGroupMember?: boolean;
   order: number;
   options?: string[];
 }

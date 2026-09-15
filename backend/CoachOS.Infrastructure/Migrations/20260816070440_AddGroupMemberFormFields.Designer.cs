@@ -3,6 +3,7 @@ using System;
 using CoachOS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CoachOS.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260816070440_AddGroupMemberFormFields")]
+    partial class AddGroupMemberFormFields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -395,60 +398,6 @@ namespace CoachOS.Infrastructure.Migrations
                     b.ToTable("CampFormResponses");
                 });
 
-            modelBuilder.Entity("CoachOS.Domain.Entities.EmailOutboxMessage", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("Attempts")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("AvailableAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("EnrollmentId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("LastError")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
-                    b.Property<Guid>("OrganizationId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Payload")
-                        .IsRequired()
-                        .HasColumnType("jsonb");
-
-                    b.Property<DateTime?>("ProcessedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.Property<string>("Type")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("EnrollmentId");
-
-                    b.HasIndex("Status", "AvailableAt");
-
-                    b.ToTable("EmailOutboxMessages");
-                });
-
             modelBuilder.Entity("CoachOS.Domain.Entities.Enrollment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -678,34 +627,6 @@ namespace CoachOS.Infrastructure.Migrations
                     b.ToTable("FormResponses");
                 });
 
-            modelBuilder.Entity("CoachOS.Domain.Entities.HeadTrainerClub", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("OrganizationMembershipId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("TennisClubId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("TennisClubId");
-
-                    b.HasIndex("OrganizationMembershipId", "TennisClubId")
-                        .IsUnique();
-
-                    b.ToTable("HeadTrainerClubs");
-                });
-
             modelBuilder.Entity("CoachOS.Domain.Entities.Lesson", b =>
                 {
                     b.Property<Guid>("Id")
@@ -754,17 +675,11 @@ namespace CoachOS.Infrastructure.Migrations
                     b.Property<TimeOnly>("StartTime")
                         .HasColumnType("time without time zone");
 
-                    b.Property<Guid?>("TennisClubId")
-                        .HasColumnType("uuid");
-
                     b.Property<Guid?>("TrainerId")
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("WeeklyTemplateEntryId")
-                        .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
@@ -777,11 +692,7 @@ namespace CoachOS.Infrastructure.Migrations
                     b.HasIndex("RescheduledToLessonId")
                         .IsUnique();
 
-                    b.HasIndex("TennisClubId");
-
                     b.HasIndex("TrainerId");
-
-                    b.HasIndex("WeeklyTemplateEntryId");
 
                     b.HasIndex("OrganizationId", "Date");
 
@@ -2162,25 +2073,6 @@ namespace CoachOS.Infrastructure.Migrations
                     b.Navigation("FormField");
                 });
 
-            modelBuilder.Entity("CoachOS.Domain.Entities.HeadTrainerClub", b =>
-                {
-                    b.HasOne("CoachOS.Domain.Entities.OrganizationMembership", "Membership")
-                        .WithMany("HeadTrainerClubs")
-                        .HasForeignKey("OrganizationMembershipId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("CoachOS.Domain.Entities.TennisClub", "TennisClub")
-                        .WithMany()
-                        .HasForeignKey("TennisClubId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Membership");
-
-                    b.Navigation("TennisClub");
-                });
-
             modelBuilder.Entity("CoachOS.Domain.Entities.Lesson", b =>
                 {
                     b.HasOne("CoachOS.Domain.Entities.LessonSerie", "LessonSerie")
@@ -2199,25 +2091,11 @@ namespace CoachOS.Infrastructure.Migrations
                         .HasForeignKey("CoachOS.Domain.Entities.Lesson", "RescheduledToLessonId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("CoachOS.Domain.Entities.TennisClub", "TennisClub")
-                        .WithMany()
-                        .HasForeignKey("TennisClubId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("CoachOS.Domain.Entities.WeeklyTemplateEntry", "WeeklyTemplateEntry")
-                        .WithMany()
-                        .HasForeignKey("WeeklyTemplateEntryId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.Navigation("LessonSerie");
 
                     b.Navigation("Organization");
 
                     b.Navigation("RescheduledToLesson");
-
-                    b.Navigation("TennisClub");
-
-                    b.Navigation("WeeklyTemplateEntry");
                 });
 
             modelBuilder.Entity("CoachOS.Domain.Entities.LessonInvitation", b =>
@@ -2634,11 +2512,6 @@ namespace CoachOS.Infrastructure.Migrations
                     b.Navigation("Settings");
 
                     b.Navigation("Subscription");
-                });
-
-            modelBuilder.Entity("CoachOS.Domain.Entities.OrganizationMembership", b =>
-                {
-                    b.Navigation("HeadTrainerClubs");
                 });
 
             modelBuilder.Entity("CoachOS.Domain.Entities.WeeklyTemplateEntry", b =>

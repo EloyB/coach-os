@@ -1186,6 +1186,7 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
             label: f.label,
             type: f.type,
             isRequired: f.isRequired,
+            isForEachGroupMember: f.isForEachGroupMember,
             order: f.order,
             options: f.options ?? undefined,
           })),
@@ -1202,6 +1203,7 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
         label: f.label,
         type: f.type,
         isRequired: f.isRequired,
+        isForEachGroupMember: f.isForEachGroupMember,
         order: i,
         options: f.type === 2 ? f.options : undefined,
       }));
@@ -1220,6 +1222,7 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
         label: "",
         type: 1,
         isRequired: false,
+        isForEachGroupMember: false,
         order: prev.length,
       },
     ]);
@@ -1367,6 +1370,18 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
                     className="accent-tennis-green"
                   />
                   Verplicht
+                </label>
+
+                <label className="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={field.isForEachGroupMember ?? false}
+                    onChange={(e) =>
+                      updateField(field._key, { isForEachGroupMember: e.target.checked })
+                    }
+                    className="accent-tennis-green"
+                  />
+                  Elk groepslid
                 </label>
 
                 <div className="flex items-center gap-1 ml-auto">
