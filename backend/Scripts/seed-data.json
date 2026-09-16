@@ -400,6 +400,12 @@
         "courtName": "Baan 1",
         "maxStudents": 4
       }
+    ],
+    "ageCategoryOptions": [
+      "8-10 jaar",
+      "11-13 jaar",
+      "14-17 jaar",
+      "Volwassenen"
     ]
   },
   "planningEnrollments": [
@@ -415,13 +421,15 @@
           "studentName": "Fien De Boer",
           "studentEmail": null,
           "studentPhone": null,
-          "dateOfBirth": "2011-04-18"
+          "dateOfBirth": "2011-04-18",
+          "ageCategory": "14-17 jaar"
         },
         {
           "studentName": "Stan De Boer",
           "studentEmail": null,
           "studentPhone": null,
-          "dateOfBirth": "2013-08-27"
+          "dateOfBirth": "2013-08-27",
+          "ageCategory": "11-13 jaar"
         }
       ],
       "slotPreferences": [
@@ -437,7 +445,8 @@
         1,
         3
       ],
-      "dateOfBirth": "1985-03-14"
+      "dateOfBirth": "1985-03-14",
+      "ageCategory": "Volwassenen"
     },
     {
       "label": "Couple Peeters-Janssens (group of 2, evenings only, exclusive)",
@@ -451,7 +460,8 @@
           "studentName": "Lisa Janssens",
           "studentEmail": "lisa.janssens@outlook.be",
           "studentPhone": "+32479223345",
-          "dateOfBirth": "1978-11-05"
+          "dateOfBirth": "1978-11-05",
+          "ageCategory": "Volwassenen"
         }
       ],
       "slotPreferences": [
@@ -467,7 +477,8 @@
         1,
         2
       ],
-      "dateOfBirth": "1990-07-22"
+      "dateOfBirth": "1990-07-22",
+      "ageCategory": "Volwassenen"
     },
     {
       "label": "Emma Van Acker (solo, open, Wed+Sat)",
@@ -489,7 +500,8 @@
         2,
         1
       ],
-      "dateOfBirth": "1978-11-05"
+      "dateOfBirth": "1978-11-05",
+      "ageCategory": "Volwassenen"
     },
     {
       "label": "Thomas Wouters (solo, open, Wed+Sat — auto-merge candidate)",
@@ -511,7 +523,8 @@
         1,
         2
       ],
-      "dateOfBirth": "1993-01-30"
+      "dateOfBirth": "1993-01-30",
+      "ageCategory": "Volwassenen"
     },
     {
       "label": "Noor Hendrickx (solo, open, Tue+Thu evenings)",
@@ -533,7 +546,8 @@
         3,
         3
       ],
-      "dateOfBirth": "1988-09-17"
+      "dateOfBirth": "1988-09-17",
+      "ageCategory": "Volwassenen"
     },
     {
       "label": "Pieter Vermeersch (solo, open, flexible retiree)",
@@ -555,7 +569,8 @@
         2,
         1
       ],
-      "dateOfBirth": "1982-05-09"
+      "dateOfBirth": "1982-05-09",
+      "ageCategory": "Volwassenen"
     },
     {
       "label": "Sarah Dubois (solo, exclusive, Thu+Sat only — low overlap)",
@@ -577,7 +592,8 @@
         1,
         1
       ],
-      "dateOfBirth": "1985-03-14"
+      "dateOfBirth": "1985-03-14",
+      "ageCategory": "Volwassenen"
     },
     {
       "label": "Kevin Goossens (solo, open, Tue evenings — auto-merge candidate with Noor)",
@@ -599,7 +615,8 @@
         3,
         3
       ],
-      "dateOfBirth": "1990-07-22"
+      "dateOfBirth": "1990-07-22",
+      "ageCategory": "Volwassenen"
     },
     {
       "label": "Ines Claes (solo, open, Sat morning)",
@@ -621,7 +638,8 @@
         1,
         2
       ],
-      "dateOfBirth": "1978-11-05"
+      "dateOfBirth": "1978-11-05",
+      "ageCategory": "Volwassenen"
     },
     {
       "label": "Jules Van Damme (solo, open, Saturday only)",
@@ -643,7 +661,8 @@
         2,
         2
       ],
-      "dateOfBirth": "1993-01-30"
+      "dateOfBirth": "1993-01-30",
+      "ageCategory": "Volwassenen"
     },
     {
       "label": "Marie-Claire Vos (solo, open, Tue evening — auto-merge candidate)",
@@ -665,7 +684,8 @@
         3,
         3
       ],
-      "dateOfBirth": "1988-09-17"
+      "dateOfBirth": "1988-09-17",
+      "ageCategory": "Volwassenen"
     }
   ],
   "standaloneLessons": [
