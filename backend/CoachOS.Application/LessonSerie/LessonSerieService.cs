@@ -500,23 +500,29 @@ public class LessonSerieService(
 
         await lessonRepo.SaveChangesAsync(ct);
 
-        if (newlyCancelled && lesson.LessonSerieId.HasValue)
+        if (newlyCancelled && lesson.LessonSerieId.HasValue
+            && lesson.WeeklyTemplateEntryId is Guid weeklyTemplateEntryId)
         {
-            List<Domain.Entities.Enrollment> enrollments =
-                await enrollmentRepo.GetBySeriesAsync(lesson.LessonSerieId.Value, organizationId, ct);
+            List<Domain.Entities.ScheduleAssignment> assignments =
+                await scheduleAssignmentRepo.GetBySeriesAsync(lesson.LessonSerieId.Value, organizationId, ct);
 
-            List<Domain.Entities.Enrollment> activeEnrollments = enrollments
+            // Een annulering geldt voor één concreet lesmoment. Haal ontvangers daarom uit
+            // de toewijzingen van het bijbehorende weekslot, niet uit alle inschrijvingen
+            // van de reeks: dezelfde reeks kan meerdere parallelle tijdsloten bevatten.
+            IEnumerable<Domain.Entities.Enrollment> assignedEnrollments = assignments
+                .Where(a => a.WeeklyTemplateEntryId == weeklyTemplateEntryId
+                    && a.Status != Domain.Enums.ScheduleAssignmentStatus.Declined)
+                .SelectMany(a => a.Enrollment is not null
+                    ? [a.Enrollment]
+                    : a.EnrollmentGroup?.Members ?? [])
                 .Where(e => e.Status is Domain.Enums.EnrollmentStatus.Pending
                     or Domain.Enums.EnrollmentStatus.Confirmed
-                    or Domain.Enums.EnrollmentStatus.PendingPayment)
-                .ToList();
+                    or Domain.Enums.EnrollmentStatus.PendingPayment);
 
-            // Eén mail per contactadres: een ouder met drie kinderen in de reeks hoort
+            // Eén mail per contactadres: een ouder met drie kinderen in hetzelfde slot hoort
             // één annuleringsbericht te krijgen, geen drie.
-            // Best-effort per ontvanger: de annulering is al opgeslagen, dus een mailstoring
-            // mag de update niet laten mislukken en mag de volgende ontvanger niet overslaan.
-            // Wél afwachten (geen fire-and-forget) zodat fouten gelogd worden i.p.v. verdwijnen.
-            foreach (Domain.Entities.Enrollment enrollment in activeEnrollments.DistinctBy(e => e.ContactEmail))
+            foreach (Domain.Entities.Enrollment enrollment in assignedEnrollments
+                .DistinctBy(e => e.ContactEmail))
             {
                 try
                 {

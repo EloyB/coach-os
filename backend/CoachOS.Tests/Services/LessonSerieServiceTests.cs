@@ -1148,35 +1148,46 @@ public class LessonSerieServiceTests
     }
 
     [Test]
-    public async Task UpdateLessonAsync_CancelLesson_SendsEmailToActiveEnrollments()
+    public async Task UpdateLessonAsync_CancelLesson_SendsEmailOnlyToStudentsAssignedToCancelledSlot()
     {
         LessonSerie series = BuildSeries();
         Lesson lesson = BuildLesson(series.Id);
+        WeeklyTemplateEntry affectedSlot = new()
+        {
+            Id = Guid.NewGuid(), LessonSerieId = series.Id,
+            DayOfWeek = 0, StartTime = new TimeOnly(10, 0), EndTime = new TimeOnly(11, 0),
+            MaxStudents = 4,
+        };
+        WeeklyTemplateEntry otherSlot = new()
+        {
+            Id = Guid.NewGuid(), LessonSerieId = series.Id,
+            DayOfWeek = 1, StartTime = new TimeOnly(20, 0), EndTime = new TimeOnly(21, 0),
+            MaxStudents = 4,
+        };
+        lesson.WeeklyTemplateEntryId = affectedSlot.Id;
+        series.WeeklyTemplate.Add(affectedSlot);
+        series.WeeklyTemplate.Add(otherSlot);
 
+        Domain.Entities.Enrollment affectedEnrollment = new()
+        {
+            Id = Guid.NewGuid(), OrganizationId = OrgId,
+            StudentName = "Jan Janssen", StudentEmail = "jan@example.com",
+            ContactEmail = "jan@example.com", Status = Domain.Enums.EnrollmentStatus.Confirmed,
+        };
+        Domain.Entities.Enrollment otherSlotEnrollment = new()
+        {
+            Id = Guid.NewGuid(), OrganizationId = OrgId,
+            StudentName = "Sofie Peeters", StudentEmail = "sofie@example.com",
+            ContactEmail = "sofie@example.com", Status = Domain.Enums.EnrollmentStatus.Pending,
+        };
+        Domain.Entities.Enrollment cancelledEnrollment = new()
+        {
+            Id = Guid.NewGuid(), OrganizationId = OrgId,
+            StudentName = "Marc Dubois", StudentEmail = "marc@example.com",
+            ContactEmail = "marc@example.com", Status = Domain.Enums.EnrollmentStatus.Cancelled,
+        };
         List<Domain.Entities.Enrollment> enrollments =
-        [
-            new Domain.Entities.Enrollment
-            {
-                Id = Guid.NewGuid(), OrganizationId = OrgId,
-                StudentName = "Jan Janssen", StudentEmail = "jan@example.com",
-                ContactEmail = "jan@example.com",
-                Status = Domain.Enums.EnrollmentStatus.Confirmed,
-            },
-            new Domain.Entities.Enrollment
-            {
-                Id = Guid.NewGuid(), OrganizationId = OrgId,
-                StudentName = "Sofie Peeters", StudentEmail = "sofie@example.com",
-                ContactEmail = "sofie@example.com",
-                Status = Domain.Enums.EnrollmentStatus.Pending,
-            },
-            new Domain.Entities.Enrollment
-            {
-                Id = Guid.NewGuid(), OrganizationId = OrgId,
-                StudentName = "Marc Dubois", StudentEmail = "marc@example.com",
-                ContactEmail = "marc@example.com",
-                Status = Domain.Enums.EnrollmentStatus.Cancelled,
-            },
-        ];
+            [affectedEnrollment, otherSlotEnrollment, cancelledEnrollment];
 
         _lessonRepo
             .Setup(r => r.GetByIdAsync(lesson.Id, series.Id, OrgId, It.IsAny<CancellationToken>()))
@@ -1187,32 +1198,46 @@ public class LessonSerieServiceTests
         _enrollmentRepo
             .Setup(r => r.GetBySeriesAsync(series.Id, OrgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(enrollments);
+        _scheduleAssignmentRepo
+            .Setup(r => r.GetBySeriesAsync(series.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(
+            [
+                new ScheduleAssignment
+                {
+                    Id = Guid.NewGuid(), LessonSerieId = series.Id, OrganizationId = OrgId,
+                    WeeklyTemplateEntryId = affectedSlot.Id, EnrollmentId = affectedEnrollment.Id,
+                    Enrollment = affectedEnrollment, Status = ScheduleAssignmentStatus.Confirmed,
+                },
+                new ScheduleAssignment
+                {
+                    Id = Guid.NewGuid(), LessonSerieId = series.Id, OrganizationId = OrgId,
+                    WeeklyTemplateEntryId = otherSlot.Id, EnrollmentId = otherSlotEnrollment.Id,
+                    Enrollment = otherSlotEnrollment, Status = ScheduleAssignmentStatus.Confirmed,
+                },
+            ]);
 
         UpdateLessonRequest request = new() { IsCancelled = true, CancellationReason = "Overmacht" };
 
         await _service.UpdateLessonAsync(series.Id, lesson.Id, OrgId, request);
 
-        // Enkel de 2 actieve studenten (Confirmed + Pending) krijgen een mail; de Cancelled niet.
         _emailService.Verify(
             e => e.SendLessonCancellationAsync(
-                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
-                It.IsAny<DateOnly>(), It.IsAny<TimeOnly>(), It.IsAny<string?>(),
-                It.IsAny<CancellationToken>()),
-            Times.Exactly(2));
-
-        _emailService.Verify(
-            e => e.SendLessonCancellationAsync(
-                "jan@example.com", It.IsAny<string>(), It.IsAny<string>(),
-                It.IsAny<DateOnly>(), It.IsAny<TimeOnly>(), It.IsAny<string?>(),
+                "jan@example.com", "Jan Janssen", It.IsAny<string>(),
+                It.IsAny<DateOnly>(), It.IsAny<TimeOnly>(), "Overmacht",
                 It.IsAny<CancellationToken>()),
             Times.Once);
-
         _emailService.Verify(
             e => e.SendLessonCancellationAsync(
                 "sofie@example.com", It.IsAny<string>(), It.IsAny<string>(),
                 It.IsAny<DateOnly>(), It.IsAny<TimeOnly>(), It.IsAny<string?>(),
                 It.IsAny<CancellationToken>()),
-            Times.Once);
+            Times.Never);
+        _emailService.Verify(
+            e => e.SendLessonCancellationAsync(
+                "marc@example.com", It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<DateOnly>(), It.IsAny<TimeOnly>(), It.IsAny<string?>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     [Test]
@@ -1383,6 +1408,13 @@ public class LessonSerieServiceTests
     {
         LessonSerie series = BuildSeries();
         Lesson lesson = BuildLesson(series.Id);
+        WeeklyTemplateEntry slot = new()
+        {
+            Id = Guid.NewGuid(), LessonSerieId = series.Id,
+            DayOfWeek = 0, StartTime = lesson.StartTime, EndTime = lesson.EndTime, MaxStudents = 4,
+        };
+        lesson.WeeklyTemplateEntryId = slot.Id;
+        series.WeeklyTemplate.Add(slot);
         List<Domain.Entities.Enrollment> enrollments =
         [
             new Domain.Entities.Enrollment
@@ -1407,6 +1439,14 @@ public class LessonSerieServiceTests
         _enrollmentRepo
             .Setup(r => r.GetBySeriesAsync(series.Id, OrgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(enrollments);
+        _scheduleAssignmentRepo
+            .Setup(r => r.GetBySeriesAsync(series.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(enrollments.Select(e => new ScheduleAssignment
+            {
+                Id = Guid.NewGuid(), LessonSerieId = series.Id, OrganizationId = OrgId,
+                WeeklyTemplateEntryId = slot.Id, EnrollmentId = e.Id,
+                Enrollment = e, Status = ScheduleAssignmentStatus.Confirmed,
+            }).ToList());
         return (series, lesson);
     }
 
