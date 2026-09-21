@@ -773,19 +773,23 @@ export default function PlanningPage({
         )}
       </div>
 
-      {/* Legend bar */}
+      {/* Legend bar — kleur volgt de bevestigings-lifecycle van het tijdslot. */}
       <div className="bg-white border-b border-gray-200 px-8 py-3 flex items-center gap-5 text-xs text-gray-500 shrink-0">
         <div className="flex items-center gap-1.5">
-          <div className="w-4 h-3 rounded border border-green-300 bg-green-50" />
-          {t("legendAutoAssigned")}
+          <div className="w-4 h-3 rounded border border-amber-400 bg-amber-50" />
+          {t("legendConcept")}
         </div>
         <div className="flex items-center gap-1.5">
-          <div className="w-4 h-3 rounded border border-amber-300 bg-amber-50" />
-          {t("legendSuggestion")}
+          <div className="w-4 h-3 rounded border border-blue-400 bg-blue-50" />
+          {t("legendOffered")}
         </div>
         <div className="flex items-center gap-1.5">
-          <div className="w-4 h-3 rounded border border-blue-300 bg-blue-50" />
-          {t("legendAutoGrouped")}
+          <div className="w-4 h-3 rounded border border-tennis-green bg-green-50" />
+          {t("legendConfirmed")}
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Lock size={11} className="text-tennis-green" />
+          {t("legendLocked")}
         </div>
         <div className="ml-auto text-xs text-gray-400">
           {t("enrollmentsCount", { count: totalEnrollments })} ·{" "}
@@ -886,8 +890,26 @@ export default function PlanningPage({
                     const slotAssignments = assignmentsBySlot.get(slot.id) ?? [];
                     const currentCount = getSlotCurrentCount(slot.id);
                     const hasProposed = slotHasProposed(slot.id);
+                    const hasAwaiting = slotAssignments.some(
+                      (a) => a.status === "AwaitingConfirmation"
+                    );
+                    const hasConfirmed = slotAssignments.some(
+                      (a) => a.status === "Confirmed"
+                    );
                     const hasAutoMerged = slotAssignments.some((a) => a.isAutoMerged);
                     const lockedAssignment = slotAssignments.find((a) => a.isLocked);
+
+                    // Tegelkleur volgt de bevestigings-lifecycle. Bij een gemengd slot
+                    // wint de meest urgente status (Concept > Aangeboden > Bevestigd),
+                    // zodat "hier moet je nog iets doen" nooit verborgen raakt.
+                    const slotStatus: "concept" | "offered" | "confirmed" | "empty" =
+                      hasProposed
+                        ? "concept"
+                        : hasAwaiting
+                          ? "offered"
+                          : hasConfirmed
+                            ? "confirmed"
+                            : "empty";
 
                     // Toewijs-modus: kleur naar de voorkeur van de geselecteerde
                     // persoon/groep en bepaal of ze er nog bij passen.
@@ -904,13 +926,13 @@ export default function PlanningPage({
                           : assignPref === "Available"
                             ? "border-blue-500"
                             : "border-gray-300"
-                      : lockedAssignment
-                        ? "border-tennis-green"
-                        : hasAutoMerged
-                          ? "border-blue-300"
-                          : hasProposed
-                            ? "border-amber-300"
-                            : "border-green-300";
+                      : slotStatus === "concept"
+                        ? "border-amber-400"
+                        : slotStatus === "offered"
+                          ? "border-blue-400"
+                          : slotStatus === "confirmed"
+                            ? "border-tennis-green"
+                            : "border-gray-200";
                     const bgColor = assignTarget
                       ? !assignFits
                         ? "bg-gray-50"
@@ -919,13 +941,21 @@ export default function PlanningPage({
                           : assignPref === "Available"
                             ? "bg-blue-100"
                             : "bg-gray-100/60"
-                      : lockedAssignment
-                        ? "bg-green-50"
-                        : hasAutoMerged
+                      : slotStatus === "concept"
+                        ? "bg-amber-50"
+                        : slotStatus === "offered"
                           ? "bg-blue-50"
-                          : hasProposed
-                            ? "bg-amber-50"
-                            : "bg-green-50";
+                          : slotStatus === "confirmed"
+                            ? "bg-green-50"
+                            : "bg-gray-50";
+                    const countTextColor =
+                      slotStatus === "concept"
+                        ? "text-amber-700"
+                        : slotStatus === "offered"
+                          ? "text-blue-700"
+                          : slotStatus === "confirmed"
+                            ? "text-green-700"
+                            : "text-gray-400";
 
                     // In toewijs-modus is een volle tegel niet klikbaar; anders
                     // wijst een klik toe (ook een 'niet beschikbaar'-tegel, als
@@ -963,28 +993,26 @@ export default function PlanningPage({
                         }}
                         onClick={handleTileClick}
                       >
-                        {/* Header: court + capacity + auto badge */}
+                        {/* Header: court + status-glyphs + capacity */}
                         <div className="flex items-center justify-between gap-1">
                           <div className="flex items-center gap-1 min-w-0">
                             <span className="text-[10px] font-medium text-gray-500 truncate">
                               {slot.courtName ?? ""}
                             </span>
                             {hasAutoMerged && (
-                              <span className="text-[9px] text-blue-500 italic shrink-0">
+                              <span className="text-[9px] text-gray-400 italic shrink-0">
                                 auto
                               </span>
                             )}
                           </div>
                           <div className="flex items-center gap-1 shrink-0">
-                            <span
-                              className={`text-[10px] ${
-                                hasAutoMerged
-                                  ? "text-blue-600"
-                                  : hasProposed
-                                    ? "text-amber-600"
-                                    : "text-green-600"
-                              }`}
-                            >
+                            {lockedAssignment && (
+                              <Lock
+                                size={9}
+                                className="text-tennis-green shrink-0"
+                              />
+                            )}
+                            <span className={`text-[10px] ${countTextColor}`}>
                               {currentCount}/{slot.maxCapacity}
                             </span>
                           </div>
