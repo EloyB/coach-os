@@ -76,6 +76,7 @@ function formatRelativeExpiry(expiresAt: string): string {
 
 export function NonRespondersPanel({
   seriesId,
+  query = "",
   onOpenAssignment,
   eligibleSlotsForAssignment,
   targetForAssignment,
@@ -83,6 +84,8 @@ export function NonRespondersPanel({
   isAddExtraPending = false,
 }: {
   seriesId: string;
+  /** Zoekterm (lowercased) uit het rechterpaneel; filtert de rijen op naam. */
+  query?: string;
   /** Klik op een rij → open de tijdslot-dialog van die toewijzing (o.a. voor Verplaatsen). */
   onOpenAssignment?: (assignmentId: string) => void;
   /** Vrije extra-slots voor de persoon/groep achter deze toewijzing (multi-slot). */
@@ -151,7 +154,17 @@ export function NonRespondersPanel({
     setTimeout(() => setCopiedId(null), 2000);
   }
 
+  // Zoeken: filter op naam (groep matcht ook op leider/naam). Bij een actieve
+  // zoekterm klapt de sectie automatisch open; verbergt zich als er geen match is.
+  const searching = query.trim().length > 0;
+  const shown = searching
+    ? nonResponders.filter((nr) => nr.studentName.toLowerCase().includes(query))
+    : nonResponders;
+
   if (nonResponders.length === 0) return null;
+  if (searching && shown.length === 0) return null;
+
+  const expanded = open || searching;
 
   return (
     <div className="p-4 border-b border-gray-100">
@@ -163,12 +176,12 @@ export function NonRespondersPanel({
         <span className="flex items-center gap-2 text-sm font-semibold text-gray-900">
           {t("title")}
           <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
-            {nonResponders.length}
+            {shown.length}
           </span>
         </span>
         <ChevronDown
           size={16}
-          className={`text-gray-400 transition-transform ${open ? "rotate-180" : ""}`}
+          className={`text-gray-400 transition-transform ${expanded ? "rotate-180" : ""}`}
         />
       </button>
 
@@ -179,9 +192,9 @@ export function NonRespondersPanel({
         </div>
       )}
 
-      {open && (
+      {expanded && (
       <div className="mt-3 space-y-2">
-        {nonResponders.map((nr) => (
+        {shown.map((nr) => (
           <div
             key={nr.assignmentId}
             className={`border rounded-lg p-3 ${

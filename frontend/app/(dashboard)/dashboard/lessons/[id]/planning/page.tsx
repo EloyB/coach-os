@@ -16,6 +16,8 @@ import {
   Unlock,
   Plus,
   ChevronDown,
+  Search,
+  X,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -254,6 +256,9 @@ export default function PlanningPage({
     | { kind: "group"; groupId: string; name: string; size: number; prefs: Record<string, string> }
     | null
   >(null);
+
+  // Zoekterm om personen te filteren in het rechterpaneel (alle secties).
+  const [sidebarQuery, setSidebarQuery] = useState("");
 
   // Niet-toegewezen: uitklapbaar, default open (het is de actieve werklijst).
   const [showUnassigned, setShowUnassigned] = useState(true);
@@ -497,6 +502,44 @@ export default function PlanningPage({
       ),
     [assignedUnits]
   );
+
+  // ─── Zoeken in het rechterpaneel ───────────────────────────────────────────
+  // Filtert alle secties op naam. Een groep matcht op groepsnaam óf op een lidnaam,
+  // zodat je een groepslid ook via zijn eigen naam terugvindt.
+  const sidebarQ = sidebarQuery.trim().toLowerCase();
+  const sidebarSearching = sidebarQ.length > 0;
+  const nameMatches = (name: string) => name.toLowerCase().includes(sidebarQ);
+  const groupMatchesQuery = (groupId: string | undefined, groupName: string) => {
+    if (nameMatches(groupName)) return true;
+    if (!groupId) return false;
+    const g = groupMap.get(groupId);
+    return (
+      !!g &&
+      g.memberEnrollmentIds.some((mId) => {
+        const e = enrollmentMap.get(mId);
+        return !!e && nameMatches(e.studentName);
+      })
+    );
+  };
+  const unitMatchesQuery = (u: { type: "solo" | "group"; name: string; target: { enrollmentId?: string; groupId?: string } }) =>
+    u.type === "group"
+      ? groupMatchesQuery(u.target.groupId, u.name)
+      : nameMatches(u.name);
+
+  const shownUnassignedSolos = sidebarSearching
+    ? unassignedSolos.filter((e) => nameMatches(e.studentName))
+    : unassignedSolos;
+  const shownUnassignedGroups = sidebarSearching
+    ? unassignedGroups.filter((g) => groupMatchesQuery(g.id, g.name))
+    : unassignedGroups;
+  const shownConceptUnits = sidebarSearching
+    ? conceptUnits.filter(unitMatchesQuery)
+    : conceptUnits;
+  const shownConfirmedUnits = sidebarSearching
+    ? confirmedUnits.filter(unitMatchesQuery)
+    : confirmedUnits;
+  const shownTotalUnassigned =
+    shownUnassignedSolos.length + shownUnassignedGroups.length;
 
   // Stats
   const totalUnassigned = unassignedSolos.length + unassignedGroups.length;
@@ -1159,7 +1202,35 @@ export default function PlanningPage({
 
         {/* Right sidebar */}
         <aside className="w-80 bg-white border-l border-gray-200 flex flex-col shrink-0 overflow-auto">
-          {/* Unassigned (uitklapbaar) */}
+          {/* Zoekbalk — filtert personen over alle secties. */}
+          <div className="sticky top-0 z-10 border-b border-gray-100 bg-white p-3">
+            <div className="relative">
+              <Search
+                size={14}
+                className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400"
+              />
+              <input
+                type="text"
+                value={sidebarQuery}
+                onChange={(e) => setSidebarQuery(e.target.value)}
+                placeholder={t("searchPeople")}
+                className="w-full rounded-md border border-gray-200 bg-gray-50 py-1.5 pl-8 pr-7 text-xs text-gray-700 placeholder:text-gray-400 focus:border-tennis-green focus:bg-white focus:outline-none"
+              />
+              {sidebarQuery && (
+                <button
+                  type="button"
+                  aria-label={t("searchClear")}
+                  onClick={() => setSidebarQuery("")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 transition-colors hover:text-gray-600"
+                >
+                  <X size={13} />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Unassigned (uitklapbaar) — bij zoeken verborgen als er geen match is. */}
+          {(!sidebarSearching || shownTotalUnassigned > 0) && (
           <div className="p-4 border-b border-gray-100">
             <button
               type="button"
@@ -1168,27 +1239,27 @@ export default function PlanningPage({
             >
               <span className="flex items-center gap-2 text-sm font-semibold text-gray-900">
                 {t("unassigned")}
-                {totalUnassigned > 0 && (
+                {shownTotalUnassigned > 0 && (
                   <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
-                    {totalUnassigned}
+                    {shownTotalUnassigned}
                   </span>
                 )}
               </span>
               <ChevronDown
                 size={16}
-                className={`text-gray-400 transition-transform ${showUnassigned ? "rotate-180" : ""}`}
+                className={`text-gray-400 transition-transform ${showUnassigned || sidebarSearching ? "rotate-180" : ""}`}
               />
             </button>
 
-            {showUnassigned &&
-              (totalUnassigned === 0 ? (
+            {(showUnassigned || sidebarSearching) &&
+              (shownTotalUnassigned === 0 ? (
               <p className="text-xs text-gray-400">
                 Iedereen is toegewezen
               </p>
             ) : (
               <div className="space-y-2">
                 {/* Unassigned groups */}
-                {unassignedGroups.map((group) => {
+                {shownUnassignedGroups.map((group) => {
                   const members = group.memberEnrollmentIds
                     .map((mId) => enrollmentMap.get(mId))
                     .filter(Boolean) as PlanningEnrollmentDto[];
@@ -1271,7 +1342,7 @@ export default function PlanningPage({
                 })}
 
                 {/* Unassigned solos */}
-                {unassignedSolos.map((enrollment) => {
+                {shownUnassignedSolos.map((enrollment) => {
                   const availableSlotIds = Object.entries(enrollment.preferences)
                     .filter(([, p]) => p === "Preferred" || p === "Available")
                     .map(([id]) => id);
@@ -1370,8 +1441,10 @@ export default function PlanningPage({
               </div>
             ))}
           </div>
+          )}
 
-          {/* Toegewezen (uitklapbaar, default ingeklapt) */}
+          {/* Toegewezen (uitklapbaar) — bij zoeken verborgen als er geen match is. */}
+          {(!sidebarSearching || shownConceptUnits.length > 0) && (
           <div className="p-4 border-b border-gray-100">
             <button
               type="button"
@@ -1380,24 +1453,24 @@ export default function PlanningPage({
             >
               <span className="flex items-center gap-2 text-sm font-semibold text-gray-900">
                 {t("assigned")}
-                {conceptUnits.length > 0 && (
+                {shownConceptUnits.length > 0 && (
                   <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
-                    {conceptUnits.length}
+                    {shownConceptUnits.length}
                   </span>
                 )}
               </span>
               <ChevronDown
                 size={16}
-                className={`text-gray-400 transition-transform ${showAssigned ? "rotate-180" : ""}`}
+                className={`text-gray-400 transition-transform ${showAssigned || sidebarSearching ? "rotate-180" : ""}`}
               />
             </button>
 
-            {showAssigned && (
+            {(showAssigned || sidebarSearching) && (
               <div className="mt-3 space-y-2">
-                {conceptUnits.length === 0 ? (
+                {shownConceptUnits.length === 0 ? (
                   <p className="text-xs text-gray-400">{t("nobodyAssigned")}</p>
                 ) : (
-                  conceptUnits.map((unit) => {
+                  shownConceptUnits.map((unit) => {
                     const options = eligibleExtraSlots(unit.rep);
                     const isOpen = addingSlotForKey === unit.key;
                     // Lock/aanbieden werken op alle nog-voorgestelde toewijzingen
@@ -1550,11 +1623,13 @@ export default function PlanningPage({
               </div>
             )}
           </div>
+          )}
 
           {/* Wachten op bevestiging — definitief aangeboden, nog niet bevestigd.
               Verschijnt zodra er openstaande bevestigingsverzoeken zijn (self-hide bij leeg). */}
           <NonRespondersPanel
             seriesId={id}
+            query={sidebarQ}
             onOpenAssignment={(assignmentId) => {
               const a = planning.assignments.find((x) => x.id === assignmentId);
               if (a) setOpenSlotId(a.timeSlotId);
@@ -1569,7 +1644,7 @@ export default function PlanningPage({
 
           {/* Bevestigd (uitklapbaar) — enkel écht bevestigde (Confirmed) eenheden;
               klik op een rij opent de tijdslot-dialog met acties (Verplaatsen). */}
-          {confirmedUnits.length > 0 && (
+          {shownConfirmedUnits.length > 0 && (
             <div className="p-4 border-b border-gray-100">
               <button
                 type="button"
@@ -1579,18 +1654,18 @@ export default function PlanningPage({
                 <span className="flex items-center gap-2 text-sm font-semibold text-gray-900">
                   {t("confirmedSection")}
                   <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-                    {confirmedUnits.length}
+                    {shownConfirmedUnits.length}
                   </span>
                 </span>
                 <ChevronDown
                   size={16}
-                  className={`text-gray-400 transition-transform ${showConfirmed ? "rotate-180" : ""}`}
+                  className={`text-gray-400 transition-transform ${showConfirmed || sidebarSearching ? "rotate-180" : ""}`}
                 />
               </button>
 
-              {showConfirmed && (
+              {(showConfirmed || sidebarSearching) && (
                 <div className="mt-3 space-y-2">
-                  {confirmedUnits.map((unit) => {
+                  {shownConfirmedUnits.map((unit) => {
                     const slotEntries = unit.assignments.map((a) => {
                       const slot = planning.timeSlots.find(
                         (s) => s.id === a.timeSlotId
