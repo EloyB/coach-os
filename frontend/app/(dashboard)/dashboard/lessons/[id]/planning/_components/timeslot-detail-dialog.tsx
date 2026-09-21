@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import {
   Users,
@@ -33,6 +33,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
 import { getInitials, getAvatarColor } from "@/lib/planning-avatars";
 import type {
   PlanningTimeSlotDto,
@@ -50,6 +55,38 @@ const DAY_NAMES_FULL = [
   "Zaterdag",
   "Zondag",
 ];
+
+/** Vierkante icoon-actieknop met hover-tooltip die uitlegt wat de actie doet. */
+function IconAction({
+  tooltip,
+  onClick,
+  disabled,
+  className = "",
+  children,
+}: {
+  tooltip: string;
+  onClick: () => void;
+  disabled?: boolean;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          aria-label={tooltip}
+          onClick={onClick}
+          disabled={disabled}
+          className={`inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md transition-colors disabled:opacity-50 ${className}`}
+        >
+          {children}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent>{tooltip}</TooltipContent>
+    </Tooltip>
+  );
+}
 
 interface TimeslotDetailDialogProps {
   /** Hoofdtrainer = read-only: enkel bekijken, geen lock/aanbieden/verwijderen. */
@@ -333,72 +370,7 @@ export function TimeslotDetailDialog({
                   })}
                 </div>
 
-                {/* Actions — compacte icoon-balk, tooltip bij hover.
-                    Bevestigd = niet verwijderbaar (betaald), dus enkel tonen als er
-                    een actie is (aanbieden/vastzetten of verwijderen). */}
-                {!readOnly && (canOffer || !isConfirmed) && (
-                  <div className="mt-3 flex items-center justify-end gap-1 border-t border-gray-100 pt-3">
-                    {canOffer && (
-                      <>
-                        <button
-                          type="button"
-                          title={
-                            assignment.isLocked
-                              ? t("unlock")
-                              : assignment.groupId
-                                ? t("lockGroup")
-                                : t("lock")
-                          }
-                          aria-label={assignment.isLocked ? t("unlock") : t("lock")}
-                          onClick={() => onLock(assignment.id, assignment.isLocked)}
-                          disabled={isLockPending}
-                          className={`inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md transition-colors disabled:opacity-50 ${
-                            assignment.isLocked
-                              ? "text-tennis-green hover:bg-tennis-green/10"
-                              : "text-gray-400 hover:bg-tennis-green/5 hover:text-tennis-green"
-                          }`}
-                        >
-                          {assignment.isLocked ? (
-                            <Unlock size={15} />
-                          ) : (
-                            <Lock size={15} />
-                          )}
-                        </button>
-                        <button
-                          type="button"
-                          title={t("offerDefinitively")}
-                          aria-label={t("offerDefinitively")}
-                          onClick={() =>
-                            setOfferTarget({
-                              id: assignment.id,
-                              name: groupName ?? names[0] ?? "",
-                            })
-                          }
-                          disabled={isOfferPending}
-                          className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-tennis-green transition-colors hover:bg-tennis-green/10 disabled:opacity-50"
-                        >
-                          <Mail size={15} />
-                        </button>
-                      </>
-                    )}
-                    {/* Bevestigde toewijzing niet verwijderbaar — enkel verplaatsen. */}
-                    {!isConfirmed && (
-                      <button
-                        type="button"
-                        title={t("unassign")}
-                        aria-label={t("unassign")}
-                        onClick={() => onUnassign(assignment.id)}
-                        disabled={isUnassignPending}
-                        className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
-                      >
-                        <UserMinus size={15} />
-                      </button>
-                    )}
-                  </div>
-                )}
-
-                {/* Acties: Verplaatsen (bevestigd) + Extra tijdslot — naast elkaar,
-                    visueel onderscheiden (omlijnde knop vs tekstlink). */}
+                {/* Acties — alle op één icoon-rij, met hover-tooltip per knop. */}
                 {!readOnly && (() => {
                   const target = assignment.groupId
                     ? { groupId: assignment.groupId }
@@ -407,36 +379,92 @@ export function TimeslotDetailDialog({
                       : null;
                   const showMove = isConfirmed && onMove !== undefined;
                   const showExtra = onAssignToSlot !== undefined && target !== null;
-                  if (!showMove && !showExtra) return null;
+                  // Bevestigd = betaald: niet verwijderbaar, enkel verplaatsen.
+                  const showUnassign = !isConfirmed;
+                  if (!canOffer && !showMove && !showExtra && !showUnassign)
+                    return null;
 
                   const options = eligibleSlotsFor?.(assignment) ?? [];
                   const moveOpen = movingForAssignmentId === assignment.id;
                   const extraOpen = addingForAssignmentId === assignment.id;
 
                   return (
-                    <div className="mt-2 border-t border-gray-100 pt-2">
-                      {/* Triggerrij (verborgen zodra een kiezer open is) */}
+                    <div className="mt-3 border-t border-gray-100 pt-3">
+                      {/* Icoon-rij (verborgen zodra een kiezer open is) */}
                       {!moveOpen && !extraOpen && (
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                          {showMove && (
-                            <button
-                              type="button"
-                              onClick={() => setMovingForAssignmentId(assignment.id)}
-                              className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-tennis-green/40 px-2 py-1 text-[11px] font-semibold text-tennis-green transition-colors hover:bg-tennis-green/5"
+                        <div className="flex items-center justify-end gap-1">
+                          {canOffer && (
+                            <IconAction
+                              tooltip={
+                                assignment.isLocked
+                                  ? t("unlock")
+                                  : assignment.groupId
+                                    ? t("lockGroup")
+                                    : t("lock")
+                              }
+                              onClick={() =>
+                                onLock(assignment.id, assignment.isLocked)
+                              }
+                              disabled={isLockPending}
+                              className={
+                                assignment.isLocked
+                                  ? "text-tennis-green hover:bg-tennis-green/10"
+                                  : "text-gray-400 hover:bg-tennis-green/5 hover:text-tennis-green"
+                              }
                             >
-                              <ArrowRightLeft size={12} />
-                              {t("moveAssignment")}
-                            </button>
+                              {assignment.isLocked ? (
+                                <Unlock size={15} />
+                              ) : (
+                                <Lock size={15} />
+                              )}
+                            </IconAction>
+                          )}
+                          {canOffer && (
+                            <IconAction
+                              tooltip={t("offerDefinitively")}
+                              onClick={() =>
+                                setOfferTarget({
+                                  id: assignment.id,
+                                  name: groupName ?? names[0] ?? "",
+                                })
+                              }
+                              disabled={isOfferPending}
+                              className="text-tennis-green hover:bg-tennis-green/10"
+                            >
+                              <Mail size={15} />
+                            </IconAction>
+                          )}
+                          {showMove && (
+                            <IconAction
+                              tooltip={t("moveAssignment")}
+                              onClick={() =>
+                                setMovingForAssignmentId(assignment.id)
+                              }
+                              className="text-gray-400 hover:bg-tennis-green/5 hover:text-tennis-green"
+                            >
+                              <ArrowRightLeft size={15} />
+                            </IconAction>
                           )}
                           {showExtra && (
-                            <button
-                              type="button"
-                              onClick={() => setAddingForAssignmentId(assignment.id)}
-                              className="inline-flex cursor-pointer items-center gap-1 text-[11px] font-medium text-gray-500 transition-colors hover:text-tennis-green hover:underline"
+                            <IconAction
+                              tooltip={t("addExtraSlot")}
+                              onClick={() =>
+                                setAddingForAssignmentId(assignment.id)
+                              }
+                              className="text-gray-400 hover:bg-tennis-green/5 hover:text-tennis-green"
                             >
-                              <Plus size={12} />
-                              {t("addExtraSlot")}
-                            </button>
+                              <Plus size={15} />
+                            </IconAction>
+                          )}
+                          {showUnassign && (
+                            <IconAction
+                              tooltip={t("unassign")}
+                              onClick={() => onUnassign(assignment.id)}
+                              disabled={isUnassignPending}
+                              className="text-gray-400 hover:bg-red-50 hover:text-red-600"
+                            >
+                              <UserMinus size={15} />
+                            </IconAction>
                           )}
                         </div>
                       )}
