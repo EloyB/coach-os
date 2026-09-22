@@ -73,6 +73,11 @@ test.describe("planning assignment locking", () => {
     await loginViaStorage(page);
     await mockApi(page, "GET", `/lessonseries/${SERIES_ID}`, TEST_SERIES[0]);
     await mockApi(page, "GET", `/lessonseries/${SERIES_ID}/planning`, planningOverview);
+    // Overige calls die de planningpagina eager doet leeg mocken; anders 401't
+    // een niet-gemockte call en stuurt de apiClient door naar /login.
+    await mockApi(page, "GET", `/lessonseries/${SERIES_ID}/enrollments`, []);
+    await mockApi(page, "GET", `/lessonseries/${SERIES_ID}/planning/non-responders`, []);
+    await mockApi(page, "GET", `/trainers`, []);
   });
 
   test("shows lock action for proposed assignment and calls lock endpoint", async ({ page }) => {
@@ -88,7 +93,8 @@ test.describe("planning assignment locking", () => {
     await page.goto(`/dashboard/lessons/${SERIES_ID}/planning`);
 
     await expect(page.getByText("Zet een volledige groep vast zodra het voorstel klopt")).toBeVisible();
-    await page.getByText("Anna Peeters").hover();
+    // Open de "Toegewezen"-sectie (default ingeklapt) en zet de groep vast.
+    await page.getByRole("button", { name: /^Toegewezen/ }).click();
     await page.getByRole("button", { name: "Vastzetten" }).click();
 
     await expect.poll(() => lockCalled).toBe(true);
@@ -102,9 +108,10 @@ test.describe("planning assignment locking", () => {
 
     await page.goto(`/dashboard/lessons/${SERIES_ID}/planning`);
 
+    // De vastzet-teller in de instructiebanner toont de vergrendelde groep.
     await expect(page.getByText("1 vastgezet")).toBeVisible();
-    await expect(page.getByText("Vastgezet").first()).toBeVisible();
-    await expect(page.getByText("Blijft behouden bij opnieuw genereren")).toBeVisible();
+    // In de "Toegewezen"-sectie kan een vergrendelde groep weer vrijgegeven worden.
+    await page.getByRole("button", { name: /^Toegewezen/ }).click();
     await expect(page.getByRole("button", { name: "Vrijgeven" }).first()).toBeVisible();
   });
 
@@ -120,8 +127,10 @@ test.describe("planning assignment locking", () => {
 
     await page.goto(`/dashboard/lessons/${SERIES_ID}/planning`);
 
-    await expect(page.getByText("Definitief aanbieden")).toBeVisible();
-    await page.getByText("Definitief aanbieden").click();
+    // Open "Toegewezen", bied de groep definitief aan en bevestig de dialog.
+    await page.getByRole("button", { name: /^Toegewezen/ }).click();
+    await page.getByRole("button", { name: "Definitief aanbieden" }).click();
+    await page.getByRole("button", { name: "Ja, aanbieden" }).click();
 
     await expect.poll(() => sendCalled).toBe(true);
   });
