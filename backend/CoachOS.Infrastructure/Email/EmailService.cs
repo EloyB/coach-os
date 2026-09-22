@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Mail;
+using System.Net.Mime;
 using System.Text;
 using CoachOS.Domain.Interfaces;
 using CoachOS.Domain.Models;
@@ -17,6 +18,22 @@ public class EmailService(
     private readonly EmailOptions _options = options.Value;
     private static readonly string[] DaysNl =
         ["zondag", "maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag"];
+
+    // Logo wordt als inline resource (cid) meegestuurd, zodat de header-afbeelding
+    // ook toont wanneer de client externe afbeeldingen blokkeert. Templates
+    // verwijzen ernaar via src="cid:coachos-logo". Hergebruikt het embedded asset.
+    private const string LogoContentId = "coachos-logo";
+    private static readonly byte[] LogoBytes = LoadLogo();
+
+    private static byte[] LoadLogo()
+    {
+        using Stream? s = typeof(EmailService).Assembly
+            .GetManifestResourceStream("CoachOS.Infrastructure.Export.Assets.coachos-logo.png");
+        if (s is null) return [];
+        using var ms = new MemoryStream();
+        s.CopyTo(ms);
+        return ms.ToArray();
+    }
 
     public async Task SendTrainerInviteAsync(
         string toEmail, string firstName, string inviteUrl, CancellationToken ct = default)
@@ -431,11 +448,24 @@ public class EmailService(
         {
             From = new MailAddress(_options.FromAddress, _options.FromName),
             Subject = subject,
-            Body = htmlBody,
-            IsBodyHtml = true
         };
 
         message.To.Add(new MailAddress(toEmail, toName));
+
+        // HTML als AlternateView zodat we het logo als inline (cid) resource kunnen
+        // koppelen; message.Body/IsBodyHtml vervalt daarmee.
+        AlternateView htmlView = AlternateView.CreateAlternateViewFromString(
+            htmlBody, Encoding.UTF8, MediaTypeNames.Text.Html);
+        if (LogoBytes.Length > 0)
+        {
+            LinkedResource logo = new(new MemoryStream(LogoBytes), new ContentType(MediaTypeNames.Image.Png))
+            {
+                ContentId = LogoContentId,
+                TransferEncoding = TransferEncoding.Base64,
+            };
+            htmlView.LinkedResources.Add(logo);
+        }
+        message.AlternateViews.Add(htmlView);
 
         try
         {
