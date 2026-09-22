@@ -76,7 +76,11 @@ import {
 import { getInitials, getAvatarColor } from "@/lib/planning-avatars";
 import { TimeslotDetailDialog } from "./_components/timeslot-detail-dialog";
 import { ConfirmedUnitActions } from "./_components/confirmed-unit-actions";
-import { isHeadTrainerViewer } from "@/lib/auth";
+import {
+  isHeadTrainerViewer,
+  canEditEnrollment,
+  isEnrollmentManager,
+} from "@/lib/auth";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -97,7 +101,14 @@ export default function PlanningPage({
   // Hoofdtrainer = read-only: enkel de planning raadplegen, geen bewerkacties.
   // Reactief via effect zodat het na hydration klopt (localStorage is er niet bij SSR).
   const [readOnly, setReadOnly] = useState(false);
-  useEffect(() => setReadOnly(isHeadTrainerViewer()), []);
+  // Prijs/inschrijving bewerken is Admin-only; lid verwijderen mag ook een hoofdtrainer.
+  const [canEdit, setCanEdit] = useState(false);
+  const [canManage, setCanManage] = useState(false);
+  useEffect(() => {
+    setReadOnly(isHeadTrainerViewer());
+    setCanEdit(canEditEnrollment());
+    setCanManage(isEnrollmentManager());
+  }, []);
 
   const { data: series } = useQuery({
     queryKey: ["lessonSeries", id],
@@ -121,9 +132,15 @@ export default function PlanningPage({
   // Volledige inschrijvingen (DOB, prijsoptie, formuliervragen, …) om de
   // detail-dialog vanaf de planning te kunnen tonen. Zelfde query als de
   // reeks-tabel, dus meestal al gecached.
+  //
+  // BELANGRIJK: het /enrollments-endpoint is NIET per-reeks access-checked zoals
+  // /planning. Een hoofdtrainer (read-only) mag deze PII dus niet eager laden —
+  // enkel wie mag bewerken (Admin) heeft de detail-dialog nodig. Gegate op een
+  // synchrone check zodat de request bij head trainers nooit vertrekt.
   const { data: fullEnrollments = [] } = useQuery({
     queryKey: ["enrollments", id],
     queryFn: () => getLessonSeriesEnrollments(id),
+    enabled: !isHeadTrainerViewer(),
   });
 
   // Klik op een persoon/groep → detail-dialog. Bewerken kan van hieruit.
@@ -267,9 +284,11 @@ export default function PlanningPage({
   // Bevestigd-sectie: default open (verschijnt enkel als er aangeboden/bevestigde zijn).
   const [showConfirmed, setShowConfirmed] = useState(true);
   const [addingSlotForKey, setAddingSlotForKey] = useState<string | null>(null);
-  // Bevestiging vóór 'Definitief aanbieden' vanuit de Toegewezen-sectie
-  // (verstuurt meteen e-mail-aanbod(en) voor alle voorstellen van de eenheid).
-  const [offerTarget, setOfferTarget] = useState<{ ids: string[]; name: string } | null>(null);
+  // Bevestiging vóór 'Definitief aanbieden' vanuit de Toegewezen-sectie.
+  // Per toewijzing (één slot) — het endpoint maakt één token + één mail. Bulk over
+  // meerdere slots is bewust out-of-scope (zou meerdere concurrerende mails geven);
+  // een multi-slot eenheid bied je per slot aan via de tijdslot-dialog.
+  const [offerTarget, setOfferTarget] = useState<{ id: string; name: string } | null>(null);
 
   // Slot detail dialog (click to open)
   const [openSlotId, setOpenSlotId] = useState<string | null>(null);
@@ -550,13 +569,8 @@ export default function PlanningPage({
   const lockedAssignmentsCount =
     planning?.assignments.filter((assignment) => assignment.isLocked).length ?? 0;
 
-  // Helper: get names for a slot's assignments
-  function getSlotNames(slotId: string): string[] {
-    return getSlotPeople(slotId).map((p) => p.name);
-  }
-
-  // Zelfde als getSlotNames, maar met de enrollment-id per persoon zodat de
-  // avatar/naam klikbaar is naar de detail-dialog.
+  // Namen + enrollment-id per persoon voor een slot, zodat de avatar/naam
+  // klikbaar is naar de detail-dialog.
   function getSlotPeople(slotId: string): { name: string; enrollmentId: string }[] {
     const assignments = assignmentsBySlot.get(slotId) ?? [];
     const people: { name: string; enrollmentId: string }[] = [];
@@ -1595,21 +1609,27 @@ export default function PlanningPage({
                                     >
                                       {allLocked ? <Unlock size={14} /> : <Lock size={14} />}
                                     </button>
-                                    <button
-                                      type="button"
-                                      title={t("offerDefinitively")}
-                                      aria-label={t("offerDefinitively")}
-                                      onClick={() =>
-                                        setOfferTarget({
-                                          ids: proposed.map((a) => a.id),
-                                          name: unit.name,
-                                        })
-                                      }
-                                      disabled={sendConfirmationMutation.isPending}
-                                      className="inline-flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-tennis-green transition-colors hover:bg-tennis-green/10 disabled:opacity-50"
-                                    >
-                                      <Mail size={14} />
-                                    </button>
+                                    {/* Aanbieden gaat per toewijzing/slot (één token + één
+                                        mail). Bij een multi-slot eenheid zou één klik
+                                        meerdere concurrerende mails geven; bied die dan
+                                        per slot aan via de tijdslot-dialog. */}
+                                    {proposed.length === 1 && (
+                                      <button
+                                        type="button"
+                                        title={t("offerDefinitively")}
+                                        aria-label={t("offerDefinitively")}
+                                        onClick={() =>
+                                          setOfferTarget({
+                                            id: proposed[0].id,
+                                            name: unit.name,
+                                          })
+                                        }
+                                        disabled={sendConfirmationMutation.isPending}
+                                        className="inline-flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-tennis-green transition-colors hover:bg-tennis-green/10 disabled:opacity-50"
+                                      >
+                                        <Mail size={14} />
+                                      </button>
+                                    )}
                                   </div>
                                 )}
                               </div>
@@ -1853,7 +1873,7 @@ export default function PlanningPage({
           seriesId={id}
           groupMembers={detailTarget.groupMembers}
           onEdit={
-            detailTarget.groupMembers
+            !canEdit || detailTarget.groupMembers
               ? undefined
               : () => {
                   const e = detailTarget.enrollment;
@@ -1862,15 +1882,17 @@ export default function PlanningPage({
                 }
           }
           onEditMember={
-            detailTarget.groupMembers
+            canEdit && detailTarget.groupMembers
               ? (m) => setEditingEnrollment(m)
               : undefined
           }
           onRemoveMember={
-            detailTarget.groupMembers ? (m) => setMemberToRemove(m) : undefined
+            canManage && detailTarget.groupMembers
+              ? (m) => setMemberToRemove(m)
+              : undefined
           }
           onChangeGroupPriceOption={
-            detailTarget.groupMembers
+            canEdit && detailTarget.groupMembers
               ? (optionId) =>
                   changeGroupPriceMutation.mutate({
                     leader: detailTarget.enrollment,
@@ -1960,9 +1982,7 @@ export default function PlanningPage({
             <AlertDialogCancel>{t("offerConfirmCancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
-                offerTarget?.ids.forEach((assignmentId) =>
-                  sendConfirmationMutation.mutate(assignmentId)
-                );
+                if (offerTarget) sendConfirmationMutation.mutate(offerTarget.id);
                 setOfferTarget(null);
               }}
               className="bg-tennis-green hover:bg-tennis-green/90"
