@@ -462,7 +462,6 @@ public class PaymentService(
                 enrollment.ContactEmail,
                 enrollment.StudentName,
                 series?.Name ?? string.Empty,
-                trainerName: string.Empty,
                 // toConfirm = alle leden van de groep (of de solo-inschrijving); zo ziet
                 // de betalende contactpersoon voor wie de bevestiging geldt.
                 participantNames: toConfirm.Select(e => e.StudentName).ToList(),

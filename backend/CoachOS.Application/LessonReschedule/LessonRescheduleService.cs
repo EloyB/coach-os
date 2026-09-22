@@ -14,7 +14,6 @@ public class LessonRescheduleService(
     ILessonInvitationRepository invitationRepo,
     IEnrollmentRepository enrollmentRepo,
     ILessonSerieRepository serieRepo,
-    IUserLookupService userLookup,
     IEmailService emailService,
     ILogger<LessonRescheduleService> logger) : ILessonRescheduleService
 {
@@ -119,10 +118,6 @@ public class LessonRescheduleService(
         string? reason,
         CancellationToken ct)
     {
-        string trainerName = oldLesson.TrainerId.HasValue
-            ? (await userLookup.GetUserNameByIdAsync(oldLesson.TrainerId.Value, ct)) ?? "Trainer"
-            : "Trainer";
-
         string? seriesName = null;
         if (oldLesson.LessonSerieId.HasValue)
         {
@@ -169,7 +164,7 @@ public class LessonRescheduleService(
                     email, name, seriesName,
                     oldLesson.Date, oldLesson.StartTime,
                     newLesson.Date, newLesson.StartTime, newLesson.EndTime,
-                    newLesson.CourtName, trainerName, reason, ct);
+                    newLesson.CourtName, reason, ct);
                 sent++;
             }
             catch (Exception ex)

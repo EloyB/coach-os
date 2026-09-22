@@ -14,8 +14,7 @@
   <mj-body background-color="#FAFAF8" width="600px">
     <mj-section css-class="cos-header" background-color="#2D5016" padding="28px 40px" border-radius="12px 12px 0 0">
       <mj-column>
-        <mj-text mj-class="brand">Coach<span style="color:#D0FF14">OS</span></mj-text>
-        <mj-text mj-class="tagline" padding-top="8px">Tennis &amp; Padel</mj-text>
+        <mj-text mj-class="brand"><img src="cid:coachos-logo" alt="" width="40" height="40" style="width:40px;height:40px;border-radius:9px;vertical-align:middle;margin-right:12px" />Coach<span style="color:#D0FF14">OS</span></mj-text>
       </mj-column>
     </mj-section>
 
@@ -34,7 +33,6 @@
             <mj-text font-size="11px" color="#2D5016" font-weight="600" letter-spacing="1.5px" text-transform="uppercase" padding="0">Nieuw lesmoment</mj-text>
             <mj-text font-size="15px" font-weight="600" color="#111827" padding="6px 0 0">{{newDayName}} {{newDateText}}</mj-text>
             <mj-text font-size="13px" color="#6b7280" padding="4px 0 0">{{newStartTime}} – {{newEndTime}}</mj-text>
-            <mj-text font-size="13px" color="#6b7280" padding="4px 0 0">Trainer: {{trainerName}}</mj-text>
             <mj-text font-size="13px" color="#6b7280" padding="4px 0 0">{{courtLine}}</mj-text>
             <mj-text font-size="13px" color="#6b7280" padding="4px 0 0">{{reasonBlock}}</mj-text>
           </mj-column>

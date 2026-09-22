@@ -120,7 +120,7 @@ public sealed class EmailOutboxWorker(
                 var payload = JsonSerializer.Deserialize<EnrollmentConfirmationEmailPayload>(message.Payload)
                     ?? throw new InvalidOperationException("Invalid enrollment confirmation payload");
                 await emailService.SendEnrollmentConfirmationAsync(
-                    payload.Email, payload.Name, payload.SeriesName, payload.TrainerName,
+                    payload.Email, payload.Name, payload.SeriesName,
                     payload.ParticipantNames, ct);
                 break;
             }

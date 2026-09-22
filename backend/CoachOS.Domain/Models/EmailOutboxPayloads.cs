@@ -4,7 +4,6 @@ public sealed record EnrollmentConfirmationEmailPayload(
     string Email,
     string Name,
     string SeriesName,
-    string TrainerName,
     IReadOnlyList<string> ParticipantNames);
 
 public sealed record GroupMemberAddedEmailPayload(
