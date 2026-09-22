@@ -425,6 +425,8 @@
     "confirmedSection": "Bevestigd",
     "searchPeople": "Zoek een persoon of groep…",
     "searchClear": "Zoekopdracht wissen",
+    "declinedBadge": "Geweigerd",
+    "declinedSlotForTarget": "{name} heeft dit tijdslot geweigerd — niet opnieuw kiesbaar.",
     "scheduledOn": "Ingepland op",
     "actionsFor": "Acties voor {name}",
     "unassigned": "Niet toegewezen",

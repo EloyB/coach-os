@@ -41,10 +41,15 @@ public class AssignmentService(
 
             // Eén groep mag op meerdere DIFFERENT slots staan (multi-slot); enkel
             // een duplicaat op hetzelfde slot is niet toegelaten (spiegelt de DB-index).
-            if (existingAssignments.Any(a =>
-                    a.EnrollmentGroupId == request.GroupId
-                    && a.WeeklyTemplateEntryId == request.WeeklyTemplateEntryId))
-                return Result<Guid>.Fail(new Error(ErrorCodes.Validation, "Groep staat al op dit tijdslot."));
+            // Een geweigerd (Declined) slot blijft geblokkeerd — met een accurate melding.
+            var groupDup = existingAssignments.FirstOrDefault(a =>
+                a.EnrollmentGroupId == request.GroupId
+                && a.WeeklyTemplateEntryId == request.WeeklyTemplateEntryId);
+            if (groupDup is not null)
+                return Result<Guid>.Fail(new Error(ErrorCodes.Validation,
+                    groupDup.Status == ScheduleAssignmentStatus.Declined
+                        ? "Deze groep heeft dit tijdslot geweigerd."
+                        : "Groep staat al op dit tijdslot."));
 
             groupId = group.Id;
             addSize = PlanningProposalBuilder.GetEffectiveAssignmentSize(new ScheduleAssignment
@@ -61,10 +66,15 @@ public class AssignmentService(
 
             // Eén inschrijving mag op meerdere DIFFERENT slots staan (bv. 2 trainingen
             // per week); enkel een duplicaat op hetzelfde slot is niet toegelaten.
-            if (existingAssignments.Any(a =>
-                    a.EnrollmentId == request.EnrollmentId
-                    && a.WeeklyTemplateEntryId == request.WeeklyTemplateEntryId))
-                return Result<Guid>.Fail(new Error(ErrorCodes.Validation, "Inschrijving staat al op dit tijdslot."));
+            // Een geweigerd (Declined) slot blijft geblokkeerd — met een accurate melding.
+            var dup = existingAssignments.FirstOrDefault(a =>
+                a.EnrollmentId == request.EnrollmentId
+                && a.WeeklyTemplateEntryId == request.WeeklyTemplateEntryId);
+            if (dup is not null)
+                return Result<Guid>.Fail(new Error(ErrorCodes.Validation,
+                    dup.Status == ScheduleAssignmentStatus.Declined
+                        ? "Deze inschrijving heeft dit tijdslot geweigerd."
+                        : "Inschrijving staat al op dit tijdslot."));
 
             enrollmentId = enrollment.Id;
             addSize = 1;

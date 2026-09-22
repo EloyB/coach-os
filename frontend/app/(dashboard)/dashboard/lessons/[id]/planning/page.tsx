@@ -18,6 +18,7 @@ import {
   ChevronDown,
   Search,
   X,
+  Ban,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -413,6 +414,22 @@ export default function PlanningPage({
     }
     return set;
   }, [planning]);
+
+  // Slots die de geselecteerde persoon/groep al geweigerd heeft (status Declined).
+  // In de toewijs-modus mogen die niet opnieuw gekozen worden voor deze eenheid.
+  const declinedSlotsForTarget = useMemo(() => {
+    const set = new Set<string>();
+    if (!planning || !assignTarget) return set;
+    for (const a of planning.assignments) {
+      if (a.status !== "Declined") continue;
+      const match =
+        assignTarget.kind === "group"
+          ? a.groupId === assignTarget.groupId
+          : a.enrollmentId === assignTarget.enrollmentId;
+      if (match) set.add(a.timeSlotId);
+    }
+    return set;
+  }, [planning, assignTarget]);
 
   // Unassigned: split into solo enrollees and unassigned groups
   const { unassignedSolos, unassignedGroups } = useMemo(() => {
@@ -871,7 +888,8 @@ export default function PlanningPage({
               <p className="text-xs text-tennis-green/70">
                 <span className="inline-block h-2 w-2 rounded-full bg-green-500 align-middle" /> voorkeur ·{" "}
                 <span className="inline-block h-2 w-2 rounded-full bg-blue-500 align-middle" /> beschikbaar ·{" "}
-                <span className="inline-block h-2 w-2 rounded-full bg-gray-300 align-middle" /> niet beschikbaar/vol · Esc om te annuleren
+                <span className="inline-block h-2 w-2 rounded-full bg-gray-300 align-middle" /> niet beschikbaar/vol ·{" "}
+                <Ban size={10} className="inline align-middle text-gray-400" /> geweigerd · Esc om te annuleren
               </p>
             </div>
             <button
@@ -973,8 +991,11 @@ export default function PlanningPage({
                     // Toewijs-modus: kleur naar de voorkeur van de geselecteerde
                     // persoon/groep en bepaal of ze er nog bij passen.
                     const assignPref = assignTarget?.prefs[slot.id];
+                    const declinedForTarget =
+                      assignTarget != null && declinedSlotsForTarget.has(slot.id);
                     const assignFits =
                       assignTarget != null &&
+                      !declinedForTarget &&
                       slot.maxCapacity - currentCount >= assignTarget.size;
 
                     const borderColor = assignTarget
@@ -1050,15 +1071,31 @@ export default function PlanningPage({
                           left: `calc(${col.colIndex * colWidthPct}% + 1px)`,
                           width: `calc(${colWidthPct}% - 2px)`,
                         }}
+                        title={
+                          declinedForTarget
+                            ? t("declinedSlotForTarget", {
+                                name: assignTarget?.name ?? "",
+                              })
+                            : undefined
+                        }
                         onClick={handleTileClick}
                       >
                         {/* Header: court + status-glyphs + capacity */}
                         <div className="flex items-center justify-between gap-1">
                           <div className="flex items-center gap-1 min-w-0">
-                            <span className="text-[10px] font-medium text-gray-500 truncate">
-                              {slot.courtName ?? ""}
-                            </span>
-                            {hasAutoMerged && (
+                            {/* Toewijs-modus: dit slot werd door de geselecteerde
+                                eenheid geweigerd → niet opnieuw kiesbaar. */}
+                            {declinedForTarget ? (
+                              <span className="inline-flex items-center gap-0.5 rounded bg-gray-200 px-1 py-0.5 text-[9px] font-semibold text-gray-500">
+                                <Ban size={9} />
+                                {t("declinedBadge")}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-medium text-gray-500 truncate">
+                                {slot.courtName ?? ""}
+                              </span>
+                            )}
+                            {hasAutoMerged && !declinedForTarget && (
                               <span className="text-[9px] text-gray-400 italic shrink-0">
                                 auto
                               </span>
