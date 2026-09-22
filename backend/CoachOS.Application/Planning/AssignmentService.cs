@@ -15,17 +15,17 @@ public class AssignmentService(
     IEmailService emailService,
     ILogger<AssignmentService> logger) : IAssignmentService
 {
-    public async Task<Result<bool>> CreateAssignmentAsync(
+    public async Task<Result<Guid>> CreateAssignmentAsync(
         Guid seriesId, CreateAssignmentRequest request,
         Guid organizationId, CancellationToken ct = default)
     {
         var series = await lessonSeriesRepo.GetByIdAsync(seriesId, organizationId, ct);
         if (series is null)
-            return Result<bool>.Fail(new Error(ErrorCodes.NotFound, "Lessenreeks niet gevonden."));
+            return Result<Guid>.Fail(new Error(ErrorCodes.NotFound, "Lessenreeks niet gevonden."));
 
         var slot = series.WeeklyTemplate.FirstOrDefault(s => s.Id == request.WeeklyTemplateEntryId);
         if (slot is null)
-            return Result<bool>.Fail(new Error(ErrorCodes.NotFound, "Tijdslot niet gevonden."));
+            return Result<Guid>.Fail(new Error(ErrorCodes.NotFound, "Tijdslot niet gevonden."));
 
         var existingAssignments = await scheduleAssignmentRepo.GetBySeriesAsync(seriesId, organizationId, ct);
 
@@ -37,14 +37,14 @@ public class AssignmentService(
         {
             var group = await enrollmentGroupRepo.GetByIdAsync(request.GroupId.Value, organizationId, ct);
             if (group is null || group.LessonSerieId != seriesId)
-                return Result<bool>.Fail(new Error(ErrorCodes.NotFound, "Groep niet gevonden."));
+                return Result<Guid>.Fail(new Error(ErrorCodes.NotFound, "Groep niet gevonden."));
 
             // Eén groep mag op meerdere DIFFERENT slots staan (multi-slot); enkel
             // een duplicaat op hetzelfde slot is niet toegelaten (spiegelt de DB-index).
             if (existingAssignments.Any(a =>
                     a.EnrollmentGroupId == request.GroupId
                     && a.WeeklyTemplateEntryId == request.WeeklyTemplateEntryId))
-                return Result<bool>.Fail(new Error(ErrorCodes.Validation, "Groep staat al op dit tijdslot."));
+                return Result<Guid>.Fail(new Error(ErrorCodes.Validation, "Groep staat al op dit tijdslot."));
 
             groupId = group.Id;
             addSize = PlanningProposalBuilder.GetEffectiveAssignmentSize(new ScheduleAssignment
@@ -57,14 +57,14 @@ public class AssignmentService(
         {
             var enrollment = await enrollmentRepo.GetByIdAsync(request.EnrollmentId!.Value, organizationId, ct);
             if (enrollment is null || enrollment.LessonSerieId != seriesId)
-                return Result<bool>.Fail(new Error(ErrorCodes.NotFound, "Inschrijving niet gevonden."));
+                return Result<Guid>.Fail(new Error(ErrorCodes.NotFound, "Inschrijving niet gevonden."));
 
             // Eén inschrijving mag op meerdere DIFFERENT slots staan (bv. 2 trainingen
             // per week); enkel een duplicaat op hetzelfde slot is niet toegelaten.
             if (existingAssignments.Any(a =>
                     a.EnrollmentId == request.EnrollmentId
                     && a.WeeklyTemplateEntryId == request.WeeklyTemplateEntryId))
-                return Result<bool>.Fail(new Error(ErrorCodes.Validation, "Inschrijving staat al op dit tijdslot."));
+                return Result<Guid>.Fail(new Error(ErrorCodes.Validation, "Inschrijving staat al op dit tijdslot."));
 
             enrollmentId = enrollment.Id;
             addSize = 1;
@@ -73,7 +73,7 @@ public class AssignmentService(
         var capacityError = await EnsureSlotCapacityAsync(
             seriesId, organizationId, request.WeeklyTemplateEntryId, addSize, excludeAssignmentId: null, ct);
         if (capacityError is not null)
-            return Result<bool>.Fail(capacityError);
+            return Result<Guid>.Fail(capacityError);
 
         ScheduleAssignment assignment = new()
         {
@@ -90,7 +90,7 @@ public class AssignmentService(
         await scheduleAssignmentRepo.AddRangeAsync([assignment], ct);
         await scheduleAssignmentRepo.SaveChangesAsync(ct);
 
-        return Result<bool>.Ok(true);
+        return Result<Guid>.Ok(assignment.Id);
     }
 
     public async Task<Result<bool>> UpdateAssignmentAsync(

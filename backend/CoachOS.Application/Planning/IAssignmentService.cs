@@ -5,7 +5,7 @@ namespace CoachOS.Application.Planning;
 
 public interface IAssignmentService
 {
-    Task<Result<bool>> CreateAssignmentAsync(
+    Task<Result<Guid>> CreateAssignmentAsync(
         Guid seriesId, CreateAssignmentRequest request,
         Guid organizationId, CancellationToken ct = default);
 

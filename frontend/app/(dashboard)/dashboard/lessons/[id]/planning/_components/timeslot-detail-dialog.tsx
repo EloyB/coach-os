@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import {
   Users,
@@ -10,6 +10,7 @@ import {
   Unlock,
   X,
   Plus,
+  UserMinus,
   Trash2,
   Pencil,
   ArrowRightLeft,
@@ -32,6 +33,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
 import { getInitials, getAvatarColor } from "@/lib/planning-avatars";
 import type {
   PlanningTimeSlotDto,
@@ -49,6 +55,38 @@ const DAY_NAMES_FULL = [
   "Zaterdag",
   "Zondag",
 ];
+
+/** Vierkante icoon-actieknop met hover-tooltip die uitlegt wat de actie doet. */
+function IconAction({
+  tooltip,
+  onClick,
+  disabled,
+  className = "",
+  children,
+}: {
+  tooltip: string;
+  onClick: () => void;
+  disabled?: boolean;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          aria-label={tooltip}
+          onClick={onClick}
+          disabled={disabled}
+          className={`inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md transition-colors disabled:opacity-50 ${className}`}
+        >
+          {children}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent>{tooltip}</TooltipContent>
+    </Tooltip>
+  );
+}
 
 interface TimeslotDetailDialogProps {
   /** Hoofdtrainer = read-only: enkel bekijken, geen lock/aanbieden/verwijderen. */
@@ -82,6 +120,10 @@ interface TimeslotDetailDialogProps {
     slotId: string
   ) => void;
   isAssignPending?: boolean;
+  /** Klik op een persoon → open diens inschrijving-detail. */
+  onOpenPerson?: (enrollmentId: string) => void;
+  /** Klik op een groepsnaam → open de groep-detail. */
+  onOpenGroup?: (groupId: string) => void;
 }
 
 export type ExtraSlotOption = {
@@ -116,6 +158,8 @@ export function TimeslotDetailDialog({
   eligibleSlotsFor,
   onAssignToSlot,
   isAssignPending = false,
+  onOpenPerson,
+  onOpenGroup,
 }: TimeslotDetailDialogProps) {
   const t = useTranslations("planning");
   // Bevestiging vóór 'Definitief aanbieden': dit verstuurt meteen een e-mail-aanbod.
@@ -214,7 +258,7 @@ export function TimeslotDetailDialog({
           )}
 
           {assignments.map((assignment) => {
-            const names: string[] = [];
+            const people: { name: string; enrollmentId: string }[] = [];
             let groupName: string | null = null;
 
             if (assignment.groupId) {
@@ -223,15 +267,16 @@ export function TimeslotDetailDialog({
                 groupName = group.name;
                 for (const mId of group.memberEnrollmentIds) {
                   const e = enrollmentMap.get(mId);
-                  if (e) names.push(e.studentName);
+                  if (e) people.push({ name: e.studentName, enrollmentId: e.id });
                 }
               }
             } else if (assignment.enrollmentId) {
               const e = enrollmentMap.get(assignment.enrollmentId);
-              if (e) names.push(e.studentName);
+              if (e) people.push({ name: e.studentName, enrollmentId: e.id });
             }
 
-            if (names.length === 0) return null;
+            if (people.length === 0) return null;
+            const names = people.map((p) => p.name);
 
             const canOffer = assignment.status === "Proposed";
             const isConfirmed = assignment.status === "Confirmed";
@@ -253,15 +298,19 @@ export function TimeslotDetailDialog({
                   {groupName ? (
                     <>
                       <Users size={13} className="shrink-0 text-gray-400" />
-                      <span
-                        className={`rounded px-1.5 py-0.5 text-[11px] font-bold ${
+                      <button
+                        type="button"
+                        onClick={() =>
+                          assignment.groupId && onOpenGroup?.(assignment.groupId)
+                        }
+                        className={`cursor-pointer rounded px-1.5 py-0.5 text-[11px] font-bold transition-colors hover:underline ${
                           assignment.isAutoMerged
-                            ? "bg-blue-100 text-blue-700"
-                            : "bg-green-100 text-green-700"
+                            ? "bg-blue-100 text-blue-700 hover:bg-blue-200"
+                            : "bg-green-100 text-green-700 hover:bg-green-200"
                         }`}
                       >
                         {groupName}
-                      </span>
+                      </button>
                     </>
                   ) : (
                     <>
@@ -295,80 +344,33 @@ export function TimeslotDetailDialog({
                       {t("locked")}
                     </span>
                   )}
-                  {/* Bevestigde toewijzing niet verwijderbaar (betaald) — enkel verplaatsen. */}
-                  {!readOnly && !isConfirmed && (
-                    <button
-                      type="button"
-                      title={t("unassign")}
-                      onClick={() => onUnassign(assignment.id)}
-                      disabled={isUnassignPending}
-                      className="ml-auto flex h-6 w-6 shrink-0 items-center justify-center rounded text-gray-300 transition-colors hover:bg-red-50 hover:text-red-500 disabled:opacity-50"
-                    >
-                      <X size={14} />
-                    </button>
-                  )}
                 </div>
 
                 {/* Members */}
                 <div className="space-y-1.5 pl-1">
-                  {names.map((name, ni) => {
-                    const color = getAvatarColor(name);
+                  {people.map((person, ni) => {
+                    const color = getAvatarColor(person.name);
                     return (
-                      <div key={ni} className="flex items-center gap-2">
+                      <button
+                        key={ni}
+                        type="button"
+                        onClick={() => onOpenPerson?.(person.enrollmentId)}
+                        className="group flex w-full cursor-pointer items-center gap-2 rounded-md px-1.5 py-1 text-left transition-colors hover:bg-tennis-green/10"
+                      >
                         <div
                           className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[8px] font-bold ${color.bg} ${color.text}`}
                         >
-                          {getInitials(name)}
+                          {getInitials(person.name)}
                         </div>
-                        <span className="text-sm text-gray-700">{name}</span>
-                      </div>
+                        <span className="text-sm text-gray-700 group-hover:text-tennis-green group-hover:underline">
+                          {person.name}
+                        </span>
+                      </button>
                     );
                   })}
                 </div>
 
-                {/* Actions */}
-                {!readOnly && canOffer && (
-                  <div className="mt-3 flex items-center gap-2 border-t border-gray-100 pt-3">
-                    <button
-                      type="button"
-                      onClick={() => onLock(assignment.id, assignment.isLocked)}
-                      disabled={isLockPending}
-                      className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold transition-colors disabled:opacity-50 ${
-                        assignment.isLocked
-                          ? "bg-green-100 text-green-700 hover:bg-green-200"
-                          : "border border-gray-200 text-tennis-green hover:bg-tennis-green/5"
-                      }`}
-                    >
-                      {assignment.isLocked ? (
-                        <Unlock size={12} />
-                      ) : (
-                        <Lock size={12} />
-                      )}
-                      {assignment.isLocked
-                        ? t("unlock")
-                        : assignment.groupId
-                          ? t("lockGroup")
-                          : t("lock")}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setOfferTarget({
-                          id: assignment.id,
-                          name: groupName ?? names[0] ?? "",
-                        })
-                      }
-                      disabled={isOfferPending}
-                      className="inline-flex items-center gap-1.5 rounded-md bg-tennis-green px-2.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-tennis-green/90 disabled:opacity-50"
-                    >
-                      <Mail size={12} />
-                      {t("offerDefinitively")}
-                    </button>
-                  </div>
-                )}
-
-                {/* Acties: Verplaatsen (bevestigd) + Extra tijdslot — naast elkaar,
-                    visueel onderscheiden (omlijnde knop vs tekstlink). */}
+                {/* Acties — alle op één icoon-rij, met hover-tooltip per knop. */}
                 {!readOnly && (() => {
                   const target = assignment.groupId
                     ? { groupId: assignment.groupId }
@@ -377,36 +379,92 @@ export function TimeslotDetailDialog({
                       : null;
                   const showMove = isConfirmed && onMove !== undefined;
                   const showExtra = onAssignToSlot !== undefined && target !== null;
-                  if (!showMove && !showExtra) return null;
+                  // Bevestigd = betaald: niet verwijderbaar, enkel verplaatsen.
+                  const showUnassign = !isConfirmed;
+                  if (!canOffer && !showMove && !showExtra && !showUnassign)
+                    return null;
 
                   const options = eligibleSlotsFor?.(assignment) ?? [];
                   const moveOpen = movingForAssignmentId === assignment.id;
                   const extraOpen = addingForAssignmentId === assignment.id;
 
                   return (
-                    <div className="mt-2 border-t border-gray-100 pt-2">
-                      {/* Triggerrij (verborgen zodra een kiezer open is) */}
+                    <div className="mt-3 border-t border-gray-100 pt-3">
+                      {/* Icoon-rij (verborgen zodra een kiezer open is) */}
                       {!moveOpen && !extraOpen && (
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                          {showMove && (
-                            <button
-                              type="button"
-                              onClick={() => setMovingForAssignmentId(assignment.id)}
-                              className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-tennis-green/40 px-2 py-1 text-[11px] font-semibold text-tennis-green transition-colors hover:bg-tennis-green/5"
+                        <div className="flex items-center justify-end gap-1">
+                          {canOffer && (
+                            <IconAction
+                              tooltip={
+                                assignment.isLocked
+                                  ? t("unlock")
+                                  : assignment.groupId
+                                    ? t("lockGroup")
+                                    : t("lock")
+                              }
+                              onClick={() =>
+                                onLock(assignment.id, assignment.isLocked)
+                              }
+                              disabled={isLockPending}
+                              className={
+                                assignment.isLocked
+                                  ? "text-tennis-green hover:bg-tennis-green/10"
+                                  : "text-gray-400 hover:bg-tennis-green/5 hover:text-tennis-green"
+                              }
                             >
-                              <ArrowRightLeft size={12} />
-                              {t("moveAssignment")}
-                            </button>
+                              {assignment.isLocked ? (
+                                <Unlock size={15} />
+                              ) : (
+                                <Lock size={15} />
+                              )}
+                            </IconAction>
+                          )}
+                          {canOffer && (
+                            <IconAction
+                              tooltip={t("offerDefinitively")}
+                              onClick={() =>
+                                setOfferTarget({
+                                  id: assignment.id,
+                                  name: groupName ?? names[0] ?? "",
+                                })
+                              }
+                              disabled={isOfferPending}
+                              className="text-tennis-green hover:bg-tennis-green/10"
+                            >
+                              <Mail size={15} />
+                            </IconAction>
+                          )}
+                          {showMove && (
+                            <IconAction
+                              tooltip={t("moveAssignment")}
+                              onClick={() =>
+                                setMovingForAssignmentId(assignment.id)
+                              }
+                              className="text-gray-400 hover:bg-tennis-green/5 hover:text-tennis-green"
+                            >
+                              <ArrowRightLeft size={15} />
+                            </IconAction>
                           )}
                           {showExtra && (
-                            <button
-                              type="button"
-                              onClick={() => setAddingForAssignmentId(assignment.id)}
-                              className="inline-flex cursor-pointer items-center gap-1 text-[11px] font-medium text-gray-500 transition-colors hover:text-tennis-green hover:underline"
+                            <IconAction
+                              tooltip={t("addExtraSlot")}
+                              onClick={() =>
+                                setAddingForAssignmentId(assignment.id)
+                              }
+                              className="text-gray-400 hover:bg-tennis-green/5 hover:text-tennis-green"
                             >
-                              <Plus size={12} />
-                              {t("addExtraSlot")}
-                            </button>
+                              <Plus size={15} />
+                            </IconAction>
+                          )}
+                          {showUnassign && (
+                            <IconAction
+                              tooltip={t("unassign")}
+                              onClick={() => onUnassign(assignment.id)}
+                              disabled={isUnassignPending}
+                              className="text-gray-400 hover:bg-red-50 hover:text-red-600"
+                            >
+                              <UserMinus size={15} />
+                            </IconAction>
                           )}
                         </div>
                       )}

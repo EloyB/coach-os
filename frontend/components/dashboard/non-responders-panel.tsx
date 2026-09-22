@@ -10,6 +10,10 @@ import {
   Check,
   RefreshCw,
   CheckCircle2,
+  ChevronDown,
+  MoreVertical,
+  ExternalLink,
+  Plus,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -20,14 +24,37 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { getNonResponders } from "@/lib/api/confirmation";
 import { resendConfirmation, adminConfirm } from "@/lib/api/planning";
 import type { NonResponderDto } from "@/lib/api/confirmation";
 
 // Backend-conventie: 0=maandag ... 6=zondag (zie CoachOS.Application/LessonSerie/LessonSerieService.cs).
 const DAY_NAMES_SHORT = ["Ma", "Di", "Wo", "Do", "Vr", "Za", "Zo"];
+const DAY_NAMES_FULL = [
+  "Maandag",
+  "Dinsdag",
+  "Woensdag",
+  "Donderdag",
+  "Vrijdag",
+  "Zaterdag",
+  "Zondag",
+];
+
+type ExtraSlotOption = {
+  id: string;
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  courtName: string | null;
+  remaining: number;
+};
+type Target = { enrollmentId?: string; groupId?: string };
 
 function formatRelativeExpiry(expiresAt: string): string {
   const now = new Date();
@@ -47,11 +74,42 @@ function formatRelativeExpiry(expiresAt: string): string {
   return `${diffM}m`;
 }
 
-export function NonRespondersPanel({ seriesId }: { seriesId: string }) {
+export function NonRespondersPanel({
+  seriesId,
+  query = "",
+  onOpenAssignment,
+  eligibleSlotsForAssignment,
+  targetForAssignment,
+  onAddExtraSlot,
+  isAddExtraPending = false,
+}: {
+  seriesId: string;
+  /** Zoekterm (lowercased) uit het rechterpaneel; filtert de rijen op naam. */
+  query?: string;
+  /** Klik op een rij → open de tijdslot-dialog van die toewijzing (o.a. voor Verplaatsen). */
+  onOpenAssignment?: (assignmentId: string) => void;
+  /** Vrije extra-slots voor de persoon/groep achter deze toewijzing (multi-slot). */
+  eligibleSlotsForAssignment?: (assignmentId: string) => ExtraSlotOption[];
+  /** De persoon/groep achter deze toewijzing (voor het aanmaken van het extra slot). */
+  targetForAssignment?: (assignmentId: string) => Target | null;
+  /** Voegt een extra tijdslot toe én biedt het meteen apart aan (eigen bevestig-/betaalmail). */
+  onAddExtraSlot?: (target: Target, slotId: string) => void;
+  isAddExtraPending?: boolean;
+}) {
   const t = useTranslations("nonResponders");
+  // Extra-tijdslot-kiezer hergebruikt de planning-teksten (addExtraSlot, chooseExtraSlot, …).
+  const tp = useTranslations("planning");
   const queryClient = useQueryClient();
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  // Uitklapbaar zoals de andere sidebar-secties; default open (actie vereist).
+  const [open, setOpen] = useState(true);
+  // Welke kaart heeft z'n 3-puntjes-menu open.
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  // Welke kaart toont de extra-tijdslot-kiezer (i.p.v. het menu) in z'n popover.
+  const [extraChooserId, setExtraChooserId] = useState<string | null>(null);
+  // Kaart waarvoor de 'manueel bevestigen'-bevestiging openstaat.
+  const [confirmAdmin, setConfirmAdmin] = useState<NonResponderDto | null>(null);
 
   const { data: nonResponders = [] } = useQuery({
     queryKey: ["planning", seriesId, "non-responders"],
@@ -96,25 +154,47 @@ export function NonRespondersPanel({ seriesId }: { seriesId: string }) {
     setTimeout(() => setCopiedId(null), 2000);
   }
 
+  // Zoeken: filter op naam (groep matcht ook op leider/naam). Bij een actieve
+  // zoekterm klapt de sectie automatisch open; verbergt zich als er geen match is.
+  const searching = query.trim().length > 0;
+  const shown = searching
+    ? nonResponders.filter((nr) => nr.studentName.toLowerCase().includes(query))
+    : nonResponders;
+
   if (nonResponders.length === 0) return null;
+  if (searching && shown.length === 0) return null;
+
+  const expanded = open || searching;
 
   return (
     <div className="p-4 border-b border-gray-100">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-gray-900">
-          {t("title")} ({nonResponders.length})
-        </h3>
-      </div>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full cursor-pointer items-center justify-between"
+      >
+        <span className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+          {t("title")}
+          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+            {shown.length}
+          </span>
+        </span>
+        <ChevronDown
+          size={16}
+          className={`text-gray-400 transition-transform ${expanded ? "rotate-180" : ""}`}
+        />
+      </button>
 
       {/* Toast */}
       {toastMessage && (
-        <div className="mb-3 px-3 py-2 rounded-lg bg-tennis-green/10 border border-tennis-green/20 text-xs text-tennis-green font-medium">
+        <div className="mt-3 px-3 py-2 rounded-lg bg-tennis-green/10 border border-tennis-green/20 text-xs text-tennis-green font-medium">
           {toastMessage}
         </div>
       )}
 
-      <div className="space-y-2">
-        {nonResponders.map((nr) => (
+      {expanded && (
+      <div className="mt-3 space-y-2">
+        {shown.map((nr) => (
           <div
             key={nr.assignmentId}
             className={`border rounded-lg p-3 ${
@@ -123,82 +203,43 @@ export function NonRespondersPanel({ seriesId }: { seriesId: string }) {
                 : "border-amber-200 bg-amber-50/50"
             }`}
           >
-            {/* Header: name + expiry */}
-            <div className="flex items-start justify-between gap-2 mb-1.5">
+            {/* Data: naam + groep-badge + slot, met verloop-badge rechts. */}
+            <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <div className="text-xs font-medium text-gray-900 truncate">
-                  {nr.studentName}
+                <div className="flex items-center gap-1.5">
+                  <span className="truncate text-xs font-medium text-gray-900">
+                    {nr.studentName}
+                  </span>
                   {nr.isGroup && (
-                    <span className="text-gray-400 font-normal ml-1">
-                      — {t("groupLeader", { size: nr.groupSize })}
+                    <span className="shrink-0 rounded bg-white/70 px-1.5 py-0.5 text-[10px] font-medium text-gray-500">
+                      {t("groupBadge", { size: nr.groupSize })}
                     </span>
                   )}
                 </div>
-                <div className="text-[10px] text-gray-500">
+                <div className="mt-0.5 text-[10px] text-gray-500">
                   {DAY_NAMES_SHORT[nr.dayOfWeek]} {nr.startTime}
                   {nr.courtName && ` · ${nr.courtName}`}
                 </div>
               </div>
 
               {nr.isExpired ? (
-                <span className="shrink-0 text-[10px] font-medium px-2 py-0.5 rounded-full bg-red-100 text-red-700">
+                <span className="shrink-0 rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-medium text-red-700">
                   {t("expired")}
                 </span>
               ) : (
-                <span className="shrink-0 text-[10px] font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700">
                   {formatRelativeExpiry(nr.expiresAt)}
                 </span>
               )}
             </div>
 
-            {/* Contact actions */}
-            <div className="flex items-center gap-1.5 mt-2">
-              {nr.studentPhone && (
-                <>
-                  <a
-                    href={`tel:${nr.studentPhone}`}
-                    className="inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] text-gray-600 hover:bg-white hover:text-tennis-green border border-gray-200 transition-colors"
-                  >
-                    <Phone size={10} />
-                    Bellen
-                  </a>
-                  <a
-                    href={`https://wa.me/${nr.studentPhone.replace(/[^0-9+]/g, "").replace(/^\+/, "")}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] text-gray-600 hover:bg-white hover:text-green-600 border border-gray-200 transition-colors"
-                  >
-                    <MessageCircle size={10} />
-                    WhatsApp
-                  </a>
-                </>
-              )}
-              <button
-                type="button"
-                onClick={() => handleCopyEmail(nr)}
-                className="inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] text-gray-600 hover:bg-white hover:text-tennis-green border border-gray-200 transition-colors"
-              >
-                {copiedId === nr.assignmentId ? (
-                  <>
-                    <Check size={10} className="text-green-500" />
-                    {t("emailCopied")}
-                  </>
-                ) : (
-                  <>
-                    <Copy size={10} />
-                    {t("copyEmail")}
-                  </>
-                )}
-              </button>
-            </div>
-
-            {/* Recovery actions */}
-            <div className="flex items-center gap-2 mt-2 pt-2 border-t border-gray-200/60">
+            {/* Acties: primaire 'opnieuw verzenden' + 3-puntjes-menu voor de rest. */}
+            <div className="mt-2 flex items-center gap-2">
               <button
                 type="button"
                 disabled={resendMutation.isPending}
                 onClick={() => resendMutation.mutate(nr.assignmentId)}
-                className="flex-1 inline-flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-[10px] font-medium text-gray-700 bg-white border border-gray-200 hover:border-tennis-green/40 hover:text-tennis-green transition-colors disabled:opacity-50"
+                className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-md border border-gray-200 bg-white px-2 py-1.5 text-[10px] font-medium text-gray-700 transition-colors hover:border-tennis-green/40 hover:text-tennis-green disabled:opacity-50"
               >
                 <RefreshCw
                   size={11}
@@ -212,48 +253,197 @@ export function NonRespondersPanel({ seriesId }: { seriesId: string }) {
                 {t("resend")}
               </button>
 
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
+              <Popover
+                open={openMenuId === nr.assignmentId}
+                onOpenChange={(o) => {
+                  setOpenMenuId(o ? nr.assignmentId : null);
+                  if (!o) setExtraChooserId(null);
+                }}
+              >
+                <PopoverTrigger asChild>
                   <button
                     type="button"
-                    disabled={adminConfirmMutation.isPending}
-                    className="flex-1 inline-flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-[10px] font-medium text-white bg-tennis-green hover:bg-tennis-green/90 transition-colors disabled:opacity-50"
+                    aria-label={t("actionsLabel", { name: nr.studentName })}
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-400 transition-colors hover:bg-gray-50 hover:text-gray-700"
                   >
-                    <CheckCircle2 size={11} />
-                    {t("adminConfirm")}
+                    <MoreVertical size={15} />
                   </button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>
-                      {t("adminConfirmTitle")}
-                    </AlertDialogTitle>
-                    <AlertDialogDescription>
-                      {nr.isGroup
-                        ? t("adminConfirmDescGroup", {
-                            name: nr.studentName,
-                            size: nr.groupSize,
-                          })
-                        : t("adminConfirmDesc", { name: nr.studentName })}
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Annuleren</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={() =>
-                        adminConfirmMutation.mutate(nr.assignmentId)
-                      }
-                      className="bg-tennis-green hover:bg-tennis-green/90"
-                    >
-                      {t("adminConfirmButton")}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-56 p-1 text-sm">
+                  {extraChooserId === nr.assignmentId ? (
+                    (() => {
+                      const options =
+                        eligibleSlotsForAssignment?.(nr.assignmentId) ?? [];
+                      const target = targetForAssignment?.(nr.assignmentId) ?? null;
+                      return (
+                        <div className="space-y-1.5 p-1.5">
+                          <p className="text-[11px] font-medium text-gray-500">
+                            {tp("chooseExtraSlot")}
+                          </p>
+                          {options.length === 0 || !target ? (
+                            <p className="text-[11px] text-gray-400">
+                              {tp("noOtherSlotAvailable")}
+                            </p>
+                          ) : (
+                            <div className="max-h-56 space-y-1 overflow-auto">
+                              {options.map((s) => (
+                                <button
+                                  key={s.id}
+                                  type="button"
+                                  disabled={isAddExtraPending}
+                                  onClick={() => {
+                                    onAddExtraSlot?.(target, s.id);
+                                    setOpenMenuId(null);
+                                    setExtraChooserId(null);
+                                  }}
+                                  className="w-full cursor-pointer rounded-md border border-gray-200 px-2 py-1.5 text-left text-[11px] text-gray-700 transition-colors hover:border-tennis-green hover:bg-tennis-green/5 disabled:opacity-50"
+                                >
+                                  <span className="font-medium">
+                                    {DAY_NAMES_FULL[s.dayOfWeek]} {s.startTime}–
+                                    {s.endTime}
+                                  </span>
+                                  {s.courtName && (
+                                    <span className="ml-1 text-gray-400">
+                                      · {s.courtName}
+                                    </span>
+                                  )}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => setExtraChooserId(null)}
+                            className="cursor-pointer text-[11px] text-gray-400 hover:text-gray-600"
+                          >
+                            {tp("cancel")}
+                          </button>
+                        </div>
+                      );
+                    })()
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        disabled={adminConfirmMutation.isPending}
+                        onClick={() => {
+                          setOpenMenuId(null);
+                          setConfirmAdmin(nr);
+                        }}
+                        className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left font-medium text-tennis-green hover:bg-tennis-green/5 disabled:opacity-50"
+                      >
+                        <CheckCircle2 size={13} />
+                        {t("adminConfirm")}
+                      </button>
+
+                      <div className="my-1 border-t border-gray-100" />
+
+                      {nr.studentPhone && (
+                        <>
+                          <a
+                            href={`tel:${nr.studentPhone}`}
+                            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-gray-700 hover:bg-gray-50"
+                          >
+                            <Phone size={13} />
+                            {t("call")}
+                          </a>
+                          <a
+                            href={`https://wa.me/${nr.studentPhone.replace(/[^0-9+]/g, "").replace(/^\+/, "")}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-gray-700 hover:bg-gray-50"
+                          >
+                            <MessageCircle size={13} />
+                            {t("whatsapp")}
+                          </a>
+                        </>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleCopyEmail(nr)}
+                        className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                      >
+                        {copiedId === nr.assignmentId ? (
+                          <>
+                            <Check size={13} className="text-green-500" />
+                            {t("emailCopied")}
+                          </>
+                        ) : (
+                          <>
+                            <Copy size={13} />
+                            {t("copyEmail")}
+                          </>
+                        )}
+                      </button>
+
+                      {onAddExtraSlot && targetForAssignment && (
+                        <>
+                          <div className="my-1 border-t border-gray-100" />
+                          <button
+                            type="button"
+                            onClick={() => setExtraChooserId(nr.assignmentId)}
+                            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                          >
+                            <Plus size={13} />
+                            {tp("addExtraSlot")}
+                          </button>
+                        </>
+                      )}
+
+                      {onOpenAssignment && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOpenMenuId(null);
+                            onOpenAssignment(nr.assignmentId);
+                          }}
+                          className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                        >
+                          <ExternalLink size={13} />
+                          {t("openAction")}
+                        </button>
+                      )}
+                    </>
+                  )}
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
         ))}
       </div>
+      )}
+
+      {/* Manueel bevestigen — bevestiging (één dialog, gevoed vanuit het 3-puntjes-menu). */}
+      <AlertDialog
+        open={confirmAdmin !== null}
+        onOpenChange={(o) => !o && setConfirmAdmin(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("adminConfirmTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmAdmin?.isGroup
+                ? t("adminConfirmDescGroup", {
+                    name: confirmAdmin.studentName,
+                    size: confirmAdmin.groupSize,
+                  })
+                : t("adminConfirmDesc", { name: confirmAdmin?.studentName ?? "" })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuleren</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (confirmAdmin) adminConfirmMutation.mutate(confirmAdmin.assignmentId);
+                setConfirmAdmin(null);
+              }}
+              className="bg-tennis-green hover:bg-tennis-green/90"
+            >
+              {t("adminConfirmButton")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
