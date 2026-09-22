@@ -18,7 +18,6 @@ public class LessonRescheduleServiceTests
     private Mock<ILessonInvitationRepository> _invitationRepo = null!;
     private Mock<IEnrollmentRepository> _enrollmentRepo = null!;
     private Mock<ILessonSerieRepository> _serieRepo = null!;
-    private Mock<IUserLookupService> _userLookup = null!;
     private Mock<IEmailService> _emailService = null!;
     private LessonRescheduleService _service = null!;
 
@@ -32,7 +31,6 @@ public class LessonRescheduleServiceTests
         _invitationRepo = new Mock<ILessonInvitationRepository>();
         _enrollmentRepo = new Mock<IEnrollmentRepository>();
         _serieRepo = new Mock<ILessonSerieRepository>();
-        _userLookup = new Mock<IUserLookupService>();
         _emailService = new Mock<IEmailService>();
 
         _service = new LessonRescheduleService(
@@ -40,7 +38,6 @@ public class LessonRescheduleServiceTests
             _invitationRepo.Object,
             _enrollmentRepo.Object,
             _serieRepo.Object,
-            _userLookup.Object,
             _emailService.Object,
             NullLogger<LessonRescheduleService>.Instance);
 
@@ -57,10 +54,6 @@ public class LessonRescheduleServiceTests
         _enrollmentRepo
             .Setup(r => r.GetBySeriesAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<Enrollment>());
-
-        _userLookup
-            .Setup(u => u.GetUserNameByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync("Sara Trainer");
     }
 
     private static Lesson BuildStandaloneLesson(bool cancelled = false, Guid? rescheduledTo = null)
@@ -208,14 +201,14 @@ public class LessonRescheduleServiceTests
                 "a@x.be", "Anna", null,
                 lesson.Date, lesson.StartTime,
                 It.IsAny<DateOnly>(), It.IsAny<TimeOnly>(), It.IsAny<TimeOnly>(),
-                "Baan 1", "Sara Trainer", "Andere zaal",
+                "Baan 1", "Andere zaal",
                 It.IsAny<CancellationToken>()),
             Times.Once);
         _emailService.Verify(e => e.SendLessonRescheduledAsync(
                 "c@x.be", It.IsAny<string>(), It.IsAny<string?>(),
                 It.IsAny<DateOnly>(), It.IsAny<TimeOnly>(),
                 It.IsAny<DateOnly>(), It.IsAny<TimeOnly>(), It.IsAny<TimeOnly>(),
-                It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<string?>(),
+                It.IsAny<string?>(), It.IsAny<string?>(),
                 It.IsAny<CancellationToken>()),
             Times.Never);
     }
@@ -253,7 +246,7 @@ public class LessonRescheduleServiceTests
                 "x@y.be", "Xan", "Beginners maandag",
                 It.IsAny<DateOnly>(), It.IsAny<TimeOnly>(),
                 It.IsAny<DateOnly>(), It.IsAny<TimeOnly>(), It.IsAny<TimeOnly>(),
-                It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<string?>(),
+                It.IsAny<string?>(), It.IsAny<string?>(),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }

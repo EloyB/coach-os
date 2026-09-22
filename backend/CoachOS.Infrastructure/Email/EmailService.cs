@@ -54,22 +54,13 @@ public class EmailService(
         => names is { Count: > 1 } ? $"{label}: {string.Join(", ", names)}" : string.Empty;
 
     public async Task SendEnrollmentConfirmationAsync(
-        string studentEmail, string studentName, string seriesName, string trainerName,
+        string studentEmail, string studentName, string seriesName,
         IReadOnlyList<string>? participantNames = null, CancellationToken ct = default)
     {
-        string trainerDescription = string.IsNullOrWhiteSpace(trainerName)
-            ? "Je club neemt indien nodig contact met je op."
-            : $"Trainer {trainerName} neemt indien nodig contact met je op.";
-        string trainerLine = string.IsNullOrWhiteSpace(trainerName)
-            ? string.Empty
-            : $"Trainer: {trainerName}";
-
         var html = renderer.Render("enrollment-confirmation", new Dictionary<string, string>
         {
             ["studentName"] = studentName,
             ["seriesName"] = seriesName,
-            ["trainerDescription"] = trainerDescription,
-            ["trainerLine"] = trainerLine,
             ["participantsLine"] = ParticipantsLine(participantNames, "Ingeschreven"),
             ["year"] = DateTime.UtcNow.Year.ToString(),
         });
@@ -308,7 +299,7 @@ public class EmailService(
         string toEmail, string toName, string? seriesName,
         DateOnly oldDate, TimeOnly oldStartTime,
         DateOnly newDate, TimeOnly newStartTime, TimeOnly newEndTime,
-        string? courtName, string trainerName, string? reason,
+        string? courtName, string? reason,
         CancellationToken ct = default)
     {
         string oldDayName = DaysNl[(int)oldDate.DayOfWeek];
@@ -333,7 +324,6 @@ public class EmailService(
             ["newStartTime"] = newStartTime.ToString("HH:mm"),
             ["newEndTime"] = newEndTime.ToString("HH:mm"),
             ["courtLine"] = courtLine,
-            ["trainerName"] = trainerName,
             ["raw:reasonBlock"] = reasonBlock,
             ["year"] = DateTime.UtcNow.Year.ToString(),
         });
@@ -348,7 +338,6 @@ public class EmailService(
         TimeOnly startTime,
         TimeOnly endTime,
         string? courtName,
-        string trainerName,
         string? levelText,
         string? notes,
         string invitationUrl,
@@ -365,7 +354,6 @@ public class EmailService(
         string html = renderer.Render("standalone-lesson-invitation", new Dictionary<string, string>
         {
             ["greetingName"] = greetingName,
-            ["trainerName"] = trainerName,
             ["dayName"] = dayName,
             ["dateText"] = dateText,
             ["startTime"] = startTime.ToString("HH:mm"),

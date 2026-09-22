@@ -34,7 +34,6 @@
             <mj-text font-size="11px" color="#2D5016" font-weight="600" letter-spacing="1.5px" text-transform="uppercase" padding="0">Nieuw lesmoment</mj-text>
             <mj-text font-size="15px" font-weight="600" color="#111827" padding="6px 0 0">{{newDayName}} {{newDateText}}</mj-text>
             <mj-text font-size="13px" color="#6b7280" padding="4px 0 0">{{newStartTime}} – {{newEndTime}}</mj-text>
-            <mj-text font-size="13px" color="#6b7280" padding="4px 0 0">Trainer: {{trainerName}}</mj-text>
             <mj-text font-size="13px" color="#6b7280" padding="4px 0 0">{{courtLine}}</mj-text>
             <mj-text font-size="13px" color="#6b7280" padding="4px 0 0">{{reasonBlock}}</mj-text>
           </mj-column>

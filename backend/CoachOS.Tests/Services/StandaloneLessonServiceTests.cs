@@ -147,7 +147,7 @@ public class StandaloneLessonServiceTests
         _emailService.Verify(e => e.SendStandaloneLessonInvitationAsync(
             It.IsAny<string>(), It.IsAny<string?>(),
             It.IsAny<DateOnly>(), It.IsAny<TimeOnly>(), It.IsAny<TimeOnly>(),
-            It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<string?>(),
+            It.IsAny<string?>(), It.IsAny<string?>(),
             It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Exactly(2));
     }

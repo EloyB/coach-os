@@ -23,8 +23,8 @@
       <mj-column>
         <mj-text mj-class="heading">Je bent uitgenodigd voor een les</mj-text>
         <mj-text padding-top="16px">
-          Hoi{{greetingName}}, <strong style="color:#111827">{{trainerName}}</strong>
-          heeft je uitgenodigd voor een tennisles. Bevestig hieronder of je erbij bent.
+          Hoi{{greetingName}}, je bent uitgenodigd voor een tennisles.
+          Bevestig hieronder of je erbij bent.
         </mj-text>
 
         <mj-section background-color="#FAFAF8" border-left="4px solid #D0FF14" border-radius="8px" padding="16px 20px">

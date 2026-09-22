@@ -439,7 +439,6 @@ public class StudentConfirmationService(
                 enrollment.ContactEmail,
                 enrollment.StudentName,
                 series?.Name ?? string.Empty,
-                trainerName: string.Empty,
                 participantNames: toConfirm.Select(e => e.StudentName).ToList(),
                 ct);
         }

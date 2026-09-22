@@ -119,13 +119,10 @@ public class StandaloneLessonService(
         await invitationRepo.AddRangeAsync(prepared.Select(p => p.Inv), ct);
         await lessonRepo.SaveChangesAsync(ct);
 
-        // Trainer-naam ophalen voor de email.
-        string trainerName = (await userLookup.GetUserNameByIdAsync(request.TrainerId, ct)) ?? "Trainer";
-
         // Best-effort verzending: één gefaalde email mag de andere niet blokkeren.
         foreach ((LessonInvitation inv, string rawToken) in prepared)
         {
-            await TrySendInvitationEmailAsync(inv, lesson, trainerName, rawToken, ct);
+            await TrySendInvitationEmailAsync(inv, lesson, rawToken, ct);
         }
 
         return Result<Guid>.Ok(lesson.Id);
@@ -321,13 +318,9 @@ public class StandaloneLessonService(
         await invitationRepo.AddRangeAsync(prepared.Select(p => p.Inv), ct);
         await invitationRepo.SaveChangesAsync(ct);
 
-        string trainerName = lesson.TrainerId.HasValue
-            ? (await userLookup.GetUserNameByIdAsync(lesson.TrainerId.Value, ct)) ?? "Trainer"
-            : "Trainer";
-
         foreach ((LessonInvitation inv, string rawToken) in prepared)
         {
-            await TrySendInvitationEmailAsync(inv, lesson, trainerName, rawToken, ct);
+            await TrySendInvitationEmailAsync(inv, lesson, rawToken, ct);
         }
 
         return Result.Ok();
@@ -356,11 +349,7 @@ public class StandaloneLessonService(
         invitation.InvitationSentAt = now;
         await invitationRepo.SaveChangesAsync(ct);
 
-        string trainerName = lesson.TrainerId.HasValue
-            ? (await userLookup.GetUserNameByIdAsync(lesson.TrainerId.Value, ct)) ?? "Trainer"
-            : "Trainer";
-
-        await TrySendInvitationEmailAsync(invitation, lesson, trainerName, raw, ct);
+        await TrySendInvitationEmailAsync(invitation, lesson, raw, ct);
 
         return Result.Ok();
     }
@@ -368,7 +357,7 @@ public class StandaloneLessonService(
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private async Task TrySendInvitationEmailAsync(
-        LessonInvitation invitation, Lesson lesson, string trainerName,
+        LessonInvitation invitation, Lesson lesson,
         string rawToken, CancellationToken ct)
     {
         string url = $"{_app.StandaloneLessonInvitationBaseUrl.TrimEnd('/')}/{rawToken}";
@@ -389,7 +378,6 @@ public class StandaloneLessonService(
                 lesson.StartTime,
                 lesson.EndTime,
                 lesson.CourtName,
-                trainerName,
                 levelText,
                 lesson.Notes,
                 url,

@@ -99,7 +99,6 @@ public class LessonCourtConflictTests
             _invitationRepo.Object,
             _enrollmentRepo.Object,
             _serieRepo.Object,
-            _userLookup.Object,
             _emailService.Object,
             NullLogger<LessonRescheduleService>.Instance);
 

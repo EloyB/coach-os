@@ -1014,7 +1014,7 @@ public class StudentConfirmationServiceTests
         pending.PaidAt.Should().NotBeNull();
         enrollment.Status.Should().Be(EnrollmentStatus.Confirmed);
         _emailService.Verify(e => e.SendEnrollmentConfirmationAsync(
-            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
             It.IsAny<IReadOnlyList<string>?>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 

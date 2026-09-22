@@ -12,7 +12,6 @@ public interface IEmailService
         string studentEmail,
         string studentName,
         string seriesName,
-        string trainerName,
         IReadOnlyList<string>? participantNames = null,
         CancellationToken ct = default);
 
@@ -86,7 +85,6 @@ public interface IEmailService
         TimeOnly newStartTime,
         TimeOnly newEndTime,
         string? courtName,
-        string trainerName,
         string? reason,
         CancellationToken ct = default);
 
@@ -131,7 +129,6 @@ public interface IEmailService
         TimeOnly startTime,
         TimeOnly endTime,
         string? courtName,
-        string trainerName,
         string? levelText,
         string? notes,
         string invitationUrl,

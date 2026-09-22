@@ -492,7 +492,6 @@ public class EnrollmentService(
                 contact.Key,
                 names[0],
                 series.Name,
-                trainerInfo?.FullName ?? string.Empty,
                 names);
             outboxMessages.Add(new EmailOutboxMessage
             {
@@ -631,7 +630,7 @@ public class EnrollmentService(
                     EnrollmentId = enrollment.Id,
                     Type = EmailOutboxMessageTypes.EnrollmentConfirmation,
                     Payload = JsonSerializer.Serialize(new EnrollmentConfirmationEmailPayload(
-                        contactEmail, enrollment.StudentName, series.Name, string.Empty,
+                        contactEmail, enrollment.StudentName, series.Name,
                         [enrollment.StudentName])),
                 }
             ], ct);
