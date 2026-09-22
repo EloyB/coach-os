@@ -62,6 +62,7 @@ public class ConfirmationBundlingTests
     public async Task Three_Assignments_On_One_Contact_Address_Produce_One_Email()
     {
         SetUpSeriesWithAssignments(
+            PlanningStatus.Planning,
             ("Lotte Peeters", "ouder@example.com"),
             ("Sofie Peeters", "ouder@example.com"),
             ("Jan Peeters", "ouder@example.com"));
@@ -83,7 +84,7 @@ public class ConfirmationBundlingTests
     [Test]
     public async Task A_Single_Recipient_Keeps_The_Existing_Template()
     {
-        SetUpSeriesWithAssignments(("Jan Peeters", "jan@example.com"));
+        SetUpSeriesWithAssignments(PlanningStatus.Planning, ("Jan Peeters", "jan@example.com"));
 
         await _service.ConfirmScheduleAsync(SeriesId, OrgId);
 
@@ -99,9 +100,29 @@ public class ConfirmationBundlingTests
     }
 
     [Test]
+    public async Task ConfirmSchedule_OpnieuwNaBevestiging_BiedtNieuwVoorstelAan()
+    {
+        // Reeks is al eens bevestigd (AwaitingConfirmation). Iemand die na een afwijzing
+        // opnieuw ingepland is (nieuw Proposed) moet via 'Planning bevestigen' alsnog
+        // aangeboden worden — niet meer geblokkeerd met 'moet eerst gegenereerd worden'.
+        SetUpSeriesWithAssignments(
+            PlanningStatus.AwaitingConfirmation, ("Anna Peeters", "anna@example.com"));
+
+        var result = await _service.ConfirmScheduleAsync(SeriesId, OrgId);
+
+        result.IsSuccess.Should().BeTrue(
+            string.Join("; ", result.Errors.Select(e => e.Message)));
+        _emailService.Verify(s => s.SendScheduleConfirmationAsync(
+            "anna@example.com", "Anna Peeters", It.IsAny<string>(), It.IsAny<int>(),
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+            It.IsAny<IReadOnlyList<string>?>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
     public async Task Each_Participant_Keeps_Their_Own_Confirmation_Link()
     {
         SetUpSeriesWithAssignments(
+            PlanningStatus.Planning,
             ("Lotte Peeters", "ouder@example.com"),
             ("Sofie Peeters", "ouder@example.com"));
 
@@ -178,10 +199,11 @@ public class ConfirmationBundlingTests
             It.IsAny<CancellationToken>()), Times.Never);
     }
 
-    private void SetUpSeriesWithAssignments(params (string Name, string ContactEmail)[] people)
+    private void SetUpSeriesWithAssignments(
+        PlanningStatus status, params (string Name, string ContactEmail)[] people)
     {
         LessonSerie series = PlanningServiceTests.BuildSeries(withSlots: true, SeriesId, OrgId, SlotId);
-        series.PlanningStatus = PlanningStatus.Planning;
+        series.PlanningStatus = status;
 
         List<ScheduleAssignment> assignments = people.Select(p =>
         {

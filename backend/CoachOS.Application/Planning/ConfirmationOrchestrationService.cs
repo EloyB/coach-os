@@ -29,7 +29,11 @@ public class ConfirmationOrchestrationService(
         if (series is null)
             return Result<bool>.Fail(new Error(ErrorCodes.NotFound, "Lessenreeks niet gevonden."));
 
-        if (series.PlanningStatus != PlanningStatus.Planning)
+        // Ook toegestaan wanneer de planning al eens bevestigd is (AwaitingConfirmation):
+        // dan biedt deze actie de resterende voorstellen aan (bv. iemand die na een
+        // afwijzing opnieuw ingepland werd). Enkel Proposed-toewijzingen worden verwerkt,
+        // dus reeds aangeboden/bevestigde personen krijgen geen tweede mail.
+        if (series.PlanningStatus is not (PlanningStatus.Planning or PlanningStatus.AwaitingConfirmation))
             return Result<bool>.Fail(
                 new Error(ErrorCodes.Validation, "Planning moet eerst gegenereerd worden."));
 
