@@ -400,9 +400,10 @@ public class AssignmentServiceTests
     }
 
     [Test]
-    public async Task CreateAssignmentAsync_DeclinedSameSlot_BlokkeertMetGeweigerdMelding()
+    public async Task CreateAssignmentAsync_DeclinedSameSlot_HeractiveertDeToewijzing()
     {
-        // Een geweigerd (Declined) slot blijft geblokkeerd, met een accurate melding.
+        // Een eerder geweigerd (Declined) slot mag opnieuw gekozen worden: de bestaande
+        // rij wordt heractiveerd naar Proposed (geen duplicaat, unieke index blijft intact).
         var series = PlanningServiceTests.BuildSeries(withSlots: true, slotId: SlotId);
         var enrollment = new Enrollment
         {
@@ -422,17 +423,21 @@ public class AssignmentServiceTests
             .ReturnsAsync(enrollment);
         _assignmentRepo.Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync([declinedOnSlot]);
+        _assignmentRepo.Setup(r => r.GetByIdAsync(declinedOnSlot.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(declinedOnSlot);
 
         var result = await _service.CreateAssignmentAsync(
             SeriesId,
             new CreateAssignmentRequest { EnrollmentId = enrollment.Id, WeeklyTemplateEntryId = SlotId },
             OrgId);
 
-        result.IsSuccess.Should().BeFalse();
-        result.Errors[0].Code.Should().Be("validation");
-        result.Errors[0].Message.Should().Contain("geweigerd");
+        result.IsSuccess.Should().BeTrue(string.Join("; ", result.Errors.Select(e => e.Message)));
+        result.Value.Should().Be(declinedOnSlot.Id);
+        declinedOnSlot.Status.Should().Be(ScheduleAssignmentStatus.Proposed);
+        declinedOnSlot.IsLocked.Should().BeTrue();
         _assignmentRepo.Verify(r => r.AddRangeAsync(
             It.IsAny<IEnumerable<ScheduleAssignment>>(), It.IsAny<CancellationToken>()), Times.Never);
+        _assignmentRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Test]

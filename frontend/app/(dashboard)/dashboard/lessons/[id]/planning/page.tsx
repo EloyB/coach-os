@@ -275,6 +275,9 @@ export default function PlanningPage({
     | null
   >(null);
 
+  // Eerder geweigerd slot dat opnieuw gekozen wordt: bevestiging voor we toewijzen.
+  const [declineConfirmSlotId, setDeclineConfirmSlotId] = useState<string | null>(null);
+
   // Zoekterm om personen te filteren in het rechterpaneel (alle secties).
   const [sidebarQuery, setSidebarQuery] = useState("");
 
@@ -889,7 +892,7 @@ export default function PlanningPage({
                 <span className="inline-block h-2 w-2 rounded-full bg-green-500 align-middle" /> voorkeur ·{" "}
                 <span className="inline-block h-2 w-2 rounded-full bg-blue-500 align-middle" /> beschikbaar ·{" "}
                 <span className="inline-block h-2 w-2 rounded-full bg-gray-300 align-middle" /> niet beschikbaar/vol ·{" "}
-                <Ban size={10} className="inline align-middle text-gray-400" /> geweigerd · Esc om te annuleren
+                <Ban size={10} className="inline align-middle text-amber-500" /> eerder geweigerd · Esc om te annuleren
               </p>
             </div>
             <button
@@ -991,11 +994,12 @@ export default function PlanningPage({
                     // Toewijs-modus: kleur naar de voorkeur van de geselecteerde
                     // persoon/groep en bepaal of ze er nog bij passen.
                     const assignPref = assignTarget?.prefs[slot.id];
+                    // Een eerder geweigerd slot blijft kiesbaar (foutieve afwijzing /
+                    // heroverweging), maar vraagt eerst een bevestiging.
                     const declinedForTarget =
                       assignTarget != null && declinedSlotsForTarget.has(slot.id);
                     const assignFits =
                       assignTarget != null &&
-                      !declinedForTarget &&
                       slot.maxCapacity - currentCount >= assignTarget.size;
 
                     const borderColor = assignTarget
@@ -1044,6 +1048,10 @@ export default function PlanningPage({
                     const handleTileClick = () => {
                       if (assignTarget) {
                         if (!assignFits) return;
+                        if (declinedForTarget) {
+                          setDeclineConfirmSlotId(slot.id);
+                          return;
+                        }
                         assignMutation.mutate(
                           assignTarget.kind === "solo"
                             ? { enrollmentId: assignTarget.enrollmentId, slotId: slot.id }
@@ -1084,9 +1092,9 @@ export default function PlanningPage({
                         <div className="flex items-center justify-between gap-1">
                           <div className="flex items-center gap-1 min-w-0">
                             {/* Toewijs-modus: dit slot werd door de geselecteerde
-                                eenheid geweigerd → niet opnieuw kiesbaar. */}
+                                eenheid eerder geweigerd → kiesbaar mits bevestiging. */}
                             {declinedForTarget ? (
-                              <span className="inline-flex items-center gap-0.5 rounded bg-gray-200 px-1 py-0.5 text-[9px] font-semibold text-gray-500">
+                              <span className="inline-flex items-center gap-0.5 rounded bg-amber-100 px-1 py-0.5 text-[9px] font-semibold text-amber-700">
                                 <Ban size={9} />
                                 {t("declinedBadge")}
                               </span>
@@ -1982,6 +1990,38 @@ export default function PlanningPage({
               className="bg-tennis-green hover:bg-tennis-green/90"
             >
               {te("removeFromGroupDetach")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Eerder geweigerd slot opnieuw kiezen — bevestiging */}
+      <AlertDialog
+        open={declineConfirmSlotId !== null}
+        onOpenChange={(o) => !o && setDeclineConfirmSlotId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("declinedReassignTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("declinedReassignBody", { name: assignTarget?.name ?? "" })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("declinedReassignCancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-tennis-green hover:bg-tennis-green/90"
+              onClick={() => {
+                if (!assignTarget || !declineConfirmSlotId) return;
+                assignMutation.mutate(
+                  assignTarget.kind === "solo"
+                    ? { enrollmentId: assignTarget.enrollmentId, slotId: declineConfirmSlotId }
+                    : { groupId: assignTarget.groupId, slotId: declineConfirmSlotId }
+                );
+                setDeclineConfirmSlotId(null);
+              }}
+            >
+              {t("declinedReassignConfirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
