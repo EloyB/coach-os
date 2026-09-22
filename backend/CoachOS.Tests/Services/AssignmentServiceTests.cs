@@ -400,6 +400,47 @@ public class AssignmentServiceTests
     }
 
     [Test]
+    public async Task CreateAssignmentAsync_DeclinedSameSlot_HeractiveertDeToewijzing()
+    {
+        // Een eerder geweigerd (Declined) slot mag opnieuw gekozen worden: de bestaande
+        // rij wordt heractiveerd naar Proposed (geen duplicaat, unieke index blijft intact).
+        var series = PlanningServiceTests.BuildSeries(withSlots: true, slotId: SlotId);
+        var enrollment = new Enrollment
+        {
+            Id = Guid.NewGuid(), LessonSerieId = SeriesId,
+            Status = EnrollmentStatus.Pending, StudentName = "Emma Claes",
+        };
+        var declinedOnSlot = new ScheduleAssignment
+        {
+            Id = Guid.NewGuid(), LessonSerieId = SeriesId, WeeklyTemplateEntryId = SlotId,
+            EnrollmentId = enrollment.Id, Enrollment = enrollment,
+            Status = ScheduleAssignmentStatus.Declined,
+        };
+
+        _seriesRepo.Setup(r => r.GetByIdAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+        _enrollmentRepo.Setup(r => r.GetByIdAsync(enrollment.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(enrollment);
+        _assignmentRepo.Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([declinedOnSlot]);
+        _assignmentRepo.Setup(r => r.GetByIdAsync(declinedOnSlot.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(declinedOnSlot);
+
+        var result = await _service.CreateAssignmentAsync(
+            SeriesId,
+            new CreateAssignmentRequest { EnrollmentId = enrollment.Id, WeeklyTemplateEntryId = SlotId },
+            OrgId);
+
+        result.IsSuccess.Should().BeTrue(string.Join("; ", result.Errors.Select(e => e.Message)));
+        result.Value.Should().Be(declinedOnSlot.Id);
+        declinedOnSlot.Status.Should().Be(ScheduleAssignmentStatus.Proposed);
+        declinedOnSlot.IsLocked.Should().BeTrue();
+        _assignmentRepo.Verify(r => r.AddRangeAsync(
+            It.IsAny<IEnumerable<ScheduleAssignment>>(), It.IsAny<CancellationToken>()), Times.Never);
+        _assignmentRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
     public async Task UpdateAssignmentAsync_UsesActiveMemberCountForMovedGroup()
     {
         var newSlotId = Guid.NewGuid();

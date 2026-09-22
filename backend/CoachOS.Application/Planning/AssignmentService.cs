@@ -33,18 +33,26 @@ public class AssignmentService(
         Guid? enrollmentId = null;
         Guid? groupId = null;
 
+        // Een eerder geweigerde (Declined) toewijzing op ditzelfde slot wordt niet
+        // geblokkeerd maar heractiveerd (foutieve afwijzing / bewuste heroverweging).
+        // Een actieve duplicaat blijft wél geweigerd (spiegelt de DB-index).
+        Guid? reactivateId = null;
+
         if (request.GroupId.HasValue)
         {
             var group = await enrollmentGroupRepo.GetByIdAsync(request.GroupId.Value, organizationId, ct);
             if (group is null || group.LessonSerieId != seriesId)
                 return Result<Guid>.Fail(new Error(ErrorCodes.NotFound, "Groep niet gevonden."));
 
-            // Eén groep mag op meerdere DIFFERENT slots staan (multi-slot); enkel
-            // een duplicaat op hetzelfde slot is niet toegelaten (spiegelt de DB-index).
-            if (existingAssignments.Any(a =>
-                    a.EnrollmentGroupId == request.GroupId
-                    && a.WeeklyTemplateEntryId == request.WeeklyTemplateEntryId))
-                return Result<Guid>.Fail(new Error(ErrorCodes.Validation, "Groep staat al op dit tijdslot."));
+            var groupDup = existingAssignments.FirstOrDefault(a =>
+                a.EnrollmentGroupId == request.GroupId
+                && a.WeeklyTemplateEntryId == request.WeeklyTemplateEntryId);
+            if (groupDup is not null)
+            {
+                if (groupDup.Status != ScheduleAssignmentStatus.Declined)
+                    return Result<Guid>.Fail(new Error(ErrorCodes.Validation, "Groep staat al op dit tijdslot."));
+                reactivateId = groupDup.Id;
+            }
 
             groupId = group.Id;
             addSize = PlanningProposalBuilder.GetEffectiveAssignmentSize(new ScheduleAssignment
@@ -59,21 +67,41 @@ public class AssignmentService(
             if (enrollment is null || enrollment.LessonSerieId != seriesId)
                 return Result<Guid>.Fail(new Error(ErrorCodes.NotFound, "Inschrijving niet gevonden."));
 
-            // Eén inschrijving mag op meerdere DIFFERENT slots staan (bv. 2 trainingen
-            // per week); enkel een duplicaat op hetzelfde slot is niet toegelaten.
-            if (existingAssignments.Any(a =>
-                    a.EnrollmentId == request.EnrollmentId
-                    && a.WeeklyTemplateEntryId == request.WeeklyTemplateEntryId))
-                return Result<Guid>.Fail(new Error(ErrorCodes.Validation, "Inschrijving staat al op dit tijdslot."));
+            var dup = existingAssignments.FirstOrDefault(a =>
+                a.EnrollmentId == request.EnrollmentId
+                && a.WeeklyTemplateEntryId == request.WeeklyTemplateEntryId);
+            if (dup is not null)
+            {
+                if (dup.Status != ScheduleAssignmentStatus.Declined)
+                    return Result<Guid>.Fail(new Error(ErrorCodes.Validation, "Inschrijving staat al op dit tijdslot."));
+                reactivateId = dup.Id;
+            }
 
             enrollmentId = enrollment.Id;
             addSize = 1;
         }
 
+        // De geweigerde toewijzing telt nog 0 mee (size 0), dus de capaciteit klopt
+        // ook wanneer we ze straks heractiveren.
         var capacityError = await EnsureSlotCapacityAsync(
             seriesId, organizationId, request.WeeklyTemplateEntryId, addSize, excludeAssignmentId: null, ct);
         if (capacityError is not null)
             return Result<Guid>.Fail(capacityError);
+
+        // Heractiveer de geweigerde toewijzing (hergebruik de rij i.p.v. een duplicaat
+        // te maken die de unieke index zou schenden).
+        if (reactivateId is not null)
+        {
+            var toReactivate = await scheduleAssignmentRepo.GetByIdAsync(reactivateId.Value, organizationId, ct);
+            if (toReactivate is null)
+                return Result<Guid>.Fail(new Error(ErrorCodes.NotFound, "Toewijzing niet gevonden."));
+
+            toReactivate.Status = ScheduleAssignmentStatus.Proposed;
+            toReactivate.IsAutoMerged = false;
+            toReactivate.IsLocked = true;
+            await scheduleAssignmentRepo.SaveChangesAsync(ct);
+            return Result<Guid>.Ok(toReactivate.Id);
+        }
 
         ScheduleAssignment assignment = new()
         {
