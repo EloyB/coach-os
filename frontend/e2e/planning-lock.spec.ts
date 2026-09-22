@@ -5,6 +5,8 @@ const SERIES_ID = "66666666-6666-6666-6666-666666666666";
 const SLOT_ID = "11111111-2222-3333-4444-555555555555";
 const GROUP_ID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
 const ASSIGNMENT_ID = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
+const DECLINED_ENROLLMENT_ID = "e3333333-3333-3333-3333-333333333333";
+const DECLINED_ASSIGNMENT_ID = "cccccccc-cccc-cccc-cccc-cccccccccccc";
 
 const planningOverview = {
   planningStatus: "Planning",
@@ -122,5 +124,47 @@ test.describe("planning assignment locking", () => {
     await page.getByText("Definitief aanbieden").click();
 
     await expect.poll(() => sendCalled).toBe(true);
+  });
+
+  test("shows a declined participant in the unassigned list", async ({ page }) => {
+    await page.route(`**/lessonseries/${SERIES_ID}/planning`, async (route) => {
+      if (route.request().method() !== "GET") return route.continue();
+
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          ...planningOverview,
+          enrollments: [
+            ...planningOverview.enrollments,
+            {
+              id: DECLINED_ENROLLMENT_ID,
+              studentName: "Denise Meeusen",
+              studentEmail: "denise@example.test",
+              studentPhone: null,
+              isOpenToGrouping: false,
+              groupId: null,
+              preferences: { [SLOT_ID]: "Preferred" },
+            },
+          ],
+          assignments: [
+            ...planningOverview.assignments,
+            {
+              id: DECLINED_ASSIGNMENT_ID,
+              timeSlotId: SLOT_ID,
+              enrollmentId: DECLINED_ENROLLMENT_ID,
+              groupId: null,
+              status: "Declined",
+              isAutoMerged: false,
+              isLocked: true,
+            },
+          ],
+        }),
+      });
+    });
+
+    await page.goto(`/dashboard/lessons/${SERIES_ID}/planning`);
+
+    await expect(page.getByText("Denise Meeusen")).toBeVisible();
   });
 });

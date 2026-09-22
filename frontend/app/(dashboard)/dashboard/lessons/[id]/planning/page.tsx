@@ -392,6 +392,7 @@ export default function PlanningPage({
     const set = new Set<string>();
     if (!planning) return set;
     for (const a of planning.assignments) {
+      if (a.status === "Declined") continue;
       if (a.enrollmentId) {
         set.add(a.enrollmentId);
       } else if (a.groupId) {
@@ -407,6 +408,7 @@ export default function PlanningPage({
     const set = new Set<string>();
     if (!planning) return set;
     for (const a of planning.assignments) {
+      if (a.status === "Declined") continue;
       if (a.groupId) set.add(a.groupId);
     }
     return set;
