@@ -344,7 +344,7 @@ export default function NewStandaloneLessonPage() {
           <button
             type="submit"
             disabled={isSubmitting || createMutation.isPending}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-tennis-green text-tennis-lime text-[12.5px] font-semibold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-5 py-2.5 bg-tennis-green text-white text-sm font-semibold rounded-lg hover:bg-tennis-green/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {isSubmitting || createMutation.isPending
               ? t("scheduling")
