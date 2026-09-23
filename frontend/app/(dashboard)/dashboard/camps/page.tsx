@@ -71,7 +71,7 @@ function CampRow({ camp }: { camp: CampDto }) {
   return (
     <Link
       href={`/dashboard/camps/${camp.id}`}
-      className="block lg:grid lg:grid-cols-[2.2fr_1.1fr_1.2fr_0.9fr_0.7fr] lg:items-center px-4 py-3.5 border-b border-rule last:border-b-0 text-xs hover:bg-canvas/50 transition-colors"
+      className="flex flex-col gap-2.5 lg:grid lg:grid-cols-[2.2fr_1.1fr_1.2fr_0.9fr_0.7fr] lg:gap-0 lg:items-center px-4 py-4 lg:py-3.5 border-b border-rule last:border-b-0 text-xs hover:bg-canvas/50 transition-colors"
     >
       {/* Naam (+ status rechts op mobiel) */}
       <div className="flex items-start justify-between gap-2">
@@ -84,12 +84,13 @@ function CampRow({ camp }: { camp: CampDto }) {
         <div className="lg:hidden shrink-0">{status}</div>
       </div>
 
-      <Mono className="text-ink-2 text-[11px] mt-2 lg:mt-0 block">
+      <Mono className="text-ink-2 text-[11px] block">
         <span className="lg:hidden text-ink-3">{t("listPeriod")}&nbsp;</span>
         {formatDateRange(camp.startDate, camp.endDate)}
       </Mono>
 
-      <div className="mt-2 lg:mt-0">
+      {/* Bezettingsbalk: op mobiel onderaan de kaart */}
+      <div className="order-last lg:order-none">
         {hasCapacity ? (
           <OccupancyBar
             filled={camp.participantCount}
@@ -103,7 +104,7 @@ function CampRow({ camp }: { camp: CampDto }) {
         )}
       </div>
 
-      <Mono className="text-ink font-bold mt-2 lg:mt-0 block">
+      <Mono className="text-ink font-bold block">
         <span className="lg:hidden text-ink-3 font-normal">{t("listPrice")}&nbsp;</span>
         {camp.price > 0 ? `€${camp.price}` : t("priceFree")}
       </Mono>

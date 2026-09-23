@@ -61,7 +61,7 @@ function LessonRow({ lesson }: { lesson: StandaloneLessonListItemDto }) {
   return (
     <Link
       href={`/dashboard/standalone-lessons/${lesson.id}`}
-      className="block lg:grid lg:grid-cols-[1.4fr_1.1fr_1.2fr_1.0fr_1.2fr_0.7fr] lg:items-center px-4 py-3.5 border-b border-rule last:border-b-0 text-xs hover:bg-canvas/50 transition-colors"
+      className="flex flex-col gap-2.5 lg:grid lg:grid-cols-[1.4fr_1.1fr_1.2fr_1.0fr_1.2fr_0.7fr] lg:gap-0 lg:items-center px-4 py-4 lg:py-3.5 border-b border-rule last:border-b-0 text-xs hover:bg-canvas/50 transition-colors"
     >
       {/* Wanneer (+ status rechts op mobiel) */}
       <div className="flex items-start justify-between gap-2">
@@ -76,17 +76,17 @@ function LessonRow({ lesson }: { lesson: StandaloneLessonListItemDto }) {
         <div className="lg:hidden shrink-0">{status}</div>
       </div>
 
-      <Mono className="text-ink-2 text-[11px] mt-2 lg:mt-0 block">
+      <Mono className="text-ink-2 text-[11px] block">
         <span className="lg:hidden text-ink-3">Baan&nbsp;</span>
         {lesson.courtName}
       </Mono>
 
-      <span className="text-ink-2 text-[11.5px] mt-1.5 lg:mt-0 block">
+      <span className="text-ink-2 text-[11.5px] block">
         <span className="lg:hidden text-ink-3 text-[11px]">Trainer&nbsp;</span>
         {lesson.trainerName ?? "—"}
       </span>
 
-      <span className="text-[10.5px] text-ink-2 mt-1.5 lg:mt-0 block">
+      <span className="text-[10.5px] text-ink-2 block">
         <span className="lg:hidden text-ink-3">Niveau&nbsp;</span>
         {levelLabel ? (
           <span className="px-2 py-0.5 rounded-full bg-canvas text-ink-2 font-semibold">
@@ -97,7 +97,7 @@ function LessonRow({ lesson }: { lesson: StandaloneLessonListItemDto }) {
         )}
       </span>
 
-      <Mono className="text-ink-2 text-[11px] mt-1.5 lg:mt-0 block">
+      <Mono className="text-ink-2 text-[11px] block">
         <span className="lg:hidden text-ink-3">Bevestigd&nbsp;</span>
         {t("countConfirmed", {
           accepted: lesson.acceptedCount,

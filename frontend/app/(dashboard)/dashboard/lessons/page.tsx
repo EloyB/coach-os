@@ -59,7 +59,7 @@ function SeriesRow({ series, index }: { series: LessonSeriesDto; index: number }
   return (
     <Link
       href={`/dashboard/lessons/${series.id}`}
-      className="block lg:grid lg:grid-cols-[2.2fr_1.1fr_1.2fr_0.9fr_0.7fr] lg:items-center px-4 py-3.5 border-b border-rule last:border-b-0 text-xs hover:bg-canvas/50 transition-colors"
+      className="flex flex-col gap-2.5 lg:grid lg:grid-cols-[2.2fr_1.1fr_1.2fr_0.9fr_0.7fr] lg:gap-0 lg:items-center px-4 py-4 lg:py-3.5 border-b border-rule last:border-b-0 text-xs hover:bg-canvas/50 transition-colors"
     >
       {/* Naam (+ status rechts op mobiel) */}
       <div className="flex items-start justify-between gap-2">
@@ -72,12 +72,13 @@ function SeriesRow({ series, index }: { series: LessonSeriesDto; index: number }
         <div className="lg:hidden shrink-0">{status}</div>
       </div>
 
-      <Mono className="text-ink-2 text-[11px] mt-2 lg:mt-0 block">
+      <Mono className="text-ink-2 text-[11px] block">
         <span className="lg:hidden text-ink-3">Periode&nbsp;</span>
         {formatDateRange(series.startDate, series.endDate)}
       </Mono>
 
-      <div className="mt-2 lg:mt-0">
+      {/* Bezettingsbalk: op mobiel onderaan de kaart */}
+      <div className="order-last lg:order-none">
         {hasCapacity ? (
           <OccupancyBar filled={enrolled} capacity={capacity} />
         ) : (
@@ -88,7 +89,7 @@ function SeriesRow({ series, index }: { series: LessonSeriesDto; index: number }
         )}
       </div>
 
-      <Mono className="text-ink font-bold mt-2 lg:mt-0 block">
+      <Mono className="text-ink font-bold block">
         <span className="lg:hidden text-ink-3 font-normal">Prijs&nbsp;</span>€{series.price}
       </Mono>
 
