@@ -252,7 +252,7 @@ export function Step1Basisinfo({ defaultValues, onNext }: Step1Props) {
                 value={field.value ?? ""}
                 disabled={clubsLoading}
               >
-                <SelectTrigger className="border border-gray-200 rounded-lg h-9 text-sm focus:ring-2 focus:ring-tennis-green/30 focus:border-tennis-green">
+                <SelectTrigger className="w-full border border-gray-200 rounded-lg h-9 text-sm focus:ring-2 focus:ring-tennis-green/30 focus:border-tennis-green">
                   <SelectValue
                     placeholder={
                       clubsLoading ? t("clubLoading") : t("clubPlaceholder")
@@ -278,7 +278,7 @@ export function Step1Basisinfo({ defaultValues, onNext }: Step1Props) {
         </div>
 
         {/* Startdatum + Einddatum */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <Label required>{t("startDate")}</Label>
             <Controller

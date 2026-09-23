@@ -134,7 +134,7 @@ export function CampBasisFields({
       </div>
 
       {/* Club + Niveau */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <Label required>{t("fieldClub")}</Label>
           <Controller
@@ -146,7 +146,7 @@ export function CampBasisFields({
                 value={field.value ?? ""}
                 disabled={clubsLoading}
               >
-                <SelectTrigger className="border border-gray-200 rounded-lg h-9 text-sm focus:ring-2 focus:ring-tennis-green/30 focus:border-tennis-green">
+                <SelectTrigger className="w-full border border-gray-200 rounded-lg h-9 text-sm focus:ring-2 focus:ring-tennis-green/30 focus:border-tennis-green">
                   <SelectValue placeholder={t("selectClub")} />
                 </SelectTrigger>
                 <SelectContent>
@@ -179,7 +179,7 @@ export function CampBasisFields({
                 }
                 value={field.value == null ? "none" : String(field.value)}
               >
-                <SelectTrigger className="border border-gray-200 rounded-lg h-9 text-sm focus:ring-2 focus:ring-tennis-green/30 focus:border-tennis-green">
+                <SelectTrigger className="w-full border border-gray-200 rounded-lg h-9 text-sm focus:ring-2 focus:ring-tennis-green/30 focus:border-tennis-green">
                   <SelectValue placeholder={t("selectLevel")} />
                 </SelectTrigger>
                 <SelectContent>
@@ -235,7 +235,7 @@ export function CampBasisFields({
       </div>
 
       {/* Startdatum + Einddatum */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <Label required>{t("fieldStartDate")}</Label>
           <Controller

@@ -144,7 +144,7 @@ export default function NewStandaloneLessonPage() {
       <form onSubmit={handleSubmit(onSubmit)}>
         <div className="bg-paper border border-rule rounded-xl p-6 space-y-5 max-w-[680px]">
           {/* Row 1: Date + Start time */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label required>{t("fieldDate")}</Label>
               <Controller
@@ -169,7 +169,7 @@ export default function NewStandaloneLessonPage() {
           </div>
 
           {/* Row 2: Duration + Court */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label required>{t("fieldDuration")}</Label>
               <Controller
@@ -234,7 +234,7 @@ export default function NewStandaloneLessonPage() {
           </div>
 
           {/* Row 3: Level + Max participants */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label>{t("fieldLevel")}</Label>
               <Controller
