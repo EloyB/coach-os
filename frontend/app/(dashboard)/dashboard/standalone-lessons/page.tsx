@@ -61,7 +61,7 @@ function LessonRow({ lesson }: { lesson: StandaloneLessonListItemDto }) {
   return (
     <Link
       href={`/dashboard/standalone-lessons/${lesson.id}`}
-      className="flex flex-col gap-2.5 lg:grid lg:grid-cols-[1.4fr_1.1fr_1.2fr_1.0fr_1.2fr_0.7fr] lg:gap-0 lg:items-center px-4 py-4 lg:py-3.5 border-b border-rule last:border-b-0 text-xs hover:bg-canvas/50 transition-colors"
+      className="flex flex-col gap-2.5 lg:grid lg:grid-cols-[1.4fr_1.1fr_1.2fr_1.0fr_1.2fr_0.7fr] lg:gap-x-6 lg:gap-y-0 lg:items-center px-4 py-4 lg:py-3.5 border-b border-rule last:border-b-0 text-xs hover:bg-canvas/50 transition-colors"
     >
       {/* Wanneer (+ status rechts op mobiel) */}
       <div className="flex items-start justify-between gap-2">
@@ -171,7 +171,7 @@ export default function StandaloneLessonsPage() {
       {!isLoading && !isError && lessons && lessons.length > 0 && (
         <div className="bg-paper border border-rule rounded-xl overflow-hidden">
           {/* Column header — enkel op desktop; op mobiel stapelen de rijen als kaart */}
-          <div className="hidden lg:grid grid-cols-[1.4fr_1.1fr_1.2fr_1.0fr_1.2fr_0.7fr] px-4 py-2.5 text-[10.5px] text-ink-3 font-semibold font-mono uppercase tracking-[0.08em] border-b border-rule bg-[#fbfaf6]">
+          <div className="hidden lg:grid lg:gap-x-6 grid-cols-[1.4fr_1.1fr_1.2fr_1.0fr_1.2fr_0.7fr] px-4 py-2.5 text-[10.5px] text-ink-3 font-semibold font-mono uppercase tracking-[0.08em] border-b border-rule bg-[#fbfaf6]">
             <span>Wanneer</span>
             <span>Baan</span>
             <span>Trainer</span>
