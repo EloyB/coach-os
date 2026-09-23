@@ -53,7 +53,7 @@ function Label({
   required?: boolean;
 }) {
   return (
-    <label className="block text-[11.5px] font-semibold text-ink mb-1.5">
+    <label className="block text-sm font-medium text-gray-700 mb-1.5">
       {children}
       {required && <span className="text-red-400 ml-0.5">*</span>}
     </label>
