@@ -137,3 +137,14 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* iOS Safari zoomt automatisch in bij focus op een form-control met een
+   font-size < 16px, en zoomt daarna niet terug uit. Forceer daarom 16px op
+   form-controls onder de sm-breakpoint. Pinch-zoom blijft mogelijk. */
+@media (max-width: 639.98px) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
