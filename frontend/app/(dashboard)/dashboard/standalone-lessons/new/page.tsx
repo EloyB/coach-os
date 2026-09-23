@@ -19,7 +19,6 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { NativeSelect } from "@/components/ui/native-select";
 import { FieldError } from "@/components/forms/field-error";
 import { EmailTagInput } from "@/components/forms/email-tag-input";
-import { SlashLabel } from "@/components/ui/slash-label";
 import { inputClass } from "@/lib/styles";
 
 const schema = z.object({
@@ -124,21 +123,21 @@ export default function NewStandaloneLessonPage() {
 
   return (
     <>
-      {/* Page header */}
-      <div className="mb-5">
-        <Link
-          href="/dashboard/standalone-lessons"
-          className="inline-flex items-center gap-1 text-[11.5px] text-ink-3 hover:text-ink mb-2"
-        >
-          <ChevronLeft size={14} /> {t("back")}
-        </Link>
-        <SlashLabel>/nieuwe-les</SlashLabel>
-        <h1 className="text-lg font-bold text-ink tracking-tight mt-0.5">
+      {/* Back */}
+      <Link
+        href="/dashboard/standalone-lessons"
+        className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 transition-colors mb-6"
+      >
+        <ChevronLeft size={15} />
+        {t("back")}
+      </Link>
+
+      {/* Page title */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
           {t("createTitle")}
         </h1>
-        <p className="text-[12.5px] text-ink-3 mt-0.5">
-          {t("createSubtitle")}
-        </p>
+        <p className="text-gray-400 text-sm mt-1">{t("createSubtitle")}</p>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)}>
