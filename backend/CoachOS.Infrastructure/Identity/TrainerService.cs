@@ -149,7 +149,10 @@ public class TrainerService(
                 FirstName = u.FirstName,
                 LastName = u.LastName,
                 Email = u.Email!,
-                IsActive = u.IsActive,
+                // Tenant-scoped: actief = membership actief in DEZE org, niet de globale
+                // account-vlag. Anders toont een in deze org gedeactiveerde trainer nog
+                // "Actief" terwijl availability/planning de membership-check (m.IsActive) faalt.
+                IsActive = m.IsActive,
                 InvitePending = u.InviteToken != null,
                 CreatedAt = u.CreatedAt,
                 LessonSeriesCount = context.LessonSeries
