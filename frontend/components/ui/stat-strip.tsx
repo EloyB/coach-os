@@ -1,3 +1,4 @@
+import { type CSSProperties } from "react";
 import { cn } from "@/lib/utils";
 import { Mono } from "@/components/ui/mono";
 
@@ -5,6 +6,8 @@ interface StatItem {
   value: string;
   label: string;
   color?: string;
+  /** Verberg deze stat onder lg (mobiel + klein scherm), toon enkel in de volle rij. */
+  mobileHidden?: boolean;
 }
 
 interface StatStripProps {
@@ -16,16 +19,24 @@ export function StatStrip({ items, className }: StatStripProps) {
   return (
     <div
       className={cn(
-        "bg-ink text-white rounded-xl px-5 py-4 grid gap-[18px]",
+        "bg-ink text-white rounded-xl px-5 py-4 grid gap-x-4 gap-y-4 lg:gap-[18px]",
+        // Responsive: 2 kolommen op mobiel, 3 vanaf sm, en pas op lg alle stats in
+        // één rij (aantal via CSS-var). Voorkomt dat de strip op mobiel buiten beeld valt.
+        "[grid-template-columns:repeat(2,minmax(0,1fr))]",
+        "sm:[grid-template-columns:repeat(3,minmax(0,1fr))]",
+        "lg:[grid-template-columns:var(--stat-cols)]",
         className,
       )}
-      style={{ gridTemplateColumns: `repeat(${items.length}, 1fr)` }}
+      style={{ "--stat-cols": `repeat(${items.length}, minmax(0, 1fr))` } as CSSProperties}
     >
       {items.map((item, i) => (
         <div
           key={i}
+          // Verticale scheidingslijn enkel op lg (één rij); bij wrap op mobiel/tablet
+          // zorgt de grid-gap voor de ruimte.
           className={cn(
-            i > 0 && "border-l border-white/10 pl-4",
+            item.mobileHidden && "hidden lg:block",
+            i > 0 && "lg:border-l lg:border-white/10 lg:pl-4",
           )}
         >
           <Mono

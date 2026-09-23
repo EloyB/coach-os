@@ -23,21 +23,23 @@ export function MobileBottomNav() {
       className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-tennis-green flex"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      {visibleItems.map(({ label, href, icon: Icon, exact }) => {
+      {visibleItems.map(({ label, shortLabel, href, icon: Icon, exact }) => {
         const active = exact ? pathname === href : pathname.startsWith(href);
         return (
           <Link
             key={href}
             href={href}
-            className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 transition-colors ${
+            className={`relative flex-1 min-w-0 flex flex-col items-center justify-center gap-1 py-3 transition-colors ${
               active ? "text-tennis-lime" : "text-white/60 hover:text-white"
             }`}
           >
             {active && (
-              <span className="absolute top-0 w-8 h-0.5 bg-tennis-lime rounded-full" aria-hidden="true" />
+              <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-tennis-lime rounded-full" aria-hidden="true" />
             )}
             <Icon size={20} className="shrink-0" />
-            <span className="text-[10px] font-medium leading-none">{label}</span>
+            <span className="text-[10px] font-medium leading-none whitespace-nowrap">
+              {shortLabel ?? label}
+            </span>
           </Link>
         );
       })}
