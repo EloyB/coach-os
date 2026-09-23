@@ -14,7 +14,14 @@ export function NativeSelect({
   ...props
 }: NativeSelectProps) {
   return (
-    <div className="relative inline-flex">
+    <div
+      className={cn(
+        "relative",
+        // Default vult de container (zoals text-inputs); compact blijft inline
+        // voor gebruik in kalender-headers e.d.
+        variant === "compact" ? "inline-flex" : "flex w-full",
+      )}
+    >
       <select
         className={cn(
           "appearance-none bg-white border border-gray-200 text-ink cursor-pointer transition-colors",

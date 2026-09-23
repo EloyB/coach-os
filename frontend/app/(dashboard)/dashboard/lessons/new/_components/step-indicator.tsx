@@ -30,6 +30,8 @@ export function StepIndicator({ currentStep }: { currentStep: 1 | 2 | 3 }) {
             </div>
             <span
               className={`text-sm font-medium whitespace-nowrap ${
+                step.number === currentStep ? "inline" : "hidden sm:inline"
+              } ${
                 step.number <= currentStep ? "text-gray-900" : "text-gray-400"
               }`}
             >
@@ -38,7 +40,7 @@ export function StepIndicator({ currentStep }: { currentStep: 1 | 2 | 3 }) {
           </div>
           {i < steps.length - 1 && (
             <div
-              className={`h-px w-10 mx-4 shrink-0 ${
+              className={`h-px w-6 sm:w-10 mx-2 sm:mx-4 shrink-0 ${
                 step.number < currentStep ? "bg-tennis-green" : "bg-gray-200"
               }`}
             />
