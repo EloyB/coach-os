@@ -278,7 +278,7 @@ function InviteForm({ onClose }: { onClose: () => void }) {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">
             {t("firstName")} <span className="text-red-400">*</span>
@@ -403,7 +403,7 @@ function EditTrainerDialog({
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 {t("firstName")} <span className="text-red-400">*</span>
@@ -768,7 +768,7 @@ export default function TrainersPage() {
 
                 {tr.isActive && (
                   <>
-                    <div className="grid grid-cols-3 gap-2.5 mt-3.5 pt-3 border-t border-dashed border-rule">
+                    <div className="grid grid-cols-[auto_1fr_auto] gap-2.5 mt-3.5 pt-3 border-t border-dashed border-rule">
                       <div>
                         <p className="text-[9.5px] text-ink-3 uppercase tracking-[0.06em] m-0">{t("seriesCount")}</p>
                         <p className="text-sm font-bold text-ink font-mono mt-0.5 m-0">
