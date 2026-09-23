@@ -48,24 +48,46 @@ function LessonRow({ lesson }: { lesson: StandaloneLessonListItemDto }) {
   const levelLabel =
     lesson.level !== null ? STANDALONE_LESSON_LEVELS[lesson.level] : null;
 
+  const status = lesson.isCancelled ? (
+    <span className="text-[10.5px] px-2 py-0.5 rounded-full bg-red-50 text-red-600 font-semibold whitespace-nowrap">
+      ○ geannuleerd
+    </span>
+  ) : (
+    <span className="text-[10.5px] px-2 py-0.5 rounded-full bg-tennis-green/10 text-tennis-green font-semibold whitespace-nowrap">
+      ● gepland
+    </span>
+  );
+
   return (
     <Link
       href={`/dashboard/standalone-lessons/${lesson.id}`}
-      className="grid grid-cols-[1.4fr_1.1fr_1.2fr_1.0fr_1.2fr_0.7fr] px-4 py-3.5 items-center border-b border-rule last:border-b-0 text-xs hover:bg-canvas/50 transition-colors"
+      className="block lg:grid lg:grid-cols-[1.4fr_1.1fr_1.2fr_1.0fr_1.2fr_0.7fr] lg:items-center px-4 py-3.5 border-b border-rule last:border-b-0 text-xs hover:bg-canvas/50 transition-colors"
     >
-      <div>
-        <p className="text-ink font-semibold text-[12px] m-0 capitalize">
-          {dayShort(lesson.date)} {formatDateNL(lesson.date)}
-        </p>
-        <Mono className="text-[10.5px] text-ink-3 mt-0.5 block">
-          {lesson.startTime} — {lesson.endTime}
-        </Mono>
+      {/* Wanneer (+ status rechts op mobiel) */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-ink font-semibold text-[12px] m-0 capitalize">
+            {dayShort(lesson.date)} {formatDateNL(lesson.date)}
+          </p>
+          <Mono className="text-[10.5px] text-ink-3 mt-0.5 block">
+            {lesson.startTime} — {lesson.endTime}
+          </Mono>
+        </div>
+        <div className="lg:hidden shrink-0">{status}</div>
       </div>
-      <Mono className="text-ink-2 text-[11px]">{lesson.courtName}</Mono>
-      <span className="text-ink-2 text-[11.5px]">
+
+      <Mono className="text-ink-2 text-[11px] mt-2 lg:mt-0 block">
+        <span className="lg:hidden text-ink-3">Baan&nbsp;</span>
+        {lesson.courtName}
+      </Mono>
+
+      <span className="text-ink-2 text-[11.5px] mt-1.5 lg:mt-0 block">
+        <span className="lg:hidden text-ink-3 text-[11px]">Trainer&nbsp;</span>
         {lesson.trainerName ?? "—"}
       </span>
-      <span className="text-[10.5px] text-ink-2">
+
+      <span className="text-[10.5px] text-ink-2 mt-1.5 lg:mt-0 block">
+        <span className="lg:hidden text-ink-3">Niveau&nbsp;</span>
         {levelLabel ? (
           <span className="px-2 py-0.5 rounded-full bg-canvas text-ink-2 font-semibold">
             {levelLabel}
@@ -74,23 +96,16 @@ function LessonRow({ lesson }: { lesson: StandaloneLessonListItemDto }) {
           "—"
         )}
       </span>
-      <Mono className="text-ink-2 text-[11px]">
+
+      <Mono className="text-ink-2 text-[11px] mt-1.5 lg:mt-0 block">
+        <span className="lg:hidden text-ink-3">Bevestigd&nbsp;</span>
         {t("countConfirmed", {
           accepted: lesson.acceptedCount,
           total: lesson.invitedCount,
         })}
       </Mono>
-      <div className="text-right">
-        {lesson.isCancelled ? (
-          <span className="text-[10.5px] px-2 py-0.5 rounded-full bg-red-50 text-red-600 font-semibold">
-            ○ geannuleerd
-          </span>
-        ) : (
-          <span className="text-[10.5px] px-2 py-0.5 rounded-full bg-tennis-green/10 text-tennis-green font-semibold">
-            ● gepland
-          </span>
-        )}
-      </div>
+
+      <div className="hidden lg:block text-right">{status}</div>
     </Link>
   );
 }
@@ -155,8 +170,8 @@ export default function StandaloneLessonsPage() {
 
       {!isLoading && !isError && lessons && lessons.length > 0 && (
         <div className="bg-paper border border-rule rounded-xl overflow-hidden">
-          {/* Column header */}
-          <div className="grid grid-cols-[1.4fr_1.1fr_1.2fr_1.0fr_1.2fr_0.7fr] px-4 py-2.5 text-[10.5px] text-ink-3 font-semibold font-mono uppercase tracking-[0.08em] border-b border-rule bg-[#fbfaf6]">
+          {/* Column header — enkel op desktop; op mobiel stapelen de rijen als kaart */}
+          <div className="hidden lg:grid grid-cols-[1.4fr_1.1fr_1.2fr_1.0fr_1.2fr_0.7fr] px-4 py-2.5 text-[10.5px] text-ink-3 font-semibold font-mono uppercase tracking-[0.08em] border-b border-rule bg-[#fbfaf6]">
             <span>Wanneer</span>
             <span>Baan</span>
             <span>Trainer</span>

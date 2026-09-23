@@ -46,39 +46,53 @@ function SeriesRow({ series, index }: { series: LessonSeriesDto; index: number }
   const capacity = series.totalCapacity ?? 0;
   const hasCapacity = capacity > 0;
 
+  const status = series.isActive ? (
+    <span className="text-[10.5px] px-2 py-0.5 rounded-full bg-tennis-green/10 text-tennis-green font-semibold whitespace-nowrap">
+      ● actief
+    </span>
+  ) : (
+    <span className="text-[10.5px] px-2 py-0.5 rounded-full bg-canvas text-ink-3 font-semibold whitespace-nowrap">
+      ○ concept
+    </span>
+  );
+
   return (
     <Link
       href={`/dashboard/lessons/${series.id}`}
-      className="grid grid-cols-[2.2fr_1.1fr_1.2fr_0.9fr_0.7fr] px-4 py-3.5 items-center border-b border-rule last:border-b-0 text-xs hover:bg-canvas/50 transition-colors"
+      className="block lg:grid lg:grid-cols-[2.2fr_1.1fr_1.2fr_0.9fr_0.7fr] lg:items-center px-4 py-3.5 border-b border-rule last:border-b-0 text-xs hover:bg-canvas/50 transition-colors"
     >
-      <div>
-        <p className="text-ink font-semibold text-[12px] m-0">{series.name}</p>
-        <Mono className="text-[10.5px] text-ink-3 mt-0.5 block">
-          {series.lessonCount} lesmomenten · reeks #{index + 1}
-        </Mono>
+      {/* Naam (+ status rechts op mobiel) */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-ink font-semibold text-[12px] m-0">{series.name}</p>
+          <Mono className="text-[10.5px] text-ink-3 mt-0.5 block">
+            {series.lessonCount} lesmomenten · reeks #{index + 1}
+          </Mono>
+        </div>
+        <div className="lg:hidden shrink-0">{status}</div>
       </div>
-      <Mono className="text-ink-2 text-[11px]">
+
+      <Mono className="text-ink-2 text-[11px] mt-2 lg:mt-0 block">
+        <span className="lg:hidden text-ink-3">Periode&nbsp;</span>
         {formatDateRange(series.startDate, series.endDate)}
       </Mono>
-      {hasCapacity ? (
-        <OccupancyBar filled={enrolled} capacity={capacity} />
-      ) : (
-        <Mono className="text-ink-2 text-[11px]">
-          {enrolled} ingeschreven
-        </Mono>
-      )}
-      <Mono className="text-ink font-bold">€{series.price}</Mono>
-      <div className="text-right">
-        {series.isActive ? (
-          <span className="text-[10.5px] px-2 py-0.5 rounded-full bg-tennis-green/10 text-tennis-green font-semibold">
-            ● actief
-          </span>
+
+      <div className="mt-2 lg:mt-0">
+        {hasCapacity ? (
+          <OccupancyBar filled={enrolled} capacity={capacity} />
         ) : (
-          <span className="text-[10.5px] px-2 py-0.5 rounded-full bg-canvas text-ink-3 font-semibold">
-            ○ concept
-          </span>
+          <Mono className="text-ink-2 text-[11px]">
+            <span className="lg:hidden text-ink-3">Bezetting&nbsp;</span>
+            {enrolled} ingeschreven
+          </Mono>
         )}
       </div>
+
+      <Mono className="text-ink font-bold mt-2 lg:mt-0 block">
+        <span className="lg:hidden text-ink-3 font-normal">Prijs&nbsp;</span>€{series.price}
+      </Mono>
+
+      <div className="hidden lg:block text-right">{status}</div>
     </Link>
   );
 }
@@ -139,8 +153,8 @@ export default function LessonsPage() {
 
       {!isLoading && !isError && series && series.length > 0 && (
         <div className="bg-paper border border-rule rounded-xl overflow-hidden">
-          {/* Column header */}
-          <div className="grid grid-cols-[2.2fr_1.1fr_1.2fr_0.9fr_0.7fr] px-4 py-2.5 text-[10.5px] text-ink-3 font-semibold font-mono uppercase tracking-[0.08em] border-b border-rule bg-[#fbfaf6]">
+          {/* Column header — enkel op desktop; op mobiel stapelen de rijen als kaart */}
+          <div className="hidden lg:grid grid-cols-[2.2fr_1.1fr_1.2fr_0.9fr_0.7fr] px-4 py-2.5 text-[10.5px] text-ink-3 font-semibold font-mono uppercase tracking-[0.08em] border-b border-rule bg-[#fbfaf6]">
             <span>Reeks</span>
             <span>Periode</span>
             <span>Bezetting</span>
