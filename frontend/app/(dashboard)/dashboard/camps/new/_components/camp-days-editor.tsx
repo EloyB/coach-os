@@ -81,7 +81,7 @@ export function CampDaysEditor({ days, onChange, trainers }: CampDaysEditorProps
   }
 
   const timeInputCls =
-    "border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-tennis-green/30 focus:border-tennis-green";
+    "border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm bg-white appearance-none min-w-0 focus:outline-none focus:ring-2 focus:ring-tennis-green/30 focus:border-tennis-green";
 
   return (
     <div className="bg-white rounded-xl shadow-sm shadow-gray-100 overflow-hidden">
