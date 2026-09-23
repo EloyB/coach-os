@@ -90,7 +90,7 @@ public class DashboardService(
         Guid organizationId, int limit = 10, CancellationToken ct = default)
     {
         List<InboxItemDto> items = [];
-        DateTime now = DateTime.UtcNow;
+        DateTime now = timeProvider.GetUtcNow().UtcDateTime;
 
         // 1. Pending confirmations
         List<AssignmentConfirmationToken> pendingTokens =

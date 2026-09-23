@@ -71,7 +71,7 @@ public class StudentConfirmationService(
         // Atomisch de token claimen: voorkomt dubbele bevestiging als de student
         // twee keer op "Bevestigen" tikt (dubbele Payment row anders gemaakt).
         var claimed = await tokenRepo.TryClaimResponseAsync(
-            token.Id, ConfirmationResponse.Confirmed, DateTime.UtcNow, ct);
+            token.Id, ConfirmationResponse.Confirmed, timeProvider.GetUtcNow().UtcDateTime, ct);
         if (!claimed)
             return Result<ConfirmResultDto>.Fail(
                 new Error(ErrorCodes.Validation, "Deze bevestiging is al verwerkt."));
@@ -155,7 +155,7 @@ public class StudentConfirmationService(
 
         // Atomisch declinen — idem redenering als Confirm.
         var claimed = await tokenRepo.TryClaimResponseAsync(
-            token.Id, ConfirmationResponse.Declined, DateTime.UtcNow, ct);
+            token.Id, ConfirmationResponse.Declined, timeProvider.GetUtcNow().UtcDateTime, ct);
         if (!claimed)
             return Result<List<AvailableSlotDto>>.Fail(
                 new Error(ErrorCodes.Validation, "Deze bevestiging is al verwerkt."));
@@ -246,7 +246,7 @@ public class StudentConfirmationService(
             token.Id,
             ConfirmationResponse.Declined,
             ConfirmationResponse.Confirmed,
-            DateTime.UtcNow,
+            timeProvider.GetUtcNow().UtcDateTime,
             ct);
         if (!claimed)
             return Result<ConfirmResultDto>.Fail(
@@ -371,7 +371,7 @@ public class StudentConfirmationService(
 
         string dtStart = startUtc.ToString("yyyyMMdd'T'HHmmss'Z'");
         string dtEnd = endUtc.ToString("yyyyMMdd'T'HHmmss'Z'");
-        string dtStamp = DateTimeOffset.UtcNow.ToString("yyyyMMdd'T'HHmmss'Z'");
+        string dtStamp = timeProvider.GetUtcNow().ToString("yyyyMMdd'T'HHmmss'Z'");
 
         string ics = string.Join("\r\n",
             "BEGIN:VCALENDAR",
@@ -406,7 +406,7 @@ public class StudentConfirmationService(
             return Result.Fail(new Error(ErrorCodes.NotFound, "Inschrijving niet gevonden."));
 
         payment.Status = PaymentStatus.Paid;
-        payment.PaidAt = DateTime.UtcNow;
+        payment.PaidAt = timeProvider.GetUtcNow().UtcDateTime;
 
         // Groep: leider betaalt voor iedereen → alle leden bevestigen. Solo: enkel deze.
         // Group.Members bevat de leider zelf.
@@ -467,7 +467,7 @@ public class StudentConfirmationService(
         if (token is null)
             return (null, new Error(ErrorCodes.NotFound, "Ongeldige of verlopen link."));
 
-        if (token.ExpiresAt < DateTime.UtcNow)
+        if (token.ExpiresAt < timeProvider.GetUtcNow().UtcDateTime)
             return (null, new Error(ErrorCodes.Validation, "Deze link is verlopen."));
 
         return (token, null);
@@ -593,7 +593,7 @@ public class StudentConfirmationService(
 
         // Stap 1: zijn er nog openstaande tokens? (student heeft nog niet gereageerd en is niet verlopen)
         var anyPending = tokens.Any(t => t.Response == ConfirmationResponse.Pending
-            && t.ExpiresAt >= DateTime.UtcNow);
+            && t.ExpiresAt >= timeProvider.GetUtcNow().UtcDateTime);
         if (anyPending) return;
 
         // Stap 2: zijn er deelnemers met een "gat" in de planning?

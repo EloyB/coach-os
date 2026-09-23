@@ -90,7 +90,7 @@ public class StandaloneLessonService(
         };
 
         // Voor elke email een token + invitation. Raw tokens onthouden voor email-send na save.
-        DateTime now = DateTime.UtcNow;
+        DateTime now = timeProvider.GetUtcNow().UtcDateTime;
         List<(LessonInvitation Inv, string RawToken)> prepared = new();
         foreach (string email in normalizedEmails)
         {
@@ -299,7 +299,7 @@ public class StandaloneLessonService(
         if (toCreate.Count == 0)
             return Result.Ok();
 
-        DateTime now = DateTime.UtcNow;
+        DateTime now = timeProvider.GetUtcNow().UtcDateTime;
         List<(LessonInvitation Inv, string RawToken)> prepared = new();
         foreach (string email in toCreate)
         {
@@ -344,7 +344,7 @@ public class StandaloneLessonService(
 
         // Vers token + reset status zodat de deelnemer opnieuw kan reageren.
         (string raw, string hash) = GenerateToken();
-        DateTime now = DateTime.UtcNow;
+        DateTime now = timeProvider.GetUtcNow().UtcDateTime;
         invitation.TokenHash = hash;
         invitation.Status = LessonInvitationStatus.Pending;
         invitation.RespondedAt = null;

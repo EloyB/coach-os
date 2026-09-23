@@ -235,7 +235,7 @@ public class EnrollmentService(
             return Result<Guid>.Fail(new Error(ErrorCodes.NotFound, "Lessenreeks niet gevonden."));
 
         // 2. Registration deadline check
-        if (DateTime.UtcNow > series.RegistrationDeadline)
+        if (timeProvider.GetUtcNow().UtcDateTime > series.RegistrationDeadline)
             return Result<Guid>.Fail(
                 new Error(ErrorCodes.Validation, "De inschrijvingsdeadline is verstreken."));
 
@@ -384,7 +384,7 @@ public class EnrollmentService(
             StudentEmail = EnrollmentEmails.Normalize(request.StudentEmail),
             StudentPhone = request.StudentPhone,
             Status = EnrollmentStatus.Pending,
-            EnrolledAt = DateTime.UtcNow,
+            EnrolledAt = timeProvider.GetUtcNow().UtcDateTime,
             IsOpenToGrouping = request.IsOpenToGrouping,
             DateOfBirth = ParseBirthDate(request.DateOfBirth),
             Category = ResolveCategory(request.DateOfBirth, youthMaxAge, enrolledOn),
@@ -443,7 +443,7 @@ public class EnrollmentService(
                         : EnrollmentEmails.Normalize(member.StudentEmail),
                     StudentPhone = member.StudentPhone,
                     Status = EnrollmentStatus.Pending,
-                    EnrolledAt = DateTime.UtcNow,
+                    EnrolledAt = timeProvider.GetUtcNow().UtcDateTime,
                     EnrollmentGroupId = group.Id,
                     DateOfBirth = ParseBirthDate(member.DateOfBirth),
                     Category = ResolveCategory(member.DateOfBirth, youthMaxAge, enrolledOn),
@@ -609,7 +609,7 @@ public class EnrollmentService(
                 DateOfBirth = dateOfBirth,
                 Category = ResolveCategory(request.DateOfBirth, youthMaxAge, timeProvider.GetBrusselsToday()),
                 Status = EnrollmentStatus.Confirmed,
-                EnrolledAt = DateTime.UtcNow,
+                EnrolledAt = timeProvider.GetUtcNow().UtcDateTime,
                 IsOpenToGrouping = false,
             };
             await enrollmentRepo.AddAsync(enrollment, ct);
@@ -725,7 +725,7 @@ public class EnrollmentService(
                 Category = ResolveCategory(request.DateOfBirth, youthMaxAge, timeProvider.GetBrusselsToday()),
                 Status = leader.Status,                                // status geërfd van de groep
                 SelectedPriceOptionId = leader.SelectedPriceOptionId,  // prijsoptie geërfd
-                EnrolledAt = DateTime.UtcNow,
+                EnrolledAt = timeProvider.GetUtcNow().UtcDateTime,
                 IsOpenToGrouping = false,
             };
             await enrollmentRepo.AddAsync(enrollment, ct);
@@ -871,7 +871,7 @@ public class EnrollmentService(
         enrollment.DateOfBirth = dateOfBirth;
         enrollment.Category = ResolveCategory(request.DateOfBirth, youthMaxAge, updatedOn);
         enrollment.IsOpenToGrouping = request.IsOpenToGrouping;
-        enrollment.UpdatedAt = DateTime.UtcNow;
+        enrollment.UpdatedAt = timeProvider.GetUtcNow().UtcDateTime;
 
         // Prijsoptie: enkel behandelen wanneer ze effectief wijzigt.
         if (request.SelectedPriceOptionId != enrollment.SelectedPriceOptionId)
@@ -902,7 +902,7 @@ public class EnrollmentService(
                 foreach (Enrollment member in members)
                 {
                     member.SelectedPriceOptionId = request.SelectedPriceOptionId;
-                    member.UpdatedAt = DateTime.UtcNow;
+                    member.UpdatedAt = timeProvider.GetUtcNow().UtcDateTime;
                 }
             }
             else
@@ -984,7 +984,7 @@ public class EnrollmentService(
                 new Error(ErrorCodes.Validation, "Deze inschrijving is al geannuleerd."));
 
         enrollment.Status = EnrollmentStatus.Cancelled;
-        enrollment.UpdatedAt = DateTime.UtcNow;
+        enrollment.UpdatedAt = timeProvider.GetUtcNow().UtcDateTime;
         await unitOfWork.SaveChangesAsync(ct);
 
         logger.LogInformation(
@@ -1013,7 +1013,7 @@ public class EnrollmentService(
         if (active.Count == 0)
             return Result<bool>.Fail(new Error(ErrorCodes.Validation, "Deze groep is al geannuleerd."));
 
-        DateTime now = DateTime.UtcNow;
+        DateTime now = timeProvider.GetUtcNow().UtcDateTime;
         foreach (Enrollment member in active)
         {
             member.Status = EnrollmentStatus.Cancelled;
