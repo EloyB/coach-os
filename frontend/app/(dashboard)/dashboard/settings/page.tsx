@@ -210,7 +210,7 @@ export default function SettingsPage() {
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
             Nieuwe club toevoegen
           </p>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">
                 {t("name")} <span className="text-red-400">*</span>
