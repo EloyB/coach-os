@@ -54,7 +54,7 @@ export default function DashboardLayout({
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto px-7 py-6 pb-16 lg:pb-6">
+        <main className="flex-1 overflow-y-auto px-7 py-6 pb-[calc(4.5rem_+_env(safe-area-inset-bottom))] lg:pb-6">
           {children}
         </main>
       </div>
