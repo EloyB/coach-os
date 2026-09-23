@@ -8,7 +8,6 @@ import * as z from "zod";
 import { useTranslations } from "next-intl";
 import {
   GraduationCap,
-  UserX,
   Trash2,
   Mail,
   X,
@@ -23,7 +22,6 @@ import {
   getTrainers,
   inviteTrainer,
   updateTrainer,
-  deactivateTrainer,
   reassignTrainerSeries,
   removeTrainer,
   resendTrainerInvite,
@@ -598,11 +596,6 @@ export default function TrainersPage() {
     queryFn: getTennisClubs,
   });
 
-  const deactivateMutation = useMutation({
-    mutationFn: deactivateTrainer,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["trainers"] }),
-  });
-
   const headTrainerMutation = useMutation({
     mutationFn: ({ id, clubIds }: { id: string; clubIds: string[] }) =>
       setHeadTrainerClubs(id, clubIds),
@@ -830,14 +823,6 @@ export default function TrainersPage() {
                               className="p-1.5 rounded text-ink-3 hover:text-tennis-green hover:bg-tennis-green/10 transition-all"
                             >
                               <Pencil size={14} />
-                            </button>
-                            <button
-                              onClick={() => deactivateMutation.mutate(tr.id)}
-                              disabled={deactivateMutation.isPending}
-                              title={t("deactivate")}
-                              className="p-1.5 rounded text-ink-3 hover:text-amber-500 hover:bg-amber-50 transition-all"
-                            >
-                              <UserX size={14} />
                             </button>
                             {tr.lessonSeriesCount === 0 && (
                               <button

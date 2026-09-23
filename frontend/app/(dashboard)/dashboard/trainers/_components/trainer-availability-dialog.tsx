@@ -166,7 +166,7 @@ export function TrainerAvailabilityDialog({
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div>
+            <div className="min-w-0">
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 {t("availabilityFrom")}
               </label>
@@ -174,10 +174,10 @@ export function TrainerAvailabilityDialog({
                 type="time"
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
-                className={inputClass}
+                className={`${inputClass} appearance-none min-w-0`}
               />
             </div>
-            <div>
+            <div className="min-w-0">
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 {t("availabilityUntil")}
               </label>
@@ -185,7 +185,7 @@ export function TrainerAvailabilityDialog({
                 type="time"
                 value={endTime}
                 onChange={(e) => setEndTime(e.target.value)}
-                className={inputClass}
+                className={`${inputClass} appearance-none min-w-0`}
               />
             </div>
           </div>
