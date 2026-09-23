@@ -115,29 +115,38 @@ public static class ConfigurationExtensions
         public IServiceCollection AddCorsPolicy(IConfiguration configuration,
             bool isDevelopment)
         {
-            string frontendOrigin;
-            if (isDevelopment)
-            {
-                frontendOrigin = "http://localhost:5317";
-            }
-            else
-            {
-                // In production, Frontend:Origin MUST be configured. Silently defaulting to
-                // localhost would make the API unusable from any real client.
-                frontendOrigin = configuration["Frontend__Origin"] ?? configuration["Frontend:Origin"]
-                    ?? throw new InvalidOperationException(
-                        "Frontend:Origin is verplicht in productie (bv. https://coach-os.be).");
-            }
-
             services.AddCors(options =>
                 options.AddPolicy("Frontend", policy =>
-                    policy.WithOrigins(frontendOrigin)
-                        .WithHeaders("Content-Type", "Authorization", "Accept")
+                {
+                    if (isDevelopment)
+                    {
+                        // Dev: accepteer elk origin op poort 5317 (localhost én het LAN-IP
+                        // van de dev-machine) zodat je de app ook op een gsm/tablet op
+                        // hetzelfde netwerk kan testen. Enkel dev — prod blijft strikt.
+                        policy.SetIsOriginAllowed(IsDevFrontendOrigin);
+                    }
+                    else
+                    {
+                        // In production, Frontend:Origin MUST be configured. Silently defaulting to
+                        // localhost would make the API unusable from any real client.
+                        string frontendOrigin =
+                            configuration["Frontend__Origin"] ?? configuration["Frontend:Origin"]
+                            ?? throw new InvalidOperationException(
+                                "Frontend:Origin is verplicht in productie (bv. https://coach-os.be).");
+                        policy.WithOrigins(frontendOrigin);
+                    }
+
+                    policy.WithHeaders("Content-Type", "Authorization", "Accept")
                         .WithMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
-                        .AllowCredentials()));
+                        .AllowCredentials();
+                }));
 
             return services;
         }
+
+        // Dev-only: staat localhost:5317 én elk LAN-IP op poort 5317 toe.
+        private static bool IsDevFrontendOrigin(string origin) =>
+            Uri.TryCreate(origin, UriKind.Absolute, out Uri? uri) && uri.Port == 5317;
 
         public IServiceCollection AddRateLimiting()
         {
