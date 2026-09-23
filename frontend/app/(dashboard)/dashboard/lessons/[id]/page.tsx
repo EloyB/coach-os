@@ -1567,7 +1567,7 @@ export default function LessonSeriesDetailPage({
         <div className="space-y-5">
           {/* ── Section 1: Series info card ── */}
           <div className="bg-white rounded-xl shadow-sm shadow-gray-100 p-6">
-            <div className="flex items-start justify-between gap-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2.5 flex-wrap mb-1.5">
                   <h1 className="text-xl font-bold text-gray-900 leading-tight">
@@ -1610,7 +1610,7 @@ export default function LessonSeriesDetailPage({
               </div>
 
               {!editing ? (
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
                   <Link
                     href={`/dashboard/lessons/${id}/planning`}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-tennis-green text-white text-xs font-medium hover:bg-tennis-green/90 transition-colors"

@@ -971,7 +971,7 @@ function EnrollmentsTable({
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full table-fixed border-collapse text-left [&_td]:border-r [&_td]:border-gray-100 [&_th]:border-r [&_th]:border-gray-100 [&_td:last-child]:border-r-0 [&_th:last-child]:border-r-0">
+          <table className="w-full min-w-[640px] table-fixed border-collapse text-left [&_td]:border-r [&_td]:border-gray-100 [&_th]:border-r [&_th]:border-gray-100 [&_td:last-child]:border-r-0 [&_th:last-child]:border-r-0">
             <colgroup>
               <col style={{ width: "36%" }} />
               <col style={{ width: "26%" }} />
@@ -1065,7 +1065,7 @@ export function EnrollmentsSection({ seriesId }: { seriesId: string }) {
       id="enrollments"
       className="bg-white rounded-xl shadow-sm shadow-gray-100 overflow-visible scroll-mt-20"
     >
-      <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+      <div className="px-5 py-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2.5">
           <h2 className="text-sm font-semibold text-gray-800">{t("title")}</h2>
           <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-tennis-green/10 text-xs font-bold text-tennis-green">
