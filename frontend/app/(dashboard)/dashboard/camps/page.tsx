@@ -58,44 +58,58 @@ function CampRow({ camp }: { camp: CampDto }) {
   const t = useTranslations("camps");
   const hasCapacity = camp.maxParticipants != null && camp.maxParticipants > 0;
 
+  const status = camp.isActive ? (
+    <span className="text-[10.5px] px-2 py-0.5 rounded-full bg-tennis-green/10 text-tennis-green font-semibold whitespace-nowrap">
+      ● {t("statusActive")}
+    </span>
+  ) : (
+    <span className="text-[10.5px] px-2 py-0.5 rounded-full bg-canvas text-ink-3 font-semibold whitespace-nowrap">
+      ○ {t("statusDraft")}
+    </span>
+  );
+
   return (
     <Link
       href={`/dashboard/camps/${camp.id}`}
-      className="grid grid-cols-[2.2fr_1.1fr_1.2fr_0.9fr_0.7fr] px-4 py-3.5 items-center border-b border-rule last:border-b-0 text-xs hover:bg-canvas/50 transition-colors"
+      className="flex flex-col gap-2.5 lg:grid lg:grid-cols-[2.2fr_1.1fr_1.2fr_0.9fr_0.7fr] lg:gap-x-6 lg:gap-y-0 lg:items-center px-4 py-4 lg:py-3.5 border-b border-rule last:border-b-0 text-xs hover:bg-canvas/50 transition-colors"
     >
-      <div>
-        <p className="text-ink font-semibold text-[12px] m-0">{camp.name}</p>
-        <Mono className="text-[10.5px] text-ink-3 mt-0.5 block">
-          {t("listDays", { count: camp.dayCount })} · {camp.tennisClubName}
-        </Mono>
+      {/* Naam (+ status rechts op mobiel) */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-ink font-semibold text-[12px] m-0">{camp.name}</p>
+          <Mono className="text-[10.5px] text-ink-3 mt-0.5 block">
+            {t("listDays", { count: camp.dayCount })} · {camp.tennisClubName}
+          </Mono>
+        </div>
+        <div className="lg:hidden shrink-0">{status}</div>
       </div>
-      <Mono className="text-ink-2 text-[11px]">
+
+      <Mono className="text-ink-2 text-[11px] block">
+        <span className="lg:hidden text-ink-3">{t("listPeriod")}&nbsp;</span>
         {formatDateRange(camp.startDate, camp.endDate)}
       </Mono>
-      {hasCapacity ? (
-        <OccupancyBar
-          filled={camp.participantCount}
-          capacity={camp.maxParticipants ?? 0}
-        />
-      ) : (
-        <Mono className="text-ink-2 text-[11px]">
-          {t("occupancyValue", { count: camp.participantCount })}
-        </Mono>
-      )}
-      <Mono className="text-ink font-bold">
-        {camp.price > 0 ? `€${camp.price}` : t("priceFree")}
-      </Mono>
-      <div className="text-right">
-        {camp.isActive ? (
-          <span className="text-[10.5px] px-2 py-0.5 rounded-full bg-tennis-green/10 text-tennis-green font-semibold">
-            ● {t("statusActive")}
-          </span>
+
+      {/* Bezettingsbalk: op mobiel onderaan de kaart */}
+      <div className="order-last lg:order-none">
+        {hasCapacity ? (
+          <OccupancyBar
+            filled={camp.participantCount}
+            capacity={camp.maxParticipants ?? 0}
+          />
         ) : (
-          <span className="text-[10.5px] px-2 py-0.5 rounded-full bg-canvas text-ink-3 font-semibold">
-            ○ {t("statusDraft")}
-          </span>
+          <Mono className="text-ink-2 text-[11px]">
+            <span className="lg:hidden text-ink-3">{t("listOccupancy")}&nbsp;</span>
+            {t("occupancyValue", { count: camp.participantCount })}
+          </Mono>
         )}
       </div>
+
+      <Mono className="text-ink font-bold block">
+        <span className="lg:hidden text-ink-3 font-normal">{t("listPrice")}&nbsp;</span>
+        {camp.price > 0 ? `€${camp.price}` : t("priceFree")}
+      </Mono>
+
+      <div className="hidden lg:block text-right">{status}</div>
     </Link>
   );
 }
@@ -153,8 +167,8 @@ export default function CampsPage() {
 
       {!isLoading && !isError && camps && camps.length > 0 && (
         <div className="bg-paper border border-rule rounded-xl overflow-hidden">
-          {/* Column header */}
-          <div className="grid grid-cols-[2.2fr_1.1fr_1.2fr_0.9fr_0.7fr] px-4 py-2.5 text-[10.5px] text-ink-3 font-semibold font-mono uppercase tracking-[0.08em] border-b border-rule bg-[#fbfaf6]">
+          {/* Column header — enkel op desktop; op mobiel stapelen de rijen als kaart */}
+          <div className="hidden lg:grid lg:gap-x-6 grid-cols-[2.2fr_1.1fr_1.2fr_0.9fr_0.7fr] px-4 py-2.5 text-[10.5px] text-ink-3 font-semibold font-mono uppercase tracking-[0.08em] border-b border-rule bg-[#fbfaf6]">
             <span>{t("title")}</span>
             <span>{t("listPeriod")}</span>
             <span>{t("listOccupancy")}</span>
