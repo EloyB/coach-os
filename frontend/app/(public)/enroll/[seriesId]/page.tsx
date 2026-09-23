@@ -1126,11 +1126,11 @@ export default function EnrollPage() {
                           {t("pref_preferred")}
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <div className="w-3 h-3 rounded-full bg-blue-500" />
+                          <div className="w-3 h-3 rounded-full bg-orange-500" />
                           {t("pref_available")}
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <div className="w-3 h-3 rounded-full bg-gray-400" />
+                          <div className="w-3 h-3 rounded-full bg-red-500" />
                           {t("pref_unavailable")}
                         </div>
                       </div>
@@ -1144,10 +1144,10 @@ export default function EnrollPage() {
                           <div className="px-2 py-2.5 text-xs font-semibold text-green-700 uppercase text-center">
                             {t("pref_preferred")}
                           </div>
-                          <div className="px-2 py-2.5 text-xs font-semibold text-blue-700 uppercase text-center">
+                          <div className="px-2 py-2.5 text-xs font-semibold text-orange-600 uppercase text-center">
                             {t("pref_available")}
                           </div>
-                          <div className="px-2 py-2.5 text-xs font-semibold text-gray-500 uppercase text-center">
+                          <div className="px-2 py-2.5 text-xs font-semibold text-red-600 uppercase text-center">
                             Niet besch.
                           </div>
                         </div>
@@ -1206,7 +1206,7 @@ export default function EnrollPage() {
                                       <PrefButton
                                         groupKey={group.key}
                                         value={PREF_AVAILABLE}
-                                        color={{ border: "#3b82f6", bg: "#3b82f6", idle: "#bfdbfe" }}
+                                        color={{ border: "#f97316", bg: "#f97316", idle: "#fed7aa" }}
                                         icon="check"
                                         slotLabel={slotLabel}
                                       />
@@ -1215,7 +1215,7 @@ export default function EnrollPage() {
                                       <PrefButton
                                         groupKey={group.key}
                                         value={PREF_UNAVAILABLE}
-                                        color={{ border: "#9ca3af", bg: "#9ca3af", idle: "#d1d5db" }}
+                                        color={{ border: "#ef4444", bg: "#ef4444", idle: "#fecaca" }}
                                         icon="x"
                                         slotLabel={slotLabel}
                                       />
@@ -1240,14 +1240,14 @@ export default function EnrollPage() {
                                       <PrefButton
                                         groupKey={group.key}
                                         value={PREF_AVAILABLE}
-                                        color={{ border: "#3b82f6", bg: "#3b82f6", idle: "#bfdbfe" }}
+                                        color={{ border: "#f97316", bg: "#f97316", idle: "#fed7aa" }}
                                         icon="check"
                                         slotLabel={slotLabel}
                                       />
                                       <PrefButton
                                         groupKey={group.key}
                                         value={PREF_UNAVAILABLE}
-                                        color={{ border: "#9ca3af", bg: "#9ca3af", idle: "#d1d5db" }}
+                                        color={{ border: "#ef4444", bg: "#ef4444", idle: "#fecaca" }}
                                         icon="x"
                                         slotLabel={slotLabel}
                                       />
@@ -1268,11 +1268,11 @@ export default function EnrollPage() {
                           {t("pref_preferred")}
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <div className="w-3 h-3 rounded-full bg-blue-500" />
+                          <div className="w-3 h-3 rounded-full bg-orange-500" />
                           {t("pref_available")}
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <div className="w-3 h-3 rounded-full bg-gray-400" />
+                          <div className="w-3 h-3 rounded-full bg-red-500" />
                           {t("pref_unavailable")}
                         </div>
                       </div>
