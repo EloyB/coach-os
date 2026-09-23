@@ -262,6 +262,7 @@ export default function NewStandaloneLessonPage() {
               <Label>{t("fieldMaxParticipants")}</Label>
               <input
                 {...register("maxParticipants", { valueAsNumber: true })}
+                onFocus={(e) => e.currentTarget.select()}
                 type="number"
                 min={0}
                 className={inputClass}

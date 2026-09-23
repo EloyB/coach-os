@@ -205,6 +205,7 @@ export function CampBasisFields({
             </span>
             <input
               {...register("price", { valueAsNumber: true })}
+              onFocus={(e) => e.currentTarget.select()}
               type="number"
               min={0}
               step={0.01}
@@ -222,6 +223,7 @@ export function CampBasisFields({
               setValueAs: (v) =>
                 v === "" || v === null || v === undefined ? null : Number(v),
             })}
+            onFocus={(e) => e.currentTarget.select()}
             type="number"
             min={1}
             max={500}

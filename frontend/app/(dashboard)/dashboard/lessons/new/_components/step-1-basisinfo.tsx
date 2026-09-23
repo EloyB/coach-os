@@ -192,6 +192,7 @@ export function Step1Basisinfo({ defaultValues, onNext }: Step1Props) {
             </span>
             <input
               {...register("price", { valueAsNumber: true })}
+              onFocus={(e) => e.currentTarget.select()}
               type="number"
               min={0}
               step={0.01}
@@ -206,6 +207,7 @@ export function Step1Basisinfo({ defaultValues, onNext }: Step1Props) {
           <Label required>{t("maxRegistrations")}</Label>
           <input
             {...register("maxRegistrations", { valueAsNumber: true })}
+            onFocus={(e) => e.currentTarget.select()}
             type="number"
             min={1}
             max={500}
@@ -220,6 +222,7 @@ export function Step1Basisinfo({ defaultValues, onNext }: Step1Props) {
             <Label required>{t("minAge")}</Label>
             <input
               {...register("minAge", { valueAsNumber: true })}
+              onFocus={(e) => e.currentTarget.select()}
               type="number"
               min={0}
               max={120}
@@ -231,6 +234,7 @@ export function Step1Basisinfo({ defaultValues, onNext }: Step1Props) {
             <Label required>{t("maxAge")}</Label>
             <input
               {...register("maxAge", { valueAsNumber: true })}
+              onFocus={(e) => e.currentTarget.select()}
               type="number"
               min={0}
               max={120}
