@@ -1619,7 +1619,7 @@ export default function LessonSeriesDetailPage({
                 <div className="flex items-center gap-2 sm:shrink-0">
                   <Link
                     href={`/dashboard/lessons/${id}/planning`}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-tennis-green text-white text-xs font-medium hover:bg-tennis-green/90 transition-colors"
+                    className="flex flex-1 justify-center sm:flex-none sm:justify-start items-center gap-1.5 px-3 py-1.5 rounded-lg bg-tennis-green text-white text-xs font-medium hover:bg-tennis-green/90 transition-colors"
                   >
                     <CalendarDays size={12} />
                     Plan lessen
