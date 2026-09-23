@@ -542,13 +542,21 @@ export default function EnrollPage() {
     value,
     color,
     icon,
+    slotLabel,
   }: {
     groupKey: string;
     value: number;
-    color: { border: string; bg: string };
+    color: { border: string; bg: string; idle: string };
     icon: "check" | "x";
+    slotLabel?: string;
   }) {
     const isSelected = preferences[groupKey] === value;
+    const prefName =
+      value === PREF_PREFERRED
+        ? t("pref_preferred")
+        : value === PREF_AVAILABLE
+          ? t("pref_available")
+          : t("pref_unavailable");
     return (
       <label className="cursor-pointer">
         <input
@@ -556,24 +564,25 @@ export default function EnrollPage() {
           name={`pref_${groupKey}`}
           checked={isSelected}
           onChange={() => setPreference(groupKey, value)}
+          aria-label={slotLabel ? `${prefName} — ${slotLabel}` : prefName}
           className="sr-only peer"
         />
         <div
-          className="w-8 h-8 rounded-full border-2 flex items-center justify-center transition-colors"
+          className="w-10 h-10 rounded-full border-2 flex items-center justify-center transition-colors"
           style={{
-            borderColor: isSelected ? color.border : "#e5e7eb",
+            borderColor: isSelected ? color.border : color.idle,
             backgroundColor: isSelected ? color.bg : "transparent",
           }}
         >
           {icon === "check" ? (
             <Check
-              size={16}
+              size={18}
               strokeWidth={3}
               className={isSelected ? "text-white" : "text-transparent"}
             />
           ) : (
             <X
-              size={16}
+              size={18}
               strokeWidth={3}
               className={isSelected ? "text-white" : "text-transparent"}
             />
@@ -1109,7 +1118,8 @@ export default function EnrollPage() {
                         {t("availability_desc")}
                       </p>
 
-                      {/* Mobile legend — shown once above the grid */}
+                      {/* Mobile legend — de bolletjes zijn ook kleurgecodeerd (zie PrefButton),
+                          dus deze legende bevestigt enkel de betekenis van de kleuren. */}
                       <div className="sm:hidden flex items-center gap-4 mb-3 text-xs text-gray-500">
                         <div className="flex items-center gap-1.5">
                           <div className="w-3 h-3 rounded-full bg-green-500" />
@@ -1167,7 +1177,9 @@ export default function EnrollPage() {
                               </div>
 
                               {/* Uur-groepen voor deze dag */}
-                              {day.groups.map((group, si) => (
+                              {day.groups.map((group, si) => {
+                                const slotLabel = `${DAY_NAMES[day.day]} ${group.startTime} — ${group.endTime}`;
+                                return (
                                 <div
                                   key={group.key}
                                   className={
@@ -1185,24 +1197,27 @@ export default function EnrollPage() {
                                       <PrefButton
                                         groupKey={group.key}
                                         value={PREF_PREFERRED}
-                                        color={{ border: "#22c55e", bg: "#22c55e" }}
+                                        color={{ border: "#22c55e", bg: "#22c55e", idle: "#bbf7d0" }}
                                         icon="check"
+                                        slotLabel={slotLabel}
                                       />
                                     </div>
                                     <div className="flex items-center justify-center">
                                       <PrefButton
                                         groupKey={group.key}
                                         value={PREF_AVAILABLE}
-                                        color={{ border: "#3b82f6", bg: "#3b82f6" }}
+                                        color={{ border: "#3b82f6", bg: "#3b82f6", idle: "#bfdbfe" }}
                                         icon="check"
+                                        slotLabel={slotLabel}
                                       />
                                     </div>
                                     <div className="flex items-center justify-center">
                                       <PrefButton
                                         groupKey={group.key}
                                         value={PREF_UNAVAILABLE}
-                                        color={{ border: "#9ca3af", bg: "#9ca3af" }}
+                                        color={{ border: "#9ca3af", bg: "#9ca3af", idle: "#d1d5db" }}
                                         icon="x"
+                                        slotLabel={slotLabel}
                                       />
                                     </div>
                                   </div>
@@ -1218,25 +1233,29 @@ export default function EnrollPage() {
                                       <PrefButton
                                         groupKey={group.key}
                                         value={PREF_PREFERRED}
-                                        color={{ border: "#22c55e", bg: "#22c55e" }}
+                                        color={{ border: "#22c55e", bg: "#22c55e", idle: "#bbf7d0" }}
                                         icon="check"
+                                        slotLabel={slotLabel}
                                       />
                                       <PrefButton
                                         groupKey={group.key}
                                         value={PREF_AVAILABLE}
-                                        color={{ border: "#3b82f6", bg: "#3b82f6" }}
+                                        color={{ border: "#3b82f6", bg: "#3b82f6", idle: "#bfdbfe" }}
                                         icon="check"
+                                        slotLabel={slotLabel}
                                       />
                                       <PrefButton
                                         groupKey={group.key}
                                         value={PREF_UNAVAILABLE}
-                                        color={{ border: "#9ca3af", bg: "#9ca3af" }}
+                                        color={{ border: "#9ca3af", bg: "#9ca3af", idle: "#d1d5db" }}
                                         icon="x"
+                                        slotLabel={slotLabel}
                                       />
                                     </div>
                                   </div>
                                 </div>
-                              ))}
+                                );
+                              })}
                             </div>
                           ));
                         })()}
