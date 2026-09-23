@@ -162,7 +162,7 @@ export default function NewStandaloneLessonPage() {
                 {...register("startTime")}
                 type="time"
                 step={300}
-                className={inputClass}
+                className={`${inputClass} appearance-none min-w-0`}
               />
               <FieldError message={errors.startTime?.message} />
             </div>
