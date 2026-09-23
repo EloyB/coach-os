@@ -6,6 +6,8 @@ interface StatItem {
   value: string;
   label: string;
   color?: string;
+  /** Verberg deze stat onder lg (mobiel + klein scherm), toon enkel in de volle rij. */
+  mobileHidden?: boolean;
 }
 
 interface StatStripProps {
@@ -32,7 +34,10 @@ export function StatStrip({ items, className }: StatStripProps) {
           key={i}
           // Verticale scheidingslijn enkel op lg (één rij); bij wrap op mobiel/tablet
           // zorgt de grid-gap voor de ruimte.
-          className={cn(i > 0 && "lg:border-l lg:border-white/10 lg:pl-4")}
+          className={cn(
+            item.mobileHidden && "hidden lg:block",
+            i > 0 && "lg:border-l lg:border-white/10 lg:pl-4",
+          )}
         >
           <Mono
             className={cn(
