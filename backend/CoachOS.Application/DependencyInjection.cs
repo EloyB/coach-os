@@ -10,7 +10,7 @@ using CoachOS.Application.Onboarding;
 using CoachOS.Application.OrganizationSettings;
 using CoachOS.Application.Payments;
 using CoachOS.Application.Planning;
-using CoachOS.Application.Reschedule;
+using CoachOS.Application.RescheduleRequests;
 using CoachOS.Application.StandaloneLessons;
 using CoachOS.Application.StudentConfirmation;
 using CoachOS.Application.Students;
@@ -44,7 +44,7 @@ public static class DependencyInjection
         services.AddScoped<IConfirmationOrchestrationService, ConfirmationOrchestrationService>();
         services.AddScoped<IStudentConfirmationService, StudentConfirmationService>();
         services.AddScoped<IStudentLessonsService, StudentLessonsService>();
-        services.AddScoped<IRescheduleService, RescheduleService>();
+        services.AddScoped<IRescheduleRequestService, RescheduleRequestService>();
         services.AddScoped<ILessonRescheduleService, LessonRescheduleService>();
         services.AddScoped<IStandaloneLessonService, StandaloneLessonService>();
         services.AddScoped<IInvitationPublicService, InvitationPublicService>();

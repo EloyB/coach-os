@@ -1,3 +1,3 @@
-namespace CoachOS.Application.Reschedule.DTOs;
+namespace CoachOS.Application.RescheduleRequests.DTOs;
 
 public record ResolveRescheduleRequest(string State, string? Note);

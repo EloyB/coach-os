@@ -1,15 +1,15 @@
-using CoachOS.Application.Reschedule.DTOs;
+using CoachOS.Application.RescheduleRequests.DTOs;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
 using CoachOS.Domain.Interfaces;
 using CoachOS.Domain.Models;
 
-namespace CoachOS.Application.Reschedule;
+namespace CoachOS.Application.RescheduleRequests;
 
-public class RescheduleService(
+public class RescheduleRequestService(
     IRescheduleRequestRepository rescheduleRepo,
     IScheduleAssignmentRepository assignmentRepo,
-    IUnitOfWork unitOfWork) : IRescheduleService
+    IUnitOfWork unitOfWork) : IRescheduleRequestService
 {
     private static readonly string[] DayNames = ["Zondag", "Maandag", "Dinsdag", "Woensdag", "Donderdag", "Vrijdag", "Zaterdag"];
 
