@@ -543,6 +543,37 @@ export default function EnrollPage() {
 
   // ─── Preference button component ────────────────────────────────────────
 
+  // Legende: icoon in een gekleurde ring + label, zodat elk niveau ook zonder
+  // kleur (kleurenblindheid) herkenbaar is aan zijn vorm.
+  function PrefLegend() {
+    const items = [
+      { icon: "check", color: "#22c55e", label: t("pref_preferred") },
+      { icon: "question", color: "#f97316", label: t("pref_available") },
+      { icon: "x", color: "#ef4444", label: t("pref_unavailable") },
+    ] as const;
+    return (
+      <>
+        {items.map((it) => (
+          <div key={it.label} className="flex items-center gap-1.5">
+            <span
+              className="inline-flex h-5 w-5 items-center justify-center rounded-full border-2"
+              style={{ borderColor: it.color, color: it.color }}
+            >
+              {it.icon === "check" ? (
+                <Check size={11} strokeWidth={3} />
+              ) : it.icon === "question" ? (
+                <span className="text-[10px] font-bold leading-none">?</span>
+              ) : (
+                <X size={11} strokeWidth={3} />
+              )}
+            </span>
+            {it.label}
+          </div>
+        ))}
+      </>
+    );
+  }
+
   function PrefButton({
     groupKey,
     value,
@@ -552,11 +583,14 @@ export default function EnrollPage() {
   }: {
     groupKey: string;
     value: number;
-    color: { border: string; bg: string; idle: string };
-    icon: "check" | "x";
+    color: { border: string; bg: string; idle: string; iconIdle: string };
+    icon: "check" | "question" | "x";
     slotLabel?: string;
   }) {
     const isSelected = preferences[groupKey] === value;
+    // Icoon altijd tonen: wit als geselecteerd, anders een lichte tint zodat je ook
+    // leeg meteen ziet wat de cirkel betekent (helpt bij kleurenblindheid).
+    const iconColor = isSelected ? "#ffffff" : color.iconIdle;
     const prefName =
       value === PREF_PREFERRED
         ? t("pref_preferred")
@@ -581,17 +615,16 @@ export default function EnrollPage() {
           }}
         >
           {icon === "check" ? (
-            <Check
-              size={18}
-              strokeWidth={3}
-              className={isSelected ? "text-white" : "text-transparent"}
-            />
+            <Check size={18} strokeWidth={3} color={iconColor} />
+          ) : icon === "question" ? (
+            <span
+              style={{ color: iconColor }}
+              className="text-[15px] font-bold leading-none"
+            >
+              ?
+            </span>
           ) : (
-            <X
-              size={18}
-              strokeWidth={3}
-              className={isSelected ? "text-white" : "text-transparent"}
-            />
+            <X size={18} strokeWidth={3} color={iconColor} />
           )}
         </div>
       </label>
@@ -1127,18 +1160,7 @@ export default function EnrollPage() {
                       {/* Mobile legend — de bolletjes zijn ook kleurgecodeerd (zie PrefButton),
                           dus deze legende bevestigt enkel de betekenis van de kleuren. */}
                       <div className="sm:hidden flex items-center gap-4 mb-3 text-xs text-gray-500">
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-3 h-3 rounded-full bg-green-500" />
-                          {t("pref_preferred")}
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-3 h-3 rounded-full bg-orange-500" />
-                          {t("pref_available")}
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-3 h-3 rounded-full bg-red-500" />
-                          {t("pref_unavailable")}
-                        </div>
+                        <PrefLegend />
                       </div>
 
                       <div className="border border-gray-200 rounded-lg overflow-hidden">
@@ -1203,7 +1225,7 @@ export default function EnrollPage() {
                                       <PrefButton
                                         groupKey={group.key}
                                         value={PREF_PREFERRED}
-                                        color={{ border: "#22c55e", bg: "#22c55e", idle: "#bbf7d0" }}
+                                        color={{ border: "#22c55e", bg: "#22c55e", idle: "#bbf7d0", iconIdle: "#86efac" }}
                                         icon="check"
                                         slotLabel={slotLabel}
                                       />
@@ -1212,8 +1234,8 @@ export default function EnrollPage() {
                                       <PrefButton
                                         groupKey={group.key}
                                         value={PREF_AVAILABLE}
-                                        color={{ border: "#f97316", bg: "#f97316", idle: "#fed7aa" }}
-                                        icon="check"
+                                        color={{ border: "#f97316", bg: "#f97316", idle: "#fed7aa", iconIdle: "#fdba74" }}
+                                        icon="question"
                                         slotLabel={slotLabel}
                                       />
                                     </div>
@@ -1221,7 +1243,7 @@ export default function EnrollPage() {
                                       <PrefButton
                                         groupKey={group.key}
                                         value={PREF_UNAVAILABLE}
-                                        color={{ border: "#ef4444", bg: "#ef4444", idle: "#fecaca" }}
+                                        color={{ border: "#ef4444", bg: "#ef4444", idle: "#fecaca", iconIdle: "#fca5a5" }}
                                         icon="x"
                                         slotLabel={slotLabel}
                                       />
@@ -1239,21 +1261,21 @@ export default function EnrollPage() {
                                       <PrefButton
                                         groupKey={group.key}
                                         value={PREF_PREFERRED}
-                                        color={{ border: "#22c55e", bg: "#22c55e", idle: "#bbf7d0" }}
+                                        color={{ border: "#22c55e", bg: "#22c55e", idle: "#bbf7d0", iconIdle: "#86efac" }}
                                         icon="check"
                                         slotLabel={slotLabel}
                                       />
                                       <PrefButton
                                         groupKey={group.key}
                                         value={PREF_AVAILABLE}
-                                        color={{ border: "#f97316", bg: "#f97316", idle: "#fed7aa" }}
-                                        icon="check"
+                                        color={{ border: "#f97316", bg: "#f97316", idle: "#fed7aa", iconIdle: "#fdba74" }}
+                                        icon="question"
                                         slotLabel={slotLabel}
                                       />
                                       <PrefButton
                                         groupKey={group.key}
                                         value={PREF_UNAVAILABLE}
-                                        color={{ border: "#ef4444", bg: "#ef4444", idle: "#fecaca" }}
+                                        color={{ border: "#ef4444", bg: "#ef4444", idle: "#fecaca", iconIdle: "#fca5a5" }}
                                         icon="x"
                                         slotLabel={slotLabel}
                                       />
@@ -1269,18 +1291,7 @@ export default function EnrollPage() {
 
                       {/* Legend — desktop only (mobile has inline labels) */}
                       <div className="hidden sm:flex items-center gap-4 mt-3 text-xs text-gray-500">
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-3 h-3 rounded-full bg-green-500" />
-                          {t("pref_preferred")}
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-3 h-3 rounded-full bg-orange-500" />
-                          {t("pref_available")}
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-3 h-3 rounded-full bg-red-500" />
-                          {t("pref_unavailable")}
-                        </div>
+                        <PrefLegend />
                       </div>
                     </div>
                   </>
