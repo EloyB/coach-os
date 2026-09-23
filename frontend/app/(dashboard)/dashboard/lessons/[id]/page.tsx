@@ -68,6 +68,11 @@ import { getAuthUser } from "@/lib/auth";
 import { FieldError } from "@/components/forms/field-error";
 import { DatePicker } from "@/components/ui/date-picker";
 import { NativeSelect } from "@/components/ui/native-select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { inputClass } from "@/lib/styles";
 import { formatDateShort, formatDateNL } from "@/lib/date-utils";
 import { PriceMatrixSection } from "./_components/price-matrix-section";
@@ -1503,6 +1508,7 @@ export default function LessonSeriesDetailPage({
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [actionsMenuOpen, setActionsMenuOpen] = useState(false);
 
   useEffect(() => {
     setIsAdmin(getAuthUser()?.role === "Admin");
@@ -1610,7 +1616,7 @@ export default function LessonSeriesDetailPage({
               </div>
 
               {!editing ? (
-                <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
+                <div className="flex items-center gap-2 sm:shrink-0">
                   <Link
                     href={`/dashboard/lessons/${id}/planning`}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-tennis-green text-white text-xs font-medium hover:bg-tennis-green/90 transition-colors"
@@ -1618,10 +1624,12 @@ export default function LessonSeriesDetailPage({
                     <CalendarDays size={12} />
                     Plan lessen
                   </Link>
+
+                  {/* Desktop: secundaire acties inline */}
                   <button
                     onClick={() => exportMutation.mutate()}
                     disabled={exportMutation.isPending}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                    className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     <Download size={12} />
                     {exportMutation.isPending ? "Exporteren…" : "Exporteer naar Excel"}
@@ -1629,12 +1637,52 @@ export default function LessonSeriesDetailPage({
                   {isAdmin && (
                     <button
                       onClick={() => setEditing(true)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+                      className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
                     >
                       <Pencil size={12} />
                       Bewerken
                     </button>
                   )}
+
+                  {/* Mobiel: secundaire acties in een ⋯-menu */}
+                  <Popover open={actionsMenuOpen} onOpenChange={setActionsMenuOpen}>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label="Meer acties"
+                        className="sm:hidden flex items-center justify-center w-8 h-8 shrink-0 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors"
+                      >
+                        <MoreVertical size={16} />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent align="end" className="w-52 p-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActionsMenuOpen(false);
+                          exportMutation.mutate();
+                        }}
+                        disabled={exportMutation.isPending}
+                        className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm text-gray-700 hover:bg-gray-50 text-left disabled:opacity-60"
+                      >
+                        <Download size={14} />
+                        {exportMutation.isPending ? "Exporteren…" : "Exporteer naar Excel"}
+                      </button>
+                      {isAdmin && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActionsMenuOpen(false);
+                            setEditing(true);
+                          }}
+                          className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm text-gray-700 hover:bg-gray-50 text-left"
+                        >
+                          <Pencil size={14} />
+                          Bewerken
+                        </button>
+                      )}
+                    </PopoverContent>
+                  </Popover>
                 </div>
               ) : (
                 <button
