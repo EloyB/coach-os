@@ -109,6 +109,12 @@ function inputClass(hasError: boolean) {
   }`;
 }
 
+// iOS Safari negeert de breedte van een <input type="date"> zonder appearance-none,
+// waardoor het veld uit z'n container puilt. min-w-0 laat het krimpen binnen flex/grid.
+function dateInputClass(hasError: boolean) {
+  return `${inputClass(hasError)} appearance-none min-w-0`;
+}
+
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function EnrollPage() {
@@ -864,7 +870,7 @@ export default function EnrollPage() {
                           }
                         }}
                         max={new Date().toISOString().slice(0, 10)}
-                        className={inputClass(!!baseErrors.dateOfBirth)}
+                        className={dateInputClass(!!baseErrors.dateOfBirth)}
                       />
                       {baseErrors.dateOfBirth ? (
                         <p className="text-xs text-red-500 mt-1">
@@ -1091,7 +1097,7 @@ export default function EnrollPage() {
                                   updateGroupMember(i, "dateOfBirth", e.target.value)
                                 }
                                 max={new Date().toISOString().slice(0, 10)}
-                                className={inputClass(!!memberErrors[i]?.dateOfBirth)}
+                                className={dateInputClass(!!memberErrors[i]?.dateOfBirth)}
                               />
                               {memberErrors[i]?.dateOfBirth && (
                                 <p className="text-xs text-red-500 mt-1">
