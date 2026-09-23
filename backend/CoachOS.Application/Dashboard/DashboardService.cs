@@ -1,3 +1,4 @@
+using CoachOS.Application.Abstractions;
 using CoachOS.Application.Dashboard.DTOs;
 using CoachOS.Domain.Common;
 using CoachOS.Domain.Entities;

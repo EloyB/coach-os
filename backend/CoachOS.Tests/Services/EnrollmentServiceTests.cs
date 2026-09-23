@@ -1,3 +1,4 @@
+using CoachOS.Application.Abstractions;
 using CoachOS.Application.Enrollments;
 using CoachOS.Application.Enrollments.DTOs;
 using CoachOS.Application.Mappings;

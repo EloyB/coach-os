@@ -1,3 +1,4 @@
+using CoachOS.Application.Abstractions;
 using System.Data;
 using System.Text.Json;
 using CoachOS.Application.Camps.DTOs;

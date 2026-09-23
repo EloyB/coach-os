@@ -1,10 +1,10 @@
+using CoachOS.Application.Abstractions;
 using CoachOS.Application.Configuration;
 using CoachOS.Application.Planning;
 using CoachOS.Application.Pricing;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
 using CoachOS.Domain.Interfaces;
-using CoachOS.Domain.Models;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;

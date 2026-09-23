@@ -1,3 +1,4 @@
+using CoachOS.Application.Abstractions;
 using CoachOS.Application.Common;
 using CoachOS.Application.LessonSerie.DTOs;
 using CoachOS.Application.Mappings;

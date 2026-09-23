@@ -1,4 +1,4 @@
-namespace CoachOS.Domain.Interfaces;
+namespace CoachOS.Application.Abstractions;
 
 /// <summary>
 /// Ambient tenant-context voor de huidige request/scope. Gevuld door middleware

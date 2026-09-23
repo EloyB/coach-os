@@ -1,3 +1,4 @@
+using CoachOS.Application.Abstractions;
 using CoachOS.Application.Camps;
 using CoachOS.Application.Camps.DTOs;
 using CoachOS.Application.Payments;

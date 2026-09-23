@@ -1,3 +1,4 @@
+using CoachOS.Application.Abstractions;
 using System.Security.Cryptography;
 using CoachOS.Application.Auth;
 using CoachOS.Application.Auth.DTOs;

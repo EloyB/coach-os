@@ -1,3 +1,4 @@
+using CoachOS.Application.Abstractions;
 using CoachOS.Application.Auth;
 using CoachOS.Application.Configuration;
 using CoachOS.Application.Export;

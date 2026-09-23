@@ -1,6 +1,6 @@
 using CoachOS.Domain.Models;
 
-namespace CoachOS.Domain.Interfaces;
+namespace CoachOS.Application.Abstractions;
 
 /// <summary>
 /// Mollie REST API wrapper. Bevat de OAuth onboarding calls (PR #2) en de

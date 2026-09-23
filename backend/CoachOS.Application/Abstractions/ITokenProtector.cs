@@ -1,4 +1,4 @@
-namespace CoachOS.Domain.Interfaces;
+namespace CoachOS.Application.Abstractions;
 
 /// <summary>
 /// At-rest encryption van gevoelige strings (Mollie OAuth tokens). Implementatie

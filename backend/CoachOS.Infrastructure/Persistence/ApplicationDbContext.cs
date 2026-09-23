@@ -1,5 +1,5 @@
+using CoachOS.Application.Abstractions;
 using CoachOS.Domain.Entities;
-using CoachOS.Domain.Interfaces;
 using CoachOS.Infrastructure.Identity;
 using CoachOS.Infrastructure.Persistence.Configurations;
 using Microsoft.AspNetCore.Identity;

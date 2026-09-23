@@ -1,3 +1,4 @@
+using CoachOS.Application.Abstractions;
 using System.Globalization;
 using CoachOS.Application.Common;
 using CoachOS.Application.LessonReschedule.DTOs;

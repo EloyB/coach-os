@@ -51,8 +51,8 @@ cd frontend && bunx shadcn add <component>
 
 Dependency direction: `API → Infrastructure → Application → Domain`
 
-- **Domain** — pure entities extending `BaseEntity` (Id, CreatedAt, UpdatedAt), enums, repository/service interfaces, `Result<T>` / `Error` / `ErrorCodes`. Zero external dependencies.
-- **Application** — business logic in service classes (`I{Feature}Service` + `{Feature}Service`), DTOs, FluentValidation validators, Mapperly mapper (`ApplicationMapper`). Services return `Result<T>` — never throw for business errors.
+- **Domain** — pure entities extending `BaseEntity` (Id, CreatedAt, UpdatedAt), enums, repository interfaces + `IUnitOfWork`, `Result<T>` / `Error` / `ErrorCodes`. Zero external dependencies.
+- **Application** — ports for external services in `Abstractions/` (`IEmailService`, `IMollieClient`, `IUserLookupService`, `ITenantContext`, …), business logic in service classes (`I{Feature}Service` + `{Feature}Service`), DTOs, FluentValidation validators, Mapperly mapper (`ApplicationMapper`). Services return `Result<T>` — never throw for business errors.
 - **Infrastructure** — EF Core (`ApplicationDbContext`), repository implementations, ASP.NET Identity (`ApplicationUser`), email, JWT/auth/token services.
 - **API** — minimal-API endpoints implementing `IEndpoint` in `Endpoints/{Feature}/`. Each endpoint routes to a service and maps `Result<T>` to HTTP via `ResultExtensions`. Uses `ValidationFilter<T>` for request validation.
 

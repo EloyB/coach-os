@@ -1,3 +1,4 @@
+using CoachOS.Application.Abstractions;
 using System.Security.Cryptography;
 using System.Web;
 using CoachOS.Application.Configuration;

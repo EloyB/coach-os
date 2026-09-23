@@ -1,3 +1,4 @@
+using CoachOS.Application.Abstractions;
 using CoachOS.Application.Mappings;
 using CoachOS.Application.TrainerAvailabilities;
 using CoachOS.Application.TrainerAvailabilities.DTOs;
