@@ -1216,12 +1216,12 @@ export default function EnrollPage() {
                                 >
                                   {/* Desktop: table row */}
                                   <div className="hidden sm:grid grid-cols-[1fr_100px_100px_100px] hover:bg-gray-50/50">
-                                    <div className="px-4 py-3">
+                                    <div className="px-4 py-3 flex items-center">
                                       <div className="text-sm font-medium text-gray-900">
                                         {group.startTime} — {group.endTime}
                                       </div>
                                     </div>
-                                    <div className="flex items-center justify-center">
+                                    <div className="flex items-center justify-center py-3">
                                       <PrefButton
                                         groupKey={group.key}
                                         value={PREF_PREFERRED}
@@ -1230,7 +1230,7 @@ export default function EnrollPage() {
                                         slotLabel={slotLabel}
                                       />
                                     </div>
-                                    <div className="flex items-center justify-center">
+                                    <div className="flex items-center justify-center py-3">
                                       <PrefButton
                                         groupKey={group.key}
                                         value={PREF_AVAILABLE}
@@ -1239,7 +1239,7 @@ export default function EnrollPage() {
                                         slotLabel={slotLabel}
                                       />
                                     </div>
-                                    <div className="flex items-center justify-center">
+                                    <div className="flex items-center justify-center py-3">
                                       <PrefButton
                                         groupKey={group.key}
                                         value={PREF_UNAVAILABLE}
