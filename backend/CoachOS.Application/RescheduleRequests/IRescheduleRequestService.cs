@@ -1,9 +1,9 @@
-using CoachOS.Application.Reschedule.DTOs;
+using CoachOS.Application.RescheduleRequests.DTOs;
 using CoachOS.Domain.Models;
 
-namespace CoachOS.Application.Reschedule;
+namespace CoachOS.Application.RescheduleRequests;
 
-public interface IRescheduleService
+public interface IRescheduleRequestService
 {
     Task<Result<Guid>> RequestAsync(
         Guid assignmentId, Guid organizationId, CreateRescheduleRequest request, CancellationToken ct = default);

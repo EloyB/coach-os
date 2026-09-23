@@ -1,3 +1,4 @@
+using CoachOS.Application.Abstractions;
 using CoachOS.Application.Camps;
 using CoachOS.Application.Camps.DTOs;
 using CoachOS.Application.Payments;
@@ -20,6 +21,7 @@ public class CampServiceTests
     private Mock<IUserLookupService> _users = null!;
     private Mock<IPaymentRepository> _payments = null!;
     private Mock<IPaymentService> _paymentService = null!;
+    private Mock<IUnitOfWork> _unitOfWork = null!;
     private CampService _sut = null!;
 
     private readonly Guid _orgId = Guid.NewGuid();
@@ -36,8 +38,10 @@ public class CampServiceTests
         _users = new Mock<IUserLookupService>();
         _payments = new Mock<IPaymentRepository>();
         _paymentService = new Mock<IPaymentService>();
+        _unitOfWork = new Mock<IUnitOfWork>();
         _sut = new CampService(_camps.Object, _enrollments.Object, _forms.Object, _clubs.Object,
-            _users.Object, _payments.Object, _paymentService.Object);
+            _users.Object, _payments.Object,
+            _unitOfWork.Object, _paymentService.Object);
     }
 
     private CreateCampRequest Request() => new(
@@ -65,7 +69,7 @@ public class CampServiceTests
             It.Is<Camp>(c => c.OrganizationId == _orgId && c.Days.Count == 2
                 && c.Days.First().TrainerAssignments.Count == 1),
             It.IsAny<CancellationToken>()), Times.Once);
-        _camps.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Test]
@@ -142,7 +146,7 @@ public class CampServiceTests
 
         result.IsSuccess.Should().BeTrue();
         _camps.Verify(r => r.RemoveDays(It.Is<IEnumerable<CampDay>>(d => d.Count() == 2)), Times.Once);
-        _camps.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
         existing.Days.Should().HaveCount(1);
         existing.Days.First().Date.Should().Be(new DateOnly(2026, 5, 1));
     }

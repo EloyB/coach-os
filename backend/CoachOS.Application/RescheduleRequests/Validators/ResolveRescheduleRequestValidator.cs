@@ -1,7 +1,7 @@
-using CoachOS.Application.Reschedule.DTOs;
+using CoachOS.Application.RescheduleRequests.DTOs;
 using FluentValidation;
 
-namespace CoachOS.Application.Reschedule.Validators;
+namespace CoachOS.Application.RescheduleRequests.Validators;
 
 public class ResolveRescheduleRequestValidator : AbstractValidator<ResolveRescheduleRequest>
 {

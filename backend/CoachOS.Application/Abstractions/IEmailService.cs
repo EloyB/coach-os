@@ -1,6 +1,5 @@
-using CoachOS.Domain.Models;
 
-namespace CoachOS.Domain.Interfaces;
+namespace CoachOS.Application.Abstractions;
 
 public interface IEmailService
 {

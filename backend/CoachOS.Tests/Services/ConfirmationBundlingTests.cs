@@ -1,10 +1,10 @@
+using CoachOS.Application.Abstractions;
 using CoachOS.Application.Configuration;
 using CoachOS.Application.Planning;
 using CoachOS.Application.Pricing;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
 using CoachOS.Domain.Interfaces;
-using CoachOS.Domain.Models;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -28,6 +28,7 @@ public class ConfirmationBundlingTests
     private Mock<IPricingService> _pricingService = null!;
     private Mock<IOptions<AppOptions>> _appOptions = null!;
     private Mock<ILogger<ConfirmationOrchestrationService>> _logger = null!;
+    private Mock<IUnitOfWork> _unitOfWork = null!;
     private ConfirmationOrchestrationService _service = null!;
 
     private static readonly Guid OrgId = Guid.NewGuid();
@@ -46,12 +47,14 @@ public class ConfirmationBundlingTests
         _appOptions = new Mock<IOptions<AppOptions>>();
         _appOptions.Setup(o => o.Value).Returns(new AppOptions());
         _logger = new Mock<ILogger<ConfirmationOrchestrationService>>();
+        _unitOfWork = new Mock<IUnitOfWork>();
 
         _service = new ConfirmationOrchestrationService(
             _seriesRepo.Object,
             _assignmentRepo.Object,
             _tokenRepo.Object,
             _paymentRepo.Object,
+            _unitOfWork.Object,
             _emailService.Object,
             _pricingService.Object,
             _appOptions.Object,

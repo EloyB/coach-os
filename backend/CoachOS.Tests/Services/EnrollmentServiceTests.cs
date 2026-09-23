@@ -1,3 +1,4 @@
+using CoachOS.Application.Abstractions;
 using CoachOS.Application.Enrollments;
 using CoachOS.Application.Enrollments.DTOs;
 using CoachOS.Application.Mappings;
@@ -27,6 +28,7 @@ public class EnrollmentServiceTests
     private Mock<ILessonSeriePriceRepository> _priceRepo = null!;
     private ApplicationMapper _mapper = null!;
     private Mock<ILogger<EnrollmentService>> _logger = null!;
+    private Mock<IUnitOfWork> _unitOfWork = null!;
     private EnrollmentService _service = null!;
 
     private static readonly Guid OrgId = Guid.NewGuid();
@@ -48,6 +50,7 @@ public class EnrollmentServiceTests
         _priceRepo = new Mock<ILessonSeriePriceRepository>();
         _mapper = new ApplicationMapper();
         _logger = new Mock<ILogger<EnrollmentService>>();
+        _unitOfWork = new Mock<IUnitOfWork>();
 
         _service = new EnrollmentService(
             _enrollmentRepo.Object,
@@ -59,6 +62,7 @@ public class EnrollmentServiceTests
             _userLookup.Object,
             _emailOutboxRepository.Object,
             _priceRepo.Object,
+            _unitOfWork.Object,
             _mapper,
             _logger.Object,
             TimeProvider.System);
@@ -303,7 +307,7 @@ public class EnrollmentServiceTests
         result.IsSuccess.Should().BeTrue();
         _enrollmentFormRepo.Verify(
             r => r.AddAsync(It.IsAny<EnrollmentForm>(), It.IsAny<CancellationToken>()), Times.Once);
-        _enrollmentFormRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     // ── SubmitEnrollmentAsync ────────────────────────────────────────────────
@@ -380,8 +384,8 @@ public class EnrollmentServiceTests
                     && messages.Any(m => m.Type == EmailOutboxMessageTypes.TrainerNotification)),
                 It.IsAny<CancellationToken>()),
             Times.Once);
-        _emailOutboxRepository.Verify(
-            r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(
+            u => u.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
         _emailService.VerifyNoOtherCalls();
     }
 
@@ -417,7 +421,7 @@ public class EnrollmentServiceTests
         _enrollmentRepo.Verify(
             r => r.AddAsync(It.Is<Enrollment>(e => e.StudentName == "Anna"), It.IsAny<CancellationToken>()),
             Times.Once);
-        _enrollmentRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(u => u.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Test]
@@ -595,8 +599,8 @@ public class EnrollmentServiceTests
         // Race condition: een parallelle submitter insert hetzelfde adres tussen check en insert.
         var series = BuildActiveSeries();
         SetupSuccessfulEnrollment(series, "anna@test.be");
-        _enrollmentRepo
-            .Setup(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()))
+        _unitOfWork
+            .Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("save failed", new FakePostgresException("23505")));
 
         SubmitEnrollmentRequest request = new()
@@ -616,8 +620,8 @@ public class EnrollmentServiceTests
     {
         var series = BuildActiveSeries();
         SetupSuccessfulEnrollment(series, "anna@test.be");
-        _enrollmentRepo
-            .Setup(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()))
+        _unitOfWork
+            .Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("connection lost"));
 
         SubmitEnrollmentRequest request = new()
@@ -974,7 +978,7 @@ public class EnrollmentServiceTests
         result.Value!.ContactEmail.Should().Be("parent@example.be");
         result.Value.StudentPhone.Should().Be("0499000000");
         result.Value.IsOpenToGrouping.Should().BeFalse();
-        _enrollmentRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Test]
@@ -1055,7 +1059,7 @@ public class EnrollmentServiceTests
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().Contain(e => e.Code == ErrorCodes.Conflict);
-        _enrollmentRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Test]
@@ -1088,7 +1092,7 @@ public class EnrollmentServiceTests
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().Contain(e => e.Code == ErrorCodes.NotFound);
-        _enrollmentRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     // ── CancelEnrollmentAsync ─────────────────────────────────────────────────
@@ -1115,7 +1119,7 @@ public class EnrollmentServiceTests
 
         result.IsSuccess.Should().BeTrue();
         enrollment.Status.Should().Be(EnrollmentStatus.Cancelled);
-        _enrollmentRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Test]
@@ -1131,7 +1135,7 @@ public class EnrollmentServiceTests
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().Contain(e => e.Code == ErrorCodes.NotFound);
-        _enrollmentRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Test]
@@ -1160,7 +1164,7 @@ public class EnrollmentServiceTests
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().Contain(e => e.Code == ErrorCodes.NotFound);
         enrollment.Status.Should().Be(EnrollmentStatus.Confirmed);
-        _enrollmentRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Test]
@@ -1203,7 +1207,7 @@ public class EnrollmentServiceTests
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().Contain(e => e.Code == ErrorCodes.Validation);
-        _enrollmentRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     // ── CancelGroupAsync (atomair) ────────────────────────────────────────────
@@ -1225,7 +1229,7 @@ public class EnrollmentServiceTests
         m1.Status.Should().Be(EnrollmentStatus.Cancelled);
         m2.Status.Should().Be(EnrollmentStatus.Cancelled);
         // Eén SaveChanges over alle leden = atomair (alles-of-niets).
-        _enrollmentGroupRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Test]
@@ -1240,7 +1244,7 @@ public class EnrollmentServiceTests
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().Contain(e => e.Code == ErrorCodes.NotFound);
-        _enrollmentGroupRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Test]
@@ -1258,7 +1262,7 @@ public class EnrollmentServiceTests
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().Contain(e => e.Code == ErrorCodes.NotFound);
         m1.Status.Should().Be(EnrollmentStatus.Confirmed);
-        _enrollmentGroupRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Test]
@@ -1275,7 +1279,7 @@ public class EnrollmentServiceTests
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().Contain(e => e.Code == ErrorCodes.Validation);
-        _enrollmentGroupRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Test]
@@ -1496,6 +1500,7 @@ public class EnrollmentServiceTests
             _userLookup.Object,
             _emailOutboxRepository.Object,
             _priceRepo.Object,
+            _unitOfWork.Object,
             _mapper,
             _logger.Object,
             new TestHelpers.FixedTimeProvider(new DateTimeOffset(2026, 6, 9, 22, 30, 0, TimeSpan.Zero)));

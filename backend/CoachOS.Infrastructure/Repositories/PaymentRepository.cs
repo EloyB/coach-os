@@ -124,7 +124,4 @@ public class PaymentRepository(ApplicationDbContext context) : IPaymentRepositor
                     return (latest.Method, latest.Status);
                 });
     }
-
-    public async Task SaveChangesAsync(CancellationToken ct = default)
-        => await context.SaveChangesAsync(ct);
 }

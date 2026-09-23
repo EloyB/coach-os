@@ -210,42 +210,48 @@
       "studentEmail": "lucas.peeters@hotmail.com",
       "studentPhone": "+32472345678",
       "seriesIndex": 1,
-      "dateOfBirth": "1993-01-30"
-    },
-    {
-      "studentName": "Julie Maes",
-      "studentEmail": "julie.maes@yahoo.com",
-      "studentPhone": "+32475678901",
-      "seriesIndex": 1,
-      "dateOfBirth": "1988-09-17"
-    },
-    {
-      "studentName": "Thomas Hermans",
-      "studentEmail": "thomas.h@outlook.com",
-      "studentPhone": "+32478901234",
-      "seriesIndex": 1,
-      "dateOfBirth": "2014-06-11"
+      "dateOfBirth": "1993-01-30",
+      "enrollmentType": "group",
+      "groupMembers": [
+        {
+          "studentName": "Julie Maes",
+          "studentEmail": "julie.maes@yahoo.com",
+          "studentPhone": "+32475678901",
+          "dateOfBirth": "1988-09-17"
+        }
+      ]
     },
     {
       "studentName": "Amber Pieters",
       "studentEmail": "amber.p@gmail.com",
       "studentPhone": "+32471200001",
       "seriesIndex": 1,
-      "dateOfBirth": "1985-03-14"
-    },
-    {
-      "studentName": "Sander Verbeke",
-      "studentEmail": "sander.v@hotmail.com",
-      "studentPhone": "+32471200002",
-      "seriesIndex": 1,
-      "dateOfBirth": "1990-07-22"
+      "dateOfBirth": "1985-03-14",
+      "enrollmentType": "group",
+      "groupMembers": [
+        {
+          "studentName": "Sander Verbeke",
+          "studentEmail": "sander.v@hotmail.com",
+          "studentPhone": "+32471200002",
+          "dateOfBirth": "1990-07-22"
+        }
+      ]
     },
     {
       "studentName": "Nathalie Goossens",
       "studentEmail": "nathalie.g@outlook.com",
       "studentPhone": "+32471200003",
       "seriesIndex": 1,
-      "dateOfBirth": "2010-12-02"
+      "dateOfBirth": "2010-12-02",
+      "enrollmentType": "group",
+      "groupMembers": [
+        {
+          "studentName": "Thomas Hermans",
+          "studentEmail": "thomas.h@outlook.com",
+          "studentPhone": "+32478901234",
+          "dateOfBirth": "2014-06-11"
+        }
+      ]
     },
     {
       "studentName": "Lotte Van Damme",

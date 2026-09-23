@@ -1,7 +1,6 @@
+using CoachOS.Application.Abstractions;
 using System.Text.Json;
 using CoachOS.Domain.Entities;
-using CoachOS.Domain.Interfaces;
-using CoachOS.Domain.Models;
 using CoachOS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;

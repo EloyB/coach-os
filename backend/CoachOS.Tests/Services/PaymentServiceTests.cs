@@ -1,3 +1,4 @@
+using CoachOS.Application.Abstractions;
 using CoachOS.Application.Configuration;
 using CoachOS.Application.MollieConnect;
 using CoachOS.Application.Payments;
@@ -28,6 +29,7 @@ public class PaymentServiceTests
     private Mock<IMollieConnectService> _connect = null!;
     private Mock<IEmailService> _email = null!;
     private Mock<IPricingService> _pricing = null!;
+    private Mock<IUnitOfWork> _unitOfWork = null!;
     private PaymentService _sut = null!;
 
     private static readonly Guid OrgId = Guid.NewGuid();
@@ -68,6 +70,7 @@ public class PaymentServiceTests
         _connect = new Mock<IMollieConnectService>();
         _email = new Mock<IEmailService>();
         _pricing = new Mock<IPricingService>();
+        _unitOfWork = new Mock<IUnitOfWork>();
         SetupPrice(MatrixTotal, groupSize: 1);
         _pricing
             .Setup(p => p.CalculateForGroupAsync(
@@ -90,6 +93,7 @@ public class PaymentServiceTests
             _camps.Object,
             _campEnrollments.Object,
             _orgSettings.Object,
+            _unitOfWork.Object,
             _mollie.Object,
             _connect.Object,
             _email.Object,
@@ -431,7 +435,7 @@ public class PaymentServiceTests
         result.IsSuccess.Should().BeTrue();
         _mollie.Verify(m => m.GetPaymentAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()),
             Times.Never);
-        _payments.Verify(p => p.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Test]
@@ -574,7 +578,8 @@ public class PaymentServiceTests
         result.IsSuccess.Should().BeTrue();
         payment.Status.Should().Be(PaymentStatus.Failed);
         payment.FailureReason.Should().Be("insufficient_funds");
-        _enrollments.Verify(e => e.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+        // Enkel de payment-update wordt weggeschreven — geen tweede save voor een enrollment-bevestiging.
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     // ── RecordCampCashPaymentAsync ────────────────────────────────────────────

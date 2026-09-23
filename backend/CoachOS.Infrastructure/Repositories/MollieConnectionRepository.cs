@@ -31,9 +31,4 @@ public class MollieConnectionRepository(ApplicationDbContext context) : IMollieC
             .Where(c => c.OrganizationId == organizationId)
             .ExecuteDeleteAsync(ct);
     }
-
-    public async Task SaveChangesAsync(CancellationToken ct = default)
-    {
-        await context.SaveChangesAsync(ct);
-    }
 }

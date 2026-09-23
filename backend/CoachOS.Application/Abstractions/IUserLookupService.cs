@@ -1,4 +1,4 @@
-namespace CoachOS.Domain.Interfaces;
+namespace CoachOS.Application.Abstractions;
 
 public interface IUserLookupService
 {

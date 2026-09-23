@@ -14,6 +14,7 @@ public class OrganizationSettingsServiceTests
 {
     private Mock<IOrganizationSettingsRepository> _repo = null!;
     private Mock<ILessonRepository> _lessonRepo = null!;
+    private Mock<IUnitOfWork> _unitOfWork = null!;
     private ApplicationMapper _mapper = null!;
     private OrganizationSettingsService _sut = null!;
 
@@ -25,12 +26,13 @@ public class OrganizationSettingsServiceTests
     {
         _repo = new Mock<IOrganizationSettingsRepository>();
         _lessonRepo = new Mock<ILessonRepository>();
+        _unitOfWork = new Mock<IUnitOfWork>();
         _lessonRepo
             .Setup(r => r.CountUpcomingForTrainerAsync(
                 It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(0);
         _mapper = new ApplicationMapper();
-        _sut = new OrganizationSettingsService(_repo.Object, _lessonRepo.Object, _mapper, TimeProvider.System);
+        _sut = new OrganizationSettingsService(_repo.Object, _lessonRepo.Object, _unitOfWork.Object, _mapper, TimeProvider.System);
     }
 
     [Test]
@@ -65,7 +67,7 @@ public class OrganizationSettingsServiceTests
         _repo.Verify(r => r.AddAsync(
             It.Is<OrganizationSettings>(s => s.OrganizationId == OrgId && s.AdminsActAsTrainers),
             It.IsAny<CancellationToken>()), Times.Once);
-        _repo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Test]
@@ -87,7 +89,7 @@ public class OrganizationSettingsServiceTests
         result.IsSuccess.Should().BeTrue();
         result.Value!.AdminsActAsTrainers.Should().BeFalse();
         existing.AdminsActAsTrainers.Should().BeFalse();
-        _repo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Test]
@@ -126,6 +128,6 @@ public class OrganizationSettingsServiceTests
         result.Value!.AdminsActAsTrainers.Should().BeFalse();
         _repo.Verify(r => r.AddAsync(It.IsAny<OrganizationSettings>(), It.IsAny<CancellationToken>()), Times.Once);
         // Eén SaveChanges voor de create, één voor de update.
-        _repo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
     }
 }

@@ -1,3 +1,4 @@
+using CoachOS.Application.Abstractions;
 using System.Security.Cryptography;
 using System.Text;
 using CoachOS.Application.Configuration;
@@ -13,6 +14,7 @@ namespace CoachOS.Infrastructure.Identity;
 
 public class StudentMagicLinkService(
     IMagicLinkTokenRepository repo,
+    IUnitOfWork unitOfWork,
     IEmailService emailService,
     TokenService tokenService,
     IOptions<AppOptions> appOptions,
@@ -40,7 +42,7 @@ public class StudentMagicLinkService(
         };
 
         await repo.AddAsync(entity, ct);
-        await repo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         var url = $"{_app.StudentMagicLinkBaseUrl.TrimEnd('/')}?token={rawToken}";
 

@@ -1,4 +1,4 @@
-namespace CoachOS.Domain.Models;
+namespace CoachOS.Application.Abstractions;
 
 public sealed record EnrollmentConfirmationEmailPayload(
     string Email,

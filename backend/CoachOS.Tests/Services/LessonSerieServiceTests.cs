@@ -1,3 +1,4 @@
+using CoachOS.Application.Abstractions;
 using CoachOS.Application.LessonSerie;
 using CoachOS.Application.LessonSerie.DTOs;
 using CoachOS.Application.Mappings;
@@ -25,6 +26,7 @@ public class LessonSerieServiceTests
     private Mock<IScheduleAssignmentRepository> _scheduleAssignmentRepo = null!;
     private Mock<ITimeSlotPreferenceRepository> _timeSlotPreferenceRepo = null!;
     private Mock<ILessonInvitationRepository> _invitationRepo = null!;
+    private Mock<IUnitOfWork> _unitOfWork = null!;
     private ApplicationMapper _mapper = null!;
     private LessonSerieService _service = null!;
 
@@ -45,6 +47,7 @@ public class LessonSerieServiceTests
         _scheduleAssignmentRepo = new Mock<IScheduleAssignmentRepository>();
         _timeSlotPreferenceRepo = new Mock<ITimeSlotPreferenceRepository>();
         _invitationRepo = new Mock<ILessonInvitationRepository>();
+        _unitOfWork = new Mock<IUnitOfWork>();
         _mapper = new ApplicationMapper();
         _service = new LessonSerieService(
             _lessonSeriesRepo.Object,
@@ -57,6 +60,7 @@ public class LessonSerieServiceTests
             _scheduleAssignmentRepo.Object,
             _timeSlotPreferenceRepo.Object,
             _invitationRepo.Object,
+            _unitOfWork.Object,
             TimeProvider.System,
             _mapper,
             NullLogger<LessonSerieService>.Instance);
@@ -1326,7 +1330,7 @@ public class LessonSerieServiceTests
         series.Lessons.Select(l => l.Date).Should().BeEquivalentTo(expectedDates);
         // Elke gegenereerde les valt op maandag (app-dag 0) en erft de slot-gegevens.
         series.Lessons.Should().OnlyContain(l => ((int)l.Date.DayOfWeek + 6) % 7 == 0 && l.CourtName == "Baan 1");
-        _lessonSeriesRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Test]
@@ -1370,7 +1374,7 @@ public class LessonSerieServiceTests
         result.IsSuccess.Should().BeTrue();
         series.WeeklyTemplate.Should().HaveCount(2);
         series.WeeklyTemplate.Last().CourtName.Should().BeNull();
-        _lessonSeriesRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Test]
@@ -1399,7 +1403,7 @@ public class LessonSerieServiceTests
 
         result.IsSuccess.Should().BeTrue();
         series.WeeklyTemplate.Should().HaveCount(2);
-        _lessonSeriesRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     // ── Annuleringsmails worden afgewacht (geen fire-and-forget) ─────────────

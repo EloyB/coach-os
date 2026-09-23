@@ -1,3 +1,4 @@
+using CoachOS.Application.Abstractions;
 using CoachOS.Application.Enrollments;
 using CoachOS.Application.Enrollments.DTOs;
 using CoachOS.Application.Mappings;
@@ -31,6 +32,7 @@ public class SharedContactEmailTests
     private Mock<ILessonSeriePriceRepository> _priceRepo = null!;
     private ApplicationMapper _mapper = null!;
     private Mock<ILogger<EnrollmentService>> _logger = null!;
+    private Mock<IUnitOfWork> _unitOfWork = null!;
     private EnrollmentService _service = null!;
 
     private static readonly Guid OrgId = Guid.NewGuid();
@@ -50,6 +52,7 @@ public class SharedContactEmailTests
         _priceRepo = new Mock<ILessonSeriePriceRepository>();
         _mapper = new ApplicationMapper();
         _logger = new Mock<ILogger<EnrollmentService>>();
+        _unitOfWork = new Mock<IUnitOfWork>();
 
         // Reeks bestaat met ruime capaciteit, geen formulier, standaard org-instellingen.
         _lessonSeriesRepo
@@ -86,6 +89,7 @@ public class SharedContactEmailTests
             _userLookup.Object,
             _emailOutboxRepository.Object,
             _priceRepo.Object,
+            _unitOfWork.Object,
             _mapper,
             _logger.Object,
             TimeProvider.System);
@@ -146,7 +150,7 @@ public class SharedContactEmailTests
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().Contain(e => e.Code == ErrorCodes.Conflict);
-        _enrollmentRepo.Verify(r => r.RollbackTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(u => u.RollbackTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Test]

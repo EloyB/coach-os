@@ -64,11 +64,6 @@ public class AssignmentConfirmationTokenRepository(ApplicationDbContext context)
         await context.AssignmentConfirmationTokens.AddRangeAsync(tokens, ct);
     }
 
-    public async Task SaveChangesAsync(CancellationToken ct = default)
-    {
-        await context.SaveChangesAsync(ct);
-    }
-
     public async Task<bool> TryClaimResponseAsync(
         Guid tokenId,
         ConfirmationResponse target,

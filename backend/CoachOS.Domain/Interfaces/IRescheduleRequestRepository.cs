@@ -10,5 +10,4 @@ public interface IRescheduleRequestRepository
     Task<int> CountPendingByOrganizationAsync(Guid organizationId, CancellationToken ct = default);
     Task<bool> HasPendingForAssignmentAsync(Guid assignmentId, CancellationToken ct = default);
     Task AddAsync(RescheduleRequest request, CancellationToken ct = default);
-    Task SaveChangesAsync(CancellationToken ct = default);
 }

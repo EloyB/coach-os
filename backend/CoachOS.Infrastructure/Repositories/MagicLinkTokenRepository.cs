@@ -13,9 +13,6 @@ public class MagicLinkTokenRepository(ApplicationDbContext context) : IMagicLink
     public async Task AddAsync(MagicLinkToken token, CancellationToken ct = default)
         => await context.MagicLinkTokens.AddAsync(token, ct);
 
-    public async Task SaveChangesAsync(CancellationToken ct = default)
-        => await context.SaveChangesAsync(ct);
-
     public async Task<MagicLinkToken?> TryConsumeAsync(string tokenHash, DateTime now, CancellationToken ct = default)
     {
         // Atomic claim via conditional UPDATE. PostgreSQL lockt de row tijdens UPDATE —
