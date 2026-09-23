@@ -383,7 +383,11 @@ function EditTrainerDialog({
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent>
+      <DialogContent
+        // Voorkom dat Radix bij openen de eerste focusbare control autofocust —
+        // op mobiel klapt een net-gefocust veld/dropdown dan meteen open.
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>{t("editTitle")}</DialogTitle>
         </DialogHeader>
