@@ -123,7 +123,7 @@ public class PlanningExportServiceTests
     }
 
     [Test]
-    public async Task ExportSeriePlanningAsync_GroupAssignment_ExpandsMembersPerDate()
+    public async Task ExportSeriePlanningAsync_GroupAssignment_ListsMembersInMomentRoster()
     {
         ArrangeSeries();
 
@@ -158,11 +158,12 @@ public class PlanningExportServiceTests
 
         PlanningExportModel model = await CaptureModelAsync();
 
-        // 2 leden × 4 maandagen.
-        model.ScheduledLessons.Should().HaveCount(2 * MondaysInMay2026);
-        model.ScheduledLessons.Should().OnlyContain(s =>
-            s.GroupName == "Groep A" && s.Status == "Bevestigd");
-        model.ScheduledLessons.Select(s => s.StudentName).Distinct()
+        // Eén terugkerend lesmoment met beide groepsleden (niet uitgevouwen per datum).
+        model.MomentRosters.Should().ContainSingle();
+        var roster = model.MomentRosters[0];
+        roster.Players.Should().OnlyContain(p =>
+            p.GroupName == "Groep A" && p.Status == "Bevestigd");
+        roster.Players.Select(p => p.Name)
             .Should().BeEquivalentTo(new[] { "Tom", "Lisa" });
     }
 
@@ -191,7 +192,7 @@ public class PlanningExportServiceTests
 
         PlanningExportModel model = await CaptureModelAsync();
 
-        model.ScheduledLessons.Should().BeEmpty();
+        model.MomentRosters.Should().BeEmpty();
     }
 
     [Test]
