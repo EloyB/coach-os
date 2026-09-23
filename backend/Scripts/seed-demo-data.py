@@ -371,19 +371,22 @@ def simple_enrollments(api: ApiClient, students: list[dict],
     count = 0
     for student in students:
         target = series_ids[student["seriesIndex"] % len(series_ids)]
-        result = api.post(
-            f"/public/lessonseries/{target}/enroll",
-            {
-                "studentName":  student["studentName"],
-                "studentEmail": student["studentEmail"],
-                "studentPhone": student["studentPhone"],
-                "dateOfBirth":  student["dateOfBirth"],
-                "responses":    [],
-            },
-            auth=False,
-        )
+        body = {
+            "studentName":    student["studentName"],
+            "studentEmail":   student["studentEmail"],
+            "studentPhone":   student["studentPhone"],
+            "dateOfBirth":    student["dateOfBirth"],
+            "enrollmentType": student.get("enrollmentType", "solo"),
+            "responses":      [],
+        }
+        # Groepsinschrijving (bv. voor een reeks met allowSoloEnrollment=false).
+        if student.get("groupMembers"):
+            body["groupMembers"] = [
+                {**m, "responses": []} for m in student["groupMembers"]
+            ]
+        result = api.post(f"/public/lessonseries/{target}/enroll", body, auth=False)
         if result:
-            count += 1
+            count += 1 + len(body.get("groupMembers", []))
     print(f"   Created {count} enrollments")
 
 
