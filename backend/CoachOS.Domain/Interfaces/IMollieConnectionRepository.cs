@@ -13,6 +13,4 @@ public interface IMollieConnectionRepository
     Task AddAsync(MollieConnection connection, CancellationToken ct = default);
 
     Task DeleteByOrganizationAsync(Guid organizationId, CancellationToken ct = default);
-
-    Task SaveChangesAsync(CancellationToken ct = default);
 }

@@ -8,7 +8,8 @@ namespace CoachOS.Application.Reschedule;
 
 public class RescheduleService(
     IRescheduleRequestRepository rescheduleRepo,
-    IScheduleAssignmentRepository assignmentRepo) : IRescheduleService
+    IScheduleAssignmentRepository assignmentRepo,
+    IUnitOfWork unitOfWork) : IRescheduleService
 {
     private static readonly string[] DayNames = ["Zondag", "Maandag", "Dinsdag", "Woensdag", "Donderdag", "Vrijdag", "Zaterdag"];
 
@@ -41,7 +42,7 @@ public class RescheduleService(
         };
 
         await rescheduleRepo.AddAsync(reschedule, ct);
-        await rescheduleRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         return Result<Guid>.Ok(reschedule.Id);
     }
@@ -96,7 +97,7 @@ public class RescheduleService(
         reschedule.ResolvedByUserId = resolvedByUserId;
         reschedule.ResolverNote = request.Note;
 
-        await rescheduleRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         return Result.Ok();
     }

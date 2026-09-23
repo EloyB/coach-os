@@ -37,6 +37,7 @@ public class StudentConfirmationServiceTests
     private Mock<IEnrollmentRepository> _enrollmentRepo = null!;
     private Mock<IEmailService> _emailService = null!;
     private Mock<ILogger<StudentConfirmationService>> _logger = null!;
+    private Mock<IUnitOfWork> _unitOfWork = null!;
     private StudentConfirmationService _sut = null!;
 
     private static readonly Guid OrgId = Guid.NewGuid();
@@ -74,6 +75,7 @@ public class StudentConfirmationServiceTests
         _enrollmentRepo = new Mock<IEnrollmentRepository>();
         _emailService = new Mock<IEmailService>();
         _logger = new Mock<ILogger<StudentConfirmationService>>();
+        _unitOfWork = new Mock<IUnitOfWork>();
 
         // Default: prijsmatrix levert een vast totaal dat losstaat van
         // LessonSerie.Price, zodat tests kunnen bewijzen dat het bedrag uit
@@ -88,6 +90,7 @@ public class StudentConfirmationServiceTests
             _paymentService.Object,
             _pricingService.Object,
             _enrollmentRepo.Object,
+            _unitOfWork.Object,
             _emailService.Object,
             _logger.Object,
             TimeProvider.System);
@@ -154,6 +157,7 @@ public class StudentConfirmationServiceTests
             _paymentService.Object,
             _pricingService.Object,
             _enrollmentRepo.Object,
+            _unitOfWork.Object,
             _emailService.Object,
             _logger.Object,
             fixedTime);

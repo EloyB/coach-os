@@ -37,6 +37,7 @@ public class LessonCourtConflictTests
     private Mock<IMollieConnectionRepository> _mollieConnectionRepo = null!;
     private Mock<IScheduleAssignmentRepository> _scheduleAssignmentRepo = null!;
     private Mock<ITimeSlotPreferenceRepository> _timeSlotPreferenceRepo = null!;
+    private Mock<IUnitOfWork> _unitOfWork = null!;
     private ApplicationMapper _mapper = null!;
 
     private LessonSerieService _serieService = null!;
@@ -63,6 +64,7 @@ public class LessonCourtConflictTests
         _mollieConnectionRepo = new Mock<IMollieConnectionRepository>();
         _scheduleAssignmentRepo = new Mock<IScheduleAssignmentRepository>();
         _timeSlotPreferenceRepo = new Mock<ITimeSlotPreferenceRepository>();
+        _unitOfWork = new Mock<IUnitOfWork>();
         _mapper = new ApplicationMapper();
 
         _serieService = new LessonSerieService(
@@ -76,6 +78,7 @@ public class LessonCourtConflictTests
             _scheduleAssignmentRepo.Object,
             _timeSlotPreferenceRepo.Object,
             _invitationRepo.Object,
+            _unitOfWork.Object,
             TimeProvider.System,
             _mapper,
             NullLogger<LessonSerieService>.Instance);
@@ -84,6 +87,7 @@ public class LessonCourtConflictTests
             _lessonRepo.Object,
             _invitationRepo.Object,
             _tennisClubRepo.Object,
+            _unitOfWork.Object,
             _userLookup.Object,
             _emailService.Object,
             _mapper,
@@ -99,6 +103,7 @@ public class LessonCourtConflictTests
             _invitationRepo.Object,
             _enrollmentRepo.Object,
             _serieRepo.Object,
+            _unitOfWork.Object,
             _emailService.Object,
             NullLogger<LessonRescheduleService>.Instance);
 
@@ -346,7 +351,7 @@ public class LessonCourtConflictTests
         result.IsSuccess.Should().BeFalse();
         result.Errors[0].Code.Should().Be(ErrorCodes.Conflict);
         result.Errors[0].Message.Should().Contain("Voorjaarslessen");
-        _lessonRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Test]

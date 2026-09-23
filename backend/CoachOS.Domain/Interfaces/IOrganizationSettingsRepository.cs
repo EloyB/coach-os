@@ -11,5 +11,4 @@ public interface IOrganizationSettingsRepository
     Task<OrganizationSettings?> GetByOrganizationReadOnlyAsync(Guid organizationId, CancellationToken ct = default);
 
     Task AddAsync(OrganizationSettings settings, CancellationToken ct = default);
-    Task SaveChangesAsync(CancellationToken ct = default);
 }

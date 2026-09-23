@@ -61,6 +61,4 @@ public interface IPaymentRepository
     /// </summary>
     Task<Dictionary<Guid, (PaymentMethod? Method, PaymentStatus Status)>> GetLatestMethodAndStatusByCampEnrollmentIdsAsync(
         IEnumerable<Guid> campEnrollmentIds, CancellationToken ct = default);
-
-    Task SaveChangesAsync(CancellationToken ct = default);
 }

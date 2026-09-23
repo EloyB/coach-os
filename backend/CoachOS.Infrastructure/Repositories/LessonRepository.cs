@@ -193,11 +193,6 @@ public class LessonRepository(ApplicationDbContext context, TimeProvider timePro
         return Task.CompletedTask;
     }
 
-    public async Task SaveChangesAsync(CancellationToken ct = default)
-    {
-        await context.SaveChangesAsync(ct);
-    }
-
     public async Task<Lesson?> GetByIdInOrganizationAsync(
         Guid lessonId, Guid organizationId, CancellationToken ct = default)
     {

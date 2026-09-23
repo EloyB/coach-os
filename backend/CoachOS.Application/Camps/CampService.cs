@@ -16,6 +16,7 @@ public class CampService(
     ITennisClubRepository clubs,
     IUserLookupService users,
     IPaymentRepository payments,
+    IUnitOfWork unitOfWork,
     IPaymentService paymentService) : ICampService
 {
     private const string DateFormat = "yyyy-MM-dd";
@@ -56,7 +57,7 @@ public class CampService(
 
         Camp camp = BuildCamp(organizationId, request);
         await camps.AddAsync(camp, ct);
-        await camps.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
         return Result<Guid>.Ok(camp.Id);
     }
 
@@ -86,7 +87,7 @@ public class CampService(
         foreach (CampDay day in BuildDays(organizationId, request.Days))
             camp.Days.Add(day);
 
-        await camps.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
         return Result.Ok();
     }
 
@@ -95,7 +96,7 @@ public class CampService(
         Camp? camp = await camps.GetByIdWithDetailsAsync(id, organizationId, ct);
         if (camp is null) return Result.Fail(new Error(ErrorCodes.NotFound, "Kamp niet gevonden."));
         camp.IsActive = false;
-        await camps.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
         return Result.Ok();
     }
 
@@ -149,7 +150,7 @@ public class CampService(
             order++;
         }
 
-        await forms.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
         return Result<Guid>.Ok(form.Id);
     }
 

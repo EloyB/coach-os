@@ -14,6 +14,7 @@ public class MollieConnectService(
     IMollieClient mollieClient,
     IMollieConnectionRepository connections,
     IOAuthStateRepository states,
+    IUnitOfWork unitOfWork,
     ITokenProtector protector,
     IOptions<MollieOptions> options,
     TimeProvider timeProvider,
@@ -47,7 +48,7 @@ public class MollieConnectService(
             ExpiresAt = utcNow.AddMinutes(StateTtlMinutes),
         };
         await states.AddAsync(entity, ct);
-        await states.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         string url = BuildAuthorizationUrl(state, redirectUri);
         return Result<StartConnectResponse>.Ok(new StartConnectResponse(url));
@@ -79,7 +80,7 @@ public class MollieConnectService(
         if (stored.ExpiresAt < utcNow)
         {
             await states.DeleteAsync(stored, ct);
-            await states.SaveChangesAsync(ct);
+            await unitOfWork.SaveChangesAsync(ct);
             return Result<Guid>.Fail(new Error(
                 ErrorCodes.Unauthorized,
                 "Deze koppelingspoging is verlopen, probeer opnieuw."));
@@ -90,7 +91,7 @@ public class MollieConnectService(
         {
             // State opbruiken zodat dezelfde code niet opnieuw kan worden geprobeerd.
             await states.DeleteAsync(stored, ct);
-            await states.SaveChangesAsync(ct);
+            await unitOfWork.SaveChangesAsync(ct);
             return Result<Guid>.Fail(tokenResult.Errors);
         }
 
@@ -99,7 +100,7 @@ public class MollieConnectService(
         if (!orgResult.IsSuccess)
         {
             await states.DeleteAsync(stored, ct);
-            await states.SaveChangesAsync(ct);
+            await unitOfWork.SaveChangesAsync(ct);
             return Result<Guid>.Fail(orgResult.Errors);
         }
 
@@ -122,7 +123,7 @@ public class MollieConnectService(
         connection.ConnectedAt = utcNow;
 
         await states.DeleteAsync(stored, ct);
-        await connections.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         return Result<Guid>.Ok(stored.OrganizationId);
     }
@@ -153,7 +154,7 @@ public class MollieConnectService(
         }
 
         await connections.DeleteByOrganizationAsync(organizationId, ct);
-        await connections.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
         return Result.Ok();
     }
 
@@ -228,7 +229,7 @@ public class MollieConnectService(
         connection.AccessTokenEncrypted = protector.Protect(tokens.AccessToken);
         connection.RefreshTokenEncrypted = protector.Protect(tokens.RefreshToken);
         connection.AccessTokenExpiresAt = utcNow.AddSeconds(tokens.ExpiresInSeconds);
-        await connections.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         return Result<string>.Ok(tokens.AccessToken);
     }

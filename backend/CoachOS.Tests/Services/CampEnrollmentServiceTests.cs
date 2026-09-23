@@ -25,6 +25,7 @@ public class CampEnrollmentServiceTests
     private Mock<IPaymentRepository> _paymentRepo = null!;
     private Mock<IMollieConnectService> _mollieConnect = null!;
     private Mock<IEmailService> _email = null!;
+    private Mock<IUnitOfWork> _unitOfWork = null!;
     private CampEnrollmentService _sut = null!;
 
     private readonly Guid _campId = Guid.NewGuid();
@@ -40,8 +41,10 @@ public class CampEnrollmentServiceTests
         _paymentRepo = new Mock<IPaymentRepository>();
         _mollieConnect = new Mock<IMollieConnectService>();
         _email = new Mock<IEmailService>();
+        _unitOfWork = new Mock<IUnitOfWork>();
         _sut = new CampEnrollmentService(_camps.Object, _enrollments.Object, _forms.Object,
-            _payments.Object, _paymentRepo.Object, _mollieConnect.Object, _email.Object,
+            _payments.Object, _paymentRepo.Object,
+            _unitOfWork.Object, _mollieConnect.Object, _email.Object,
             NullLogger<CampEnrollmentService>.Instance);
     }
 

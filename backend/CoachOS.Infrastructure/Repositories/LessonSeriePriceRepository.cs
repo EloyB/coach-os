@@ -40,9 +40,4 @@ public class LessonSeriePriceRepository(ApplicationDbContext context) : ILessonS
         context.LessonSeriePrices.RemoveRange(existing);
         await context.LessonSeriePrices.AddRangeAsync(prices, ct);
     }
-
-    public async Task SaveChangesAsync(CancellationToken ct = default)
-    {
-        await context.SaveChangesAsync(ct);
-    }
 }

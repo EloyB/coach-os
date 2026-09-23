@@ -19,6 +19,7 @@ public class StudentConfirmationService(
     Payments.IPaymentService paymentService,
     IPricingService pricingService,
     IEnrollmentRepository enrollmentRepo,
+    IUnitOfWork unitOfWork,
     IEmailService emailService,
     ILogger<StudentConfirmationService> logger,
     TimeProvider timeProvider) : IStudentConfirmationService
@@ -91,7 +92,7 @@ public class StudentConfirmationService(
             await paymentRepo.AddAsync(cashPayment, ct);
 
             ConfirmEnrollmentStatuses(assignment, EnrollmentStatus.PendingPayment);
-            await paymentRepo.SaveChangesAsync(ct);
+            await unitOfWork.SaveChangesAsync(ct);
 
             try
             {
@@ -117,7 +118,7 @@ public class StudentConfirmationService(
         // De webhook (of de status-poll vanuit de thank-you-page) flipt enrollment
         // naar Confirmed bij geslaagde betaling.
         ConfirmEnrollmentStatuses(assignment, EnrollmentStatus.PendingPayment);
-        await paymentRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         var paymentResult = await paymentService.CreatePaymentForEnrollmentAsync(
             token.EnrollmentId, token.OrganizationId, ct);
@@ -160,7 +161,7 @@ public class StudentConfirmationService(
 
         var assignment = token.ScheduleAssignment;
         assignment.Status = ScheduleAssignmentStatus.Declined;
-        await tokenRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         var slots = await GetAvailableSlotsForAssignmentAsync(token, ct);
         return Result<List<AvailableSlotDto>>.Ok(slots);
@@ -279,7 +280,7 @@ public class StudentConfirmationService(
             await paymentRepo.AddAsync(cashPayment, ct);
 
             ConfirmEnrollmentStatuses(oldAssignment, EnrollmentStatus.PendingPayment);
-            await paymentRepo.SaveChangesAsync(ct);
+            await unitOfWork.SaveChangesAsync(ct);
 
             try
             {
@@ -303,7 +304,7 @@ public class StudentConfirmationService(
 
         // Online: zelfde flow als ConfirmAsync — PendingPayment + Mollie checkout.
         ConfirmEnrollmentStatuses(oldAssignment, EnrollmentStatus.PendingPayment);
-        await paymentRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         var paymentResult = await paymentService.CreatePaymentForEnrollmentAsync(
             token.EnrollmentId, token.OrganizationId, ct);
@@ -422,7 +423,7 @@ public class StudentConfirmationService(
         }
 
         // paymentRepo en enrollmentRepo delen dezelfde scoped DbContext → één save flusht beide.
-        await paymentRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         // Cash-pad sloeg finalisatie bewust over bij bevestigen; nu de betaling rond is,
         // de reeks alsnog finaliseren indien alle deelnemers gereageerd hebben.
@@ -625,7 +626,7 @@ public class StudentConfirmationService(
         if (series.PlanningStatus == PlanningStatus.AwaitingConfirmation)
         {
             series.PlanningStatus = PlanningStatus.Scheduled;
-            await seriesRepo.SaveChangesAsync(ct);
+            await unitOfWork.SaveChangesAsync(ct);
             logger.LogInformation("Reeks {SeriesId} is volledig bevestigd — status Scheduled.", seriesId);
         }
     }

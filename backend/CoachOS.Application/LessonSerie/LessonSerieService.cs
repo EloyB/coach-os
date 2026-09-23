@@ -20,6 +20,7 @@ public class LessonSerieService(
     IScheduleAssignmentRepository scheduleAssignmentRepo,
     ITimeSlotPreferenceRepository timeSlotPreferenceRepo,
     ILessonInvitationRepository lessonInvitationRepo,
+    IUnitOfWork unitOfWork,
     TimeProvider timeProvider,
     ApplicationMapper mapper,
     ILogger<LessonSerieService> logger) : ILessonSerieService
@@ -175,7 +176,7 @@ public class LessonSerieService(
         }
 
         await lessonSeriesRepo.AddAsync(series, ct);
-        await lessonSeriesRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         return Result<Guid>.Ok(series.Id);
     }
@@ -214,7 +215,7 @@ public class LessonSerieService(
         series.AcceptManualPayment = request.AcceptManualPayment;
 
         await lessonSeriesRepo.UpdateAsync(series, ct);
-        await lessonSeriesRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         var lessonCount = await lessonRepo.CountBySeriesIdAsync(series.Id, ct);
 
@@ -244,7 +245,7 @@ public class LessonSerieService(
         await lessonSeriesRepo.DeleteWeeklyTemplateRangeAsync(series.WeeklyTemplate, ct);
         await lessonRepo.DeleteRangeAsync(series.Lessons, ct);
         await lessonSeriesRepo.DeleteAsync(series, ct);
-        await lessonSeriesRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         return Result.Ok();
     }
@@ -283,7 +284,7 @@ public class LessonSerieService(
 
         Domain.Entities.Lesson lesson = mapper.ToLesson(request, series);
         await lessonRepo.AddAsync(lesson, ct);
-        await lessonRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         return Result<Guid>.Ok(lesson.Id);
     }
@@ -364,7 +365,7 @@ public class LessonSerieService(
             });
         }
 
-        await lessonSeriesRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
         return Result<Guid>.Ok(entry.Id);
     }
 
@@ -498,7 +499,7 @@ public class LessonSerieService(
             }
         }
 
-        await lessonRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         if (newlyCancelled && lesson.LessonSerieId.HasValue
             && lesson.WeeklyTemplateEntryId is Guid weeklyTemplateEntryId)
@@ -646,7 +647,7 @@ public class LessonSerieService(
             return Result.Fail(new Error(ErrorCodes.Conflict, "Verwijderen niet mogelijk: er zijn nog inschrijvingen op dit lesmoment."));
 
         await lessonRepo.DeleteAsync(lesson, ct);
-        await lessonRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         return Result.Ok();
     }
@@ -725,7 +726,7 @@ public class LessonSerieService(
         timeSlotPreferenceRepo.RemoveRange(preferenceStubs);
         await lessonRepo.DeleteRangeAsync(slotLessons, ct);
         await lessonSeriesRepo.DeleteWeeklyTemplateRangeAsync([entry], ct);
-        await lessonSeriesRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         return Result.Ok();
     }
@@ -793,7 +794,7 @@ public class LessonSerieService(
             lesson.MaxStudents = request.MaxStudents;
         }
 
-        await lessonSeriesRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
         return Result.Ok();
     }
 

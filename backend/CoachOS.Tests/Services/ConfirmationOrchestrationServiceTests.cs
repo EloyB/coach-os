@@ -24,6 +24,7 @@ public class ConfirmationOrchestrationServiceTests
     private Mock<IPricingService> _pricingService = null!;
     private Mock<IOptions<AppOptions>> _appOptions = null!;
     private Mock<ILogger<ConfirmationOrchestrationService>> _logger = null!;
+    private Mock<IUnitOfWork> _unitOfWork = null!;
     private ConfirmationOrchestrationService _service = null!;
 
     private static readonly Guid OrgId = Guid.NewGuid();
@@ -59,12 +60,14 @@ public class ConfirmationOrchestrationServiceTests
         _appOptions = new Mock<IOptions<AppOptions>>();
         _appOptions.Setup(o => o.Value).Returns(new AppOptions());
         _logger = new Mock<ILogger<ConfirmationOrchestrationService>>();
+        _unitOfWork = new Mock<IUnitOfWork>();
 
         _service = new ConfirmationOrchestrationService(
             _seriesRepo.Object,
             _assignmentRepo.Object,
             _tokenRepo.Object,
             _paymentRepo.Object,
+            _unitOfWork.Object,
             _emailService.Object,
             _pricingService.Object,
             _appOptions.Object,

@@ -8,5 +8,4 @@ public interface ICampEnrollmentFormRepository
     Task<CampEnrollmentForm?> GetByCampIdReadOnlyAsync(Guid campId, CancellationToken ct = default);
     Task AddAsync(CampEnrollmentForm form, CancellationToken ct = default);
     void RemoveField(CampFormField field);
-    Task SaveChangesAsync(CancellationToken ct = default);
 }
