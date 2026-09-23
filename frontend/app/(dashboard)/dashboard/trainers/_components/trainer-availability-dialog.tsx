@@ -94,7 +94,13 @@ export function TrainerAvailabilityDialog({
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-lg" aria-describedby={undefined}>
+      <DialogContent
+        className="max-w-lg"
+        aria-describedby={undefined}
+        // Voorkom dat Radix bij openen de eerste focusbare control (de Club-select)
+        // autofocust — op mobiel klapt die native dropdown dan meteen open.
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>
             {t("availabilityTitle", {
