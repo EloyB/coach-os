@@ -55,7 +55,7 @@ function Label({
   return (
     <label className="block text-[11.5px] font-semibold text-ink mb-1.5">
       {children}
-      {required && <span className="text-tennis-green ml-0.5">*</span>}
+      {required && <span className="text-red-400 ml-0.5">*</span>}
     </label>
   );
 }
