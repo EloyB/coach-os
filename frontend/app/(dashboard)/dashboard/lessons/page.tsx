@@ -41,7 +41,7 @@ function EmptyState() {
   );
 }
 
-function SeriesRow({ series, index }: { series: LessonSeriesDto; index: number }) {
+function SeriesRow({ series }: { series: LessonSeriesDto }) {
   const enrolled = series.enrolledCount ?? 0;
   const capacity = series.totalCapacity ?? 0;
   const hasCapacity = capacity > 0;
@@ -66,7 +66,7 @@ function SeriesRow({ series, index }: { series: LessonSeriesDto; index: number }
         <div className="min-w-0">
           <p className="text-ink font-semibold text-[12px] m-0">{series.name}</p>
           <Mono className="text-[10.5px] text-ink-3 mt-0.5 block">
-            {series.lessonCount} lesmomenten · reeks #{index + 1}
+            {series.lessonCount} lesmomenten
           </Mono>
         </div>
         <div className="lg:hidden shrink-0">{status}</div>
@@ -162,8 +162,8 @@ export default function LessonsPage() {
             <span>Prijs</span>
             <span className="text-right">Status</span>
           </div>
-          {series.map((s, i) => (
-            <SeriesRow key={s.id} series={s} index={i} />
+          {series.map((s) => (
+            <SeriesRow key={s.id} series={s} />
           ))}
         </div>
       )}
