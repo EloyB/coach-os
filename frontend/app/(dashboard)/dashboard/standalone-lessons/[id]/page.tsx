@@ -16,6 +16,7 @@ import {
   Plus,
   AlertTriangle,
   X,
+  MoreVertical,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -45,8 +46,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { DatePicker } from "@/components/ui/date-picker";
-import { SlashLabel } from "@/components/ui/slash-label";
 import { Mono } from "@/components/ui/mono";
 import { formatDateNL } from "@/lib/date-utils";
 import { inputClass } from "@/lib/styles";
@@ -270,6 +275,16 @@ export default function StandaloneLessonDetailPage({
   const [rescheduleStart, setRescheduleStart] = useState("");
   const [rescheduleEnd, setRescheduleEnd] = useState("");
   const [rescheduleReason, setRescheduleReason] = useState("");
+  const [actionsMenuOpen, setActionsMenuOpen] = useState(false);
+
+  function openReschedule() {
+    if (!lesson) return;
+    setRescheduleDate(lesson.date);
+    setRescheduleStart(lesson.startTime);
+    setRescheduleEnd(lesson.endTime);
+    setRescheduleReason("");
+    setRescheduleOpen(true);
+  }
 
   const cancelMutation = useMutation({
     mutationFn: (reason?: string) => cancelStandaloneLesson(id, reason),
@@ -331,42 +346,70 @@ export default function StandaloneLessonDetailPage({
         >
           <ChevronLeft size={14} /> {t("back")}
         </Link>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <SlashLabel>
-              <span className="capitalize">{dayLong(lesson.date)}</span> ·{" "}
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="text-lg font-bold text-ink tracking-tight">
+              <span className="capitalize">{dayLong(lesson.date)}</span>{" "}
               {formatDateNL(lesson.date)} · {lesson.startTime}
-            </SlashLabel>
-            <h1 className="text-lg font-bold text-ink tracking-tight mt-0.5">
-              {lesson.courtName}
             </h1>
+            <p className="text-xs text-ink-3 mt-0.5">{lesson.courtName}</p>
           </div>
           {lesson.isCancelled ? (
-            <span className="text-[11px] px-2.5 py-1 rounded-full bg-red-50 text-red-600 font-semibold inline-flex items-center gap-1.5">
+            <span className="shrink-0 text-[11px] px-2.5 py-1 rounded-full bg-red-50 text-red-600 font-semibold inline-flex items-center gap-1.5">
               <AlertTriangle size={11} /> {t("detailCancelled")}
             </span>
           ) : (
-            <div className="flex items-center gap-1.5">
+            <div className="flex shrink-0 items-center gap-2">
+              {/* Desktop: deftige knoppen */}
               <button
                 type="button"
-                onClick={() => {
-                  setRescheduleDate(lesson.date);
-                  setRescheduleStart(lesson.startTime);
-                  setRescheduleEnd(lesson.endTime);
-                  setRescheduleReason("");
-                  setRescheduleOpen(true);
-                }}
-                className="text-[11.5px] text-tennis-green hover:bg-tennis-green/5 rounded-md px-3 py-1.5 inline-flex items-center gap-1.5"
+                onClick={openReschedule}
+                className="hidden sm:inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors"
               >
-                <CalendarDays size={12} /> {t("detailReschedule")}
+                <CalendarDays size={13} /> {t("detailReschedule")}
               </button>
               <button
                 type="button"
                 onClick={() => setCancelOpen(true)}
-                className="text-[11.5px] text-red-600 hover:bg-red-50 rounded-md px-3 py-1.5 inline-flex items-center gap-1.5"
+                className="hidden sm:inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors"
               >
-                <X size={12} /> {t("detailCancel")}
+                <X size={13} /> {t("detailCancel")}
               </button>
+
+              {/* Mobiel: ⋮-menu met dezelfde acties */}
+              <Popover open={actionsMenuOpen} onOpenChange={setActionsMenuOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label="Meer acties"
+                    className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 sm:hidden"
+                  >
+                    <MoreVertical size={16} />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-52 p-1 text-sm">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActionsMenuOpen(false);
+                      openReschedule();
+                    }}
+                    className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                  >
+                    <CalendarDays size={14} /> {t("detailReschedule")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActionsMenuOpen(false);
+                      setCancelOpen(true);
+                    }}
+                    className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-red-600 hover:bg-red-50"
+                  >
+                    <X size={14} /> {t("detailCancel")}
+                  </button>
+                </PopoverContent>
+              </Popover>
             </div>
           )}
         </div>
