@@ -208,9 +208,17 @@ export function EnrollmentDetailDialog({
               </div>
             )}
             <dl className="space-y-3.5">
-              <DetailRow label={t("contact")} value={contact} />
+              <DetailRow
+                label={t("contact")}
+                value={contact}
+                href={contactEmailAddr ? `mailto:${contactEmailAddr}` : undefined}
+              />
               {enrollment.studentPhone && (
-                <DetailRow label="Telefoon" value={enrollment.studentPhone} />
+                <DetailRow
+                  label="Telefoon"
+                  value={enrollment.studentPhone}
+                  href={`tel:${enrollment.studentPhone}`}
+                />
               )}
               <DetailRow
                 label={t("birthDate")}
@@ -398,13 +406,32 @@ export function EnrollmentDetailDialog({
   );
 }
 
-function DetailRow({ label, value }: { label: string; value: string }) {
+function DetailRow({
+  label,
+  value,
+  href,
+}: {
+  label: string;
+  value: string;
+  href?: string;
+}) {
   return (
     <div>
       <dt className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
         {label}
       </dt>
-      <dd className="mt-0.5 text-sm text-gray-800">{value}</dd>
+      <dd className="mt-0.5 text-sm text-gray-800">
+        {href ? (
+          <a
+            href={href}
+            className="break-all text-tennis-green underline decoration-tennis-green/30 underline-offset-2 hover:decoration-tennis-green"
+          >
+            {value}
+          </a>
+        ) : (
+          value
+        )}
+      </dd>
     </div>
   );
 }
