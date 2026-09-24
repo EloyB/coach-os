@@ -125,7 +125,9 @@ export function PriceMatrixSection({
     <div className="bg-white rounded-xl shadow-sm shadow-gray-100 overflow-hidden">
       <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <Euro size={14} className="text-tennis-green" />
+          <div className="w-6 h-6 rounded-md bg-tennis-green/10 flex items-center justify-center shrink-0">
+            <Euro size={13} className="text-tennis-green" />
+          </div>
           <div>
             <h2 className="text-sm font-semibold text-gray-800">Prijsopties</h2>
             <p className="text-xs text-gray-500">
