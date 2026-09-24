@@ -741,6 +741,186 @@ export default function PlanningPage({
     );
   }
 
+  // Mobiele agenda-lijst voor één dag — hergebruikt dezelfde slot-logica als de
+  // desktop-grid (status, capaciteit, toewijs-modus, personen), maar als kaartjes.
+  const renderMobileDay = (dayIndex: number) => {
+    const daySlots = planning.timeSlots
+      .filter((s) => s.dayOfWeek === dayIndex)
+      .sort((a, b) => a.startTime.localeCompare(b.startTime));
+
+    if (daySlots.length === 0) {
+      return (
+        <p className="py-8 text-center text-sm text-gray-400">
+          {t("noSlotsThisDay")}
+        </p>
+      );
+    }
+
+    return (
+      <div className="space-y-2">
+        {daySlots.map((slot) => {
+          const slotAssignments = assignmentsBySlot.get(slot.id) ?? [];
+          const currentCount = getSlotCurrentCount(slot.id);
+          const hasProposed = slotHasProposed(slot.id);
+          const hasAwaiting = slotAssignments.some(
+            (a) => a.status === "AwaitingConfirmation"
+          );
+          const hasConfirmed = slotAssignments.some((a) => a.status === "Confirmed");
+          const hasAutoMerged = slotAssignments.some((a) => a.isAutoMerged);
+          const lockedAssignment = slotAssignments.find((a) => a.isLocked);
+          const slotStatus: "concept" | "offered" | "confirmed" | "empty" =
+            hasProposed
+              ? "concept"
+              : hasAwaiting
+                ? "offered"
+                : hasConfirmed
+                  ? "confirmed"
+                  : "empty";
+
+          const assignPref = assignTarget?.prefs[slot.id];
+          const declinedForTarget =
+            assignTarget != null && declinedSlotsForTarget.has(slot.id);
+          const assignFits =
+            assignTarget != null &&
+            slot.maxCapacity - currentCount >= assignTarget.size;
+          const assignable = assignTarget != null && assignFits;
+
+          const railColor = assignTarget
+            ? !assignFits
+              ? "bg-gray-300"
+              : assignPref === "Preferred"
+                ? "bg-green-500"
+                : assignPref === "Available"
+                  ? "bg-blue-500"
+                  : "bg-gray-300"
+            : slotStatus === "concept"
+              ? "bg-amber-400"
+              : slotStatus === "offered"
+                ? "bg-blue-400"
+                : slotStatus === "confirmed"
+                  ? "bg-tennis-green"
+                  : "bg-gray-300";
+          const cardBg = assignTarget
+            ? !assignFits
+              ? "bg-gray-50 border-gray-200"
+              : assignPref === "Preferred"
+                ? "bg-green-50 border-green-300"
+                : assignPref === "Available"
+                  ? "bg-blue-50 border-blue-300"
+                  : "bg-white border-gray-200"
+            : "bg-white border-gray-100";
+          const countTextColor =
+            slotStatus === "concept"
+              ? "text-amber-700"
+              : slotStatus === "offered"
+                ? "text-blue-700"
+                : slotStatus === "confirmed"
+                  ? "text-green-700"
+                  : "text-gray-400";
+
+          const handleClick = () => {
+            if (assignTarget) {
+              if (!assignFits) return;
+              if (declinedForTarget) {
+                setDeclineConfirmSlotId(slot.id);
+                return;
+              }
+              assignMutation.mutate(
+                assignTarget.kind === "solo"
+                  ? { enrollmentId: assignTarget.enrollmentId, slotId: slot.id }
+                  : { groupId: assignTarget.groupId, slotId: slot.id }
+              );
+              return;
+            }
+            setOpenSlotId(slot.id);
+          };
+
+          const people = getSlotPeople(slot.id);
+
+          return (
+            <div
+              key={slot.id}
+              role="button"
+              tabIndex={0}
+              onClick={handleClick}
+              className={`flex items-stretch gap-3 rounded-xl border ${cardBg} p-3 transition-shadow ${
+                assignTarget
+                  ? assignable
+                    ? "cursor-pointer ring-2 ring-offset-1 ring-tennis-green/30"
+                    : "cursor-not-allowed opacity-60"
+                  : "cursor-pointer hover:shadow-sm"
+              }`}
+            >
+              <span className={`w-1 shrink-0 rounded-full ${railColor}`} />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-semibold text-gray-900">
+                    {slot.startTime} – {slot.endTime}
+                  </span>
+                  <span
+                    className={`flex items-center gap-1 shrink-0 text-xs font-medium ${countTextColor}`}
+                  >
+                    {lockedAssignment && (
+                      <Lock size={11} className="text-tennis-green" />
+                    )}
+                    {currentCount}/{slot.maxCapacity}
+                  </span>
+                </div>
+                <p className="mt-0.5 truncate text-xs text-gray-500">
+                  {declinedForTarget ? (
+                    <span className="inline-flex items-center gap-1 text-amber-700">
+                      <Ban size={11} /> {t("declinedBadge")}
+                    </span>
+                  ) : (
+                    <>
+                      {[slot.courtName, slot.trainerName]
+                        .filter(Boolean)
+                        .join(" · ") || t("noCourtTrainer")}
+                      {hasAutoMerged && (
+                        <span className="ml-1 italic text-gray-400">auto</span>
+                      )}
+                    </>
+                  )}
+                </p>
+                {people.length > 0 ? (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {people.map((p, i) => {
+                      const c = getAvatarColor(p.name);
+                      return (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openPersonDetail(p.enrollmentId);
+                          }}
+                          className="flex items-center gap-1 rounded-full bg-gray-50 py-0.5 pl-0.5 pr-2 hover:bg-gray-100"
+                        >
+                          <span
+                            className={`flex h-5 w-5 items-center justify-center rounded-full ${c.bg} ${c.text} text-[8px] font-bold`}
+                          >
+                            {getInitials(p.name)}
+                          </span>
+                          <span className="text-[11px] text-gray-700">
+                            {p.name}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="mt-1 text-[11px] text-gray-400">
+                    {t("noOneAssigned")}
+                  </p>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   // ─── Render ─────────────────────────────────────────────────────────────
 
   return (
@@ -956,7 +1136,7 @@ export default function PlanningPage({
       <div className="flex-1 flex flex-col sm:flex-row overflow-visible sm:overflow-hidden">
         {/* Calendar area */}
         <div className="flex-1 p-4 sm:p-6 overflow-visible sm:overflow-auto">
-          {/* Dag-tabs — alleen op gsm; kiest welke dag de 1-dag-grid toont. */}
+          {/* Dag-tabs — alleen op gsm; kiest welke dag de agenda-lijst toont. */}
           {isMobile && daysWithSlots.length > 0 && (
             <div className="mb-3 flex gap-1.5 overflow-x-auto pb-1">
               {daysWithSlots.map((d) => (
@@ -975,10 +1155,12 @@ export default function PlanningPage({
               ))}
             </div>
           )}
+          {isMobile ? (
+            renderMobileDay(selectedDay)
+          ) : (
           <CalendarGrid
             slots={[]}
             readOnly
-            singleDayIndex={isMobile ? selectedDay : undefined}
             startHour={calStartHour}
             endHour={calEndHour}
             renderDayOverlay={(dayIndex) => {
@@ -1304,6 +1486,7 @@ export default function PlanningPage({
               );
             }}
           />
+          )}
 
         </div>
 

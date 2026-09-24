@@ -172,8 +172,6 @@ interface CalendarGridProps {
   gridBodyRef?: React.RefObject<HTMLDivElement | null>;
   /** Render extra content inside each day column (e.g. hover cells, add buttons) */
   renderDayOverlay?: (dayIndex: number) => React.ReactNode;
-  /** Render only a single day column (0=Mon..6=Sun) — used for the mobile day view */
-  singleDayIndex?: number;
   /** Render extra content inside the grid body wrapper (e.g. drag ghost) */
   renderGridOverlay?: () => React.ReactNode;
   /** Slot event handlers */
@@ -198,14 +196,11 @@ export function CalendarGrid({
   onSlotClick,
   onSlotRemove,
   className,
-  singleDayIndex,
 }: CalendarGridProps) {
   const effectiveStartHour = startHourProp ?? START_HOUR;
   const effectiveEndHour = endHourProp ?? END_HOUR;
   const totalHeight = (effectiveEndHour - effectiveStartHour) * ROW_HEIGHT;
-  const isSingle = singleDayIndex != null;
-  const dayIndices = isSingle ? [singleDayIndex] : [0, 1, 2, 3, 4, 5, 6];
-  const gridColumns = isSingle ? `48px 1fr` : `60px repeat(7, 1fr)`;
+  const gridColumns = `60px repeat(7, 1fr)`;
   const visibleHours = Array.from(
     { length: effectiveEndHour - Math.ceil(effectiveStartHour) },
     (_, i) => Math.ceil(effectiveStartHour) + i
@@ -215,24 +210,24 @@ export function CalendarGrid({
     <div
       className={`bg-paper rounded-xl border border-rule overflow-x-auto select-none ${className ?? ""}`}
     >
-      <div style={isSingle ? undefined : { minWidth: 1940 }}>
+      <div style={{ minWidth: 1940 }}>
       {/* Day headers */}
       <div
         className="border-b border-rule bg-[#fbfaf6]"
         style={{ display: "grid", gridTemplateColumns: gridColumns }}
       >
         <div className="px-2 py-3" />
-        {dayIndices.map((dayIdx) => (
+        {DAY_NAMES_SHORT.map((day, i) => (
           <div
-            key={dayIdx}
+            key={i}
             className="px-3 py-2 text-center border-l border-rule"
           >
             <div className="flex justify-between items-baseline px-1">
               <span className="text-[10.5px] font-bold text-ink uppercase tracking-[0.06em]">
-                {isSingle ? DAY_NAMES_FULL[dayIdx] : DAY_NAMES_SHORT[dayIdx]}
+                {day}
               </span>
               <span className="text-[10.5px] text-ink-3 font-mono">
-                {dayDates?.[dayIdx] ?? ""}
+                {dayDates?.[i] ?? ""}
               </span>
             </div>
           </div>
@@ -262,7 +257,7 @@ export function CalendarGrid({
           </div>
 
           {/* Day columns */}
-          {dayIndices.map((dayIndex) => {
+          {DAY_NAMES_SHORT.map((_, dayIndex) => {
             const daySlots = slots
               .filter((s) => s.dayOfWeek === dayIndex)
               .sort((a, b) => a.startTime.localeCompare(b.startTime));
