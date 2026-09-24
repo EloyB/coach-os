@@ -569,7 +569,7 @@ export default function StandaloneLessonDetailPage({
               />
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <div>
+              <div className="min-w-0">
                 <label className="block text-xs font-medium text-gray-600 mb-1">
                   {t("detailRescheduleStart")}
                 </label>
@@ -577,10 +577,10 @@ export default function StandaloneLessonDetailPage({
                   type="time"
                   value={rescheduleStart}
                   onChange={(e) => setRescheduleStart(e.target.value)}
-                  className={inputClass}
+                  className={inputClass + " appearance-none min-w-0"}
                 />
               </div>
-              <div>
+              <div className="min-w-0">
                 <label className="block text-xs font-medium text-gray-600 mb-1">
                   {t("detailRescheduleEnd")}
                 </label>
@@ -588,7 +588,7 @@ export default function StandaloneLessonDetailPage({
                   type="time"
                   value={rescheduleEnd}
                   onChange={(e) => setRescheduleEnd(e.target.value)}
-                  className={inputClass}
+                  className={inputClass + " appearance-none min-w-0"}
                 />
               </div>
             </div>
