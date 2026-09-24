@@ -933,7 +933,7 @@ export default function PlanningPage({
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 min-w-0">
           <Link
             href={`/dashboard/lessons/${id}`}
-            className="text-sm text-gray-500 hover:text-tennis-green flex items-center gap-1 shrink-0"
+            className="text-sm text-gray-500 hover:text-tennis-green inline-flex items-center gap-1 shrink-0 w-full sm:w-auto py-1 sm:py-0 mb-1 sm:mb-0"
           >
             <ArrowLeft size={16} />
             {t("backToSeries")}
