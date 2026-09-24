@@ -68,6 +68,11 @@ import { getAuthUser } from "@/lib/auth";
 import { FieldError } from "@/components/forms/field-error";
 import { DatePicker } from "@/components/ui/date-picker";
 import { NativeSelect } from "@/components/ui/native-select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { inputClass } from "@/lib/styles";
 import { formatDateShort, formatDateNL } from "@/lib/date-utils";
 import { PriceMatrixSection } from "./_components/price-matrix-section";
@@ -1047,22 +1052,52 @@ function LessonWeekView({
     calEndHour = Math.min(24, Math.ceil(maxMin / 60) + 1);
   }
 
+  // Mobiele agenda: lessen van de huidige week gegroepeerd per dag (chronologisch).
+  const agendaDays = currentWeek.days
+    .map((date) => ({
+      date,
+      heading: new Date(`${date}T00:00:00`)
+        .toLocaleDateString("nl-BE", {
+          weekday: "long",
+          day: "numeric",
+          month: "short",
+        })
+        .replace(/\./g, ""),
+      dayLessons: lessons
+        .filter((l) => l.date === date)
+        .sort((a, b) => a.startTime.localeCompare(b.startTime)),
+    }))
+    .filter((d) => d.dayLessons.length > 0);
+
   return (
     <div>
       {/* Header with pagination */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2.5">
-          <h2 className="text-sm font-semibold text-gray-800">Lesmomenten</h2>
-          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-tennis-green/10 text-tennis-green text-xs font-bold">
-            {lessons.length}
+      <div className="flex items-start justify-between mb-4 gap-2">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2.5">
+            <h2 className="text-sm font-semibold text-gray-800">Lesmomenten</h2>
+            <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-tennis-green/10 text-tennis-green text-xs font-bold">
+              {lessons.length}
+            </span>
+          </div>
+          {/* Datumbereik onder de titel — enkel op gsm */}
+          <span className="sm:hidden block text-xs text-gray-400 whitespace-nowrap mt-1">
+            {formatDateShort(currentWeek.startDate)} –{" "}
+            {formatDateShort(currentWeek.endDate)}
           </span>
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-500">
-            Week {weekIndex + 1} van {weeks.length}
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-xs text-gray-500 whitespace-nowrap">
+            <span className="sm:hidden">
+              {weekIndex + 1}/{weeks.length}
+            </span>
+            <span className="hidden sm:inline">
+              Week {weekIndex + 1} van {weeks.length}
+            </span>
           </span>
-          <span className="text-xs text-gray-400">
+          {/* Datumbereik naast Week x van x — enkel op desktop */}
+          <span className="hidden sm:inline text-xs text-gray-400 whitespace-nowrap">
             {formatDateShort(currentWeek.startDate)} –{" "}
             {formatDateShort(currentWeek.endDate)}
           </span>
@@ -1089,18 +1124,84 @@ function LessonWeekView({
         </div>
       </div>
 
-      {/* Calendar grid — click slot to edit */}
-      <CalendarGrid
-        slots={weekSlots}
-        readOnly
-        dayDates={dayDates}
-        startHour={calStartHour}
-        endHour={calEndHour}
-        onSlotClick={(slot) => {
-          const lesson = lessons.find((l) => l.id === slot.id);
-          if (lesson) setEditingLesson(lesson);
-        }}
-      />
+      {/* Mobiel: agenda-lijst per dag (native, verticaal scrollen) */}
+      <div className="sm:hidden">
+        {agendaDays.length === 0 ? (
+          <p className="py-8 text-center text-sm text-gray-400">
+            Geen lesmomenten deze week.
+          </p>
+        ) : (
+          <div className="space-y-4">
+            {agendaDays.map((d) => (
+              <div key={d.date}>
+                <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                  {d.heading}
+                </p>
+                <div className="space-y-2">
+                  {d.dayLessons.map((l) => {
+                    const color = getTrainerColor(l.trainerId ?? null);
+                    return (
+                      <button
+                        key={l.id}
+                        type="button"
+                        onClick={() => setEditingLesson(l)}
+                        className="flex w-full items-stretch gap-3 rounded-xl border border-gray-100 bg-white p-3 text-left transition-colors hover:border-gray-200"
+                      >
+                        <span
+                          className="w-1 shrink-0 rounded-full"
+                          style={{ backgroundColor: color.border }}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <span
+                              className={`text-sm font-semibold ${
+                                l.isCancelled
+                                  ? "text-gray-400 line-through"
+                                  : "text-gray-900"
+                              }`}
+                            >
+                              {l.startTime} – {l.endTime}
+                            </span>
+                            <span className="shrink-0 text-[11px] text-gray-400">
+                              {l.maxStudents} max
+                            </span>
+                          </div>
+                          <p className="mt-0.5 truncate text-xs text-gray-500">
+                            {l.courtName}
+                            {l.trainerId
+                              ? ` · ${trainerMap.get(l.trainerId) ?? "—"}`
+                              : ""}
+                          </p>
+                          {l.isCancelled && (
+                            <p className="mt-0.5 text-[11px] text-red-500">
+                              Geannuleerd
+                            </p>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Desktop: kalender-grid — klik een slot om te bewerken */}
+      <div className="hidden sm:block">
+        <CalendarGrid
+          slots={weekSlots}
+          readOnly
+          dayDates={dayDates}
+          startHour={calStartHour}
+          endHour={calEndHour}
+          onSlotClick={(slot) => {
+            const lesson = lessons.find((l) => l.id === slot.id);
+            if (lesson) setEditingLesson(lesson);
+          }}
+        />
+      </div>
 
       {/* Add week-slot dialog */}
       {/* Edit lesson dialog */}
@@ -1503,6 +1604,7 @@ export default function LessonSeriesDetailPage({
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [actionsMenuOpen, setActionsMenuOpen] = useState(false);
 
   useEffect(() => {
     setIsAdmin(getAuthUser()?.role === "Admin");
@@ -1567,7 +1669,7 @@ export default function LessonSeriesDetailPage({
         <div className="space-y-5">
           {/* ── Section 1: Series info card ── */}
           <div className="bg-white rounded-xl shadow-sm shadow-gray-100 p-6">
-            <div className="flex items-start justify-between gap-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2.5 flex-wrap mb-1.5">
                   <h1 className="text-xl font-bold text-gray-900 leading-tight">
@@ -1610,18 +1712,20 @@ export default function LessonSeriesDetailPage({
               </div>
 
               {!editing ? (
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-2 sm:shrink-0">
                   <Link
                     href={`/dashboard/lessons/${id}/planning`}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-tennis-green text-white text-xs font-medium hover:bg-tennis-green/90 transition-colors"
+                    className="flex flex-1 justify-center sm:flex-none sm:justify-start items-center gap-1.5 px-3 py-1.5 rounded-lg bg-tennis-green text-white text-xs font-medium hover:bg-tennis-green/90 transition-colors"
                   >
                     <CalendarDays size={12} />
                     Plan lessen
                   </Link>
+
+                  {/* Desktop: secundaire acties inline */}
                   <button
                     onClick={() => exportMutation.mutate()}
                     disabled={exportMutation.isPending}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                    className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     <Download size={12} />
                     {exportMutation.isPending ? "Exporteren…" : "Exporteer naar Excel"}
@@ -1629,12 +1733,52 @@ export default function LessonSeriesDetailPage({
                   {isAdmin && (
                     <button
                       onClick={() => setEditing(true)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+                      className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
                     >
                       <Pencil size={12} />
                       Bewerken
                     </button>
                   )}
+
+                  {/* Mobiel: secundaire acties in een ⋯-menu */}
+                  <Popover open={actionsMenuOpen} onOpenChange={setActionsMenuOpen}>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label="Meer acties"
+                        className="sm:hidden flex items-center justify-center w-8 h-8 shrink-0 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors"
+                      >
+                        <MoreVertical size={16} />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent align="end" className="w-52 p-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActionsMenuOpen(false);
+                          exportMutation.mutate();
+                        }}
+                        disabled={exportMutation.isPending}
+                        className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm text-gray-700 hover:bg-gray-50 text-left disabled:opacity-60"
+                      >
+                        <Download size={14} />
+                        {exportMutation.isPending ? "Exporteren…" : "Exporteer naar Excel"}
+                      </button>
+                      {isAdmin && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActionsMenuOpen(false);
+                            setEditing(true);
+                          }}
+                          className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm text-gray-700 hover:bg-gray-50 text-left"
+                        >
+                          <Pencil size={14} />
+                          Bewerken
+                        </button>
+                      )}
+                    </PopoverContent>
+                  </Popover>
                 </div>
               ) : (
                 <button

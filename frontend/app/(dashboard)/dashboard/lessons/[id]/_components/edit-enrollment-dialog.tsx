@@ -91,7 +91,13 @@ export function EditEnrollmentDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent onClick={(e) => e.stopPropagation()} className="sm:max-w-lg">
+      <DialogContent
+        onClick={(e) => e.stopPropagation()}
+        className="sm:max-w-lg"
+        // Voorkom dat Radix bij openen het eerste veld autofocust — op gsm klapt
+        // dan meteen het toetsenbord/dropdown open.
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>Inschrijving aanpassen</DialogTitle>
           <DialogDescription>

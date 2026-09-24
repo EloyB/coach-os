@@ -146,7 +146,7 @@ export function CampFormBuilder({ campId }: { campId: string }) {
   return (
     <div className="bg-paper border border-rule rounded-xl overflow-hidden">
       <div className="px-5 py-4 border-b border-rule flex items-center gap-2.5">
-        <div className="w-6 h-6 rounded-md bg-tennis-green/10 flex items-center justify-center">
+        <div className="w-6 h-6 shrink-0 rounded-md bg-tennis-green/10 flex items-center justify-center">
           <ClipboardList size={13} className="text-tennis-green" />
         </div>
         <div>

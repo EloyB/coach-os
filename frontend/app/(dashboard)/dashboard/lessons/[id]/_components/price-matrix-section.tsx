@@ -11,6 +11,14 @@ import {
   type LessonSeriePriceRequest,
 } from "@/lib/api/lessonSeriePrices";
 import { inputClass } from "@/lib/styles";
+import { localId } from "@/lib/local-id";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type PriceDraft = {
   id: string;
@@ -25,15 +33,6 @@ function toDraft(p: LessonSeriePriceDto, index: number): PriceDraft {
     label: p.label,
     description: p.description ?? "",
     totalPrice: String(p.totalPrice),
-  };
-}
-
-function newDraft(): PriceDraft {
-  return {
-    id: `new-${crypto.randomUUID()}`,
-    label: "",
-    description: "",
-    totalPrice: "",
   };
 }
 
@@ -54,6 +53,10 @@ export function PriceMatrixSection({
   const [drafts, setDrafts] = useState<PriceDraft[]>([]);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+  const [newLabel, setNewLabel] = useState("");
+  const [newPrice, setNewPrice] = useState("");
+  const [newDescription, setNewDescription] = useState("");
 
   const { data: prices, isLoading } = useQuery({
     queryKey: ["lessonSeriePrices", seriesId],
@@ -71,28 +74,24 @@ export function PriceMatrixSection({
     setDirty(true);
   }
 
-  function add() {
-    setDrafts((prev) => [...prev, newDraft()]);
-    setDirty(true);
-  }
-
   function remove(id: string) {
     setDrafts((prev) => prev.filter((p) => p.id !== id));
     setDirty(true);
   }
 
-  async function handleSave() {
+  // Slaat de volledige lijst op (de API vervangt alle opties in één keer).
+  async function persist(list: PriceDraft[]): Promise<boolean> {
     const payload: LessonSeriePriceRequest[] = [];
 
-    for (const [index, draft] of drafts.entries()) {
+    for (const [index, draft] of list.entries()) {
       if (!draft.label.trim()) {
         toast.error("Elke prijsoptie heeft een naam nodig.");
-        return;
+        return false;
       }
       const amount = Number(draft.totalPrice);
       if (Number.isNaN(amount) || amount < 0) {
         toast.error(`Ongeldig bedrag bij ${draft.label}.`);
-        return;
+        return false;
       }
 
       payload.push({
@@ -114,10 +113,47 @@ export function PriceMatrixSection({
       );
       queryClient.invalidateQueries({ queryKey: ["lessonSeriePrices", seriesId] });
       setDirty(false);
+      return true;
     } catch {
       // Foutmelding komt al van de axios interceptor
+      return false;
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleSave() {
+    await persist(drafts);
+  }
+
+  // Nieuwe optie via dialog: voeg toe én sla meteen op, zodat je niet naar de
+  // opslaan-knop in de header hoeft te scrollen.
+  async function handleAddSubmit() {
+    const label = newLabel.trim();
+    if (!label) {
+      toast.error("Geef de prijsoptie een naam.");
+      return;
+    }
+    const amount = Number(newPrice);
+    if (Number.isNaN(amount) || amount < 0) {
+      toast.error("Geef een geldige prijs.");
+      return;
+    }
+
+    const option: PriceDraft = {
+      id: `new-${localId()}`,
+      label,
+      description: newDescription.trim(),
+      totalPrice: newPrice,
+    };
+    const next = [...drafts, option];
+    const ok = await persist(next);
+    if (ok) {
+      setDrafts(next);
+      setAddOpen(false);
+      setNewLabel("");
+      setNewPrice("");
+      setNewDescription("");
     }
   }
 
@@ -125,7 +161,9 @@ export function PriceMatrixSection({
     <div className="bg-white rounded-xl shadow-sm shadow-gray-100 overflow-hidden">
       <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <Euro size={14} className="text-tennis-green" />
+          <div className="w-6 h-6 rounded-md bg-tennis-green/10 flex items-center justify-center shrink-0">
+            <Euro size={13} className="text-tennis-green" />
+          </div>
           <div>
             <h2 className="text-sm font-semibold text-gray-800">Prijsopties</h2>
             <p className="text-xs text-gray-500">
@@ -217,8 +255,8 @@ export function PriceMatrixSection({
 
           <button
             type="button"
-            onClick={add}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-dashed border-gray-300 text-xs font-medium text-gray-600 hover:border-tennis-green hover:text-tennis-green transition-colors"
+            onClick={() => setAddOpen(true)}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-tennis-green text-white text-xs font-semibold hover:bg-tennis-green/90 transition-colors"
           >
             <Plus size={14} /> Optie toevoegen
           </button>
@@ -230,6 +268,78 @@ export function PriceMatrixSection({
           )}
         </div>
       )}
+
+      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+        <DialogContent
+          className="sm:max-w-md"
+          onOpenAutoFocus={(e) => e.preventDefault()}
+        >
+          <DialogHeader>
+            <DialogTitle>Prijsoptie toevoegen</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_8rem]">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">
+                  Naam
+                </label>
+                <input
+                  className={inputClass}
+                  value={newLabel}
+                  placeholder="bv. Standaardtarief, Jeugd, Duo"
+                  onChange={(e) => setNewLabel(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">
+                  Prijs
+                </label>
+                <div className="relative">
+                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400">
+                    €
+                  </span>
+                  <input
+                    type="number"
+                    min={0}
+                    step={0.01}
+                    className={inputClass + " pl-6"}
+                    value={newPrice}
+                    onChange={(e) => setNewPrice(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">
+                Beschrijving
+              </label>
+              <textarea
+                className={inputClass + " min-h-16"}
+                value={newDescription}
+                placeholder="Optioneel — voor wie of wanneer geldt dit tarief?"
+                onChange={(e) => setNewDescription(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <button
+              type="button"
+              onClick={() => setAddOpen(false)}
+              className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+            >
+              Annuleren
+            </button>
+            <button
+              type="button"
+              onClick={handleAddSubmit}
+              disabled={saving}
+              className="rounded-lg bg-tennis-green px-4 py-2 text-sm font-semibold text-white hover:bg-tennis-green/90 disabled:opacity-50"
+            >
+              {saving ? "Bezig…" : "Toevoegen"}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
