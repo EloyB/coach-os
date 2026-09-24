@@ -137,27 +137,8 @@ export function CampDaysEditor({ days, onChange, trainers }: CampDaysEditorProps
               key={day.date}
               className="border border-gray-100 rounded-xl p-4 bg-[#FAFAF8]"
             >
-              <div className="mb-3 flex items-center justify-between gap-2">
-                <div className="text-[13px] font-bold text-tennis-green">
-                  {formatDayHeading(day.date)}
-                </div>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setAddDialog({
-                      date: day.date,
-                      trainerId: "",
-                      start: day.startTime,
-                      end: day.endTime,
-                    })
-                  }
-                  disabled={available.length === 0}
-                  aria-label={t("addTrainer")}
-                  title={t("addTrainer")}
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-tennis-green text-white transition-colors hover:bg-tennis-green/90 disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  <Plus size={16} />
-                </button>
+              <div className="mb-3 text-[13px] font-bold text-tennis-green">
+                {formatDayHeading(day.date)}
               </div>
 
               {/* Camp hours */}
@@ -185,10 +166,34 @@ export function CampDaysEditor({ days, onChange, trainers }: CampDaysEditorProps
               </div>
 
               {/* Trainers present */}
-              <p className="text-[10.5px] uppercase tracking-[0.04em] text-gray-400 mb-1.5">
-                {t("dayTrainers")}
-              </p>
+              <div className="mb-1.5 flex items-center justify-between gap-2">
+                <p className="text-[10.5px] uppercase tracking-[0.04em] text-gray-400">
+                  {t("dayTrainers")}
+                </p>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setAddDialog({
+                      date: day.date,
+                      trainerId: "",
+                      start: day.startTime,
+                      end: day.endTime,
+                    })
+                  }
+                  disabled={available.length === 0}
+                  aria-label={t("addTrainer")}
+                  title={t("addTrainer")}
+                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-500 transition-colors hover:bg-gray-50 hover:text-tennis-green disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <Plus size={13} />
+                </button>
+              </div>
               <div className="space-y-2">
+                {day.trainers.length === 0 && (
+                  <p className="text-[11px] text-gray-400 py-1">
+                    {t("dayNoTrainersPlanned")}
+                  </p>
+                )}
                 {day.trainers.map((tr) => {
                   const key = `${day.date}:${tr.trainerId}`;
                   const isEditing = editingTimes === key;

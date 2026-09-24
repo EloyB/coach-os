@@ -697,6 +697,7 @@
     "dayEndTime": "Eindtijd",
     "dayHours": "Kampuren",
     "dayTrainers": "Trainers",
+    "dayNoTrainersPlanned": "Nog geen trainers gepland op deze dag.",
     "addTrainer": "Trainer toevoegen",
     "removeTrainer": "Trainer verwijderen",
     "editTrainerTimes": "Uren aanpassen",
