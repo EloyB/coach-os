@@ -17,6 +17,7 @@ import {
 } from "@/components/calendar/calendar-grid";
 import type { WizardSlot } from "../_types";
 import { SlotEditPopover } from "./slot-edit-popover";
+import { localId } from "@/lib/local-id";
 
 const DRAG_THRESHOLD = 5;
 
@@ -228,7 +229,7 @@ export function CalendarWeekView({
     onChange([
       ...slots,
       {
-        id: crypto.randomUUID(),
+        id: localId(),
         dayOfWeek: slot.dayOfWeek,
         startTime: slot.startTime,
         endTime: slot.endTime,
@@ -259,7 +260,7 @@ export function CalendarWeekView({
     onChange([
       ...slots,
       {
-        id: crypto.randomUUID(),
+        id: localId(),
         dayOfWeek: dayIndex,
         startTime: formatTime(clampedStart),
         endTime: formatTime(clampedEnd),

@@ -11,6 +11,7 @@ import {
   type LessonSeriePriceRequest,
 } from "@/lib/api/lessonSeriePrices";
 import { inputClass } from "@/lib/styles";
+import { localId } from "@/lib/local-id";
 
 type PriceDraft = {
   id: string;
@@ -30,7 +31,7 @@ function toDraft(p: LessonSeriePriceDto, index: number): PriceDraft {
 
 function newDraft(): PriceDraft {
   return {
-    id: `new-${crypto.randomUUID()}`,
+    id: `new-${localId()}`,
     label: "",
     description: "",
     totalPrice: "",
