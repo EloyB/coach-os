@@ -1052,6 +1052,23 @@ function LessonWeekView({
     calEndHour = Math.min(24, Math.ceil(maxMin / 60) + 1);
   }
 
+  // Mobiele agenda: lessen van de huidige week gegroepeerd per dag (chronologisch).
+  const agendaDays = currentWeek.days
+    .map((date) => ({
+      date,
+      heading: new Date(`${date}T00:00:00`)
+        .toLocaleDateString("nl-BE", {
+          weekday: "long",
+          day: "numeric",
+          month: "short",
+        })
+        .replace(/\./g, ""),
+      dayLessons: lessons
+        .filter((l) => l.date === date)
+        .sort((a, b) => a.startTime.localeCompare(b.startTime)),
+    }))
+    .filter((d) => d.dayLessons.length > 0);
+
   return (
     <div>
       {/* Header with pagination */}
@@ -1107,18 +1124,84 @@ function LessonWeekView({
         </div>
       </div>
 
-      {/* Calendar grid — click slot to edit */}
-      <CalendarGrid
-        slots={weekSlots}
-        readOnly
-        dayDates={dayDates}
-        startHour={calStartHour}
-        endHour={calEndHour}
-        onSlotClick={(slot) => {
-          const lesson = lessons.find((l) => l.id === slot.id);
-          if (lesson) setEditingLesson(lesson);
-        }}
-      />
+      {/* Mobiel: agenda-lijst per dag (native, verticaal scrollen) */}
+      <div className="sm:hidden">
+        {agendaDays.length === 0 ? (
+          <p className="py-8 text-center text-sm text-gray-400">
+            Geen lesmomenten deze week.
+          </p>
+        ) : (
+          <div className="space-y-4">
+            {agendaDays.map((d) => (
+              <div key={d.date}>
+                <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                  {d.heading}
+                </p>
+                <div className="space-y-2">
+                  {d.dayLessons.map((l) => {
+                    const color = getTrainerColor(l.trainerId ?? null);
+                    return (
+                      <button
+                        key={l.id}
+                        type="button"
+                        onClick={() => setEditingLesson(l)}
+                        className="flex w-full items-stretch gap-3 rounded-xl border border-gray-100 bg-white p-3 text-left transition-colors hover:border-gray-200"
+                      >
+                        <span
+                          className="w-1 shrink-0 rounded-full"
+                          style={{ backgroundColor: color.border }}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <span
+                              className={`text-sm font-semibold ${
+                                l.isCancelled
+                                  ? "text-gray-400 line-through"
+                                  : "text-gray-900"
+                              }`}
+                            >
+                              {l.startTime} – {l.endTime}
+                            </span>
+                            <span className="shrink-0 text-[11px] text-gray-400">
+                              {l.maxStudents} max
+                            </span>
+                          </div>
+                          <p className="mt-0.5 truncate text-xs text-gray-500">
+                            {l.courtName}
+                            {l.trainerId
+                              ? ` · ${trainerMap.get(l.trainerId) ?? "—"}`
+                              : ""}
+                          </p>
+                          {l.isCancelled && (
+                            <p className="mt-0.5 text-[11px] text-red-500">
+                              Geannuleerd
+                            </p>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Desktop: kalender-grid — klik een slot om te bewerken */}
+      <div className="hidden sm:block">
+        <CalendarGrid
+          slots={weekSlots}
+          readOnly
+          dayDates={dayDates}
+          startHour={calStartHour}
+          endHour={calEndHour}
+          onSlotClick={(slot) => {
+            const lesson = lessons.find((l) => l.id === slot.id);
+            if (lesson) setEditingLesson(lesson);
+          }}
+        />
+      </div>
 
       {/* Add week-slot dialog */}
       {/* Edit lesson dialog */}
