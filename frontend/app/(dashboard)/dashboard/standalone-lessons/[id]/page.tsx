@@ -196,7 +196,7 @@ function AddInvitationRow({ lessonId }: { lessonId: string }) {
   }
 
   return (
-    <div className="flex items-center gap-2 px-3 py-2.5 bg-canvas/60">
+    <div className="flex flex-col gap-2 px-3 py-2.5 bg-canvas/60 sm:flex-row sm:items-center">
       <input
         type="email"
         autoFocus
@@ -204,26 +204,28 @@ function AddInvitationRow({ lessonId }: { lessonId: string }) {
         onChange={(e) => setEmail(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && submit()}
         placeholder={t("detailInvitePlaceholder")}
-        className={inputClass + " text-[12px] flex-1"}
+        className={inputClass + " text-[12px] sm:flex-1"}
       />
-      <button
-        type="button"
-        onClick={submit}
-        disabled={addMutation.isPending}
-        className="px-3 py-1.5 bg-ink text-white text-[11.5px] font-semibold rounded-md disabled:opacity-50"
-      >
-        {t("detailInviteSubmit")}
-      </button>
-      <button
-        type="button"
-        onClick={() => {
-          setOpen(false);
-          setEmail("");
-        }}
-        className="px-2 py-1.5 text-[11.5px] text-ink-3 hover:text-ink"
-      >
-        {t("detailInviteCancel")}
-      </button>
+      <div className="flex items-center justify-end gap-2">
+        <button
+          type="button"
+          onClick={submit}
+          disabled={addMutation.isPending}
+          className="px-3 py-1.5 bg-ink text-white text-[11.5px] font-semibold rounded-md disabled:opacity-50"
+        >
+          {t("detailInviteSubmit")}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setOpen(false);
+            setEmail("");
+          }}
+          className="px-2 py-1.5 text-[11.5px] text-ink-3 hover:text-ink"
+        >
+          {t("detailInviteCancel")}
+        </button>
+      </div>
     </div>
   );
 }
