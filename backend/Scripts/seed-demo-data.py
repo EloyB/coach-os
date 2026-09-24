@@ -35,6 +35,11 @@ DATA_FILE = SCRIPT_DIR / "seed-data.json"
 
 # ── HTTP ─────────────────────────────────────────────────────────────────────
 
+# Every failed request lands here; main() exits non-zero when it is not empty so
+# that drift between seed data and validators breaks the reset-flow loudly.
+FAILED_REQUESTS: list[str] = []
+
+
 @dataclass
 class ApiClient:
     base: str
@@ -83,10 +88,12 @@ class ApiClient:
                 err_body = e.read().decode("utf-8", errors="replace")
                 print(f"  ERROR {e.code} on {method} {path}: {err_body}",
                       file=sys.stderr)
+                FAILED_REQUESTS.append(f"{e.code} {method} {path}: {err_body}")
                 return None
             except urllib.error.URLError as e:
                 self.last_status = None
                 print(f"  ERROR on {method} {path}: {e.reason}", file=sys.stderr)
+                FAILED_REQUESTS.append(f"{method} {path}: {e.reason}")
                 return None
         return None
 
@@ -161,8 +168,12 @@ def authenticate(api: ApiClient, admin: dict) -> dict | None:
 
     if not auth or not auth.get("token"):
         print("   Registration failed - user may already exist. Trying login...")
+        failures_before_login = len(FAILED_REQUESTS)
         auth = api.post("/auth/login", {
             "email": admin["email"], "password": admin["password"]}, auth=False)
+        if auth and auth.get("token") and failures_before_login:
+            # Register mislukte enkel omdat de admin al bestond — geen echte fout.
+            FAILED_REQUESTS.pop(failures_before_login - 1)
 
     if not auth or not auth.get("token"):
         print("   Cannot authenticate. Exiting.", file=sys.stderr)
@@ -371,19 +382,22 @@ def simple_enrollments(api: ApiClient, students: list[dict],
     count = 0
     for student in students:
         target = series_ids[student["seriesIndex"] % len(series_ids)]
-        result = api.post(
-            f"/public/lessonseries/{target}/enroll",
-            {
-                "studentName":  student["studentName"],
-                "studentEmail": student["studentEmail"],
-                "studentPhone": student["studentPhone"],
-                "dateOfBirth":  student["dateOfBirth"],
-                "responses":    [],
-            },
-            auth=False,
-        )
+        body = {
+            "studentName":    student["studentName"],
+            "studentEmail":   student["studentEmail"],
+            "studentPhone":   student["studentPhone"],
+            "dateOfBirth":    student["dateOfBirth"],
+            "enrollmentType": student.get("enrollmentType", "solo"),
+            "responses":      [],
+        }
+        # Groepsinschrijving (bv. voor een reeks met allowSoloEnrollment=false).
+        if student.get("groupMembers"):
+            body["groupMembers"] = [
+                {**m, "responses": []} for m in student["groupMembers"]
+            ]
+        result = api.post(f"/public/lessonseries/{target}/enroll", body, auth=False)
         if result:
-            count += 1
+            count += 1 + len(body.get("groupMembers", []))
     print(f"   Created {count} enrollments")
 
 
@@ -755,6 +769,13 @@ def main() -> int:
     print("  API:       http://localhost:5142/swagger")
     print("  Email:     http://localhost:3001")
     print()
+
+    if FAILED_REQUESTS:
+        print(f"!!! Seed finished with {len(FAILED_REQUESTS)} failed request(s):",
+              file=sys.stderr)
+        for failure in FAILED_REQUESTS:
+            print(f"  - {failure}", file=sys.stderr)
+        return 1
     return 0
 
 

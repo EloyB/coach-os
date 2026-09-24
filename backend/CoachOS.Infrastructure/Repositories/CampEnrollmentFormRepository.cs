@@ -31,9 +31,4 @@ public class CampEnrollmentFormRepository(ApplicationDbContext context) : ICampE
     {
         context.CampFormFields.Remove(field);
     }
-
-    public async Task SaveChangesAsync(CancellationToken ct = default)
-    {
-        await context.SaveChangesAsync(ct);
-    }
 }

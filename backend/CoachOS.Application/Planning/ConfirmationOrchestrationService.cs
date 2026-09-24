@@ -1,3 +1,4 @@
+using CoachOS.Application.Abstractions;
 using System.Security.Cryptography;
 using System.Text;
 using CoachOS.Application.Configuration;
@@ -17,6 +18,7 @@ public class ConfirmationOrchestrationService(
     IScheduleAssignmentRepository scheduleAssignmentRepo,
     IAssignmentConfirmationTokenRepository tokenRepo,
     IPaymentRepository paymentRepo,
+    IUnitOfWork unitOfWork,
     IEmailService emailService,
     IPricingService pricingService,
     IOptions<AppOptions> appOptions,
@@ -76,18 +78,18 @@ public class ConfirmationOrchestrationService(
         // Atomic: status-flips + token-inserts moeten samen committen. Zonder transactie
         // kan een crash tussen de twee saves de reeks in Planning laten met zwevende tokens
         // (of tokens zonder status-flip op de assignments).
-        await lessonSeriesRepo.BeginTransactionAsync(ct);
+        await unitOfWork.BeginTransactionAsync(ct);
         try
         {
             await scheduleAssignmentRepo.SetProposedToAwaitingConfirmationAsync(seriesId, organizationId, ct);
             await tokenRepo.AddRangeAsync(tokens, ct);
             series.PlanningStatus = PlanningStatus.AwaitingConfirmation;
-            await lessonSeriesRepo.SaveChangesAsync(ct);
-            await lessonSeriesRepo.CommitTransactionAsync(ct);
+            await unitOfWork.SaveChangesAsync(ct);
+            await unitOfWork.CommitTransactionAsync(ct);
         }
         catch (Exception ex)
         {
-            await lessonSeriesRepo.RollbackTransactionAsync(ct);
+            await unitOfWork.RollbackTransactionAsync(ct);
             logger.LogError(ex, "Planning-bevestiging commit mislukt voor reeks {SeriesId}", seriesId);
             return Result<bool>.Fail(new Error(ErrorCodes.Unexpected, "Planning kon niet bevestigd worden. Probeer het opnieuw."));
         }
@@ -204,7 +206,7 @@ public class ConfirmationOrchestrationService(
         if (!hasRemainingProposed)
             series.PlanningStatus = PlanningStatus.AwaitingConfirmation;
 
-        await lessonSeriesRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         try
         {
@@ -315,7 +317,7 @@ public class ConfirmationOrchestrationService(
             Response = ConfirmationResponse.Pending,
         };
         await tokenRepo.AddRangeAsync([newToken], ct);
-        await tokenRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         try
         {
@@ -397,7 +399,7 @@ public class ConfirmationOrchestrationService(
             token.RespondedAt = DateTime.UtcNow;
         }
 
-        await paymentRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         // No-tracking: concurrent requests kunnen tokens via ExecuteUpdateAsync hebben
         // gemuteerd zonder dat onze change tracker dat weet. Tracking-read zou dan via
@@ -423,7 +425,7 @@ public class ConfirmationOrchestrationService(
         if (!stillPending && !hasBlockingParticipant && series.PlanningStatus == PlanningStatus.AwaitingConfirmation)
         {
             series.PlanningStatus = PlanningStatus.Scheduled;
-            await lessonSeriesRepo.SaveChangesAsync(ct);
+            await unitOfWork.SaveChangesAsync(ct);
         }
 
         logger.LogInformation("Admin bevestigde toewijzing {AssignmentId} (€{Amount}).", assignment.Id, payment.Amount);

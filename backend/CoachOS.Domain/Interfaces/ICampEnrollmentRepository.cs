@@ -1,4 +1,3 @@
-using System.Data;
 using CoachOS.Domain.Entities;
 
 namespace CoachOS.Domain.Interfaces;
@@ -26,9 +25,4 @@ public interface ICampEnrollmentRepository
     Task AddAsync(CampEnrollment enrollment, CancellationToken ct = default);
     Task AddGroupAsync(CampEnrollmentGroup group, CancellationToken ct = default);
     Task AddFormResponseAsync(CampFormResponse response, CancellationToken ct = default);
-    Task SaveChangesAsync(CancellationToken ct = default);
-
-    Task BeginTransactionAsync(IsolationLevel isolationLevel, CancellationToken ct = default);
-    Task CommitTransactionAsync(CancellationToken ct = default);
-    Task RollbackTransactionAsync(CancellationToken ct = default);
 }

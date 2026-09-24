@@ -1,9 +1,9 @@
 using CoachOS.API.Extensions;
 using CoachOS.API.Filters;
-using CoachOS.Application.Reschedule;
-using CoachOS.Application.Reschedule.DTOs;
+using CoachOS.Application.RescheduleRequests;
+using CoachOS.Application.RescheduleRequests.DTOs;
 
-namespace CoachOS.API.Endpoints.Reschedule;
+namespace CoachOS.API.Endpoints.RescheduleRequests;
 
 public class CreateRescheduleRequestEndpoint : IEndpoint
 {
@@ -12,7 +12,7 @@ public class CreateRescheduleRequestEndpoint : IEndpoint
         app.MapPost("/student/lessons/{assignmentId:guid}/reschedule", async (
             Guid assignmentId,
             CreateRescheduleRequest request,
-            IRescheduleService service,
+            IRescheduleRequestService service,
             HttpContext ctx,
             CancellationToken ct) =>
         {

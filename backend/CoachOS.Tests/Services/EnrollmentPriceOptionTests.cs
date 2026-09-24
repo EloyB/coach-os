@@ -1,3 +1,4 @@
+using CoachOS.Application.Abstractions;
 using CoachOS.Application.Enrollments;
 using CoachOS.Application.Enrollments.DTOs;
 using CoachOS.Application.Mappings;
@@ -25,6 +26,7 @@ public class EnrollmentPriceOptionTests
     private Mock<IEmailOutboxRepository> _emailOutboxRepository = null!;
     private Mock<ILessonSeriePriceRepository> _priceRepo = null!;
     private Mock<ILogger<EnrollmentService>> _logger = null!;
+    private Mock<IUnitOfWork> _unitOfWork = null!;
     private ApplicationMapper _mapper = null!;
     private EnrollmentService _service = null!;
 
@@ -46,12 +48,14 @@ public class EnrollmentPriceOptionTests
         _emailOutboxRepository = new Mock<IEmailOutboxRepository>();
         _priceRepo = new Mock<ILessonSeriePriceRepository>();
         _logger = new Mock<ILogger<EnrollmentService>>();
+        _unitOfWork = new Mock<IUnitOfWork>();
         _mapper = new ApplicationMapper();
 
         _service = new EnrollmentService(
             _enrollmentRepo.Object, _enrollmentFormRepo.Object, _lessonSeriesRepo.Object,
             _enrollmentGroupRepo.Object, _timeSlotPreferenceRepo.Object, _orgSettingsRepo.Object,
-            _userLookup.Object, _emailOutboxRepository.Object, _priceRepo.Object, _mapper, _logger.Object,
+            _userLookup.Object, _emailOutboxRepository.Object, _priceRepo.Object,
+            _unitOfWork.Object, _mapper, _logger.Object,
             TimeProvider.System);
 
         // Geen duplicaat; reeks bevat OptionA en OptionB.
@@ -93,7 +97,7 @@ public class EnrollmentPriceOptionTests
 
         result.IsSuccess.Should().BeTrue();
         e.SelectedPriceOptionId.Should().Be(OptionB);
-        _enrollmentRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Test]
@@ -130,7 +134,7 @@ public class EnrollmentPriceOptionTests
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().Contain(x => x.Code == ErrorCodes.Conflict);
         e.SelectedPriceOptionId.Should().Be(OptionA);
-        _enrollmentRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Test]
@@ -147,7 +151,7 @@ public class EnrollmentPriceOptionTests
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().Contain(x => x.Code == ErrorCodes.Conflict);
         e.SelectedPriceOptionId.Should().Be(OptionA);
-        _enrollmentRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Test]
@@ -175,7 +179,7 @@ public class EnrollmentPriceOptionTests
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().Contain(x => x.Code == ErrorCodes.Validation);
-        _enrollmentRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Test]
@@ -191,6 +195,6 @@ public class EnrollmentPriceOptionTests
 
         result.IsSuccess.Should().BeTrue();
         e.StudentPhone.Should().Be("+32470000000");
-        _enrollmentRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 }

@@ -1,4 +1,4 @@
-namespace CoachOS.Domain.Models;
+namespace CoachOS.Application.Abstractions;
 
 /// <summary>
 /// Eén deelnemer in een gebundelde planningsmail. Elke deelnemer houdt een eigen

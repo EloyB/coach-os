@@ -1,4 +1,4 @@
-using CoachOS.Domain.Interfaces;
+using CoachOS.Application.Abstractions;
 using Microsoft.AspNetCore.DataProtection;
 
 namespace CoachOS.Infrastructure.Security;

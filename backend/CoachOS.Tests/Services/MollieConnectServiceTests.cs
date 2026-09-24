@@ -1,3 +1,4 @@
+using CoachOS.Application.Abstractions;
 using CoachOS.Application.Configuration;
 using CoachOS.Application.MollieConnect;
 using CoachOS.Application.MollieConnect.DTOs;
@@ -19,6 +20,7 @@ public class MollieConnectServiceTests
     private Mock<IMollieConnectionRepository> _connections = null!;
     private Mock<IOAuthStateRepository> _states = null!;
     private Mock<ITokenProtector> _protector = null!;
+    private Mock<IUnitOfWork> _unitOfWork = null!;
     private FixedTimeProvider _time = null!;
     private MollieConnectService _sut = null!;
 
@@ -32,6 +34,7 @@ public class MollieConnectServiceTests
         _connections = new Mock<IMollieConnectionRepository>();
         _states = new Mock<IOAuthStateRepository>();
         _protector = new Mock<ITokenProtector>();
+        _unitOfWork = new Mock<IUnitOfWork>();
         _protector.Setup(p => p.Protect(It.IsAny<string>()))
             .Returns<string>(s => $"enc({s})");
         _protector.Setup(p => p.Unprotect(It.IsAny<string>()))
@@ -51,6 +54,7 @@ public class MollieConnectServiceTests
             _mollie.Object,
             _connections.Object,
             _states.Object,
+            _unitOfWork.Object,
             _protector.Object,
             options,
             _time,
@@ -78,7 +82,7 @@ public class MollieConnectServiceTests
         captured.State.Should().NotBeNullOrEmpty();
         captured.ExpiresAt.Should().Be(Now.AddMinutes(15));
 
-        _states.Verify(s => s.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Test]
@@ -90,7 +94,7 @@ public class MollieConnectServiceTests
             ClientSecret = "x",
         });
         MollieConnectService sut = new(
-            _mollie.Object, _connections.Object, _states.Object, _protector.Object,
+            _mollie.Object, _connections.Object, _states.Object, _unitOfWork.Object, _protector.Object,
             options, _time, NullLogger<MollieConnectService>.Instance);
 
         Result<StartConnectResponse> result = await sut.StartAsync(OrgId, "https://x/");
@@ -337,11 +341,10 @@ public class MollieConnectServiceTests
         existing.AccessTokenExpiresAt.Should().Be(Now.AddSeconds(3600));
         existing.ConnectedAt.Should().Be(Now);
 
-        // Connectie-update en state-verbruik gaan in één SaveChanges (gedeelde DbContext),
+        // Connectie-update en state-verbruik gaan in één SaveChanges (unit of work),
         // zodat een crash halverwege niets half achterlaat.
         _states.Verify(s => s.DeleteAsync(live, It.IsAny<CancellationToken>()), Times.Once);
-        _connections.Verify(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
-        _states.Verify(s => s.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
 }

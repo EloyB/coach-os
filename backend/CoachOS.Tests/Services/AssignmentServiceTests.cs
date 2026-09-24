@@ -1,3 +1,4 @@
+using CoachOS.Application.Abstractions;
 using CoachOS.Application.Planning;
 using CoachOS.Application.Planning.DTOs;
 using CoachOS.Domain.Entities;
@@ -19,6 +20,7 @@ public class AssignmentServiceTests
     private Mock<IEnrollmentGroupRepository> _groupRepo = null!;
     private Mock<IScheduleAssignmentRepository> _assignmentRepo = null!;
     private Mock<IEmailService> _emailService = null!;
+    private Mock<IUnitOfWork> _unitOfWork = null!;
     private AssignmentService _service = null!;
 
     private static readonly Guid OrgId = Guid.NewGuid();
@@ -33,12 +35,14 @@ public class AssignmentServiceTests
         _groupRepo = new Mock<IEnrollmentGroupRepository>();
         _assignmentRepo = new Mock<IScheduleAssignmentRepository>();
         _emailService = new Mock<IEmailService>();
+        _unitOfWork = new Mock<IUnitOfWork>();
 
         _service = new AssignmentService(
             _seriesRepo.Object,
             _enrollmentRepo.Object,
             _groupRepo.Object,
             _assignmentRepo.Object,
+            _unitOfWork.Object,
             _emailService.Object,
             NullLogger<AssignmentService>.Instance);
     }
@@ -437,7 +441,7 @@ public class AssignmentServiceTests
         declinedOnSlot.IsLocked.Should().BeTrue();
         _assignmentRepo.Verify(r => r.AddRangeAsync(
             It.IsAny<IEnumerable<ScheduleAssignment>>(), It.IsAny<CancellationToken>()), Times.Never);
-        _assignmentRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Test]
@@ -571,7 +575,7 @@ public class AssignmentServiceTests
         group.LeaderEnrollmentId.Should().Be(leader.Id);           // leider onveranderd
         _groupRepo.Verify(r => r.Delete(It.IsAny<EnrollmentGroup>()), Times.Never); // niet ontbonden
         _assignmentRepo.Verify(r => r.RemoveRange(It.IsAny<IEnumerable<ScheduleAssignment>>()), Times.Never);
-        _groupRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Test]
@@ -588,7 +592,7 @@ public class AssignmentServiceTests
         target.Status.Should().Be(EnrollmentStatus.Cancelled);     // ook geannuleerd
         group.LeaderEnrollmentId.Should().Be(leader.Id);
         _groupRepo.Verify(r => r.Delete(It.IsAny<EnrollmentGroup>()), Times.Never);
-        _groupRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Test]
@@ -652,7 +656,7 @@ public class AssignmentServiceTests
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().Contain(e => e.Code == ErrorCodes.Conflict);
         members[2].EnrollmentGroupId.Should().Be(group.Id);                 // niets gemuteerd
-        _groupRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Test]

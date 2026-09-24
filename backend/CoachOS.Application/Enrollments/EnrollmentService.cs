@@ -1,3 +1,4 @@
+using CoachOS.Application.Abstractions;
 using System.Data;
 using System.Text.Json;
 using CoachOS.Application.Common;
@@ -27,6 +28,7 @@ public class EnrollmentService(
     IUserLookupService userLookup,
     IEmailOutboxRepository emailOutboxRepository,
     ILessonSeriePriceRepository priceRepo,
+    IUnitOfWork unitOfWork,
     ApplicationMapper mapper,
     ILogger<EnrollmentService> logger,
     TimeProvider timeProvider) : IEnrollmentService
@@ -220,7 +222,7 @@ public class EnrollmentService(
             order++;
         }
 
-        await enrollmentFormRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
         return Result<Guid>.Ok(form.Id);
     }
 
@@ -233,7 +235,7 @@ public class EnrollmentService(
             return Result<Guid>.Fail(new Error(ErrorCodes.NotFound, "Lessenreeks niet gevonden."));
 
         // 2. Registration deadline check
-        if (DateTime.UtcNow > series.RegistrationDeadline)
+        if (timeProvider.GetUtcNow().UtcDateTime > series.RegistrationDeadline)
             return Result<Guid>.Fail(
                 new Error(ErrorCodes.Validation, "De inschrijvingsdeadline is verstreken."));
 
@@ -328,14 +330,14 @@ public class EnrollmentService(
         Enrollment enrollment;
         try
         {
-            await enrollmentRepo.BeginTransactionAsync(IsolationLevel.Serializable, ct);
+            await unitOfWork.BeginTransactionAsync(IsolationLevel.Serializable, ct);
             // 6. Capacity check INSIDE transaction (accounts for group size)
             if (series.MaxRegistrations.HasValue)
             {
                 var activeCount = await enrollmentRepo.CountActiveBySeriesAsync(lessonSeriesId, ct);
                 if (activeCount + groupSize > series.MaxRegistrations.Value)
                 {
-                    await enrollmentRepo.RollbackTransactionAsync(ct);
+                    await unitOfWork.RollbackTransactionAsync(ct);
                     return Result<Guid>.Fail(
                         new Error(ErrorCodes.Conflict, "Deze lessenreeks is volzet."));
                 }
@@ -365,7 +367,7 @@ public class EnrollmentService(
                         lessonSeriesId, contactEmail, name, dob, ct))
                     continue;
 
-                await enrollmentRepo.RollbackTransactionAsync(ct);
+                await unitOfWork.RollbackTransactionAsync(ct);
                 return Result<Guid>.Fail(new Error(
                     ErrorCodes.Conflict, $"{name} is al ingeschreven voor deze lessenreeks."));
             }
@@ -382,7 +384,7 @@ public class EnrollmentService(
             StudentEmail = EnrollmentEmails.Normalize(request.StudentEmail),
             StudentPhone = request.StudentPhone,
             Status = EnrollmentStatus.Pending,
-            EnrolledAt = DateTime.UtcNow,
+            EnrolledAt = timeProvider.GetUtcNow().UtcDateTime,
             IsOpenToGrouping = request.IsOpenToGrouping,
             DateOfBirth = ParseBirthDate(request.DateOfBirth),
             Category = ResolveCategory(request.DateOfBirth, youthMaxAge, enrolledOn),
@@ -404,7 +406,7 @@ public class EnrollmentService(
         }
 
         // 9. Save enrollment + form responses first (needed before group creation to avoid circular FK)
-        await enrollmentRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         // 10. Group enrollment: create group + member enrollments
         if (request.EnrollmentType == "group" && request.GroupMembers is { Count: > 0 })
@@ -424,7 +426,7 @@ public class EnrollmentService(
             };
 
             await enrollmentGroupRepo.AddAsync(group, ct);
-            await enrollmentGroupRepo.SaveChangesAsync(ct);
+            await unitOfWork.SaveChangesAsync(ct);
 
             enrollment.EnrollmentGroupId = group.Id;
 
@@ -441,7 +443,7 @@ public class EnrollmentService(
                         : EnrollmentEmails.Normalize(member.StudentEmail),
                     StudentPhone = member.StudentPhone,
                     Status = EnrollmentStatus.Pending,
-                    EnrolledAt = DateTime.UtcNow,
+                    EnrolledAt = timeProvider.GetUtcNow().UtcDateTime,
                     EnrollmentGroupId = group.Id,
                     DateOfBirth = ParseBirthDate(member.DateOfBirth),
                     Category = ResolveCategory(member.DateOfBirth, youthMaxAge, enrolledOn),
@@ -465,7 +467,7 @@ public class EnrollmentService(
                 }
             }
 
-            await enrollmentRepo.SaveChangesAsync(ct);
+            await unitOfWork.SaveChangesAsync(ct);
         }
 
         // 12. Save time slot preferences
@@ -480,7 +482,7 @@ public class EnrollmentService(
             });
 
             await timeSlotPreferenceRepo.AddRangeAsync(preferences, ct);
-            await timeSlotPreferenceRepo.SaveChangesAsync(ct);
+            await unitOfWork.SaveChangesAsync(ct);
         }
 
         var outboxMessages = new List<EmailOutboxMessage>();
@@ -521,13 +523,13 @@ public class EnrollmentService(
         }
 
         await emailOutboxRepository.AddRangeAsync(outboxMessages, ct);
-        await emailOutboxRepository.SaveChangesAsync(ct);
-        await enrollmentRepo.CommitTransactionAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
+        await unitOfWork.CommitTransactionAsync(ct);
 
         }
         catch (Exception ex)
         {
-            await enrollmentRepo.RollbackTransactionAsync(ct);
+            await unitOfWork.RollbackTransactionAsync(ct);
 
             // Een unique violation betekent dat een parallelle submitter ons voor was tussen
             // de check en de insert. Dat is een conflict (409), geen serverfout — retryen met
@@ -576,20 +578,20 @@ public class EnrollmentService(
         int youthMaxAge = settings?.YouthMaxAge ?? 17;
         string contactEmail = EnrollmentEmails.Normalize(request.ContactEmail);
 
-        await enrollmentRepo.BeginTransactionAsync(IsolationLevel.Serializable, ct);
+        await unitOfWork.BeginTransactionAsync(IsolationLevel.Serializable, ct);
         try
         {
             if (series.MaxRegistrations.HasValue &&
                 await enrollmentRepo.CountActiveBySeriesAsync(lessonSeriesId, ct) >= series.MaxRegistrations.Value)
             {
-                await enrollmentRepo.RollbackTransactionAsync(ct);
+                await unitOfWork.RollbackTransactionAsync(ct);
                 return Result<Guid>.Fail(new Error(ErrorCodes.Conflict, "Deze lessenreeks is volzet."));
             }
 
             if (await enrollmentRepo.IsDuplicateParticipantAsync(
                     lessonSeriesId, contactEmail, request.StudentName, dateOfBirth, ct))
             {
-                await enrollmentRepo.RollbackTransactionAsync(ct);
+                await unitOfWork.RollbackTransactionAsync(ct);
                 return Result<Guid>.Fail(new Error(
                     ErrorCodes.Conflict, $"{request.StudentName} is al ingeschreven voor deze lessenreeks."));
             }
@@ -607,7 +609,7 @@ public class EnrollmentService(
                 DateOfBirth = dateOfBirth,
                 Category = ResolveCategory(request.DateOfBirth, youthMaxAge, timeProvider.GetBrusselsToday()),
                 Status = EnrollmentStatus.Confirmed,
-                EnrolledAt = DateTime.UtcNow,
+                EnrolledAt = timeProvider.GetUtcNow().UtcDateTime,
                 IsOpenToGrouping = false,
             };
             await enrollmentRepo.AddAsync(enrollment, ct);
@@ -622,7 +624,7 @@ public class EnrollmentService(
                 }, ct);
             }
 
-            await enrollmentRepo.SaveChangesAsync(ct);
+            await unitOfWork.SaveChangesAsync(ct);
             await emailOutboxRepository.AddRangeAsync([
                 new EmailOutboxMessage
                 {
@@ -634,13 +636,13 @@ public class EnrollmentService(
                         [enrollment.StudentName])),
                 }
             ], ct);
-            await emailOutboxRepository.SaveChangesAsync(ct);
-            await enrollmentRepo.CommitTransactionAsync(ct);
+            await unitOfWork.SaveChangesAsync(ct);
+            await unitOfWork.CommitTransactionAsync(ct);
             return Result<Guid>.Ok(enrollment.Id);
         }
         catch
         {
-            await enrollmentRepo.RollbackTransactionAsync(ct);
+            await unitOfWork.RollbackTransactionAsync(ct);
             throw;
         }
     }
@@ -690,20 +692,20 @@ public class EnrollmentService(
         int youthMaxAge = settings?.YouthMaxAge ?? 17;
         string contactEmail = EnrollmentEmails.Normalize(request.ContactEmail);
 
-        await enrollmentRepo.BeginTransactionAsync(IsolationLevel.Serializable, ct);
+        await unitOfWork.BeginTransactionAsync(IsolationLevel.Serializable, ct);
         try
         {
             if (series.MaxRegistrations.HasValue &&
                 await enrollmentRepo.CountActiveBySeriesAsync(lessonSeriesId, ct) >= series.MaxRegistrations.Value)
             {
-                await enrollmentRepo.RollbackTransactionAsync(ct);
+                await unitOfWork.RollbackTransactionAsync(ct);
                 return Result<Guid>.Fail(new Error(ErrorCodes.Conflict, "Deze lessenreeks is volzet."));
             }
 
             if (await enrollmentRepo.IsDuplicateParticipantAsync(
                     lessonSeriesId, contactEmail, request.StudentName, dateOfBirth, ct))
             {
-                await enrollmentRepo.RollbackTransactionAsync(ct);
+                await unitOfWork.RollbackTransactionAsync(ct);
                 return Result<Guid>.Fail(new Error(
                     ErrorCodes.Conflict, $"{request.StudentName} is al ingeschreven voor deze lessenreeks."));
             }
@@ -723,7 +725,7 @@ public class EnrollmentService(
                 Category = ResolveCategory(request.DateOfBirth, youthMaxAge, timeProvider.GetBrusselsToday()),
                 Status = leader.Status,                                // status geërfd van de groep
                 SelectedPriceOptionId = leader.SelectedPriceOptionId,  // prijsoptie geërfd
-                EnrolledAt = DateTime.UtcNow,
+                EnrolledAt = timeProvider.GetUtcNow().UtcDateTime,
                 IsOpenToGrouping = false,
             };
             await enrollmentRepo.AddAsync(enrollment, ct);
@@ -738,7 +740,7 @@ public class EnrollmentService(
                 }, ct);
             }
 
-            await enrollmentRepo.SaveChangesAsync(ct);
+            await unitOfWork.SaveChangesAsync(ct);
             // Informatieve "toegevoegd aan groep"-mail (geen bevestiging/betaling — het lid is nog
             // Pending; de bevestigings-/betaalmail volgt bij de normale groeps-bevestiging).
             await emailOutboxRepository.AddRangeAsync([
@@ -752,13 +754,13 @@ public class EnrollmentService(
                         $"Groep van {leader.StudentName}")),
                 }
             ], ct);
-            await emailOutboxRepository.SaveChangesAsync(ct);
-            await enrollmentRepo.CommitTransactionAsync(ct);
+            await unitOfWork.SaveChangesAsync(ct);
+            await unitOfWork.CommitTransactionAsync(ct);
             return Result<Guid>.Ok(enrollment.Id);
         }
         catch
         {
-            await enrollmentRepo.RollbackTransactionAsync(ct);
+            await unitOfWork.RollbackTransactionAsync(ct);
             throw;
         }
     }
@@ -869,7 +871,7 @@ public class EnrollmentService(
         enrollment.DateOfBirth = dateOfBirth;
         enrollment.Category = ResolveCategory(request.DateOfBirth, youthMaxAge, updatedOn);
         enrollment.IsOpenToGrouping = request.IsOpenToGrouping;
-        enrollment.UpdatedAt = DateTime.UtcNow;
+        enrollment.UpdatedAt = timeProvider.GetUtcNow().UtcDateTime;
 
         // Prijsoptie: enkel behandelen wanneer ze effectief wijzigt.
         if (request.SelectedPriceOptionId != enrollment.SelectedPriceOptionId)
@@ -900,7 +902,7 @@ public class EnrollmentService(
                 foreach (Enrollment member in members)
                 {
                     member.SelectedPriceOptionId = request.SelectedPriceOptionId;
-                    member.UpdatedAt = DateTime.UtcNow;
+                    member.UpdatedAt = timeProvider.GetUtcNow().UtcDateTime;
                 }
             }
             else
@@ -909,7 +911,7 @@ public class EnrollmentService(
             }
         }
 
-        await enrollmentRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         LessonSerieEnrollmentDto dto = new()
         {
@@ -982,8 +984,8 @@ public class EnrollmentService(
                 new Error(ErrorCodes.Validation, "Deze inschrijving is al geannuleerd."));
 
         enrollment.Status = EnrollmentStatus.Cancelled;
-        enrollment.UpdatedAt = DateTime.UtcNow;
-        await enrollmentRepo.SaveChangesAsync(ct);
+        enrollment.UpdatedAt = timeProvider.GetUtcNow().UtcDateTime;
+        await unitOfWork.SaveChangesAsync(ct);
 
         logger.LogInformation(
             "Inschrijving {EnrollmentId} geannuleerd door beheerder in organisatie {OrganizationId}",
@@ -1011,7 +1013,7 @@ public class EnrollmentService(
         if (active.Count == 0)
             return Result<bool>.Fail(new Error(ErrorCodes.Validation, "Deze groep is al geannuleerd."));
 
-        DateTime now = DateTime.UtcNow;
+        DateTime now = timeProvider.GetUtcNow().UtcDateTime;
         foreach (Enrollment member in active)
         {
             member.Status = EnrollmentStatus.Cancelled;
@@ -1020,7 +1022,7 @@ public class EnrollmentService(
 
         // Eén SaveChanges = één impliciete transactie: alles-of-niets. De leden zijn
         // getrackt door dezelfde DbContext (GetByIdAsync include't ze zonder AsNoTracking).
-        await enrollmentGroupRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         logger.LogInformation(
             "Groep {GroupId} ({Count} leden) geannuleerd door beheerder in organisatie {OrganizationId}",

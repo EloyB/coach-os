@@ -51,7 +51,4 @@ public class TrainerAvailabilityRepository(ApplicationDbContext db) : ITrainerAv
 
     public async Task AddAsync(TrainerAvailability availability, CancellationToken ct = default)
         => await db.TrainerAvailabilities.AddAsync(availability, ct);
-
-    public async Task SaveChangesAsync(CancellationToken ct = default)
-        => await db.SaveChangesAsync(ct);
 }

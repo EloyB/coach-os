@@ -1,3 +1,4 @@
+using CoachOS.Application.Abstractions;
 using CoachOS.Application.Configuration;
 using CoachOS.Application.MollieConnect;
 using CoachOS.Application.Payments.DTOs;
@@ -27,6 +28,7 @@ public class PaymentService(
     ICampRepository camps,
     ICampEnrollmentRepository campEnrollments,
     IOrganizationSettingsRepository orgSettings,
+    IUnitOfWork unitOfWork,
     IMollieClient mollieClient,
     IMollieConnectService mollieConnect,
     IEmailService emailService,
@@ -182,7 +184,7 @@ public class PaymentService(
             Description = paymentRequest.Description,
         };
         await payments.AddAsync(payment, ct);
-        await payments.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         return Result<CreatePaymentResultDto>.Ok(new CreatePaymentResultDto(
             payment.Id, molliePayment.CheckoutUrl));
@@ -284,7 +286,7 @@ public class PaymentService(
             Description = paymentRequest.Description,
         };
         await payments.AddAsync(payment, ct);
-        await payments.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         return Result<CreatePaymentResultDto>.Ok(new CreatePaymentResultDto(
             payment.Id, molliePayment.CheckoutUrl));
@@ -338,7 +340,7 @@ public class PaymentService(
         payment.PaidAt = snapshot.PaidAt;
         payment.FailureReason = snapshot.FailureReason;
         payment.Method = MapMollieMethod(snapshot.Method) ?? payment.Method;
-        await payments.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         if (newStatus == PaymentStatus.Paid)
         {
@@ -451,7 +453,7 @@ public class PaymentService(
             if (e.Status == EnrollmentStatus.Confirmed) continue;
             e.Status = EnrollmentStatus.Confirmed;
         }
-        await enrollments.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         LessonSerieEntity? series = enrollment.LessonSerieId is { } sid
             ? await lessonSeries.GetByIdPublicAsync(sid, ct)
@@ -510,7 +512,7 @@ public class PaymentService(
             if (e.Status == EnrollmentStatus.Confirmed) continue;
             e.Status = EnrollmentStatus.Confirmed;
         }
-        await campEnrollments.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         try
         {
@@ -574,7 +576,7 @@ public class PaymentService(
             Description = $"Cash - {camp.Name}",
         };
         await payments.AddAsync(payment, ct);
-        await payments.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         // Inschrijving blijft PendingPayment: de coach bevestigt de cash later.
         return Result.Ok();
@@ -600,9 +602,8 @@ public class PaymentService(
 
         // Atomiciteit: de payment-mutatie wordt NIET apart opgeslagen. We muteren de
         // (getrackte) payment, muteren daarna de enrollment(s) en laten één enkele
-        // SaveChangesAsync in ConfirmCampEnrollmentAndNotifyAsync beide wegschrijven.
-        // PaymentRepository én CampEnrollmentRepository delen dezelfde scoped
-        // ApplicationDbContext, dus die ene save flusht beide change-sets. Zo kan een
+        // unitOfWork.SaveChangesAsync in ConfirmCampEnrollmentAndNotifyAsync beide
+        // wegschrijven (de unit of work flusht de volledige change-set). Zo kan een
         // crash niet langer een Paid-payment achterlaten met een PendingPayment-enrollment.
         payment.Status = PaymentStatus.Paid;
         payment.PaidAt = DateTime.UtcNow;
@@ -610,7 +611,7 @@ public class PaymentService(
         if (enrollment is null)
         {
             // Geen enrollment om te bevestigen → toch de payment-mutatie persisteren.
-            await payments.SaveChangesAsync(ct);
+            await unitOfWork.SaveChangesAsync(ct);
             return Result.Ok();
         }
 

@@ -1,9 +1,9 @@
 using CoachOS.API.Extensions;
 using CoachOS.API.Filters;
-using CoachOS.Application.Reschedule;
-using CoachOS.Application.Reschedule.DTOs;
+using CoachOS.Application.RescheduleRequests;
+using CoachOS.Application.RescheduleRequests.DTOs;
 
-namespace CoachOS.API.Endpoints.Reschedule;
+namespace CoachOS.API.Endpoints.RescheduleRequests;
 
 public class ResolveRescheduleRequestEndpoint : IEndpoint
 {
@@ -12,7 +12,7 @@ public class ResolveRescheduleRequestEndpoint : IEndpoint
         app.MapPatch("/reschedule-requests/{id:guid}", async (
             Guid id,
             ResolveRescheduleRequest request,
-            IRescheduleService service,
+            IRescheduleRequestService service,
             HttpContext ctx,
             CancellationToken ct) =>
         {

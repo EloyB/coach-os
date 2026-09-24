@@ -1,3 +1,4 @@
+using CoachOS.Application.Abstractions;
 using System.Security.Cryptography;
 using System.Text;
 using CoachOS.Application.Pricing;
@@ -19,6 +20,7 @@ public class StudentConfirmationService(
     Payments.IPaymentService paymentService,
     IPricingService pricingService,
     IEnrollmentRepository enrollmentRepo,
+    IUnitOfWork unitOfWork,
     IEmailService emailService,
     ILogger<StudentConfirmationService> logger,
     TimeProvider timeProvider) : IStudentConfirmationService
@@ -69,7 +71,7 @@ public class StudentConfirmationService(
         // Atomisch de token claimen: voorkomt dubbele bevestiging als de student
         // twee keer op "Bevestigen" tikt (dubbele Payment row anders gemaakt).
         var claimed = await tokenRepo.TryClaimResponseAsync(
-            token.Id, ConfirmationResponse.Confirmed, DateTime.UtcNow, ct);
+            token.Id, ConfirmationResponse.Confirmed, timeProvider.GetUtcNow().UtcDateTime, ct);
         if (!claimed)
             return Result<ConfirmResultDto>.Fail(
                 new Error(ErrorCodes.Validation, "Deze bevestiging is al verwerkt."));
@@ -91,7 +93,7 @@ public class StudentConfirmationService(
             await paymentRepo.AddAsync(cashPayment, ct);
 
             ConfirmEnrollmentStatuses(assignment, EnrollmentStatus.PendingPayment);
-            await paymentRepo.SaveChangesAsync(ct);
+            await unitOfWork.SaveChangesAsync(ct);
 
             try
             {
@@ -117,7 +119,7 @@ public class StudentConfirmationService(
         // De webhook (of de status-poll vanuit de thank-you-page) flipt enrollment
         // naar Confirmed bij geslaagde betaling.
         ConfirmEnrollmentStatuses(assignment, EnrollmentStatus.PendingPayment);
-        await paymentRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         var paymentResult = await paymentService.CreatePaymentForEnrollmentAsync(
             token.EnrollmentId, token.OrganizationId, ct);
@@ -153,14 +155,14 @@ public class StudentConfirmationService(
 
         // Atomisch declinen — idem redenering als Confirm.
         var claimed = await tokenRepo.TryClaimResponseAsync(
-            token.Id, ConfirmationResponse.Declined, DateTime.UtcNow, ct);
+            token.Id, ConfirmationResponse.Declined, timeProvider.GetUtcNow().UtcDateTime, ct);
         if (!claimed)
             return Result<List<AvailableSlotDto>>.Fail(
                 new Error(ErrorCodes.Validation, "Deze bevestiging is al verwerkt."));
 
         var assignment = token.ScheduleAssignment;
         assignment.Status = ScheduleAssignmentStatus.Declined;
-        await tokenRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         var slots = await GetAvailableSlotsForAssignmentAsync(token, ct);
         return Result<List<AvailableSlotDto>>.Ok(slots);
@@ -244,7 +246,7 @@ public class StudentConfirmationService(
             token.Id,
             ConfirmationResponse.Declined,
             ConfirmationResponse.Confirmed,
-            DateTime.UtcNow,
+            timeProvider.GetUtcNow().UtcDateTime,
             ct);
         if (!claimed)
             return Result<ConfirmResultDto>.Fail(
@@ -279,7 +281,7 @@ public class StudentConfirmationService(
             await paymentRepo.AddAsync(cashPayment, ct);
 
             ConfirmEnrollmentStatuses(oldAssignment, EnrollmentStatus.PendingPayment);
-            await paymentRepo.SaveChangesAsync(ct);
+            await unitOfWork.SaveChangesAsync(ct);
 
             try
             {
@@ -303,7 +305,7 @@ public class StudentConfirmationService(
 
         // Online: zelfde flow als ConfirmAsync — PendingPayment + Mollie checkout.
         ConfirmEnrollmentStatuses(oldAssignment, EnrollmentStatus.PendingPayment);
-        await paymentRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         var paymentResult = await paymentService.CreatePaymentForEnrollmentAsync(
             token.EnrollmentId, token.OrganizationId, ct);
@@ -369,7 +371,7 @@ public class StudentConfirmationService(
 
         string dtStart = startUtc.ToString("yyyyMMdd'T'HHmmss'Z'");
         string dtEnd = endUtc.ToString("yyyyMMdd'T'HHmmss'Z'");
-        string dtStamp = DateTimeOffset.UtcNow.ToString("yyyyMMdd'T'HHmmss'Z'");
+        string dtStamp = timeProvider.GetUtcNow().ToString("yyyyMMdd'T'HHmmss'Z'");
 
         string ics = string.Join("\r\n",
             "BEGIN:VCALENDAR",
@@ -404,7 +406,7 @@ public class StudentConfirmationService(
             return Result.Fail(new Error(ErrorCodes.NotFound, "Inschrijving niet gevonden."));
 
         payment.Status = PaymentStatus.Paid;
-        payment.PaidAt = DateTime.UtcNow;
+        payment.PaidAt = timeProvider.GetUtcNow().UtcDateTime;
 
         // Groep: leider betaalt voor iedereen → alle leden bevestigen. Solo: enkel deze.
         // Group.Members bevat de leider zelf.
@@ -422,7 +424,7 @@ public class StudentConfirmationService(
         }
 
         // paymentRepo en enrollmentRepo delen dezelfde scoped DbContext → één save flusht beide.
-        await paymentRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         // Cash-pad sloeg finalisatie bewust over bij bevestigen; nu de betaling rond is,
         // de reeks alsnog finaliseren indien alle deelnemers gereageerd hebben.
@@ -465,7 +467,7 @@ public class StudentConfirmationService(
         if (token is null)
             return (null, new Error(ErrorCodes.NotFound, "Ongeldige of verlopen link."));
 
-        if (token.ExpiresAt < DateTime.UtcNow)
+        if (token.ExpiresAt < timeProvider.GetUtcNow().UtcDateTime)
             return (null, new Error(ErrorCodes.Validation, "Deze link is verlopen."));
 
         return (token, null);
@@ -591,7 +593,7 @@ public class StudentConfirmationService(
 
         // Stap 1: zijn er nog openstaande tokens? (student heeft nog niet gereageerd en is niet verlopen)
         var anyPending = tokens.Any(t => t.Response == ConfirmationResponse.Pending
-            && t.ExpiresAt >= DateTime.UtcNow);
+            && t.ExpiresAt >= timeProvider.GetUtcNow().UtcDateTime);
         if (anyPending) return;
 
         // Stap 2: zijn er deelnemers met een "gat" in de planning?
@@ -625,7 +627,7 @@ public class StudentConfirmationService(
         if (series.PlanningStatus == PlanningStatus.AwaitingConfirmation)
         {
             series.PlanningStatus = PlanningStatus.Scheduled;
-            await seriesRepo.SaveChangesAsync(ct);
+            await unitOfWork.SaveChangesAsync(ct);
             logger.LogInformation("Reeks {SeriesId} is volledig bevestigd — status Scheduled.", seriesId);
         }
     }

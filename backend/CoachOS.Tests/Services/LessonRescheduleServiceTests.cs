@@ -1,3 +1,4 @@
+using CoachOS.Application.Abstractions;
 using CoachOS.Application.LessonReschedule;
 using CoachOS.Application.LessonReschedule.DTOs;
 using CoachOS.Domain.Entities;
@@ -19,6 +20,7 @@ public class LessonRescheduleServiceTests
     private Mock<IEnrollmentRepository> _enrollmentRepo = null!;
     private Mock<ILessonSerieRepository> _serieRepo = null!;
     private Mock<IEmailService> _emailService = null!;
+    private Mock<IUnitOfWork> _unitOfWork = null!;
     private LessonRescheduleService _service = null!;
 
     private static readonly Guid OrgId = Guid.NewGuid();
@@ -32,12 +34,14 @@ public class LessonRescheduleServiceTests
         _enrollmentRepo = new Mock<IEnrollmentRepository>();
         _serieRepo = new Mock<ILessonSerieRepository>();
         _emailService = new Mock<IEmailService>();
+        _unitOfWork = new Mock<IUnitOfWork>();
 
         _service = new LessonRescheduleService(
             _lessonRepo.Object,
             _invitationRepo.Object,
             _enrollmentRepo.Object,
             _serieRepo.Object,
+            _unitOfWork.Object,
             _emailService.Object,
             NullLogger<LessonRescheduleService>.Instance);
 
@@ -100,7 +104,7 @@ public class LessonRescheduleServiceTests
             It.Is<Lesson>(l => l.LessonSerieId == null && l.OrganizationId == OrgId &&
                                l.StartTime == new TimeOnly(14, 0)),
             It.IsAny<CancellationToken>()), Times.Once);
-        _lessonRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
         _invitationRepo.Verify(r => r.ReassignToLessonAsync(
             lesson.Id, result.Value.NewLessonId, It.IsAny<CancellationToken>()), Times.Once);
     }

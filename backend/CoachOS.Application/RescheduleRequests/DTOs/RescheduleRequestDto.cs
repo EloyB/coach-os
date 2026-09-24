@@ -1,4 +1,4 @@
-namespace CoachOS.Application.Reschedule.DTOs;
+namespace CoachOS.Application.RescheduleRequests.DTOs;
 
 public class RescheduleRequestDto
 {

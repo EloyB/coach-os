@@ -9,6 +9,7 @@ namespace CoachOS.Application.OrganizationSettings;
 public class OrganizationSettingsService(
     IOrganizationSettingsRepository repo,
     ILessonRepository lessonRepo,
+    IUnitOfWork unitOfWork,
     ApplicationMapper mapper,
     TimeProvider timeProvider) : IOrganizationSettingsService
 {
@@ -30,7 +31,7 @@ public class OrganizationSettingsService(
     {
         Domain.Entities.OrganizationSettings settings = await GetOrCreateAsync(organizationId, ct);
         settings.AdminsActAsTrainers = request.AdminsActAsTrainers;
-        await repo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         int upcoming = await CountUpcomingForCurrentUserAsync(currentUserId, organizationId, ct);
         return Result<OrganizationSettingsDto>.Ok(mapper.ToOrganizationSettingsDto(settings, upcoming));
@@ -47,7 +48,7 @@ public class OrganizationSettingsService(
             AdminsActAsTrainers = true,
         };
         await repo.AddAsync(created, ct);
-        await repo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
         return created;
     }
 

@@ -1,14 +1,14 @@
 using CoachOS.API.Extensions;
-using CoachOS.Application.Reschedule;
+using CoachOS.Application.RescheduleRequests;
 
-namespace CoachOS.API.Endpoints.Reschedule;
+namespace CoachOS.API.Endpoints.RescheduleRequests;
 
 public class GetRescheduleRequestsEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapGet("/reschedule-requests", async (
-            IRescheduleService service,
+            IRescheduleRequestService service,
             HttpContext ctx,
             CancellationToken ct) =>
         {

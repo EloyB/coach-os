@@ -1,3 +1,4 @@
+using CoachOS.Application.Abstractions;
 using System.Globalization;
 using CoachOS.Application.Common;
 using CoachOS.Application.LessonReschedule.DTOs;
@@ -14,6 +15,7 @@ public class LessonRescheduleService(
     ILessonInvitationRepository invitationRepo,
     IEnrollmentRepository enrollmentRepo,
     ILessonSerieRepository serieRepo,
+    IUnitOfWork unitOfWork,
     IEmailService emailService,
     ILogger<LessonRescheduleService> logger) : ILessonRescheduleService
 {
@@ -97,7 +99,7 @@ public class LessonRescheduleService(
         lesson.CancellationReason = trimmedReason ?? "Verplaatst naar andere datum";
         lesson.RescheduledToLessonId = newLesson.Id;
 
-        await lessonRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         // Nu invitations / enrollments naar de nieuwe les verplaatsen via ExecuteUpdate.
         await invitationRepo.ReassignToLessonAsync(lesson.Id, newLesson.Id, ct);

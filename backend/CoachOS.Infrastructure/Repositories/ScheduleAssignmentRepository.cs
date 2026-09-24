@@ -84,9 +84,4 @@ public class ScheduleAssignmentRepository(ApplicationDbContext context) : ISched
                 .SetProperty(a => a.Status, ScheduleAssignmentStatus.AwaitingConfirmation)
                 .SetProperty(a => a.UpdatedAt, DateTime.UtcNow), ct);
     }
-
-    public async Task SaveChangesAsync(CancellationToken ct = default)
-    {
-        await context.SaveChangesAsync(ct);
-    }
 }

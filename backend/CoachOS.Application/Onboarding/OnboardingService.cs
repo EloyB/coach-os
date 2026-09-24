@@ -8,7 +8,8 @@ public class OnboardingService(
     IOrganizationSettingsRepository settingsRepo,
     IMollieConnectionRepository mollieRepo,
     ITennisClubRepository clubRepo,
-    ILessonSerieRepository seriesRepo) : IOnboardingService
+    ILessonSerieRepository seriesRepo,
+    IUnitOfWork unitOfWork) : IOnboardingService
 {
     private const string StepMollie = "mollie";
     private const string StepClub = "club";
@@ -67,7 +68,7 @@ public class OnboardingService(
         if (settings.OnboardingDismissedAt is null)
         {
             settings.OnboardingDismissedAt = DateTime.UtcNow;
-            await settingsRepo.SaveChangesAsync(ct);
+            await unitOfWork.SaveChangesAsync(ct);
         }
 
         return Result.Ok();
@@ -88,7 +89,7 @@ public class OnboardingService(
 
         settings.AdminsActAsTrainers = request.AdminActsAsTrainer;
         settings.TrainerModeChosenAt = DateTime.UtcNow;
-        await settingsRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         return await GetStateAsync(organizationId, ct);
     }

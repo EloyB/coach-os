@@ -1,3 +1,4 @@
+using CoachOS.Application.Abstractions;
 using CoachOS.Application.Planning.DTOs;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
@@ -12,6 +13,7 @@ public class AssignmentService(
     IEnrollmentRepository enrollmentRepo,
     IEnrollmentGroupRepository enrollmentGroupRepo,
     IScheduleAssignmentRepository scheduleAssignmentRepo,
+    IUnitOfWork unitOfWork,
     IEmailService emailService,
     ILogger<AssignmentService> logger) : IAssignmentService
 {
@@ -99,7 +101,7 @@ public class AssignmentService(
             toReactivate.Status = ScheduleAssignmentStatus.Proposed;
             toReactivate.IsAutoMerged = false;
             toReactivate.IsLocked = true;
-            await scheduleAssignmentRepo.SaveChangesAsync(ct);
+            await unitOfWork.SaveChangesAsync(ct);
             return Result<Guid>.Ok(toReactivate.Id);
         }
 
@@ -116,7 +118,7 @@ public class AssignmentService(
         };
 
         await scheduleAssignmentRepo.AddRangeAsync([assignment], ct);
-        await scheduleAssignmentRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         return Result<Guid>.Ok(assignment.Id);
     }
@@ -145,7 +147,7 @@ public class AssignmentService(
 
         assignment.WeeklyTemplateEntryId = request.WeeklyTemplateEntryId;
         assignment.IsLocked = true;
-        await scheduleAssignmentRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         // Enkel bij een bevestigde verplaatsing én expliciete keuze de lesnemer mailen.
         // De verplaatsing is al gecommit: een mislukte mail loggen we, maar draaien we
@@ -216,7 +218,7 @@ public class AssignmentService(
                 new Error(ErrorCodes.Validation, "Bevestigde toewijzingen kunnen niet verwijderd worden."));
 
         scheduleAssignmentRepo.RemoveRange([assignment]);
-        await scheduleAssignmentRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         return Result<bool>.Ok(true);
     }
@@ -255,7 +257,7 @@ public class AssignmentService(
         foreach (var enrollment in selected)
             enrollment.EnrollmentGroupId = group.Id;
 
-        await enrollmentGroupRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         return Result<Guid>.Ok(group.Id);
     }
@@ -276,7 +278,7 @@ public class AssignmentService(
             scheduleAssignmentRepo.RemoveRange(groupAssignments);
 
         enrollmentGroupRepo.Delete(group);
-        await enrollmentGroupRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         return Result<bool>.Ok(true);
     }
@@ -363,7 +365,7 @@ public class AssignmentService(
             }
         }
 
-        await enrollmentGroupRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
         return Result<bool>.Ok(true);
     }
 

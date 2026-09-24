@@ -1,8 +1,8 @@
+using CoachOS.Application.Abstractions;
 using CoachOS.Application.Auth;
 using CoachOS.Application.Auth.DTOs;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
-using CoachOS.Domain.Interfaces;
 using CoachOS.Domain.Models;
 using CoachOS.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;

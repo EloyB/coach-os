@@ -1,3 +1,4 @@
+using CoachOS.Application.Abstractions;
 using System.Security.Cryptography;
 using System.Text;
 using CoachOS.Application.Common;
@@ -18,6 +19,7 @@ public class StandaloneLessonService(
     ILessonRepository lessonRepo,
     ILessonInvitationRepository invitationRepo,
     ITennisClubRepository tennisClubRepo,
+    IUnitOfWork unitOfWork,
     IUserLookupService userLookup,
     IEmailService emailService,
     ApplicationMapper mapper,
@@ -88,7 +90,7 @@ public class StandaloneLessonService(
         };
 
         // Voor elke email een token + invitation. Raw tokens onthouden voor email-send na save.
-        DateTime now = DateTime.UtcNow;
+        DateTime now = timeProvider.GetUtcNow().UtcDateTime;
         List<(LessonInvitation Inv, string RawToken)> prepared = new();
         foreach (string email in normalizedEmails)
         {
@@ -117,7 +119,7 @@ public class StandaloneLessonService(
 
         await lessonRepo.AddAsync(lesson, ct);
         await invitationRepo.AddRangeAsync(prepared.Select(p => p.Inv), ct);
-        await lessonRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         // Best-effort verzending: één gefaalde email mag de andere niet blokkeren.
         foreach ((LessonInvitation inv, string rawToken) in prepared)
@@ -237,7 +239,7 @@ public class StandaloneLessonService(
         lesson.CancellationReason = string.IsNullOrEmpty(trimmedReason)
             ? "Geannuleerd door trainer"
             : trimmedReason;
-        await lessonRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         // Notificeer alle betrokken invitees (Pending + Accepted) — declined niet.
         IReadOnlyList<LessonInvitation> invitees =
@@ -297,7 +299,7 @@ public class StandaloneLessonService(
         if (toCreate.Count == 0)
             return Result.Ok();
 
-        DateTime now = DateTime.UtcNow;
+        DateTime now = timeProvider.GetUtcNow().UtcDateTime;
         List<(LessonInvitation Inv, string RawToken)> prepared = new();
         foreach (string email in toCreate)
         {
@@ -316,7 +318,7 @@ public class StandaloneLessonService(
         }
 
         await invitationRepo.AddRangeAsync(prepared.Select(p => p.Inv), ct);
-        await invitationRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         foreach ((LessonInvitation inv, string rawToken) in prepared)
         {
@@ -342,12 +344,12 @@ public class StandaloneLessonService(
 
         // Vers token + reset status zodat de deelnemer opnieuw kan reageren.
         (string raw, string hash) = GenerateToken();
-        DateTime now = DateTime.UtcNow;
+        DateTime now = timeProvider.GetUtcNow().UtcDateTime;
         invitation.TokenHash = hash;
         invitation.Status = LessonInvitationStatus.Pending;
         invitation.RespondedAt = null;
         invitation.InvitationSentAt = now;
-        await invitationRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         await TrySendInvitationEmailAsync(invitation, lesson, raw, ct);
 

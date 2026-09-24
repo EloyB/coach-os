@@ -1,3 +1,4 @@
+using CoachOS.Application.Abstractions;
 using System.Data;
 using System.Text.Json;
 using CoachOS.Application.Camps.DTOs;
@@ -20,6 +21,7 @@ public class CampEnrollmentService(
     ICampEnrollmentFormRepository forms,
     IPaymentService paymentService,
     IPaymentRepository payments,
+    IUnitOfWork unitOfWork,
     IMollieConnectService mollieConnect,
     IEmailService emailService,
     ILogger<CampEnrollmentService> logger) : ICampEnrollmentService
@@ -99,14 +101,14 @@ public class CampEnrollmentService(
         CampEnrollment enrollment;
         try
         {
-            await enrollments.BeginTransactionAsync(IsolationLevel.Serializable, ct);
+            await unitOfWork.BeginTransactionAsync(IsolationLevel.Serializable, ct);
 
             if (camp.MaxParticipants.HasValue)
             {
                 int activeCount = await enrollments.CountActiveByCampAsync(campId, ct);
                 if (activeCount + groupSize > camp.MaxParticipants.Value)
                 {
-                    await enrollments.RollbackTransactionAsync(ct);
+                    await unitOfWork.RollbackTransactionAsync(ct);
                     return Result<SubmitCampEnrollmentResultDto>.Fail(new Error(ErrorCodes.Conflict, "Dit kamp is volzet."));
                 }
             }
@@ -114,7 +116,7 @@ public class CampEnrollmentService(
             bool duplicate = await enrollments.IsDuplicateAsync(campId, request.ParticipantEmail, ct);
             if (duplicate)
             {
-                await enrollments.RollbackTransactionAsync(ct);
+                await unitOfWork.RollbackTransactionAsync(ct);
                 return Result<SubmitCampEnrollmentResultDto>.Fail(new Error(ErrorCodes.Conflict, "Je bent al ingeschreven voor dit kamp."));
             }
 
@@ -125,7 +127,7 @@ public class CampEnrollmentService(
                     bool memberDuplicate = await enrollments.IsDuplicateAsync(campId, member.ParticipantEmail, ct);
                     if (memberDuplicate)
                     {
-                        await enrollments.RollbackTransactionAsync(ct);
+                        await unitOfWork.RollbackTransactionAsync(ct);
                         return Result<SubmitCampEnrollmentResultDto>.Fail(new Error(ErrorCodes.Conflict, "Een van de groepsleden is al ingeschreven voor dit kamp."));
                     }
                 }
@@ -149,7 +151,7 @@ public class CampEnrollmentService(
                     CampEnrollmentId = enrollment.Id, CampFormFieldId = r.CampFormFieldId, Value = r.Value,
                 }, ct);
 
-            await enrollments.SaveChangesAsync(ct);
+            await unitOfWork.SaveChangesAsync(ct);
 
             if (request.EnrollmentType == "group" && request.GroupMembers is { Count: > 0 })
             {
@@ -162,7 +164,7 @@ public class CampEnrollmentService(
                     LeaderEnrollmentId = enrollment.Id,
                 };
                 await enrollments.AddGroupAsync(group, ct);
-                await enrollments.SaveChangesAsync(ct);
+                await unitOfWork.SaveChangesAsync(ct);
 
                 enrollment.CampEnrollmentGroupId = group.Id;
 
@@ -188,14 +190,14 @@ public class CampEnrollmentService(
                                 CampEnrollmentId = memberEnrollment.Id, CampFormFieldId = r.CampFormFieldId, Value = r.Value,
                             }, ct);
                 }
-                await enrollments.SaveChangesAsync(ct);
+                await unitOfWork.SaveChangesAsync(ct);
             }
 
-            await enrollments.CommitTransactionAsync(ct);
+            await unitOfWork.CommitTransactionAsync(ct);
         }
         catch (Exception ex)
         {
-            await enrollments.RollbackTransactionAsync(ct);
+            await unitOfWork.RollbackTransactionAsync(ct);
             logger.LogError(ex, "Kampinschrijving mislukt voor kamp {CampId}", campId);
             return Result<SubmitCampEnrollmentResultDto>.Fail(new Error(ErrorCodes.Unexpected, "Inschrijving mislukt. Probeer het opnieuw."));
         }

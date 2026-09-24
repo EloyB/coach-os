@@ -1,3 +1,4 @@
+using CoachOS.Application.Abstractions;
 using CoachOS.Application.Configuration;
 using CoachOS.Application.Mappings;
 using CoachOS.Application.StandaloneLessons;
@@ -22,6 +23,7 @@ public class StandaloneLessonServiceTests
     private Mock<ITennisClubRepository> _tennisClubRepo = null!;
     private Mock<IUserLookupService> _userLookup = null!;
     private Mock<IEmailService> _emailService = null!;
+    private Mock<IUnitOfWork> _unitOfWork = null!;
     private ApplicationMapper _mapper = null!;
     private StandaloneLessonService _service = null!;
 
@@ -37,6 +39,7 @@ public class StandaloneLessonServiceTests
         _tennisClubRepo = new Mock<ITennisClubRepository>();
         _userLookup = new Mock<IUserLookupService>();
         _emailService = new Mock<IEmailService>();
+        _unitOfWork = new Mock<IUnitOfWork>();
         _mapper = new ApplicationMapper();
 
         IOptions<AppOptions> appOptions = Options.Create(new AppOptions
@@ -48,6 +51,7 @@ public class StandaloneLessonServiceTests
             _lessonRepo.Object,
             _invitationRepo.Object,
             _tennisClubRepo.Object,
+            _unitOfWork.Object,
             _userLookup.Object,
             _emailService.Object,
             _mapper,
@@ -141,7 +145,7 @@ public class StandaloneLessonServiceTests
                               && i.TokenHash.Length == 64)),
             It.IsAny<CancellationToken>()), Times.Once);
 
-        _lessonRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
 
         // Best-effort emails — moeten zijn aangeroepen voor beide deelnemers.
         _emailService.Verify(e => e.SendStandaloneLessonInvitationAsync(
@@ -350,7 +354,7 @@ public class StandaloneLessonServiceTests
 
         result.IsSuccess.Should().BeTrue();
         lesson.IsCancelled.Should().BeTrue();
-        _lessonRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Test]
@@ -372,7 +376,7 @@ public class StandaloneLessonServiceTests
 
         result.IsSuccess.Should().BeTrue();
         // Geen extra SaveChanges nodig wanneer al geannuleerd.
-        _lessonRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Test]
