@@ -940,7 +940,7 @@ export default function PlanningPage({
       )}
 
       {!readOnly && planning.planningStatus !== "Scheduled" && !assignTarget && (
-        <div className="bg-amber-50 border-b border-amber-100 px-4 sm:px-8 py-3 shrink-0">
+        <div className="hidden sm:block bg-amber-50 border-b border-amber-100 px-4 sm:px-8 py-3 shrink-0">
           <div className="flex items-center gap-3 text-sm text-amber-900">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700">
               <Lock size={16} />
