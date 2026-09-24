@@ -1055,15 +1055,22 @@ function LessonWeekView({
   return (
     <div>
       {/* Header with pagination */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2.5">
-          <h2 className="text-sm font-semibold text-gray-800">Lesmomenten</h2>
-          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-tennis-green/10 text-tennis-green text-xs font-bold">
-            {lessons.length}
+      <div className="flex items-start justify-between mb-4 gap-2">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2.5">
+            <h2 className="text-sm font-semibold text-gray-800">Lesmomenten</h2>
+            <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-tennis-green/10 text-tennis-green text-xs font-bold">
+              {lessons.length}
+            </span>
+          </div>
+          {/* Datumbereik onder de titel — enkel op gsm */}
+          <span className="sm:hidden block text-xs text-gray-400 whitespace-nowrap mt-1">
+            {formatDateShort(currentWeek.startDate)} –{" "}
+            {formatDateShort(currentWeek.endDate)}
           </span>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <span className="text-xs text-gray-500 whitespace-nowrap">
             <span className="sm:hidden">
               {weekIndex + 1}/{weeks.length}
@@ -1072,7 +1079,8 @@ function LessonWeekView({
               Week {weekIndex + 1} van {weeks.length}
             </span>
           </span>
-          <span className="text-xs text-gray-400 whitespace-nowrap">
+          {/* Datumbereik naast Week x van x — enkel op desktop */}
+          <span className="hidden sm:inline text-xs text-gray-400 whitespace-nowrap">
             {formatDateShort(currentWeek.startDate)} –{" "}
             {formatDateShort(currentWeek.endDate)}
           </span>
