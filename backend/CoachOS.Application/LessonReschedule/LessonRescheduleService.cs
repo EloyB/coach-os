@@ -32,11 +32,15 @@ public class LessonRescheduleService(
             return Result<RescheduleLessonResultDto>.Fail(
                 new Error(ErrorCodes.Validation, "Geannuleerde les kan niet verplaatst worden."));
 
+        if (lesson.RescheduledToLessonId.HasValue)
+            return Result<RescheduleLessonResultDto>.Fail(
+                new Error(ErrorCodes.Conflict, "Deze les is al verplaatst."));
+
         DateOnly newDate = DateOnly.ParseExact(request.NewDate, "yyyy-MM-dd", CultureInfo.InvariantCulture);
         TimeOnly newStart = TimeOnly.ParseExact(request.NewStartTime, "HH:mm", CultureInfo.InvariantCulture);
         TimeOnly newEnd = TimeOnly.ParseExact(request.NewEndTime, "HH:mm", CultureInfo.InvariantCulture);
 
-        // Trainer-conflict (cross-org). Sluit de huidige les uit (die wordt in-place verplaatst).
+        // Trainer-conflict (cross-org). Sluit de huidige les uit, want die wordt geannuleerd.
         if (lesson.TrainerId.HasValue)
         {
             Lesson? conflict = await lessonRepo.FindTrainerConflictAsync(
@@ -49,7 +53,7 @@ public class LessonRescheduleService(
 
         // Baan-conflict (binnen de org, en binnen de club — baannamen zijn vrije tekst per club).
         // Reeks-lessen bepalen hun club via de reeks; losse lessen dragen hun eigen (mogelijk
-        // legacy-null) TennisClubId. Sluit de huidige les uit (die wordt in-place verplaatst).
+        // legacy-null) TennisClubId. Sluit de huidige les uit, want die wordt geannuleerd.
         Guid? tennisClubId = lesson.TennisClubId;
         if (!string.IsNullOrWhiteSpace(lesson.CourtName) && lesson.LessonSerieId.HasValue)
         {
@@ -68,39 +72,56 @@ public class LessonRescheduleService(
             ? null
             : request.Reason!.Trim();
 
-        // Bewaar de oude datum/tijd voor de mail vóór we in-place aanpassen.
-        DateOnly oldDate = lesson.Date;
-        TimeOnly oldStart = lesson.StartTime;
+        // Nieuwe les aanmaken — kopieer onveranderlijke metadata.
+        Lesson newLesson = new()
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = organizationId,
+            LessonSerieId = lesson.LessonSerieId,
+            TennisClubId = lesson.TennisClubId,
+            Date = newDate,
+            StartTime = newStart,
+            EndTime = newEnd,
+            TrainerId = lesson.TrainerId,
+            CourtName = lesson.CourtName,
+            MaxStudents = lesson.MaxStudents,
+            Level = lesson.Level,
+            Notes = lesson.Notes,
+            IsCancelled = false,
+        };
 
-        // In-place herplannen: pas datum/tijd aan op dezelfde les. Inschrijvingen,
-        // uitnodigingen en (bij reeksen) de planning blijven eraan gekoppeld — geen
-        // spook-les meer. De reden loggen we op de les zelf.
-        lesson.Date = newDate;
-        lesson.StartTime = newStart;
-        lesson.EndTime = newEnd;
+        await lessonRepo.AddAsync(newLesson, ct);
+
+        // Origineel cancellen + linken naar vervanger.
+        lesson.IsCancelled = true;
+        lesson.CancellationReason = trimmedReason ?? "Verplaatst naar andere datum";
+        lesson.RescheduledToLessonId = newLesson.Id;
 
         await lessonRepo.SaveChangesAsync(ct);
 
+        // Nu invitations / enrollments naar de nieuwe les verplaatsen via ExecuteUpdate.
+        await invitationRepo.ReassignToLessonAsync(lesson.Id, newLesson.Id, ct);
+        await enrollmentRepo.ReassignLessonLinkAsync(lesson.Id, newLesson.Id, ct);
+
         // Mailen — buiten de transactie. Falen mag het replan-resultaat niet roleren.
         int notified = await NotifyRecipientsAsync(
-            organizationId, lesson, oldDate, oldStart, trimmedReason, ct);
+            organizationId, lesson, newLesson, trimmedReason, ct);
 
         return Result<RescheduleLessonResultDto>.Ok(
-            new RescheduleLessonResultDto(lesson.Id, notified));
+            new RescheduleLessonResultDto(newLesson.Id, notified));
     }
 
     private async Task<int> NotifyRecipientsAsync(
         Guid organizationId,
-        Lesson lesson,
-        DateOnly oldDate,
-        TimeOnly oldStart,
+        Lesson oldLesson,
+        Lesson newLesson,
         string? reason,
         CancellationToken ct)
     {
         string? seriesName = null;
-        if (lesson.LessonSerieId.HasValue)
+        if (oldLesson.LessonSerieId.HasValue)
         {
-            Domain.Entities.LessonSerie? series = await serieRepo.GetByIdAsync(lesson.LessonSerieId.Value, organizationId, ct);
+            Domain.Entities.LessonSerie? series = await serieRepo.GetByIdAsync(oldLesson.LessonSerieId.Value, organizationId, ct);
             seriesName = series?.Name;
         }
 
@@ -108,10 +129,10 @@ public class LessonRescheduleService(
         // Serie-instance: enrollments (Pending + Confirmed) — gekoppeld aan de serie.
         List<(string Email, string Name)> recipients = new();
 
-        if (lesson.LessonSerieId.HasValue)
+        if (oldLesson.LessonSerieId.HasValue)
         {
             List<Enrollment> enrollments = await enrollmentRepo.GetBySeriesAsync(
-                lesson.LessonSerieId.Value, organizationId, ct);
+                oldLesson.LessonSerieId.Value, organizationId, ct);
             foreach (Enrollment e in enrollments)
             {
                 if (e.Status is EnrollmentStatus.Pending or EnrollmentStatus.Confirmed or EnrollmentStatus.PendingPayment)
@@ -120,9 +141,9 @@ public class LessonRescheduleService(
         }
         else
         {
-            // De les blijft dezelfde (in-place verplaatst) — invitations hangen er nog aan.
+            // Invitations zijn nu reeds verplaatst naar de nieuwe les — ophalen via newLessonId.
             IReadOnlyList<LessonInvitation> invitations = await invitationRepo.GetByLessonAsync(
-                lesson.Id, organizationId, ct);
+                newLesson.Id, organizationId, ct);
             foreach (LessonInvitation inv in invitations)
             {
                 if (inv.Status is LessonInvitationStatus.Pending or LessonInvitationStatus.Accepted)
@@ -141,16 +162,16 @@ public class LessonRescheduleService(
             {
                 await emailService.SendLessonRescheduledAsync(
                     email, name, seriesName,
-                    oldDate, oldStart,
-                    lesson.Date, lesson.StartTime, lesson.EndTime,
-                    lesson.CourtName, reason, ct);
+                    oldLesson.Date, oldLesson.StartTime,
+                    newLesson.Date, newLesson.StartTime, newLesson.EndTime,
+                    newLesson.CourtName, reason, ct);
                 sent++;
             }
             catch (Exception ex)
             {
                 logger.LogError(ex,
-                    "Replan-mail faalde voor {Email} (lesson {LessonId})",
-                    email, lesson.Id);
+                    "Replan-mail faalde voor {Email} (lesson {LessonId} → {NewLessonId})",
+                    email, oldLesson.Id, newLesson.Id);
             }
         }
 
