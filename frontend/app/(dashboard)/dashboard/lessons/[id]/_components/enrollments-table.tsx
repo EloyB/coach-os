@@ -388,12 +388,15 @@ function PersonRow({
                 )}
               </div>
               <p className="mt-1 break-all text-xs text-gray-500">
-                {contactLine(enrollment, (email) => t("viaContact", { email }))}
+                {enrollment.hasOwnEmail
+                  ? (enrollment.studentEmail ?? "")
+                  : t("viaContact", { email: enrollment.contactEmail })}
               </p>
-              <p className="mt-0.5 text-xs text-gray-500">
-                {age != null ? t("ageYears", { count: age }) : t("unknown")} ·{" "}
-                {formatEnrolledAt(enrollment.enrolledAt)}
-              </p>
+              {enrollment.studentPhone && (
+                <p className="mt-0.5 text-xs text-gray-500">
+                  {enrollment.studentPhone}
+                </p>
+              )}
               {enrollmentStatusStyles[enrollment.status] && (
                 <Badge
                   className={`${enrollmentStatusStyles[enrollment.status].className} mt-1.5 border-0 text-xs`}
