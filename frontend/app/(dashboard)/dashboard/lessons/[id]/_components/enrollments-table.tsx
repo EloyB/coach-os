@@ -1238,6 +1238,7 @@ export function EnrollmentsSection({ seriesId }: { seriesId: string }) {
   const t = useTranslations("enrollmentsTable");
   const [copied, setCopied] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
+  const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
   const [canManage, setCanManage] = useState(false);
   useEffect(() => {
     // Auth staat alleen in localStorage; pas na hydration kunnen acties zichtbaar worden.
@@ -1274,31 +1275,77 @@ export function EnrollmentsSection({ seriesId }: { seriesId: string }) {
           </span>
         </div>
         <div className="flex items-center gap-2">
+          {/* Desktop: knoppen inline */}
           {canManage && (
             <button
               type="button"
               onClick={() => setManualOpen(true)}
-              className="rounded-lg bg-tennis-green px-3 py-1.5 text-xs font-semibold text-white hover:bg-tennis-green/90"
+              className="hidden rounded-lg bg-tennis-green px-3 py-1.5 text-xs font-semibold text-white hover:bg-tennis-green/90 sm:block"
             >
               {t("manualAdd")}
             </button>
           )}
           <button
             onClick={handleCopyLink}
-            className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
+            className="hidden items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 sm:flex"
           >
-          {copied ? (
-            <>
-              <CheckCircle2 size={12} className="text-green-500" />
-              {t("copied")}
-            </>
-          ) : (
-            <>
-              <Copy size={12} />
-              {t("copyLink")}
-            </>
-          )}
+            {copied ? (
+              <>
+                <CheckCircle2 size={12} className="text-green-500" />
+                {t("copied")}
+              </>
+            ) : (
+              <>
+                <Copy size={12} />
+                {t("copyLink")}
+              </>
+            )}
           </button>
+
+          {/* Mobiel: ⋮-menu met dezelfde acties */}
+          <Popover open={headerMenuOpen} onOpenChange={setHeaderMenuOpen}>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                aria-label="Meer acties"
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 sm:hidden"
+              >
+                <MoreVertical size={16} />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-52 p-1 text-sm">
+              {canManage && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setHeaderMenuOpen(false);
+                    setManualOpen(true);
+                  }}
+                  className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                >
+                  <UserPlus size={14} />
+                  {t("manualAdd")}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleCopyLink}
+                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+              >
+                {copied ? (
+                  <>
+                    <CheckCircle2 size={14} className="text-green-500" />
+                    {t("copied")}
+                  </>
+                ) : (
+                  <>
+                    <Copy size={14} />
+                    {t("copyLink")}
+                  </>
+                )}
+              </button>
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
 
