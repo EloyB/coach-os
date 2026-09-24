@@ -86,6 +86,7 @@ import {
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const DAY_NAMES_SHORT = ["Ma", "Di", "Wo", "Do", "Vr", "Za", "Zo"];
+const DAY_NAMES_FULL = ["Maandag", "Dinsdag", "Woensdag", "Donderdag", "Vrijdag", "Zaterdag", "Zondag"];
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 
@@ -298,6 +299,17 @@ export default function PlanningPage({
   const [openSlotId, setOpenSlotId] = useState<string | null>(null);
   const [addingSlot, setAddingSlot] = useState(false);
   const [editingSlot, setEditingSlot] = useState<WeekSlotEditData | null>(null);
+  // Geselecteerde dag voor de mobiele dag-weergave (0=Ma .. 6=Zo).
+  const [selectedDay, setSelectedDay] = useState(0);
+  // Mobiele weergave (< sm): toont één dag i.p.v. de volledige week-grid.
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 639px)");
+    const sync = () => setIsMobile(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
 
   const deleteSlotMutation = useMutation({
     mutationFn: (entryId: string) => deleteWeekSlot(id, entryId),
@@ -476,6 +488,21 @@ export default function PlanningPage({
       calEndHour: Math.min(24, Math.ceil(maxMin / 60) + 1),
     };
   }, [planning]);
+
+  // Dagen met tijdslots — voedt de dag-tabs in de mobiele weergave.
+  const daysWithSlots = useMemo(() => {
+    if (!planning) return [] as number[];
+    const set = new Set<number>();
+    for (const s of planning.timeSlots) set.add(s.dayOfWeek);
+    return [...set].sort((a, b) => a - b);
+  }, [planning]);
+
+  // Houd de geselecteerde dag geldig zodra de slot-dagen bekend/gewijzigd zijn.
+  useEffect(() => {
+    if (daysWithSlots.length > 0 && !daysWithSlots.includes(selectedDay)) {
+      setSelectedDay(daysWithSlots[0]);
+    }
+  }, [daysWithSlots, selectedDay]);
 
   // Toegewezen eenheden (solo of groep), met hun slot(s) — één rij per persoon/groep.
   const assignedUnits = useMemo(() => {
@@ -720,19 +747,19 @@ export default function PlanningPage({
     // Breekt uit de layout-padding (main = px-7 py-6 / lg:pb-6) en vult de volle
     // hoogte: h = 100% van de content-box + de 3rem verticale padding, zodat de
     // agenda + zijkolom tot onderaan lopen (geen lege balk).
-    <div className="flex flex-col h-[calc(100%_+_3rem)] -mx-7 -my-6">
+    <div className="flex flex-col min-h-[calc(100%_+_3rem)] sm:h-[calc(100%_+_3rem)] -mx-7 -my-6">
       {/* Top bar */}
-      <div className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-4">
+      <div className="bg-white border-b border-gray-200 px-4 sm:px-8 py-3 sm:py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shrink-0">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 min-w-0">
           <Link
             href={`/dashboard/lessons/${id}`}
-            className="text-sm text-gray-500 hover:text-tennis-green flex items-center gap-1"
+            className="text-sm text-gray-500 hover:text-tennis-green flex items-center gap-1 shrink-0"
           >
             <ArrowLeft size={16} />
             {t("backToSeries")}
           </Link>
-          <div className="h-5 w-px bg-gray-200" />
-          <h1 className="text-lg font-semibold text-gray-900">
+          <div className="hidden sm:block h-5 w-px bg-gray-200" />
+          <h1 className="text-base sm:text-lg font-semibold text-gray-900 min-w-0">
             {t("pageTitle")} — {series?.name ?? "..."}
           </h1>
           {planning.planningStatus === "Planning" && (
@@ -751,24 +778,26 @@ export default function PlanningPage({
             </span>
           )}
           {planning.planningLastEditedAt && (
-            <span className="text-xs text-gray-400">
+            <span className="hidden sm:inline text-xs text-gray-400">
               {t("lastEdited")}: {new Date(planning.planningLastEditedAt).toLocaleDateString("nl-BE", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
             </span>
           )}
         </div>
         {!readOnly && planning.planningStatus !== "Scheduled" && (
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap shrink-0">
             <button
               type="button"
               onClick={() => setAddingSlot(true)}
-              className="inline-flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
+              aria-label={t("addSlot")}
+              title={t("addSlot")}
+              className="inline-flex items-center gap-2 border border-gray-300 text-gray-700 px-3 sm:px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
             >
               <Plus size={15} />
-              {t("addSlot")}
+              <span className="hidden sm:inline">{t("addSlot")}</span>
             </button>
             <Link
               href={`/dashboard/lessons/${id}`}
-              className="inline-flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
+              className="hidden sm:inline-flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
             >
               {t("goBack")}
             </Link>
@@ -778,13 +807,17 @@ export default function PlanningPage({
                 <button
                   type="button"
                   disabled={generateMutation.isPending}
-                  className="inline-flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition disabled:opacity-50"
+                  aria-label={t("regenerate")}
+                  title={t("regenerate")}
+                  className="inline-flex items-center gap-2 border border-gray-300 text-gray-700 px-3 sm:px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition disabled:opacity-50"
                 >
                   <RefreshCw
                     size={16}
                     className={generateMutation.isPending ? "animate-spin" : ""}
                   />
-                  {generateMutation.isPending ? t("generating") : t("regenerate")}
+                  <span className="hidden sm:inline">
+                    {generateMutation.isPending ? t("generating") : t("regenerate")}
+                  </span>
                 </button>
               </AlertDialogTrigger>
               <AlertDialogContent>
@@ -824,7 +857,7 @@ export default function PlanningPage({
                       ? t("confirmDisabledUnassigned", { count: totalUnassigned })
                       : undefined
                   }
-                  className="inline-flex items-center gap-2 bg-tennis-green text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-tennis-green/90 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex items-center gap-2 bg-tennis-green text-white px-3 sm:px-4 py-2 rounded-lg text-sm font-medium hover:bg-tennis-green/90 transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Check size={16} />
                   {confirmMutation.isPending ? t("confirming") : t("confirm")}
@@ -853,24 +886,24 @@ export default function PlanningPage({
       </div>
 
       {/* Legend bar — kleur volgt de bevestigings-lifecycle van het tijdslot. */}
-      <div className="bg-white border-b border-gray-200 px-8 py-3 flex items-center gap-5 text-xs text-gray-500 shrink-0">
-        <div className="flex items-center gap-1.5">
+      <div className="bg-white border-b border-gray-200 px-4 sm:px-8 py-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-500 shrink-0">
+        <div className="flex items-center gap-1.5 shrink-0">
           <div className="w-4 h-3 rounded border border-amber-400 bg-amber-50" />
           {t("legendConcept")}
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 shrink-0">
           <div className="w-4 h-3 rounded border border-blue-400 bg-blue-50" />
           {t("legendOffered")}
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 shrink-0">
           <div className="w-4 h-3 rounded border border-tennis-green bg-green-50" />
           {t("legendConfirmed")}
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 shrink-0">
           <Lock size={11} className="text-tennis-green" />
           {t("legendLocked")}
         </div>
-        <div className="ml-auto text-xs text-gray-400">
+        <div className="w-full sm:w-auto sm:ml-auto text-xs text-gray-400">
           {t("enrollmentsCount", { count: totalEnrollments })} ·{" "}
           {t("timeSlotsCount", { count: totalSlots })} ·{" "}
           {t("spotsCount", { count: totalCapacity })}
@@ -879,7 +912,7 @@ export default function PlanningPage({
 
       {/* Toewijs-modus banner */}
       {assignTarget && (
-        <div className="bg-tennis-green/10 border-b border-tennis-green/20 px-8 py-3 shrink-0">
+        <div className="bg-tennis-green/10 border-b border-tennis-green/20 px-4 sm:px-8 py-3 shrink-0">
           <div className="flex items-center gap-3 text-sm text-tennis-green">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-tennis-green/15 text-tennis-green">
               <Check size={16} />
@@ -907,7 +940,7 @@ export default function PlanningPage({
       )}
 
       {!readOnly && planning.planningStatus !== "Scheduled" && !assignTarget && (
-        <div className="bg-amber-50 border-b border-amber-100 px-8 py-3 shrink-0">
+        <div className="bg-amber-50 border-b border-amber-100 px-4 sm:px-8 py-3 shrink-0">
           <div className="flex items-center gap-3 text-sm text-amber-900">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700">
               <Lock size={16} />
@@ -927,12 +960,32 @@ export default function PlanningPage({
       )}
 
       {/* Calendar + Sidebar */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex flex-col sm:flex-row overflow-visible sm:overflow-hidden">
         {/* Calendar area */}
-        <div className="flex-1 p-6 overflow-auto">
+        <div className="flex-1 p-4 sm:p-6 overflow-visible sm:overflow-auto">
+          {/* Dag-tabs — alleen op gsm; kiest welke dag de 1-dag-grid toont. */}
+          {isMobile && daysWithSlots.length > 0 && (
+            <div className="mb-3 flex gap-1.5 overflow-x-auto pb-1">
+              {daysWithSlots.map((d) => (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => setSelectedDay(d)}
+                  className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                    d === selectedDay
+                      ? "bg-tennis-green text-white"
+                      : "border border-rule bg-white text-ink-2 hover:bg-gray-50"
+                  }`}
+                >
+                  {DAY_NAMES_FULL[d]}
+                </button>
+              ))}
+            </div>
+          )}
           <CalendarGrid
             slots={[]}
             readOnly
+            singleDayIndex={isMobile ? selectedDay : undefined}
             startHour={calStartHour}
             endHour={calEndHour}
             renderDayOverlay={(dayIndex) => {
@@ -1262,9 +1315,9 @@ export default function PlanningPage({
         </div>
 
         {/* Right sidebar */}
-        <aside className="w-80 bg-white border-l border-gray-200 flex flex-col shrink-0 overflow-auto">
+        <aside className="w-full sm:w-80 bg-white border-t sm:border-t-0 sm:border-l border-gray-200 flex flex-col shrink-0 overflow-visible sm:overflow-auto">
           {/* Zoekbalk — filtert personen over alle secties. */}
-          <div className="sticky top-0 z-10 border-b border-gray-100 bg-white p-3">
+          <div className="sm:sticky sm:top-0 z-10 border-b border-gray-100 bg-white p-3">
             <div className="relative">
               <Search
                 size={14}
