@@ -795,13 +795,6 @@ export default function PlanningPage({
               <Plus size={15} />
               <span className="hidden sm:inline">{t("addSlot")}</span>
             </button>
-            <Link
-              href={`/dashboard/lessons/${id}`}
-              className="hidden sm:inline-flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
-            >
-              {t("goBack")}
-            </Link>
-
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <button
