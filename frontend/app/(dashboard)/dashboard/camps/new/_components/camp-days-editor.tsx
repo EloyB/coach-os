@@ -17,6 +17,10 @@ export function CampDaysEditor({ days, onChange, trainers }: CampDaysEditorProps
   const t = useTranslations("camps");
   // Welke trainer-kaart staat in uren-bewerkmodus (key = `${date}:${trainerId}`).
   const [editingTimes, setEditingTimes] = useState<string | null>(null);
+  // Gekozen trainer in de toevoeg-dropdown, per dag (date → trainerId).
+  const [pendingTrainer, setPendingTrainer] = useState<Record<string, string>>(
+    {},
+  );
 
   const assignableTrainers = trainers.filter(isAssignableTrainer);
 
@@ -235,18 +239,38 @@ export function CampDaysEditor({ days, onChange, trainers }: CampDaysEditorProps
               {/* Add trainer */}
               {available.length > 0 ? (
                 <div className="mt-3 flex items-center gap-2">
-                  <Plus size={12} className="text-tennis-green" />
-                  <NativeSelect
-                    value=""
-                    onChange={(e) => addTrainer(day.date, e.target.value)}
+                  <div className="flex-1 min-w-0">
+                    <NativeSelect
+                      value={pendingTrainer[day.date] ?? ""}
+                      onChange={(e) =>
+                        setPendingTrainer((p) => ({
+                          ...p,
+                          [day.date]: e.target.value,
+                        }))
+                      }
+                    >
+                      <option value="">{t("addTrainer")}</option>
+                      {available.map((tr) => (
+                        <option key={tr.id} value={tr.id}>
+                          {tr.firstName} {tr.lastName}
+                        </option>
+                      ))}
+                    </NativeSelect>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const id = pendingTrainer[day.date];
+                      if (!id) return;
+                      addTrainer(day.date, id);
+                      setPendingTrainer((p) => ({ ...p, [day.date]: "" }));
+                    }}
+                    disabled={!pendingTrainer[day.date]}
+                    aria-label={t("addTrainer")}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-tennis-green text-white transition-colors hover:bg-tennis-green/90 disabled:opacity-40 disabled:cursor-not-allowed"
                   >
-                    <option value="">{t("addTrainer")}</option>
-                    {available.map((tr) => (
-                      <option key={tr.id} value={tr.id}>
-                        {tr.firstName} {tr.lastName}
-                      </option>
-                    ))}
-                  </NativeSelect>
+                    <Plus size={16} />
+                  </button>
                 </div>
               ) : (
                 assignableTrainers.length === 0 && (
