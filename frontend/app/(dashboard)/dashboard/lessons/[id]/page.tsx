@@ -1064,10 +1064,15 @@ function LessonWeekView({
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-500">
-            Week {weekIndex + 1} van {weeks.length}
+          <span className="text-xs text-gray-500 whitespace-nowrap">
+            <span className="sm:hidden">
+              {weekIndex + 1}/{weeks.length}
+            </span>
+            <span className="hidden sm:inline">
+              Week {weekIndex + 1} van {weeks.length}
+            </span>
           </span>
-          <span className="text-xs text-gray-400">
+          <span className="text-xs text-gray-400 whitespace-nowrap">
             {formatDateShort(currentWeek.startDate)} –{" "}
             {formatDateShort(currentWeek.endDate)}
           </span>
