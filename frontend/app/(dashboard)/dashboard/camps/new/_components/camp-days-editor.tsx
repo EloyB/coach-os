@@ -4,6 +4,13 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Trash2, Plus, Clock, Pencil, Check } from "lucide-react";
 import { NativeSelect } from "@/components/ui/native-select";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { isAssignableTrainer, type TrainerDto } from "@/lib/api/trainers";
 import { clampTime, formatDayHeading, type CampDayDraft } from "../_types";
 
@@ -17,10 +24,13 @@ export function CampDaysEditor({ days, onChange, trainers }: CampDaysEditorProps
   const t = useTranslations("camps");
   // Welke trainer-kaart staat in uren-bewerkmodus (key = `${date}:${trainerId}`).
   const [editingTimes, setEditingTimes] = useState<string | null>(null);
-  // Gekozen trainer in de toevoeg-dropdown, per dag (date → trainerId).
-  const [pendingTrainer, setPendingTrainer] = useState<Record<string, string>>(
-    {},
-  );
+  // Dialog om een trainer aan een dag toe te voegen (null = gesloten).
+  const [addDialog, setAddDialog] = useState<{
+    date: string;
+    trainerId: string;
+    start: string;
+    end: string;
+  } | null>(null);
 
   const assignableTrainers = trainers.filter(isAssignableTrainer);
 
@@ -28,7 +38,12 @@ export function CampDaysEditor({ days, onChange, trainers }: CampDaysEditorProps
     onChange(days.map((d) => (d.date === date ? { ...d, ...updates } : d)));
   }
 
-  function addTrainer(date: string, trainerId: string) {
+  function addTrainer(
+    date: string,
+    trainerId: string,
+    startTime?: string,
+    endTime?: string,
+  ) {
     if (!trainerId) return;
     onChange(
       days.map((d) => {
@@ -38,7 +53,11 @@ export function CampDaysEditor({ days, onChange, trainers }: CampDaysEditorProps
           ...d,
           trainers: [
             ...d.trainers,
-            { trainerId, startTime: d.startTime, endTime: d.endTime },
+            {
+              trainerId,
+              startTime: startTime ?? d.startTime,
+              endTime: endTime ?? d.endTime,
+            },
           ],
         };
       }),
@@ -118,8 +137,27 @@ export function CampDaysEditor({ days, onChange, trainers }: CampDaysEditorProps
               key={day.date}
               className="border border-gray-100 rounded-xl p-4 bg-[#FAFAF8]"
             >
-              <div className="text-[13px] font-bold text-tennis-green mb-3">
-                {formatDayHeading(day.date)}
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <div className="text-[13px] font-bold text-tennis-green">
+                  {formatDayHeading(day.date)}
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setAddDialog({
+                      date: day.date,
+                      trainerId: "",
+                      start: day.startTime,
+                      end: day.endTime,
+                    })
+                  }
+                  disabled={available.length === 0}
+                  aria-label={t("addTrainer")}
+                  title={t("addTrainer")}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-tennis-green text-white transition-colors hover:bg-tennis-green/90 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <Plus size={16} />
+                </button>
               </div>
 
               {/* Camp hours */}
@@ -236,20 +274,47 @@ export function CampDaysEditor({ days, onChange, trainers }: CampDaysEditorProps
                 })}
               </div>
 
-              {/* Add trainer */}
-              {available.length > 0 ? (
-                <div className="mt-3 flex items-center gap-2">
-                  <div className="flex-1 min-w-0">
+              {assignableTrainers.length === 0 && (
+                <p className="text-[11px] text-gray-400 mt-3">
+                  {t("noTrainers")}
+                </p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {addDialog &&
+        (() => {
+          const day = days.find((d) => d.date === addDialog.date);
+          const available = day
+            ? assignableTrainers.filter(
+                (tr) => !day.trainers.some((x) => x.trainerId === tr.id),
+              )
+            : [];
+          return (
+            <Dialog open onOpenChange={(o) => !o && setAddDialog(null)}>
+              <DialogContent
+                className="sm:max-w-md"
+                onOpenAutoFocus={(e) => e.preventDefault()}
+              >
+                <DialogHeader>
+                  <DialogTitle>{t("addTrainer")}</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">
+                      {t("addTrainerTrainerLabel")}
+                    </label>
                     <NativeSelect
-                      value={pendingTrainer[day.date] ?? ""}
+                      value={addDialog.trainerId}
                       onChange={(e) =>
-                        setPendingTrainer((p) => ({
-                          ...p,
-                          [day.date]: e.target.value,
-                        }))
+                        setAddDialog((d) =>
+                          d ? { ...d, trainerId: e.target.value } : d,
+                        )
                       }
                     >
-                      <option value="">{t("addTrainer")}</option>
+                      <option value="">{t("selectTrainer")}</option>
                       {available.map((tr) => (
                         <option key={tr.id} value={tr.id}>
                           {tr.firstName} {tr.lastName}
@@ -257,32 +322,68 @@ export function CampDaysEditor({ days, onChange, trainers }: CampDaysEditorProps
                       ))}
                     </NativeSelect>
                   </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="min-w-0">
+                      <label className="mb-1 block text-xs font-medium text-gray-600">
+                        {t("dayStartTime")}
+                      </label>
+                      <input
+                        type="time"
+                        value={addDialog.start}
+                        onChange={(e) =>
+                          setAddDialog((d) =>
+                            d ? { ...d, start: e.target.value } : d,
+                          )
+                        }
+                        className={timeInputCls + " w-full"}
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <label className="mb-1 block text-xs font-medium text-gray-600">
+                        {t("dayEndTime")}
+                      </label>
+                      <input
+                        type="time"
+                        value={addDialog.end}
+                        onChange={(e) =>
+                          setAddDialog((d) =>
+                            d ? { ...d, end: e.target.value } : d,
+                          )
+                        }
+                        className={timeInputCls + " w-full"}
+                      />
+                    </div>
+                  </div>
+                </div>
+                <DialogFooter>
                   <button
                     type="button"
-                    onClick={() => {
-                      const id = pendingTrainer[day.date];
-                      if (!id) return;
-                      addTrainer(day.date, id);
-                      setPendingTrainer((p) => ({ ...p, [day.date]: "" }));
-                    }}
-                    disabled={!pendingTrainer[day.date]}
-                    aria-label={t("addTrainer")}
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-tennis-green text-white transition-colors hover:bg-tennis-green/90 disabled:opacity-40 disabled:cursor-not-allowed"
+                    onClick={() => setAddDialog(null)}
+                    className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
                   >
-                    <Plus size={16} />
+                    {t("cancel")}
                   </button>
-                </div>
-              ) : (
-                assignableTrainers.length === 0 && (
-                  <p className="text-[11px] text-gray-400 mt-3">
-                    {t("noTrainers")}
-                  </p>
-                )
-              )}
-            </div>
+                  <button
+                    type="button"
+                    disabled={!addDialog.trainerId}
+                    onClick={() => {
+                      addTrainer(
+                        addDialog.date,
+                        addDialog.trainerId,
+                        addDialog.start,
+                        addDialog.end,
+                      );
+                      setAddDialog(null);
+                    }}
+                    className="rounded-lg bg-tennis-green px-4 py-2 text-sm font-semibold text-white hover:bg-tennis-green/90 disabled:opacity-50"
+                  >
+                    {t("addTrainerSubmit")}
+                  </button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           );
-        })}
-      </div>
+        })()}
     </div>
   );
 }
