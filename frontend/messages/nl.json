@@ -699,6 +699,8 @@
     "dayTrainers": "Trainers",
     "addTrainer": "Trainer toevoegen",
     "removeTrainer": "Trainer verwijderen",
+    "editTrainerTimes": "Uren aanpassen",
+    "trainerTimesDone": "Klaar",
     "selectTrainer": "Selecteer trainer",
     "noTrainers": "Geen actieve trainers - nodig eerst een trainer uit.",
     "noTrainersOnDay": "Geen trainers toegewezen",

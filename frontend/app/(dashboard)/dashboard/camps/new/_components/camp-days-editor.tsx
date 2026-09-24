@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { Trash2, Plus, Clock } from "lucide-react";
+import { Trash2, Plus, Clock, Pencil, Check } from "lucide-react";
 import { NativeSelect } from "@/components/ui/native-select";
 import { isAssignableTrainer, type TrainerDto } from "@/lib/api/trainers";
 import { clampTime, formatDayHeading, type CampDayDraft } from "../_types";
@@ -14,6 +15,8 @@ interface CampDaysEditorProps {
 
 export function CampDaysEditor({ days, onChange, trainers }: CampDaysEditorProps) {
   const t = useTranslations("camps");
+  // Welke trainer-kaart staat in uren-bewerkmodus (key = `${date}:${trainerId}`).
+  const [editingTimes, setEditingTimes] = useState<string | null>(null);
 
   const assignableTrainers = trainers.filter(isAssignableTrainer);
 
@@ -144,52 +147,89 @@ export function CampDaysEditor({ days, onChange, trainers }: CampDaysEditorProps
                 {t("dayTrainers")}
               </p>
               <div className="space-y-2">
-                {day.trainers.map((tr) => (
-                  <div key={tr.trainerId} className="flex items-center gap-2.5">
-                    <span className="flex-1 text-[13px] font-semibold text-gray-900">
-                      {trainerName(tr)}
-                    </span>
-                    <input
-                      type="time"
-                      value={tr.startTime}
-                      min={day.startTime}
-                      max={day.endTime}
-                      onChange={(e) =>
-                        updateTrainerTime(
-                          day.date,
-                          tr.trainerId,
-                          "startTime",
-                          e.target.value,
-                        )
-                      }
-                      className={timeInputCls + " px-2 py-1"}
-                    />
-                    <span className="text-gray-400 text-xs">-</span>
-                    <input
-                      type="time"
-                      value={tr.endTime}
-                      min={day.startTime}
-                      max={day.endTime}
-                      onChange={(e) =>
-                        updateTrainerTime(
-                          day.date,
-                          tr.trainerId,
-                          "endTime",
-                          e.target.value,
-                        )
-                      }
-                      className={timeInputCls + " px-2 py-1"}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeTrainer(day.date, tr.trainerId)}
-                      aria-label={t("removeTrainer")}
-                      className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                {day.trainers.map((tr) => {
+                  const key = `${day.date}:${tr.trainerId}`;
+                  const isEditing = editingTimes === key;
+                  return (
+                    <div
+                      key={tr.trainerId}
+                      className="rounded-lg border border-gray-200 bg-white p-3"
                     >
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
-                ))}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[13px] font-semibold text-gray-900">
+                            {trainerName(tr)}
+                          </p>
+                          {isEditing ? (
+                            <div className="mt-2 flex items-center gap-2">
+                              <input
+                                type="time"
+                                value={tr.startTime}
+                                min={day.startTime}
+                                max={day.endTime}
+                                onChange={(e) =>
+                                  updateTrainerTime(
+                                    day.date,
+                                    tr.trainerId,
+                                    "startTime",
+                                    e.target.value,
+                                  )
+                                }
+                                className={timeInputCls + " px-2 py-1"}
+                              />
+                              <span className="text-gray-400 text-xs">-</span>
+                              <input
+                                type="time"
+                                value={tr.endTime}
+                                min={day.startTime}
+                                max={day.endTime}
+                                onChange={(e) =>
+                                  updateTrainerTime(
+                                    day.date,
+                                    tr.trainerId,
+                                    "endTime",
+                                    e.target.value,
+                                  )
+                                }
+                                className={timeInputCls + " px-2 py-1"}
+                              />
+                            </div>
+                          ) : (
+                            <p className="mt-0.5 text-xs text-gray-500 tabular-nums">
+                              {tr.startTime} – {tr.endTime}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex shrink-0 items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setEditingTimes(isEditing ? null : key)}
+                            aria-label={
+                              isEditing
+                                ? t("trainerTimesDone")
+                                : t("editTrainerTimes")
+                            }
+                            className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-tennis-green hover:bg-tennis-green/10 transition-colors"
+                          >
+                            {isEditing ? (
+                              <Check size={14} />
+                            ) : (
+                              <Pencil size={13} />
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removeTrainer(day.date, tr.trainerId)}
+                            aria-label={t("removeTrainer")}
+                            className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
 
               {/* Add trainer */}
