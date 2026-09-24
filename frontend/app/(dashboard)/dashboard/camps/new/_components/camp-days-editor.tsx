@@ -86,7 +86,7 @@ export function CampDaysEditor({ days, onChange, trainers }: CampDaysEditorProps
   return (
     <div className="bg-white rounded-xl shadow-sm shadow-gray-100 overflow-hidden">
       <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2.5">
-        <div className="w-6 h-6 rounded-md bg-tennis-green/10 flex items-center justify-center">
+        <div className="w-6 h-6 shrink-0 rounded-md bg-tennis-green/10 flex items-center justify-center">
           <Clock size={13} className="text-tennis-green" />
         </div>
         <div>

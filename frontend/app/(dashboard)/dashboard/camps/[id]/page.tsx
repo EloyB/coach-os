@@ -11,6 +11,7 @@ import {
   ChevronUp,
   Trash2,
   Users,
+  Search,
   Copy,
   CheckCircle2,
   Pencil,
@@ -119,9 +120,11 @@ function PaymentBadge({
 function EnrollmentRow({
   enrollment,
   campId,
+  variant = "row",
 }: {
   enrollment: CampEnrollmentDto;
   campId: string;
+  variant?: "row" | "card";
 }) {
   const t = useTranslations("camps");
   const queryClient = useQueryClient();
@@ -143,87 +146,134 @@ function EnrollmentRow({
     },
   });
 
+  const enrolledDate = new Date(enrollment.enrolledAt).toLocaleDateString("nl-BE");
+
+  const markPaidBlock = isCashPending ? (
+    <div onClick={(e) => e.stopPropagation()}>
+      <button
+        type="button"
+        onClick={() => {
+          setMarkErrors([]);
+          markPaidMutation.mutate();
+        }}
+        disabled={markPaidMutation.isPending}
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-tennis-green text-white text-xs font-semibold hover:bg-tennis-green/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+      >
+        <CheckCircle2 size={13} />
+        {markPaidMutation.isPending ? t("markingPaid") : t("markPaid")}
+      </button>
+      {markErrors.length > 0 && (
+        <div className="text-xs text-red-600 mt-2 space-y-0.5">
+          {markErrors.map((msg, i) => (
+            <p key={i}>{msg}</p>
+          ))}
+        </div>
+      )}
+    </div>
+  ) : null;
+
+  const responsesBlock = hasResponses ? (
+    <dl className="space-y-1.5 bg-[#FAFAF8] rounded-lg p-3">
+      {enrollment.formResponses.map((r, i) => (
+        <div key={i} className="flex gap-3 text-xs">
+          <dt className="text-gray-400 shrink-0 min-w-[120px]">{r.fieldLabel}</dt>
+          <dd className="text-gray-900 font-medium">{r.value}</dd>
+        </div>
+      ))}
+    </dl>
+  ) : null;
+
+  if (variant === "card") {
+    return (
+      <div className="rounded-xl border border-gray-100 bg-white p-3">
+        <div
+          className={`flex items-start justify-between gap-2 ${hasResponses ? "cursor-pointer" : ""}`}
+          onClick={() => hasResponses && setExpanded((v) => !v)}
+        >
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-gray-900">
+              {enrollment.participantName}
+            </p>
+            <p className="mt-0.5 break-all text-xs text-gray-500">
+              {enrollment.participantEmail}
+              {enrollment.groupName ? ` · ${enrollment.groupName}` : ""}
+            </p>
+            <p className="mt-0.5 text-xs text-gray-400">{enrolledDate}</p>
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              <PaymentBadge
+                paymentMethod={enrollment.paymentMethod}
+                paymentStatus={enrollment.paymentStatus}
+              />
+              <StatusBadge status={enrollment.status} />
+            </div>
+          </div>
+          {hasResponses &&
+            (expanded ? (
+              <ChevronUp size={14} className="shrink-0 text-gray-400" />
+            ) : (
+              <ChevronDown size={14} className="shrink-0 text-gray-400" />
+            ))}
+        </div>
+        {markPaidBlock && <div className="mt-2.5">{markPaidBlock}</div>}
+        {expanded && responsesBlock && (
+          <div className="mt-2.5">{responsesBlock}</div>
+        )}
+      </div>
+    );
+  }
+
   return (
-    <div className="border-b border-gray-100 last:border-b-0">
-      <div
-        className={`flex items-center justify-between px-5 py-3 ${hasResponses ? "cursor-pointer hover:bg-gray-50" : ""}`}
+    <>
+      <tr
+        className={`border-t border-gray-50 ${hasResponses ? "cursor-pointer hover:bg-gray-50/60" : ""}`}
         onClick={() => hasResponses && setExpanded((v) => !v)}
       >
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-gray-900 truncate">
-            {enrollment.participantName}
-          </p>
-          <p className="text-xs text-gray-400 truncate">
+        <td className="px-4 py-2.5 text-sm font-medium text-gray-900">
+          {enrollment.participantName}
+        </td>
+        <td className="px-4 py-2.5 text-xs text-gray-500">
+          <span className="block max-w-[240px] truncate">
             {enrollment.participantEmail}
             {enrollment.groupName ? ` · ${enrollment.groupName}` : ""}
-          </p>
-        </div>
-        <div className="flex items-center gap-3 ml-4">
-          <span className="text-xs text-gray-400">
-            {new Date(enrollment.enrolledAt).toLocaleDateString("nl-BE")}
           </span>
+        </td>
+        <td className="px-4 py-2.5 text-xs text-gray-500 whitespace-nowrap">
+          {enrolledDate}
+        </td>
+        <td className="px-4 py-2.5 whitespace-nowrap">
           <PaymentBadge
             paymentMethod={enrollment.paymentMethod}
             paymentStatus={enrollment.paymentStatus}
           />
+        </td>
+        <td className="px-4 py-2.5 whitespace-nowrap">
           <StatusBadge status={enrollment.status} />
+        </td>
+        <td className="px-4 py-2.5 text-right">
           {hasResponses &&
             (expanded ? (
-              <ChevronUp size={13} className="text-gray-400" />
+              <ChevronUp size={14} className="text-gray-400" />
             ) : (
-              <ChevronDown size={13} className="text-gray-400" />
+              <ChevronDown size={14} className="text-gray-400" />
             ))}
-        </div>
-      </div>
-
-      {isCashPending && (
-        <div
-          className="px-5 pb-3"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <button
-            type="button"
-            onClick={() => {
-              setMarkErrors([]);
-              markPaidMutation.mutate();
-            }}
-            disabled={markPaidMutation.isPending}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-tennis-green text-white text-xs font-semibold hover:bg-tennis-green/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            <CheckCircle2 size={13} />
-            {markPaidMutation.isPending ? t("markingPaid") : t("markPaid")}
-          </button>
-          {markErrors.length > 0 && (
-            <div className="text-xs text-red-600 mt-2 space-y-0.5">
-              {markErrors.map((msg, i) => (
-                <p key={i}>{msg}</p>
-              ))}
-            </div>
-          )}
-        </div>
+        </td>
+      </tr>
+      {(markPaidBlock || (expanded && responsesBlock)) && (
+        <tr>
+          <td colSpan={6} className="bg-white px-4 pb-3">
+            {markPaidBlock && <div className="mb-2.5">{markPaidBlock}</div>}
+            {expanded && responsesBlock}
+          </td>
+        </tr>
       )}
-
-      {expanded && hasResponses && (
-        <div className="px-5 pb-3">
-          <dl className="space-y-1.5 bg-[#FAFAF8] rounded-lg p-3">
-            {enrollment.formResponses.map((r, i) => (
-              <div key={i} className="flex gap-3 text-xs">
-                <dt className="text-gray-400 shrink-0 min-w-[120px]">
-                  {r.fieldLabel}
-                </dt>
-                <dd className="text-gray-900 font-medium">{r.value}</dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-      )}
-    </div>
+    </>
   );
 }
 
 function EnrollmentsSection({ campId }: { campId: string }) {
   const t = useTranslations("camps");
   const [copied, setCopied] = useState(false);
+  const [query, setQuery] = useState("");
 
   const { data: enrollments = [], isLoading } = useQuery({
     queryKey: ["campEnrollments", campId],
@@ -237,11 +287,20 @@ function EnrollmentsSection({ campId }: { campId: string }) {
     setTimeout(() => setCopied(false), 2000);
   }
 
+  const q = query.trim().toLowerCase();
+  const filtered = q
+    ? enrollments.filter(
+        (e) =>
+          e.participantName.toLowerCase().includes(q) ||
+          e.participantEmail.toLowerCase().includes(q),
+      )
+    : enrollments;
+
   return (
     <div className="bg-white rounded-xl shadow-sm shadow-gray-100 overflow-hidden">
-      <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+      <div className="px-5 py-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2.5">
-          <div className="w-6 h-6 rounded-md bg-tennis-green/10 flex items-center justify-center">
+          <div className="w-6 h-6 shrink-0 rounded-md bg-tennis-green/10 flex items-center justify-center">
             <Users size={13} className="text-tennis-green" />
           </div>
           <h2 className="text-sm font-semibold text-gray-900">
@@ -275,11 +334,70 @@ function EnrollmentsSection({ campId }: { campId: string }) {
       ) : enrollments.length === 0 ? (
         <p className="p-5 text-xs text-gray-400">{t("enrollmentsEmpty")}</p>
       ) : (
-        <div>
-          {enrollments.map((e) => (
-            <EnrollmentRow key={e.id} enrollment={e} campId={campId} />
-          ))}
-        </div>
+        <>
+          {/* Zoekbalk */}
+          <div className="border-b border-gray-100 p-4">
+            <div className="relative">
+              <Search
+                size={14}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+              />
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={t("enrollmentsSearchPlaceholder")}
+                className="w-full rounded-lg border border-gray-200 py-2 pl-9 pr-3 text-sm focus:border-tennis-green focus:outline-none focus:ring-2 focus:ring-tennis-green/30"
+              />
+            </div>
+          </div>
+
+          {filtered.length === 0 ? (
+            <p className="p-6 text-center text-sm text-gray-400">
+              {t("enrollmentsNoResults", { query })}
+            </p>
+          ) : (
+            <>
+              {/* Desktop: tabel */}
+              <div className="hidden overflow-x-auto sm:block">
+                <table className="w-full min-w-[600px] text-left">
+                  <thead>
+                    <tr className="border-b border-gray-200 bg-gray-50/70 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                      <th className="px-4 py-2 font-semibold">{t("colName")}</th>
+                      <th className="px-4 py-2 font-semibold">{t("colContact")}</th>
+                      <th className="px-4 py-2 font-semibold">{t("colEnrolled")}</th>
+                      <th className="px-4 py-2 font-semibold">{t("colPayment")}</th>
+                      <th className="px-4 py-2 font-semibold">{t("colStatus")}</th>
+                      <th className="px-4 py-2" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map((e) => (
+                      <EnrollmentRow
+                        key={e.id}
+                        enrollment={e}
+                        campId={campId}
+                        variant="row"
+                      />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobiel: kaarten */}
+              <div className="space-y-2 p-4 sm:hidden">
+                {filtered.map((e) => (
+                  <EnrollmentRow
+                    key={e.id}
+                    enrollment={e}
+                    campId={campId}
+                    variant="card"
+                  />
+                ))}
+              </div>
+            </>
+          )}
+        </>
       )}
     </div>
   );
@@ -438,19 +556,21 @@ export default function CampDetailPage({
                   <button
                     type="button"
                     onClick={() => setEditing(true)}
-                    className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+                    aria-label={t("editAction")}
+                    className="shrink-0 flex items-center gap-1.5 rounded-lg border border-gray-200 px-2 py-1.5 sm:px-3 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
                   >
-                    <Pencil size={12} />
-                    {t("editAction")}
+                    <Pencil size={13} />
+                    <span className="hidden sm:inline">{t("editAction")}</span>
                   </button>
                 ) : (
                   <button
                     type="button"
                     onClick={() => setEditing(false)}
-                    className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-500 hover:bg-gray-50 transition-colors"
+                    aria-label={t("close")}
+                    className="shrink-0 flex items-center gap-1.5 rounded-lg border border-gray-200 px-2 py-1.5 sm:px-3 text-xs font-medium text-gray-500 hover:bg-gray-50 transition-colors"
                   >
-                    <X size={12} />
-                    {t("close")}
+                    <X size={13} />
+                    <span className="hidden sm:inline">{t("close")}</span>
                   </button>
                 ))}
             </div>
