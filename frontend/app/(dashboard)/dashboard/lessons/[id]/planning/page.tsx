@@ -7,7 +7,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
-  ArrowLeft,
+  ChevronLeft,
   RefreshCw,
   Check,
   Users,
@@ -615,8 +615,6 @@ export default function PlanningPage({
   const totalCapacity =
     planning?.timeSlots.reduce((sum, s) => sum + s.maxCapacity, 0) ?? 0;
   const totalEnrollments = planning?.enrollments.length ?? 0;
-  const lockedAssignmentsCount =
-    planning?.assignments.filter((assignment) => assignment.isLocked).length ?? 0;
 
   // Namen + enrollment-id per persoon voor een slot, zodat de avatar/naam
   // klikbaar is naar de detail-dialog.
@@ -924,21 +922,20 @@ export default function PlanningPage({
   // ─── Render ─────────────────────────────────────────────────────────────
 
   return (
-    // Breekt uit de layout-padding (main = px-7 py-6 / lg:pb-6) en vult de volle
-    // hoogte: h = 100% van de content-box + de 3rem verticale padding, zodat de
-    // agenda + zijkolom tot onderaan lopen (geen lege balk).
-    <div className="flex flex-col min-h-[calc(100%_+_3rem)] sm:h-[calc(100%_+_3rem)] -mx-7 -my-6">
-      {/* Top bar */}
-      <div className="bg-white border-b border-gray-200 px-4 sm:px-8 py-3 sm:py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shrink-0">
+    <div className="flex flex-col gap-4 sm:h-full">
+      {/* Terug naar lesreeks — boven de header-card, zoals op de detailpagina */}
+      <Link
+        href={`/dashboard/lessons/${id}`}
+        className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 transition-colors"
+      >
+        <ChevronLeft size={15} />
+        {t("backToSeries")}
+      </Link>
+
+      {/* Header-card: titel, acties en legende */}
+      <div className="bg-white rounded-xl shadow-sm shadow-gray-100 overflow-hidden">
+      <div className="px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 min-w-0">
-          <Link
-            href={`/dashboard/lessons/${id}`}
-            className="text-sm text-gray-500 hover:text-tennis-green inline-flex items-center gap-1 shrink-0 w-full sm:w-auto py-1 sm:py-0 mb-1 sm:mb-0"
-          >
-            <ArrowLeft size={16} />
-            {t("backToSeries")}
-          </Link>
-          <div className="hidden sm:block h-5 w-px bg-gray-200" />
           <h1 className="text-base sm:text-lg font-semibold text-gray-900 min-w-0">
             {t("pageTitle")} — {series?.name ?? "..."}
           </h1>
@@ -1058,8 +1055,8 @@ export default function PlanningPage({
         )}
       </div>
 
-      {/* Legend bar — kleur volgt de bevestigings-lifecycle van het tijdslot. */}
-      <div className="bg-white border-b border-gray-200 px-4 sm:px-8 py-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-500 shrink-0">
+      {/* Legende + stats — onderrij van de header-card */}
+      <div className="border-t border-gray-100 px-4 sm:px-6 py-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-500">
         <div className="flex items-center gap-1.5 shrink-0">
           <div className="w-4 h-3 rounded border border-amber-400 bg-amber-50" />
           {t("legendConcept")}
@@ -1082,10 +1079,11 @@ export default function PlanningPage({
           {t("spotsCount", { count: totalCapacity })}
         </div>
       </div>
+      </div>
 
       {/* Toewijs-modus banner */}
       {assignTarget && (
-        <div className="bg-tennis-green/10 border-b border-tennis-green/20 px-4 sm:px-8 py-3 shrink-0">
+        <div className="bg-tennis-green/10 border border-tennis-green/20 rounded-xl px-4 sm:px-6 py-3">
           <div className="flex items-center gap-3 text-sm text-tennis-green">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-tennis-green/15 text-tennis-green">
               <Check size={16} />
@@ -1112,30 +1110,10 @@ export default function PlanningPage({
         </div>
       )}
 
-      {!readOnly && planning.planningStatus !== "Scheduled" && !assignTarget && (
-        <div className="hidden sm:block bg-amber-50 border-b border-amber-100 px-4 sm:px-8 py-3 shrink-0">
-          <div className="flex items-center gap-3 text-sm text-amber-900">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700">
-              <Lock size={16} />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="font-semibold">{t("lockHelpTitle")}</p>
-              <p className="text-xs text-amber-700">{t("lockHelpDesc")}</p>
-            </div>
-            {lockedAssignmentsCount > 0 && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-tennis-green shadow-sm">
-                <Lock size={12} />
-                {t("lockedCount", { count: lockedAssignmentsCount })}
-              </span>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* Calendar + Sidebar */}
-      <div className="flex-1 flex flex-col sm:flex-row overflow-visible sm:overflow-hidden">
-        {/* Calendar area */}
-        <div className="flex-1 p-4 sm:p-6 overflow-visible sm:overflow-auto">
+      <div className="flex flex-col gap-4 sm:flex-row sm:flex-1 sm:min-h-0">
+        {/* Calendar-card */}
+        <div className="flex-1 min-w-0 bg-white rounded-xl shadow-sm shadow-gray-100 p-4 sm:p-6 sm:self-start sm:max-h-full sm:overflow-auto">
           {/* Dag-tabs — alleen op gsm; kiest welke dag de agenda-lijst toont. */}
           {isMobile && daysWithSlots.length > 0 && (
             <div className="mb-3 flex gap-1.5 overflow-x-auto pb-1">
@@ -1350,54 +1328,24 @@ export default function PlanningPage({
                           </div>
                         </div>
 
-                        {/* Assigned people — flat list of avatars (klikbaar → detail) */}
+                        {/* Assigned people — enkel avatars (namen + klik zitten in de hover-popover) */}
                         {pos.height >= 36 &&
                           (() => {
                             const people = getSlotPeople(slot.id);
                             if (people.length === 0) return null;
-
-                            if (people.length === 1) {
-                              const { name, enrollmentId } = people[0];
-                              const color = getAvatarColor(name);
-                              return (
-                                <button
-                                  type="button"
-                                  title={name}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    openPersonDetail(enrollmentId);
-                                  }}
-                                  className="mt-1 flex cursor-pointer items-center gap-1 rounded px-0.5 hover:bg-white/70"
-                                >
-                                  <div
-                                    className={`w-5 h-5 rounded-full ${color.bg} ${color.text} flex items-center justify-center text-[8px] font-bold shrink-0`}
-                                  >
-                                    {getInitials(name)}
-                                  </div>
-                                  <span className="text-[10px] text-gray-700 truncate">
-                                    {name}
-                                  </span>
-                                </button>
-                              );
-                            }
 
                             return (
                               <div className="mt-1 flex items-center gap-0.5 flex-wrap">
                                 {people.map((person, i) => {
                                   const color = getAvatarColor(person.name);
                                   return (
-                                    <button
+                                    <div
                                       key={i}
-                                      type="button"
                                       title={person.name}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        openPersonDetail(person.enrollmentId);
-                                      }}
-                                      className={`w-5 h-5 rounded-full ${color.bg} ${color.text} flex items-center justify-center text-[8px] font-bold shrink-0 cursor-pointer hover:ring-2 hover:ring-white`}
+                                      className={`w-5 h-5 rounded-full ${color.bg} ${color.text} flex items-center justify-center text-[8px] font-bold shrink-0`}
                                     >
                                       {getInitials(person.name)}
-                                    </button>
+                                    </div>
                                   );
                                 })}
                               </div>
@@ -1421,7 +1369,7 @@ export default function PlanningPage({
                             </div>
                             <div className="space-y-2.5">
                               {slotAssignments.map((assignment) => {
-                                const aNames: string[] = [];
+                                const aPeople: { name: string; enrollmentId: string }[] = [];
                                 let gName: string | null = null;
                                 if (assignment.groupId) {
                                   const group = groupMap.get(assignment.groupId);
@@ -1429,14 +1377,14 @@ export default function PlanningPage({
                                     gName = group.name;
                                     for (const mId of group.memberEnrollmentIds) {
                                       const e = enrollmentMap.get(mId);
-                                      if (e) aNames.push(e.studentName);
+                                      if (e) aPeople.push({ name: e.studentName, enrollmentId: mId });
                                     }
                                   }
                                 } else if (assignment.enrollmentId) {
                                   const e = enrollmentMap.get(assignment.enrollmentId);
-                                  if (e) aNames.push(e.studentName);
+                                  if (e) aPeople.push({ name: e.studentName, enrollmentId: assignment.enrollmentId });
                                 }
-                                if (aNames.length === 0) return null;
+                                if (aPeople.length === 0) return null;
                                 return (
                                   <div key={assignment.id}>
                                     {(gName || assignment.isLocked) && (
@@ -1458,15 +1406,23 @@ export default function PlanningPage({
                                       </div>
                                     )}
                                     <div className={`space-y-1 ${gName ? "pl-2" : ""}`}>
-                                      {aNames.map((name, ni) => {
-                                        const aColor = getAvatarColor(name);
+                                      {aPeople.map((person, ni) => {
+                                        const aColor = getAvatarColor(person.name);
                                         return (
-                                          <div key={ni} className="flex items-center gap-1.5">
+                                          <button
+                                            key={ni}
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              openPersonDetail(person.enrollmentId);
+                                            }}
+                                            className="flex w-full items-center gap-1.5 rounded px-1 py-0.5 -mx-1 text-left hover:bg-gray-50"
+                                          >
                                             <div className={`w-4 h-4 rounded-full ${aColor.bg} ${aColor.text} flex items-center justify-center text-[7px] font-bold shrink-0`}>
-                                              {getInitials(name)}
+                                              {getInitials(person.name)}
                                             </div>
-                                            <span className="text-[11px] text-gray-700">{name}</span>
-                                          </div>
+                                            <span className="text-[11px] text-gray-700 hover:text-tennis-green">{person.name}</span>
+                                          </button>
                                         );
                                       })}
                                     </div>
@@ -1490,8 +1446,8 @@ export default function PlanningPage({
 
         </div>
 
-        {/* Right sidebar */}
-        <aside className="w-full sm:w-80 bg-white border-t sm:border-t-0 sm:border-l border-gray-200 flex flex-col shrink-0 overflow-visible sm:overflow-auto">
+        {/* Right sidebar-card */}
+        <aside className="w-full sm:w-80 bg-white rounded-xl shadow-sm shadow-gray-100 flex flex-col shrink-0 overflow-hidden sm:min-h-0 sm:overflow-y-auto">
           {/* Zoekbalk — filtert personen over alle secties. */}
           <div className="sm:sticky sm:top-0 z-10 border-b border-gray-100 bg-white p-3">
             <div className="relative">
