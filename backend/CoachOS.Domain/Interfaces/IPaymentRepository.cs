@@ -55,10 +55,27 @@ public interface IPaymentRepository
         Guid enrollmentId, Guid organizationId, CancellationToken ct = default);
 
     /// <summary>
+    /// Meest recente openstaande (Pending) betaling voor een reeks-inschrijving,
+    /// ongeacht methode (cash of online). Getrackt en org-gescoped. Gebruikt voor
+    /// de admin-override "markeer als betaald", zodat ook een vastgelopen online-
+    /// betaling handmatig afgerond kan worden.
+    /// </summary>
+    Task<Payment?> GetLatestPendingByEnrollmentIdAsync(
+        Guid enrollmentId, Guid organizationId, CancellationToken ct = default);
+
+    /// <summary>
     /// Meest recente betaalmethode + status per kamp-inschrijving, in één query
     /// (vermijdt N+1 in het admin-overzicht). Inschrijvingen zonder betaling
     /// komen niet in de dictionary voor.
     /// </summary>
     Task<Dictionary<Guid, (PaymentMethod? Method, PaymentStatus Status)>> GetLatestMethodAndStatusByCampEnrollmentIdsAsync(
         IEnumerable<Guid> campEnrollmentIds, CancellationToken ct = default);
+
+    /// <summary>
+    /// Meest recente betaalmethode + status per reeks-inschrijving, in één query
+    /// (vermijdt N+1 in het inschrijvingen-overzicht). Inschrijvingen zonder betaling
+    /// komen niet in de dictionary voor.
+    /// </summary>
+    Task<Dictionary<Guid, (PaymentMethod? Method, PaymentStatus Status)>> GetLatestMethodAndStatusByEnrollmentIdsAsync(
+        IEnumerable<Guid> enrollmentIds, CancellationToken ct = default);
 }

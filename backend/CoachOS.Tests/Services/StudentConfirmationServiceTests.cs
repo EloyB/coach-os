@@ -1002,7 +1002,7 @@ public class StudentConfirmationServiceTests
             ContactEmail = "sofie@example.com",
             Status = EnrollmentStatus.PendingPayment,
         };
-        _paymentRepo.Setup(r => r.GetLatestPendingCashByEnrollmentIdAsync(enrollmentId, orgId, It.IsAny<CancellationToken>()))
+        _paymentRepo.Setup(r => r.GetLatestPendingByEnrollmentIdAsync(enrollmentId, orgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(pending);
         _enrollmentRepo.Setup(r => r.GetByIdWithGroupAsync(enrollmentId, orgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(enrollment);
@@ -1024,11 +1024,11 @@ public class StudentConfirmationServiceTests
     }
 
     [Test]
-    public async Task MarkEnrollmentCashPaid_returns_NotFound_when_no_pending_cash()
+    public async Task MarkEnrollmentCashPaid_returns_NotFound_when_no_pending_payment()
     {
         Guid orgId = Guid.NewGuid();
         Guid enrollmentId = Guid.NewGuid();
-        _paymentRepo.Setup(r => r.GetLatestPendingCashByEnrollmentIdAsync(enrollmentId, orgId, It.IsAny<CancellationToken>()))
+        _paymentRepo.Setup(r => r.GetLatestPendingByEnrollmentIdAsync(enrollmentId, orgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Payment?)null);
 
         // Act
@@ -1037,6 +1037,48 @@ public class StudentConfirmationServiceTests
         // Assert
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().Contain(e => e.Code == ErrorCodes.NotFound);
+    }
+
+    [Test]
+    public async Task MarkEnrollmentCashPaid_also_marks_a_pending_online_payment_paid()
+    {
+        // Admin-override: een niet-afgeronde online-betaling (Mollie) moet ook
+        // handmatig als betaald gemarkeerd kunnen worden. Regressietest voor de bug
+        // waarbij enkel Cash-betalingen gevonden werden ("Geen openstaande
+        // overschrijving gevonden").
+        Guid orgId = Guid.NewGuid();
+        Guid enrollmentId = Guid.NewGuid();
+        Payment pendingOnline = new()
+        {
+            OrganizationId = orgId,
+            EnrollmentId = enrollmentId,
+            Method = PaymentMethod.Online,
+            Status = PaymentStatus.Pending,
+            Amount = 120m,
+        };
+        Enrollment enrollment = new()
+        {
+            Id = enrollmentId,
+            OrganizationId = orgId,
+            LessonSerieId = Guid.NewGuid(),
+            StudentName = "Sofie",
+            ContactEmail = "sofie@example.com",
+            Status = EnrollmentStatus.PendingPayment,
+        };
+        _paymentRepo.Setup(r => r.GetLatestPendingByEnrollmentIdAsync(enrollmentId, orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pendingOnline);
+        _enrollmentRepo.Setup(r => r.GetByIdWithGroupAsync(enrollmentId, orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(enrollment);
+        _tokenRepo.Setup(r => r.GetBySeriesAsNoTrackingAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<AssignmentConfirmationToken>());
+
+        // Act
+        Result result = await _sut.MarkEnrollmentCashPaidAsync(enrollmentId, orgId, CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        pendingOnline.Status.Should().Be(PaymentStatus.Paid);
+        enrollment.Status.Should().Be(EnrollmentStatus.Confirmed);
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────

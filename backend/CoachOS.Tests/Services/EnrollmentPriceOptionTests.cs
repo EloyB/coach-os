@@ -20,6 +20,7 @@ public class EnrollmentPriceOptionTests
     private Mock<IEnrollmentFormRepository> _enrollmentFormRepo = null!;
     private Mock<ILessonSerieRepository> _lessonSeriesRepo = null!;
     private Mock<IEnrollmentGroupRepository> _enrollmentGroupRepo = null!;
+    private Mock<IPaymentRepository> _paymentRepo = null!;
     private Mock<ITimeSlotPreferenceRepository> _timeSlotPreferenceRepo = null!;
     private Mock<IOrganizationSettingsRepository> _orgSettingsRepo = null!;
     private Mock<IUserLookupService> _userLookup = null!;
@@ -42,6 +43,11 @@ public class EnrollmentPriceOptionTests
         _enrollmentFormRepo = new Mock<IEnrollmentFormRepository>();
         _lessonSeriesRepo = new Mock<ILessonSerieRepository>();
         _enrollmentGroupRepo = new Mock<IEnrollmentGroupRepository>();
+        _paymentRepo = new Mock<IPaymentRepository>();
+        _paymentRepo
+            .Setup(r => r.GetLatestMethodAndStatusByEnrollmentIdsAsync(
+                It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<Guid, (PaymentMethod? Method, PaymentStatus Status)>());
         _timeSlotPreferenceRepo = new Mock<ITimeSlotPreferenceRepository>();
         _orgSettingsRepo = new Mock<IOrganizationSettingsRepository>();
         _userLookup = new Mock<IUserLookupService>();
@@ -53,7 +59,8 @@ public class EnrollmentPriceOptionTests
 
         _service = new EnrollmentService(
             _enrollmentRepo.Object, _enrollmentFormRepo.Object, _lessonSeriesRepo.Object,
-            _enrollmentGroupRepo.Object, _timeSlotPreferenceRepo.Object, _orgSettingsRepo.Object,
+            _enrollmentGroupRepo.Object, _paymentRepo.Object, _timeSlotPreferenceRepo.Object,
+            _orgSettingsRepo.Object,
             _userLookup.Object, _emailOutboxRepository.Object, _priceRepo.Object,
             _unitOfWork.Object, _mapper, _logger.Object,
             TimeProvider.System);
