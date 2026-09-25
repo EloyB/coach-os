@@ -7,7 +7,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
-  ArrowLeft,
+  ChevronLeft,
   RefreshCw,
   Check,
   Users,
@@ -86,6 +86,7 @@ import {
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const DAY_NAMES_SHORT = ["Ma", "Di", "Wo", "Do", "Vr", "Za", "Zo"];
+const DAY_NAMES_FULL = ["Maandag", "Dinsdag", "Woensdag", "Donderdag", "Vrijdag", "Zaterdag", "Zondag"];
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 
@@ -298,6 +299,17 @@ export default function PlanningPage({
   const [openSlotId, setOpenSlotId] = useState<string | null>(null);
   const [addingSlot, setAddingSlot] = useState(false);
   const [editingSlot, setEditingSlot] = useState<WeekSlotEditData | null>(null);
+  // Geselecteerde dag voor de mobiele dag-weergave (0=Ma .. 6=Zo).
+  const [selectedDay, setSelectedDay] = useState(0);
+  // Mobiele weergave (< sm): toont één dag i.p.v. de volledige week-grid.
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 639px)");
+    const sync = () => setIsMobile(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
 
   const deleteSlotMutation = useMutation({
     mutationFn: (entryId: string) => deleteWeekSlot(id, entryId),
@@ -477,6 +489,21 @@ export default function PlanningPage({
     };
   }, [planning]);
 
+  // Dagen met tijdslots — voedt de dag-tabs in de mobiele weergave.
+  const daysWithSlots = useMemo(() => {
+    if (!planning) return [] as number[];
+    const set = new Set<number>();
+    for (const s of planning.timeSlots) set.add(s.dayOfWeek);
+    return [...set].sort((a, b) => a - b);
+  }, [planning]);
+
+  // Houd de geselecteerde dag geldig zodra de slot-dagen bekend/gewijzigd zijn.
+  useEffect(() => {
+    if (daysWithSlots.length > 0 && !daysWithSlots.includes(selectedDay)) {
+      setSelectedDay(daysWithSlots[0]);
+    }
+  }, [daysWithSlots, selectedDay]);
+
   // Toegewezen eenheden (solo of groep), met hun slot(s) — één rij per persoon/groep.
   const assignedUnits = useMemo(() => {
     if (!planning) return [];
@@ -588,8 +615,6 @@ export default function PlanningPage({
   const totalCapacity =
     planning?.timeSlots.reduce((sum, s) => sum + s.maxCapacity, 0) ?? 0;
   const totalEnrollments = planning?.enrollments.length ?? 0;
-  const lockedAssignmentsCount =
-    planning?.assignments.filter((assignment) => assignment.isLocked).length ?? 0;
 
   // Namen + enrollment-id per persoon voor een slot, zodat de avatar/naam
   // klikbaar is naar de detail-dialog.
@@ -714,25 +739,204 @@ export default function PlanningPage({
     );
   }
 
+  // Mobiele agenda-lijst voor één dag — hergebruikt dezelfde slot-logica als de
+  // desktop-grid (status, capaciteit, toewijs-modus, personen), maar als kaartjes.
+  const renderMobileDay = (dayIndex: number) => {
+    const daySlots = planning.timeSlots
+      .filter((s) => s.dayOfWeek === dayIndex)
+      .sort((a, b) => a.startTime.localeCompare(b.startTime));
+
+    if (daySlots.length === 0) {
+      return (
+        <p className="py-8 text-center text-sm text-gray-400">
+          {t("noSlotsThisDay")}
+        </p>
+      );
+    }
+
+    return (
+      <div className="space-y-2">
+        {daySlots.map((slot) => {
+          const slotAssignments = assignmentsBySlot.get(slot.id) ?? [];
+          const currentCount = getSlotCurrentCount(slot.id);
+          const hasProposed = slotHasProposed(slot.id);
+          const hasAwaiting = slotAssignments.some(
+            (a) => a.status === "AwaitingConfirmation"
+          );
+          const hasConfirmed = slotAssignments.some((a) => a.status === "Confirmed");
+          const hasAutoMerged = slotAssignments.some((a) => a.isAutoMerged);
+          const lockedAssignment = slotAssignments.find((a) => a.isLocked);
+          const slotStatus: "concept" | "offered" | "confirmed" | "empty" =
+            hasProposed
+              ? "concept"
+              : hasAwaiting
+                ? "offered"
+                : hasConfirmed
+                  ? "confirmed"
+                  : "empty";
+
+          const assignPref = assignTarget?.prefs[slot.id];
+          const declinedForTarget =
+            assignTarget != null && declinedSlotsForTarget.has(slot.id);
+          const assignFits =
+            assignTarget != null &&
+            slot.maxCapacity - currentCount >= assignTarget.size;
+          const assignable = assignTarget != null && assignFits;
+
+          const railColor = assignTarget
+            ? !assignFits
+              ? "bg-gray-300"
+              : assignPref === "Preferred"
+                ? "bg-green-500"
+                : assignPref === "Available"
+                  ? "bg-blue-500"
+                  : "bg-gray-300"
+            : slotStatus === "concept"
+              ? "bg-amber-400"
+              : slotStatus === "offered"
+                ? "bg-blue-400"
+                : slotStatus === "confirmed"
+                  ? "bg-tennis-green"
+                  : "bg-gray-300";
+          const cardBg = assignTarget
+            ? !assignFits
+              ? "bg-gray-50 border-gray-200"
+              : assignPref === "Preferred"
+                ? "bg-green-50 border-green-300"
+                : assignPref === "Available"
+                  ? "bg-blue-50 border-blue-300"
+                  : "bg-white border-gray-200"
+            : "bg-white border-gray-100";
+          const countTextColor =
+            slotStatus === "concept"
+              ? "text-amber-700"
+              : slotStatus === "offered"
+                ? "text-blue-700"
+                : slotStatus === "confirmed"
+                  ? "text-green-700"
+                  : "text-gray-400";
+
+          const handleClick = () => {
+            if (assignTarget) {
+              if (!assignFits) return;
+              if (declinedForTarget) {
+                setDeclineConfirmSlotId(slot.id);
+                return;
+              }
+              assignMutation.mutate(
+                assignTarget.kind === "solo"
+                  ? { enrollmentId: assignTarget.enrollmentId, slotId: slot.id }
+                  : { groupId: assignTarget.groupId, slotId: slot.id }
+              );
+              return;
+            }
+            setOpenSlotId(slot.id);
+          };
+
+          const people = getSlotPeople(slot.id);
+
+          return (
+            <div
+              key={slot.id}
+              role="button"
+              tabIndex={0}
+              onClick={handleClick}
+              className={`flex items-stretch gap-3 rounded-xl border ${cardBg} p-3 transition-shadow ${
+                assignTarget
+                  ? assignable
+                    ? "cursor-pointer ring-2 ring-offset-1 ring-tennis-green/30"
+                    : "cursor-not-allowed opacity-60"
+                  : "cursor-pointer hover:shadow-sm"
+              }`}
+            >
+              <span className={`w-1 shrink-0 rounded-full ${railColor}`} />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-semibold text-gray-900">
+                    {slot.startTime} – {slot.endTime}
+                  </span>
+                  <span
+                    className={`flex items-center gap-1 shrink-0 text-xs font-medium ${countTextColor}`}
+                  >
+                    {lockedAssignment && (
+                      <Lock size={11} className="text-tennis-green" />
+                    )}
+                    {currentCount}/{slot.maxCapacity}
+                  </span>
+                </div>
+                <p className="mt-0.5 truncate text-xs text-gray-500">
+                  {declinedForTarget ? (
+                    <span className="inline-flex items-center gap-1 text-amber-700">
+                      <Ban size={11} /> {t("declinedBadge")}
+                    </span>
+                  ) : (
+                    <>
+                      {[slot.courtName, slot.trainerName]
+                        .filter(Boolean)
+                        .join(" · ") || t("noCourtTrainer")}
+                      {hasAutoMerged && (
+                        <span className="ml-1 italic text-gray-400">auto</span>
+                      )}
+                    </>
+                  )}
+                </p>
+                {people.length > 0 ? (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {people.map((p, i) => {
+                      const c = getAvatarColor(p.name);
+                      return (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openPersonDetail(p.enrollmentId);
+                          }}
+                          className="flex items-center gap-1 rounded-full bg-gray-50 py-0.5 pl-0.5 pr-2 hover:bg-gray-100"
+                        >
+                          <span
+                            className={`flex h-5 w-5 items-center justify-center rounded-full ${c.bg} ${c.text} text-[8px] font-bold`}
+                          >
+                            {getInitials(p.name)}
+                          </span>
+                          <span className="text-[11px] text-gray-700">
+                            {p.name}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="mt-1 text-[11px] text-gray-400">
+                    {t("noOneAssigned")}
+                  </p>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   // ─── Render ─────────────────────────────────────────────────────────────
 
   return (
-    // Breekt uit de layout-padding (main = px-7 py-6 / lg:pb-6) en vult de volle
-    // hoogte: h = 100% van de content-box + de 3rem verticale padding, zodat de
-    // agenda + zijkolom tot onderaan lopen (geen lege balk).
-    <div className="flex flex-col h-[calc(100%_+_3rem)] -mx-7 -my-6">
-      {/* Top bar */}
-      <div className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-4">
-          <Link
-            href={`/dashboard/lessons/${id}`}
-            className="text-sm text-gray-500 hover:text-tennis-green flex items-center gap-1"
-          >
-            <ArrowLeft size={16} />
-            {t("backToSeries")}
-          </Link>
-          <div className="h-5 w-px bg-gray-200" />
-          <h1 className="text-lg font-semibold text-gray-900">
+    <div className="flex flex-col gap-4 sm:h-full">
+      {/* Terug naar lesreeks — boven de header-card, zoals op de detailpagina */}
+      <Link
+        href={`/dashboard/lessons/${id}`}
+        className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 transition-colors"
+      >
+        <ChevronLeft size={15} />
+        {t("backToSeries")}
+      </Link>
+
+      {/* Header-card: titel, acties en legende */}
+      <div className="bg-white rounded-xl shadow-sm shadow-gray-100 overflow-hidden">
+      <div className="px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 min-w-0">
+          <h1 className="text-base sm:text-lg font-semibold text-gray-900 min-w-0">
             {t("pageTitle")} — {series?.name ?? "..."}
           </h1>
           {planning.planningStatus === "Planning" && (
@@ -751,40 +955,39 @@ export default function PlanningPage({
             </span>
           )}
           {planning.planningLastEditedAt && (
-            <span className="text-xs text-gray-400">
+            <span className="hidden sm:inline text-xs text-gray-400">
               {t("lastEdited")}: {new Date(planning.planningLastEditedAt).toLocaleDateString("nl-BE", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
             </span>
           )}
         </div>
         {!readOnly && planning.planningStatus !== "Scheduled" && (
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap shrink-0">
             <button
               type="button"
               onClick={() => setAddingSlot(true)}
-              className="inline-flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
+              aria-label={t("addSlot")}
+              title={t("addSlot")}
+              className="inline-flex items-center gap-2 border border-gray-300 text-gray-700 px-3 sm:px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
             >
               <Plus size={15} />
-              {t("addSlot")}
+              <span className="hidden sm:inline">{t("addSlot")}</span>
             </button>
-            <Link
-              href={`/dashboard/lessons/${id}`}
-              className="inline-flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
-            >
-              {t("goBack")}
-            </Link>
-
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <button
                   type="button"
                   disabled={generateMutation.isPending}
-                  className="inline-flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition disabled:opacity-50"
+                  aria-label={t("regenerate")}
+                  title={t("regenerate")}
+                  className="inline-flex items-center gap-2 border border-gray-300 text-gray-700 px-3 sm:px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition disabled:opacity-50"
                 >
                   <RefreshCw
                     size={16}
                     className={generateMutation.isPending ? "animate-spin" : ""}
                   />
-                  {generateMutation.isPending ? t("generating") : t("regenerate")}
+                  <span className="hidden sm:inline">
+                    {generateMutation.isPending ? t("generating") : t("regenerate")}
+                  </span>
                 </button>
               </AlertDialogTrigger>
               <AlertDialogContent>
@@ -824,7 +1027,7 @@ export default function PlanningPage({
                       ? t("confirmDisabledUnassigned", { count: totalUnassigned })
                       : undefined
                   }
-                  className="inline-flex items-center gap-2 bg-tennis-green text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-tennis-green/90 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex items-center gap-2 bg-tennis-green text-white px-3 sm:px-4 py-2 rounded-lg text-sm font-medium hover:bg-tennis-green/90 transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Check size={16} />
                   {confirmMutation.isPending ? t("confirming") : t("confirm")}
@@ -852,34 +1055,35 @@ export default function PlanningPage({
         )}
       </div>
 
-      {/* Legend bar — kleur volgt de bevestigings-lifecycle van het tijdslot. */}
-      <div className="bg-white border-b border-gray-200 px-8 py-3 flex items-center gap-5 text-xs text-gray-500 shrink-0">
-        <div className="flex items-center gap-1.5">
+      {/* Legende + stats — onderrij van de header-card */}
+      <div className="border-t border-gray-100 px-4 sm:px-6 py-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-500">
+        <div className="flex items-center gap-1.5 shrink-0">
           <div className="w-4 h-3 rounded border border-amber-400 bg-amber-50" />
           {t("legendConcept")}
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 shrink-0">
           <div className="w-4 h-3 rounded border border-blue-400 bg-blue-50" />
           {t("legendOffered")}
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 shrink-0">
           <div className="w-4 h-3 rounded border border-tennis-green bg-green-50" />
           {t("legendConfirmed")}
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 shrink-0">
           <Lock size={11} className="text-tennis-green" />
           {t("legendLocked")}
         </div>
-        <div className="ml-auto text-xs text-gray-400">
+        <div className="w-full sm:w-auto sm:ml-auto text-xs text-gray-400">
           {t("enrollmentsCount", { count: totalEnrollments })} ·{" "}
           {t("timeSlotsCount", { count: totalSlots })} ·{" "}
           {t("spotsCount", { count: totalCapacity })}
         </div>
       </div>
+      </div>
 
       {/* Toewijs-modus banner */}
       {assignTarget && (
-        <div className="bg-tennis-green/10 border-b border-tennis-green/20 px-8 py-3 shrink-0">
+        <div className="bg-tennis-green/10 border border-tennis-green/20 rounded-xl px-4 sm:px-6 py-3">
           <div className="flex items-center gap-3 text-sm text-tennis-green">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-tennis-green/15 text-tennis-green">
               <Check size={16} />
@@ -906,30 +1110,32 @@ export default function PlanningPage({
         </div>
       )}
 
-      {!readOnly && planning.planningStatus !== "Scheduled" && !assignTarget && (
-        <div className="bg-amber-50 border-b border-amber-100 px-8 py-3 shrink-0">
-          <div className="flex items-center gap-3 text-sm text-amber-900">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700">
-              <Lock size={16} />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="font-semibold">{t("lockHelpTitle")}</p>
-              <p className="text-xs text-amber-700">{t("lockHelpDesc")}</p>
-            </div>
-            {lockedAssignmentsCount > 0 && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-tennis-green shadow-sm">
-                <Lock size={12} />
-                {t("lockedCount", { count: lockedAssignmentsCount })}
-              </span>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* Calendar + Sidebar */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Calendar area */}
-        <div className="flex-1 p-6 overflow-auto">
+      <div className="flex flex-col gap-4 sm:flex-row sm:flex-1 sm:min-h-0">
+        {/* Calendar-card */}
+        <div className="flex-1 min-w-0 bg-white rounded-xl shadow-sm shadow-gray-100 p-4 sm:p-6 sm:self-start sm:max-h-full sm:overflow-auto">
+          {/* Dag-tabs — alleen op gsm; kiest welke dag de agenda-lijst toont. */}
+          {isMobile && daysWithSlots.length > 0 && (
+            <div className="mb-3 flex gap-1.5 overflow-x-auto pb-1">
+              {daysWithSlots.map((d) => (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => setSelectedDay(d)}
+                  className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                    d === selectedDay
+                      ? "bg-tennis-green text-white"
+                      : "border border-rule bg-white text-ink-2 hover:bg-gray-50"
+                  }`}
+                >
+                  {DAY_NAMES_FULL[d]}
+                </button>
+              ))}
+            </div>
+          )}
+          {isMobile ? (
+            renderMobileDay(selectedDay)
+          ) : (
           <CalendarGrid
             slots={[]}
             readOnly
@@ -1122,54 +1328,24 @@ export default function PlanningPage({
                           </div>
                         </div>
 
-                        {/* Assigned people — flat list of avatars (klikbaar → detail) */}
+                        {/* Assigned people — enkel avatars (namen + klik zitten in de hover-popover) */}
                         {pos.height >= 36 &&
                           (() => {
                             const people = getSlotPeople(slot.id);
                             if (people.length === 0) return null;
-
-                            if (people.length === 1) {
-                              const { name, enrollmentId } = people[0];
-                              const color = getAvatarColor(name);
-                              return (
-                                <button
-                                  type="button"
-                                  title={name}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    openPersonDetail(enrollmentId);
-                                  }}
-                                  className="mt-1 flex cursor-pointer items-center gap-1 rounded px-0.5 hover:bg-white/70"
-                                >
-                                  <div
-                                    className={`w-5 h-5 rounded-full ${color.bg} ${color.text} flex items-center justify-center text-[8px] font-bold shrink-0`}
-                                  >
-                                    {getInitials(name)}
-                                  </div>
-                                  <span className="text-[10px] text-gray-700 truncate">
-                                    {name}
-                                  </span>
-                                </button>
-                              );
-                            }
 
                             return (
                               <div className="mt-1 flex items-center gap-0.5 flex-wrap">
                                 {people.map((person, i) => {
                                   const color = getAvatarColor(person.name);
                                   return (
-                                    <button
+                                    <div
                                       key={i}
-                                      type="button"
                                       title={person.name}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        openPersonDetail(person.enrollmentId);
-                                      }}
-                                      className={`w-5 h-5 rounded-full ${color.bg} ${color.text} flex items-center justify-center text-[8px] font-bold shrink-0 cursor-pointer hover:ring-2 hover:ring-white`}
+                                      className={`w-5 h-5 rounded-full ${color.bg} ${color.text} flex items-center justify-center text-[8px] font-bold shrink-0`}
                                     >
                                       {getInitials(person.name)}
-                                    </button>
+                                    </div>
                                   );
                                 })}
                               </div>
@@ -1193,7 +1369,7 @@ export default function PlanningPage({
                             </div>
                             <div className="space-y-2.5">
                               {slotAssignments.map((assignment) => {
-                                const aNames: string[] = [];
+                                const aPeople: { name: string; enrollmentId: string }[] = [];
                                 let gName: string | null = null;
                                 if (assignment.groupId) {
                                   const group = groupMap.get(assignment.groupId);
@@ -1201,14 +1377,14 @@ export default function PlanningPage({
                                     gName = group.name;
                                     for (const mId of group.memberEnrollmentIds) {
                                       const e = enrollmentMap.get(mId);
-                                      if (e) aNames.push(e.studentName);
+                                      if (e) aPeople.push({ name: e.studentName, enrollmentId: mId });
                                     }
                                   }
                                 } else if (assignment.enrollmentId) {
                                   const e = enrollmentMap.get(assignment.enrollmentId);
-                                  if (e) aNames.push(e.studentName);
+                                  if (e) aPeople.push({ name: e.studentName, enrollmentId: assignment.enrollmentId });
                                 }
-                                if (aNames.length === 0) return null;
+                                if (aPeople.length === 0) return null;
                                 return (
                                   <div key={assignment.id}>
                                     {(gName || assignment.isLocked) && (
@@ -1230,15 +1406,23 @@ export default function PlanningPage({
                                       </div>
                                     )}
                                     <div className={`space-y-1 ${gName ? "pl-2" : ""}`}>
-                                      {aNames.map((name, ni) => {
-                                        const aColor = getAvatarColor(name);
+                                      {aPeople.map((person, ni) => {
+                                        const aColor = getAvatarColor(person.name);
                                         return (
-                                          <div key={ni} className="flex items-center gap-1.5">
+                                          <button
+                                            key={ni}
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              openPersonDetail(person.enrollmentId);
+                                            }}
+                                            className="flex w-full items-center gap-1.5 rounded px-1 py-0.5 -mx-1 text-left hover:bg-gray-50"
+                                          >
                                             <div className={`w-4 h-4 rounded-full ${aColor.bg} ${aColor.text} flex items-center justify-center text-[7px] font-bold shrink-0`}>
-                                              {getInitials(name)}
+                                              {getInitials(person.name)}
                                             </div>
-                                            <span className="text-[11px] text-gray-700">{name}</span>
-                                          </div>
+                                            <span className="text-[11px] text-gray-700 hover:text-tennis-green">{person.name}</span>
+                                          </button>
                                         );
                                       })}
                                     </div>
@@ -1258,13 +1442,14 @@ export default function PlanningPage({
               );
             }}
           />
+          )}
 
         </div>
 
-        {/* Right sidebar */}
-        <aside className="w-80 bg-white border-l border-gray-200 flex flex-col shrink-0 overflow-auto">
+        {/* Right sidebar-card */}
+        <aside className="w-full sm:w-80 bg-white rounded-xl shadow-sm shadow-gray-100 flex flex-col shrink-0 overflow-hidden sm:min-h-0 sm:overflow-y-auto">
           {/* Zoekbalk — filtert personen over alle secties. */}
-          <div className="sticky top-0 z-10 border-b border-gray-100 bg-white p-3">
+          <div className="sm:sticky sm:top-0 z-10 border-b border-gray-100 bg-white p-3">
             <div className="relative">
               <Search
                 size={14}
