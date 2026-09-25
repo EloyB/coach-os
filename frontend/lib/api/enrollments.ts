@@ -66,6 +66,8 @@ export interface LessonSeriesEnrollmentDto {
   isOpenToGrouping: boolean;
   /** Gekozen prijsoptie (null = geen/legacy). */
   selectedPriceOptionId: string | null;
+  /** Betaalmethode van de (laatste) betaling: "Online" | "Cash", of null als er nog geen betaling is. */
+  paymentMethod: string | null;
   formResponses: EnrollmentResponseItem[];
 }
 

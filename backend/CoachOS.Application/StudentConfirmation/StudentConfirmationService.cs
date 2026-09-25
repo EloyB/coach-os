@@ -395,11 +395,14 @@ public class StudentConfirmationService(
     public async Task<Result> MarkEnrollmentCashPaidAsync(
         Guid enrollmentId, Guid organizationId, CancellationToken ct = default)
     {
-        Payment? payment = await paymentRepo.GetLatestPendingCashByEnrollmentIdAsync(
+        // Admin-override: markeer de laatste openstaande betaling als betaald,
+        // ongeacht methode (cash of online). Zo kan ook een niet-afgeronde online-
+        // betaling handmatig afgesloten worden.
+        Payment? payment = await paymentRepo.GetLatestPendingByEnrollmentIdAsync(
             enrollmentId, organizationId, ct);
         if (payment is null)
             return Result.Fail(new Error(
-                ErrorCodes.NotFound, "Geen openstaande overschrijving gevonden voor deze inschrijving."));
+                ErrorCodes.NotFound, "Geen openstaande betaling gevonden voor deze inschrijving."));
 
         Enrollment? enrollment = await enrollmentRepo.GetByIdWithGroupAsync(enrollmentId, organizationId, ct);
         if (enrollment is null)

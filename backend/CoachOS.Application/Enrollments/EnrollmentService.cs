@@ -23,6 +23,7 @@ public class EnrollmentService(
     IEnrollmentFormRepository enrollmentFormRepo,
     ILessonSerieRepository lessonSeriesRepo,
     IEnrollmentGroupRepository enrollmentGroupRepo,
+    IPaymentRepository paymentRepo,
     ITimeSlotPreferenceRepository timeSlotPreferenceRepo,
     IOrganizationSettingsRepository orgSettingsRepo,
     IUserLookupService userLookup,
@@ -117,6 +118,21 @@ public class EnrollmentService(
         var groups = await enrollmentGroupRepo.GetBySeriesAsync(lessonSeriesId, organizationId, ct);
         var groupsById = groups.ToDictionary(g => g.Id);
 
+        // Betaalmethode per inschrijving. Voor een groep hangt de betaling aan de
+        // leider, dus groepsleden erven diens methode.
+        var paymentByEnrollment = await paymentRepo.GetLatestMethodAndStatusByEnrollmentIdsAsync(
+            enrollments.Select(e => e.Id), ct);
+
+        string? ResolvePaymentMethod(Enrollment e)
+        {
+            Guid payerId = e.EnrollmentGroupId.HasValue
+                ? groupsById.GetValueOrDefault(e.EnrollmentGroupId.Value)?.LeaderEnrollmentId ?? e.Id
+                : e.Id;
+            return paymentByEnrollment.TryGetValue(payerId, out var mp)
+                ? mp.Method?.ToString()
+                : null;
+        }
+
         var dtos = enrollments.Select(e => new LessonSerieEnrollmentDto
         {
             Id = e.Id,
@@ -141,6 +157,7 @@ public class EnrollmentService(
                 && groupsById.GetValueOrDefault(e.EnrollmentGroupId.Value)?.LeaderEnrollmentId == e.Id,
             IsOpenToGrouping = e.IsOpenToGrouping,
             SelectedPriceOptionId = e.SelectedPriceOptionId,
+            PaymentMethod = ResolvePaymentMethod(e),
             FormResponses = e.FormResponses
                 .OrderBy(r => r.FormField.Order)
                 .Select(r => new EnrollmentResponseItemDto
