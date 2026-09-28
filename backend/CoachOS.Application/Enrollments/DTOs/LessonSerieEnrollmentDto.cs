@@ -35,5 +35,11 @@ public class LessonSerieEnrollmentDto
     /// <summary>Gekozen prijsoptie (null = geen optie/legacy prijs). Voor de aanpas-dialog.</summary>
     public Guid? SelectedPriceOptionId { get; set; }
 
+    /// <summary>
+    /// Betaalmethode van de (laatste) betaling: "Online" of "Cash", of null als er
+    /// nog geen betaling is. Voor een groep is dit de methode van de leider-betaling.
+    /// </summary>
+    public string? PaymentMethod { get; set; }
+
     public List<EnrollmentResponseItemDto> FormResponses { get; set; } = new();
 }

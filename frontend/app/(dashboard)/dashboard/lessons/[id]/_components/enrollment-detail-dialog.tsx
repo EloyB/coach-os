@@ -237,6 +237,18 @@ export function EnrollmentDetailDialog({
                 label={t("enrolledAt")}
                 value={new Date(enrollment.enrolledAt).toLocaleDateString("nl-BE")}
               />
+              {enrollment.paymentMethod && (
+                <DetailRow
+                  label={t("paymentMethod")}
+                  value={
+                    enrollment.paymentMethod === "Cash"
+                      ? t("paymentMethodCash")
+                      : enrollment.paymentMethod === "Online"
+                        ? t("paymentMethodOnline")
+                        : enrollment.paymentMethod
+                  }
+                />
+              )}
               <DetailRow
                 label={t("openToGrouping")}
                 value={enrollment.isOpenToGrouping ? t("yes") : t("no")}

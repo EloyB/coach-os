@@ -102,6 +102,19 @@ public class PaymentRepository(ApplicationDbContext context) : IPaymentRepositor
             .FirstOrDefaultAsync(ct);
     }
 
+    public async Task<Payment?> GetLatestPendingByEnrollmentIdAsync(
+        Guid enrollmentId, Guid organizationId, CancellationToken ct = default)
+    {
+        // Ongeacht methode (cash of online): admin-override "markeer als betaald".
+        // Getrackt: de caller muteert Status/PaidAt en slaat op.
+        return await context.Payments
+            .Where(p => p.EnrollmentId == enrollmentId
+                && p.OrganizationId == organizationId
+                && p.Status == PaymentStatus.Pending)
+            .OrderByDescending(p => p.CreatedAt)
+            .FirstOrDefaultAsync(ct);
+    }
+
     public async Task<Dictionary<Guid, (PaymentMethod? Method, PaymentStatus Status)>> GetLatestMethodAndStatusByCampEnrollmentIdsAsync(
         IEnumerable<Guid> campEnrollmentIds, CancellationToken ct = default)
     {
@@ -116,6 +129,29 @@ public class PaymentRepository(ApplicationDbContext context) : IPaymentRepositor
 
         return rows
             .GroupBy(r => r.CampEnrollmentId)
+            .ToDictionary(
+                g => g.Key,
+                g =>
+                {
+                    var latest = g.OrderByDescending(r => r.CreatedAt).First();
+                    return (latest.Method, latest.Status);
+                });
+    }
+
+    public async Task<Dictionary<Guid, (PaymentMethod? Method, PaymentStatus Status)>> GetLatestMethodAndStatusByEnrollmentIdsAsync(
+        IEnumerable<Guid> enrollmentIds, CancellationToken ct = default)
+    {
+        List<Guid> ids = enrollmentIds.Distinct().ToList();
+        if (ids.Count == 0) return new Dictionary<Guid, (PaymentMethod?, PaymentStatus)>();
+
+        var rows = await context.Payments
+            .AsNoTracking()
+            .Where(p => p.EnrollmentId != null && ids.Contains(p.EnrollmentId.Value))
+            .Select(p => new { EnrollmentId = p.EnrollmentId!.Value, p.Method, p.Status, p.CreatedAt })
+            .ToListAsync(ct);
+
+        return rows
+            .GroupBy(r => r.EnrollmentId)
             .ToDictionary(
                 g => g.Key,
                 g =>
