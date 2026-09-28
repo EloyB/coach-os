@@ -118,20 +118,10 @@ public class EnrollmentService(
         var groups = await enrollmentGroupRepo.GetBySeriesAsync(lessonSeriesId, organizationId, ct);
         var groupsById = groups.ToDictionary(g => g.Id);
 
-        // Betaalmethode per inschrijving. Voor een groep hangt de betaling aan de
-        // leider, dus groepsleden erven diens methode.
+        // Eigen betaalmethode + status per inschrijving. Bij per-lid cash-betalingen
+        // heeft elk lid een eigen betaling; bij een online-groep enkel de leider.
         var paymentByEnrollment = await paymentRepo.GetLatestMethodAndStatusByEnrollmentIdsAsync(
             enrollments.Select(e => e.Id), ct);
-
-        string? ResolvePaymentMethod(Enrollment e)
-        {
-            Guid payerId = e.EnrollmentGroupId.HasValue
-                ? groupsById.GetValueOrDefault(e.EnrollmentGroupId.Value)?.LeaderEnrollmentId ?? e.Id
-                : e.Id;
-            return paymentByEnrollment.TryGetValue(payerId, out var mp)
-                ? mp.Method?.ToString()
-                : null;
-        }
 
         var dtos = enrollments.Select(e => new LessonSerieEnrollmentDto
         {
@@ -157,7 +147,12 @@ public class EnrollmentService(
                 && groupsById.GetValueOrDefault(e.EnrollmentGroupId.Value)?.LeaderEnrollmentId == e.Id,
             IsOpenToGrouping = e.IsOpenToGrouping,
             SelectedPriceOptionId = e.SelectedPriceOptionId,
-            PaymentMethod = ResolvePaymentMethod(e),
+            PaymentMethod = paymentByEnrollment.TryGetValue(e.Id, out var pm)
+                ? pm.Method?.ToString()
+                : null,
+            PaymentStatus = paymentByEnrollment.TryGetValue(e.Id, out var ps)
+                ? ps.Status.ToString()
+                : null,
             FormResponses = e.FormResponses
                 .OrderBy(r => r.FormField.Order)
                 .Select(r => new EnrollmentResponseItemDto

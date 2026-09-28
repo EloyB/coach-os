@@ -36,10 +36,17 @@ public class LessonSerieEnrollmentDto
     public Guid? SelectedPriceOptionId { get; set; }
 
     /// <summary>
-    /// Betaalmethode van de (laatste) betaling: "Online" of "Cash", of null als er
-    /// nog geen betaling is. Voor een groep is dit de methode van de leider-betaling.
+    /// Betaalmethode van de eigen (laatste) betaling: "Online" of "Cash", of null als
+    /// deze inschrijving nog geen eigen betaling heeft. Bij per-lid cash-betalingen
+    /// heeft elk groepslid een eigen methode; bij een online-groep enkel de leider.
     /// </summary>
     public string? PaymentMethod { get; set; }
+
+    /// <summary>
+    /// Status van de eigen (laatste) betaling: "Pending", "Paid", ..., of null zonder
+    /// eigen betaling. Voedt de per-lid- en hele-groep-markeerknoppen.
+    /// </summary>
+    public string? PaymentStatus { get; set; }
 
     public List<EnrollmentResponseItemDto> FormResponses { get; set; } = new();
 }
