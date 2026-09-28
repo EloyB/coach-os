@@ -44,6 +44,7 @@ import {
   cancelEnrollmentGroup,
   removeGroupMember,
   markEnrollmentCashPaid,
+  markGroupCashPaid,
   updateBasicEnrollment,
 } from "@/lib/api/enrollments";
 import type { LessonSeriesEnrollmentDto } from "@/lib/api/enrollments";
@@ -536,10 +537,21 @@ function GroupBlockRows({
   const { leader, members } = block;
   const menuId = `${variant === "card" ? "cardgroup" : "group"}:${block.groupId}`;
   const showActionsMenu = openMenuId === menuId;
-  const leaderPendingPayment = leader.status === "PendingPayment";
+  // Groep heeft nog een openstaande betaling zolang één lid (of de leider bij een
+  // online-groep) nog niet betaald is.
+  const groupHasOpenPayment = members.some((m) => m.paymentStatus === "Pending");
 
-  const markPaidMutation = useMutation({
-    mutationFn: () => markEnrollmentCashPaid(leader.id),
+  const markGroupPaidMutation = useMutation({
+    mutationFn: () => markGroupCashPaid(leader.id),
+    onSuccess: () => {
+      toast.success(t("toastMarkedPaid"));
+      queryClient.invalidateQueries({ queryKey: ["enrollments", seriesId] });
+      queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
+    },
+  });
+
+  const markMemberPaidMutation = useMutation({
+    mutationFn: (memberId: string) => markEnrollmentCashPaid(memberId),
     onSuccess: () => {
       toast.success(t("toastMarkedPaid"));
       queryClient.invalidateQueries({ queryKey: ["enrollments", seriesId] });
@@ -639,18 +651,18 @@ function GroupBlockRows({
               {t("addMember")}
             </button>
           )}
-        {!readOnly && leaderPendingPayment && (
+        {!readOnly && groupHasOpenPayment && (
           <button
             type="button"
-            disabled={markPaidMutation.isPending}
+            disabled={markGroupPaidMutation.isPending}
             onClick={() => {
               setOpenMenuId(null);
-              markPaidMutation.mutate();
+              markGroupPaidMutation.mutate();
             }}
             className="flex w-full items-center gap-2 px-3 py-2 text-left text-tennis-green hover:bg-tennis-green/5 disabled:opacity-50"
           >
             <Euro size={13} />
-            {t("markPaid")}
+            {t("markGroupPaid")}
           </button>
         )}
         {canManage && (
@@ -682,6 +694,14 @@ function GroupBlockRows({
         groupMembers={members}
         onEditMember={setEditingMember}
         onRemoveMember={canManage ? setMemberToRemove : undefined}
+        onMarkMemberPaid={
+          !readOnly ? (m) => markMemberPaidMutation.mutate(m.id) : undefined
+        }
+        onMarkGroupPaid={
+          !readOnly && groupHasOpenPayment
+            ? () => markGroupPaidMutation.mutate()
+            : undefined
+        }
         onChangeGroupPriceOption={
           canEdit ? (id) => changeGroupPriceMutation.mutate(id) : undefined
         }

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { Pencil, UserMinus, X, Mail, Phone, MessageCircle } from "lucide-react";
+import { Pencil, UserMinus, X, Mail, Phone, MessageCircle, Euro } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -49,6 +49,8 @@ export function EnrollmentDetailDialog({
   onEditMember,
   onRemoveMember,
   onChangeGroupPriceOption,
+  onMarkMemberPaid,
+  onMarkGroupPaid,
 }: {
   enrollment: LessonSeriesEnrollmentDto;
   seriesId: string;
@@ -64,6 +66,10 @@ export function EnrollmentDetailDialog({
   onRemoveMember?: (member: LessonSeriesEnrollmentDto) => void;
   /** Wanneer gezet (bij een groep): toon een prijsoptie-selector voor de hele groep. */
   onChangeGroupPriceOption?: (optionId: string | null) => void;
+  /** Wanneer gezet: markeer een individueel lid met een openstaande cash-betaling als betaald. */
+  onMarkMemberPaid?: (member: LessonSeriesEnrollmentDto) => void;
+  /** Wanneer gezet: markeer de hele groep in één keer als betaald. */
+  onMarkGroupPaid?: () => void;
 }) {
   const t = useTranslations("enrollmentDetail");
 
@@ -310,6 +316,17 @@ export function EnrollmentDetailDialog({
               </div>
             )}
 
+            {onMarkGroupPaid && (
+              <button
+                type="button"
+                onClick={onMarkGroupPaid}
+                className="mb-3 inline-flex items-center gap-1.5 rounded-lg bg-tennis-green px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-tennis-green/90"
+              >
+                <Euro size={14} />
+                {t("markGroupPaid")}
+              </button>
+            )}
+
             <ul className="divide-y divide-gray-50 rounded-lg border border-gray-100">
             {groupMembers!.map((m) => {
               const mAge = computeAge(m.dateOfBirth);
@@ -349,8 +366,25 @@ export function EnrollmentDetailDialog({
                         .join(" · ")}
                     </div>
                   </div>
-                  {((canEdit && onEditMember) || (!readOnly && onRemoveMember)) && (
+                  {((canEdit && onEditMember) ||
+                    (!readOnly && onRemoveMember) ||
+                    (onMarkMemberPaid &&
+                      m.paymentMethod === "Cash" &&
+                      m.paymentStatus === "Pending")) && (
                     <div className="mt-0.5 flex shrink-0 items-center gap-0.5">
+                      {onMarkMemberPaid &&
+                        m.paymentMethod === "Cash" &&
+                        m.paymentStatus === "Pending" && (
+                          <button
+                            type="button"
+                            onClick={() => onMarkMemberPaid(m)}
+                            aria-label={t("markMemberPaidLabel", { name: m.studentName })}
+                            title={t("markMemberPaidLabel", { name: m.studentName })}
+                            className="flex h-7 w-7 items-center justify-center rounded-md text-gray-400 hover:bg-tennis-green/5 hover:text-tennis-green"
+                          >
+                            <Euro size={13} />
+                          </button>
+                        )}
                       {canEdit && onEditMember && (
                         <button
                           type="button"

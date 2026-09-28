@@ -66,8 +66,10 @@ export interface LessonSeriesEnrollmentDto {
   isOpenToGrouping: boolean;
   /** Gekozen prijsoptie (null = geen/legacy). */
   selectedPriceOptionId: string | null;
-  /** Betaalmethode van de (laatste) betaling: "Online" | "Cash", of null als er nog geen betaling is. */
+  /** Eigen betaalmethode: "Online" | "Cash", of null zonder eigen betaling. */
   paymentMethod: string | null;
+  /** Eigen betaalstatus: "Pending" | "Paid" | ..., of null zonder eigen betaling. */
+  paymentStatus: string | null;
   formResponses: EnrollmentResponseItem[];
 }
 
@@ -247,10 +249,17 @@ export async function removeGroupMember(
 }
 
 /**
- * Markeert de openstaande overschrijving van een reeksinschrijving als betaald.
- * Bevestigt de inschrijving en verstuurt de bevestigingsmail. Faalt met NotFound
- * als er geen openstaande cash-betaling is voor deze inschrijving.
+ * Markeert enkel deze inschrijving (lid of solo) als betaald: bevestigt de
+ * inschrijving en verstuurt de bevestigingsmail.
  */
 export async function markEnrollmentCashPaid(enrollmentId: string): Promise<void> {
   await apiClient.post(`/enrollments/${enrollmentId}/mark-cash-paid`);
+}
+
+/**
+ * Markeert de hele groep (of solo) van deze inschrijving als betaald in één keer:
+ * alle openstaande betalingen van de leden op betaald en iedereen bevestigd.
+ */
+export async function markGroupCashPaid(enrollmentId: string): Promise<void> {
+  await apiClient.post(`/enrollments/${enrollmentId}/mark-group-cash-paid`);
 }
