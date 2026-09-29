@@ -236,7 +236,13 @@ public class ConfirmationOrchestrationService(
                 new Error(ErrorCodes.NotFound, "Lessenreeks niet gevonden."));
 
         var tokens = await tokenRepo.GetBySeriesAsync(seriesId, organizationId, ct);
-        var pending = tokens.Where(t => t.Response == ConfirmationResponse.Pending).ToList();
+        // Opnieuw verzenden laat het oude pending-token bestaan (enkel verlopen), dus per
+        // toewijzing kunnen er meerdere pending tokens zijn — hou enkel het nieuwste over.
+        var pending = tokens
+            .Where(t => t.Response == ConfirmationResponse.Pending)
+            .GroupBy(t => t.ScheduleAssignmentId)
+            .Select(g => g.OrderByDescending(t => t.ExpiresAt).First())
+            .ToList();
         if (pending.Count == 0)
             return Result<List<NonResponderDto>>.Ok([]);
 
