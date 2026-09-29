@@ -389,20 +389,18 @@ public class StudentConfirmationService(
     public async Task<Result> MarkEnrollmentCashPaidAsync(
         Guid enrollmentId, Guid organizationId, CancellationToken ct = default)
     {
-        // Per lid (of solo): markeer de eigen openstaande betaling en bevestig enkel
-        // deze inschrijving. Voor de hele groep tegelijk: MarkGroupCashPaidAsync.
-        Payment? payment = await paymentRepo.GetLatestPendingByEnrollmentIdAsync(
-            enrollmentId, organizationId, ct);
-        if (payment is null)
-            return Result.Fail(new Error(
-                ErrorCodes.NotFound, "Geen openstaande betaling gevonden voor deze inschrijving."));
-
+        // Per lid (of solo): reken de eigen betaling af en bevestig enkel deze
+        // inschrijving. Voor de hele groep tegelijk: MarkGroupCashPaidAsync.
         Enrollment? enrollment = await enrollmentRepo.GetByIdWithGroupAsync(enrollmentId, organizationId, ct);
         if (enrollment is null)
             return Result.Fail(new Error(ErrorCodes.NotFound, "Inschrijving niet gevonden."));
 
-        payment.Status = PaymentStatus.Paid;
-        payment.PaidAt = timeProvider.GetUtcNow().UtcDateTime;
+        DateTime now = timeProvider.GetUtcNow().UtcDateTime;
+        bool settled = await TrySettleMemberPaymentAsync(enrollmentId, organizationId, now, ct);
+        if (!settled)
+            return Result.Fail(new Error(
+                ErrorCodes.NotFound, "Geen openstaande betaling gevonden voor deze inschrijving."));
+
         if (enrollment.Status != EnrollmentStatus.Confirmed)
             enrollment.Status = EnrollmentStatus.Confirmed;
 
@@ -439,13 +437,8 @@ public class StudentConfirmationService(
         bool anyPaid = false;
         foreach (Enrollment m in members)
         {
-            Payment? p = await paymentRepo.GetLatestPendingByEnrollmentIdAsync(m.Id, organizationId, ct);
-            if (p is not null)
-            {
-                p.Status = PaymentStatus.Paid;
-                p.PaidAt = now;
+            if (await TrySettleMemberPaymentAsync(m.Id, organizationId, now, ct))
                 anyPaid = true;
-            }
             if (m.Status != EnrollmentStatus.Confirmed)
                 m.Status = EnrollmentStatus.Confirmed;
         }
@@ -581,6 +574,45 @@ public class StudentConfirmationService(
     /// de club leden apart (of in één keer als groep) als betaald kan markeren. Voor een
     /// solo-inschrijving is dit één betaling.
     /// </summary>
+    /// <summary>
+    /// Rondt de betaling van één inschrijving af voor de admin-override "markeer als betaald".
+    /// Een openstaande (Pending) betaling wordt op Paid gezet. Bestaat die niet maar wél een
+    /// mislukte (Failed) betaling, dan wordt een nieuwe handmatige overschrijving-betaling
+    /// (Paid) geregistreerd terwijl de mislukte poging als historiek blijft staan. Geeft terug
+    /// of er iets afgerekend werd; slaat niet op — de caller flusht.
+    /// </summary>
+    private async Task<bool> TrySettleMemberPaymentAsync(
+        Guid enrollmentId, Guid organizationId, DateTime now, CancellationToken ct)
+    {
+        Payment? pending = await paymentRepo.GetLatestPendingByEnrollmentIdAsync(
+            enrollmentId, organizationId, ct);
+        if (pending is not null)
+        {
+            pending.Status = PaymentStatus.Paid;
+            pending.PaidAt = now;
+            return true;
+        }
+
+        Payment? failed = await paymentRepo.GetLatestFailedByEnrollmentIdAsync(
+            enrollmentId, organizationId, ct);
+        if (failed is not null)
+        {
+            await paymentRepo.AddAsync(new Payment
+            {
+                OrganizationId = organizationId,
+                EnrollmentId = enrollmentId,
+                Amount = failed.Amount,
+                Status = PaymentStatus.Paid,
+                Method = PaymentMethod.Transfer,
+                PaidAt = now,
+                Description = "Handmatige overschrijving (na mislukte online-betaling)",
+            }, ct);
+            return true;
+        }
+
+        return false;
+    }
+
     private async Task AddPerMemberCashPaymentsAsync(
         IReadOnlyDictionary<Guid, decimal> perMember,
         Guid organizationId,

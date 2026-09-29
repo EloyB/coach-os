@@ -10,8 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
-import { enrollmentStatusStyles } from "@/lib/status-styles";
+import { EnrollmentStatusBadge } from "./enrollment-status-badge";
 import { getEnrollmentsWithPreferences } from "@/lib/api/enrollments";
 import type { LessonSeriesEnrollmentDto } from "@/lib/api/enrollments";
 import { getLessonSeriePrices } from "@/lib/api/lessonSeriePrices";
@@ -146,13 +145,11 @@ export function EnrollmentDetailDialog({
         <DialogHeader>
           <DialogTitle className="flex flex-wrap items-center gap-2">
             {hasGroup ? t("groupTitle", { name: enrollment.studentName }) : enrollment.studentName}
-            {enrollmentStatusStyles[enrollment.status] && (
-              <Badge
-                className={`${enrollmentStatusStyles[enrollment.status].className} border-0 text-xs`}
-              >
-                {enrollmentStatusStyles[enrollment.status].label}
-              </Badge>
-            )}
+            <EnrollmentStatusBadge
+              status={enrollment.status}
+              paymentStatus={enrollment.paymentStatus}
+              className="text-xs"
+            />
           </DialogTitle>
         </DialogHeader>
 
@@ -251,7 +248,9 @@ export function EnrollmentDetailDialog({
                       ? t("paymentMethodCash")
                       : enrollment.paymentMethod === "Online"
                         ? t("paymentMethodOnline")
-                        : enrollment.paymentMethod
+                        : enrollment.paymentMethod === "Transfer"
+                          ? t("paymentMethodTransfer")
+                          : enrollment.paymentMethod
                   }
                 />
               )}
@@ -348,13 +347,11 @@ export function EnrollmentDetailDialog({
                           {t("leaderBadge")}
                         </span>
                       )}
-                      {enrollmentStatusStyles[m.status] && (
-                        <Badge
-                          className={`${enrollmentStatusStyles[m.status].className} shrink-0 border-0 text-[10px]`}
-                        >
-                          {enrollmentStatusStyles[m.status].label}
-                        </Badge>
-                      )}
+                      <EnrollmentStatusBadge
+                        status={m.status}
+                        paymentStatus={m.paymentStatus}
+                        className="shrink-0 text-[10px]"
+                      />
                     </div>
                     <div className="mt-0.5 truncate text-xs text-gray-500">
                       {[
@@ -369,12 +366,14 @@ export function EnrollmentDetailDialog({
                   {((canEdit && onEditMember) ||
                     (!readOnly && onRemoveMember) ||
                     (onMarkMemberPaid &&
-                      m.paymentMethod === "Cash" &&
-                      m.paymentStatus === "Pending")) && (
+                      m.paymentMethod !== "Online" &&
+                      (m.paymentStatus === "Pending" ||
+                        m.paymentStatus === "Failed"))) && (
                     <div className="mt-0.5 flex shrink-0 items-center gap-0.5">
                       {onMarkMemberPaid &&
-                        m.paymentMethod === "Cash" &&
-                        m.paymentStatus === "Pending" && (
+                        m.paymentMethod !== "Online" &&
+                        (m.paymentStatus === "Pending" ||
+                          m.paymentStatus === "Failed") && (
                           <button
                             type="button"
                             onClick={() => onMarkMemberPaid(m)}

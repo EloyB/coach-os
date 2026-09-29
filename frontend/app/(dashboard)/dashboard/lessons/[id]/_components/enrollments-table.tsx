@@ -37,7 +37,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { EditEnrollmentDialog } from "./edit-enrollment-dialog";
-import { enrollmentStatusStyles } from "@/lib/status-styles";
+import { EnrollmentStatusBadge } from "./enrollment-status-badge";
 import {
   getLessonSeriesEnrollments,
   cancelEnrollment,
@@ -398,13 +398,11 @@ function PersonRow({
                   {enrollment.studentPhone}
                 </p>
               )}
-              {enrollmentStatusStyles[enrollment.status] && (
-                <Badge
-                  className={`${enrollmentStatusStyles[enrollment.status].className} mt-1.5 border-0 text-xs`}
-                >
-                  {enrollmentStatusStyles[enrollment.status].label}
-                </Badge>
-              )}
+              <EnrollmentStatusBadge
+                status={enrollment.status}
+                paymentStatus={enrollment.paymentStatus}
+                className="mt-1.5 text-xs"
+              />
             </div>
             <div onClick={(e) => e.stopPropagation()} className="shrink-0">
               {actionsMenu}
@@ -469,13 +467,11 @@ function PersonRow({
 
         {/* Status */}
         <td className="px-4 py-2.5">
-          {enrollmentStatusStyles[enrollment.status] && (
-            <Badge
-              className={`${enrollmentStatusStyles[enrollment.status].className} border-0 text-xs`}
-            >
-              {enrollmentStatusStyles[enrollment.status].label}
-            </Badge>
-          )}
+          <EnrollmentStatusBadge
+            status={enrollment.status}
+            paymentStatus={enrollment.paymentStatus}
+            className="text-xs"
+          />
         </td>
 
         {/* Acties */}
@@ -537,9 +533,12 @@ function GroupBlockRows({
   const { leader, members } = block;
   const menuId = `${variant === "card" ? "cardgroup" : "group"}:${block.groupId}`;
   const showActionsMenu = openMenuId === menuId;
-  // Groep heeft nog een openstaande betaling zolang één lid (of de leider bij een
-  // online-groep) nog niet betaald is.
-  const groupHasOpenPayment = members.some((m) => m.paymentStatus === "Pending");
+  // Groep heeft nog iets te innen zolang één lid (of de leider bij een online-groep)
+  // een openstaande óf mislukte betaling heeft. Mislukt telt mee zodat een vastgelopen
+  // online-betaling die later via overschrijving betaald werd, alsnog afvinkbaar is.
+  const groupHasOpenPayment = members.some(
+    (m) => m.paymentStatus === "Pending" || m.paymentStatus === "Failed",
+  );
 
   const markGroupPaidMutation = useMutation({
     mutationFn: () => markGroupCashPaid(leader.id),
@@ -809,13 +808,11 @@ function GroupBlockRows({
               <p className="mt-1 text-xs text-gray-500">
                 {formatEnrolledAt(leader.enrolledAt)}
               </p>
-              {enrollmentStatusStyles[leader.status] && (
-                <Badge
-                  className={`${enrollmentStatusStyles[leader.status].className} mt-1.5 border-0 text-xs`}
-                >
-                  {enrollmentStatusStyles[leader.status].label}
-                </Badge>
-              )}
+              <EnrollmentStatusBadge
+                status={leader.status}
+                paymentStatus={leader.paymentStatus}
+                className="mt-1.5 text-xs"
+              />
             </div>
             <div onClick={(e) => e.stopPropagation()} className="shrink-0">
               {groupActionsMenu}
@@ -871,13 +868,11 @@ function GroupBlockRows({
 
         {/* Status (leider) */}
         <td className="px-4 py-2.5">
-          {enrollmentStatusStyles[leader.status] && (
-            <Badge
-              className={`${enrollmentStatusStyles[leader.status].className} border-0 text-xs`}
-            >
-              {enrollmentStatusStyles[leader.status].label}
-            </Badge>
-          )}
+          <EnrollmentStatusBadge
+            status={leader.status}
+            paymentStatus={leader.paymentStatus}
+            className="text-xs"
+          />
         </td>
 
         {/* Acties — groepsniveau */}
@@ -944,10 +939,13 @@ function MemberRow({
 
   const menuKey = `member:${enrollment.id}`;
   const showActionsMenu = openMenuId === menuKey;
+  // Per lid afrekenen geldt voor een eigen (niet-online) betaling die nog openstaat of
+  // mislukte. De gedeelde online leider-betaling wordt via "hele groep" afgehandeld.
   const canMarkPaid =
     !readOnly &&
-    enrollment.paymentMethod === "Cash" &&
-    enrollment.paymentStatus === "Pending";
+    enrollment.paymentMethod !== "Online" &&
+    (enrollment.paymentStatus === "Pending" ||
+      enrollment.paymentStatus === "Failed");
   const canRemove = canManage && !isCancelled;
   const canEditMember = canEdit && !isCancelled;
   const hasActions = canMarkPaid || canRemove || canEditMember;
@@ -1014,13 +1012,11 @@ function MemberRow({
         {formatEnrolledAt(enrollment.enrolledAt)}
       </td>
       <td className="px-4 py-2.5">
-        {enrollmentStatusStyles[enrollment.status] && (
-          <Badge
-            className={`${enrollmentStatusStyles[enrollment.status].className} border-0 text-xs`}
-          >
-            {enrollmentStatusStyles[enrollment.status].label}
-          </Badge>
-        )}
+        <EnrollmentStatusBadge
+          status={enrollment.status}
+          paymentStatus={enrollment.paymentStatus}
+          className="text-xs"
+        />
       </td>
       <td className="px-4 py-2.5 text-right whitespace-nowrap">
         {hasActions && (

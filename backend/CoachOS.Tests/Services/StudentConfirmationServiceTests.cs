@@ -1047,11 +1047,24 @@ public class StudentConfirmationServiceTests
     }
 
     [Test]
-    public async Task MarkEnrollmentCashPaid_returns_NotFound_when_no_pending_payment()
+    public async Task MarkEnrollmentCashPaid_returns_NotFound_when_no_open_or_failed_payment()
     {
         Guid orgId = Guid.NewGuid();
         Guid enrollmentId = Guid.NewGuid();
+        Enrollment enrollment = new()
+        {
+            Id = enrollmentId,
+            OrganizationId = orgId,
+            LessonSerieId = Guid.NewGuid(),
+            StudentName = "Sofie",
+            ContactEmail = "sofie@example.com",
+            Status = EnrollmentStatus.PendingPayment,
+        };
+        _enrollmentRepo.Setup(r => r.GetByIdWithGroupAsync(enrollmentId, orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(enrollment);
         _paymentRepo.Setup(r => r.GetLatestPendingByEnrollmentIdAsync(enrollmentId, orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Payment?)null);
+        _paymentRepo.Setup(r => r.GetLatestFailedByEnrollmentIdAsync(enrollmentId, orgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Payment?)null);
 
         // Act
@@ -1060,6 +1073,59 @@ public class StudentConfirmationServiceTests
         // Assert
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().Contain(e => e.Code == ErrorCodes.NotFound);
+        _paymentRepo.Verify(r => r.AddAsync(It.IsAny<Payment>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task MarkEnrollmentCashPaid_registers_manual_transfer_when_latest_payment_failed()
+    {
+        // Online betaling mislukte; later kwam het geld via overschrijving binnen.
+        // Er is geen openstaande betaling meer, dus de admin-override registreert een
+        // nieuwe handmatige overschrijving (Paid) terwijl de mislukte poging blijft.
+        Guid orgId = Guid.NewGuid();
+        Guid enrollmentId = Guid.NewGuid();
+        Payment failed = new()
+        {
+            OrganizationId = orgId,
+            EnrollmentId = enrollmentId,
+            Method = PaymentMethod.Online,
+            Status = PaymentStatus.Failed,
+            Amount = 120m,
+        };
+        Enrollment enrollment = new()
+        {
+            Id = enrollmentId,
+            OrganizationId = orgId,
+            LessonSerieId = Guid.NewGuid(),
+            StudentName = "Sofie",
+            ContactEmail = "sofie@example.com",
+            Status = EnrollmentStatus.PendingPayment,
+        };
+        _enrollmentRepo.Setup(r => r.GetByIdWithGroupAsync(enrollmentId, orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(enrollment);
+        _paymentRepo.Setup(r => r.GetLatestPendingByEnrollmentIdAsync(enrollmentId, orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Payment?)null);
+        _paymentRepo.Setup(r => r.GetLatestFailedByEnrollmentIdAsync(enrollmentId, orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(failed);
+        _tokenRepo.Setup(r => r.GetBySeriesAsNoTrackingAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<AssignmentConfirmationToken>());
+
+        Payment? added = null;
+        _paymentRepo.Setup(r => r.AddAsync(It.IsAny<Payment>(), It.IsAny<CancellationToken>()))
+            .Callback<Payment, CancellationToken>((p, _) => added = p);
+
+        // Act
+        Result result = await _sut.MarkEnrollmentCashPaidAsync(enrollmentId, orgId, CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        failed.Status.Should().Be(PaymentStatus.Failed, "de mislukte poging blijft als historiek staan");
+        added.Should().NotBeNull();
+        added!.Status.Should().Be(PaymentStatus.Paid);
+        added.Method.Should().Be(PaymentMethod.Transfer);
+        added.Amount.Should().Be(120m);
+        added.EnrollmentId.Should().Be(enrollmentId);
+        enrollment.Status.Should().Be(EnrollmentStatus.Confirmed);
     }
 
     [Test]

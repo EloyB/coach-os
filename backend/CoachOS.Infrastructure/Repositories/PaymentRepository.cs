@@ -115,6 +115,20 @@ public class PaymentRepository(ApplicationDbContext context) : IPaymentRepositor
             .FirstOrDefaultAsync(ct);
     }
 
+    public async Task<Payment?> GetLatestFailedByEnrollmentIdAsync(
+        Guid enrollmentId, Guid organizationId, CancellationToken ct = default)
+    {
+        // AsNoTracking: de caller muteert deze rij niet, maar maakt een nieuwe
+        // handmatige betaling op basis van het bedrag.
+        return await context.Payments
+            .AsNoTracking()
+            .Where(p => p.EnrollmentId == enrollmentId
+                && p.OrganizationId == organizationId
+                && p.Status == PaymentStatus.Failed)
+            .OrderByDescending(p => p.CreatedAt)
+            .FirstOrDefaultAsync(ct);
+    }
+
     public async Task<Dictionary<Guid, (PaymentMethod? Method, PaymentStatus Status)>> GetLatestMethodAndStatusByCampEnrollmentIdsAsync(
         IEnumerable<Guid> campEnrollmentIds, CancellationToken ct = default)
     {

@@ -296,6 +296,7 @@
     "paymentMethod": "Betaalmethode",
     "paymentMethodOnline": "Online (Bancontact/iDEAL)",
     "paymentMethodCash": "Overschrijving",
+    "paymentMethodTransfer": "Overschrijving (handmatig)",
     "markGroupPaid": "Markeer hele groep als betaald",
     "markMemberPaidLabel": "Markeer {name} als betaald",
     "openToGrouping": "Open voor koppeling",
