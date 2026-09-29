@@ -3,15 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { Pencil, UserMinus, X, Mail, Phone, MessageCircle } from "lucide-react";
+import { Pencil, UserMinus, X, Mail, Phone, MessageCircle, Euro } from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
-import { enrollmentStatusStyles } from "@/lib/status-styles";
+import { EnrollmentStatusBadge } from "./enrollment-status-badge";
 import { getEnrollmentsWithPreferences } from "@/lib/api/enrollments";
 import type { LessonSeriesEnrollmentDto } from "@/lib/api/enrollments";
 import { getLessonSeriePrices } from "@/lib/api/lessonSeriePrices";
@@ -49,6 +48,8 @@ export function EnrollmentDetailDialog({
   onEditMember,
   onRemoveMember,
   onChangeGroupPriceOption,
+  onMarkMemberPaid,
+  onMarkGroupPaid,
 }: {
   enrollment: LessonSeriesEnrollmentDto;
   seriesId: string;
@@ -64,6 +65,10 @@ export function EnrollmentDetailDialog({
   onRemoveMember?: (member: LessonSeriesEnrollmentDto) => void;
   /** Wanneer gezet (bij een groep): toon een prijsoptie-selector voor de hele groep. */
   onChangeGroupPriceOption?: (optionId: string | null) => void;
+  /** Wanneer gezet: markeer een individueel lid met een openstaande cash-betaling als betaald. */
+  onMarkMemberPaid?: (member: LessonSeriesEnrollmentDto) => void;
+  /** Wanneer gezet: markeer de hele groep in één keer als betaald. */
+  onMarkGroupPaid?: () => void;
 }) {
   const t = useTranslations("enrollmentDetail");
 
@@ -140,13 +145,11 @@ export function EnrollmentDetailDialog({
         <DialogHeader>
           <DialogTitle className="flex flex-wrap items-center gap-2">
             {hasGroup ? t("groupTitle", { name: enrollment.studentName }) : enrollment.studentName}
-            {enrollmentStatusStyles[enrollment.status] && (
-              <Badge
-                className={`${enrollmentStatusStyles[enrollment.status].className} border-0 text-xs`}
-              >
-                {enrollmentStatusStyles[enrollment.status].label}
-              </Badge>
-            )}
+            <EnrollmentStatusBadge
+              status={enrollment.status}
+              paymentStatus={enrollment.paymentStatus}
+              className="text-xs"
+            />
           </DialogTitle>
         </DialogHeader>
 
@@ -245,7 +248,9 @@ export function EnrollmentDetailDialog({
                       ? t("paymentMethodCash")
                       : enrollment.paymentMethod === "Online"
                         ? t("paymentMethodOnline")
-                        : enrollment.paymentMethod
+                        : enrollment.paymentMethod === "Transfer"
+                          ? t("paymentMethodTransfer")
+                          : enrollment.paymentMethod
                   }
                 />
               )}
@@ -310,6 +315,17 @@ export function EnrollmentDetailDialog({
               </div>
             )}
 
+            {onMarkGroupPaid && (
+              <button
+                type="button"
+                onClick={onMarkGroupPaid}
+                className="mb-3 inline-flex items-center gap-1.5 rounded-lg bg-tennis-green px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-tennis-green/90"
+              >
+                <Euro size={14} />
+                {t("markGroupPaid")}
+              </button>
+            )}
+
             <ul className="divide-y divide-gray-50 rounded-lg border border-gray-100">
             {groupMembers!.map((m) => {
               const mAge = computeAge(m.dateOfBirth);
@@ -331,13 +347,11 @@ export function EnrollmentDetailDialog({
                           {t("leaderBadge")}
                         </span>
                       )}
-                      {enrollmentStatusStyles[m.status] && (
-                        <Badge
-                          className={`${enrollmentStatusStyles[m.status].className} shrink-0 border-0 text-[10px]`}
-                        >
-                          {enrollmentStatusStyles[m.status].label}
-                        </Badge>
-                      )}
+                      <EnrollmentStatusBadge
+                        status={m.status}
+                        paymentStatus={m.paymentStatus}
+                        className="shrink-0 text-[10px]"
+                      />
                     </div>
                     <div className="mt-0.5 truncate text-xs text-gray-500">
                       {[
@@ -349,8 +363,27 @@ export function EnrollmentDetailDialog({
                         .join(" · ")}
                     </div>
                   </div>
-                  {((canEdit && onEditMember) || (!readOnly && onRemoveMember)) && (
+                  {((canEdit && onEditMember) ||
+                    (!readOnly && onRemoveMember) ||
+                    (onMarkMemberPaid &&
+                      m.paymentMethod !== "Online" &&
+                      (m.paymentStatus === "Pending" ||
+                        m.paymentStatus === "Failed"))) && (
                     <div className="mt-0.5 flex shrink-0 items-center gap-0.5">
+                      {onMarkMemberPaid &&
+                        m.paymentMethod !== "Online" &&
+                        (m.paymentStatus === "Pending" ||
+                          m.paymentStatus === "Failed") && (
+                          <button
+                            type="button"
+                            onClick={() => onMarkMemberPaid(m)}
+                            aria-label={t("markMemberPaidLabel", { name: m.studentName })}
+                            title={t("markMemberPaidLabel", { name: m.studentName })}
+                            className="flex h-7 w-7 items-center justify-center rounded-md text-gray-400 hover:bg-tennis-green/5 hover:text-tennis-green"
+                          >
+                            <Euro size={13} />
+                          </button>
+                        )}
                       {canEdit && onEditMember && (
                         <button
                           type="button"

@@ -64,6 +64,15 @@ public interface IPaymentRepository
         Guid enrollmentId, Guid organizationId, CancellationToken ct = default);
 
     /// <summary>
+    /// Meest recente mislukte (Failed) betaling voor een reeks-inschrijving, org-gescoped
+    /// en AsNoTracking. Gebruikt door de admin-override om een later via overschrijving
+    /// betaalde, eerder mislukte online-betaling af te ronden: het bedrag wordt hergebruikt
+    /// voor een nieuwe handmatige betaling; de mislukte poging blijft als historiek staan.
+    /// </summary>
+    Task<Payment?> GetLatestFailedByEnrollmentIdAsync(
+        Guid enrollmentId, Guid organizationId, CancellationToken ct = default);
+
+    /// <summary>
     /// Meest recente betaalmethode + status per kamp-inschrijving, in één query
     /// (vermijdt N+1 in het admin-overzicht). Inschrijvingen zonder betaling
     /// komen niet in de dictionary voor.
