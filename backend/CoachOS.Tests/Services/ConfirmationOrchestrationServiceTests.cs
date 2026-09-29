@@ -362,4 +362,55 @@ public class ConfirmationOrchestrationServiceTests
         assignment.Status.Should().Be(ScheduleAssignmentStatus.AwaitingConfirmation,
             "zonder geldige prijs mag de toewijzing niet bevestigd worden");
     }
+
+    // ── GetNonRespondersAsync ────────────────────────────────────────────────
+
+    [Test]
+    public async Task GetNonRespondersAsync_MultiplePendingTokensPerAssignment_ReturnsNewestOnly()
+    {
+        // Opnieuw verzenden laat het oude pending-token bestaan (enkel verlopen).
+        // GetNonResponders mag per toewijzing niet twee keer dezelfde rij teruggeven,
+        // anders krijgt de frontend dubbele React-keys.
+        LessonSerie series = PlanningServiceTests.BuildSeries(withSlots: true, SeriesId, OrgId, SlotId);
+        Enrollment enrollment = PlanningServiceTests.BuildEnrollment("Alice", OrgId, SeriesId);
+
+        ScheduleAssignment assignment = new()
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = OrgId,
+            LessonSerieId = SeriesId,
+            WeeklyTemplateEntryId = SlotId,
+            EnrollmentId = enrollment.Id,
+            Enrollment = enrollment,
+            Status = ScheduleAssignmentStatus.AwaitingConfirmation,
+        };
+
+        AssignmentConfirmationToken MakeToken(DateTime expiresAt) => new()
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = OrgId,
+            ScheduleAssignmentId = assignment.Id,
+            ScheduleAssignment = assignment,
+            EnrollmentId = enrollment.Id,
+            Enrollment = enrollment,
+            TokenHash = Guid.NewGuid().ToString(),
+            ExpiresAt = expiresAt,
+            Response = ConfirmationResponse.Pending,
+        };
+
+        var newest = MakeToken(DateTime.UtcNow.AddHours(72));
+        var superseded = MakeToken(DateTime.UtcNow.AddHours(-1));
+
+        _seriesRepo.Setup(r => r.GetByIdAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+        _tokenRepo.Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<AssignmentConfirmationToken> { superseded, newest });
+
+        var result = await _service.GetNonRespondersAsync(SeriesId, OrgId);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().ContainSingle("per toewijzing hoort er maar één rij te zijn");
+        result.Value[0].AssignmentId.Should().Be(assignment.Id);
+        result.Value[0].ExpiresAt.Should().Be(newest.ExpiresAt, "de nieuwste token telt");
+    }
 }
