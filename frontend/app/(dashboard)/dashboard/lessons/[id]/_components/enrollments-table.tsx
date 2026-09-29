@@ -896,6 +896,8 @@ function GroupBlockRows({
             isLeader={m.id === leader.id}
             isDuplicate={duplicateIds.has(m.id)}
             isMatch={matchedIds?.has(m.id) ?? false}
+            openMenuId={openMenuId}
+            setOpenMenuId={setOpenMenuId}
           />
         ))}
       {groupDialogs}
@@ -912,6 +914,8 @@ function MemberRow({
   isLeader,
   isDuplicate,
   isMatch,
+  openMenuId,
+  setOpenMenuId,
 }: {
   enrollment: LessonSeriesEnrollmentDto;
   seriesId: string;
@@ -919,12 +923,34 @@ function MemberRow({
   isLeader: boolean;
   isDuplicate: boolean;
   isMatch: boolean;
+  openMenuId: string | null;
+  setOpenMenuId: (id: string | null) => void;
 }) {
   const t = useTranslations("enrollmentsTable");
   const queryClient = useQueryClient();
   const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+  // Hoofdtrainer = read-only (geen betaalactie); bewerken is Admin-only. Reactief
+  // zodat het na hydratie klopt (localStorage is null tijdens SSR).
+  const [readOnly, setReadOnly] = useState(false);
+  const [canEdit, setCanEdit] = useState(false);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setReadOnly(isHeadTrainerViewer());
+    setCanEdit(canEditEnrollment());
+  }, []);
   const isCancelled = enrollment.status === "Cancelled";
   const age = computeAge(enrollment.dateOfBirth);
+
+  const menuKey = `member:${enrollment.id}`;
+  const showActionsMenu = openMenuId === menuKey;
+  const canMarkPaid =
+    !readOnly &&
+    enrollment.paymentMethod === "Cash" &&
+    enrollment.paymentStatus === "Pending";
+  const canRemove = canManage && !isCancelled;
+  const canEditMember = canEdit && !isCancelled;
+  const hasActions = canMarkPaid || canRemove || canEditMember;
 
   const removeMemberMutation = useMutation({
     mutationFn: (cancel: boolean) =>
@@ -936,6 +962,15 @@ function MemberRow({
       queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
     },
     onError: () => toast.error(t("removeFromGroupError")),
+  });
+
+  const markPaidMutation = useMutation({
+    mutationFn: () => markEnrollmentCashPaid(enrollment.id),
+    onSuccess: () => {
+      toast.success(t("toastMarkedPaid"));
+      queryClient.invalidateQueries({ queryKey: ["enrollments", seriesId] });
+      queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
+    },
   });
 
   return (
@@ -988,17 +1023,64 @@ function MemberRow({
         )}
       </td>
       <td className="px-4 py-2.5 text-right whitespace-nowrap">
-        {canManage && !isCancelled && (
-          <button
-            type="button"
-            disabled={removeMemberMutation.isPending}
-            onClick={() => setConfirmRemoveOpen(true)}
-            aria-label={t("removeFromGroup")}
-            title={t("removeFromGroup")}
-            className="flex h-7 w-7 items-center justify-center rounded text-gray-400 hover:bg-tennis-green/5 hover:text-tennis-green disabled:opacity-50"
+        {hasActions && (
+          <Popover
+            open={showActionsMenu}
+            onOpenChange={(o) => setOpenMenuId(o ? menuKey : null)}
           >
-            <UserMinus size={13} />
-          </button>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                aria-label={t("actionsLabel", { name: enrollment.studentName })}
+                className="ml-auto flex h-8 w-8 items-center justify-center rounded-md border border-gray-100 text-gray-400 hover:bg-gray-50 hover:text-gray-700"
+              >
+                <MoreVertical size={15} />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-52 p-1 text-sm">
+              {canMarkPaid && (
+                <button
+                  type="button"
+                  disabled={markPaidMutation.isPending}
+                  onClick={() => {
+                    setOpenMenuId(null);
+                    markPaidMutation.mutate();
+                  }}
+                  className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-tennis-green hover:bg-tennis-green/5 disabled:opacity-50"
+                >
+                  <Euro size={13} />
+                  {t("markPaid")}
+                </button>
+              )}
+              {canEditMember && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenMenuId(null);
+                    setEditing(true);
+                  }}
+                  className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-gray-700 hover:bg-tennis-green/5 hover:text-tennis-green"
+                >
+                  <Pencil size={13} />
+                  {t("editAction")}
+                </button>
+              )}
+              {canRemove && (
+                <button
+                  type="button"
+                  disabled={removeMemberMutation.isPending}
+                  onClick={() => {
+                    setOpenMenuId(null);
+                    setConfirmRemoveOpen(true);
+                  }}
+                  className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-red-600 hover:bg-red-50 disabled:opacity-50"
+                >
+                  <UserMinus size={13} />
+                  {t("removeFromGroup")}
+                </button>
+              )}
+            </PopoverContent>
+          </Popover>
         )}
       </td>
     </tr>
@@ -1028,6 +1110,13 @@ function MemberRow({
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+
+    <EditEnrollmentDialog
+      enrollment={enrollment}
+      seriesId={seriesId}
+      open={editing}
+      onOpenChange={setEditing}
+    />
     </>
   );
 }
