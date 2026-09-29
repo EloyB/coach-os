@@ -68,7 +68,8 @@ internal static class PlanningProposalBuilder
                 StudentNames: memberEnrollments.Select(e => e.StudentName).ToList(),
                 Size: memberEnrollments.Count,
                 IsOpenToGrouping: leaderEnrollment?.IsOpenToGrouping ?? false,
-                Preferences: groupPrefs));
+                Preferences: groupPrefs,
+                AgeCategory: GetSharedAgeCategory(memberEnrollments)));
 
             foreach (var e in memberEnrollments)
                 groupedEnrollmentIds.Add(e.Id);
@@ -86,7 +87,8 @@ internal static class PlanningProposalBuilder
                 StudentNames: [enrollment.StudentName],
                 Size: 1,
                 IsOpenToGrouping: enrollment.IsOpenToGrouping,
-                Preferences: prefs));
+                Preferences: prefs,
+                AgeCategory: GetAgeCategory(enrollment)));
         }
 
         return (units, groupedEnrollmentIds);
@@ -143,6 +145,39 @@ internal static class PlanningProposalBuilder
         }
 
         return conflicts;
+    }
+
+    /// <summary>
+    /// The age-category bucket a student chose on the enrollment form, or null when the form
+    /// has no age-category field (or it was left unanswered). The matching algorithm treats
+    /// null as unconstrained.
+    /// </summary>
+    private static string? GetAgeCategory(Enrollment enrollment)
+    {
+        string? value = enrollment.FormResponses
+            .FirstOrDefault(r => r.FormField?.Type == FormFieldType.AgeCategory)
+            ?.Value;
+
+        // Normalize: a whitespace-only (or empty) answer is "no answer", not a bucket — otherwise
+        // a legacy/forged blank value would lock a slot to whitespace and split off valid answers.
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
+
+    /// <summary>
+    /// The shared age bucket of a pre-formed group: the single bucket if every member agrees,
+    /// otherwise null. A mixed-age group is the user's explicit choice, so it stays unconstrained
+    /// rather than blocking the group.
+    /// </summary>
+    internal static string? GetSharedAgeCategory(List<Enrollment> members)
+    {
+        var buckets = members.Select(GetAgeCategory).ToList();
+
+        // Every member must have answered: a missing bucket means we cannot claim the group
+        // shares one, so it stays unconstrained rather than being locked to a partial answer.
+        if (buckets.Count == 0 || buckets.Any(string.IsNullOrEmpty))
+            return null;
+
+        return buckets.Distinct().Count() == 1 ? buckets[0] : null;
     }
 
     public static int GetEffectiveAssignmentSize(ScheduleAssignment assignment)
