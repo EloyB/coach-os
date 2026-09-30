@@ -1,0 +1,1 @@
+CoachOS — een planning die zichzelf maakt. Ons planningsalgoritme roostert je hele lesreeks automatisch in; lesnemers bevestigen hun plek en betalen zelf. Van inschrijvingen naar een volle agenda, zonder puzzelen.

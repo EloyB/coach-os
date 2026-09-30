@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="fonts/gf-local.css">
+<style>
+  :root{--green:#2D5016;--lime:#D0FF14;--beige:#E8DCC4;--off:#FAFAF8;--ink:#161513}
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:1920px;height:1080px;overflow:hidden;background:#000}
+  #stage{position:relative;width:1920px;height:1080px;font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow:hidden}
+  .scene{position:absolute;inset:0;opacity:0;will-change:opacity}
+  .mono{font-family:'JetBrains Mono',monospace}
+
+  /* S1 hook */
+  #s1{background:radial-gradient(120% 90% at 50% 38%, #3a6a1d 0%, #2D5016 45%, #21390f 100%)}
+  #s1 .wrap{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:52px}
+  #s1 svg{filter:drop-shadow(0 8px 30px rgba(0,0,0,.35))}
+  #s1 .tag{max-width:1400px;text-align:center;font-weight:800;font-size:104px;line-height:1.04;letter-spacing:-.03em;color:#fff}
+  #s1 .tag .w{display:inline-block;white-space:pre;opacity:0;transform:translateY(38px)}
+  #s1 .tag .lime{color:var(--lime)}
+  #s1 .kick{position:absolute;top:120px;left:50%;transform:translateX(-50%);opacity:0;font-weight:600;letter-spacing:.42em;font-size:22px;color:var(--lime);text-transform:uppercase}
+
+  /* dashboard chrome */
+  .rail{position:absolute;left:0;top:0;bottom:0;width:132px;background:var(--green);display:flex;flex-direction:column;align-items:center;padding-top:46px;gap:46px}
+  .rail .dot{width:46px;height:46px;border-radius:14px;background:rgba(255,255,255,.10)}
+  .rail .dot.on{background:var(--lime)}
+  .main{position:absolute;left:132px;right:0;top:0;bottom:0;background:var(--off);padding:82px 96px}
+  .eyebrow{font-weight:700;letter-spacing:.34em;font-size:20px;color:#8a8a82;text-transform:uppercase}
+  .h1{font-weight:800;font-size:74px;letter-spacing:-.03em;color:var(--ink);margin-top:12px}
+
+  /* S2 auto-plan */
+  .genrow{display:flex;align-items:center;gap:36px;margin-top:14px}
+  .genrow .h1{margin:0}
+  .genbtn{margin-left:auto;font-weight:800;font-size:34px;padding:24px 44px;border-radius:18px;background:var(--lime);color:#26340f;border:none;display:flex;align-items:center;gap:16px;box-shadow:0 14px 30px rgba(120,170,20,.28);white-space:nowrap}
+  .genbtn.busy{background:#eceadf;color:#7d7d72;box-shadow:none}
+  .genbtn.done{background:#dcfce7;color:#15803d;box-shadow:none}
+  .spin{width:30px;height:30px;border-radius:50%;border:5px solid rgba(0,0,0,.15);border-top-color:#7d7d72;display:none}
+  .grid{margin-top:64px;display:grid;grid-template-columns:repeat(4,1fr);gap:30px}
+  .slot{background:#fff;border-radius:22px;box-shadow:0 16px 40px rgba(30,40,15,.10);padding:30px 30px 34px;min-height:300px;position:relative;border-top:6px solid #e7e5da}
+  .slot.filled{border-top-color:var(--lime)}
+  .slot .d{font-weight:800;font-size:34px;color:var(--ink);letter-spacing:-.01em}
+  .slot .tm{margin-top:6px;font-weight:600;font-size:26px;color:#8a8a82}
+  .slot .court{margin-top:4px;font-weight:600;font-size:22px;color:#a7a79c}
+  .slotav{margin-top:30px;display:flex;gap:14px}
+  .anchor{width:70px;height:70px;border-radius:50%;background:#f1efe6;opacity:0}
+  .slotcheck{position:absolute;right:26px;top:26px;width:52px;height:52px;border-radius:50%;background:#dcfce7;color:#15803d;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:900;opacity:0;transform:scale(.4)}
+  .pool{position:absolute;left:96px;right:96px;bottom:150px;display:flex;gap:22px;align-items:center}
+  .poolslot{width:70px;height:70px;border-radius:50%;opacity:0}
+  .poollabel{position:absolute;left:96px;bottom:236px;font-weight:600;font-size:24px;color:#a7a79c;opacity:0}
+  #movers{position:absolute;inset:0;pointer-events:none}
+  .mover{position:absolute;width:70px;height:70px;border-radius:50%;background:var(--beige);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:26px;color:var(--green);transform:translate(-50%,-50%);opacity:0;box-shadow:0 6px 16px rgba(30,40,15,.14)}
+
+  /* enrollment rows (S3) */
+  .panel{margin-top:44px;background:#fff;border-radius:26px;box-shadow:0 22px 50px rgba(30,40,15,.10);max-width:1500px;overflow:hidden}
+  .panel .hd{padding:32px 44px;border-bottom:2px solid #f0efe8;display:flex;align-items:center;gap:20px}
+  .panel .hd b{font-weight:800;font-size:44px;color:var(--ink);letter-spacing:-.02em}
+  .panel .hd .cnt{font-weight:700;font-size:30px;color:#a7a79c}
+  .row{display:flex;align-items:center;gap:32px;padding:28px 44px;border-top:2px solid #f5f4ee;opacity:0;transform:translateY(26px)}
+  .row:first-child{border-top:none}
+  .av{width:64px;height:64px;border-radius:50%;background:var(--beige);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:28px;color:var(--green);flex-shrink:0}
+  .row .who{flex:1;min-width:0}
+  .row .who b{display:block;font-weight:700;font-size:36px;color:var(--ink)}
+  .row .who span{display:block;font-size:25px;color:#9a9a90;margin-top:3px}
+  .badge{font-weight:700;font-size:26px;padding:13px 26px;border-radius:999px;white-space:nowrap}
+  .b-wait{background:#fef3c7;color:#b45309}
+  .b-ok{background:#dcfce7;color:#15803d}
+
+  .cap{position:absolute;left:132px;right:0;bottom:66px;text-align:center;font-weight:700;font-size:44px;letter-spacing:-.02em;color:var(--ink);opacity:0}
+  .cap .lime{color:#4c7a1b}
+
+  /* S4 payment */
+  #s4 .pcard{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:1080px;background:#fff;border-radius:30px;box-shadow:0 30px 70px rgba(30,40,15,.14);padding:64px 72px;opacity:0}
+  #s4 .top{display:flex;align-items:center;gap:34px}
+  #s4 .av{width:96px;height:96px;font-size:40px}
+  #s4 .who b{display:block;font-weight:700;font-size:52px;color:var(--ink)}
+  #s4 .who span{display:block;margin-top:6px;font-size:30px;color:#9a9a90}
+  #s4 .amt{margin-left:auto;font-weight:800;font-size:58px;color:var(--ink);letter-spacing:-.02em}
+  #s4 .stateline{margin-top:54px;display:flex;align-items:center;gap:26px}
+  #s4 .stateline .lbl{font-weight:600;font-size:32px;color:#8a8a82}
+  #s4 .chip{font-weight:800;font-size:38px;padding:18px 34px;border-radius:999px;white-space:nowrap}
+  .c-fail{background:#fee2e2;color:#b91c1c}.c-tr{background:#e8dcc4;color:#5a4a1e}.c-ok{background:#dcfce7;color:#15803d}
+
+  /* S5 outro */
+  #s5{background:radial-gradient(120% 100% at 50% 42%, #3a6a1d 0%, #2D5016 48%, #1f370e 100%)}
+  #s5 .wrap{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:40px}
+  #s5 .brandrow{display:flex;align-items:center;gap:34px;opacity:0;transform:translateY(28px)}
+  #s5 .word{font-weight:900;font-size:118px;letter-spacing:-.045em;color:#fff}
+  #s5 .tag2{opacity:0;transform:translateY(24px);font-weight:700;font-size:56px;letter-spacing:-.02em;color:var(--lime);text-align:center}
+  #s5 .foot{opacity:0;font-weight:600;font-size:34px;letter-spacing:.06em;color:rgba(255,255,255,.72);text-transform:uppercase}
+  #s5 .foot .u{border-bottom:4px solid var(--lime);padding-bottom:6px}
+</style>
+</head>
+<body>
+<div id="stage">
+
+  <!-- S1 HOOK -->
+  <section class="scene" id="s1">
+    <div class="kick" id="s1kick">CoachOS</div>
+    <div class="wrap">
+      <svg id="mark" width="240" height="240" viewBox="0 0 108 108">
+        <g fill="none" stroke="#D0FF14" stroke-width="7" stroke-linecap="round">
+          <circle id="mc" cx="54" cy="54" r="28"/>
+          <path id="mp" d="M 28 54 C 36 42, 44 42, 54 54 C 64 66, 72 66, 80 54"/>
+        </g>
+      </svg>
+      <div class="tag" id="s1tag"></div>
+    </div>
+  </section>
+
+  <!-- S2 AUTO-PLAN -->
+  <section class="scene" id="s2">
+    <div class="rail"><div class="dot"></div><div class="dot on"></div><div class="dot"></div><div class="dot"></div></div>
+    <div class="main">
+      <div class="eyebrow">Voorjaarslessen Beginners · 8 inschrijvingen</div>
+      <div class="genrow">
+        <div class="h1">Planning</div>
+        <button class="genbtn" id="genbtn"><span class="spin" id="spin"></span><span id="genlbl">Genereer planning</span></button>
+      </div>
+      <div class="grid" id="planGrid"></div>
+      <div class="poollabel" id="poollabel">Inschrijvingen + beschikbaarheden</div>
+      <div class="pool" id="pool"></div>
+    </div>
+    <div id="movers"></div>
+    <div class="cap" id="s2cap">Het algoritme roostert je reeks <span class="lime">zelf</span> in.</div>
+  </section>
+
+  <!-- S3 CONFIRM -->
+  <section class="scene" id="s3">
+    <div class="rail"><div class="dot"></div><div class="dot on"></div><div class="dot"></div><div class="dot"></div></div>
+    <div class="main">
+      <div class="eyebrow">Voorjaarslessen Beginners</div>
+      <div class="panel">
+        <div class="hd"><b>Inschrijvingen</b><span class="cnt" id="s3cnt">8</span></div>
+        <div id="s3rows"></div>
+      </div>
+    </div>
+    <div class="cap" id="s3cap">Lesnemers bevestigen hun plek <span class="lime">zelf</span>.</div>
+  </section>
+
+  <!-- S4 PAYMENTS -->
+  <section class="scene" id="s4">
+    <div class="rail"><div class="dot"></div><div class="dot on"></div><div class="dot"></div><div class="dot"></div></div>
+    <div class="main" style="padding:0"></div>
+    <div class="pcard" id="s4card">
+      <div class="top">
+        <div class="av">MD</div>
+        <div class="who"><b>Marie De Vos</b><span>Grote Testreeks</span></div>
+        <div class="amt">€150</div>
+      </div>
+      <div class="stateline"><span class="lbl">Betaling</span><span class="chip c-fail" id="s4chip">Betaling mislukt</span></div>
+    </div>
+    <div class="cap" id="s4cap">Online, cash of <span class="lime">overschrijving</span>.</div>
+  </section>
+
+  <!-- S5 OUTRO -->
+  <section class="scene" id="s5">
+    <div class="wrap">
+      <div class="brandrow" id="s5brand">
+        <svg width="132" height="132" viewBox="0 0 108 108"><g fill="none" stroke="#D0FF14" stroke-width="7" stroke-linecap="round"><circle cx="54" cy="54" r="28"/><path d="M 28 54 C 36 42, 44 42, 54 54 C 64 66, 72 66, 80 54"/></g></svg>
+        <div class="word">CoachOS</div>
+      </div>
+      <div class="tag2" id="s5tag">Een planning die zichzelf maakt.</div>
+      <div class="foot" id="s5foot"><span class="u">voor tennis- &amp; padelclubs</span></div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+const clamp=(x,a=0,b=1)=>Math.max(a,Math.min(b,x));
+const lerp=(a,b,t)=>a+(b-a)*t;
+const easeOut=t=>1-Math.pow(1-t,3);
+const easeInOut=t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
+const easeBack=t=>{const c1=1.70158,c3=c1+1;return 1+c3*Math.pow(t-1,3)+c1*Math.pow(t-1,2);};
+const seg=(t,a,b)=>clamp((t-a)/(b-a));
+function rise(t,a,d=.5,dist=30){const p=easeOut(seg(t,a,a+d));return {o:p,y:(1-p)*dist};}
+
+const F=0.34;
+const SCENES=[
+  {el:'s1',a:0.0, b:3.4},
+  {el:'s2',a:3.4, b:9.6},
+  {el:'s3',a:9.6, b:13.4},
+  {el:'s4',a:13.4,b:17.0},
+  {el:'s5',a:17.0,b:21.2},
+];
+function sceneOpacity(t,a,b){
+  if(t<a-0.001||t>b+0.001) return 0;
+  const fin=seg(t,a,a+F), fout=1-seg(t,b-F,b);
+  return easeInOut(clamp(Math.min(fin,fout)));
+}
+
+// S1 tagline
+const TAG=[['Een',0],['planning',0],['die',0],['zichzelf',1],['maakt.',1]];
+const s1tag=document.getElementById('s1tag');
+TAG.forEach((w,i)=>{const s=document.createElement('span');s.className='w'+(w[1]?' lime':'');s.textContent=w[0]+(i<TAG.length-1?' ':'');s1tag.appendChild(s);});
+const S1W=[...s1tag.querySelectorAll('.w')];
+
+// S2 build: slots + pool + movers
+const SLOTS=[
+  {d:'Maandag',tm:'17:00 – 18:00',court:'Baan 1'},
+  {d:'Woensdag',tm:'18:00 – 19:00',court:'Baan 2'},
+  {d:'Donderdag',tm:'17:00 – 18:00',court:'Baan 1'},
+  {d:'Zaterdag',tm:'10:00 – 11:00',court:'Baan 3'},
+];
+const NAMES=['Emma Claes','Noah Willems','Sarah Jacobs','Bram Wouters','Lisa Janssens','Bart Peeters','Ines Claes','Jules Van Damme'];
+const initials=n=>n.split(' ').map(x=>x[0]).slice(0,2).join('');
+const grid=document.getElementById('planGrid');
+SLOTS.forEach((s,i)=>{
+  const d=document.createElement('div');d.className='slot';d.id='slot'+i;
+  d.innerHTML=`<div class="d">${s.d}</div><div class="tm">${s.tm}</div><div class="court">${s.court}</div>
+    <div class="slotav"><div class="anchor"></div><div class="anchor"></div></div>
+    <div class="slotcheck">✓</div>`;
+  grid.appendChild(d);
+});
+const pool=document.getElementById('pool');
+for(let i=0;i<8;i++){const p=document.createElement('div');p.className='poolslot';pool.appendChild(p);}
+const movers=document.getElementById('movers');
+const MOV=[];
+NAMES.forEach((n,i)=>{const m=document.createElement('div');m.className='mover';m.textContent=initials(n);movers.appendChild(m);MOV.push(m);});
+// assignment: avatar i -> slot floor(i/2), index i%2
+const ASSIGN=MOV.map((_,i)=>({slot:Math.floor(i/2),idx:i%2}));
+
+// measure homes/targets after layout
+let HOME=[],TARG=[];
+function measure(){
+  const ps=[...pool.querySelectorAll('.poolslot')];
+  HOME=ps.map(e=>{const r=e.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};});
+  const anchors=SLOTS.map((_,s)=>[...document.querySelectorAll('#slot'+s+' .anchor')]);
+  TARG=ASSIGN.map(a=>{const e=anchors[a.slot][a.idx];const r=e.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};});
+  MOV.forEach((m,i)=>{m.style.left=HOME[i].x+'px';m.style.top=HOME[i].y+'px';});
+}
+
+// S3 rows
+const PEOPLE=[
+  {n:'Emma Claes',c:'emma.claes@gmail.com',flip:1},
+  {n:'Noah Willems',c:'noah.w@gmail.com',flip:1},
+  {n:'Sarah Jacobs',c:'sarah.j@hotmail.com',flip:1},
+  {n:'Bram Wouters',c:'bram.wouters@hotmail.com',flip:0},
+];
+const s3r=document.getElementById('s3rows');
+PEOPLE.forEach(p=>{const d=document.createElement('div');d.className='row';
+  d.innerHTML=`<div class="av">${initials(p.n)}</div><div class="who"><b>${p.n}</b><span>${p.c}</span></div><div class="badge b-wait">In afwachting</div>`;
+  s3r.appendChild(d);});
+const S3ROWS=[...s3r.querySelectorAll('.row')];
+
+// mark draw
+const mc=document.getElementById('mc'),mp=document.getElementById('mp');
+const lc=mc.getTotalLength(),lp=mp.getTotalLength();
+mc.style.strokeDasharray=lc;mp.style.strokeDasharray=lp;
+
+function SEEK(t){
+  for(const s of SCENES){document.getElementById(s.el).style.opacity=sceneOpacity(t,s.a,s.b);}
+  // S1
+  {const lt=t;
+   mc.style.strokeDashoffset=lc*(1-easeOut(seg(lt,0.25,1.35)));
+   mp.style.strokeDashoffset=lp*(1-easeOut(seg(lt,0.75,1.7)));
+   document.getElementById('s1kick').style.opacity=easeOut(seg(lt,0.5,1.1));
+   S1W.forEach((w,i)=>{const r=rise(lt,1.15+i*0.14,0.5,40);w.style.opacity=r.o;w.style.transform=`translateY(${r.y}px)`;});}
+  // S2 auto-plan
+  {const lt=t-3.4;
+   const pl=document.getElementById('poollabel');pl.style.opacity=easeOut(seg(lt,0.4,0.9));
+   // pool avatars fade in home
+   const genPress=1.5;
+   MOV.forEach((m,i)=>{
+     const a=ASSIGN[i];
+     const appear=easeOut(seg(lt,0.5+i*0.05,0.9+i*0.05));
+     const flyA=genPress+0.15+i*0.16;
+     const p=easeInOut(seg(lt,flyA,flyA+0.85));
+     const H=HOME[i],T=TARG[i];
+     const x=lerp(H.x,T.x,p), y=lerp(H.y,T.y,p);
+     // little arc lift
+     const arc=Math.sin(p*Math.PI)*(-40);
+     m.style.left=x+'px';m.style.top=(y+arc)+'px';
+     m.style.opacity=appear;
+     m.style.transform=`translate(-50%,-50%) scale(${lerp(0.9,1,p)})`;
+   });
+   // slot filled check
+   SLOTS.forEach((_,s)=>{
+     const iB=s*2+1; const flyB=genPress+0.15+iB*0.16;
+     const done=seg(lt,flyB+0.85,flyB+0.85);
+     const p=seg(lt,flyB+0.7,flyB+1.1);
+     const slot=document.getElementById('slot'+s);
+     const chk=slot.querySelector('.slotcheck');
+     if(p>0){slot.classList.add('filled');chk.style.opacity=easeOut(p);chk.style.transform=`scale(${easeBack(clamp(p))})`;}
+     else{slot.classList.remove('filled');chk.style.opacity=0;chk.style.transform='scale(.4)';}
+   });
+   // button state
+   const btn=document.getElementById('genbtn'),lbl=document.getElementById('genlbl'),spin=document.getElementById('spin');
+   const lastFly=genPress+0.15+7*0.16+0.85;
+   let sc=1;
+   if(lt<genPress){lbl.textContent='Genereer planning';btn.className='genbtn';spin.style.display='none';
+     sc=1+0.03*Math.sin(lt*6);}
+   else if(lt<lastFly){lbl.textContent='Planning genereren…';btn.className='genbtn busy';spin.style.display='block';
+     spin.style.transform=`rotate(${lt*720}deg)`;
+     if(lt<genPress+0.12)sc=0.94;}
+   else{lbl.textContent='Planning klaar';btn.className='genbtn done';spin.style.display='none';
+     const pp=seg(lt,lastFly,lastFly+0.3);sc=1+0.08*Math.sin(pp*Math.PI);}
+   btn.style.transform=`scale(${sc})`;
+   document.getElementById('s2cap').style.opacity=easeOut(seg(lt,lastFly+0.15,lastFly+0.7));
+  }
+  // S3
+  {const lt=t-9.6;
+   S3ROWS.forEach((row,i)=>{const r=rise(lt,0.2+i*0.14,0.5,26);row.style.opacity=r.o;row.style.transform=`translateY(${r.y}px)`;
+     const bd=row.querySelector('.badge');const p=PEOPLE[i];const fa=1.7+i*0.3;
+     if(p.flip){const fp=seg(lt,fa,fa+0.42);
+       if(fp>0){bd.textContent=fp<0.5?'In afwachting':'Bevestigd';bd.className='badge '+(fp<0.5?'b-wait':'b-ok');
+         const sc=1-0.16*Math.sin(fp*Math.PI);bd.style.transform=`scale(${fp>=1?1:sc})`;}
+       else{bd.textContent='In afwachting';bd.className='badge b-wait';bd.style.transform='scale(1)';}}
+   });
+   document.getElementById('s3cap').style.opacity=easeOut(seg(lt,2.3,2.9));}
+  // S4
+  {const lt=t-13.4;
+   const card=document.getElementById('s4card');const r=rise(lt,0.2,0.5,30);
+   card.style.opacity=r.o;card.style.transform=`translate(-50%,calc(-50% + ${r.y}px))`;
+   const chip=document.getElementById('s4chip');let cls='c-fail',txt='Betaling mislukt';
+   if(lt>=2.7){cls='c-ok';txt='Bevestigd';}else if(lt>=1.7){cls='c-tr';txt='Overschrijving (handmatig)';}
+   chip.className='chip '+cls;chip.textContent=txt;
+   let sc=1;for(const pt of [0.6,1.7,2.7]){const pp=seg(lt,pt,pt+0.32);if(pp>0&&pp<1)sc=1+0.10*Math.sin(pp*Math.PI);}
+   chip.style.transform=`scale(${sc})`;
+   document.getElementById('s4cap').style.opacity=easeOut(seg(lt,2.2,2.8));}
+  // S5
+  {const lt=t-17.0;
+   const br=document.getElementById('s5brand');const r=rise(lt,0.3,0.6,30);br.style.opacity=r.o;br.style.transform=`translateY(${r.y}px)`;
+   const tg=document.getElementById('s5tag');const r2=rise(lt,0.95,0.6,24);tg.style.opacity=r2.o;tg.style.transform=`translateY(${r2.y}px)`;
+   document.getElementById('s5foot').style.opacity=easeOut(seg(lt,1.7,2.4));}
+}
+window.SEEK=SEEK;
+window.measure=measure;
+measure();
+document.fonts.ready.then(()=>{measure();SEEK(0);});
+window.__ready=true;
+SEEK(0);
+</script>
+</body>
+</html>

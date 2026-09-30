@@ -1,0 +1,10 @@
+work/frames/
+work/samples/
+work/node_modules/
+work/fonts/
+work/package.json
+work/package-lock.json
+work/track.wav
+work/poster.png
+work/*_orig.png
+work/verify_mid.png
