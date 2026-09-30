@@ -568,7 +568,12 @@ public class LessonCourtConflictTests
             OrgId, lesson.Id, BuildRescheduleRequest(), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
-        lesson.IsCancelled.Should().BeTrue();
+        // In-place verplaatsen: de les wordt niet geannuleerd, maar naar het nieuwe
+        // tijdstip verzet (datum/tijd aangepast op dezelfde les).
+        lesson.IsCancelled.Should().BeFalse();
+        lesson.Date.Should().Be(LessonDate);
+        lesson.StartTime.Should().Be(new TimeOnly(10, 0));
+        lesson.EndTime.Should().Be(new TimeOnly(11, 0));
     }
 
     [Test]
@@ -628,20 +633,17 @@ public class LessonCourtConflictTests
     }
 
     [Test]
-    public async Task RescheduleAsync_CopiesTennisClubIdToNewLesson()
+    public async Task RescheduleAsync_KeepsTennisClubIdOnMovedLesson()
     {
         Lesson lesson = BuildReschedulableLesson("Baan 1", tennisClubId: ClubId);
 
-        Lesson? captured = null;
-        _lessonRepo
-            .Setup(r => r.AddAsync(It.IsAny<Lesson>(), It.IsAny<CancellationToken>()))
-            .Callback<Lesson, CancellationToken>((l, _) => captured = l)
-            .Returns(Task.CompletedTask);
-
-        await _rescheduleService.RescheduleAsync(
+        Result<RescheduleLessonResultDto> result = await _rescheduleService.RescheduleAsync(
             OrgId, lesson.Id, BuildRescheduleRequest(), CancellationToken.None);
 
-        captured.Should().NotBeNull();
-        captured!.TennisClubId.Should().Be(ClubId);
+        result.IsSuccess.Should().BeTrue();
+        // In-place verplaatsen maakt geen nieuwe les aan; dezelfde les behoudt haar club.
+        lesson.TennisClubId.Should().Be(ClubId);
+        _lessonRepo.Verify(
+            r => r.AddAsync(It.IsAny<Lesson>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }
