@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="fonts/gf-local.css">
+<style>
+  :root{--green:#2D5016;--lime:#D0FF14;--beige:#E8DCC4;--off:#FAFAF8;--ink:#161513}
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:1080px;height:1920px;overflow:hidden;background:#000}
+  #stage{position:relative;width:1080px;height:1920px;font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow:hidden}
+  .scene{position:absolute;inset:0;opacity:0;will-change:opacity,transform}
+  .mono{font-family:'JetBrains Mono',monospace}
+
+  /* S1 / S5 title cards (bright app-store) */
+  #s1{background:radial-gradient(120% 70% at 50% 38%, #eaf7c8 0%, #FAFAF8 55%, #eef2e0 100%)}
+  #s5{background:radial-gradient(120% 70% at 50% 42%, #eaf7c8 0%, #FAFAF8 52%, #e7f0d6 100%)}
+  .center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:56px;padding:80px}
+  #s1 .kick{position:absolute;top:200px;left:50%;transform:translateX(-50%);opacity:0;font-weight:600;letter-spacing:.4em;font-size:30px;color:#4c7a1b;text-transform:uppercase}
+  #s1 .tag{text-align:center;font-weight:800;font-size:118px;line-height:1.03;letter-spacing:-.03em;color:var(--ink)}
+  #s1 .tag .w{display:inline-block;white-space:pre;opacity:0;transform:translateY(40px)}
+  #s1 .tag .lime{color:#4c7a1b}
+  #s5 .brandrow{display:flex;flex-direction:column;align-items:center;gap:30px;opacity:0;transform:translateY(28px)}
+  #s5 .word{font-weight:900;font-size:150px;letter-spacing:-.045em;color:var(--ink)}
+  #s5 .tag2{opacity:0;transform:translateY(24px);font-weight:700;font-size:70px;letter-spacing:-.02em;color:#4c7a1b;text-align:center}
+  #s5 .foot{opacity:0;font-weight:600;font-size:40px;letter-spacing:.06em;color:#6a6a60;text-transform:uppercase}
+  #s5 .foot .u{border-bottom:5px solid var(--lime);padding-bottom:8px}
+
+  /* product-scene chrome (header bar on top) */
+  .topbar{position:absolute;left:0;right:0;top:0;height:150px;background:var(--green);display:flex;align-items:center;gap:26px;padding:0 56px;z-index:3}
+  .topbar .wm{font-weight:800;font-size:44px;color:#fff;letter-spacing:-.02em}
+  .body{position:absolute;left:0;right:0;top:150px;bottom:0;background:var(--off);padding:70px 56px}
+  .eyebrow{font-weight:700;letter-spacing:.28em;font-size:26px;color:#8a8a82;text-transform:uppercase}
+  .h1{font-weight:800;font-size:96px;letter-spacing:-.03em;color:var(--ink);margin-top:14px}
+
+  /* S2 auto-plan */
+  .genbtn{margin-top:34px;width:100%;font-weight:800;font-size:44px;padding:34px;border-radius:24px;background:var(--lime);color:#26340f;border:none;display:flex;align-items:center;justify-content:center;gap:20px;box-shadow:0 16px 34px rgba(120,170,20,.28)}
+  .genbtn.busy{background:#eceadf;color:#7d7d72;box-shadow:none}
+  .genbtn.done{background:#dcfce7;color:#15803d;box-shadow:none}
+  .spin{width:40px;height:40px;border-radius:50%;border:6px solid rgba(0,0,0,.15);border-top-color:#7d7d72;display:none}
+  .grid{margin-top:44px;display:grid;grid-template-columns:1fr 1fr;gap:28px}
+  .slot{background:#fff;border-radius:28px;box-shadow:0 18px 40px rgba(30,40,15,.10);padding:34px;min-height:360px;position:relative;border-top:7px solid #e7e5da}
+  .slot.filled{border-top-color:var(--lime)}
+  .slot .d{font-weight:800;font-size:46px;color:var(--ink);letter-spacing:-.01em}
+  .slot .tm{margin-top:8px;font-weight:600;font-size:32px;color:#8a8a82}
+  .slot .court{margin-top:4px;font-weight:600;font-size:28px;color:#a7a79c}
+  .slotav{margin-top:34px;display:flex;gap:16px}
+  .anchor{width:88px;height:88px;border-radius:50%;background:#f1efe6;opacity:0}
+  .slotcheck{position:absolute;right:30px;top:30px;width:64px;height:64px;border-radius:50%;background:#dcfce7;color:#15803d;display:flex;align-items:center;justify-content:center;font-size:38px;font-weight:900;opacity:0;transform:scale(.4)}
+  .poollabel{position:absolute;left:56px;bottom:290px;font-weight:600;font-size:30px;color:#a7a79c;opacity:0}
+  .pool{position:absolute;left:56px;right:56px;bottom:190px;display:flex;gap:20px;align-items:center;justify-content:space-between}
+  .poolslot{width:88px;height:88px;border-radius:50%;opacity:0}
+  #movers{position:absolute;inset:0;pointer-events:none}
+  .mover{position:absolute;width:88px;height:88px;border-radius:50%;background:var(--beige);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:34px;color:var(--green);transform:translate(-50%,-50%);opacity:0;box-shadow:0 8px 18px rgba(30,40,15,.14)}
+
+  /* S3 rows */
+  .panel{margin-top:50px;background:#fff;border-radius:32px;box-shadow:0 22px 50px rgba(30,40,15,.10);overflow:hidden}
+  .panel .hd{padding:40px 48px;border-bottom:2px solid #f0efe8;display:flex;align-items:center;gap:22px}
+  .panel .hd b{font-weight:800;font-size:56px;color:var(--ink);letter-spacing:-.02em}
+  .panel .hd .cnt{font-weight:700;font-size:38px;color:#a7a79c}
+  .row{display:flex;align-items:center;gap:30px;padding:40px 48px;border-top:2px solid #f5f4ee;opacity:0;transform:translateY(28px)}
+  .row:first-child{border-top:none}
+  .av{width:92px;height:92px;border-radius:50%;background:var(--beige);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:40px;color:var(--green);flex-shrink:0}
+  .row .who{flex:1;min-width:0}
+  .row .who b{display:block;font-weight:700;font-size:48px;color:var(--ink)}
+  .row .who span{display:block;font-size:32px;color:#9a9a90;margin-top:4px}
+  .badge{font-weight:700;font-size:34px;padding:18px 34px;border-radius:999px;white-space:nowrap}
+  .b-wait{background:#fef3c7;color:#b45309}
+  .b-ok{background:#dcfce7;color:#15803d}
+
+  .cap{position:absolute;left:0;right:0;bottom:120px;text-align:center;font-weight:800;font-size:62px;letter-spacing:-.02em;color:var(--ink);opacity:0;padding:0 56px}
+  .cap .lime{color:#4c7a1b}
+
+  /* S4 payment */
+  #s4 .pcard{position:absolute;left:50%;top:52%;transform:translate(-50%,-50%);width:920px;background:#fff;border-radius:38px;box-shadow:0 34px 74px rgba(30,40,15,.14);padding:70px;opacity:0}
+  #s4 .top{display:flex;align-items:center;gap:34px}
+  #s4 .av{width:118px;height:118px;font-size:50px}
+  #s4 .who b{display:block;font-weight:700;font-size:60px;color:var(--ink)}
+  #s4 .who span{display:block;margin-top:8px;font-size:36px;color:#9a9a90}
+  #s4 .amt{margin-top:44px;font-weight:800;font-size:80px;color:var(--ink);letter-spacing:-.02em}
+  #s4 .stateline{margin-top:40px;display:flex;flex-direction:column;gap:22px;align-items:flex-start}
+  #s4 .stateline .lbl{font-weight:600;font-size:38px;color:#8a8a82}
+  #s4 .chip{font-weight:800;font-size:46px;padding:22px 40px;border-radius:999px;white-space:nowrap}
+  .c-fail{background:#fee2e2;color:#b91c1c}.c-tr{background:#e8dcc4;color:#5a4a1e}.c-ok{background:#dcfce7;color:#15803d}
+</style>
+</head>
+<body>
+<div id="stage">
+
+  <section class="scene" id="s1">
+    <div class="kick">CoachOS</div>
+    <div class="center">
+      <svg id="mark" width="300" height="300" viewBox="0 0 108 108">
+        <g fill="none" stroke="#2D5016" stroke-width="7" stroke-linecap="round">
+          <circle id="mc" cx="54" cy="54" r="28"/>
+          <path id="mp" d="M 28 54 C 36 42, 44 42, 54 54 C 64 66, 72 66, 80 54"/>
+        </g>
+      </svg>
+      <div class="tag" id="s1tag"></div>
+    </div>
+  </section>
+
+  <section class="scene" id="s2">
+    <div class="topbar">
+      <svg width="66" height="66" viewBox="0 0 108 108"><g fill="none" stroke="#D0FF14" stroke-width="8" stroke-linecap="round"><circle cx="54" cy="54" r="28"/><path d="M 28 54 C 36 42, 44 42, 54 54 C 64 66, 72 66, 80 54"/></g></svg>
+      <div class="wm">CoachOS</div>
+    </div>
+    <div class="body">
+      <div class="eyebrow">Voorjaarslessen · 8 inschrijvingen</div>
+      <div class="h1">Planning</div>
+      <button class="genbtn" id="genbtn"><span class="spin" id="spin"></span><span id="genlbl">Genereer planning</span></button>
+      <div class="grid" id="planGrid"></div>
+      <div class="poollabel" id="poollabel">Inschrijvingen + beschikbaarheden</div>
+      <div class="pool" id="pool"></div>
+    </div>
+    <div id="movers"></div>
+    <div class="cap" id="s2cap">Het algoritme roostert je reeks <span class="lime">zelf</span> in.</div>
+  </section>
+
+  <section class="scene" id="s3">
+    <div class="topbar">
+      <svg width="66" height="66" viewBox="0 0 108 108"><g fill="none" stroke="#D0FF14" stroke-width="8" stroke-linecap="round"><circle cx="54" cy="54" r="28"/><path d="M 28 54 C 36 42, 44 42, 54 54 C 64 66, 72 66, 80 54"/></g></svg>
+      <div class="wm">CoachOS</div>
+    </div>
+    <div class="body">
+      <div class="eyebrow">Voorjaarslessen Beginners</div>
+      <div class="panel">
+        <div class="hd"><b>Inschrijvingen</b><span class="cnt">8</span></div>
+        <div id="s3rows"></div>
+      </div>
+    </div>
+    <div class="cap" id="s3cap">Lesnemers bevestigen hun plek <span class="lime">zelf</span>.</div>
+  </section>
+
+  <section class="scene" id="s4">
+    <div class="topbar">
+      <svg width="66" height="66" viewBox="0 0 108 108"><g fill="none" stroke="#D0FF14" stroke-width="8" stroke-linecap="round"><circle cx="54" cy="54" r="28"/><path d="M 28 54 C 36 42, 44 42, 54 54 C 64 66, 72 66, 80 54"/></g></svg>
+      <div class="wm">CoachOS</div>
+    </div>
+    <div class="body"></div>
+    <div class="pcard" id="s4card">
+      <div class="top">
+        <div class="av">MD</div>
+        <div class="who"><b>Marie De Vos</b><span>Grote Testreeks</span></div>
+      </div>
+      <div class="amt">€150</div>
+      <div class="stateline"><span class="lbl">Betaling</span><span class="chip c-fail" id="s4chip">Betaling mislukt</span></div>
+    </div>
+    <div class="cap" id="s4cap">Online, cash of <span class="lime">overschrijving</span>.</div>
+  </section>
+
+  <section class="scene" id="s5">
+    <div class="center">
+      <div class="brandrow">
+        <svg width="150" height="150" viewBox="0 0 108 108"><g fill="none" stroke="#2D5016" stroke-width="7" stroke-linecap="round"><circle cx="54" cy="54" r="28"/><path d="M 28 54 C 36 42, 44 42, 54 54 C 64 66, 72 66, 80 54"/></g></svg>
+        <div class="word">CoachOS</div>
+      </div>
+      <div class="tag2">Een planning die zichzelf maakt.</div>
+      <div class="foot"><span class="u">voor tennis- &amp; padelclubs</span></div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+const clamp=(x,a=0,b=1)=>Math.max(a,Math.min(b,x));
+const lerp=(a,b,t)=>a+(b-a)*t;
+const easeOut=t=>1-Math.pow(1-t,3);
+const easeInOut=t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
+const easeBack=t=>{const c1=1.70158,c3=c1+1;return 1+c3*Math.pow(t-1,3)+c1*Math.pow(t-1,2);};
+const seg=(t,a,b)=>clamp((t-a)/(b-a));
+function rise(t,a,d=.5,dist=30){const p=easeOut(seg(t,a,a+d));return {o:p,y:(1-p)*dist};}
+
+const W=1080;
+const SCENES=[
+  {el:'s1',a:0.0,b:3.4},{el:'s2',a:3.4,b:9.6},{el:'s3',a:9.6,b:13.4},
+  {el:'s4',a:13.4,b:17.0},{el:'s5',a:17.0,b:21.2},
+];
+const LAST=SCENES.length-1;
+function applyScene(t,i){
+  const s=SCENES[i], el=document.getElementById(s.el), TT=0.6;
+  const xin=(1-easeInOut(seg(t,s.a,s.a+TT)))*W;
+  const xout=-easeInOut(seg(t,s.b,s.b+TT))*W;
+  el.style.transform=`translateX(${xin+xout}px)`;
+  const end=(i<LAST)?s.b+TT:s.b+0.5;
+  el.style.opacity=(t>=s.a-0.001 && t<=end+0.001)?1:0;
+}
+
+// tagline
+const TAG=[['Een',0],['planning',0],['die',0],['zichzelf',1],['maakt.',1]];
+const s1tag=document.getElementById('s1tag');
+TAG.forEach((w,i)=>{const s=document.createElement('span');s.className='w'+(w[1]?' lime':'');s.textContent=w[0]+(i<TAG.length-1?' ':'');s1tag.appendChild(s);});
+const S1W=[...s1tag.querySelectorAll('.w')];
+
+const SLOTS=[
+  {d:'Maandag',tm:'17:00 – 18:00',court:'Baan 1'},
+  {d:'Woensdag',tm:'18:00 – 19:00',court:'Baan 2'},
+  {d:'Donderdag',tm:'17:00 – 18:00',court:'Baan 1'},
+  {d:'Zaterdag',tm:'10:00 – 11:00',court:'Baan 3'},
+];
+const NAMES=['Emma Claes','Noah Willems','Sarah Jacobs','Bram Wouters','Lisa Janssens','Bart Peeters','Ines Claes','Jules Van Damme'];
+const initials=n=>n.split(' ').map(x=>x[0]).slice(0,2).join('');
+const grid=document.getElementById('planGrid');
+SLOTS.forEach((s,i)=>{const d=document.createElement('div');d.className='slot';d.id='slot'+i;
+  d.innerHTML=`<div class="d">${s.d}</div><div class="tm">${s.tm}</div><div class="court">${s.court}</div>
+    <div class="slotav"><div class="anchor"></div><div class="anchor"></div></div><div class="slotcheck">✓</div>`;
+  grid.appendChild(d);});
+const pool=document.getElementById('pool');
+for(let i=0;i<8;i++){const p=document.createElement('div');p.className='poolslot';pool.appendChild(p);}
+const movers=document.getElementById('movers');const MOV=[];
+NAMES.forEach((n)=>{const m=document.createElement('div');m.className='mover';m.textContent=initials(n);movers.appendChild(m);MOV.push(m);});
+const ASSIGN=MOV.map((_,i)=>({slot:Math.floor(i/2),idx:i%2}));
+
+let HOME=[],TARG=[];
+function measure(){
+  const s2el=document.getElementById('s2');const pt=s2el.style.transform,po=s2el.style.opacity;
+  s2el.style.transform='none';s2el.style.opacity='1';s2el.getBoundingClientRect();
+  const ps=[...pool.querySelectorAll('.poolslot')];
+  HOME=ps.map(e=>{const r=e.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};});
+  const anchors=SLOTS.map((_,s)=>[...document.querySelectorAll('#slot'+s+' .anchor')]);
+  TARG=ASSIGN.map(a=>{const e=anchors[a.slot][a.idx];const r=e.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};});
+  MOV.forEach((m,i)=>{m.style.left=HOME[i].x+'px';m.style.top=HOME[i].y+'px';});
+  s2el.style.transform=pt;s2el.style.opacity=po;
+}
+
+const PEOPLE=[
+  {n:'Emma Claes',c:'emma.claes@gmail.com',flip:1},
+  {n:'Noah Willems',c:'noah.w@gmail.com',flip:1},
+  {n:'Sarah Jacobs',c:'sarah.j@hotmail.com',flip:1},
+  {n:'Bram Wouters',c:'bram.wouters@hotmail.com',flip:0},
+];
+const s3r=document.getElementById('s3rows');
+PEOPLE.forEach(p=>{const d=document.createElement('div');d.className='row';
+  d.innerHTML=`<div class="av">${initials(p.n)}</div><div class="who"><b>${p.n}</b><span>${p.c}</span></div><div class="badge b-wait">In afwachting</div>`;
+  s3r.appendChild(d);});
+const S3ROWS=[...s3r.querySelectorAll('.row')];
+
+const mc=document.getElementById('mc'),mp=document.getElementById('mp');
+const lc=mc.getTotalLength(),lp=mp.getTotalLength();
+mc.style.strokeDasharray=lc;mp.style.strokeDasharray=lp;
+
+function SEEK(t){
+  for(let i=0;i<SCENES.length;i++) applyScene(t,i);
+  // S1
+  {const lt=t;
+   mc.style.strokeDashoffset=lc*(1-easeOut(seg(lt,0.25,1.35)));
+   mp.style.strokeDashoffset=lp*(1-easeOut(seg(lt,0.75,1.7)));
+   document.querySelector('#s1 .kick').style.opacity=easeOut(seg(lt,0.5,1.1));
+   S1W.forEach((w,i)=>{const r=rise(lt,1.15+i*0.14,0.5,44);w.style.opacity=r.o;w.style.transform=`translateY(${r.y}px)`;});}
+  // S2
+  {const lt=t-3.4;const genPress=1.5;
+   document.getElementById('poollabel').style.opacity=easeOut(seg(lt,0.4,0.9));
+   MOV.forEach((m,i)=>{const appear=easeOut(seg(lt,0.5+i*0.05,0.9+i*0.05));
+     const flyA=genPress+0.15+i*0.16;const p=easeInOut(seg(lt,flyA,flyA+0.85));
+     const H=HOME[i],T=TARG[i];const arc=Math.sin(p*Math.PI)*(-46);
+     m.style.left=lerp(H.x,T.x,p)+'px';m.style.top=(lerp(H.y,T.y,p)+arc)+'px';
+     m.style.opacity=appear;m.style.transform=`translate(-50%,-50%) scale(${lerp(0.9,1,p)})`;});
+   SLOTS.forEach((_,s)=>{const iB=s*2+1;const flyB=genPress+0.15+iB*0.16;const p=seg(lt,flyB+0.7,flyB+1.1);
+     const slot=document.getElementById('slot'+s);const chk=slot.querySelector('.slotcheck');
+     if(p>0){slot.classList.add('filled');chk.style.opacity=easeOut(p);chk.style.transform=`scale(${easeBack(clamp(p))})`;}
+     else{slot.classList.remove('filled');chk.style.opacity=0;chk.style.transform='scale(.4)';}});
+   const btn=document.getElementById('genbtn'),lbl=document.getElementById('genlbl'),spin=document.getElementById('spin');
+   const lastFly=genPress+0.15+7*0.16+0.85;let sc=1;
+   if(lt<genPress){lbl.textContent='Genereer planning';btn.className='genbtn';spin.style.display='none';sc=1+0.03*Math.sin(lt*6);}
+   else if(lt<lastFly){lbl.textContent='Planning genereren…';btn.className='genbtn busy';spin.style.display='block';spin.style.transform=`rotate(${lt*720}deg)`;if(lt<genPress+0.12)sc=0.96;}
+   else{lbl.textContent='Planning klaar';btn.className='genbtn done';spin.style.display='none';const pp=seg(lt,lastFly,lastFly+0.3);sc=1+0.06*Math.sin(pp*Math.PI);}
+   btn.style.transform=`scale(${sc})`;
+   document.getElementById('s2cap').style.opacity=easeOut(seg(lt,lastFly+0.15,lastFly+0.7));}
+  // S3
+  {const lt=t-9.6;
+   S3ROWS.forEach((row,i)=>{const r=rise(lt,0.2+i*0.14,0.5,28);row.style.opacity=r.o;row.style.transform=`translateY(${r.y}px)`;
+     const bd=row.querySelector('.badge');const p=PEOPLE[i];const fa=1.7+i*0.3;
+     if(p.flip){const fp=seg(lt,fa,fa+0.42);
+       if(fp>0){bd.textContent=fp<0.5?'In afwachting':'Bevestigd';bd.className='badge '+(fp<0.5?'b-wait':'b-ok');const s=1-0.16*Math.sin(fp*Math.PI);bd.style.transform=`scale(${fp>=1?1:s})`;}
+       else{bd.textContent='In afwachting';bd.className='badge b-wait';bd.style.transform='scale(1)';}}});
+   document.getElementById('s3cap').style.opacity=easeOut(seg(lt,2.3,2.9));}
+  // S4
+  {const lt=t-13.4;const card=document.getElementById('s4card');const r=rise(lt,0.2,0.5,32);
+   card.style.opacity=r.o;card.style.transform=`translate(-50%,calc(-50% + ${r.y}px))`;
+   const chip=document.getElementById('s4chip');let cls='c-fail',txt='Betaling mislukt';
+   if(lt>=2.7){cls='c-ok';txt='Bevestigd';}else if(lt>=1.7){cls='c-tr';txt='Overschrijving (handmatig)';}
+   chip.className='chip '+cls;chip.textContent=txt;let s=1;
+   for(const pt of [0.6,1.7,2.7]){const pp=seg(lt,pt,pt+0.32);if(pp>0&&pp<1)s=1+0.10*Math.sin(pp*Math.PI);}
+   chip.style.transform=`scale(${s})`;
+   document.getElementById('s4cap').style.opacity=easeOut(seg(lt,2.2,2.8));}
+  // S5
+  {const lt=t-17.0;const br=document.querySelector('#s5 .brandrow');const r=rise(lt,0.3,0.6,30);
+   br.style.opacity=r.o;br.style.transform=`translateY(${r.y}px)`;
+   const tg=document.querySelector('#s5 .tag2');const r2=rise(lt,0.95,0.6,24);tg.style.opacity=r2.o;tg.style.transform=`translateY(${r2.y}px)`;
+   document.querySelector('#s5 .foot').style.opacity=easeOut(seg(lt,1.7,2.4));}
+}
+window.SEEK=SEEK;window.measure=measure;
+measure();document.fonts.ready.then(()=>{measure();SEEK(0);});
+window.__ready=true;SEEK(0);
+</script>
+</body>
+</html>
