@@ -8,9 +8,11 @@ import { Pricing } from "@/components/sections/pricing";
 import { PricingCompare } from "@/components/sections/pricing-compare";
 import { FinalCta } from "@/components/sections/final-cta";
 import {
-  PRICING_DISCLAIMER,
+  PRICING_EXPLAINER,
+  PRICING_EXPLAINER_HEADING,
   PRICING_FAQ,
   PRICING_FAQ_HEADING,
+  PRICING_TRIAL,
   PRICING_VISIBLE,
 } from "@/content/pricing";
 
@@ -18,9 +20,9 @@ const SITE_URL = "https://coach-os.be";
 const PAGE_URL = `${SITE_URL}/prijzen`;
 
 export const metadata: Metadata = {
-  title: "Prijzen — lessenplanning vanaf €19/maand",
+  title: "Prijzen — lessenplanning vanaf €25/maand",
   description:
-    "Tarieven voor CoachOS — lessenplanning voor tennis- en padelclubs. Starter, Club en Federatie. Maandelijks opzegbaar, geen verborgen kosten per leerling.",
+    "Tarieven voor CoachOS — lessenplanning voor tennis- en padelclubs. Je betaalt per actieve leerling, met onbeperkt trainers. 30 dagen gratis proberen, maandelijks opzegbaar.",
   alternates: {
     canonical: PAGE_URL,
     languages: {
@@ -36,7 +38,7 @@ export const metadata: Metadata = {
     url: PAGE_URL,
     title: "Prijzen — CoachOS",
     description:
-      "Tarieven voor CoachOS, lessenplanning voor tennis- en padelclubs. Vanaf €19/maand. Maandelijks opzegbaar.",
+      "Tarieven voor CoachOS, lessenplanning voor tennis- en padelclubs. Vanaf €25/maand, per actieve leerling. 30 dagen gratis proberen.",
     siteName: "CoachOS",
   },
 };
@@ -46,18 +48,8 @@ function PricingPageJsonLd() {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     itemListElement: [
-      {
-        "@type": "ListItem",
-        position: 1,
-        name: "Home",
-        item: SITE_URL,
-      },
-      {
-        "@type": "ListItem",
-        position: 2,
-        name: "Prijzen",
-        item: PAGE_URL,
-      },
+      { "@type": "ListItem", position: 1, name: "Home", item: SITE_URL },
+      { "@type": "ListItem", position: 2, name: "Prijzen", item: PAGE_URL },
     ],
   };
 
@@ -95,21 +87,52 @@ export default function PrijzenPage() {
               TARIEVEN
             </Mono>
             <h1 className="mt-3 max-w-3xl text-4xl font-bold leading-[1.05] tracking-tight md:text-5xl">
-              Eerlijke tarieven voor lessenplanning — geen verborgen kosten per
-              leerling.
+              Betaal per leerling, niet per trainer.
             </h1>
             <p className="mt-5 max-w-2xl text-lg leading-relaxed text-ink-2">
-              Drie abonnementen voor zelfstandige coaches, clubs en federaties.
-              Maandelijks opzegbaar, alle features inbegrepen op elk niveau.
+              Drie abonnementen op basis van je aantal actieve leerlingen, met
+              een onbeperkt aantal trainers. Alle functies inbegrepen op elk
+              niveau — maandelijks opzegbaar of jaarlijks met 2 maanden gratis.
             </p>
-            <p className="mt-6 inline-flex items-center rounded-md border border-warn/30 bg-warn/10 px-3 py-1.5 text-xs font-medium text-ink-2">
-              <span className="mr-2 inline-block h-1.5 w-1.5 rounded-full bg-warn" />
-              {PRICING_DISCLAIMER}
+            <p className="mt-6 inline-flex items-center rounded-md border border-tennis-green/25 bg-tennis-green/5 px-3 py-1.5 text-xs font-medium text-ink-2">
+              <span className="mr-2 inline-block h-1.5 w-1.5 rounded-full bg-tennis-green" />
+              {PRICING_TRIAL}
             </p>
           </div>
         </section>
 
         <Pricing hideCompareLink />
+
+        {/* Hoe werkt de prijs? */}
+        <section className="border-b border-rule bg-paper">
+          <div className="mx-auto max-w-6xl px-6 py-20 md:py-24">
+            <Mono className="text-[11px] tracking-[0.18em] text-ink-3">
+              UITLEG
+            </Mono>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight md:text-4xl">
+              {PRICING_EXPLAINER_HEADING}
+            </h2>
+            <div className="mt-10 grid gap-6 md:grid-cols-3">
+              {PRICING_EXPLAINER.map((item, i) => (
+                <div
+                  key={item.title}
+                  className="rounded-xl border border-rule bg-canvas p-6"
+                >
+                  <Mono className="text-[11px] text-ink-3">
+                    0{i + 1}
+                  </Mono>
+                  <h3 className="mt-3 text-lg font-bold tracking-tight">
+                    {item.title}
+                  </h3>
+                  <p className="mt-2 text-sm leading-relaxed text-ink-2">
+                    {item.body}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
         <PricingCompare />
 
         <section className="border-b border-rule bg-canvas">

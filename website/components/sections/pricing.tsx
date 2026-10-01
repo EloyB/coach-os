@@ -1,19 +1,28 @@
+"use client";
+
+import { useState } from "react";
 import { ArrowRight } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Mono } from "@/components/ui/mono";
 import { PricingCard } from "@/components/sections/pricing-card";
 import {
-  PRICING_DISCLAIMER,
+  type Billing,
+  PRICING_EARLYBIRD,
   PRICING_HEADING,
   PRICING_SUB,
   PRICING_TIERS,
+  PRICING_TRIAL,
+  PRICING_VAT_NOTE,
 } from "@/content/pricing";
 
 interface PricingProps {
-  /** Hide the "Bekijk volledige prijslijst" link (e.g. when rendered ON the /prijzen page itself). */
+  /** Verberg de "Bekijk volledige prijslijst"-link (bv. op de /prijzen-pagina zelf). */
   hideCompareLink?: boolean;
 }
 
 export function Pricing({ hideCompareLink = false }: PricingProps) {
+  const [billing, setBilling] = useState<Billing>("yearly");
+
   return (
     <section id="prijzen" className="border-b border-rule bg-canvas">
       <div className="mx-auto max-w-6xl px-6 py-20 md:py-28">
@@ -25,17 +34,32 @@ export function Pricing({ hideCompareLink = false }: PricingProps) {
             {PRICING_HEADING}
           </h2>
           <p className="mt-3 text-base text-ink-2">{PRICING_SUB}</p>
-          <p className="mt-4 inline-flex items-center rounded-md border border-warn/30 bg-warn/10 px-3 py-1.5 text-xs font-medium text-ink-2">
-            <span className="mr-2 inline-block h-1.5 w-1.5 rounded-full bg-warn" />
-            {PRICING_DISCLAIMER}
+          <p className="mt-4 inline-flex items-center rounded-md border border-tennis-green/25 bg-tennis-green/5 px-3 py-1.5 text-xs font-medium text-ink-2">
+            <span className="mr-2 inline-block h-1.5 w-1.5 rounded-full bg-tennis-green" />
+            {PRICING_TRIAL}
           </p>
         </div>
 
-        <div className="mt-12 grid gap-6 lg:grid-cols-3">
+        {/* Maand / jaar toggle */}
+        <div className="mt-10 flex items-center gap-3">
+          <BillingToggle billing={billing} onChange={setBilling} />
+          <span className="text-xs font-medium text-ink-3">
+            Jaarlijks = 2 maanden gratis
+          </span>
+        </div>
+
+        <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {PRICING_TIERS.map((tier) => (
-            <PricingCard key={tier.id} tier={tier} />
+            <PricingCard key={tier.id} tier={tier} billing={billing} />
           ))}
         </div>
+
+        <p className="mt-6 text-xs text-ink-3">{PRICING_VAT_NOTE}</p>
+
+        <p className="mt-2 inline-flex items-center rounded-md border border-tennis-lime/40 bg-tennis-lime/15 px-3 py-1.5 text-xs font-medium text-ink-2">
+          <span className="mr-2 inline-block h-1.5 w-1.5 rounded-full bg-tennis-green" />
+          {PRICING_EARLYBIRD}
+        </p>
 
         {hideCompareLink ? null : (
           <div className="mt-10 flex flex-wrap items-center justify-between gap-4 border-t border-rule pt-8">
@@ -54,5 +78,47 @@ export function Pricing({ hideCompareLink = false }: PricingProps) {
         )}
       </div>
     </section>
+  );
+}
+
+function BillingToggle({
+  billing,
+  onChange,
+}: {
+  billing: Billing;
+  onChange: (b: Billing) => void;
+}) {
+  return (
+    <div
+      role="tablist"
+      aria-label="Facturatieperiode"
+      className="inline-flex rounded-lg border border-rule bg-paper p-1"
+    >
+      {(
+        [
+          { id: "monthly", label: "Maandelijks" },
+          { id: "yearly", label: "Jaarlijks" },
+        ] as const
+      ).map((opt) => {
+        const active = billing === opt.id;
+        return (
+          <button
+            key={opt.id}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(opt.id)}
+            className={cn(
+              "rounded-md px-4 py-1.5 text-sm font-semibold transition-colors",
+              active
+                ? "bg-tennis-green text-paper"
+                : "text-ink-2 hover:text-ink",
+            )}
+          >
+            {opt.label}
+          </button>
+        );
+      })}
+    </div>
   );
 }

@@ -1,59 +1,61 @@
+import { SITE } from "@/content/meta";
+
 /**
- * Site-wide visibility toggle for everything pricing-related:
- * - homepage Pricing section
- * - /prijzen page (returns 404 when hidden)
- * - "Prijzen" nav link
- * - /prijzen entry in sitemap.xml
- *
- * Hidden during the pilot stage while we finalise tarifering. Flip to
- * `true` to bring the full pricing surface back without code changes.
- *
- * Typed as `boolean` (not the literal `false`) so the dependent
- * conditional code paths don't get TS-narrowed away.
+ * Site-wide visibility toggle voor alles rond tarieven (homepage-sectie,
+ * /prijzen-pagina, nav-link, sitemap). Staat live sinds de prijzen vastliggen.
  */
-export const PRICING_VISIBLE: boolean = false;
+export const PRICING_VISIBLE: boolean = true;
+
+/** "Start gratis" leidt naar de registratie/proef in de app. */
+export const REGISTER_URL = `${SITE.appUrl}/register`;
+
+export type Billing = "monthly" | "yearly";
 
 export interface PricingTier {
   id: string;
   name: string;
   tagline: string;
-  /** Monthly price in EUR. `null` = custom / on quote. */
+  /** €/maand. `null` = op maat / op aanvraag. */
   priceMonthly: number | null;
-  /** Shown next to the price, e.g. "/maand" or "op maat". */
-  priceSuffix: string;
-  /** Short helper line below the price. */
-  priceHelper: string;
-  /** Marks the visually highlighted tier on the card grid. */
+  /** €/jaar (2 maanden gratis t.o.v. maandprijs). `null` = op maat. */
+  priceYearly: number | null;
+  /** Korte limiet-regel onder de prijs, bv. "tot 60 leerlingen". */
+  studentLimit: string;
+  /** Visueel uitgelichte kaart. */
   featured?: boolean;
-  /** CTA button on the tier card. */
+  /** CTA-knop op de kaart. */
   cta: { label: string; href: string };
-  /** Top features displayed on every card. Keep to 5-7 items. */
+  /** 5–6 kernpunten per kaart. */
   features: string[];
 }
 
 export const PRICING_HEADING = "Eerlijke tarieven, voor elke clubmaat";
 export const PRICING_SUB =
-  "Geen verborgen kosten per leerling, geen jaarcontracten. Maandelijks opzegbaar — al is dat hopelijk niet nodig.";
+  "Je betaalt per actieve leerling — met een onbeperkt aantal trainers. Geen jaarcontract: maandelijks opzegbaar, of betaal per jaar en krijg 2 maanden gratis.";
 
-export const PRICING_DISCLAIMER =
-  "Voorlopige tarifering — definitieve prijzen volgen bij lancering.";
+/** Geruststelling onder de hero en op de kaarten. */
+export const PRICING_TRIAL = "30 dagen gratis proberen, zonder betaalgegevens.";
+/** Early-bird banner. */
+export const PRICING_EARLYBIRD =
+  "Early-bird: de eerste clubs krijgen een levenslange korting. Zolang de plaatsen duren.";
+export const PRICING_VAT_NOTE = "Alle prijzen zijn excl. btw.";
 
 export const PRICING_TIERS: PricingTier[] = [
   {
     id: "starter",
     name: "Starter",
-    tagline: "Voor zelfstandige coaches en kleine groepen.",
-    priceMonthly: 19,
-    priceSuffix: "/maand",
-    priceHelper: "Excl. btw · maandelijks opzegbaar",
-    cta: { label: "Begin met Starter", href: "#contact" },
+    tagline: "Voor zelfstandige coaches en kleine clubs.",
+    priceMonthly: 25,
+    priceYearly: 250,
+    studentLimit: "tot 60 actieve leerlingen",
+    cta: { label: "Start gratis", href: REGISTER_URL },
     features: [
-      "1 trainer",
-      "Tot 50 actieve leerlingen",
-      "1 club of locatie",
-      "Anonieme inschrijvingen",
-      "Magic-link bevestigingen",
-      "E-mail ondersteuning",
+      "Onbeperkt aantal trainers",
+      "Alle functies inbegrepen",
+      "Planningsalgoritme",
+      "Formulierbouwer per lessenreeks",
+      "Cash- en online betalingen",
+      "E-mailondersteuning",
     ],
   },
   {
@@ -61,49 +63,77 @@ export const PRICING_TIERS: PricingTier[] = [
     name: "Club",
     tagline: "Voor tennis- en padelclubs met meerdere trainers.",
     priceMonthly: 49,
-    priceSuffix: "/maand",
-    priceHelper: "Excl. btw · maandelijks opzegbaar",
+    priceYearly: 490,
+    studentLimit: "tot 200 actieve leerlingen",
     featured: true,
-    cta: { label: "Kies Club", href: "#contact" },
+    cta: { label: "Start gratis", href: REGISTER_URL },
     features: [
-      "Tot 10 trainers",
-      "Onbeperkt aantal leerlingen",
-      "1 club of locatie",
-      "Formulierbouwer per lessenreeks",
-      "Planningsalgoritme",
-      "Mollie betalingen (op de roadmap)",
+      "Alles uit Starter",
+      "Onbeperkt aantal trainers",
+      "Tot 200 actieve leerlingen",
+      "Kampen en lessenreeksen",
       "Prioritaire ondersteuning",
     ],
   },
   {
-    id: "federatie",
-    name: "Federatie",
-    tagline: "Voor multi-locatie clubs en overkoepelende organisaties.",
+    id: "groot",
+    name: "Groot",
+    tagline: "Voor grote clubs met een druk lesseizoen.",
+    priceMonthly: 89,
+    priceYearly: 890,
+    studentLimit: "tot 500 actieve leerlingen",
+    cta: { label: "Start gratis", href: REGISTER_URL },
+    features: [
+      "Alles uit Club",
+      "Tot 500 actieve leerlingen",
+      "Vaste contactpersoon",
+      "Hulp bij de opstart",
+    ],
+  },
+  {
+    id: "opmaat",
+    name: "Op maat",
+    tagline: "Voor federaties en clubs met meerdere locaties.",
     priceMonthly: null,
-    priceSuffix: "op maat",
-    priceHelper: "Vanaf €149/maand · jaarcontract",
+    priceYearly: null,
+    studentLimit: "500+ leerlingen of meerdere clubs",
     cta: { label: "Vraag een offerte", href: "#contact" },
     features: [
-      "Onbeperkte trainers",
-      "Multi-club / multi-locatie",
-      "Single sign-on (op aanvraag)",
+      "Alles uit Groot",
+      "Multi-club beheer",
       "Aangepaste rapportering",
-      "Aangepaste integraties",
-      "SLA + dedicated support",
+      "SLA en dedicated support",
     ],
   },
 ];
 
+/** "Hoe werkt de prijs?" — uitlegblokken op de /prijzen-pagina. */
+export const PRICING_EXPLAINER_HEADING = "Hoe werkt de prijs?";
+export const PRICING_EXPLAINER: Array<{ title: string; body: string }> = [
+  {
+    title: "Per actieve leerling, niet per trainer",
+    body: "Je plan hangt af van het aantal unieke leerlingen met een bevestigde inschrijving binnen het jaar. Trainers en jobstudenten voeg je onbeperkt toe — zonder meerkost.",
+  },
+  {
+    title: "Ruime marge, zachte overschrijding",
+    body: "Boven je limiet zit nog 10% speling. Daarboven reken je een kleine meerprijs per extra leerling af, één keer per jaar. Zit je structureel hoger, dan stellen we gewoon een upgrade voor.",
+  },
+  {
+    title: "Nooit geblokkeerd",
+    body: "Inschrijvingen blijven altijd werken, ook als je boven je limiet zit. We blokkeren nooit midden in een seizoen — je leerlingen mogen daar niet de dupe van zijn.",
+  },
+];
+
 /**
- * Comparison matrix for the dedicated /prijzen page. Values:
- * - `true` / `false` render as ✓ / —
- * - a string renders as text (for limits like "Tot 50")
+ * Vergelijkingsmatrix voor de /prijzen-pagina. Waarden:
+ * - `true` / `false` → ✓ / —
+ * - string → tekst (bv. limieten)
  */
 export interface CompareGroup {
   label: string;
   rows: Array<{
     feature: string;
-    /** Indexed by tier id from `PRICING_TIERS`. */
+    /** Geïndexeerd op tier-id uit `PRICING_TIERS`. */
     values: Record<string, boolean | string>;
   }>;
 }
@@ -113,20 +143,26 @@ export const PRICING_COMPARE: CompareGroup[] = [
     label: "Limieten",
     rows: [
       {
-        feature: "Trainers",
-        values: { starter: "1", club: "Tot 10", federatie: "Onbeperkt" },
-      },
-      {
         feature: "Actieve leerlingen",
         values: {
-          starter: "Tot 50",
+          starter: "Tot 60",
+          club: "Tot 200",
+          groot: "Tot 500",
+          opmaat: "500+",
+        },
+      },
+      {
+        feature: "Trainers",
+        values: {
+          starter: "Onbeperkt",
           club: "Onbeperkt",
-          federatie: "Onbeperkt",
+          groot: "Onbeperkt",
+          opmaat: "Onbeperkt",
         },
       },
       {
         feature: "Clubs / locaties",
-        values: { starter: "1", club: "1", federatie: "Onbeperkt" },
+        values: { starter: "1", club: "1", groot: "1", opmaat: "Meerdere" },
       },
     ],
   },
@@ -134,24 +170,20 @@ export const PRICING_COMPARE: CompareGroup[] = [
     label: "Lessenplanning",
     rows: [
       {
-        feature: "Lessenreeksen aanmaken",
-        values: { starter: true, club: true, federatie: true },
-      },
-      {
-        feature: "Anonieme inschrijvingen",
-        values: { starter: true, club: true, federatie: true },
-      },
-      {
-        feature: "Magic-link bevestigingen",
-        values: { starter: true, club: true, federatie: true },
-      },
-      {
-        feature: "Formulierbouwer per lessenreeks",
-        values: { starter: false, club: true, federatie: true },
+        feature: "Lessenreeksen en kampen",
+        values: { starter: true, club: true, groot: true, opmaat: true },
       },
       {
         feature: "Planningsalgoritme",
-        values: { starter: false, club: true, federatie: true },
+        values: { starter: true, club: true, groot: true, opmaat: true },
+      },
+      {
+        feature: "Formulierbouwer per lessenreeks",
+        values: { starter: true, club: true, groot: true, opmaat: true },
+      },
+      {
+        feature: "Magic-link bevestigingen",
+        values: { starter: true, club: true, groot: true, opmaat: true },
       },
     ],
   },
@@ -160,61 +192,40 @@ export const PRICING_COMPARE: CompareGroup[] = [
     rows: [
       {
         feature: "Cash registratie per inschrijving",
-        values: { starter: true, club: true, federatie: true },
+        values: { starter: true, club: true, groot: true, opmaat: true },
       },
       {
-        feature: "Mollie (Bancontact + iDEAL)",
-        values: {
-          starter: false,
-          club: "Op de roadmap",
-          federatie: "Op de roadmap",
-        },
-      },
-      {
-        feature: "Aangepaste betaalafspraken",
-        values: { starter: false, club: false, federatie: true },
+        feature: "Online betalingen (Mollie)",
+        values: { starter: true, club: true, groot: true, opmaat: true },
       },
     ],
   },
   {
-    label: "Beheer & integraties",
+    label: "Beheer & ondersteuning",
     rows: [
       {
-        feature: "Multi-club beheer",
-        values: { starter: false, club: false, federatie: true },
-      },
-      {
-        feature: "Single sign-on",
-        values: { starter: false, club: false, federatie: "Op aanvraag" },
-      },
-      {
-        feature: "Aangepaste rapportering",
-        values: { starter: false, club: false, federatie: true },
-      },
-      {
-        feature: "Aangepaste integraties",
-        values: { starter: false, club: false, federatie: true },
-      },
-    ],
-  },
-  {
-    label: "Ondersteuning",
-    rows: [
-      {
-        feature: "E-mail ondersteuning",
-        values: { starter: true, club: true, federatie: true },
+        feature: "E-mailondersteuning",
+        values: { starter: true, club: true, groot: true, opmaat: true },
       },
       {
         feature: "Prioritaire ondersteuning",
-        values: { starter: false, club: true, federatie: true },
+        values: { starter: false, club: true, groot: true, opmaat: true },
       },
       {
-        feature: "Dedicated contactpersoon",
-        values: { starter: false, club: false, federatie: true },
+        feature: "Vaste contactpersoon",
+        values: { starter: false, club: false, groot: true, opmaat: true },
+      },
+      {
+        feature: "Multi-club beheer",
+        values: { starter: false, club: false, groot: false, opmaat: true },
+      },
+      {
+        feature: "Aangepaste rapportering",
+        values: { starter: false, club: false, groot: false, opmaat: true },
       },
       {
         feature: "SLA",
-        values: { starter: false, club: false, federatie: true },
+        values: { starter: false, club: false, groot: false, opmaat: true },
       },
     ],
   },
@@ -225,35 +236,34 @@ export interface PricingFaqEntry {
   a: string;
 }
 
+export const PRICING_FAQ_HEADING = "Vragen over tarifering";
 export const PRICING_FAQ: PricingFaqEntry[] = [
   {
-    q: "Zijn deze tarieven definitief?",
-    a: "Nee. Dit zijn voorlopige tarieven die we hanteren tijdens de pre-launch om early adopters duidelijkheid te geven. Definitieve prijzen volgen bij lancering — vroege gebruikers behouden hun starttarief minstens 12 maanden.",
+    q: "Wat telt als een actieve leerling?",
+    a: "Een unieke persoon met minstens één bevestigde inschrijving in een lessenreeks of kamp binnen het facturatiejaar. Wie annuleert vóór de start telt niet mee, en dezelfde leerling in meerdere reeksen telt maar één keer. Broers en zussen onder hetzelfde ouder-e-mailadres tellen apart.",
+  },
+  {
+    q: "Betaal ik per trainer?",
+    a: "Nee. Het aantal trainers is altijd onbeperkt. Je betaalt enkel op basis van het aantal actieve leerlingen. Zo kan je gerust met part-time trainers en jobstudenten werken zonder accounts te delen.",
+  },
+  {
+    q: "Maandelijks of jaarlijks?",
+    a: "Allebei kan. Maandelijks is volledig opzegbaar. Betaal je per jaar, dan krijg je 2 maanden gratis (bv. €250 i.p.v. €300 voor Starter). Maandbetaling verloopt via automatische afschrijving; jaarbetaling kan ook op factuur.",
+  },
+  {
+    q: "Is er een gratis proefperiode?",
+    a: "Ja. Je probeert CoachOS 30 dagen volledig gratis, met alle functies en zonder betaalgegevens vooraf. Je beslist pas daarna of je doorgaat.",
+  },
+  {
+    q: "Wat als ik boven mijn limiet ga?",
+    a: "Geen paniek: inschrijvingen worden nooit geblokkeerd. Boven je limiet zit nog 10% marge. Daarboven reken je een kleine meerprijs per extra leerling af bij je verlenging. Zit je er structureel boven, dan stellen we een upgrade voor — dat is meestal voordeliger.",
   },
   {
     q: "Zit btw inbegrepen?",
-    a: "Nee. Alle bedragen zijn excl. btw. Voor Belgische klanten geldt 21%, voor Nederlandse klanten 21%. Btw-nummers van clubs en zelfstandigen worden op de factuur vermeld.",
+    a: "Nee, alle bedragen zijn excl. btw. Voor Belgische klanten geldt 21%; je btw-nummer komt op de factuur. Voor Nederlandse klanten met een geldig btw-nummer wordt de btw verlegd.",
   },
   {
-    q: "Kan ik maandelijks opzeggen?",
-    a: "Ja, voor Starter en Club. Je zegt op vóór de eerstvolgende factuurdatum en je toegang loopt tot het einde van de lopende maand. Federatie werkt met een jaarcontract vanwege de aangepaste implementatie.",
-  },
-  {
-    q: "Bieden jullie korting voor sportfederaties of meerdere clubs?",
-    a: "Ja. Bij meerdere clubs binnen één federatie of overkoepelende organisatie maken we een gecombineerde offerte. Neem contact op voor een berekening op basis van het aantal locaties en trainers.",
-  },
-  {
-    q: "Welke betaalmethodes accepteren jullie zelf?",
-    a: "SEPA-domiciliëring, Bancontact en iDEAL voor Belgische en Nederlandse klanten. Voor jaarcontracten kan ook bankoverschrijving op factuur.",
-  },
-  {
-    q: "Wat als ik tijdens een seizoen meer trainers nodig heb?",
-    a: "Je upgradet meteen naar het volgende abonnement — pro rata aangerekend voor de resterende dagen van de maand. Downgrades gaan in op de volgende factuurdatum.",
-  },
-  {
-    q: "Bestaat er een gratis proefperiode?",
-    a: "Ja. Tijdens de pre-launch krijgen alle clubs een verlengde proefperiode van 60 dagen, zonder betaalgegevens vooraf. Je beslist na een volledig seizoen of je doorgaat.",
+    q: "Kan ik opzeggen of veranderen van plan?",
+    a: "Upgraden kan altijd, pro rata aangerekend. Een maandabonnement zeg je op tegen de volgende factuurdatum; downgraden gaat in bij je volgende verlenging. Geen jaarcontract, geen verborgen kosten.",
   },
 ];
-
-export const PRICING_FAQ_HEADING = "Vragen over tarifering";
