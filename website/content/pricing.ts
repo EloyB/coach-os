@@ -43,7 +43,7 @@ export const PRICING_VAT_NOTE = "Alle prijzen zijn excl. btw.";
 export const PRICING_TIERS: PricingTier[] = [
   {
     id: "starter",
-    name: "Starter",
+    name: "Game",
     tagline: "Voor zelfstandige coaches en kleine clubs.",
     priceMonthly: 25,
     priceYearly: 250,
@@ -60,7 +60,7 @@ export const PRICING_TIERS: PricingTier[] = [
   },
   {
     id: "club",
-    name: "Club",
+    name: "Set",
     tagline: "Voor tennis- en padelclubs met meerdere trainers.",
     priceMonthly: 49,
     priceYearly: 490,
@@ -68,7 +68,7 @@ export const PRICING_TIERS: PricingTier[] = [
     featured: true,
     cta: { label: "Start gratis", href: REGISTER_URL },
     features: [
-      "Alles uit Starter",
+      "Alles uit Game",
       "Onbeperkt aantal trainers",
       "Tot 200 actieve leerlingen",
       "Kampen en lessenreeksen",
@@ -77,14 +77,14 @@ export const PRICING_TIERS: PricingTier[] = [
   },
   {
     id: "groot",
-    name: "Groot",
+    name: "Match",
     tagline: "Voor grote clubs met een druk lesseizoen.",
     priceMonthly: 89,
     priceYearly: 890,
     studentLimit: "tot 500 actieve leerlingen",
     cta: { label: "Start gratis", href: REGISTER_URL },
     features: [
-      "Alles uit Club",
+      "Alles uit Set",
       "Tot 500 actieve leerlingen",
       "Vaste contactpersoon",
       "Hulp bij de opstart",
@@ -92,14 +92,14 @@ export const PRICING_TIERS: PricingTier[] = [
   },
   {
     id: "opmaat",
-    name: "Op maat",
+    name: "Slam",
     tagline: "Voor federaties en clubs met meerdere locaties.",
     priceMonthly: null,
     priceYearly: null,
     studentLimit: "500+ leerlingen of meerdere clubs",
     cta: { label: "Vraag een offerte", href: "#contact" },
     features: [
-      "Alles uit Groot",
+      "Alles uit Match",
       "Multi-club beheer",
       "Aangepaste rapportering",
       "SLA en dedicated support",
@@ -248,7 +248,7 @@ export const PRICING_FAQ: PricingFaqEntry[] = [
   },
   {
     q: "Maandelijks of jaarlijks?",
-    a: "Allebei kan. Maandelijks is volledig opzegbaar. Betaal je per jaar, dan krijg je 2 maanden gratis (bv. €250 i.p.v. €300 voor Starter). Maandbetaling verloopt via automatische afschrijving; jaarbetaling kan ook op factuur.",
+    a: "Allebei kan. Maandelijks is volledig opzegbaar. Betaal je per jaar, dan krijg je 2 maanden gratis (bv. €250 i.p.v. €300 voor Game). Maandbetaling verloopt via automatische afschrijving; jaarbetaling kan ook op factuur.",
   },
   {
     q: "Is er een gratis proefperiode?",
