@@ -11,6 +11,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
@@ -136,43 +137,39 @@ export function SlotEditPopover({
 
   const body = (
     <>
-        <p className="text-xs font-semibold text-gray-900 mb-2">
-          {t("editSlotTitle")}
-        </p>
-
         {/* Start / End time */}
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className="block text-[11px] font-medium text-gray-500 mb-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
               {t("startTime")}
             </label>
             <input
               type="time"
               value={startTime}
               onChange={(e) => setStartTime(e.target.value)}
-              className={inputClass + " !h-7 !text-xs !px-2 appearance-none min-w-0 w-full"}
+              className={inputClass + " appearance-none min-w-0"}
             />
           </div>
           <div>
-            <label className="block text-[11px] font-medium text-gray-500 mb-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
               {t("endTime")}
             </label>
             <input
               type="time"
               value={endTime}
               onChange={(e) => setEndTime(e.target.value)}
-              className={inputClass + " !h-7 !text-xs !px-2 appearance-none min-w-0 w-full"}
+              className={inputClass + " appearance-none min-w-0"}
             />
           </div>
         </div>
 
         {/* Trainer */}
         <div>
-          <label className="block text-[11px] font-medium text-gray-500 mb-1">
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">
             {t("trainer")}
           </label>
           <Select onValueChange={setTrainerId} value={trainerId}>
-            <SelectTrigger className="border border-gray-200 rounded-lg h-7 text-xs">
+            <SelectTrigger className="border border-gray-200 rounded-lg h-9 text-sm">
               <SelectValue placeholder={t("trainerPlaceholder")} />
             </SelectTrigger>
             <SelectContent>
@@ -204,7 +201,7 @@ export function SlotEditPopover({
 
         {/* Court name */}
         <div>
-          <label className="block text-[11px] font-medium text-gray-500 mb-1">
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">
             {t("courtName")}
           </label>
           <input
@@ -213,14 +210,14 @@ export function SlotEditPopover({
             value={courtName}
             onChange={(e) => setCourtName(e.target.value)}
             placeholder={t("courtNamePlaceholder")}
-            className={inputClass + " !h-7 !text-xs !px-2"}
+            className={inputClass}
           />
         </div>
 
         {/* Max students + Level */}
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className="block text-[11px] font-medium text-gray-500 mb-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
               {t("maxStudents")}
             </label>
             <input
@@ -228,15 +225,15 @@ export function SlotEditPopover({
               min={1}
               value={maxStudents}
               onChange={(e) => setMaxStudents(parseInt(e.target.value) || 1)}
-              className={inputClass + " !h-7 !text-xs !px-2"}
+              className={inputClass}
             />
           </div>
           <div>
-            <label className="block text-[11px] font-medium text-gray-500 mb-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
               {t("level")}
             </label>
             <Select onValueChange={setLevel} value={level}>
-              <SelectTrigger className="border border-gray-200 rounded-lg h-7 text-xs">
+              <SelectTrigger className="border border-gray-200 rounded-lg h-9 text-sm">
                 <SelectValue placeholder={t("levelNone")} />
               </SelectTrigger>
               <SelectContent>
@@ -272,7 +269,9 @@ export function SlotEditPopover({
           className="w-[calc(100vw-32px)] max-w-sm space-y-3 p-4"
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
-          <DialogTitle className="sr-only">{t("editSlotTitle")}</DialogTitle>
+          <DialogHeader>
+            <DialogTitle>{t("editSlotTitle")}</DialogTitle>
+          </DialogHeader>
           {body}
         </DialogContent>
       </Dialog>
@@ -287,9 +286,12 @@ export function SlotEditPopover({
         align={side === "bottom" ? "center" : "start"}
         sideOffset={8}
         collisionPadding={12}
-        className="w-64 max-w-[calc(100vw-24px)] p-4 space-y-3"
+        className="w-72 max-w-[calc(100vw-24px)] p-4 space-y-3"
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
+        <p className="text-xs font-semibold text-gray-900 mb-2">
+          {t("editSlotTitle")}
+        </p>
         {body}
       </PopoverContent>
     </Popover>
