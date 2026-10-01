@@ -5,7 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { addGroupMember, createManualEnrollment } from "@/lib/api/enrollments";
-import { Button } from "@/components/ui/button";
+import { btnPrimary, btnSecondary } from "@/lib/styles";
 import { Input } from "@/components/ui/input";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
@@ -64,11 +64,11 @@ export function ManualEnrollmentDialog({
             <Input value={phone} onChange={(e) => setPhone(e.target.value)} className="mt-1" />
           </label>
           <label className="block text-sm font-medium">{t("manualBirthDate")}
-            <Input required type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} className="mt-1" />
+            <Input required type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} className="mt-1 appearance-none min-w-0" />
           </label>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{t("back")}</Button>
-            <Button type="submit" disabled={mutation.isPending}>{groupId ? t("addMemberSubmit") : t("manualSubmit")}</Button>
+            <button type="button" onClick={() => onOpenChange(false)} className={btnSecondary}>{t("back")}</button>
+            <button type="submit" disabled={mutation.isPending} className={btnPrimary}>{groupId ? t("addMemberSubmit") : t("manualSubmit")}</button>
           </DialogFooter>
         </form>
       </DialogContent>

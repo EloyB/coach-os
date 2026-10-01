@@ -14,7 +14,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { FieldError } from "@/components/forms/field-error";
-import { inputClass } from "@/lib/styles";
+import { inputClass, btnPrimary, btnSecondary } from "@/lib/styles";
 import { updateBasicEnrollment } from "@/lib/api/enrollments";
 import type { LessonSeriesEnrollmentDto } from "@/lib/api/enrollments";
 import { getLessonSeriePrices } from "@/lib/api/lessonSeriePrices";
@@ -142,7 +142,7 @@ export function EditEnrollmentDialog({
               <label className="mb-1 block text-xs font-medium text-gray-600">
                 Geboortedatum
               </label>
-              <input type="date" className={inputClass} {...form.register("dateOfBirth")} />
+              <input type="date" className={inputClass + " appearance-none min-w-0"} {...form.register("dateOfBirth")} />
               <FieldError message={form.formState.errors.dateOfBirth?.message} />
             </div>
           </div>
@@ -191,14 +191,14 @@ export function EditEnrollmentDialog({
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+              className={btnSecondary}
             >
               Annuleren
             </button>
             <button
               type="submit"
               disabled={mutation.isPending}
-              className="rounded-lg bg-tennis-green px-3 py-2 text-sm font-medium text-white hover:bg-tennis-green/90 disabled:opacity-50"
+              className={btnPrimary}
             >
               {mutation.isPending ? "Opslaan…" : "Opslaan"}
             </button>

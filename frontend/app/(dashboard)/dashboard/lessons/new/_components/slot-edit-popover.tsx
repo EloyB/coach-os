@@ -24,7 +24,7 @@ import {
 import { LESSON_LEVELS } from "@/lib/api/lessonSeries";
 import { getTrainers, isAssignableTrainer } from "@/lib/api/trainers";
 import { getTrainerAvailabilities } from "@/lib/api/trainerAvailabilities";
-import { inputClass } from "@/lib/styles";
+import { inputClass, btnPrimary } from "@/lib/styles";
 import type { WizardSlot } from "../_types";
 
 interface SlotEditPopoverProps {
@@ -254,7 +254,7 @@ export function SlotEditPopover({
         <button
           type="button"
           onClick={handleSave}
-          className="w-full px-3 py-1.5 bg-tennis-green text-white text-xs font-semibold rounded-lg hover:bg-tennis-green/90 transition-colors"
+          className={"w-full " + btnPrimary}
         >
           {t("saveSlot")}
         </button>
