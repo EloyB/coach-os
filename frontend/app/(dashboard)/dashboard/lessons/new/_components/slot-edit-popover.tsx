@@ -9,6 +9,11 @@ import {
   PopoverAnchor,
 } from "@/components/ui/popover";
 import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -27,8 +32,10 @@ interface SlotEditPopoverProps {
   tennisClubId: string;
   onSave: (updated: WizardSlot) => void;
   onClose: () => void;
-  /** Kant waar de popover opent. Desktop (naast de grid) = "right"; mobiel (onder de rij) = "bottom". */
+  /** Kant waar de popover opent op desktop (naast de grid). */
   side?: "right" | "bottom";
+  /** Mobiel: toon de editor als gecentreerde dialog i.p.v. een anker-popover. */
+  asDialog?: boolean;
 }
 
 export function SlotEditPopover({
@@ -38,6 +45,7 @@ export function SlotEditPopover({
   onSave,
   onClose,
   side = "right",
+  asDialog = false,
 }: SlotEditPopoverProps) {
   const t = useTranslations("lessonWizard");
 
@@ -126,17 +134,8 @@ export function SlotEditPopover({
     });
   }
 
-  return (
-    <Popover open onOpenChange={(open) => !open && onClose()}>
-      <PopoverAnchor virtualRef={{ current: anchorRef }} />
-      <PopoverContent
-        side={side}
-        align={side === "bottom" ? "center" : "start"}
-        sideOffset={8}
-        collisionPadding={12}
-        className="w-64 max-w-[calc(100vw-24px)] p-4 space-y-3"
-        onOpenAutoFocus={(e) => e.preventDefault()}
-      >
+  const body = (
+    <>
         <p className="text-xs font-semibold text-gray-900 mb-2">
           {t("editSlotTitle")}
         </p>
@@ -151,7 +150,7 @@ export function SlotEditPopover({
               type="time"
               value={startTime}
               onChange={(e) => setStartTime(e.target.value)}
-              className={inputClass + " !h-7 !text-xs !px-2"}
+              className={inputClass + " !h-7 !text-xs !px-2 appearance-none min-w-0 w-full"}
             />
           </div>
           <div>
@@ -162,7 +161,7 @@ export function SlotEditPopover({
               type="time"
               value={endTime}
               onChange={(e) => setEndTime(e.target.value)}
-              className={inputClass + " !h-7 !text-xs !px-2"}
+              className={inputClass + " !h-7 !text-xs !px-2 appearance-none min-w-0 w-full"}
             />
           </div>
         </div>
@@ -262,6 +261,36 @@ export function SlotEditPopover({
         >
           {t("saveSlot")}
         </button>
+    </>
+  );
+
+  // Mobiel: gecentreerde dialog i.p.v. een anker-popover.
+  if (asDialog) {
+    return (
+      <Dialog open onOpenChange={(open) => !open && onClose()}>
+        <DialogContent
+          className="w-[calc(100vw-32px)] max-w-sm space-y-3 p-4"
+          onOpenAutoFocus={(e) => e.preventDefault()}
+        >
+          <DialogTitle className="sr-only">{t("editSlotTitle")}</DialogTitle>
+          {body}
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  return (
+    <Popover open onOpenChange={(open) => !open && onClose()}>
+      <PopoverAnchor virtualRef={{ current: anchorRef }} />
+      <PopoverContent
+        side={side}
+        align={side === "bottom" ? "center" : "start"}
+        sideOffset={8}
+        collisionPadding={12}
+        className="w-64 max-w-[calc(100vw-24px)] p-4 space-y-3"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
+        {body}
       </PopoverContent>
     </Popover>
   );

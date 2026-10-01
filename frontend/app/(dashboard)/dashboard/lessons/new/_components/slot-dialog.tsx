@@ -174,7 +174,7 @@ export function SlotDialog({
               <input
                 {...register("startTime")}
                 type="time"
-                className={inputClass}
+                className={inputClass + " appearance-none min-w-0 w-full"}
               />
               <FieldError message={errors.startTime?.message} />
             </div>
@@ -183,7 +183,7 @@ export function SlotDialog({
               <input
                 {...register("endTime")}
                 type="time"
-                className={inputClass}
+                className={inputClass + " appearance-none min-w-0 w-full"}
               />
               <FieldError message={errors.endTime?.message} />
             </div>

@@ -443,7 +443,7 @@ export function CalendarWeekView({
                 slot={editingSlot}
                 anchorRef={editAnchor}
                 tennisClubId={tennisClubId}
-                side="bottom"
+                asDialog
                 onSave={handleSlotSave}
                 onClose={() => setEditingSlotId(null)}
               />
