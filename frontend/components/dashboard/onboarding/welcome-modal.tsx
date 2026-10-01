@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+import { btnPrimary } from "@/lib/styles";
 import { getAuthUser } from "@/lib/auth";
 
 const SEEN_KEY = "coachos.welcome.seen";
@@ -52,9 +52,13 @@ export function WelcomeModal({ shouldShow }: WelcomeModalProps) {
           <DialogDescription>{t("welcomeBody")}</DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button onClick={handleClose} className="w-full sm:w-auto">
+          <button
+            type="button"
+            onClick={handleClose}
+            className={btnPrimary + " w-full sm:w-auto"}
+          >
             {t("welcomeCta")}
-          </Button>
+          </button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

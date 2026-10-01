@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { btnPrimary, btnSecondary } from "@/lib/styles";
 import { setTrainerMode } from "@/lib/api/onboarding";
 
 interface TrainerModeDialogProps {
@@ -101,19 +102,22 @@ export function TrainerModeDialog({ open, onOpenChange }: TrainerModeDialogProps
               <DialogDescription>{t("subQuestionDescription")}</DialogDescription>
             </DialogHeader>
             <div className="grid gap-3">
-              <Button
+              <button
+                type="button"
                 onClick={chooseTeamYes}
                 disabled={saving}
+                className={btnPrimary + " w-full"}
               >
                 {saving ? t("saving") : t("yes")}
-              </Button>
-              <Button
-                variant="outline"
+              </button>
+              <button
+                type="button"
                 onClick={chooseTeamNo}
                 disabled={saving}
+                className={btnSecondary + " w-full"}
               >
                 {saving ? t("saving") : t("no")}
-              </Button>
+              </button>
               <Button
                 variant="ghost"
                 size="sm"

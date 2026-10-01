@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { EnrollmentStatusBadge } from "./enrollment-status-badge";
+import { btnPrimary, btnSecondary } from "@/lib/styles";
 import { getEnrollmentsWithPreferences } from "@/lib/api/enrollments";
 import type { LessonSeriesEnrollmentDto } from "@/lib/api/enrollments";
 import { getLessonSeriePrices } from "@/lib/api/lessonSeriePrices";
@@ -432,7 +433,7 @@ export function EnrollmentDetailDialog({
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+            className={btnSecondary}
           >
             {t("close")}
           </button>
@@ -440,7 +441,7 @@ export function EnrollmentDetailDialog({
             <button
               type="button"
               onClick={onEdit}
-              className="rounded-lg bg-tennis-green px-3 py-2 text-sm font-medium text-white hover:bg-tennis-green/90"
+              className={btnPrimary}
             >
               {t("edit")}
             </button>

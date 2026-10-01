@@ -101,10 +101,10 @@ export function Step2Planning({
         <p className="text-sm text-gray-400">{t("step2Desc")}</p>
       </div>
 
-      {/* Calendar + defaults sidebar */}
-      <div className="flex gap-5 items-start">
+      {/* Calendar + defaults sidebar — stapelt op mobiel (defaults eerst, dan kalender) */}
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
         {/* Calendar */}
-        <div className="flex-1 min-w-0">
+        <div className="order-2 min-w-0 lg:order-1 lg:flex-1">
           <CalendarWeekView
             slots={slots}
             onChange={setSlots}
@@ -114,7 +114,7 @@ export function Step2Planning({
         </div>
 
         {/* Defaults card */}
-        <div className="w-56 shrink-0 sticky top-8 space-y-4">
+        <div className="order-1 w-full shrink-0 space-y-4 lg:order-2 lg:w-56 lg:sticky lg:top-8">
           <SlotSuggestionsPanel
             tennisClubId={tennisClubId}
             defaults={defaults}

@@ -612,7 +612,7 @@ function EditLessonDialog({
                 type="time"
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
-                className={inputClass}
+                className={inputClass + " appearance-none min-w-0"}
               />
             </div>
             <div>
@@ -623,7 +623,7 @@ function EditLessonDialog({
                 type="time"
                 value={endTime}
                 onChange={(e) => setEndTime(e.target.value)}
-                className={inputClass}
+                className={inputClass + " appearance-none min-w-0"}
               />
             </div>
           </div>
@@ -755,7 +755,7 @@ function EditLessonDialog({
                     type="time"
                     value={rescheduleStart}
                     onChange={(e) => setRescheduleStart(e.target.value)}
-                    className={inputClass + " text-xs"}
+                    className={inputClass + " appearance-none min-w-0"}
                   />
                 </div>
                 <div>
@@ -766,7 +766,7 @@ function EditLessonDialog({
                     type="time"
                     value={rescheduleEnd}
                     onChange={(e) => setRescheduleEnd(e.target.value)}
-                    className={inputClass + " text-xs"}
+                    className={inputClass + " appearance-none min-w-0"}
                   />
                 </div>
               </div>

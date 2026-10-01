@@ -10,7 +10,7 @@ import {
   type LessonSeriePriceDto,
   type LessonSeriePriceRequest,
 } from "@/lib/api/lessonSeriePrices";
-import { inputClass } from "@/lib/styles";
+import { inputClass, btnPrimary, btnSecondary } from "@/lib/styles";
 import { localId } from "@/lib/local-id";
 import {
   Dialog,
@@ -325,7 +325,7 @@ export function PriceMatrixSection({
             <button
               type="button"
               onClick={() => setAddOpen(false)}
-              className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+              className={btnSecondary}
             >
               Annuleren
             </button>
@@ -333,7 +333,7 @@ export function PriceMatrixSection({
               type="button"
               onClick={handleAddSubmit}
               disabled={saving}
-              className="rounded-lg bg-tennis-green px-4 py-2 text-sm font-semibold text-white hover:bg-tennis-green/90 disabled:opacity-50"
+              className={btnPrimary}
             >
               {saving ? "Bezig…" : "Toevoegen"}
             </button>
