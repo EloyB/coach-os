@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import {
   CalendarGrid,
@@ -13,8 +13,10 @@ import {
   START_HOUR,
   END_HOUR,
   ROW_HEIGHT,
+  DAY_NAMES_SHORT,
   type CalendarSlot,
 } from "@/components/calendar/calendar-grid";
+import { LESSON_LEVELS } from "@/lib/api/lessonSeries";
 import type { WizardSlot } from "../_types";
 import { SlotEditPopover } from "./slot-edit-popover";
 import { localId } from "@/lib/local-id";
@@ -66,6 +68,18 @@ export function CalendarWeekView({
   const [editingSlotId, setEditingSlotId] = useState<string | null>(null);
   const [editAnchor, setEditAnchor] = useState<HTMLElement | null>(null);
   const [ghostStyle, setGhostStyle] = useState<React.CSSProperties | null>(null);
+
+  // Mobiele weergave (< sm): dag-tabs + agenda-lijst i.p.v. de week-grid (drag werkt
+  // niet op touch, en 7 kolommen zijn te smal op een gsm).
+  const [isMobile, setIsMobile] = useState(false);
+  const [selectedDay, setSelectedDay] = useState(0);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 639px)");
+    const sync = () => setIsMobile(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
 
   const slotsRef = useRef(slots);
   const onChangeRef = useRef(onChange);
@@ -273,9 +287,171 @@ export function CalendarWeekView({
     ]);
   }
 
+  // Mobiel: voeg een lesmoment toe aan de gekozen dag. Standaard 17:00–18:00, of
+  // aansluitend op het laatste slot van die dag.
+  function handleAddSlotMobile(dayIndex: number) {
+    const daySlots = slots.filter((s) => s.dayOfWeek === dayIndex);
+    const lastEnd = daySlots.reduce(
+      (max, s) => Math.max(max, parseTime(s.endTime)),
+      0
+    );
+    const startMin =
+      lastEnd > 0 && lastEnd <= END_HOUR * 60 - 60 ? lastEnd : 17 * 60;
+    const clampedStart = Math.min(startMin, END_HOUR * 60 - 60);
+
+    onChange([
+      ...slots,
+      {
+        id: localId(),
+        dayOfWeek: dayIndex,
+        startTime: formatTime(clampedStart),
+        endTime: formatTime(clampedStart + 60),
+        trainerId: defaults?.trainerId ?? null,
+        trainerName: defaults?.trainerName ?? null,
+        courtName: defaults?.courtName ?? null,
+        maxStudents: defaults?.maxStudents ?? 4,
+        level: defaults?.level ?? null,
+      },
+    ]);
+  }
+
+  function slotSummary(slot: WizardSlot): string {
+    return [
+      slot.trainerName,
+      slot.courtName,
+      t("maxStudentsShort", { count: slot.maxStudents }),
+      slot.level != null ? LESSON_LEVELS[slot.level as keyof typeof LESSON_LEVELS] : null,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+  }
+
+  function renderMobileDay() {
+    const daySlots = slots
+      .filter((s) => s.dayOfWeek === selectedDay)
+      .sort((a, b) => a.startTime.localeCompare(b.startTime));
+
+    return (
+      <div>
+        {/* Dag-tabs */}
+        <div className="flex gap-1.5 overflow-x-auto pb-2">
+          {DAY_NAMES_SHORT.map((label, d) => {
+            const count = slots.filter((s) => s.dayOfWeek === d).length;
+            return (
+              <button
+                key={d}
+                type="button"
+                onClick={() => setSelectedDay(d)}
+                className={`flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                  d === selectedDay
+                    ? "bg-tennis-green text-white"
+                    : "border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                }`}
+              >
+                {label}
+                {count > 0 && (
+                  <span
+                    className={`rounded-full px-1.5 text-[10px] font-bold ${
+                      d === selectedDay
+                        ? "bg-white/25 text-white"
+                        : "bg-tennis-green/10 text-tennis-green"
+                    }`}
+                  >
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Agenda-lijst voor de gekozen dag */}
+        <div className="mt-3 space-y-2">
+          {daySlots.length === 0 && (
+            <p className="rounded-lg border border-dashed border-gray-200 bg-gray-50/60 px-4 py-6 text-center text-sm text-gray-400">
+              {t("dayEmpty")}
+            </p>
+          )}
+          {daySlots.map((slot) => {
+            const color = getTrainerColor(slot.trainerId);
+            return (
+              <div
+                key={slot.id}
+                data-slot-id={slot.id}
+                onClick={(e) => handleSlotClick(slot as CalendarSlot, e)}
+                className="flex cursor-pointer items-stretch gap-3 rounded-xl border border-gray-200 bg-white p-3 hover:bg-gray-50"
+              >
+                <span
+                  className="w-1.5 shrink-0 rounded-full"
+                  style={{ backgroundColor: color.border }}
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-semibold text-gray-900">
+                    {slot.startTime} – {slot.endTime}
+                  </div>
+                  <div className="mt-0.5 truncate text-xs text-gray-500">
+                    {slotSummary(slot)}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  aria-label={t("removeSlot")}
+                  title={t("removeSlot")}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleSlotRemove(slot.id);
+                  }}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center self-center rounded-md text-gray-400 hover:bg-red-50 hover:text-red-600"
+                >
+                  <Trash2 size={15} />
+                </button>
+              </div>
+            );
+          })}
+
+          {/* Toevoeg-knop */}
+          <button
+            type="button"
+            onClick={() => handleAddSlotMobile(selectedDay)}
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-gray-300 px-4 py-3 text-sm font-semibold text-gray-500 hover:border-tennis-green/40 hover:bg-tennis-green/5 hover:text-tennis-green"
+          >
+            <Plus size={16} />
+            {t("addSlot")}
+          </button>
+        </div>
+
+        <p className="mt-3 px-1 text-xs text-gray-400">{t("calendarHintMobile")}</p>
+      </div>
+    );
+  }
+
   // ─── Render ─────────────────────────────────────────────────────────────
 
   const isDragging = drag?.moved ?? false;
+
+  if (isMobile) {
+    return (
+      <>
+        {renderMobileDay()}
+        {editingSlotId &&
+          editAnchor &&
+          (() => {
+            const editingSlot = slots.find((s) => s.id === editingSlotId);
+            if (!editingSlot) return null;
+            return (
+              <SlotEditPopover
+                slot={editingSlot}
+                anchorRef={editAnchor}
+                tennisClubId={tennisClubId}
+                side="bottom"
+                onSave={handleSlotSave}
+                onClose={() => setEditingSlotId(null)}
+              />
+            );
+          })()}
+      </>
+    );
+  }
 
   return (
     <>

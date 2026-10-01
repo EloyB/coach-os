@@ -27,6 +27,8 @@ interface SlotEditPopoverProps {
   tennisClubId: string;
   onSave: (updated: WizardSlot) => void;
   onClose: () => void;
+  /** Kant waar de popover opent. Desktop (naast de grid) = "right"; mobiel (onder de rij) = "bottom". */
+  side?: "right" | "bottom";
 }
 
 export function SlotEditPopover({
@@ -35,6 +37,7 @@ export function SlotEditPopover({
   tennisClubId,
   onSave,
   onClose,
+  side = "right",
 }: SlotEditPopoverProps) {
   const t = useTranslations("lessonWizard");
 
@@ -127,10 +130,11 @@ export function SlotEditPopover({
     <Popover open onOpenChange={(open) => !open && onClose()}>
       <PopoverAnchor virtualRef={{ current: anchorRef }} />
       <PopoverContent
-        side="right"
-        align="start"
+        side={side}
+        align={side === "bottom" ? "center" : "start"}
         sideOffset={8}
-        className="w-64 p-4 space-y-3"
+        collisionPadding={12}
+        className="w-64 max-w-[calc(100vw-24px)] p-4 space-y-3"
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <p className="text-xs font-semibold text-gray-900 mb-2">
