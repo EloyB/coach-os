@@ -51,9 +51,9 @@ export const PRICING_TIERS: PricingTier[] = [
     cta: { label: "Start gratis", href: REGISTER_URL },
     features: [
       "Onbeperkt aantal trainers",
-      "Alle functies inbegrepen",
       "Planningsalgoritme",
       "Formulierbouwer per lessenreeks",
+      "Kampen en lessenreeksen",
       "Cash- en online betalingen",
       "E-mailondersteuning",
     ],
@@ -69,9 +69,7 @@ export const PRICING_TIERS: PricingTier[] = [
     cta: { label: "Start gratis", href: REGISTER_URL },
     features: [
       "Alles uit Game",
-      "Onbeperkt aantal trainers",
       "Tot 200 actieve leerlingen",
-      "Kampen en lessenreeksen",
       "Prioritaire ondersteuning",
     ],
   },
