@@ -41,7 +41,7 @@ export const TENNIS_CLUBS_PERSONA: Persona = {
   navLabel: "Tennisclubs",
   metaTitle: "Lessenplanning voor tennisclubs · CoachOS",
   metaDescription:
-    "Software voor lessenplanning bij tennisclubs in de Benelux. Lessenreeksen, anonieme inschrijvingen en automatische groepering — geen Excel meer.",
+    "Software voor lessenplanning bij tennis- en padelclubs. Lessenreeksen, anonieme inschrijvingen en automatische groepering, geen Excel meer.",
   kicker: "VOOR TENNISCLUBS",
   h1: "Lessenplanning voor tennisclubs",
   lead: "CoachOS is een lessenplanningsysteem voor tennisclubs. Beheer lessenreeksen, verzamel inschrijvingen via een publieke link en laat het algoritme leerlingen op niveau verdelen — zonder Excel-sheets, zonder accounts voor leden, zonder oneindig veel mails.",
@@ -167,7 +167,7 @@ export const TRAINERS_PERSONA: Persona = {
   navLabel: "Trainers",
   metaTitle: "Lessenplanning voor trainers · CoachOS",
   metaDescription:
-    "Voor zelfstandige tennis- en padeltrainers — automatiseer inschrijvingen, planning en bevestigingen. Eén tool, geen Excel, gratis tijdens pilot.",
+    "Voor zelfstandige tennis- en padeltrainers: automatiseer inschrijvingen, planning en bevestigingen. Eén tool, geen Excel, 30 dagen gratis proberen.",
   kicker: "VOOR TRAINERS",
   h1: "Lessenplanning voor trainers",
   lead: "CoachOS is een lessenplanningsysteem gemaakt voor trainers en hoofdtrainers in tennis en padel. Stel een lessenreeks in, deel de inschrijflink, en laat het algoritme de planning maken terwijl jij op de baan staat in plaats van achter de laptop.",
@@ -214,7 +214,7 @@ export const TRAINERS_PERSONA: Persona = {
     },
     {
       q: "Wat kost CoachOS voor zelfstandige trainers?",
-      a: "Tijdens de pilotfase volledig gratis. Pilotgebruikers behouden bij lancering een lifetime korting op het reguliere tarief — definitieve prijzen volgen nog.",
+      a: "Je betaalt per actieve leerling, met een onbeperkt aantal trainers: vanaf €25 per maand (of €250 per jaar met 2 maanden gratis). Je probeert alles eerst 30 dagen gratis, zonder betaalgegevens.",
     },
     {
       q: "Hoe lang duurt het om te starten?",

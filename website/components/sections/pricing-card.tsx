@@ -1,14 +1,17 @@
 import { ArrowRight, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Mono } from "@/components/ui/mono";
-import type { PricingTier } from "@/content/pricing";
+import type { Billing, PricingTier } from "@/content/pricing";
 
 interface PricingCardProps {
   tier: PricingTier;
+  billing: Billing;
 }
 
-export function PricingCard({ tier }: PricingCardProps) {
+export function PricingCard({ tier, billing }: PricingCardProps) {
   const featured = tier.featured ?? false;
+  const price = billing === "yearly" ? tier.priceYearly : tier.priceMonthly;
+  const suffix = billing === "yearly" ? "/jaar" : "/maand";
 
   return (
     <div
@@ -25,11 +28,14 @@ export function PricingCard({ tier }: PricingCardProps) {
         </span>
       ) : null}
 
-      <div className="flex items-baseline justify-between gap-3">
-        <h3 className={cn("text-xl font-bold tracking-tight", featured && "text-paper")}>
-          {tier.name}
-        </h3>
-      </div>
+      <h3
+        className={cn(
+          "text-xl font-bold tracking-tight",
+          featured && "text-paper",
+        )}
+      >
+        {tier.name}
+      </h3>
       <p
         className={cn(
           "mt-2 text-sm leading-relaxed",
@@ -40,34 +46,40 @@ export function PricingCard({ tier }: PricingCardProps) {
       </p>
 
       <div className="mt-7 flex items-baseline gap-1">
-        {tier.priceMonthly !== null ? (
-          <>
-            <span className="text-4xl font-bold tracking-tight">
-              €{tier.priceMonthly}
-            </span>
-            <span
-              className={cn(
-                "text-sm font-medium",
-                featured ? "text-paper/70" : "text-ink-3",
-              )}
-            >
-              {tier.priceSuffix}
-            </span>
-          </>
-        ) : (
-          <span className="text-3xl font-bold tracking-tight">
-            {tier.priceSuffix}
-          </span>
-        )}
+        <span className="text-4xl font-bold tracking-tight">€{price}</span>
+        <span
+          className={cn(
+            "text-sm font-medium",
+            featured ? "text-paper/70" : "text-ink-3",
+          )}
+        >
+          {suffix}
+        </span>
       </div>
+
+      {/* Leerling-limiet, met het jaar-voordeel op een eigen regel eronder */}
       <Mono
         className={cn(
-          "mt-1 text-[11px] tracking-tight",
+          "mt-1 block text-[11px] tracking-tight",
           featured ? "text-paper/60" : "text-ink-3",
         )}
       >
-        {tier.priceHelper}
+        {tier.studentLimit}
       </Mono>
+      <div className="mt-2 min-h-[22px]">
+        {billing === "yearly" ? (
+          <span
+            className={cn(
+              "inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide",
+              featured
+                ? "bg-tennis-lime/25 text-tennis-lime"
+                : "bg-tennis-green/10 text-tennis-green",
+            )}
+          >
+            2 maanden gratis
+          </span>
+        ) : null}
+      </div>
 
       <a
         href={tier.cta.href}
@@ -81,6 +93,15 @@ export function PricingCard({ tier }: PricingCardProps) {
         {tier.cta.label}
         <ArrowRight className="h-4 w-4" />
       </a>
+
+      <p
+        className={cn(
+          "mt-3 text-center text-[11px]",
+          featured ? "text-paper/60" : "text-ink-3",
+        )}
+      >
+        30 dagen gratis · geen betaalgegevens
+      </p>
 
       <ul className="mt-8 space-y-3">
         {tier.features.map((f) => (
