@@ -31,7 +31,7 @@ export interface PricingTier {
 
 export const PRICING_HEADING = "Eerlijke tarieven, voor elke clubmaat";
 export const PRICING_SUB =
-  "Je betaalt per actieve leerling — met een onbeperkt aantal trainers. Geen jaarcontract: maandelijks opzegbaar, of betaal per jaar en krijg 2 maanden gratis.";
+  "Je betaalt per actieve leerling, met een onbeperkt aantal trainers. Geen jaarcontract: maandelijks opzegbaar, of betaal per jaar en krijg 2 maanden gratis.";
 
 /** Geruststelling onder de hero en op de kaarten. */
 export const PRICING_TRIAL = "30 dagen gratis proberen, zonder betaalgegevens.";
@@ -107,12 +107,12 @@ export const PRICING_TIERS: PricingTier[] = [
   },
 ];
 
-/** "Hoe werkt de prijs?" — uitlegblokken op de /prijzen-pagina. */
+/** "Hoe werkt de prijs?": uitlegblokken op de /prijzen-pagina. */
 export const PRICING_EXPLAINER_HEADING = "Hoe werkt de prijs?";
 export const PRICING_EXPLAINER: Array<{ title: string; body: string }> = [
   {
     title: "Per actieve leerling, niet per trainer",
-    body: "Je plan hangt af van het aantal unieke leerlingen met een bevestigde inschrijving binnen het jaar. Trainers en jobstudenten voeg je onbeperkt toe — zonder meerkost.",
+    body: "Je plan hangt af van het aantal unieke leerlingen met een bevestigde inschrijving binnen het jaar. Trainers en jobstudenten voeg je onbeperkt toe, zonder meerkost.",
   },
   {
     title: "Ruime marge, zachte overschrijding",
@@ -120,13 +120,13 @@ export const PRICING_EXPLAINER: Array<{ title: string; body: string }> = [
   },
   {
     title: "Nooit geblokkeerd",
-    body: "Inschrijvingen blijven altijd werken, ook als je boven je limiet zit. We blokkeren nooit midden in een seizoen — je leerlingen mogen daar niet de dupe van zijn.",
+    body: "Inschrijvingen blijven altijd werken, ook als je boven je limiet zit. We blokkeren nooit midden in een seizoen, want je leerlingen mogen daar niet de dupe van zijn.",
   },
 ];
 
 /**
  * Vergelijkingsmatrix voor de /prijzen-pagina. Waarden:
- * - `true` / `false` → ✓ / —
+ * - `true` / `false` → ✓ / minus-icoon
  * - string → tekst (bv. limieten)
  */
 export interface CompareGroup {
@@ -256,7 +256,7 @@ export const PRICING_FAQ: PricingFaqEntry[] = [
   },
   {
     q: "Wat als ik boven mijn limiet ga?",
-    a: "Geen paniek: inschrijvingen worden nooit geblokkeerd. Boven je limiet zit nog 10% marge. Daarboven reken je een kleine meerprijs per extra leerling af bij je verlenging. Zit je er structureel boven, dan stellen we een upgrade voor — dat is meestal voordeliger.",
+    a: "Geen paniek: inschrijvingen worden nooit geblokkeerd. Boven je limiet zit nog 10% marge. Daarboven reken je een kleine meerprijs per extra leerling af bij je verlenging. Zit je er structureel boven, dan stellen we een upgrade voor. Dat is meestal voordeliger.",
   },
   {
     q: "Zit btw inbegrepen?",

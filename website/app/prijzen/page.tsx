@@ -20,9 +20,9 @@ const SITE_URL = "https://coach-os.be";
 const PAGE_URL = `${SITE_URL}/prijzen`;
 
 export const metadata: Metadata = {
-  title: "Prijzen — lessenplanning vanaf €25/maand",
+  title: "Prijzen: lessenplanning vanaf €25/maand",
   description:
-    "Tarieven voor CoachOS — lessenplanning voor tennis- en padelclubs. Je betaalt per actieve leerling, met onbeperkt trainers. 30 dagen gratis proberen, maandelijks opzegbaar.",
+    "Tarieven voor CoachOS, lessenplanning voor tennis- en padelclubs. Je betaalt per actieve leerling, met onbeperkt trainers. 30 dagen gratis proberen, maandelijks opzegbaar.",
   alternates: {
     canonical: PAGE_URL,
     languages: {
@@ -36,7 +36,7 @@ export const metadata: Metadata = {
     locale: "nl_BE",
     alternateLocale: ["nl_NL"],
     url: PAGE_URL,
-    title: "Prijzen — CoachOS",
+    title: "Prijzen · CoachOS",
     description:
       "Tarieven voor CoachOS, lessenplanning voor tennis- en padelclubs. Vanaf €25/maand, per actieve leerling. 30 dagen gratis proberen.",
     siteName: "CoachOS",
@@ -92,7 +92,7 @@ export default function PrijzenPage() {
             <p className="mt-5 max-w-2xl text-lg leading-relaxed text-ink-2">
               Drie abonnementen op basis van je aantal actieve leerlingen, met
               een onbeperkt aantal trainers. Alle functies inbegrepen op elk
-              niveau — maandelijks opzegbaar of jaarlijks met 2 maanden gratis.
+              niveau, maandelijks opzegbaar of jaarlijks met 2 maanden gratis.
             </p>
             <p className="mt-6 inline-flex items-center rounded-md border border-tennis-green/25 bg-tennis-green/5 px-3 py-1.5 text-xs font-medium text-ink-2">
               <span className="mr-2 inline-block h-1.5 w-1.5 rounded-full bg-tennis-green" />
