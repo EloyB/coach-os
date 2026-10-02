@@ -3,8 +3,8 @@
 **Status:** openstaand, later te bespreken.
 **Context:** verzameld tijdens het bouwen van de nieuwe prijzen-pagina (okt 2026).
 Model zoals vastgelegd: 4 tiers per *actieve leerling* (onbeperkt trainers) —
-Game €25/€250 (tot 60), Set €49/€490 (tot 200), Match €89/€890 (tot 500),
-Slam op maat (500+/meerdere clubs). Jaarlijks = 2 maanden gratis, **elk jaar**
+Game €25/€250 (tot 60), Set €49/€490 (tot 200), Match €89/€890 (tot 500).
+Geen op-maat/multi-club tier voorlopig. Jaarlijks = 2 maanden gratis, **elk jaar**
 (ingebakken in de jaarprijs). 30 dagen gratis proef zonder betaalgegevens.
 Overschrijding: €3 per leerling/jaar bóven een marge van 10% boven de limiet.
 
@@ -16,7 +16,8 @@ Het omslagpunt (meerprijs = jaarverschil met volgende tier) ligt nu vrij hoog:
 | --- | --- | --- | --- |
 | Game → Set | €240 | 80 | ~146 |
 | Set → Match | €400 | ~134 | ~353 |
-| Match → Slam | op aanvraag | — | 550+ |
+
+Match is voorlopig de hoogste tier (tot 500); daarboven enkel overschrijding.
 
 - Bij maandbetaling ligt het iets hoger (jaarverschil Game→Set = (49−25)×12 = €288 → ~96 boven de marge).
 - Te bespreken: overschrijding verhogen (bv. €4–€5) **of** de in-app "upgrade voorstellen"-nudge vroeger zetten (bv. bij 50–60% van het tier-verschil) zodat Club-grote clubs eerder naar de voorspelbare tier schuiven.

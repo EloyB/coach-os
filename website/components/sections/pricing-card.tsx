@@ -10,9 +10,7 @@ interface PricingCardProps {
 
 export function PricingCard({ tier, billing }: PricingCardProps) {
   const featured = tier.featured ?? false;
-  const isCustom = tier.priceMonthly === null;
-  const price =
-    billing === "yearly" ? tier.priceYearly : tier.priceMonthly;
+  const price = billing === "yearly" ? tier.priceYearly : tier.priceMonthly;
   const suffix = billing === "yearly" ? "/jaar" : "/maand";
 
   return (
@@ -48,21 +46,15 @@ export function PricingCard({ tier, billing }: PricingCardProps) {
       </p>
 
       <div className="mt-7 flex items-baseline gap-1">
-        {isCustom ? (
-          <span className="text-3xl font-bold tracking-tight">Op aanvraag</span>
-        ) : (
-          <>
-            <span className="text-4xl font-bold tracking-tight">€{price}</span>
-            <span
-              className={cn(
-                "text-sm font-medium",
-                featured ? "text-paper/70" : "text-ink-3",
-              )}
-            >
-              {suffix}
-            </span>
-          </>
-        )}
+        <span className="text-4xl font-bold tracking-tight">€{price}</span>
+        <span
+          className={cn(
+            "text-sm font-medium",
+            featured ? "text-paper/70" : "text-ink-3",
+          )}
+        >
+          {suffix}
+        </span>
       </div>
 
       {/* Jaar-voordeel / leerling-limiet */}
@@ -75,7 +67,7 @@ export function PricingCard({ tier, billing }: PricingCardProps) {
         >
           {tier.studentLimit}
         </Mono>
-        {!isCustom && billing === "yearly" ? (
+        {billing === "yearly" ? (
           <span
             className={cn(
               "rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide",
@@ -102,16 +94,14 @@ export function PricingCard({ tier, billing }: PricingCardProps) {
         <ArrowRight className="h-4 w-4" />
       </a>
 
-      {!isCustom ? (
-        <p
-          className={cn(
-            "mt-3 text-center text-[11px]",
-            featured ? "text-paper/60" : "text-ink-3",
-          )}
-        >
-          30 dagen gratis · geen betaalgegevens
-        </p>
-      ) : null}
+      <p
+        className={cn(
+          "mt-3 text-center text-[11px]",
+          featured ? "text-paper/60" : "text-ink-3",
+        )}
+      >
+        30 dagen gratis · geen betaalgegevens
+      </p>
 
       <ul className="mt-8 space-y-3">
         {tier.features.map((f) => (

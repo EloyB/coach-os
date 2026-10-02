@@ -15,10 +15,10 @@ export interface PricingTier {
   id: string;
   name: string;
   tagline: string;
-  /** €/maand. `null` = op maat / op aanvraag. */
-  priceMonthly: number | null;
-  /** €/jaar (2 maanden gratis t.o.v. maandprijs). `null` = op maat. */
-  priceYearly: number | null;
+  /** €/maand. */
+  priceMonthly: number;
+  /** €/jaar (2 maanden gratis t.o.v. de maandprijs). */
+  priceYearly: number;
   /** Korte limiet-regel onder de prijs, bv. "tot 60 leerlingen". */
   studentLimit: string;
   /** Visueel uitgelichte kaart. */
@@ -87,21 +87,6 @@ export const PRICING_TIERS: PricingTier[] = [
       "Hulp bij de opstart",
     ],
   },
-  {
-    id: "opmaat",
-    name: "Slam",
-    tagline: "Voor federaties en clubs met meerdere locaties.",
-    priceMonthly: null,
-    priceYearly: null,
-    studentLimit: "500+ leerlingen of meerdere clubs",
-    cta: { label: "Vraag een offerte", href: "#contact" },
-    features: [
-      "Alles uit Match",
-      "Multi-club beheer",
-      "Aangepaste rapportering",
-      "SLA en dedicated support",
-    ],
-  },
 ];
 
 /** "Hoe werkt de prijs?": uitlegblokken op de /prijzen-pagina. */
@@ -141,12 +126,7 @@ export const PRICING_COMPARE: CompareGroup[] = [
     rows: [
       {
         feature: "Actieve leerlingen",
-        values: {
-          starter: "Tot 60",
-          club: "Tot 200",
-          groot: "Tot 500",
-          opmaat: "500+",
-        },
+        values: { starter: "Tot 60", club: "Tot 200", groot: "Tot 500" },
       },
       {
         feature: "Trainers",
@@ -154,12 +134,7 @@ export const PRICING_COMPARE: CompareGroup[] = [
           starter: "Onbeperkt",
           club: "Onbeperkt",
           groot: "Onbeperkt",
-          opmaat: "Onbeperkt",
         },
-      },
-      {
-        feature: "Clubs / locaties",
-        values: { starter: "1", club: "1", groot: "1", opmaat: "Meerdere" },
       },
     ],
   },
@@ -168,19 +143,19 @@ export const PRICING_COMPARE: CompareGroup[] = [
     rows: [
       {
         feature: "Lessenreeksen en kampen",
-        values: { starter: true, club: true, groot: true, opmaat: true },
+        values: { starter: true, club: true, groot: true },
       },
       {
         feature: "Planningsalgoritme",
-        values: { starter: true, club: true, groot: true, opmaat: true },
+        values: { starter: true, club: true, groot: true },
       },
       {
         feature: "Formulierbouwer per lessenreeks",
-        values: { starter: true, club: true, groot: true, opmaat: true },
+        values: { starter: true, club: true, groot: true },
       },
       {
         feature: "Magic-link bevestigingen",
-        values: { starter: true, club: true, groot: true, opmaat: true },
+        values: { starter: true, club: true, groot: true },
       },
     ],
   },
@@ -189,11 +164,11 @@ export const PRICING_COMPARE: CompareGroup[] = [
     rows: [
       {
         feature: "Cash registratie per inschrijving",
-        values: { starter: true, club: true, groot: true, opmaat: true },
+        values: { starter: true, club: true, groot: true },
       },
       {
         feature: "Online betalingen (Mollie)",
-        values: { starter: true, club: true, groot: true, opmaat: true },
+        values: { starter: true, club: true, groot: true },
       },
     ],
   },
@@ -202,27 +177,15 @@ export const PRICING_COMPARE: CompareGroup[] = [
     rows: [
       {
         feature: "E-mailondersteuning",
-        values: { starter: true, club: true, groot: true, opmaat: true },
+        values: { starter: true, club: true, groot: true },
       },
       {
         feature: "Prioritaire ondersteuning",
-        values: { starter: false, club: true, groot: true, opmaat: true },
+        values: { starter: false, club: true, groot: true },
       },
       {
         feature: "Vaste contactpersoon",
-        values: { starter: false, club: false, groot: true, opmaat: true },
-      },
-      {
-        feature: "Multi-club beheer",
-        values: { starter: false, club: false, groot: false, opmaat: true },
-      },
-      {
-        feature: "Aangepaste rapportering",
-        values: { starter: false, club: false, groot: false, opmaat: true },
-      },
-      {
-        feature: "SLA",
-        values: { starter: false, club: false, groot: false, opmaat: true },
+        values: { starter: false, club: false, groot: true },
       },
     ],
   },
