@@ -7,7 +7,6 @@ import { Mono } from "@/components/ui/mono";
 import { PricingCard } from "@/components/sections/pricing-card";
 import {
   type Billing,
-  PRICING_EARLYBIRD,
   PRICING_HEADING,
   PRICING_SUB,
   PRICING_TIERS,
@@ -55,11 +54,6 @@ export function Pricing({ hideCompareLink = false }: PricingProps) {
         </div>
 
         <p className="mt-6 text-xs text-ink-3">{PRICING_VAT_NOTE}</p>
-
-        <p className="mt-2 inline-flex items-center rounded-md border border-tennis-lime/40 bg-tennis-lime/15 px-3 py-1.5 text-xs font-medium text-ink-2">
-          <span className="mr-2 inline-block h-1.5 w-1.5 rounded-full bg-tennis-green" />
-          {PRICING_EARLYBIRD}
-        </p>
 
         {hideCompareLink ? null : (
           <div className="mt-10 flex flex-wrap items-center justify-between gap-4 border-t border-rule pt-8">

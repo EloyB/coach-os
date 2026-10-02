@@ -35,9 +35,6 @@ export const PRICING_SUB =
 
 /** Geruststelling onder de hero en op de kaarten. */
 export const PRICING_TRIAL = "30 dagen gratis proberen, zonder betaalgegevens.";
-/** Early-bird banner. */
-export const PRICING_EARLYBIRD =
-  "Early-bird: de eerste clubs krijgen een levenslange korting. Zolang de plaatsen duren.";
 export const PRICING_VAT_NOTE = "Alle prijzen zijn excl. btw.";
 
 export const PRICING_TIERS: PricingTier[] = [
