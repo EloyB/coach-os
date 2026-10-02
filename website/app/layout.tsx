@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     "padel lessenreeksen",
     "ledenadministratie tennisclub",
     "trainersplanning",
-    "sportclub software Benelux",
+    "sportclub software",
   ],
   category: "business",
   openGraph: {
@@ -39,7 +39,7 @@ export const metadata: Metadata = {
     url: "https://coach-os.be",
     title: "CoachOS — Lessenplanning voor tennis- en padelclubs",
     description:
-      "Een planning die zichzelf bevestigt. Lessenreeksen, anonieme inschrijvingen en automatische scheduling voor tennis- en padelclubs in de Benelux.",
+      "Een planning die zichzelf bevestigt. Lessenreeksen, anonieme inschrijvingen en automatische scheduling voor tennis- en padelclubs.",
     siteName: "CoachOS",
   },
   twitter: {

@@ -122,7 +122,7 @@ export default function PrijzenPage() {
               <TrustItem
                 icon={MapPin}
                 title="Gemaakt in België"
-                body="Voor tennis- en padelclubs in de Benelux, met Nederlandstalige support."
+                body="Voor tennis- en padelclubs, met Nederlandstalige support."
               />
             </div>
           </div>
