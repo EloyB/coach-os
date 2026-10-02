@@ -57,20 +57,20 @@ export function PricingCard({ tier, billing }: PricingCardProps) {
         </span>
       </div>
 
-      {/* Jaar-voordeel / leerling-limiet */}
-      <div className="mt-1 flex min-h-[18px] items-center gap-2">
-        <Mono
-          className={cn(
-            "text-[11px] tracking-tight",
-            featured ? "text-paper/60" : "text-ink-3",
-          )}
-        >
-          {tier.studentLimit}
-        </Mono>
+      {/* Leerling-limiet, met het jaar-voordeel op een eigen regel eronder */}
+      <Mono
+        className={cn(
+          "mt-1 block text-[11px] tracking-tight",
+          featured ? "text-paper/60" : "text-ink-3",
+        )}
+      >
+        {tier.studentLimit}
+      </Mono>
+      <div className="mt-2 min-h-[22px]">
         {billing === "yearly" ? (
           <span
             className={cn(
-              "rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide",
+              "inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide",
               featured
                 ? "bg-tennis-lime/25 text-tennis-lime"
                 : "bg-tennis-green/10 text-tennis-green",
