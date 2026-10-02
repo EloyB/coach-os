@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { CreditCard, MapPin, ShieldCheck } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { Mono } from "@/components/ui/mono";
 import { SiteNav } from "@/components/site/site-nav";
 import { SiteFooter } from "@/components/site/site-footer";
@@ -103,8 +105,31 @@ export default function PrijzenPage() {
 
         <Pricing hideCompareLink />
 
-        {/* Hoe werkt de prijs? */}
+        {/* Vertrouwen */}
         <section className="border-b border-rule bg-paper">
+          <div className="mx-auto max-w-6xl px-6 py-12 md:py-14">
+            <div className="grid gap-8 sm:grid-cols-3">
+              <TrustItem
+                icon={ShieldCheck}
+                title="GDPR-conform"
+                body="Je data blijft binnen de EU. Geen tracking, geen verkoop aan derden."
+              />
+              <TrustItem
+                icon={CreditCard}
+                title="Veilig betalen"
+                body="Bancontact, iDEAL of overschrijving via Mollie. Geen verborgen kosten."
+              />
+              <TrustItem
+                icon={MapPin}
+                title="Gemaakt in België"
+                body="Voor tennis- en padelclubs in de Benelux, met Nederlandstalige support."
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* Hoe werkt de prijs? */}
+        <section className="border-b border-rule bg-canvas">
           <div className="mx-auto max-w-6xl px-6 py-20 md:py-24">
             <Mono className="text-[11px] tracking-[0.18em] text-ink-3">
               UITLEG
@@ -116,7 +141,7 @@ export default function PrijzenPage() {
               {PRICING_EXPLAINER.map((item, i) => (
                 <div
                   key={item.title}
-                  className="rounded-xl border border-rule bg-canvas p-6"
+                  className="rounded-xl border border-rule bg-paper p-6"
                 >
                   <Mono className="text-[11px] text-ink-3">
                     0{i + 1}
@@ -156,5 +181,27 @@ export default function PrijzenPage() {
       </main>
       <SiteFooter />
     </>
+  );
+}
+
+function TrustItem({
+  icon: Icon,
+  title,
+  body,
+}: {
+  icon: LucideIcon;
+  title: string;
+  body: string;
+}) {
+  return (
+    <div className="flex gap-4">
+      <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-tennis-green text-tennis-lime">
+        <Icon className="h-5 w-5" strokeWidth={2.2} />
+      </span>
+      <div>
+        <h3 className="text-base font-bold tracking-tight text-ink">{title}</h3>
+        <p className="mt-1 text-sm leading-relaxed text-ink-2">{body}</p>
+      </div>
+    </div>
   );
 }

@@ -36,6 +36,9 @@ export const PRICING_SUB =
 /** Geruststelling onder de hero en op de kaarten. */
 export const PRICING_TRIAL = "30 dagen gratis proberen, zonder betaalgegevens.";
 export const PRICING_VAT_NOTE = "Alle prijzen zijn excl. btw.";
+/** Anker: elk plan bevat alles, je kiest enkel op grootte. */
+export const PRICING_INCLUDED_NOTE =
+  "Elk plan bevat alle functies: onbeperkt trainers, planningsalgoritme, kampen en betalingen. Je kiest enkel op basis van je aantal actieve leerlingen.";
 
 export const PRICING_TIERS: PricingTier[] = [
   {

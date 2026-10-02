@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Mono } from "@/components/ui/mono";
 import { PricingCard } from "@/components/sections/pricing-card";
 import {
   type Billing,
   PRICING_HEADING,
+  PRICING_INCLUDED_NOTE,
   PRICING_SUB,
   PRICING_TIERS,
   PRICING_TRIAL,
@@ -53,7 +54,16 @@ export function Pricing({ hideCompareLink = false }: PricingProps) {
           ))}
         </div>
 
-        <p className="mt-6 text-xs text-ink-3">{PRICING_VAT_NOTE}</p>
+        <div className="mt-6 flex items-start gap-3 rounded-xl border border-tennis-green/20 bg-tennis-green/5 px-5 py-4">
+          <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-tennis-green text-tennis-lime">
+            <Check className="h-3 w-3" strokeWidth={3} />
+          </span>
+          <p className="text-sm font-medium text-ink-2">
+            {PRICING_INCLUDED_NOTE}
+          </p>
+        </div>
+
+        <p className="mt-4 text-xs text-ink-3">{PRICING_VAT_NOTE}</p>
 
         {hideCompareLink ? null : (
           <div className="mt-10 flex flex-wrap items-center justify-between gap-4 border-t border-rule pt-8">
