@@ -52,10 +52,8 @@ export const PRICING_TIERS: PricingTier[] = [
     features: [
       "Onbeperkt aantal trainers",
       "Planningsalgoritme",
-      "Formulierbouwer per lessenreeks",
       "Kampen en lessenreeksen",
       "Cash- en online betalingen",
-      "E-mailondersteuning",
     ],
   },
   {
