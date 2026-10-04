@@ -31,11 +31,11 @@ export const FAQ: FaqEntry[] = [
   },
   {
     q: "Wat kost CoachOS?",
-    a: "We finaliseren onze tarifering nog tijdens de pilotfase. Pilotgebruikers krijgen gratis toegang en behouden bij lancering een lifetime korting.",
+    a: "Je betaalt per actieve leerling, met een onbeperkt aantal trainers: vanaf €25 per maand, of €250 per jaar met 2 maanden gratis. Nieuwe clubs proberen alles eerst 30 dagen gratis, zonder betaalgegevens. Zie de prijzenpagina voor alle details.",
   },
   {
     q: "In welke talen is CoachOS beschikbaar?",
-    a: "We starten Nederlandstalig (Nederland + Vlaanderen). Frans volgt zodra de Vlaamse lancering rond is — Wallonië en Frankrijk zitten op de roadmap, gevolgd door bredere Europese expansie.",
+    a: "We starten Nederlandstalig (Nederland + Vlaanderen). Frans volgt zodra de Vlaamse lancering rond is. Wallonië en Frankrijk zitten op de roadmap, gevolgd door bredere Europese expansie.",
   },
   {
     q: "Kan ik meerdere clubs of locaties beheren vanuit één account?",
@@ -51,7 +51,7 @@ export const FAQ: FaqEntry[] = [
   },
   {
     q: "Welke integraties zijn beschikbaar?",
-    a: "Vandaag: e-mailbevestiging via unieke link en Mollie-betalingen (Bancontact + iDEAL). Specifieke integraties — boekhouding, kassa-systemen, agenda-apps — bouwen we op aanvraag tijdens pilot.",
+    a: "Vandaag: e-mailbevestiging via unieke link en Mollie-betalingen (Bancontact + iDEAL). Specifieke integraties zoals boekhouding, kassa-systemen of agenda-apps bouwen we op aanvraag.",
   },
   {
     q: "Kan ik mijn eigen formulier-vragen stellen per lessenreeks?",

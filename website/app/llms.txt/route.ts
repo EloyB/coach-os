@@ -1,7 +1,6 @@
 import { ALL_PERSONAS } from "@/content/personas";
 import { POSTS_BY_DATE } from "@/content/blog";
 import { SITE } from "@/content/meta";
-import { PILOT, PILOT_AVAILABLE_SEATS } from "@/content/pilot";
 
 const SITE_URL = "https://coach-os.be";
 
@@ -21,7 +20,7 @@ export function GET() {
   );
   lines.push("");
   lines.push(
-    `CoachOS is in pilotfase. ${PILOT_AVAILABLE_SEATS > 0 ? `Er zijn nog ${PILOT_AVAILABLE_SEATS} van ${PILOT.totalSeats} pilotplekken vrij` : `Alle ${PILOT.totalSeats} pilotplekken zijn vergeven`} — pilotgebruikers krijgen gratis toegang en lifetime korting. Lancering in 2026.`,
+    "CoachOS is beschikbaar voor tennis- en padelclubs. Nieuwe clubs proberen het 30 dagen gratis, zonder betaalgegevens. Prijzen vanaf €25/maand per actieve leerling, met een onbeperkt aantal trainers.",
   );
   lines.push("");
 
