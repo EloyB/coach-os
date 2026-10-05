@@ -82,8 +82,19 @@ export async function verifyEmail(code: string): Promise<void> {
   await apiClient.post('/auth/verify-email', { code });
 }
 
-export async function resendEmailVerification(): Promise<void> {
-  await apiClient.post('/auth/resend-verification');
+/**
+ * Vraagt een nieuwe verificatiecode aan. Met `onlyIfExpired` vertrekt er enkel een mail als de
+ * vorige code niet meer geldig is. Geeft terug of er effectief een mail verstuurd is.
+ */
+export async function resendEmailVerification(
+  options: { onlyIfExpired?: boolean } = {}
+): Promise<boolean> {
+  const { data } = await apiClient.post<{ sent: boolean }>(
+    '/auth/resend-verification',
+    null,
+    { params: options.onlyIfExpired ? { onlyIfExpired: true } : undefined, skipErrorToast: options.onlyIfExpired }
+  );
+  return data.sent;
 }
 
 export async function registerStudent(request: RegisterStudentRequest): Promise<AuthResponse> {

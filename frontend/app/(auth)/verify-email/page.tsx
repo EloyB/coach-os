@@ -55,7 +55,24 @@ function VerifyEmailForm() {
       return;
     }
     setEmail(user.email);
-  }, [router]);
+
+    // Wie later terugkeert (via de banner) heeft mogelijk een verlopen code. De server stuurt
+    // dan zelf een verse; een nog geldige code blijft ongemoeid.
+    if (justSent) return;
+    let cancelled = false;
+    resendEmailVerification({ onlyIfExpired: true })
+      .then((sent) => {
+        if (cancelled || !sent) return;
+        setNotice(t("verifyFreshCodeSent"));
+        setCooldown(RESEND_COOLDOWN_SECONDS);
+      })
+      .catch(() => {
+        // Niet storend: de gebruiker kan nog altijd zelf een nieuwe code aanvragen.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [router, justSent, t]);
 
   useEffect(() => {
     if (cooldown <= 0) return;

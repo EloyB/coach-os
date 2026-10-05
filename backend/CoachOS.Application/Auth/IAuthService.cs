@@ -19,9 +19,15 @@ public interface IAuthService
         string code,
         CancellationToken cancellationToken = default);
 
-    /// <summary>Stuurt een nieuwe verificatiecode. Maximaal één per minuut.</summary>
-    Task<Result> ResendEmailVerificationAsync(
+    /// <summary>
+    /// Stuurt een nieuwe verificatiecode (maximaal één per minuut). Met
+    /// <paramref name="onlyIfExpired"/> gebeurt dat enkel als er geen geldige code meer openstaat —
+    /// zo krijgt wie later terugkeert een verse code, zonder een nog bruikbare ongeldig te maken.
+    /// De waarde is true als er effectief een mail vertrokken is.
+    /// </summary>
+    Task<Result<bool>> ResendEmailVerificationAsync(
         Guid userId,
+        bool onlyIfExpired = false,
         CancellationToken cancellationToken = default);
 
     /// <summary>

@@ -485,32 +485,39 @@ public class AuthService(
         return Result.Ok();
     }
 
-    public async Task<Result> ResendEmailVerificationAsync(
+    public async Task<Result<bool>> ResendEmailVerificationAsync(
         Guid userId,
+        bool onlyIfExpired = false,
         CancellationToken cancellationToken = default)
     {
         ApplicationUser? user = await userManager.FindByIdAsync(userId.ToString());
         if (user is null || !user.IsActive)
-            return Result.Fail(new Error(ErrorCodes.NotFound, "Account niet gevonden"));
+            return Result<bool>.Fail(new Error(ErrorCodes.NotFound, "Account niet gevonden"));
 
         if (user.EmailConfirmed)
-            return Result.Ok();
+            return Result<bool>.Ok(false);
 
         DateTime now = timeProvider.GetUtcNow().UtcDateTime;
+        bool hasValidCode = user.EmailVerificationCodeHash is not null
+                            && user.EmailVerificationCodeExpiry is not null
+                            && user.EmailVerificationCodeExpiry >= now;
+        if (onlyIfExpired && hasValidCode)
+            return Result<bool>.Ok(false);
+
         if (user.EmailVerificationSentAt is not null
             && now - user.EmailVerificationSentAt.Value < EmailVerificationCodes.ResendCooldown)
         {
-            return Result.Fail(new Error(ErrorCodes.Validation, "Wacht even voor je een nieuwe code aanvraagt."));
+            return Result<bool>.Fail(new Error(ErrorCodes.Validation, "Wacht even voor je een nieuwe code aanvraagt."));
         }
 
         if (user.EmailVerificationSendCount >= EmailVerificationCodes.MaxSends)
-            return Result.Fail(new Error(ErrorCodes.Validation, "Je hebt te veel codes aangevraagd. Neem contact op via info@coach-os.be."));
+            return Result<bool>.Fail(new Error(ErrorCodes.Validation, "Je hebt te veel codes aangevraagd. Neem contact op via info@coach-os.be."));
 
         string code = IssueVerificationCode(user, now);
         user.UpdatedAt = now;
         IdentityResult updateResult = await userManager.UpdateAsync(user);
         if (!updateResult.Succeeded)
-            return Result.Fail(updateResult.Errors.Select(e => e.Description));
+            return Result<bool>.Fail(updateResult.Errors.Select(e => e.Description));
 
         try
         {
@@ -519,10 +526,10 @@ public class AuthService(
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "Verificatiemail versturen mislukt voor {Email}", MaskEmail(user.Email!));
-            return Result.Fail(new Error(ErrorCodes.ExternalService, "De mail kon niet verstuurd worden. Probeer het later opnieuw."));
+            return Result<bool>.Fail(new Error(ErrorCodes.ExternalService, "De mail kon niet verstuurd worden. Probeer het later opnieuw."));
         }
 
-        return Result.Ok();
+        return Result<bool>.Ok(true);
     }
 
     public async Task<bool> IsEmailVerifiedAsync(

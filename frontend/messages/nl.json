@@ -1043,7 +1043,8 @@
     "verifyResent": "Nieuwe code verstuurd. Bekijk ook je spam-map.",
     "verifyResendError": "De code kon niet verstuurd worden. Probeer het later opnieuw.",
     "verifyLater": "Later doen",
-    "verifyLaterHint": "Je kan CoachOS al verkennen. Mails naar trainers en leerlingen versturen kan pas na bevestiging."
+    "verifyLaterHint": "Je kan CoachOS al verkennen. Mails naar trainers en leerlingen versturen kan pas na bevestiging.",
+    "verifyFreshCodeSent": "Je vorige code was verlopen. We hebben je een nieuwe gestuurd."
   },
   "studentAuth": {
     "title": "Inloggen als leerling",
