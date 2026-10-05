@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { DashboardSidebar } from "@/components/layouts/dashboard-sidebar";
 import { MobileBottomNav } from "@/components/layouts/dashboard-bottom-nav";
 import { SlashLabel } from "@/components/ui/slash-label";
+import { AccountBanners } from "@/components/dashboard/account-banners";
 import { getAuthUser, isAuthenticated, type AuthUser } from "@/lib/auth";
 
 function formatDayHeader(): string {
@@ -52,6 +53,8 @@ export default function DashboardLayout({
         <header className="bg-paper border-b border-rule px-7 py-3.5 flex items-center shrink-0">
           <SlashLabel>{formatDayHeader()}</SlashLabel>
         </header>
+
+        <AccountBanners user={user} />
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto px-7 py-6 pb-[calc(4.5rem_+_env(safe-area-inset-bottom))] lg:pb-6">

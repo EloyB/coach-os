@@ -22,6 +22,8 @@ export interface AuthUser {
   isSuperAdmin?: boolean;
   /** Tennisclub-id's waarvan de trainer hoofdtrainer is: read-only toegang tot inschrijvingen + planning voor die clubs. */
   headTrainerClubIds?: string[];
+  /** Enkel expliciet `false` betekent "nog te bevestigen"; ontbrekend = bevestigd (oudere sessies). */
+  emailVerified?: boolean;
 }
 
 export function isStudent(): boolean {
@@ -100,6 +102,11 @@ export function setAuthUser(user: AuthUser): void {
   // kan doen zonder localStorage te kunnen lezen. NIET security-kritisch — de
   // backend blijft de uiteindelijke autoriteit (RequireRole/RequireAuthorization).
   document.cookie = `${ROLE_COOKIE}=${encodeURIComponent(user.role)}; path=/; SameSite=Lax`;
+}
+
+export function markEmailVerified(): void {
+  const user = getAuthUser();
+  if (user) setAuthUser({ ...user, emailVerified: true });
 }
 
 export function removeAuthUser(): void {

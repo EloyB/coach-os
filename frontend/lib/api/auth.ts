@@ -19,6 +19,8 @@ export interface AuthResponse {
   memberships: OrganizationMembershipInfo[];
   isSuperAdmin?: boolean;
   headTrainerClubIds?: string[];
+  /** False zolang een zelf-geregistreerde gebruiker zijn e-mailadres nog niet bevestigd heeft. */
+  emailVerified?: boolean;
 }
 
 export interface AcceptInviteRequest {
@@ -60,6 +62,10 @@ export interface RegisterRequest {
   lastName: string;
   email: string;
   password: string;
+  acceptTerms: boolean;
+  acceptDataProcessingAgreement: boolean;
+  /** Honeypot — blijft leeg bij echte gebruikers. */
+  website?: string;
 }
 
 export async function login(request: LoginRequest): Promise<AuthResponse> {
@@ -70,6 +76,14 @@ export async function login(request: LoginRequest): Promise<AuthResponse> {
 export async function register(request: RegisterRequest): Promise<AuthResponse> {
   const { data } = await apiClient.post<AuthResponse>('/auth/register', request);
   return data;
+}
+
+export async function verifyEmail(code: string): Promise<void> {
+  await apiClient.post('/auth/verify-email', { code });
+}
+
+export async function resendEmailVerification(): Promise<void> {
+  await apiClient.post('/auth/resend-verification');
 }
 
 export async function registerStudent(request: RegisterStudentRequest): Promise<AuthResponse> {

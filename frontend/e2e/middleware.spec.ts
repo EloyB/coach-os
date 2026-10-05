@@ -30,6 +30,12 @@ test.describe("Route Protection Middleware", () => {
     await expect(page).toHaveURL(/\/dashboard/);
   });
 
+  test("redirects unauthenticated user from /verify-email to /login", async ({ page }) => {
+    await page.goto("/verify-email");
+
+    await expect(page).toHaveURL(/\/login/);
+  });
+
   test("allows public enrollment page without auth", async ({ page }) => {
     await page.goto("/enroll/some-id");
 
