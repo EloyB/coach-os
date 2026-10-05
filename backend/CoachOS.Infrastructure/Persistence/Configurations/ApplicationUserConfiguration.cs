@@ -16,6 +16,9 @@ public class ApplicationUserConfiguration : IEntityTypeConfiguration<Application
             .IsRequired()
             .HasMaxLength(100);
 
+        builder.Property(u => u.EmailVerificationCodeHash)
+            .HasMaxLength(64);
+
         // Computed column wordt niet opgeslagen
         builder.Ignore(u => u.FullName);
 

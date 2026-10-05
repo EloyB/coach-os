@@ -19,6 +19,7 @@ public class InviteTrainerEndpoint : IEndpoint
         })
         .RequireAuthorization(policy => policy.RequireRole("Admin"))
         .AddEndpointFilter<ValidationFilter<InviteTrainerRequest>>()
+        .AddEndpointFilter<RequireVerifiedEmailFilter>()
         .WithTags("Trainers");
     }
 }

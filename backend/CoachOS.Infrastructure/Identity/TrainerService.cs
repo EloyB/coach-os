@@ -43,6 +43,14 @@ public class TrainerService(
             if (existingMembership is { IsActive: true })
                 return Result<Guid>.Fail("Trainer is al lid van deze organisatie");
 
+            // Een zelf-geregistreerd account met onbevestigd e-mailadres bewijst niet dat de
+            // houder dat adres bezit. Zonder deze check kan iemand zich met andermans adres
+            // registreren en zo automatisch toegang krijgen zodra een club dat adres uitnodigt.
+            if (existing.IsActive && !existing.EmailConfirmed)
+                return Result<Guid>.Fail(new Error(
+                    ErrorCodes.Conflict,
+                    "Het account met dit e-mailadres is nog niet bevestigd. Vraag de trainer om eerst zijn e-mailadres te bevestigen."));
+
             // User bestaat globaal en is actief elders → voeg direct membership toe,
             // geen accept-flow nodig. User logt in met bestaand wachtwoord en switcht.
             if (existing.IsActive)

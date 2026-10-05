@@ -38,4 +38,40 @@ public class MjmlTemplateRenderTests
             because: "de raw-placeholder moet de MJML-compilatie overleven, anders verdwijnen de deelnemersblokken");
         html.Should().Contain("Voorjaar");
     }
+
+    [Test]
+    public void EmailVerification_RendersCodeAndValidity()
+    {
+        string html = _renderer.Render("email-verification", new Dictionary<string, string>
+        {
+            ["firstName"] = "Jan",
+            ["code"] = "042917",
+            ["validMinutes"] = "30",
+            ["year"] = "2026",
+        });
+
+        html.Should().Contain("042917");
+        html.Should().Contain("Hoi Jan");
+        html.Should().Contain("30 minuten");
+        html.Should().NotContain("{{");
+    }
+
+    [Test]
+    public void TrialReminder_RendersHeadingBodyAndLink()
+    {
+        string html = _renderer.Render("trial-reminder", new Dictionary<string, string>
+        {
+            ["organizationName"] = "TC Brederode",
+            ["heading"] = "Nog 10 dagen proef",
+            ["body"] = "Je gratis proef loopt nog tot en met 04/11/2026.",
+            ["appUrl"] = "https://app.coach-os.be/dashboard",
+            ["year"] = "2026",
+        });
+
+        html.Should().Contain("Nog 10 dagen proef");
+        html.Should().Contain("TC Brederode");
+        html.Should().Contain("04/11/2026");
+        html.Should().Contain("https://app.coach-os.be/dashboard");
+        html.Should().NotContain("{{");
+    }
 }

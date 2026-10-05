@@ -1,4 +1,5 @@
 using CoachOS.API.Extensions;
+using CoachOS.API.Filters;
 using CoachOS.Application.Planning;
 
 namespace CoachOS.API.Endpoints.Planning;
@@ -14,6 +15,7 @@ public class ConfirmScheduleEndpoint : IEndpoint
                 return result.IsSuccess ? Results.Ok(true) : result.ToErrorResult();
             })
         .RequireAuthorization(policy => policy.RequireRole("Admin"))
+        .AddEndpointFilter<RequireVerifiedEmailFilter>()
         .WithTags("Planning");
     }
 }

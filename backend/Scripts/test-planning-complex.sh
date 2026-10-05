@@ -29,7 +29,9 @@ auth=$(invoke POST "/auth/register" '{
     "firstName": "Admin",
     "lastName": "Beheerder",
     "email": "admin@voorbeeld.be",
-    "password": "Complex1234!"
+    "password": "Complex1234!",
+    "acceptTerms": true,
+    "acceptDataProcessingAgreement": true
 }')
 token=$(echo "$auth" | python3 -c "import sys,json; print(json.load(sys.stdin).get('token',''))" 2>/dev/null)
 if [ -z "$token" ]; then

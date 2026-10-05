@@ -33,4 +33,10 @@ public interface ISuperAdminService
 
     /// <summary>Zet de Early-Bird flag op een organisatie. Lifetime discount-bron.</summary>
     Task<Result> SetOrganizationEarlyBirdAsync(Guid organizationId, bool isEarlyBird, CancellationToken ct = default);
+
+    /// <summary>
+    /// Verlengt de proef van een organisatie met het gegeven aantal dagen, gerekend vanaf de
+    /// huidige einddatum of vanaf vandaag als de proef al voorbij is. Enkel voor organisaties in proef.
+    /// </summary>
+    Task<Result> ExtendTrialAsync(Guid organizationId, int days, CancellationToken ct = default);
 }

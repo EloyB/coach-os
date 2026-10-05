@@ -51,7 +51,8 @@ print("\nSetting up...")
 r = api("POST", "/auth/register", {
     "organizationName": "Padel Club Antwerpen",
     "firstName": "Coach", "lastName": "Admin",
-    "email": "coach@padelclub.be", "password": "Padel2026!"
+    "email": "coach@padelclub.be", "password": "Padel2026!",
+    "acceptTerms": True, "acceptDataProcessingAgreement": True
 })
 if r.status_code != 200:
     r = api("POST", "/auth/login", {"email": "coach@padelclub.be", "password": "Padel2026!"})

@@ -14,9 +14,7 @@ public class RegisterEndpoint : IEndpoint
             IAuthService authService,
             CancellationToken ct) =>
         {
-            var result = await authService.RegisterAsync(
-                request.OrganizationName, request.FirstName, request.LastName,
-                request.Email, request.Password, ct);
+            var result = await authService.RegisterAsync(request, ct);
 
             return result.IsSuccess ? Results.Ok(result.Value) : result.ToErrorResult();
         })

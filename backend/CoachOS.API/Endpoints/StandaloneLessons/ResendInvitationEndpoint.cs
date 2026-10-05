@@ -1,4 +1,5 @@
 using CoachOS.API.Extensions;
+using CoachOS.API.Filters;
 using CoachOS.Application.StandaloneLessons;
 
 namespace CoachOS.API.Endpoints.StandaloneLessons;
@@ -16,6 +17,7 @@ public class ResendInvitationEndpoint : IEndpoint
                 return result.IsSuccess ? Results.NoContent() : result.ToErrorResult();
             })
         .RequireAuthorization()
+        .AddEndpointFilter<RequireVerifiedEmailFilter>()
         .WithTags("StandaloneLessons");
     }
 }

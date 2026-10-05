@@ -154,12 +154,17 @@ public static class ConfigurationExtensions
             {
                 options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
-                options.AddFixedWindowLimiter("auth", limiter =>
-                {
-                    limiter.PermitLimit = 5;
-                    limiter.Window = TimeSpan.FromMinutes(1);
-                    limiter.QueueLimit = 0;
-                });
+                // Per IP: nu registratie publiek is, mag een bot die /auth/register bestookt
+                // het inloggen van andere klanten niet mee blokkeren.
+                options.AddPolicy("auth", context =>
+                    RateLimitPartition.GetFixedWindowLimiter(
+                        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                        _ => new FixedWindowRateLimiterOptions
+                        {
+                            PermitLimit = 5,
+                            Window = TimeSpan.FromMinutes(1),
+                            QueueLimit = 0,
+                        }));
 
                 options.AddFixedWindowLimiter("public", limiter =>
                 {

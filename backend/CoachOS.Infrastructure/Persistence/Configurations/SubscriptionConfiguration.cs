@@ -1,4 +1,5 @@
 using CoachOS.Domain.Entities;
+using CoachOS.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -10,8 +11,9 @@ public class SubscriptionConfiguration : IEntityTypeConfiguration<Subscription>
     {
         builder.HasKey(s => s.Id);
 
-        builder.Property(s => s.Plan)
-            .IsRequired();
+        builder.Property(s => s.Status)
+            .IsRequired()
+            .HasDefaultValue(SubscriptionStatus.Legacy);
 
         builder.Property(s => s.MonthlyPrice)
             .IsRequired()

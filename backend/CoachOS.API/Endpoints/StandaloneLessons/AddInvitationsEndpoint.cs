@@ -19,6 +19,7 @@ public class AddInvitationsEndpoint : IEndpoint
             })
         .RequireAuthorization()
         .AddEndpointFilter<ValidationFilter<AddInvitationsRequest>>()
+        .AddEndpointFilter<RequireVerifiedEmailFilter>()
         .WithTags("StandaloneLessons");
     }
 }

@@ -5,12 +5,31 @@ namespace CoachOS.Application.Auth;
 
 public interface IAuthService
 {
+    /// <summary>
+    /// Maakt organisatie, admin, lidmaatschap en een gratis proef aan, legt de aanvaarding van
+    /// de voorwaarden vast en geeft meteen een ingelogde sessie terug. Geen betaalgegevens nodig.
+    /// </summary>
     Task<Result<AuthResponseDto>> RegisterAsync(
-        string organizationName,
-        string firstName,
-        string lastName,
-        string email,
-        string password,
+        RegisterRequest request,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Bevestigt het e-mailadres van de gebruiker met de code uit de verificatiemail.</summary>
+    Task<Result> VerifyEmailAsync(
+        Guid userId,
+        string code,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Stuurt een nieuwe verificatiecode. Maximaal één per minuut.</summary>
+    Task<Result> ResendEmailVerificationAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// True als het e-mailadres van de gebruiker bevestigd is. Acties die mails naar derden
+    /// versturen (trainers, leerlingen) vereisen dit.
+    /// </summary>
+    Task<bool> IsEmailVerifiedAsync(
+        Guid userId,
         CancellationToken cancellationToken = default);
 
     Task<Result<AuthResponseDto>> LoginAsync(

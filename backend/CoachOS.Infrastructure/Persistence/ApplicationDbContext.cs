@@ -32,6 +32,7 @@ public class ApplicationDbContext(
     public DbSet<Enrollment> Enrollments { get; set; } = null!;
     public DbSet<Payment> Payments { get; set; } = null!;
     public DbSet<Subscription> Subscriptions { get; set; } = null!;
+    public DbSet<TermsAcceptance> TermsAcceptances { get; set; } = null!;
     public DbSet<EnrollmentForm> EnrollmentForms { get; set; } = null!;
     public DbSet<FormField> FormFields { get; set; } = null!;
     public DbSet<FormResponse> FormResponses { get; set; } = null!;
@@ -78,6 +79,7 @@ public class ApplicationDbContext(
         builder.ApplyConfiguration(new EnrollmentConfiguration());
         builder.ApplyConfiguration(new PaymentConfiguration());
         builder.ApplyConfiguration(new SubscriptionConfiguration());
+        builder.ApplyConfiguration(new TermsAcceptanceConfiguration());
         builder.ApplyConfiguration(new EnrollmentFormConfiguration());
         builder.ApplyConfiguration(new FormFieldConfiguration());
         builder.ApplyConfiguration(new FormResponseConfiguration());
@@ -130,6 +132,8 @@ public class ApplicationDbContext(
         builder.Entity<Payment>().HasQueryFilter(e =>
             _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
         builder.Entity<Subscription>().HasQueryFilter(e =>
+            _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
+        builder.Entity<TermsAcceptance>().HasQueryFilter(e =>
             _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
         builder.Entity<ScheduleAssignment>().HasQueryFilter(e =>
             _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
