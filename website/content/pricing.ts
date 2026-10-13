@@ -1,13 +1,14 @@
-import { SITE } from "@/content/meta";
-
 /**
  * Site-wide visibility toggle voor alles rond tarieven (homepage-sectie,
  * /prijzen-pagina, nav-link, sitemap). Staat live sinds de prijzen vastliggen.
  */
 export const PRICING_VISIBLE: boolean = true;
 
-/** "Start gratis" leidt naar de registratie/proef in de app. */
-export const REGISTER_URL = `${SITE.appUrl}/register`;
+/**
+ * Aanmelden verloopt voorlopig persoonlijk: clubs bellen of mailen ons eerst.
+ * De CTA's leiden daarom naar de contactsectie, niet naar self-service registratie.
+ */
+export const CONTACT_HREF = "#contact";
 
 export type Billing = "monthly" | "yearly";
 
@@ -33,8 +34,9 @@ export const PRICING_HEADING = "Eerlijke tarieven, voor elke clubmaat";
 export const PRICING_SUB =
   "Je betaalt per actieve leerling, met een onbeperkt aantal trainers. Geen jaarcontract: maandelijks opzegbaar, of betaal per jaar en krijg 2 maanden gratis.";
 
-/** Geruststelling onder de hero en op de kaarten. */
-export const PRICING_TRIAL = "30 dagen gratis proberen, zonder betaalgegevens.";
+/** Voorlopig geen online aanmelding: elke club start persoonlijk op via contact. */
+export const PRICING_ONBOARDING_NOTE =
+  "Aanmelden kan voorlopig enkel persoonlijk. Bel of mail ons: we bekijken samen welke oplossing het best bij je club past en starten je 30 dagen gratis proef op.";
 export const PRICING_VAT_NOTE = "Alle prijzen zijn excl. btw.";
 /** Anker: elk plan bevat alles, je kiest enkel op grootte. */
 export const PRICING_INCLUDED_NOTE =
@@ -48,7 +50,7 @@ export const PRICING_TIERS: PricingTier[] = [
     priceMonthly: 25,
     priceYearly: 250,
     studentLimit: "tot 60 actieve leerlingen",
-    cta: { label: "Start gratis", href: REGISTER_URL },
+    cta: { label: "Neem contact op", href: CONTACT_HREF },
     features: [
       "Onbeperkt aantal trainers",
       "Planningsalgoritme",
@@ -64,7 +66,7 @@ export const PRICING_TIERS: PricingTier[] = [
     priceYearly: 490,
     studentLimit: "tot 200 actieve leerlingen",
     featured: true,
-    cta: { label: "Start gratis", href: REGISTER_URL },
+    cta: { label: "Neem contact op", href: CONTACT_HREF },
     features: [
       "Alles uit Game",
       "Tot 200 actieve leerlingen",
@@ -78,7 +80,7 @@ export const PRICING_TIERS: PricingTier[] = [
     priceMonthly: 89,
     priceYearly: 890,
     studentLimit: "tot 500 actieve leerlingen",
-    cta: { label: "Start gratis", href: REGISTER_URL },
+    cta: { label: "Neem contact op", href: CONTACT_HREF },
     features: [
       "Alles uit Set",
       "Tot 500 actieve leerlingen",
@@ -198,6 +200,10 @@ export interface PricingFaqEntry {
 export const PRICING_FAQ_HEADING = "Vragen over tarifering";
 export const PRICING_FAQ: PricingFaqEntry[] = [
   {
+    q: "Hoe meld ik mijn club aan?",
+    a: "Voorlopig verloopt elke aanmelding persoonlijk. Je belt of mailt ons, we bekijken samen welke oplossing het best bij je club past en zetten alles voor je klaar. Zo ben je meteen goed vertrokken.",
+  },
+  {
     q: "Wat telt als een actieve leerling?",
     a: "Een unieke persoon met minstens één bevestigde inschrijving in een lessenreeks of kamp binnen het facturatiejaar. Wie annuleert vóór de start telt niet mee, en dezelfde leerling in meerdere reeksen telt maar één keer. Broers en zussen onder hetzelfde ouder-e-mailadres tellen apart.",
   },
@@ -211,7 +217,7 @@ export const PRICING_FAQ: PricingFaqEntry[] = [
   },
   {
     q: "Is er een gratis proefperiode?",
-    a: "Ja. Je probeert CoachOS 30 dagen volledig gratis, met alle functies en zonder betaalgegevens vooraf. Je beslist pas daarna of je doorgaat.",
+    a: "Ja. Na een korte kennismaking zetten we je club klaar en probeer je CoachOS 30 dagen volledig gratis, met alle functies en zonder betaalgegevens vooraf. Je beslist pas daarna of je doorgaat.",
   },
   {
     q: "Wat als ik boven mijn limiet ga?",

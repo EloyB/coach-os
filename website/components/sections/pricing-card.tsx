@@ -100,7 +100,7 @@ export function PricingCard({ tier, billing }: PricingCardProps) {
           featured ? "text-paper/60" : "text-ink-3",
         )}
       >
-        30 dagen gratis · geen betaalgegevens
+        Persoonlijke opstart · 30 dagen gratis
       </p>
 
       <ul className="mt-8 space-y-3">

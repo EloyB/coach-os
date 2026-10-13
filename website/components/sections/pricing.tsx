@@ -9,9 +9,9 @@ import {
   type Billing,
   PRICING_HEADING,
   PRICING_INCLUDED_NOTE,
+  PRICING_ONBOARDING_NOTE,
   PRICING_SUB,
   PRICING_TIERS,
-  PRICING_TRIAL,
   PRICING_VAT_NOTE,
 } from "@/content/pricing";
 
@@ -34,9 +34,9 @@ export function Pricing({ hideCompareLink = false }: PricingProps) {
             {PRICING_HEADING}
           </h2>
           <p className="mt-3 text-base text-ink-2">{PRICING_SUB}</p>
-          <p className="mt-4 inline-flex items-center rounded-md border border-tennis-green/25 bg-tennis-green/5 px-3 py-1.5 text-xs font-medium text-ink-2">
-            <span className="mr-2 inline-block h-1.5 w-1.5 rounded-full bg-tennis-green" />
-            {PRICING_TRIAL}
+          <p className="mt-4 flex items-start gap-2 rounded-md border border-tennis-green/25 bg-tennis-green/5 px-3 py-2 text-xs font-medium text-ink-2">
+            <span className="mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-tennis-green" />
+            {PRICING_ONBOARDING_NOTE}
           </p>
         </div>
 

@@ -14,7 +14,7 @@ import {
   PRICING_EXPLAINER_HEADING,
   PRICING_FAQ,
   PRICING_FAQ_HEADING,
-  PRICING_TRIAL,
+  PRICING_ONBOARDING_NOTE,
   PRICING_VISIBLE,
 } from "@/content/pricing";
 
@@ -96,9 +96,9 @@ export default function PrijzenPage() {
               een onbeperkt aantal trainers. Alle functies inbegrepen op elk
               niveau, maandelijks opzegbaar of jaarlijks met 2 maanden gratis.
             </p>
-            <p className="mt-6 inline-flex items-center rounded-md border border-tennis-green/25 bg-tennis-green/5 px-3 py-1.5 text-xs font-medium text-ink-2">
-              <span className="mr-2 inline-block h-1.5 w-1.5 rounded-full bg-tennis-green" />
-              {PRICING_TRIAL}
+            <p className="mt-6 flex max-w-2xl items-start gap-2 rounded-md border border-tennis-green/25 bg-tennis-green/5 px-4 py-3 text-sm font-medium text-ink-2">
+              <span className="mt-1.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-tennis-green" />
+              {PRICING_ONBOARDING_NOTE}
             </p>
           </div>
         </section>
