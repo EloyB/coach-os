@@ -65,7 +65,6 @@ export const PRICING_TIERS: PricingTier[] = [
     priceMonthly: 49,
     priceYearly: 490,
     studentLimit: "tot 200 actieve leerlingen",
-    featured: true,
     cta: { label: "Neem contact op", href: CONTACT_HREF },
     features: [
       "Alles uit Game",

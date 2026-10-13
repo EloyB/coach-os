@@ -89,7 +89,7 @@ export default function PrijzenPage() {
               TARIEVEN
             </Mono>
             <h1 className="mt-3 max-w-3xl text-4xl font-bold leading-[1.05] tracking-tight md:text-5xl">
-              Betaal per leerling, niet per trainer.
+              Eerlijke tarieven, voor elke clubmaat
             </h1>
             <p className="mt-5 max-w-2xl text-lg leading-relaxed text-ink-2">
               Drie abonnementen op basis van je aantal actieve leerlingen, met
@@ -103,7 +103,7 @@ export default function PrijzenPage() {
           </div>
         </section>
 
-        <Pricing hideCompareLink />
+        <Pricing hideCompareLink hideHeader />
 
         {/* Vertrouwen */}
         <section className="border-b border-rule bg-paper">

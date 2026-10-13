@@ -1,14 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRight, Check } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Mono } from "@/components/ui/mono";
 import { PricingCard } from "@/components/sections/pricing-card";
 import {
   type Billing,
   PRICING_HEADING,
-  PRICING_INCLUDED_NOTE,
   PRICING_ONBOARDING_NOTE,
   PRICING_SUB,
   PRICING_TIERS,
@@ -18,30 +17,37 @@ import {
 interface PricingProps {
   /** Verberg de "Bekijk volledige prijslijst"-link (bv. op de /prijzen-pagina zelf). */
   hideCompareLink?: boolean;
+  /** Verberg het tekstblok (label, titel, sub, note) boven de panelen, bv. op de /prijzen-pagina waar de hero dat al dekt. */
+  hideHeader?: boolean;
 }
 
-export function Pricing({ hideCompareLink = false }: PricingProps) {
+export function Pricing({
+  hideCompareLink = false,
+  hideHeader = false,
+}: PricingProps) {
   const [billing, setBilling] = useState<Billing>("yearly");
 
   return (
     <section id="prijzen" className="border-b border-rule bg-canvas">
       <div className="mx-auto max-w-6xl px-6 py-20 md:py-28">
-        <div className="max-w-2xl">
-          <Mono className="text-[11px] tracking-[0.18em] text-ink-3">
-            TARIEVEN
-          </Mono>
-          <h2 className="mt-3 text-3xl font-bold tracking-tight md:text-4xl">
-            {PRICING_HEADING}
-          </h2>
-          <p className="mt-3 text-base text-ink-2">{PRICING_SUB}</p>
-          <p className="mt-4 flex items-start gap-2 rounded-md border border-tennis-green/25 bg-tennis-green/5 px-3 py-2 text-xs font-medium text-ink-2">
-            <span className="mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-tennis-green" />
-            {PRICING_ONBOARDING_NOTE}
-          </p>
-        </div>
+        {hideHeader ? null : (
+          <div className="max-w-2xl">
+            <Mono className="text-[11px] tracking-[0.18em] text-ink-3">
+              TARIEVEN
+            </Mono>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight md:text-4xl">
+              {PRICING_HEADING}
+            </h2>
+            <p className="mt-3 text-base text-ink-2">{PRICING_SUB}</p>
+            <p className="mt-4 flex items-start gap-2 rounded-md border border-tennis-green/25 bg-tennis-green/5 px-3 py-2 text-xs font-medium text-ink-2">
+              <span className="mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-tennis-green" />
+              {PRICING_ONBOARDING_NOTE}
+            </p>
+          </div>
+        )}
 
         {/* Maand / jaar toggle */}
-        <div className="mt-10 flex items-center gap-3">
+        <div className={cn("flex items-center gap-3", !hideHeader && "mt-10")}>
           <BillingToggle billing={billing} onChange={setBilling} />
           <span className="text-xs font-medium text-ink-3">
             Jaarlijks = 2 maanden gratis
@@ -54,16 +60,7 @@ export function Pricing({ hideCompareLink = false }: PricingProps) {
           ))}
         </div>
 
-        <div className="mt-6 flex items-start gap-3 rounded-xl border border-tennis-green/20 bg-tennis-green/5 px-5 py-4">
-          <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-tennis-green text-tennis-lime">
-            <Check className="h-3 w-3" strokeWidth={3} />
-          </span>
-          <p className="text-sm font-medium text-ink-2">
-            {PRICING_INCLUDED_NOTE}
-          </p>
-        </div>
-
-        <p className="mt-4 text-xs text-ink-3">{PRICING_VAT_NOTE}</p>
+        <p className="mt-6 text-xs text-ink-3">{PRICING_VAT_NOTE}</p>
 
         {hideCompareLink ? null : (
           <div className="mt-10 flex flex-wrap items-center justify-between gap-4 border-t border-rule pt-8">

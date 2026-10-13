@@ -1,6 +1,5 @@
 import { ArrowRight, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Mono } from "@/components/ui/mono";
 import type { Billing, PricingTier } from "@/content/pricing";
 
 interface PricingCardProps {
@@ -30,7 +29,7 @@ export function PricingCard({ tier, billing }: PricingCardProps) {
 
       <h3
         className={cn(
-          "text-xl font-bold tracking-tight",
+          "text-2xl font-bold tracking-tight",
           featured && "text-paper",
         )}
       >
@@ -38,11 +37,11 @@ export function PricingCard({ tier, billing }: PricingCardProps) {
       </h3>
       <p
         className={cn(
-          "mt-2 text-sm leading-relaxed",
+          "mt-2 text-base font-medium leading-relaxed",
           featured ? "text-paper/80" : "text-ink-2",
         )}
       >
-        {tier.tagline}
+        {tier.studentLimit}
       </p>
 
       <div className="mt-7 flex items-baseline gap-1">
@@ -57,16 +56,7 @@ export function PricingCard({ tier, billing }: PricingCardProps) {
         </span>
       </div>
 
-      {/* Leerling-limiet, met het jaar-voordeel op een eigen regel eronder */}
-      <Mono
-        className={cn(
-          "mt-1 block text-[11px] tracking-tight",
-          featured ? "text-paper/60" : "text-ink-3",
-        )}
-      >
-        {tier.studentLimit}
-      </Mono>
-      <div className="mt-2 min-h-[22px]">
+      <div className="mt-3 min-h-[22px]">
         {billing === "yearly" ? (
           <span
             className={cn(

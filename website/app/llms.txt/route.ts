@@ -52,7 +52,7 @@ export function GET() {
     "- Magic-link bevestigingen — leerlingen bevestigen hun lestijd met één klik in een e-mail; geen wachtwoord.",
   );
   lines.push(
-    "- Mollie-betalingen (Bancontact + iDEAL) — op de roadmap voor de eerste release.",
+    "- Mollie-betalingen (Bancontact + iDEAL) — online betalen, plus handmatige cash-registratie per inschrijving.",
   );
   lines.push("");
 
