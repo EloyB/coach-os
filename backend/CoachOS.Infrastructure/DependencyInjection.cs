@@ -60,6 +60,7 @@ public static class DependencyInjection
         services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.Section));
         services.Configure<AppOptions>(configuration.GetSection(AppOptions.Section));
         services.Configure<MollieOptions>(configuration.GetSection(MollieOptions.Section));
+        services.Configure<MollieBillingOptions>(configuration.GetSection(MollieBillingOptions.Section));
 
         // TimeProvider is in .NET 8+ ingebouwd; testen kunnen FakeTimeProvider injecteren.
         services.AddSingleton(TimeProvider.System);
@@ -79,6 +80,16 @@ public static class DependencyInjection
         services.AddHttpClient<IMollieClient, MollieClient>();
         services.AddScoped<ITokenProtector, DataProtectionTokenProtector>();
         services.AddScoped<IMollieConnectService, MollieConnectService>();
+
+        // Platform-billing client: echte Mollie-client zodra er een API-key is,
+        // anders een fake zodat de flow zonder key gebouwd en getest kan worden.
+        string billingApiKey = configuration[$"{MollieBillingOptions.Section}:ApiKey"]
+                               ?? configuration[$"{MollieBillingOptions.Section}__ApiKey"]
+                               ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(billingApiKey))
+            services.AddScoped<IBillingMollieClient, FakeBillingMollieClient>();
+        else
+            services.AddHttpClient<IBillingMollieClient, BillingMollieClient>();
 
         services.AddScoped<TenantContext>();
         services.AddScoped<ITenantContext>(sp => sp.GetRequiredService<TenantContext>());
@@ -107,6 +118,8 @@ public static class DependencyInjection
         services.AddScoped<IScheduleAssignmentRepository, ScheduleAssignmentRepository>();
         services.AddScoped<IAssignmentConfirmationTokenRepository, AssignmentConfirmationTokenRepository>();
         services.AddScoped<IPaymentRepository, PaymentRepository>();
+        services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();
+        services.AddScoped<IOrganizationRepository, OrganizationRepository>();
         services.AddScoped<IMagicLinkTokenRepository, MagicLinkTokenRepository>();
         services.AddScoped<IStudentMagicLinkService, StudentMagicLinkService>();
         services.AddScoped<IRescheduleRequestRepository, RescheduleRequestRepository>();

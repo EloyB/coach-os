@@ -1488,8 +1488,26 @@ namespace CoachOS.Infrastructure.Migrations
                     b.Property<DateOnly?>("EndDate")
                         .HasColumnType("date");
 
+                    b.Property<int>("Interval")
+                        .HasColumnType("integer");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
+
+                    b.Property<string>("LastCheckoutUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTime?>("LastPaidAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LastPaymentId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("LastPaymentStatus")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
 
                     b.Property<string>("MollieCustomerId")
                         .HasMaxLength(100)
@@ -1499,15 +1517,15 @@ namespace CoachOS.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
-                    b.Property<decimal>("MonthlyPrice")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("numeric(10,2)");
-
                     b.Property<Guid>("OrganizationId")
                         .HasColumnType("uuid");
 
                     b.Property<int>("Plan")
                         .HasColumnType("integer");
+
+                    b.Property<decimal>("Price")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)");
 
                     b.Property<DateOnly>("StartDate")
                         .HasColumnType("date");

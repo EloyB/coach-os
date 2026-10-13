@@ -1,11 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import {
   listOrganizations,
   setOrganizationEarlyBird,
 } from "@/lib/api/super-admin";
+import { SubscriptionBadge } from "@/components/super-admin/subscription-badge";
 
 export default function OrganizationsPage() {
   const t = useTranslations("superAdmin");
@@ -44,22 +46,37 @@ export default function OrganizationsPage() {
                 <th className="px-4 py-3 text-left">{t("colName")}</th>
                 <th className="px-4 py-3 text-left">{t("colEmail")}</th>
                 <th className="px-4 py-3 text-left">{t("colAdmins")}</th>
+                <th className="px-4 py-3 text-left">{t("colSubscription")}</th>
                 <th className="px-4 py-3 text-left">{t("colEarlyBird")}</th>
               </tr>
             </thead>
             <tbody>
               {orgs?.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-ink-3">
+                  <td colSpan={5} className="px-4 py-8 text-center text-ink-3">
                     {t("orgsEmpty")}
                   </td>
                 </tr>
               )}
               {orgs?.map((org) => (
                 <tr key={org.id} className="border-t border-rule">
-                  <td className="px-4 py-3 font-medium text-ink">{org.name}</td>
+                  <td className="px-4 py-3 font-medium text-ink">
+                    <Link
+                      href={`/super-admin/organizations/${org.id}`}
+                      className="text-ink hover:text-tennis-green hover:underline"
+                    >
+                      {org.name}
+                    </Link>
+                  </td>
                   <td className="px-4 py-3 text-ink-2">{org.email}</td>
                   <td className="px-4 py-3 text-ink-2">{org.adminCount}</td>
+                  <td className="px-4 py-3">
+                    <SubscriptionBadge
+                      plan={org.subscriptionPlan}
+                      active={org.subscriptionActive}
+                      paymentStatus={org.subscriptionPaymentStatus}
+                    />
+                  </td>
                   <td className="px-4 py-3">
                     <label className="inline-flex items-center gap-2 cursor-pointer">
                       <input

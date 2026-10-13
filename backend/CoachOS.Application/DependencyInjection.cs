@@ -14,6 +14,7 @@ using CoachOS.Application.RescheduleRequests;
 using CoachOS.Application.StandaloneLessons;
 using CoachOS.Application.StudentConfirmation;
 using CoachOS.Application.Students;
+using CoachOS.Application.Subscriptions;
 using CoachOS.Application.TennisClubs;
 using CoachOS.Application.TrainerAvailabilities;
 using FluentValidation;
@@ -51,6 +52,7 @@ public static class DependencyInjection
         services.AddScoped<IOrganizationSettingsService, OrganizationSettingsService>();
         services.AddScoped<IOnboardingService, OnboardingService>();
         services.AddScoped<IPaymentService, PaymentService>();
+        services.AddScoped<ISubscriptionService, SubscriptionService>();
         services.AddScoped<IPlanningExportService, PlanningExportService>();
 
         return services;

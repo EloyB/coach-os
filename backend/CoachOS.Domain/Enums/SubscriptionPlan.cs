@@ -1,9 +1,12 @@
 namespace CoachOS.Domain.Enums;
 
+/// <summary>
+/// CoachOS-abonnement per actieve leerling (onbeperkt trainers). Prijs en
+/// leerlinglimiet per plan staan in <see cref="Subscriptions.SubscriptionPlanCatalog"/>.
+/// </summary>
 public enum SubscriptionPlan
 {
-    Starter = 1,      // €29/mo - 1 trainer
-    Professional = 2, // €79/mo - 2-5 trainers
-    Business = 3,     // €149/mo - 6-15 trainers
-    Enterprise = 4    // €299/mo - 16+ trainers
+    Game = 1,  // tot 60 actieve leerlingen
+    Set = 2,   // tot 200 actieve leerlingen
+    Match = 3  // tot 500 actieve leerlingen
 }

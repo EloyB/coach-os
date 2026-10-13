@@ -278,6 +278,23 @@ public class SuperAdminService(
             })
             .ToListAsync(ct);
 
+        // Abonnementen hebben een tenant query filter; superadmin beheert cross-org,
+        // dus negeren we die en verrijken we de lijst in-memory.
+        var subs = await context.Subscriptions
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Select(s => new { s.OrganizationId, s.Plan, s.IsActive, s.LastPaymentStatus })
+            .ToListAsync(ct);
+        var subsByOrg = subs.ToDictionary(s => s.OrganizationId);
+
+        foreach (OrganizationListItemDto dto in orgs)
+        {
+            if (!subsByOrg.TryGetValue(dto.Id, out var sub)) continue;
+            dto.SubscriptionPlan = sub.Plan.ToString();
+            dto.SubscriptionActive = sub.IsActive;
+            dto.SubscriptionPaymentStatus = sub.LastPaymentStatus;
+        }
+
         return Result<List<OrganizationListItemDto>>.Ok(orgs);
     }
 
