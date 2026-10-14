@@ -149,6 +149,8 @@ export interface CampEnrollmentDto {
   status: string;
   enrolledAt: string;
   groupName: string | null;
+  enrollmentGroupId: string | null;
+  isGroupLeader: boolean;
   paymentMethod: string | null;
   paymentStatus: string | null;
   formResponses: { fieldLabel: string; value: string }[];
