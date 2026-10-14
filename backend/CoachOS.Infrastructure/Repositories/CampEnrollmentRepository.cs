@@ -61,6 +61,32 @@ public class CampEnrollmentRepository(ApplicationDbContext context) : ICampEnrol
                 (e.Status == EnrollmentStatus.Confirmed || e.Status == EnrollmentStatus.Pending || e.Status == EnrollmentStatus.PendingPayment), ct);
     }
 
+    public async Task<bool> IsDuplicateExceptAsync(
+        Guid campId, string participantEmail, Guid exceptEnrollmentId, CancellationToken ct = default)
+    {
+        string normalized = participantEmail.Trim().ToLower();
+        return await context.CampEnrollments
+            .AsNoTracking()
+            .AnyAsync(e =>
+                e.CampId == campId &&
+                e.Id != exceptEnrollmentId &&
+                e.ParticipantEmail.ToLower() == normalized &&
+                (e.Status == EnrollmentStatus.Confirmed || e.Status == EnrollmentStatus.Pending || e.Status == EnrollmentStatus.PendingPayment), ct);
+    }
+
+    public async Task<CampEnrollment?> GetByIdWithResponsesAsync(
+        Guid id, Guid organizationId, CancellationToken ct = default)
+    {
+        return await context.CampEnrollments
+            .Include(e => e.FormResponses)
+            .FirstOrDefaultAsync(e => e.Id == id && e.OrganizationId == organizationId, ct);
+    }
+
+    public void RemoveFormResponse(CampFormResponse response)
+    {
+        context.CampFormResponses.Remove(response);
+    }
+
     public async Task<int> CountActiveByCampGroupsAsync(
         Guid campId, Guid organizationId, CancellationToken ct = default)
     {

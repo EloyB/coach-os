@@ -197,7 +197,7 @@ public class CampService(
                 e.Status.ToString(), e.EnrolledAt, e.Group?.Name,
                 e.CampEnrollmentGroupId, e.Group?.LeaderEnrollmentId == e.Id,
                 e.FormResponses.Select(r => new CampEnrollmentResponseItemDto(
-                    r.CampFormField?.Label ?? string.Empty, r.Value)).ToList(),
+                    r.CampFormFieldId, r.CampFormField?.Label ?? string.Empty, r.Value)).ToList(),
                 info?.Method?.ToString(), info?.Status.ToString());
         }).ToList();
         return Result<List<CampEnrollmentDto>>.Ok(dtos);
@@ -249,6 +249,75 @@ public class CampService(
         {
             int remaining = group.Members.Count(m => m.Id != enrollment.Id && m.Status != EnrollmentStatus.Cancelled);
             await SyncPendingCashAmountAsync(group.LeaderEnrollmentId, campId, organizationId, remaining, ct);
+        }
+
+        await unitOfWork.SaveChangesAsync(ct);
+        return Result.Ok();
+    }
+
+    public async Task<Result> UpdateEnrollmentAsync(
+        Guid campId, Guid campEnrollmentId, Guid organizationId, UpdateCampEnrollmentRequest request,
+        CancellationToken ct = default)
+    {
+        bool exists = await camps.ExistsAsync(campId, organizationId, ct);
+        if (!exists) return Result.Fail(new Error(ErrorCodes.NotFound, "Kamp niet gevonden."));
+
+        // GetByIdWithResponsesAsync filtert op organizationId; de CampId-check voorkomt
+        // een cross-kamp wijziging binnen dezelfde organisatie.
+        CampEnrollment? enrollment = await enrollments.GetByIdWithResponsesAsync(campEnrollmentId, organizationId, ct);
+        if (enrollment is null || enrollment.CampId != campId)
+            return Result.Fail(new Error(ErrorCodes.NotFound, "Inschrijving niet gevonden."));
+
+        if (enrollment.Status == EnrollmentStatus.Cancelled)
+            return Result.Fail(new Error(ErrorCodes.Conflict,
+                "Een geannuleerde inschrijving kan niet aangepast worden."));
+
+        string email = request.ParticipantEmail.Trim();
+        if (await enrollments.IsDuplicateExceptAsync(campId, email, campEnrollmentId, ct))
+            return Result.Fail(new Error(ErrorCodes.Conflict,
+                $"{email} is al ingeschreven voor dit kamp."));
+
+        CampEnrollmentForm? form = await forms.GetByCampIdReadOnlyAsync(campId, ct);
+        List<CampFormField> fields = form?.Fields.ToList() ?? [];
+        Error? formError = FormResponseValidator.Validate(
+            fields.Select(f => (f.Id, f.IsRequired, f.Label)),
+            request.Responses.Select(r => (r.CampFormFieldId, r.Value)));
+        if (formError is not null)
+            return Result.Fail(formError);
+
+        enrollment.ParticipantName = request.ParticipantName.Trim();
+        enrollment.ParticipantEmail = email;
+        enrollment.ParticipantPhone = string.IsNullOrWhiteSpace(request.ParticipantPhone)
+            ? null
+            : request.ParticipantPhone.Trim();
+
+        // Volledige set: per bestaand veld van het formulier bijwerken, toevoegen of wissen.
+        // Antwoorden op velden die intussen uit het formulier verdwenen zijn blijven staan.
+        foreach (CampFormField field in fields)
+        {
+            string? incoming = request.Responses
+                .FirstOrDefault(r => r.CampFormFieldId == field.Id)?.Value;
+            bool hasValue = !string.IsNullOrWhiteSpace(incoming);
+            CampFormResponse? existing = enrollment.FormResponses
+                .FirstOrDefault(r => r.CampFormFieldId == field.Id);
+
+            if (existing is not null && !hasValue)
+            {
+                enrollments.RemoveFormResponse(existing);
+            }
+            else if (existing is not null)
+            {
+                existing.Value = incoming!;
+            }
+            else if (hasValue)
+            {
+                await enrollments.AddFormResponseAsync(new CampFormResponse
+                {
+                    CampEnrollmentId = enrollment.Id,
+                    CampFormFieldId = field.Id,
+                    Value = incoming!,
+                }, ct);
+            }
         }
 
         await unitOfWork.SaveChangesAsync(ct);

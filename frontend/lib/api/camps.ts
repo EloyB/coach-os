@@ -153,7 +153,7 @@ export interface CampEnrollmentDto {
   isGroupLeader: boolean;
   paymentMethod: string | null;
   paymentStatus: string | null;
-  formResponses: { fieldLabel: string; value: string }[];
+  formResponses: { fieldId: string; fieldLabel: string; value: string }[];
 }
 
 // ── Admin ──
@@ -203,6 +203,19 @@ export async function addCampGroupMember(
     request
   );
   return data;
+}
+export interface UpdateCampEnrollmentRequest {
+  participantName: string;
+  participantEmail: string;
+  participantPhone: string | null;
+  responses: { campFormFieldId: string; value: string }[];
+}
+export async function updateCampEnrollment(
+  campId: string,
+  enrollmentId: string,
+  request: UpdateCampEnrollmentRequest
+): Promise<void> {
+  await apiClient.put(`/camps/${campId}/enrollments/${enrollmentId}`, request);
 }
 export async function cancelCampEnrollment(
   campId: string,

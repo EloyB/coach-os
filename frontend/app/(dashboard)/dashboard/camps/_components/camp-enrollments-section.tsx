@@ -13,6 +13,7 @@ import {
   Euro,
   Eye,
   MoreVertical,
+  Pencil,
   Search,
   Trash2,
   UserPlus,
@@ -45,8 +46,9 @@ import {
 import { enrollmentDisplayStatus } from "@/lib/status-styles";
 import { getAxiosErrorMessages } from "@/lib/utils/api-errors";
 import { downloadBlob } from "@/lib/download";
-import { isEnrollmentManager } from "@/lib/auth";
+import { canEditEnrollment, isEnrollmentManager } from "@/lib/auth";
 import { CampAddMemberDialog } from "./camp-add-member-dialog";
+import { CampEditEnrollmentDialog } from "./camp-edit-enrollment-dialog";
 import { CampEnrollmentDetailDialog } from "./camp-enrollment-detail-dialog";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -174,6 +176,16 @@ function useCanManage(): boolean {
   return canManage;
 }
 
+/** Bewerken mag enkel een Admin (het endpoint is Admin-only). */
+function useCanEdit(): boolean {
+  const [canEdit, setCanEdit] = useState(false);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCanEdit(canEditEnrollment());
+  }, []);
+  return canEdit;
+}
+
 function useCancelMutation(
   campId: string,
   mutationFn: () => Promise<void>,
@@ -287,6 +299,8 @@ function ActionsMenu({
   markPaidLabel,
   canCancel,
   onCancel,
+  canEdit,
+  onEdit,
 }: {
   enrollment: CampEnrollmentDto;
   menuKey: string;
@@ -298,6 +312,8 @@ function ActionsMenu({
   markPaidLabel: string;
   canCancel: boolean;
   onCancel: () => void;
+  canEdit: boolean;
+  onEdit: () => void;
 }) {
   const t = useTranslations("campEnrollmentsTable");
   return (
@@ -343,6 +359,19 @@ function ActionsMenu({
           >
             <Euro size={13} />
             {markPaidLabel}
+          </button>
+        )}
+        {canEdit && (
+          <button
+            type="button"
+            onClick={() => {
+              setOpenMenuId(null);
+              onEdit();
+            }}
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-gray-700 hover:bg-tennis-green/5 hover:text-tennis-green"
+          >
+            <Pencil size={13} />
+            {t("editAction")}
           </button>
         )}
         {canCancel && (
@@ -493,6 +522,8 @@ function PersonRow({
   );
   const isCancelled = enrollment.status === "Cancelled";
   const canManage = useCanManage();
+  const canEdit = useCanEdit();
+  const [editOpen, setEditOpen] = useState(false);
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
   const cancelMutation = useCancelMutation(
     campId,
@@ -522,11 +553,19 @@ function PersonRow({
       markPaidLabel={markPaidLabel}
       canCancel={canManage && !isCancelled && !cancelBlocked}
       onCancel={() => setConfirmCancelOpen(true)}
+      canEdit={canEdit && !isCancelled}
+      onEdit={() => setEditOpen(true)}
     />
   );
 
   const dialog = (
     <>
+      <CampEditEnrollmentDialog
+        campId={campId}
+        enrollment={enrollment}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+      />
       <CancelConfirmDialog
         open={confirmCancelOpen}
         onOpenChange={setConfirmCancelOpen}

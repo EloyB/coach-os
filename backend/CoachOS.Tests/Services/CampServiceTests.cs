@@ -531,4 +531,140 @@ public class CampServiceTests
         result.IsSuccess.Should().BeTrue();
         cash.Amount.Should().Be(100m); // enkel de leider blijft over
     }
+
+    // ── UpdateEnrollment ─────────────────────────────────────────────────────
+
+    private (Guid CampId, CampEnrollment Enrollment) ArrangeEditable(
+        Domain.Enums.EnrollmentStatus status = Domain.Enums.EnrollmentStatus.PendingPayment)
+    {
+        Guid campId = Guid.NewGuid();
+        CampEnrollment e = new()
+        {
+            Id = Guid.NewGuid(), OrganizationId = _orgId, CampId = campId,
+            ParticipantName = "Emma", ParticipantEmail = "emma@test.com", Status = status,
+        };
+        _camps.Setup(r => r.ExistsAsync(campId, _orgId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _enrollments.Setup(r => r.GetByIdWithResponsesAsync(e.Id, _orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(e);
+        return (campId, e);
+    }
+
+    private static UpdateCampEnrollmentRequest UpdateRequest(
+        params (Guid FieldId, string Value)[] responses) => new()
+    {
+        ParticipantName = "  Emma Peeters ",
+        ParticipantEmail = " emma.nieuw@test.com ",
+        ParticipantPhone = "0471 11 11 11",
+        Responses = responses.Select(r => new CampFormResponseValueDto
+        {
+            CampFormFieldId = r.FieldId, Value = r.Value,
+        }).ToList(),
+    };
+
+    [Test]
+    public async Task UpdateEnrollmentAsync_UpdatesBasicsAndKeepsStatus()
+    {
+        (Guid campId, CampEnrollment e) = ArrangeEditable();
+
+        Result result = await _sut.UpdateEnrollmentAsync(campId, e.Id, _orgId, UpdateRequest());
+
+        result.IsSuccess.Should().BeTrue();
+        e.ParticipantName.Should().Be("Emma Peeters");
+        e.ParticipantEmail.Should().Be("emma.nieuw@test.com");
+        e.ParticipantPhone.Should().Be("0471 11 11 11");
+        e.Status.Should().Be(Domain.Enums.EnrollmentStatus.PendingPayment);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task UpdateEnrollmentAsync_WrongCamp_ReturnsNotFound()
+    {
+        (Guid campId, CampEnrollment e) = ArrangeEditable();
+        e.CampId = Guid.NewGuid();
+
+        Result result = await _sut.UpdateEnrollmentAsync(campId, e.Id, _orgId, UpdateRequest());
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.NotFound);
+    }
+
+    [Test]
+    public async Task UpdateEnrollmentAsync_Cancelled_ReturnsConflict()
+    {
+        (Guid campId, CampEnrollment e) = ArrangeEditable(Domain.Enums.EnrollmentStatus.Cancelled);
+
+        Result result = await _sut.UpdateEnrollmentAsync(campId, e.Id, _orgId, UpdateRequest());
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.Conflict);
+        e.ParticipantEmail.Should().Be("emma@test.com");
+    }
+
+    [Test]
+    public async Task UpdateEnrollmentAsync_EmailUsedByOtherEnrollment_ReturnsConflict()
+    {
+        (Guid campId, CampEnrollment e) = ArrangeEditable();
+        _enrollments.Setup(r => r.IsDuplicateExceptAsync(
+                campId, "emma.nieuw@test.com", e.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        Result result = await _sut.UpdateEnrollmentAsync(campId, e.Id, _orgId, UpdateRequest());
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.Conflict);
+        e.ParticipantEmail.Should().Be("emma@test.com");
+    }
+
+    [Test]
+    public async Task UpdateEnrollmentAsync_RequiredFieldCleared_ReturnsValidation()
+    {
+        (Guid campId, CampEnrollment e) = ArrangeEditable();
+        Guid fieldId = Guid.NewGuid();
+        _forms.Setup(f => f.GetByCampIdReadOnlyAsync(campId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CampEnrollmentForm
+            {
+                Fields = [new CampFormField { Id = fieldId, Label = "Shirtmaat", IsRequired = true }],
+            });
+
+        Result result = await _sut.UpdateEnrollmentAsync(campId, e.Id, _orgId, UpdateRequest((fieldId, "")));
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.Validation);
+    }
+
+    [Test]
+    public async Task UpdateEnrollmentAsync_UpdatesAddsAndRemovesResponses()
+    {
+        (Guid campId, CampEnrollment e) = ArrangeEditable();
+        Guid sizeId = Guid.NewGuid();
+        Guid allergyId = Guid.NewGuid();
+        Guid noteId = Guid.NewGuid();
+        _forms.Setup(f => f.GetByCampIdReadOnlyAsync(campId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CampEnrollmentForm
+            {
+                Fields =
+                [
+                    new CampFormField { Id = sizeId, Label = "Shirtmaat", IsRequired = true },
+                    new CampFormField { Id = allergyId, Label = "Allergieën", IsRequired = false },
+                    new CampFormField { Id = noteId, Label = "Opmerking", IsRequired = false },
+                ],
+            });
+        CampFormResponse size = new() { CampEnrollmentId = e.Id, CampFormFieldId = sizeId, Value = "128" };
+        CampFormResponse note = new() { CampEnrollmentId = e.Id, CampFormFieldId = noteId, Value = "oud" };
+        e.FormResponses = [size, note];
+        CampFormResponse? added = null;
+        _enrollments.Setup(r => r.AddFormResponseAsync(It.IsAny<CampFormResponse>(), It.IsAny<CancellationToken>()))
+            .Callback<CampFormResponse, CancellationToken>((r, _) => added = r)
+            .Returns(Task.CompletedTask);
+
+        Result result = await _sut.UpdateEnrollmentAsync(campId, e.Id, _orgId,
+            UpdateRequest((sizeId, "140"), (allergyId, "Noten"), (noteId, "")));
+
+        result.IsSuccess.Should().BeTrue();
+        size.Value.Should().Be("140");                       // bijgewerkt
+        added!.CampFormFieldId.Should().Be(allergyId);       // toegevoegd
+        added.Value.Should().Be("Noten");
+        _enrollments.Verify(r => r.RemoveFormResponse(note), Times.Once); // gewist
+        _enrollments.Verify(r => r.RemoveFormResponse(size), Times.Never);
+    }
 }
