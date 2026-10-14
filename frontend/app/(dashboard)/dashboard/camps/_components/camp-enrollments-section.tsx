@@ -49,6 +49,7 @@ import { downloadBlob } from "@/lib/download";
 import { canEditEnrollment, isEnrollmentManager } from "@/lib/auth";
 import { CampAddMemberDialog } from "./camp-add-member-dialog";
 import { CampEditEnrollmentDialog } from "./camp-edit-enrollment-dialog";
+import { CampManualEnrollmentDialog } from "./camp-manual-enrollment-dialog";
 import { CampEnrollmentDetailDialog } from "./camp-enrollment-detail-dialog";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -1104,6 +1105,8 @@ export function CampEnrollmentsSection({
   const t = useTranslations("campEnrollmentsTable");
   const [copied, setCopied] = useState(false);
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
+  const canManage = useCanManage();
 
   const { data: enrollments = [], isLoading } = useQuery({
     queryKey: ["campEnrollments", campId],
@@ -1149,6 +1152,15 @@ export function CampEnrollmentsSection({
         </div>
         <div className="flex items-center gap-2">
           {/* Desktop: knoppen inline */}
+          {canManage && (
+            <button
+              type="button"
+              onClick={() => setManualOpen(true)}
+              className="hidden rounded-lg bg-tennis-green px-3 py-1.5 text-xs font-semibold text-white hover:bg-tennis-green/90 sm:block"
+            >
+              {t("manualAdd")}
+            </button>
+          )}
           <button
             type="button"
             onClick={() => exportMutation.mutate()}
@@ -1188,6 +1200,19 @@ export function CampEnrollmentsSection({
               </button>
             </PopoverTrigger>
             <PopoverContent align="end" className="w-52 p-1 text-sm">
+              {canManage && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setHeaderMenuOpen(false);
+                    setManualOpen(true);
+                  }}
+                  className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                >
+                  <UserPlus size={14} />
+                  {t("manualAdd")}
+                </button>
+              )}
               <button
                 type="button"
                 disabled={exportMutation.isPending}
@@ -1236,6 +1261,11 @@ export function CampEnrollmentsSection({
       ) : (
         <EnrollmentsTable enrollments={enrollments} campId={campId} />
       )}
+      <CampManualEnrollmentDialog
+        campId={campId}
+        open={manualOpen}
+        onOpenChange={setManualOpen}
+      />
     </div>
   );
 }

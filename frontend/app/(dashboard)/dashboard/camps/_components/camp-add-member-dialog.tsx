@@ -7,7 +7,6 @@ import { useTranslations } from "next-intl";
 import { addCampGroupMember, getCampForm } from "@/lib/api/camps";
 import { getAxiosErrorMessages } from "@/lib/utils/api-errors";
 import { btnPrimary, btnSecondary } from "@/lib/styles";
-import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -16,7 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { CampFormFieldInputs } from "./camp-form-field-inputs";
+import { CampParticipantFields } from "./camp-participant-fields";
 
 interface CampAddMemberDialogProps {
   campId: string;
@@ -83,43 +82,20 @@ export function CampAddMemberDialog({
             mutation.mutate();
           }}
         >
-          <label className="block text-sm font-medium">
-            {t("memberName")}
-            <Input
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="mt-1"
-            />
-          </label>
-          <label className="block text-sm font-medium">
-            {t("memberEmail")}
-            <Input
-              required
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="mt-1"
-            />
-          </label>
-          <label className="block text-sm font-medium">
-            {t("memberPhone")}
-            <Input
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="mt-1"
-            />
-          </label>
-          {form && (
-            <CampFormFieldInputs
-              fields={form.fields}
-              values={answers}
-              onChange={(fieldId, value) =>
-                setAnswers((prev) => ({ ...prev, [fieldId]: value }))
-              }
-              idPrefix={`member_${groupId}`}
-            />
-          )}
+          <CampParticipantFields
+            values={{ name, email, phone }}
+            onChange={(patch) => {
+              if (patch.name !== undefined) setName(patch.name);
+              if (patch.email !== undefined) setEmail(patch.email);
+              if (patch.phone !== undefined) setPhone(patch.phone);
+            }}
+            form={form}
+            answers={answers}
+            onAnswerChange={(fieldId, value) =>
+              setAnswers((prev) => ({ ...prev, [fieldId]: value }))
+            }
+            idPrefix={`member_${groupId}`}
+          />
           <DialogFooter>
             <button
               type="button"

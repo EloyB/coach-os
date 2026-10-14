@@ -1216,6 +1216,15 @@
     "editDescription": "Wijzig de gegevens en antwoorden van deze deelnemer. Betaling en status blijven ongewijzigd.",
     "editSubmit": "Opslaan",
     "toastUpdated": "Inschrijving bijgewerkt",
-    "editError": "Kon de inschrijving niet bijwerken."
+    "editError": "Kon de inschrijving niet bijwerken.",
+    "manualAdd": "Manueel toevoegen",
+    "manualTitle": "Deelnemer manueel inschrijven",
+    "manualDescription": "De deelnemer wordt ingeschreven zonder de inschrijfdeadline en er wordt geen betaallink verstuurd. Betaling regel je zelf (cash of overschrijving).",
+    "manualPayment": "Betaling",
+    "manualPaymentPending": "Nog te betalen (cash)",
+    "manualPaymentReceived": "Cash al ontvangen",
+    "manualSubmit": "Inschrijven",
+    "manualSuccess": "Deelnemer ingeschreven",
+    "manualError": "Kon de inschrijving niet toevoegen."
   }
 }

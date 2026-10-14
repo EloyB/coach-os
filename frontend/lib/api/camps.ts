@@ -187,6 +187,24 @@ export async function getCampEnrollments(campId: string): Promise<CampEnrollment
   const { data } = await apiClient.get<CampEnrollmentDto[]>(`/camps/${campId}/enrollments`);
   return data;
 }
+export interface CreateManualCampEnrollmentRequest {
+  participantName: string;
+  participantEmail: string;
+  participantPhone: string | null;
+  /** true = cash al ontvangen (bevestigd); false = nog te betalen. Enkel relevant voor betaalde kampen. */
+  paid: boolean;
+  responses: { campFormFieldId: string; value: string }[];
+}
+export async function createManualCampEnrollment(
+  campId: string,
+  request: CreateManualCampEnrollmentRequest
+): Promise<string> {
+  const { data } = await apiClient.post<string>(
+    `/camps/${campId}/enrollments/manual`,
+    request
+  );
+  return data;
+}
 export interface AddCampGroupMemberRequest {
   participantName: string;
   participantEmail: string;
