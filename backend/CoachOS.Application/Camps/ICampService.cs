@@ -30,6 +30,15 @@ public interface ICampService
         Guid campId, Guid campEnrollmentId, Guid organizationId, CancellationToken ct = default);
 
     /// <summary>
+    /// Voegt een deelnemer toe aan een bestaande kampgroep (beheerder-actie). Het lid erft
+    /// de status van de leider. Geweigerd zodra de groepsbetaling betaald is of online loopt;
+    /// bij een openstaande cash-betaling wordt het bedrag bijgewerkt.
+    /// </summary>
+    Task<Result<Guid>> AddGroupMemberAsync(
+        Guid campId, Guid groupId, Guid organizationId, AddCampGroupMemberRequest request,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Annuleert alle nog-actieve leden van een kampgroep atomair (één SaveChanges).
     /// </summary>
     Task<Result> CancelGroupAsync(

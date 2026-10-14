@@ -618,6 +618,47 @@ public class PaymentServiceTests
     }
 
     [Test]
+    public async Task RecordCampCash_GroupWithCancelledMember_CountsOnlyActiveMembers()
+    {
+        Guid leaderId = Guid.NewGuid();
+        Guid campId = Guid.NewGuid();
+        Guid groupId = Guid.NewGuid();
+        CampEnrollment leader = new()
+        {
+            Id = leaderId, OrganizationId = OrgId, CampId = campId, CampEnrollmentGroupId = groupId,
+            Status = EnrollmentStatus.PendingPayment,
+        };
+        CampEnrollment active = new()
+        {
+            Id = Guid.NewGuid(), OrganizationId = OrgId, CampId = campId, CampEnrollmentGroupId = groupId,
+            Status = EnrollmentStatus.PendingPayment,
+        };
+        CampEnrollment cancelled = new()
+        {
+            Id = Guid.NewGuid(), OrganizationId = OrgId, CampId = campId, CampEnrollmentGroupId = groupId,
+            Status = EnrollmentStatus.Cancelled,
+        };
+        leader.Group = new CampEnrollmentGroup
+        {
+            Id = groupId, LeaderEnrollmentId = leaderId, Members = [leader, active, cancelled],
+        };
+        _campEnrollments.Setup(c => c.GetByIdWithGroupAsync(leaderId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(leader);
+        _camps.Setup(c => c.GetByIdPublicAsync(campId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Camp { Id = campId, OrganizationId = OrgId, Name = "Paaskamp", Price = 100m });
+
+        Payment? saved = null;
+        _payments.Setup(p => p.AddAsync(It.IsAny<Payment>(), It.IsAny<CancellationToken>()))
+            .Callback<Payment, CancellationToken>((p, _) => saved = p)
+            .Returns(Task.CompletedTask);
+
+        Result result = await _sut.RecordCampCashPaymentAsync(leaderId, OrgId);
+
+        result.IsSuccess.Should().BeTrue();
+        saved!.Amount.Should().Be(200m); // 2 actieve leden × 100, geannuleerd lid telt niet mee
+    }
+
+    [Test]
     public async Task RecordCampCash_FreeCamp_FailsValidation()
     {
         Guid campEnrollmentId = Guid.NewGuid();

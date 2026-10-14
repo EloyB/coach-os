@@ -1,7 +1,9 @@
 using CoachOS.Application.Abstractions;
+using System.Data;
 using System.Globalization;
 using System.Text.Json;
 using CoachOS.Application.Camps.DTOs;
+using CoachOS.Application.Common;
 using CoachOS.Application.Payments;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
@@ -227,9 +229,10 @@ public class CampService(
 
         // De betaling hangt aan de leider (prijs × leden): een leider alleen annuleren
         // zou de overige leden zonder betaler achterlaten.
+        CampEnrollmentGroup? group = null;
         if (enrollment.CampEnrollmentGroupId is { } groupId)
         {
-            CampEnrollmentGroup? group = await enrollments.GetGroupWithMembersAsync(groupId, organizationId, ct);
+            group = await enrollments.GetGroupWithMembersAsync(groupId, organizationId, ct);
             bool isLeader = group is not null && group.LeaderEnrollmentId == enrollment.Id;
             bool otherActiveMembers = group is not null && group.Members.Any(m =>
                 m.Id != enrollment.Id && m.Status != EnrollmentStatus.Cancelled);
@@ -239,8 +242,112 @@ public class CampService(
         }
 
         enrollment.Status = EnrollmentStatus.Cancelled;
+
+        // Een openstaande cash-betaling van de groep volgt het aantal actieve leden, zodat
+        // de groep na een annulering niet te veel moet betalen.
+        if (group is not null)
+        {
+            int remaining = group.Members.Count(m => m.Id != enrollment.Id && m.Status != EnrollmentStatus.Cancelled);
+            await SyncPendingCashAmountAsync(group.LeaderEnrollmentId, campId, organizationId, remaining, ct);
+        }
+
         await unitOfWork.SaveChangesAsync(ct);
         return Result.Ok();
+    }
+
+    public async Task<Result<Guid>> AddGroupMemberAsync(
+        Guid campId, Guid groupId, Guid organizationId, AddCampGroupMemberRequest request,
+        CancellationToken ct = default)
+    {
+        Camp? camp = await camps.GetByIdWithDetailsAsync(campId, organizationId, ct);
+        if (camp is null)
+            return Result<Guid>.Fail(new Error(ErrorCodes.NotFound, "Kamp niet gevonden."));
+
+        CampEnrollmentGroup? group = await enrollments.GetGroupWithMembersAsync(groupId, organizationId, ct);
+        if (group is null || group.CampId != campId)
+            return Result<Guid>.Fail(new Error(ErrorCodes.NotFound, "Groep niet gevonden."));
+
+        CampEnrollment? leader = group.Members.FirstOrDefault(m =>
+            m.Id == group.LeaderEnrollmentId && m.Status != EnrollmentStatus.Cancelled);
+        if (leader is null)
+            return Result<Guid>.Fail(new Error(ErrorCodes.Conflict,
+                "Je kan geen lid toevoegen aan een groep zonder actieve leider."));
+
+        // De groepsbetaling is prijs × leden en staat vast zodra ze betaald is of online loopt.
+        Payment? payment = await payments.GetLatestTrackedByCampEnrollmentIdAsync(leader.Id, ct);
+        if (payment is not null
+            && (payment.Status == PaymentStatus.Paid
+                || (payment.Status == PaymentStatus.Pending && payment.Method != PaymentMethod.Cash)))
+            return Result<Guid>.Fail(new Error(ErrorCodes.Conflict,
+                "Je kan geen lid toevoegen aan een groep waarvan de betaling al betaald is of online loopt."));
+
+        CampEnrollmentForm? form = await forms.GetByCampIdReadOnlyAsync(campId, ct);
+        if (form is not null)
+        {
+            Error? formError = FormResponseValidator.Validate(
+                form.Fields.Select(f => (f.Id, f.IsRequired, f.Label)),
+                request.Responses.Select(r => (r.CampFormFieldId, r.Value)));
+            if (formError is not null)
+                return Result<Guid>.Fail(formError);
+        }
+
+        string email = request.ParticipantEmail.Trim();
+
+        await unitOfWork.BeginTransactionAsync(IsolationLevel.Serializable, ct);
+        try
+        {
+            if (camp.MaxParticipants.HasValue
+                && await enrollments.CountActiveByCampAsync(campId, ct) + 1 > camp.MaxParticipants.Value)
+            {
+                await unitOfWork.RollbackTransactionAsync(ct);
+                return Result<Guid>.Fail(new Error(ErrorCodes.Conflict, "Dit kamp is volzet."));
+            }
+
+            if (await enrollments.IsDuplicateAsync(campId, email, ct))
+            {
+                await unitOfWork.RollbackTransactionAsync(ct);
+                return Result<Guid>.Fail(new Error(ErrorCodes.Conflict,
+                    $"{email} is al ingeschreven voor dit kamp."));
+            }
+
+            CampEnrollment member = new()
+            {
+                OrganizationId = organizationId,
+                CampId = campId,
+                ParticipantName = request.ParticipantName.Trim(),
+                ParticipantEmail = email,
+                ParticipantPhone = string.IsNullOrWhiteSpace(request.ParticipantPhone)
+                    ? null
+                    : request.ParticipantPhone.Trim(),
+                Status = leader.Status, // status geërfd van de groep
+                EnrolledAt = DateTime.UtcNow,
+                CampEnrollmentGroupId = groupId,
+            };
+            await enrollments.AddAsync(member, ct);
+
+            foreach (CampFormResponseValueDto r in request.Responses)
+                await enrollments.AddFormResponseAsync(new CampFormResponse
+                {
+                    CampEnrollmentId = member.Id, CampFormFieldId = r.CampFormFieldId, Value = r.Value,
+                }, ct);
+
+            if (payment is not null && payment.Status == PaymentStatus.Pending && payment.Method == PaymentMethod.Cash)
+            {
+                // EF voegt het nieuwe lid via relationship fixup al toe aan group.Members; tel het
+                // daarom expliciet apart zodat het niet dubbel meetelt.
+                int active = group.Members.Count(m => m.Id != member.Id && m.Status != EnrollmentStatus.Cancelled) + 1;
+                payment.Amount = camp.Price * active;
+            }
+
+            await unitOfWork.SaveChangesAsync(ct);
+            await unitOfWork.CommitTransactionAsync(ct);
+            return Result<Guid>.Ok(member.Id);
+        }
+        catch
+        {
+            await unitOfWork.RollbackTransactionAsync(ct);
+            throw;
+        }
     }
 
     public async Task<Result> CancelGroupAsync(
@@ -268,6 +375,24 @@ public class CampService(
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Zet het bedrag van een openstaande cash-betaling van de groepsleider op
+    /// <c>prijs × actieve leden</c>. Betaalde of online lopende betalingen blijven ongemoeid.
+    /// </summary>
+    private async Task SyncPendingCashAmountAsync(
+        Guid leaderEnrollmentId, Guid campId, Guid organizationId, int activeCount, CancellationToken ct)
+    {
+        Payment? payment = await payments.GetLatestTrackedByCampEnrollmentIdAsync(leaderEnrollmentId, ct);
+        if (payment is null || payment.Status != PaymentStatus.Pending || payment.Method != PaymentMethod.Cash)
+            return;
+
+        Camp? camp = await camps.GetByIdWithDetailsAsync(campId, organizationId, ct);
+        if (camp is null)
+            return;
+
+        payment.Amount = camp.Price * Math.Max(activeCount, 1);
+    }
 
     private async Task<Error?> ValidateClubAndTrainersAsync(
         Guid organizationId, Guid clubId, List<CreateCampDayRequest> days, CancellationToken ct)

@@ -1201,6 +1201,15 @@
     "confirmCancel": "Annuleren",
     "toastCancelled": "Inschrijving geannuleerd",
     "toastGroupCancelled": "Groep geannuleerd",
-    "cancelError": "Kon de annulering niet uitvoeren. Probeer het opnieuw."
+    "cancelError": "Kon de annulering niet uitvoeren. Probeer het opnieuw.",
+    "addMember": "Lid toevoegen",
+    "addMemberTitle": "Lid toevoegen aan groep",
+    "addMemberDescription": "De deelnemer wordt aan deze groep toegevoegd en erft de status van de groep. Een openstaande cash-betaling wordt aangepast aan het nieuwe aantal deelnemers.",
+    "addMemberSubmit": "Toevoegen",
+    "addMemberSuccess": "Lid toegevoegd aan de groep",
+    "addMemberError": "Kon het lid niet toevoegen.",
+    "memberName": "Naam deelnemer",
+    "memberEmail": "E-mailadres",
+    "memberPhone": "Telefoonnummer (optioneel)"
   }
 }

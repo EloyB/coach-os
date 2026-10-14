@@ -15,6 +15,7 @@ import {
   MoreVertical,
   Search,
   Trash2,
+  UserPlus,
   Users,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -45,6 +46,7 @@ import { enrollmentDisplayStatus } from "@/lib/status-styles";
 import { getAxiosErrorMessages } from "@/lib/utils/api-errors";
 import { downloadBlob } from "@/lib/download";
 import { isEnrollmentManager } from "@/lib/auth";
+import { CampAddMemberDialog } from "./camp-add-member-dialog";
 import { CampEnrollmentDetailDialog } from "./camp-enrollment-detail-dialog";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -371,6 +373,8 @@ function GroupActionsMenu({
   isMarkingPaid,
   canCancel,
   onCancelGroup,
+  canAddMember,
+  onAddMember,
 }: {
   leader: CampEnrollmentDto;
   menuKey: string;
@@ -380,10 +384,12 @@ function GroupActionsMenu({
   isMarkingPaid: boolean;
   canCancel: boolean;
   onCancelGroup: () => void;
+  canAddMember: boolean;
+  onAddMember: () => void;
 }) {
   const t = useTranslations("campEnrollmentsTable");
   const canMarkPaid = isCashPending(leader);
-  if (!canMarkPaid && !canCancel) return null;
+  if (!canMarkPaid && !canCancel && !canAddMember) return null;
   return (
     <Popover
       open={openMenuId === menuKey}
@@ -416,6 +422,19 @@ function GroupActionsMenu({
           >
             <Euro size={13} />
             {t("markGroupPaid")}
+          </button>
+        )}
+        {canAddMember && (
+          <button
+            type="button"
+            onClick={() => {
+              setOpenMenuId(null);
+              onAddMember();
+            }}
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+          >
+            <UserPlus size={13} />
+            {t("addMember")}
           </button>
         )}
         {canCancel && (
@@ -638,7 +657,14 @@ function GroupBlockRows({
     () => cancelCampEnrollmentGroup(campId, block.groupId),
     "toastGroupCancelled",
   );
+  const [addMemberOpen, setAddMemberOpen] = useState(false);
   const activeMembers = members.filter((m) => m.status !== "Cancelled");
+  // De groepsbetaling staat vast zodra ze betaald is of online loopt (backend is leidend).
+  const paymentLocked =
+    leader.paymentStatus === "Paid" ||
+    (leader.paymentStatus === "Pending" && leader.paymentMethod === "Online");
+  const canAddMember =
+    canManage && leader.status !== "Cancelled" && !paymentLocked;
   // Mobiele kaart en desktoprij staan beide in de DOM (één verborgen via CSS); een
   // variant-specifieke key voorkomt dat beide popovers tegelijk opengaan.
   const groupMenuKey =
@@ -659,6 +685,16 @@ function GroupBlockRows({
       isMarkingPaid={markPaidMutation.isPending}
       canCancel={canManage && activeMembers.length > 0}
       onCancelGroup={() => setConfirmCancelOpen(true)}
+      canAddMember={canAddMember}
+      onAddMember={() => setAddMemberOpen(true)}
+    />
+  );
+  const addMemberDialog = (
+    <CampAddMemberDialog
+      campId={campId}
+      groupId={block.groupId}
+      open={addMemberOpen}
+      onOpenChange={setAddMemberOpen}
     />
   );
   const cancelGroupDialog = (
@@ -683,6 +719,7 @@ function GroupBlockRows({
     return (
       <div className="space-y-2">
         {cancelGroupDialog}
+        {addMemberDialog}
         <div
           onClick={() => setOpen((v) => !v)}
           className="cursor-pointer rounded-xl border border-gray-100 bg-gray-50/60 p-3 hover:border-gray-200"
@@ -740,6 +777,7 @@ function GroupBlockRows({
   return (
     <>
       {cancelGroupDialog}
+      {addMemberDialog}
       <tr
         className="cursor-pointer border-t border-gray-100 bg-gray-50/40 hover:bg-gray-50"
         onClick={() => setOpen((v) => !v)}

@@ -216,10 +216,7 @@ public class PaymentService(
 
         // Groepsinschrijving = leider + leden; solo = 1. De leider draagt de betaling.
         // Group.Members includes the leader (the submit flow sets the leader's CampEnrollmentGroupId), so Count = total participants.
-        int participantCount = enrollment.CampEnrollmentGroupId.HasValue && enrollment.Group is not null
-            ? enrollment.Group.Members.Count
-            : 1;
-        if (participantCount < 1) participantCount = 1;
+        int participantCount = CountActiveCampParticipants(enrollment);
         decimal amount = camp.Price * participantCount;
 
         OrganizationSettingsEntity? settings = await orgSettings
@@ -542,6 +539,18 @@ public class PaymentService(
         }
     }
 
+    /// <summary>
+    /// Betalende deelnemers: de groep (leider + leden) zonder geannuleerde leden, of 1 voor
+    /// een solo-inschrijving. Een geannuleerd lid mag niet meer meegerekend worden.
+    /// </summary>
+    private static int CountActiveCampParticipants(CampEnrollmentEntity enrollment)
+    {
+        int count = enrollment.CampEnrollmentGroupId.HasValue && enrollment.Group is not null
+            ? enrollment.Group.Members.Count(m => m.Status != EnrollmentStatus.Cancelled)
+            : 1;
+        return Math.Max(count, 1);
+    }
+
     public async Task<Result> RecordCampCashPaymentAsync(
         Guid campEnrollmentId, Guid organizationId, CancellationToken ct = default)
     {
@@ -563,10 +572,7 @@ public class PaymentService(
                 ErrorCodes.Validation, "Dit kamp is gratis; een betaling is niet nodig."));
 
         // Zelfde deelnemertelling als de online flow: groep = leider + leden, solo = 1.
-        int participantCount = enrollment.CampEnrollmentGroupId.HasValue && enrollment.Group is not null
-            ? enrollment.Group.Members.Count
-            : 1;
-        if (participantCount < 1) participantCount = 1;
+        int participantCount = CountActiveCampParticipants(enrollment);
         decimal amount = camp.Price * participantCount;
 
         OrganizationSettingsEntity? settings = await orgSettings

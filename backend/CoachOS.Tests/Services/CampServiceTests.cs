@@ -353,4 +353,182 @@ public class CampServiceTests
         result.IsSuccess.Should().BeFalse();
         result.Errors[0].Code.Should().Be(ErrorCodes.Validation);
     }
+
+    // ── AddGroupMember ───────────────────────────────────────────────────────
+
+    private Camp ArrangeCampWithGroup(
+        out CampEnrollmentGroup group, out CampEnrollment leader, out CampEnrollment member,
+        decimal price = 100m, int? maxParticipants = null)
+    {
+        Guid campId = Guid.NewGuid();
+        Guid groupId = Guid.NewGuid();
+        group = BuildGroup(groupId, campId, _orgId, out leader, out member);
+        leader.Status = Domain.Enums.EnrollmentStatus.PendingPayment;
+        member.Status = Domain.Enums.EnrollmentStatus.PendingPayment;
+        Camp camp = new()
+        {
+            Id = campId, OrganizationId = _orgId, Name = "Paaskamp", Price = price,
+            MaxParticipants = maxParticipants,
+        };
+        _camps.Setup(r => r.GetByIdWithDetailsAsync(campId, _orgId, It.IsAny<CancellationToken>())).ReturnsAsync(camp);
+        _enrollments.Setup(r => r.GetGroupWithMembersAsync(groupId, _orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(group);
+        return camp;
+    }
+
+    private static AddCampGroupMemberRequest MemberRequest() => new()
+    {
+        ParticipantName = "Lisa", ParticipantEmail = "lisa@test.com",
+    };
+
+    [Test]
+    public async Task AddGroupMemberAsync_Success_InheritsLeaderStatusAndAddsToGroup()
+    {
+        Camp camp = ArrangeCampWithGroup(out CampEnrollmentGroup group, out _, out _);
+        CampEnrollment? added = null;
+        _enrollments.Setup(r => r.AddAsync(It.IsAny<CampEnrollment>(), It.IsAny<CancellationToken>()))
+            .Callback<CampEnrollment, CancellationToken>((e, _) => added = e)
+            .Returns(Task.CompletedTask);
+
+        Result<Guid> result = await _sut.AddGroupMemberAsync(camp.Id, group.Id, _orgId, MemberRequest());
+
+        result.IsSuccess.Should().BeTrue();
+        added!.CampEnrollmentGroupId.Should().Be(group.Id);
+        added.Status.Should().Be(Domain.Enums.EnrollmentStatus.PendingPayment);
+        added.ParticipantEmail.Should().Be("lisa@test.com");
+        _unitOfWork.Verify(u => u.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task AddGroupMemberAsync_GroupOfOtherCamp_ReturnsNotFound()
+    {
+        Camp camp = ArrangeCampWithGroup(out CampEnrollmentGroup group, out _, out _);
+        group.CampId = Guid.NewGuid();
+
+        Result<Guid> result = await _sut.AddGroupMemberAsync(camp.Id, group.Id, _orgId, MemberRequest());
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.NotFound);
+    }
+
+    [Test]
+    public async Task AddGroupMemberAsync_LeaderCancelled_ReturnsConflict()
+    {
+        Camp camp = ArrangeCampWithGroup(out CampEnrollmentGroup group, out CampEnrollment leader, out _);
+        leader.Status = Domain.Enums.EnrollmentStatus.Cancelled;
+
+        Result<Guid> result = await _sut.AddGroupMemberAsync(camp.Id, group.Id, _orgId, MemberRequest());
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.Conflict);
+    }
+
+    [Test]
+    public async Task AddGroupMemberAsync_PaymentPaid_ReturnsConflict()
+    {
+        Camp camp = ArrangeCampWithGroup(out CampEnrollmentGroup group, out CampEnrollment leader, out _);
+        _payments.Setup(p => p.GetLatestTrackedByCampEnrollmentIdAsync(leader.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Payment { Status = Domain.Enums.PaymentStatus.Paid, Method = Domain.Enums.PaymentMethod.Cash });
+
+        Result<Guid> result = await _sut.AddGroupMemberAsync(camp.Id, group.Id, _orgId, MemberRequest());
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.Conflict);
+        _enrollments.Verify(r => r.AddAsync(It.IsAny<CampEnrollment>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task AddGroupMemberAsync_OnlinePaymentPending_ReturnsConflict()
+    {
+        Camp camp = ArrangeCampWithGroup(out CampEnrollmentGroup group, out CampEnrollment leader, out _);
+        _payments.Setup(p => p.GetLatestTrackedByCampEnrollmentIdAsync(leader.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Payment { Status = Domain.Enums.PaymentStatus.Pending, Method = Domain.Enums.PaymentMethod.Online });
+
+        Result<Guid> result = await _sut.AddGroupMemberAsync(camp.Id, group.Id, _orgId, MemberRequest());
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.Conflict);
+    }
+
+    [Test]
+    public async Task AddGroupMemberAsync_CashPending_UpdatesAmountToActiveMembersPlusOne()
+    {
+        Camp camp = ArrangeCampWithGroup(out CampEnrollmentGroup group, out CampEnrollment leader, out _, price: 100m);
+        Payment cash = new()
+        {
+            Status = Domain.Enums.PaymentStatus.Pending, Method = Domain.Enums.PaymentMethod.Cash, Amount = 200m,
+        };
+        _payments.Setup(p => p.GetLatestTrackedByCampEnrollmentIdAsync(leader.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(cash);
+        // Simuleert EF relationship fixup: het nieuwe lid zit na AddAsync al in group.Members.
+        _enrollments.Setup(r => r.AddAsync(It.IsAny<CampEnrollment>(), It.IsAny<CancellationToken>()))
+            .Callback<CampEnrollment, CancellationToken>((e, _) => group.Members.Add(e))
+            .Returns(Task.CompletedTask);
+
+        Result<Guid> result = await _sut.AddGroupMemberAsync(camp.Id, group.Id, _orgId, MemberRequest());
+
+        result.IsSuccess.Should().BeTrue();
+        cash.Amount.Should().Be(300m); // 2 actieve leden + 1 nieuw, niet dubbel geteld
+    }
+
+    [Test]
+    public async Task AddGroupMemberAsync_CampFull_ReturnsConflictAndRollsBack()
+    {
+        Camp camp = ArrangeCampWithGroup(out CampEnrollmentGroup group, out _, out _, maxParticipants: 5);
+        _enrollments.Setup(r => r.CountActiveByCampAsync(camp.Id, It.IsAny<CancellationToken>())).ReturnsAsync(5);
+
+        Result<Guid> result = await _sut.AddGroupMemberAsync(camp.Id, group.Id, _orgId, MemberRequest());
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.Conflict);
+        _unitOfWork.Verify(u => u.RollbackTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task AddGroupMemberAsync_DuplicateEmail_ReturnsConflict()
+    {
+        Camp camp = ArrangeCampWithGroup(out CampEnrollmentGroup group, out _, out _);
+        _enrollments.Setup(r => r.IsDuplicateAsync(camp.Id, "lisa@test.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        Result<Guid> result = await _sut.AddGroupMemberAsync(camp.Id, group.Id, _orgId, MemberRequest());
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.Conflict);
+    }
+
+    [Test]
+    public async Task AddGroupMemberAsync_MissingRequiredFormField_ReturnsValidation()
+    {
+        Camp camp = ArrangeCampWithGroup(out CampEnrollmentGroup group, out _, out _);
+        _forms.Setup(f => f.GetByCampIdReadOnlyAsync(camp.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CampEnrollmentForm
+            {
+                Fields = [new CampFormField { Id = Guid.NewGuid(), Label = "Shirtmaat", IsRequired = true }],
+            });
+
+        Result<Guid> result = await _sut.AddGroupMemberAsync(camp.Id, group.Id, _orgId, MemberRequest());
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.Validation);
+    }
+
+    [Test]
+    public async Task CancelEnrollmentAsync_MemberOfGroup_UpdatesPendingCashAmount()
+    {
+        Camp camp = ArrangeCampWithGroup(out CampEnrollmentGroup group, out CampEnrollment leader, out CampEnrollment member, price: 100m);
+        _camps.Setup(r => r.ExistsAsync(camp.Id, _orgId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _enrollments.Setup(r => r.GetByIdAsync(member.Id, _orgId, It.IsAny<CancellationToken>())).ReturnsAsync(member);
+        Payment cash = new()
+        {
+            Status = Domain.Enums.PaymentStatus.Pending, Method = Domain.Enums.PaymentMethod.Cash, Amount = 200m,
+        };
+        _payments.Setup(p => p.GetLatestTrackedByCampEnrollmentIdAsync(leader.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(cash);
+
+        Result result = await _sut.CancelEnrollmentAsync(camp.Id, member.Id, _orgId);
+
+        result.IsSuccess.Should().BeTrue();
+        cash.Amount.Should().Be(100m); // enkel de leider blijft over
+    }
 }
