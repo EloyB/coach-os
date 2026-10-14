@@ -185,6 +185,12 @@ export async function getCampEnrollments(campId: string): Promise<CampEnrollment
   const { data } = await apiClient.get<CampEnrollmentDto[]>(`/camps/${campId}/enrollments`);
   return data;
 }
+export async function exportCamp(campId: string): Promise<Blob> {
+  const { data } = await apiClient.get(`/camps/${campId}/export`, {
+    responseType: "blob",
+  });
+  return data;
+}
 export async function markCampEnrollmentCashPaid(
   campId: string,
   enrollmentId: string

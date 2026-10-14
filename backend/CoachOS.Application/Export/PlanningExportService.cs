@@ -57,7 +57,7 @@ public class PlanningExportService(
         };
 
         byte[] content = workbookBuilder.Build(model);
-        string fileName = BuildFileName(series.Name, today);
+        string fileName = ExportLabels.FileName(series.Name, "planning", "lessenreeks", today);
         return Result<ExportFileDto>.Ok(new ExportFileDto(content, fileName, XlsxContentType));
     }
 
@@ -107,7 +107,7 @@ public class PlanningExportService(
                 x.Group?.Name,
                 x.Enrollment.ContactEmail,
                 x.Enrollment.StudentPhone,
-                EnrollmentStatusLabel(x.Enrollment.Status),
+                ExportLabels.EnrollmentStatus(x.Enrollment.Status),
                 x.Enrollment.EnrolledAt,
                 x.Enrollment.Notes,
                 x.Enrollment.FormResponses
@@ -131,7 +131,7 @@ public class PlanningExportService(
             foreach (DateOnly date in ExpandDates(series.StartDate, series.EndDate, slot.DayOfWeek))
             {
                 rows.Add(new LessonMomentRow(
-                    date, DutchDay(date.DayOfWeek), slot.StartTime, slot.EndTime,
+                    date, ExportLabels.DutchDay(date.DayOfWeek), slot.StartTime, slot.EndTime,
                     trainerName, slot.CourtName, slot.MaxStudents));
             }
         }
@@ -210,18 +210,6 @@ public class PlanningExportService(
             .ToList();
     }
 
-    private static string BuildFileName(string seriesName, DateOnly today)
-    {
-        string safe = new(seriesName
-            .Select(c => char.IsLetterOrDigit(c) || c is ' ' or '-' or '_' ? c : '-')
-            .ToArray());
-        safe = safe.Trim();
-        if (string.IsNullOrWhiteSpace(safe))
-            safe = "lessenreeks";
-
-        return $"{safe}-planning-{today:yyyyMMdd}.xlsx";
-    }
-
     private static IEnumerable<DateOnly> ExpandDates(DateOnly start, DateOnly end, int dayOfWeek)
     {
         // WeeklyTemplateEntry.DayOfWeek gebruikt de app-conventie (0=maandag ... 6=zondag),
@@ -230,28 +218,6 @@ public class PlanningExportService(
             if (((int)d.DayOfWeek + 6) % 7 == dayOfWeek)
                 yield return d;
     }
-
-    private static string DutchDay(DayOfWeek d) => d switch
-    {
-        DayOfWeek.Monday => "Maandag",
-        DayOfWeek.Tuesday => "Dinsdag",
-        DayOfWeek.Wednesday => "Woensdag",
-        DayOfWeek.Thursday => "Donderdag",
-        DayOfWeek.Friday => "Vrijdag",
-        DayOfWeek.Saturday => "Zaterdag",
-        DayOfWeek.Sunday => "Zondag",
-        _ => d.ToString(),
-    };
-
-    private static string EnrollmentStatusLabel(EnrollmentStatus s) => s switch
-    {
-        EnrollmentStatus.Pending => "In afwachting",
-        EnrollmentStatus.Confirmed => "Bevestigd",
-        EnrollmentStatus.Cancelled => "Geannuleerd",
-        EnrollmentStatus.Waitlisted => "Wachtlijst",
-        EnrollmentStatus.PendingPayment => "Wacht op betaling",
-        _ => s.ToString(),
-    };
 
     private static string AssignmentStatusLabel(ScheduleAssignmentStatus s) => s switch
     {

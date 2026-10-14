@@ -52,6 +52,7 @@ public static class DependencyInjection
         services.AddScoped<IOnboardingService, OnboardingService>();
         services.AddScoped<IPaymentService, PaymentService>();
         services.AddScoped<IPlanningExportService, PlanningExportService>();
+        services.AddScoped<ICampExportService, CampExportService>();
 
         return services;
     }

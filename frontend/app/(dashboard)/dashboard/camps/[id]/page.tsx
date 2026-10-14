@@ -5,11 +5,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import {
   ChevronLeft,
   ChevronDown,
   ChevronUp,
   Trash2,
+  Download,
   Users,
   Search,
   Copy,
@@ -38,6 +40,7 @@ import {
   getCampById,
   deleteCamp,
   getCampEnrollments,
+  exportCamp,
   markCampEnrollmentCashPaid,
   type CampEnrollmentDto,
   type CampDetailDto,
@@ -45,6 +48,7 @@ import {
 import { getAxiosErrorMessages } from "@/lib/utils/api-errors";
 import { formatDateNL } from "@/lib/date-utils";
 import { getAuthUser } from "@/lib/auth";
+import { downloadBlob } from "@/lib/download";
 import { CampFormBuilder } from "../_components/camp-form-builder";
 import { CampEditForm } from "../_components/camp-edit-form";
 import { CampDaysCard } from "../_components/camp-days-card";
@@ -270,7 +274,13 @@ function EnrollmentRow({
   );
 }
 
-function EnrollmentsSection({ campId }: { campId: string }) {
+function EnrollmentsSection({
+  campId,
+  campName,
+}: {
+  campId: string;
+  campName: string;
+}) {
   const t = useTranslations("camps");
   const [copied, setCopied] = useState(false);
   const [query, setQuery] = useState("");
@@ -278,6 +288,17 @@ function EnrollmentsSection({ campId }: { campId: string }) {
   const { data: enrollments = [], isLoading } = useQuery({
     queryKey: ["campEnrollments", campId],
     queryFn: () => getCampEnrollments(campId),
+  });
+
+  const exportMutation = useMutation({
+    mutationFn: () => exportCamp(campId),
+    onSuccess: (blob) => {
+      downloadBlob(blob, `${campName}-kamp.xlsx`);
+      toast.success(t("exportSuccess"));
+    },
+    onError: () => {
+      toast.error(t("exportError"));
+    },
   });
 
   function handleCopyLink() {
@@ -310,23 +331,34 @@ function EnrollmentsSection({ campId }: { campId: string }) {
             {enrollments.length}
           </span>
         </div>
-        <button
-          type="button"
-          onClick={handleCopyLink}
-          className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-600 hover:text-gray-900"
-        >
-          {copied ? (
-            <>
-              <CheckCircle2 size={13} className="text-tennis-green" />
-              {t("linkCopied")}
-            </>
-          ) : (
-            <>
-              <Copy size={13} />
-              {t("shareLink")}
-            </>
-          )}
-        </button>
+        <div className="flex items-center gap-4">
+          <button
+            type="button"
+            onClick={() => exportMutation.mutate()}
+            disabled={exportMutation.isPending}
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-600 hover:text-gray-900 disabled:opacity-50"
+          >
+            <Download size={13} />
+            {exportMutation.isPending ? t("exporting") : t("exportAction")}
+          </button>
+          <button
+            type="button"
+            onClick={handleCopyLink}
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-600 hover:text-gray-900"
+          >
+            {copied ? (
+              <>
+                <CheckCircle2 size={13} className="text-tennis-green" />
+                {t("linkCopied")}
+              </>
+            ) : (
+              <>
+                <Copy size={13} />
+                {t("shareLink")}
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -600,7 +632,7 @@ export default function CampDetailPage({
           {isAdmin && <CampFormBuilder campId={id} />}
 
           {/* ── Section 3: Enrollments ── */}
-          <EnrollmentsSection campId={id} />
+          <EnrollmentsSection campId={id} campName={camp.name} />
 
           {/* ── Section 4: Danger zone (admin only) ── */}
           {isAdmin && (
