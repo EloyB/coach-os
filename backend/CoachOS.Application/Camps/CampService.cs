@@ -193,6 +193,7 @@ public class CampService(
             return new CampEnrollmentDto(
                 e.Id, e.ParticipantName, e.ParticipantEmail, e.ParticipantPhone,
                 e.Status.ToString(), e.EnrolledAt, e.Group?.Name,
+                e.CampEnrollmentGroupId, e.Group?.LeaderEnrollmentId == e.Id,
                 e.FormResponses.Select(r => new CampEnrollmentResponseItemDto(
                     r.CampFormField?.Label ?? string.Empty, r.Value)).ToList(),
                 info?.Method?.ToString(), info?.Status.ToString());

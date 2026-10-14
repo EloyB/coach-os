@@ -150,4 +150,42 @@ public class CampServiceTests
         existing.Days.Should().HaveCount(1);
         existing.Days.First().Date.Should().Be(new DateOnly(2026, 5, 1));
     }
+
+    [Test]
+    public async Task GetEnrollmentsAsync_MarksGroupLeaderAndExposesGroupId()
+    {
+        Guid campId = Guid.NewGuid();
+        Guid groupId = Guid.NewGuid();
+        Guid leaderId = Guid.NewGuid();
+        CampEnrollmentGroup group = new() { Id = groupId, Name = "Groep A", LeaderEnrollmentId = leaderId };
+        CampEnrollment leader = new()
+        {
+            Id = leaderId, ParticipantName = "Sarah", CampEnrollmentGroupId = groupId, Group = group,
+        };
+        CampEnrollment member = new()
+        {
+            Id = Guid.NewGuid(), ParticipantName = "Tom", CampEnrollmentGroupId = groupId, Group = group,
+        };
+        CampEnrollment solo = new() { Id = Guid.NewGuid(), ParticipantName = "Emma" };
+
+        _camps.Setup(r => r.ExistsAsync(campId, _orgId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _enrollments.Setup(r => r.GetByCampWithResponsesAsync(campId, _orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([leader, member, solo]);
+        _payments.Setup(r => r.GetLatestMethodAndStatusByCampEnrollmentIdsAsync(
+                It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+
+        Result<List<CampEnrollmentDto>> result = await _sut.GetEnrollmentsAsync(campId, _orgId);
+
+        result.IsSuccess.Should().BeTrue();
+        CampEnrollmentDto leaderDto = result.Value!.Single(d => d.Id == leaderId);
+        leaderDto.IsGroupLeader.Should().BeTrue();
+        leaderDto.EnrollmentGroupId.Should().Be(groupId);
+        CampEnrollmentDto memberDto = result.Value!.Single(d => d.Id == member.Id);
+        memberDto.IsGroupLeader.Should().BeFalse();
+        memberDto.EnrollmentGroupId.Should().Be(groupId);
+        CampEnrollmentDto soloDto = result.Value!.Single(d => d.Id == solo.Id);
+        soloDto.IsGroupLeader.Should().BeFalse();
+        soloDto.EnrollmentGroupId.Should().BeNull();
+    }
 }
