@@ -1225,6 +1225,7 @@
     "manualPaymentReceived": "Cash al ontvangen",
     "manualSubmit": "Inschrijven",
     "manualSuccess": "Deelnemer ingeschreven",
-    "manualError": "Kon de inschrijving niet toevoegen."
+    "manualError": "Kon de inschrijving niet toevoegen.",
+    "possibleDuplicate": "mogelijk dubbel"
   }
 }

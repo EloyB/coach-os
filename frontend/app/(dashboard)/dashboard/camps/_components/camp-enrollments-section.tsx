@@ -139,6 +139,44 @@ function StatusBadge({
   );
 }
 
+/** Naam genormaliseerd voor vergelijking: kleine letters, zonder accenten, spaties samengevoegd. */
+function normalizeName(name: string): string {
+  return name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Mogelijke dubbels: dezelfde (genormaliseerde) naam bij meerdere actieve inschrijvingen.
+ * Een e-mailadres kan bij kampen niet dubbel actief voorkomen (unieke index), dus enkel
+ * dezelfde persoon met een ander adres valt hier op. Geannuleerde inschrijvingen tellen niet mee.
+ */
+function findDuplicateIds(enrollments: CampEnrollmentDto[]): Set<string> {
+  const byName = new Map<string, string[]>();
+  for (const e of enrollments) {
+    if (e.status === "Cancelled") continue;
+    const key = normalizeName(e.participantName);
+    byName.set(key, [...(byName.get(key) ?? []), e.id]);
+  }
+  const ids = new Set<string>();
+  for (const group of byName.values()) {
+    if (group.length > 1) group.forEach((id) => ids.add(id));
+  }
+  return ids;
+}
+
+function DuplicateBadge() {
+  const t = useTranslations("campEnrollmentsTable");
+  return (
+    <Badge className="shrink-0 border-0 bg-amber-100 text-[10px] text-amber-700">
+      {t("possibleDuplicate")}
+    </Badge>
+  );
+}
+
 function isCashPending(e: CampEnrollmentDto): boolean {
   return e.paymentMethod === "Cash" && e.paymentStatus === "Pending";
 }
@@ -496,6 +534,7 @@ function PersonRow({
   cancelBlocked = false,
   groupPayment = null,
   isMatch,
+  isDuplicate = false,
   openMenuId,
   setOpenMenuId,
   variant = "row",
@@ -511,6 +550,8 @@ function PersonRow({
   /** Betaalinfo van de leider; leden hebben zelf geen betaling (groepsbetaling). */
   groupPayment?: { method: string | null; status: string | null } | null;
   isMatch: boolean;
+  /** Dezelfde naam bij een andere actieve inschrijving van dit kamp. */
+  isDuplicate?: boolean;
   openMenuId: string | null;
   setOpenMenuId: (id: string | null) => void;
   variant?: "row" | "card";
@@ -601,9 +642,10 @@ function PersonRow({
         >
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-gray-900">
+              <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm font-medium text-gray-900">
                 {enrollment.participantName}
                 {isLeader && <LeaderLabel />}
+                {isDuplicate && <DuplicateBadge />}
               </p>
               <p className="mt-0.5 break-all text-xs text-gray-500">
                 {contactLine(enrollment)}
@@ -636,9 +678,10 @@ function PersonRow({
         } ${isCancelled ? "opacity-60" : ""}`}
       >
         <td className={`px-4 py-2.5 ${isMember ? "pl-12" : ""}`}>
-          <span className="block truncate text-sm font-medium text-gray-900">
-            {enrollment.participantName}
+          <span className="flex min-w-0 items-center gap-1.5 text-sm font-medium text-gray-900">
+            <span className="truncate">{enrollment.participantName}</span>
             {isLeader && <LeaderLabel />}
+            {isDuplicate && <DuplicateBadge />}
           </span>
         </td>
         <td className="px-4 py-2.5 text-xs text-gray-500">
@@ -673,6 +716,7 @@ function GroupBlockRows({
   campId,
   forceExpanded,
   matchedIds,
+  duplicateIds,
   openMenuId,
   setOpenMenuId,
   variant = "row",
@@ -681,6 +725,7 @@ function GroupBlockRows({
   campId: string;
   forceExpanded: boolean;
   matchedIds: Set<string> | null;
+  duplicateIds: Set<string>;
   openMenuId: string | null;
   setOpenMenuId: (id: string | null) => void;
   variant?: "row" | "card";
@@ -804,6 +849,7 @@ function GroupBlockRows({
                 }
                 groupPayment={m.id === leader.id ? null : groupPayment}
                 isMatch={matchedIds?.has(m.id) ?? false}
+                isDuplicate={duplicateIds.has(m.id)}
                 openMenuId={openMenuId}
                 setOpenMenuId={setOpenMenuId}
                 variant="card"
@@ -875,6 +921,7 @@ function GroupBlockRows({
             }
             groupPayment={m.id === leader.id ? null : groupPayment}
             isMatch={matchedIds?.has(m.id) ?? false}
+            isDuplicate={duplicateIds.has(m.id)}
             openMenuId={openMenuId}
             setOpenMenuId={setOpenMenuId}
           />
@@ -909,6 +956,11 @@ function EnrollmentsTable({
         ? enrollments
         : enrollments.filter((e) => e.status !== "Cancelled"),
     [enrollments, showCancelled],
+  );
+
+  const duplicateIds = useMemo(
+    () => findDuplicateIds(enrollments),
+    [enrollments],
   );
 
   const blocks = useMemo(() => buildBlocks(visible), [visible]);
@@ -996,6 +1048,7 @@ function EnrollmentsTable({
                       campId={campId}
                       isMember={false}
                       isMatch={matchedIds?.has(block.enrollment.id) ?? false}
+                      isDuplicate={duplicateIds.has(block.enrollment.id)}
                       openMenuId={openMenuId}
                       setOpenMenuId={setOpenMenuId}
                       variant="card"
@@ -1018,6 +1071,7 @@ function EnrollmentsTable({
                       campId={campId}
                       forceExpanded={!!q}
                       matchedIds={matchedIds}
+                      duplicateIds={duplicateIds}
                       openMenuId={openMenuId}
                       setOpenMenuId={setOpenMenuId}
                       variant="card"
@@ -1063,6 +1117,7 @@ function EnrollmentsTable({
                     campId={campId}
                     isMember={false}
                     isMatch={matchedIds?.has(block.enrollment.id) ?? false}
+                    isDuplicate={duplicateIds.has(block.enrollment.id)}
                     openMenuId={openMenuId}
                     setOpenMenuId={setOpenMenuId}
                   />
@@ -1080,6 +1135,7 @@ function EnrollmentsTable({
                     campId={campId}
                     forceExpanded={!!q}
                     matchedIds={matchedIds}
+                    duplicateIds={duplicateIds}
                     openMenuId={openMenuId}
                     setOpenMenuId={setOpenMenuId}
                   />
