@@ -22,6 +22,9 @@ public interface ICampEnrollmentRepository
     /// <summary>Alle inschrijvingen van een kamp incl. FormResponses (admin-overzicht).</summary>
     Task<List<CampEnrollment>> GetByCampWithResponsesAsync(Guid campId, Guid organizationId, CancellationToken ct = default);
 
+    /// <summary>Tracked groep incl. leden (voor annuleren); org-gescoped.</summary>
+    Task<CampEnrollmentGroup?> GetGroupWithMembersAsync(Guid groupId, Guid organizationId, CancellationToken ct = default);
+
     Task AddAsync(CampEnrollment enrollment, CancellationToken ct = default);
     Task AddGroupAsync(CampEnrollmentGroup group, CancellationToken ct = default);
     Task AddFormResponseAsync(CampFormResponse response, CancellationToken ct = default);

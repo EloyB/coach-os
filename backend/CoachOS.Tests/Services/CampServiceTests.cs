@@ -188,4 +188,169 @@ public class CampServiceTests
         soloDto.IsGroupLeader.Should().BeFalse();
         soloDto.EnrollmentGroupId.Should().BeNull();
     }
+
+    // ── Cancel ───────────────────────────────────────────────────────────────
+
+    private static CampEnrollmentGroup BuildGroup(
+        Guid groupId, Guid campId, Guid orgId, out CampEnrollment leader, out CampEnrollment member)
+    {
+        leader = new CampEnrollment
+        {
+            Id = Guid.NewGuid(), OrganizationId = orgId, CampId = campId, CampEnrollmentGroupId = groupId,
+            ParticipantName = "Sarah", Status = Domain.Enums.EnrollmentStatus.Confirmed,
+        };
+        member = new CampEnrollment
+        {
+            Id = Guid.NewGuid(), OrganizationId = orgId, CampId = campId, CampEnrollmentGroupId = groupId,
+            ParticipantName = "Tom", Status = Domain.Enums.EnrollmentStatus.Confirmed,
+        };
+        return new CampEnrollmentGroup
+        {
+            Id = groupId, OrganizationId = orgId, CampId = campId,
+            LeaderEnrollmentId = leader.Id, Members = [leader, member],
+        };
+    }
+
+    [Test]
+    public async Task CancelEnrollmentAsync_Solo_SetsCancelled()
+    {
+        Guid campId = Guid.NewGuid();
+        CampEnrollment e = new()
+        {
+            Id = Guid.NewGuid(), OrganizationId = _orgId, CampId = campId,
+            Status = Domain.Enums.EnrollmentStatus.Confirmed,
+        };
+        _camps.Setup(r => r.ExistsAsync(campId, _orgId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _enrollments.Setup(r => r.GetByIdAsync(e.Id, _orgId, It.IsAny<CancellationToken>())).ReturnsAsync(e);
+
+        Result result = await _sut.CancelEnrollmentAsync(campId, e.Id, _orgId);
+
+        result.IsSuccess.Should().BeTrue();
+        e.Status.Should().Be(Domain.Enums.EnrollmentStatus.Cancelled);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task CancelEnrollmentAsync_WrongCamp_ReturnsNotFound()
+    {
+        Guid routeCampId = Guid.NewGuid();
+        CampEnrollment e = new()
+        {
+            Id = Guid.NewGuid(), OrganizationId = _orgId, CampId = Guid.NewGuid(),
+            Status = Domain.Enums.EnrollmentStatus.Confirmed,
+        };
+        _camps.Setup(r => r.ExistsAsync(routeCampId, _orgId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _enrollments.Setup(r => r.GetByIdAsync(e.Id, _orgId, It.IsAny<CancellationToken>())).ReturnsAsync(e);
+
+        Result result = await _sut.CancelEnrollmentAsync(routeCampId, e.Id, _orgId);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.NotFound);
+        e.Status.Should().Be(Domain.Enums.EnrollmentStatus.Confirmed);
+    }
+
+    [Test]
+    public async Task CancelEnrollmentAsync_AlreadyCancelled_ReturnsValidation()
+    {
+        Guid campId = Guid.NewGuid();
+        CampEnrollment e = new()
+        {
+            Id = Guid.NewGuid(), OrganizationId = _orgId, CampId = campId,
+            Status = Domain.Enums.EnrollmentStatus.Cancelled,
+        };
+        _camps.Setup(r => r.ExistsAsync(campId, _orgId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _enrollments.Setup(r => r.GetByIdAsync(e.Id, _orgId, It.IsAny<CancellationToken>())).ReturnsAsync(e);
+
+        Result result = await _sut.CancelEnrollmentAsync(campId, e.Id, _orgId);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.Validation);
+    }
+
+    [Test]
+    public async Task CancelEnrollmentAsync_LeaderWithActiveMembers_IsBlocked()
+    {
+        Guid campId = Guid.NewGuid();
+        Guid groupId = Guid.NewGuid();
+        CampEnrollmentGroup group = BuildGroup(groupId, campId, _orgId, out CampEnrollment leader, out _);
+        _camps.Setup(r => r.ExistsAsync(campId, _orgId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _enrollments.Setup(r => r.GetByIdAsync(leader.Id, _orgId, It.IsAny<CancellationToken>())).ReturnsAsync(leader);
+        _enrollments.Setup(r => r.GetGroupWithMembersAsync(groupId, _orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(group);
+
+        Result result = await _sut.CancelEnrollmentAsync(campId, leader.Id, _orgId);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.Validation);
+        leader.Status.Should().Be(Domain.Enums.EnrollmentStatus.Confirmed);
+    }
+
+    [Test]
+    public async Task CancelEnrollmentAsync_MemberOfGroup_IsCancelled()
+    {
+        Guid campId = Guid.NewGuid();
+        Guid groupId = Guid.NewGuid();
+        CampEnrollmentGroup group = BuildGroup(groupId, campId, _orgId, out _, out CampEnrollment member);
+        _camps.Setup(r => r.ExistsAsync(campId, _orgId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _enrollments.Setup(r => r.GetByIdAsync(member.Id, _orgId, It.IsAny<CancellationToken>())).ReturnsAsync(member);
+        _enrollments.Setup(r => r.GetGroupWithMembersAsync(groupId, _orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(group);
+
+        Result result = await _sut.CancelEnrollmentAsync(campId, member.Id, _orgId);
+
+        result.IsSuccess.Should().BeTrue();
+        member.Status.Should().Be(Domain.Enums.EnrollmentStatus.Cancelled);
+    }
+
+    [Test]
+    public async Task CancelGroupAsync_CancelsAllActiveMembersInOneSave()
+    {
+        Guid campId = Guid.NewGuid();
+        Guid groupId = Guid.NewGuid();
+        CampEnrollmentGroup group = BuildGroup(groupId, campId, _orgId, out CampEnrollment leader, out CampEnrollment member);
+        _camps.Setup(r => r.ExistsAsync(campId, _orgId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _enrollments.Setup(r => r.GetGroupWithMembersAsync(groupId, _orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(group);
+
+        Result result = await _sut.CancelGroupAsync(campId, groupId, _orgId);
+
+        result.IsSuccess.Should().BeTrue();
+        leader.Status.Should().Be(Domain.Enums.EnrollmentStatus.Cancelled);
+        member.Status.Should().Be(Domain.Enums.EnrollmentStatus.Cancelled);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task CancelGroupAsync_WrongCamp_ReturnsNotFound()
+    {
+        Guid routeCampId = Guid.NewGuid();
+        Guid groupId = Guid.NewGuid();
+        CampEnrollmentGroup group = BuildGroup(groupId, Guid.NewGuid(), _orgId, out _, out _);
+        _camps.Setup(r => r.ExistsAsync(routeCampId, _orgId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _enrollments.Setup(r => r.GetGroupWithMembersAsync(groupId, _orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(group);
+
+        Result result = await _sut.CancelGroupAsync(routeCampId, groupId, _orgId);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.NotFound);
+    }
+
+    [Test]
+    public async Task CancelGroupAsync_AllAlreadyCancelled_ReturnsValidation()
+    {
+        Guid campId = Guid.NewGuid();
+        Guid groupId = Guid.NewGuid();
+        CampEnrollmentGroup group = BuildGroup(groupId, campId, _orgId, out CampEnrollment leader, out CampEnrollment member);
+        leader.Status = Domain.Enums.EnrollmentStatus.Cancelled;
+        member.Status = Domain.Enums.EnrollmentStatus.Cancelled;
+        _camps.Setup(r => r.ExistsAsync(campId, _orgId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _enrollments.Setup(r => r.GetGroupWithMembersAsync(groupId, _orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(group);
+
+        Result result = await _sut.CancelGroupAsync(campId, groupId, _orgId);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.Validation);
+    }
 }

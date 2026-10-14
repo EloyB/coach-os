@@ -20,4 +20,18 @@ public interface ICampService
     /// </summary>
     Task<Result> MarkEnrollmentCashPaidAsync(
         Guid campId, Guid campEnrollmentId, Guid organizationId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Annuleert een kamp-inschrijving (soft-cancel). De leider van een groep met nog
+    /// actieve leden kan niet los geannuleerd worden: annuleer dan de hele groep.
+    /// De plaats komt automatisch vrij (capaciteitstelling sluit geannuleerd uit).
+    /// </summary>
+    Task<Result> CancelEnrollmentAsync(
+        Guid campId, Guid campEnrollmentId, Guid organizationId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Annuleert alle nog-actieve leden van een kampgroep atomair (één SaveChanges).
+    /// </summary>
+    Task<Result> CancelGroupAsync(
+        Guid campId, Guid groupId, Guid organizationId, CancellationToken ct = default);
 }

@@ -82,6 +82,14 @@ public class CampEnrollmentRepository(ApplicationDbContext context) : ICampEnrol
             .ToListAsync(ct);
     }
 
+    public async Task<CampEnrollmentGroup?> GetGroupWithMembersAsync(
+        Guid groupId, Guid organizationId, CancellationToken ct = default)
+    {
+        return await context.CampEnrollmentGroups
+            .Include(g => g.Members)
+            .FirstOrDefaultAsync(g => g.Id == groupId && g.OrganizationId == organizationId, ct);
+    }
+
     public async Task AddAsync(CampEnrollment enrollment, CancellationToken ct = default)
     {
         await context.CampEnrollments.AddAsync(enrollment, ct);

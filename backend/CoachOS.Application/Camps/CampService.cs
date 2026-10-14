@@ -210,6 +210,63 @@ public class CampService(
         return await paymentService.MarkCampCashPaidAsync(campId, campEnrollmentId, organizationId, ct);
     }
 
+    public async Task<Result> CancelEnrollmentAsync(
+        Guid campId, Guid campEnrollmentId, Guid organizationId, CancellationToken ct = default)
+    {
+        bool exists = await camps.ExistsAsync(campId, organizationId, ct);
+        if (!exists) return Result.Fail(new Error(ErrorCodes.NotFound, "Kamp niet gevonden."));
+
+        // GetByIdAsync filtert op organizationId (autorisatiecheck); CampId-check voorkomt
+        // een cross-kamp annulering binnen dezelfde organisatie.
+        CampEnrollment? enrollment = await enrollments.GetByIdAsync(campEnrollmentId, organizationId, ct);
+        if (enrollment is null || enrollment.CampId != campId)
+            return Result.Fail(new Error(ErrorCodes.NotFound, "Inschrijving niet gevonden."));
+
+        if (enrollment.Status == EnrollmentStatus.Cancelled)
+            return Result.Fail(new Error(ErrorCodes.Validation, "Deze inschrijving is al geannuleerd."));
+
+        // De betaling hangt aan de leider (prijs × leden): een leider alleen annuleren
+        // zou de overige leden zonder betaler achterlaten.
+        if (enrollment.CampEnrollmentGroupId is { } groupId)
+        {
+            CampEnrollmentGroup? group = await enrollments.GetGroupWithMembersAsync(groupId, organizationId, ct);
+            bool isLeader = group is not null && group.LeaderEnrollmentId == enrollment.Id;
+            bool otherActiveMembers = group is not null && group.Members.Any(m =>
+                m.Id != enrollment.Id && m.Status != EnrollmentStatus.Cancelled);
+            if (isLeader && otherActiveMembers)
+                return Result.Fail(new Error(ErrorCodes.Validation,
+                    "De groepsleider kan niet los geannuleerd worden zolang er actieve leden zijn. Annuleer de hele groep."));
+        }
+
+        enrollment.Status = EnrollmentStatus.Cancelled;
+        await unitOfWork.SaveChangesAsync(ct);
+        return Result.Ok();
+    }
+
+    public async Task<Result> CancelGroupAsync(
+        Guid campId, Guid groupId, Guid organizationId, CancellationToken ct = default)
+    {
+        bool exists = await camps.ExistsAsync(campId, organizationId, ct);
+        if (!exists) return Result.Fail(new Error(ErrorCodes.NotFound, "Kamp niet gevonden."));
+
+        CampEnrollmentGroup? group = await enrollments.GetGroupWithMembersAsync(groupId, organizationId, ct);
+        if (group is null || group.CampId != campId)
+            return Result.Fail(new Error(ErrorCodes.NotFound, "Groep niet gevonden."));
+
+        List<CampEnrollment> active = group.Members
+            .Where(m => m.Status != EnrollmentStatus.Cancelled)
+            .ToList();
+        if (active.Count == 0)
+            return Result.Fail(new Error(ErrorCodes.Validation, "Deze groep is al geannuleerd."));
+
+        foreach (CampEnrollment member in active)
+            member.Status = EnrollmentStatus.Cancelled;
+
+        // Eén SaveChanges = één impliciete transactie: alles-of-niets.
+        await unitOfWork.SaveChangesAsync(ct);
+        return Result.Ok();
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     private async Task<Error?> ValidateClubAndTrainersAsync(

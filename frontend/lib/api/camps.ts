@@ -187,6 +187,18 @@ export async function getCampEnrollments(campId: string): Promise<CampEnrollment
   const { data } = await apiClient.get<CampEnrollmentDto[]>(`/camps/${campId}/enrollments`);
   return data;
 }
+export async function cancelCampEnrollment(
+  campId: string,
+  enrollmentId: string
+): Promise<void> {
+  await apiClient.delete(`/camps/${campId}/enrollments/${enrollmentId}`);
+}
+export async function cancelCampEnrollmentGroup(
+  campId: string,
+  groupId: string
+): Promise<void> {
+  await apiClient.delete(`/camps/${campId}/enrollment-groups/${groupId}`);
+}
 export async function exportCamp(campId: string): Promise<Blob> {
   const { data } = await apiClient.get(`/camps/${campId}/export`, {
     responseType: "blob",

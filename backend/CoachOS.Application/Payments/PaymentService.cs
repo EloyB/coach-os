@@ -499,6 +499,14 @@ public class PaymentService(
     private async Task ConfirmCampEnrollmentAndNotifyAsync(
         CampEnrollmentEntity enrollment, CancellationToken ct)
     {
+        // Een geannuleerde inschrijving mag nooit stilletjes heropstaan (laat-binnenkomende
+        // webhook of cash-markering): de betaling zelf wordt wel bewaard, zonder bevestiging.
+        if (enrollment.Status == EnrollmentStatus.Cancelled)
+        {
+            await unitOfWork.SaveChangesAsync(ct);
+            return;
+        }
+
         // Bevestig de hele groep (leider + leden) of de solo-inschrijving.
         List<CampEnrollmentEntity> toConfirm =
             enrollment.CampEnrollmentGroupId.HasValue && enrollment.Group is not null
@@ -509,7 +517,7 @@ public class PaymentService(
         // zodat een gedeactiveerd kamp toch echte naam + data in de mail toont.
         foreach (CampEnrollmentEntity e in toConfirm)
         {
-            if (e.Status == EnrollmentStatus.Confirmed) continue;
+            if (e.Status is EnrollmentStatus.Confirmed or EnrollmentStatus.Cancelled) continue;
             e.Status = EnrollmentStatus.Confirmed;
         }
         await unitOfWork.SaveChangesAsync(ct);
@@ -593,6 +601,10 @@ public class PaymentService(
         if (enrollment is not null
             && (enrollment.OrganizationId != organizationId || enrollment.CampId != campId))
             return Result.Fail(new Error(ErrorCodes.NotFound, "Inschrijving niet gevonden."));
+
+        if (enrollment is not null && enrollment.Status == EnrollmentStatus.Cancelled)
+            return Result.Fail(new Error(
+                ErrorCodes.Validation, "Deze inschrijving is geannuleerd en kan niet als betaald gemarkeerd worden."));
 
         PaymentEntity? payment = await payments.GetLatestPendingCashByCampEnrollmentIdAsync(
             campEnrollmentId, organizationId, ct);

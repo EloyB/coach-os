@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
@@ -14,15 +14,28 @@ import {
   Eye,
   MoreVertical,
   Search,
+  Trash2,
   Users,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
 import {
+  cancelCampEnrollment,
+  cancelCampEnrollmentGroup,
   exportCamp,
   getCampEnrollments,
   markCampEnrollmentCashPaid,
@@ -31,6 +44,7 @@ import {
 import { enrollmentDisplayStatus } from "@/lib/status-styles";
 import { getAxiosErrorMessages } from "@/lib/utils/api-errors";
 import { downloadBlob } from "@/lib/download";
+import { isEnrollmentManager } from "@/lib/auth";
 import { CampEnrollmentDetailDialog } from "./camp-enrollment-detail-dialog";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -96,7 +110,9 @@ function buildBlocks(enrollments: CampEnrollmentDto[]): Block[] {
   for (const enrollment of solos) blocks.push({ kind: "solo", enrollment });
 
   const name = (b: Block) =>
-    b.kind === "group" ? b.leader.participantName : b.enrollment.participantName;
+    b.kind === "group"
+      ? b.leader.participantName
+      : b.enrollment.participantName;
   return blocks.sort((a, b) => name(a).localeCompare(name(b)));
 }
 
@@ -145,6 +161,84 @@ function SectionHeading({ label, count }: { label: string; count: number }) {
   );
 }
 
+/** Annuleren mag enkel admin/hoofdtrainer (zelfde regel als de backend). */
+function useCanManage(): boolean {
+  const [canManage, setCanManage] = useState(false);
+  useEffect(() => {
+    // Auth staat alleen in localStorage; pas na hydration kunnen acties zichtbaar worden.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCanManage(isEnrollmentManager());
+  }, []);
+  return canManage;
+}
+
+function useCancelMutation(
+  campId: string,
+  mutationFn: () => Promise<void>,
+  successKey: "toastCancelled" | "toastGroupCancelled",
+) {
+  const t = useTranslations("campEnrollmentsTable");
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["campEnrollments", campId] });
+      queryClient.invalidateQueries({ queryKey: ["camp", campId] });
+      toast.success(t(successKey));
+    },
+    onError: (error) => {
+      toast.error(getAxiosErrorMessages(error, t("cancelError")).join(" "));
+    },
+  });
+}
+
+function CancelConfirmDialog({
+  open,
+  onOpenChange,
+  title,
+  body,
+  showPaidWarning,
+  isPending,
+  onConfirm,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  title: string;
+  body: string;
+  showPaidWarning: boolean;
+  isPending: boolean;
+  onConfirm: () => void;
+}) {
+  const t = useTranslations("campEnrollmentsTable");
+  return (
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{title}</AlertDialogTitle>
+          <AlertDialogDescription>
+            {body}
+            {showPaidWarning && (
+              <span className="mt-2 block font-medium text-amber-700">
+                {t("cancelPaidWarning")}
+              </span>
+            )}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>{t("back")}</AlertDialogCancel>
+          <AlertDialogAction
+            disabled={isPending}
+            onClick={onConfirm}
+            className="bg-red-600 text-white hover:bg-red-700"
+          >
+            {t("confirmCancel")}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
 function LeaderLabel() {
   const t = useTranslations("campEnrollmentsTable");
   return (
@@ -189,6 +283,8 @@ function ActionsMenu({
   onMarkPaid,
   isMarkingPaid,
   markPaidLabel,
+  canCancel,
+  onCancel,
 }: {
   enrollment: CampEnrollmentDto;
   menuKey: string;
@@ -198,6 +294,8 @@ function ActionsMenu({
   onMarkPaid: () => void;
   isMarkingPaid: boolean;
   markPaidLabel: string;
+  canCancel: boolean;
+  onCancel: () => void;
 }) {
   const t = useTranslations("campEnrollmentsTable");
   return (
@@ -245,12 +343,25 @@ function ActionsMenu({
             {markPaidLabel}
           </button>
         )}
+        {canCancel && (
+          <button
+            type="button"
+            onClick={() => {
+              setOpenMenuId(null);
+              onCancel();
+            }}
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-red-600 hover:bg-red-50"
+          >
+            <Trash2 size={13} />
+            {t("cancelAction")}
+          </button>
+        )}
       </PopoverContent>
     </Popover>
   );
 }
 
-/** ⋮-menu op de groepskop: enkel "markeer hele groep als betaald". */
+/** ⋮-menu op de groepskop: groep als betaald markeren en/of de groep annuleren. */
 function GroupActionsMenu({
   leader,
   menuKey,
@@ -258,6 +369,8 @@ function GroupActionsMenu({
   setOpenMenuId,
   onMarkGroupPaid,
   isMarkingPaid,
+  canCancel,
+  onCancelGroup,
 }: {
   leader: CampEnrollmentDto;
   menuKey: string;
@@ -265,9 +378,12 @@ function GroupActionsMenu({
   setOpenMenuId: (id: string | null) => void;
   onMarkGroupPaid: () => void;
   isMarkingPaid: boolean;
+  canCancel: boolean;
+  onCancelGroup: () => void;
 }) {
   const t = useTranslations("campEnrollmentsTable");
-  if (!isCashPending(leader)) return null;
+  const canMarkPaid = isCashPending(leader);
+  if (!canMarkPaid && !canCancel) return null;
   return (
     <Popover
       open={openMenuId === menuKey}
@@ -288,18 +404,33 @@ function GroupActionsMenu({
         onClick={(e) => e.stopPropagation()}
         className="w-60 p-1 text-sm"
       >
-        <button
-          type="button"
-          disabled={isMarkingPaid}
-          onClick={() => {
-            setOpenMenuId(null);
-            onMarkGroupPaid();
-          }}
-          className="flex w-full items-center gap-2 px-3 py-2 text-left text-tennis-green hover:bg-tennis-green/5 disabled:opacity-50"
-        >
-          <Euro size={13} />
-          {t("markGroupPaid")}
-        </button>
+        {canMarkPaid && (
+          <button
+            type="button"
+            disabled={isMarkingPaid}
+            onClick={() => {
+              setOpenMenuId(null);
+              onMarkGroupPaid();
+            }}
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-tennis-green hover:bg-tennis-green/5 disabled:opacity-50"
+          >
+            <Euro size={13} />
+            {t("markGroupPaid")}
+          </button>
+        )}
+        {canCancel && (
+          <button
+            type="button"
+            onClick={() => {
+              setOpenMenuId(null);
+              onCancelGroup();
+            }}
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-red-600 hover:bg-red-50"
+          >
+            <Trash2 size={13} />
+            {t("cancelGroup")}
+          </button>
+        )}
       </PopoverContent>
     </Popover>
   );
@@ -313,6 +444,7 @@ function PersonRow({
   isMember,
   isLeader = false,
   isGroupPayer = false,
+  cancelBlocked = false,
   groupPayment = null,
   isMatch,
   openMenuId,
@@ -325,6 +457,8 @@ function PersonRow({
   isLeader?: boolean;
   /** Leider van een groep: markeren als betaald geldt voor de hele groep. */
   isGroupPayer?: boolean;
+  /** Leider met nog actieve leden: enkel de hele groep kan geannuleerd worden. */
+  cancelBlocked?: boolean;
   /** Betaalinfo van de leider; leden hebben zelf geen betaling (groepsbetaling). */
   groupPayment?: { method: string | null; status: string | null } | null;
   isMatch: boolean;
@@ -339,6 +473,13 @@ function PersonRow({
     isGroupPayer,
   );
   const isCancelled = enrollment.status === "Cancelled";
+  const canManage = useCanManage();
+  const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
+  const cancelMutation = useCancelMutation(
+    campId,
+    () => cancelCampEnrollment(campId, enrollment.id),
+    "toastCancelled",
+  );
   // Voor weergave: leden erven de betaalinfo van de groepsbetaling van de leider.
   // Acties blijven op de eigen (originele) betaling gebaseerd.
   const shown: CampEnrollmentDto = groupPayment
@@ -353,26 +494,39 @@ function PersonRow({
   const menu = (
     <ActionsMenu
       enrollment={enrollment}
-      menuKey={enrollment.id}
+      menuKey={variant === "card" ? `card:${enrollment.id}` : enrollment.id}
       openMenuId={openMenuId}
       setOpenMenuId={setOpenMenuId}
       onViewDetails={() => setDetailOpen(true)}
       onMarkPaid={() => markPaidMutation.mutate()}
       isMarkingPaid={markPaidMutation.isPending}
       markPaidLabel={markPaidLabel}
+      canCancel={canManage && !isCancelled && !cancelBlocked}
+      onCancel={() => setConfirmCancelOpen(true)}
     />
   );
 
   const dialog = (
-    <CampEnrollmentDetailDialog
-      enrollment={shown}
-      markPaidLabel={markPaidLabel}
-      open={detailOpen}
-      onOpenChange={setDetailOpen}
-      canMarkPaid={isCashPending(enrollment)}
-      isMarkingPaid={markPaidMutation.isPending}
-      onMarkPaid={() => markPaidMutation.mutate()}
-    />
+    <>
+      <CancelConfirmDialog
+        open={confirmCancelOpen}
+        onOpenChange={setConfirmCancelOpen}
+        title={t("cancelTitle")}
+        body={t("cancelBody", { name: enrollment.participantName })}
+        showPaidWarning={enrollment.paymentStatus === "Paid"}
+        isPending={cancelMutation.isPending}
+        onConfirm={() => cancelMutation.mutate()}
+      />
+      <CampEnrollmentDetailDialog
+        enrollment={shown}
+        markPaidLabel={markPaidLabel}
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        canMarkPaid={isCashPending(enrollment)}
+        isMarkingPaid={markPaidMutation.isPending}
+        onMarkPaid={() => markPaidMutation.mutate()}
+      />
+    </>
   );
 
   if (variant === "card") {
@@ -381,7 +535,9 @@ function PersonRow({
         <div
           onClick={() => setDetailOpen(true)}
           className={`cursor-pointer rounded-xl border bg-white p-3 hover:border-gray-200 ${
-            isMatch ? "border-tennis-green/40 bg-tennis-green/5" : "border-gray-100"
+            isMatch
+              ? "border-tennis-green/40 bg-tennis-green/5"
+              : "border-gray-100"
           } ${isCancelled ? "opacity-60" : ""}`}
         >
           <div className="flex items-start justify-between gap-2">
@@ -475,8 +631,24 @@ function GroupBlockRows({
   const expanded = forceExpanded || open;
   const { leader, members } = block;
   const { markPaidMutation } = useEnrollmentActions(campId, leader, true);
-  const groupMenuKey = `group:${block.groupId}`;
-  const groupPayment = { method: leader.paymentMethod, status: leader.paymentStatus };
+  const canManage = useCanManage();
+  const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
+  const cancelGroupMutation = useCancelMutation(
+    campId,
+    () => cancelCampEnrollmentGroup(campId, block.groupId),
+    "toastGroupCancelled",
+  );
+  const activeMembers = members.filter((m) => m.status !== "Cancelled");
+  // Mobiele kaart en desktoprij staan beide in de DOM (één verborgen via CSS); een
+  // variant-specifieke key voorkomt dat beide popovers tegelijk opengaan.
+  const groupMenuKey =
+    variant === "card"
+      ? `card:group:${block.groupId}`
+      : `group:${block.groupId}`;
+  const groupPayment = {
+    method: leader.paymentMethod,
+    status: leader.paymentStatus,
+  };
   const groupMenu = (
     <GroupActionsMenu
       leader={leader}
@@ -485,6 +657,19 @@ function GroupBlockRows({
       setOpenMenuId={setOpenMenuId}
       onMarkGroupPaid={() => markPaidMutation.mutate()}
       isMarkingPaid={markPaidMutation.isPending}
+      canCancel={canManage && activeMembers.length > 0}
+      onCancelGroup={() => setConfirmCancelOpen(true)}
+    />
+  );
+  const cancelGroupDialog = (
+    <CancelConfirmDialog
+      open={confirmCancelOpen}
+      onOpenChange={setConfirmCancelOpen}
+      title={t("cancelGroupTitle")}
+      body={t("cancelGroupBody", { count: activeMembers.length })}
+      showPaidWarning={leader.paymentStatus === "Paid"}
+      isPending={cancelGroupMutation.isPending}
+      onConfirm={() => cancelGroupMutation.mutate()}
     />
   );
 
@@ -497,6 +682,7 @@ function GroupBlockRows({
   if (variant === "card") {
     return (
       <div className="space-y-2">
+        {cancelGroupDialog}
         <div
           onClick={() => setOpen((v) => !v)}
           className="cursor-pointer rounded-xl border border-gray-100 bg-gray-50/60 p-3 hover:border-gray-200"
@@ -533,6 +719,12 @@ function GroupBlockRows({
                 isMember
                 isLeader={m.id === leader.id}
                 isGroupPayer={m.id === leader.id && members.length > 1}
+                cancelBlocked={
+                  m.id === leader.id &&
+                  members.some(
+                    (o) => o.id !== leader.id && o.status !== "Cancelled",
+                  )
+                }
                 groupPayment={m.id === leader.id ? null : groupPayment}
                 isMatch={matchedIds?.has(m.id) ?? false}
                 openMenuId={openMenuId}
@@ -547,6 +739,7 @@ function GroupBlockRows({
 
   return (
     <>
+      {cancelGroupDialog}
       <tr
         className="cursor-pointer border-t border-gray-100 bg-gray-50/40 hover:bg-gray-50"
         onClick={() => setOpen((v) => !v)}
@@ -557,7 +750,11 @@ function GroupBlockRows({
               aria-label={expanded ? t("collapseGroup") : t("expandGroup")}
               className="-m-1 shrink-0 rounded p-1 text-gray-400"
             >
-              {expanded ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+              {expanded ? (
+                <ChevronDown size={15} />
+              ) : (
+                <ChevronRight size={15} />
+              )}
             </span>
             <Users size={14} className="shrink-0 text-tennis-green" />
             <span className="truncate text-sm font-semibold text-gray-800">
@@ -592,6 +789,12 @@ function GroupBlockRows({
             isMember
             isLeader={m.id === leader.id}
             isGroupPayer={m.id === leader.id && members.length > 1}
+            cancelBlocked={
+              m.id === leader.id &&
+              members.some(
+                (o) => o.id !== leader.id && o.status !== "Cancelled",
+              )
+            }
             groupPayment={m.id === leader.id ? null : groupPayment}
             isMatch={matchedIds?.has(m.id) ?? false}
             openMenuId={openMenuId}
@@ -623,7 +826,10 @@ function EnrollmentsTable({
   );
 
   const visible = useMemo(
-    () => (showCancelled ? enrollments : enrollments.filter((e) => e.status !== "Cancelled")),
+    () =>
+      showCancelled
+        ? enrollments
+        : enrollments.filter((e) => e.status !== "Cancelled"),
     [enrollments, showCancelled],
   );
 
@@ -633,7 +839,8 @@ function EnrollmentsTable({
 
   // Bij zoeken: enkel matchende blokken; groepen uitgeklapt; matchende leden gehighlight.
   const { filteredBlocks, matchedIds } = useMemo(() => {
-    if (!q) return { filteredBlocks: blocks, matchedIds: null as Set<string> | null };
+    if (!q)
+      return { filteredBlocks: blocks, matchedIds: null as Set<string> | null };
     const matches = (e: CampEnrollmentDto) =>
       e.participantName.toLowerCase().includes(q) ||
       e.participantEmail.toLowerCase().includes(q);
@@ -757,7 +964,9 @@ function EnrollmentsTable({
                 <tr className="border-b border-gray-200 bg-gray-50/70 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
                   <th className="px-4 py-2 font-semibold">{t("colName")}</th>
                   <th className="px-4 py-2 font-semibold">{t("colContact")}</th>
-                  <th className="px-4 py-2 font-semibold">{t("colEnrolled")}</th>
+                  <th className="px-4 py-2 font-semibold">
+                    {t("colEnrolled")}
+                  </th>
                   <th className="px-4 py-2 font-semibold">{t("colStatus")}</th>
                   <th className="px-4 py-2" />
                 </tr>

@@ -1189,6 +1189,18 @@
     "leader": "leider",
     "markGroupPaid": "Markeer hele groep als betaald",
     "toastGroupMarkedPaid": "Groep gemarkeerd als betaald",
-    "actionsLabelGroup": "Acties voor groep van {name}"
+    "actionsLabelGroup": "Acties voor groep van {name}",
+    "cancelAction": "Inschrijving annuleren",
+    "cancelGroup": "Groep annuleren",
+    "cancelTitle": "Inschrijving annuleren?",
+    "cancelBody": "De inschrijving van {name} wordt geannuleerd en de plaats komt weer vrij. De formulierantwoorden blijven bewaard.",
+    "cancelGroupTitle": "Groep annuleren?",
+    "cancelGroupBody": "De {count, plural, one {# actieve inschrijving} other {# actieve inschrijvingen}} van deze groep worden geannuleerd en de plaatsen komen weer vrij. De formulierantwoorden blijven bewaard.",
+    "cancelPaidWarning": "Let op: de betaling is niet automatisch terugbetaald. Regel de terugbetaling zelf.",
+    "back": "Terug",
+    "confirmCancel": "Annuleren",
+    "toastCancelled": "Inschrijving geannuleerd",
+    "toastGroupCancelled": "Groep geannuleerd",
+    "cancelError": "Kon de annulering niet uitvoeren. Probeer het opnieuw."
   }
 }
