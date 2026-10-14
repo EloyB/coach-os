@@ -1,14 +1,9 @@
-import { ArrowRight, Check, Sparkles, X } from "lucide-react";
+import { ArrowRight, Check, X } from "lucide-react";
 import { Mono } from "@/components/ui/mono";
 import { SiteNav } from "@/components/site/site-nav";
 import { SiteFooter } from "@/components/site/site-footer";
 import { FaqItem } from "@/components/sections/faq-item";
 import { FinalCta } from "@/components/sections/final-cta";
-import {
-  PILOT,
-  PILOT_AVAILABLE_SEATS,
-  PILOT_BANNER,
-} from "@/content/pilot";
 import type { Persona } from "@/content/personas";
 
 const SITE_URL = "https://coach-os.be";
@@ -53,15 +48,6 @@ function PersonaHero({ persona }: { persona: Persona }) {
             Boek een demo
             <ArrowRight className="h-4 w-4" />
           </a>
-          {PILOT_AVAILABLE_SEATS > 0 ? (
-            <a
-              href={PILOT_BANNER.href}
-              className="inline-flex h-11 items-center gap-2 rounded-md border border-tennis-green/30 bg-tennis-green/5 px-4 text-sm font-semibold text-tennis-green transition-colors hover:bg-tennis-green/10"
-            >
-              <Sparkles className="h-4 w-4" />
-              Pilot — nog {PILOT_AVAILABLE_SEATS} van {PILOT.totalSeats} plekken
-            </a>
-          ) : null}
         </div>
       </div>
     </section>
