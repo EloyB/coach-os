@@ -432,24 +432,27 @@ public class EmailService(
 
     // ── Core send method (reused by all email types) ──────────────────────────
 
-    private async Task SendAsync(
-        string toEmail, string toName, string subject, string htmlBody,
-        CancellationToken ct = default)
+    /// <summary>
+    /// Bouwt de MIME-structuur: multipart/alternative met eerst text/plain en als
+    /// laatste de HTML. Omdat de HTML-view LinkedResources heeft, maakt System.Net.Mail
+    /// daar zelf een multipart/related (HTML + cid-logo) van.
+    /// </summary>
+    internal MailMessage BuildMessage(string toEmail, string toName, string subject, string htmlBody)
     {
-        using SmtpClient smtp = new(_options.SmtpHost, _options.SmtpPort)
-        {
-            EnableSsl = _options.EnableSsl,
-            Credentials = new NetworkCredential(_options.Username, _options.Password),
-            DeliveryMethod = SmtpDeliveryMethod.Network
-        };
-
-        using MailMessage message = new()
+        MailMessage message = new()
         {
             From = new MailAddress(_options.FromAddress, _options.FromName),
             Subject = subject,
         };
 
         message.To.Add(new MailAddress(toEmail, toName));
+
+        // Platte-tekstvariant tegen MIME_HTML_ONLY. Volgorde telt: in
+        // multipart/alternative staat de eenvoudigste variant eerst, de HTML laatst.
+        AlternateView plainView = AlternateView.CreateAlternateViewFromString(
+            HtmlToPlainText.Convert(htmlBody), Encoding.UTF8, MediaTypeNames.Text.Plain);
+        plainView.TransferEncoding = TransferEncoding.QuotedPrintable;
+        message.AlternateViews.Add(plainView);
 
         // HTML als AlternateView zodat we het logo als inline (cid) resource kunnen
         // koppelen; message.Body/IsBodyHtml vervalt daarmee.
@@ -465,6 +468,22 @@ public class EmailService(
             htmlView.LinkedResources.Add(logo);
         }
         message.AlternateViews.Add(htmlView);
+
+        return message;
+    }
+
+    private async Task SendAsync(
+        string toEmail, string toName, string subject, string htmlBody,
+        CancellationToken ct = default)
+    {
+        using SmtpClient smtp = new(_options.SmtpHost, _options.SmtpPort)
+        {
+            EnableSsl = _options.EnableSsl,
+            Credentials = new NetworkCredential(_options.Username, _options.Password),
+            DeliveryMethod = SmtpDeliveryMethod.Network
+        };
+
+        using MailMessage message = BuildMessage(toEmail, toName, subject, htmlBody);
 
         try
         {

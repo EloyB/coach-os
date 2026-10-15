@@ -2,6 +2,7 @@ using System.Net;
 using System.Text;
 using Microsoft.Extensions.Logging;
 using Mjml.Net;
+using Mjml.Net.Helpers;
 
 namespace CoachOS.Infrastructure.Email;
 
@@ -23,7 +24,14 @@ public class MjmlTemplateRenderer : IMjmlTemplateRenderer
             throw new DirectoryNotFoundException($"MJML template directory not found: {dir}");
 
         var renderer = new MjmlRenderer();
-        var options = new MjmlOptions { Beautify = false };
+        // Geen standaardfonts: MJML voegt anders een Google Fonts-<link>/@import toe zodra
+        // de font-stack een "bekend" font noemt (Roboto). Onze stack valt toch terug op
+        // systeemfonts; een externe font-request kost enkel privacy en spamscore.
+        MjmlOptions options = new()
+        {
+            Beautify = false,
+            Fonts = new Dictionary<string, Font>(),
+        };
 
         // Read shared head extras (dark-mode opt-out + force-light CSS) once and inject
         // into every template's <mj-head> so the rule lives in one place.
