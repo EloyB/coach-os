@@ -15,17 +15,21 @@ import {
   StickyNote,
   CalendarClock,
   Crown,
+  ShieldCheck,
+  ShieldOff,
 } from "lucide-react";
+import { toast } from "sonner";
 import { TrainerAvailabilityDialog } from "./_components/trainer-availability-dialog";
 import { Mono } from "@/components/ui/mono";
 import {
-  getTrainers,
+  getTrainerMembers,
   inviteTrainer,
   updateTrainer,
   reassignTrainerSeries,
   removeTrainer,
   resendTrainerInvite,
   setHeadTrainerClubs,
+  setMemberRole,
   TrainerDto,
 } from "@/lib/api/trainers";
 import { getTennisClubs } from "@/lib/api/tennisClubs";
@@ -65,6 +69,7 @@ const inviteSchema = z.object({
   firstName: z.string().min(1, "Voornaam is verplicht").max(100),
   lastName: z.string().min(1, "Achternaam is verplicht").max(100),
   email: z.email("Ongeldig e-mailadres"),
+  asAdmin: z.boolean(),
 });
 
 type InviteFormValues = z.infer<typeof inviteSchema>;
@@ -214,6 +219,50 @@ function ReassignAndRemoveDialog({
 
 // ─── Invite Form ──────────────────────────────────────────────────────────────
 
+function RoleChangeDialog({
+  trainer,
+  makeAdmin,
+  onClose,
+  onConfirm,
+  isPending,
+}: {
+  trainer: TrainerDto;
+  makeAdmin: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  isPending: boolean;
+}) {
+  const t = useTranslations("trainers");
+  const tCommon = useTranslations("common");
+  const name = `${trainer.firstName} ${trainer.lastName}`;
+
+  return (
+    <AlertDialog open onOpenChange={(open) => !open && onClose()}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>
+            {makeAdmin ? t("makeAdminTitle") : t("removeAdminTitle")}
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            {makeAdmin
+              ? t("makeAdminBody", { name })
+              : t("removeAdminBody", { name })}
+            <span className="mt-2 block text-xs text-gray-500">
+              {t("roleChangeLagNote")}
+            </span>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={onClose}>{tCommon("cancel")}</AlertDialogCancel>
+          <AlertDialogAction onClick={onConfirm} disabled={isPending}>
+            {makeAdmin ? t("makeAdmin") : t("removeAdmin")}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
 function InviteForm({ onClose }: { onClose: () => void }) {
   const queryClient = useQueryClient();
   const [successEmail, setSuccessEmail] = useState<string | null>(null);
@@ -238,7 +287,10 @@ function InviteForm({ onClose }: { onClose: () => void }) {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<InviteFormValues>({ resolver: zodResolver(inviteSchema) });
+  } = useForm<InviteFormValues>({
+    resolver: zodResolver(inviteSchema),
+    defaultValues: { asAdmin: false },
+  });
 
   if (successEmail) {
     return (
@@ -315,6 +367,18 @@ function InviteForm({ onClose }: { onClose: () => void }) {
         />
         <FieldError message={errors.email?.message} />
       </div>
+
+      <label className="flex items-start gap-2.5 rounded-lg border border-gray-200 px-3 py-2.5 cursor-pointer">
+        <input
+          type="checkbox"
+          {...register("asAdmin")}
+          className="mt-0.5 h-4 w-4 rounded border-gray-300 text-tennis-green focus:ring-tennis-green"
+        />
+        <span>
+          <span className="block text-sm font-medium text-gray-700">{t("inviteAsAdmin")}</span>
+          <span className="block text-xs text-gray-500">{t("inviteAsAdminHint")}</span>
+        </span>
+      </label>
 
       <div className="flex items-center gap-3 pt-1">
         <button
@@ -581,6 +645,7 @@ export default function TrainersPage() {
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [removeDialog, setRemoveDialog] = useState<RemoveDialogState>({ type: "none" });
   const [editTrainer, setEditTrainer] = useState<TrainerDto | null>(null);
+  const [roleChange, setRoleChange] = useState<{ trainer: TrainerDto; makeAdmin: boolean } | null>(null);
   const [availabilityTrainer, setAvailabilityTrainer] = useState<TrainerDto | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
   const queryClient = useQueryClient();
@@ -591,8 +656,10 @@ export default function TrainersPage() {
   }, []);
 
   const { data: trainers, isLoading } = useQuery({
-    queryKey: ["trainers"],
-    queryFn: getTrainers,
+    // Beheerpagina: altijd alle leden (ook extra beheerders). Prefix ["trainers"] blijft
+    // matchen met de invalidaties van de andere trainer-queries.
+    queryKey: ["trainers", "management"],
+    queryFn: getTrainerMembers,
   });
 
   const { data: clubs = [] } = useQuery({
@@ -622,6 +689,20 @@ export default function TrainersPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["trainers"] });
       setRemoveDialog({ type: "none" });
+    },
+  });
+
+  const roleMutation = useMutation({
+    mutationFn: ({ id, role }: { id: string; role: "Admin" | "Trainer" }) =>
+      setMemberRole(id, role),
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["trainers"] });
+      toast.success(vars.role === "Admin" ? t("roleChangedAdmin") : t("roleChangedTrainer"));
+      setRoleChange(null);
+    },
+    onError: (err) => {
+      toast.error(getAxiosErrorMessages(err, t("roleChangeError")).join(" "));
+      setRoleChange(null);
     },
   });
 
@@ -741,9 +822,10 @@ export default function TrainersPage() {
                           </span>
                         )}
                       </p>
-                      {isSelfAdmin ? (
+                      {tr.role === "Admin" ? (
                         <span className="text-[10px] px-2 py-0.5 rounded-full bg-tennis-lime/30 text-tennis-green font-semibold">
                           {t("adminBadge")}
+                          {isInvited ? ` · ${t("invitedLabel")}` : isDeactivatedState ? ` · ${t("inactiveLabel")}` : ""}
                         </span>
                       ) : isInvited ? (
                         <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 font-semibold">
@@ -805,14 +887,26 @@ export default function TrainersPage() {
                           </span>
                         ) : (
                           <>
-                            <HeadTrainerControl
-                              trainer={tr}
-                              clubs={clubs}
-                              pending={headTrainerMutation.isPending}
-                              onSave={(clubIds) =>
-                                headTrainerMutation.mutate({ id: tr.id, clubIds })
+                            {tr.role === "Trainer" && (
+                              <HeadTrainerControl
+                                trainer={tr}
+                                clubs={clubs}
+                                pending={headTrainerMutation.isPending}
+                                onSave={(clubIds) =>
+                                  headTrainerMutation.mutate({ id: tr.id, clubIds })
+                                }
+                              />
+                            )}
+                            <button
+                              onClick={() =>
+                                setRoleChange({ trainer: tr, makeAdmin: tr.role !== "Admin" })
                               }
-                            />
+                              title={tr.role === "Admin" ? t("removeAdmin") : t("makeAdmin")}
+                              aria-label={tr.role === "Admin" ? t("removeAdmin") : t("makeAdmin")}
+                              className="p-1.5 rounded text-ink-3 hover:text-tennis-green hover:bg-tennis-green/10 transition-all"
+                            >
+                              {tr.role === "Admin" ? <ShieldOff size={14} /> : <ShieldCheck size={14} />}
+                            </button>
                             <button
                               onClick={() => setAvailabilityTrainer(tr)}
                               title={t("availabilityButton")}
@@ -908,7 +1002,7 @@ export default function TrainersPage() {
       {removeDialog.type === "reassign" && (
         <ReassignAndRemoveDialog
           trainer={removeDialog.trainer}
-          activeTrainers={active}
+          activeTrainers={active.filter((tr) => tr.role === "Trainer")}
           onClose={() => setRemoveDialog({ type: "none" })}
           onConfirm={(toId) =>
             reassignAndRemoveMutation.mutate({
@@ -917,6 +1011,20 @@ export default function TrainersPage() {
             })
           }
           isProcessing={reassignAndRemoveMutation.isPending}
+        />
+      )}
+      {roleChange && (
+        <RoleChangeDialog
+          trainer={roleChange.trainer}
+          makeAdmin={roleChange.makeAdmin}
+          onClose={() => setRoleChange(null)}
+          onConfirm={() =>
+            roleMutation.mutate({
+              id: roleChange.trainer.id,
+              role: roleChange.makeAdmin ? "Admin" : "Trainer",
+            })
+          }
+          isPending={roleMutation.isPending}
         />
       )}
       {editTrainer && (

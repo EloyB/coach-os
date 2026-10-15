@@ -6,6 +6,8 @@ export interface TrainerDto {
   firstName: string;
   lastName: string;
   email: string;
+  /** "Admin" = beheerder (ook een extra beheerder); "Trainer" = gewone trainer. */
+  role: "Admin" | "Trainer";
   isActive: boolean;
   invitePending: boolean;
   lessonSeriesCount: number;
@@ -20,6 +22,8 @@ export interface InviteTrainerRequest {
   firstName: string;
   lastName: string;
   email: string;
+  /** true = uitnodigen als extra beheerder met alle rechten op alle clubs. */
+  asAdmin?: boolean;
 }
 
 export interface UpdateTrainerRequest {
@@ -37,6 +41,20 @@ export interface AcceptInviteRequest {
 export async function getTrainers(): Promise<TrainerDto[]> {
   const { data } = await apiClient.get<TrainerDto[]>("/trainers");
   return data;
+}
+
+/**
+ * Beheerpagina: altijd alle leden, ook beheerders wanneer de org-instelling "admins als
+ * trainer" uitstaat. `getTrainers` blijft bedoeld voor trainer-pickers.
+ */
+export async function getTrainerMembers(): Promise<TrainerDto[]> {
+  const { data } = await apiClient.get<TrainerDto[]>("/trainers", { params: { all: true } });
+  return data;
+}
+
+/** Maakt een lid beheerder ("Admin") of zet het terug naar trainer (admin-only). */
+export async function setMemberRole(id: string, role: "Admin" | "Trainer"): Promise<void> {
+  await apiClient.put(`/trainers/${id}/role`, { role });
 }
 
 export function isAssignableTrainer(t: TrainerDto): boolean {

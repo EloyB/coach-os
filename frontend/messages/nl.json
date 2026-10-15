@@ -938,7 +938,19 @@
     "notesIndicator": "Heeft een interne notitie",
     "save": "Opslaan",
     "saving": "Opslaan...",
-    "editError": "Wijziging kon niet worden opgeslagen"
+    "editError": "Wijziging kon niet worden opgeslagen",
+    "makeAdmin": "Maak beheerder",
+    "removeAdmin": "Verwijder beheerdersrechten",
+    "makeAdminTitle": "Beheerder maken?",
+    "makeAdminBody": "{name} krijgt dezelfde rechten als jij: alle acties op alle clubs, inclusief het beheren van trainers en instellingen.",
+    "removeAdminTitle": "Beheerdersrechten verwijderen?",
+    "removeAdminBody": "{name} wordt weer een gewone trainer en verliest de beheerdersrechten.",
+    "roleChangeLagNote": "De wijziging gaat in zodra de persoon opnieuw inlogt of het token vernieuwt (maximaal een uur).",
+    "roleChangedAdmin": "Beheerder toegevoegd",
+    "roleChangedTrainer": "Beheerdersrechten verwijderd",
+    "roleChangeError": "Kon de rol niet wijzigen.",
+    "inviteAsAdmin": "Uitnodigen als beheerder",
+    "inviteAsAdminHint": "Volledige rechten op alle clubs, zoals jijzelf."
   },
   "auth": {
     "login": "Inloggen",
