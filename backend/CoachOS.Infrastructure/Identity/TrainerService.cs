@@ -30,8 +30,10 @@ public class TrainerService(
         string lastName,
         string email,
         string inviteBaseUrl,
+        bool asAdmin = false,
         CancellationToken ct = default)
     {
+        UserRole role = asAdmin ? UserRole.Admin : UserRole.Trainer;
         var existing = await userManager.FindByEmailAsync(email);
 
         // Case 1: bestaande user — check alleen membership in deze org (multi-tenant!).
@@ -54,7 +56,7 @@ public class TrainerService(
                         Id = Guid.NewGuid(),
                         UserId = existing.Id,
                         OrganizationId = organizationId,
-                        Role = UserRole.Trainer,
+                        Role = role,
                         IsActive = true,
                         JoinedAt = DateTime.UtcNow
                     });
@@ -62,7 +64,7 @@ public class TrainerService(
                 else
                 {
                     existingMembership.IsActive = true;
-                    existingMembership.Role = UserRole.Trainer;
+                    existingMembership.Role = role;
                 }
                 await context.SaveChangesAsync(ct);
 
@@ -104,7 +106,7 @@ public class TrainerService(
             Id = Guid.NewGuid(),
             UserId = user.Id,
             OrganizationId = organizationId,
-            Role = UserRole.Trainer,
+            Role = role,
             IsActive = false, // wordt actief bij AcceptInvite
             JoinedAt = DateTime.UtcNow
         });
@@ -127,6 +129,7 @@ public class TrainerService(
 
     public async Task<Result<List<TrainerDto>>> GetTrainersAsync(
         Guid organizationId,
+        bool includeAllAdmins = false,
         CancellationToken ct = default)
     {
         // Trainers zijn alle memberships (Trainer-rol) in deze org, via join met users.
@@ -136,7 +139,9 @@ public class TrainerService(
         // aanstaat (default true; zet uit op /dashboard/settings voor zuiver-administratieve admins).
         Domain.Entities.OrganizationSettings? settings =
             await settingsRepo.GetByOrganizationReadOnlyAsync(organizationId, ct);
-        bool includeAdmins = settings?.AdminsActAsTrainers ?? true;
+        // De beheerpagina vraagt altijd alle leden op (includeAllAdmins), zodat extra admins ook
+        // zichtbaar en beheerbaar zijn wanneer admins niet als trainer meedoen.
+        bool includeAdmins = includeAllAdmins || (settings?.AdminsActAsTrainers ?? true);
 
         var query =
             from m in context.OrganizationMemberships.AsNoTracking()
@@ -150,6 +155,7 @@ public class TrainerService(
                 FirstName = u.FirstName,
                 LastName = u.LastName,
                 Email = u.Email!,
+                Role = m.Role == UserRole.Admin ? "Admin" : "Trainer",
                 // Tenant-scoped: actief = membership actief in DEZE org, niet de globale
                 // account-vlag. Anders toont een in deze org gedeactiveerde trainer nog
                 // "Actief" terwijl availability/planning de membership-check (m.IsActive) faalt.
@@ -233,6 +239,70 @@ public class TrainerService(
         return Result.Ok();
     }
 
+    public async Task<Result> SetRoleAsync(
+        Guid memberId,
+        Guid organizationId,
+        UserRole newRole,
+        CancellationToken ct = default)
+    {
+        if (newRole is not (UserRole.Admin or UserRole.Trainer))
+            return Result.Fail(new Error(ErrorCodes.Validation, "Rol moet Admin of Trainer zijn."));
+
+        // Enkel Trainer ↔ Admin binnen déze organisatie (tenant-scoped).
+        OrganizationMembership? membership = await context.OrganizationMemberships
+            .Include(m => m.HeadTrainerClubs)
+            .FirstOrDefaultAsync(m => m.UserId == memberId
+                && m.OrganizationId == organizationId
+                && (m.Role == UserRole.Trainer || m.Role == UserRole.Admin), ct);
+
+        if (membership is null)
+            return Result.Fail(new Error(ErrorCodes.NotFound, "Lid niet gevonden in deze organisatie."));
+
+        if (membership.Role == newRole)
+            return Result.Ok();
+
+        if (newRole == UserRole.Trainer)
+        {
+            // Een Admin demoten mag nooit de laatste actieve Admin wegnemen.
+            Result? guard = await EnsureAnotherActiveAdminAsync(membership, organizationId, ct);
+            if (guard is not null)
+                return guard;
+        }
+        else
+        {
+            // Een admin heeft al alle rechten: hoofdtrainer-clubs zijn dan betekenisloos en
+            // zouden na een latere demotie ongewild terug actief worden.
+            context.HeadTrainerClubs.RemoveRange(membership.HeadTrainerClubs);
+        }
+
+        membership.Role = newRole;
+        await context.SaveChangesAsync(ct);
+        return Result.Ok();
+    }
+
+    /// <summary>
+    /// Guard voor elke actie die adminrechten wegneemt (demoten, deactiveren, verwijderen):
+    /// er moet minstens één andere actieve Admin overblijven. Geeft null terug als het mag.
+    /// Voor niet-Admin-lidmaatschappen is er niets te beschermen.
+    /// </summary>
+    private async Task<Result?> EnsureAnotherActiveAdminAsync(
+        OrganizationMembership target, Guid organizationId, CancellationToken ct)
+    {
+        if (target.Role != UserRole.Admin)
+            return null;
+
+        bool anotherActiveAdmin = await context.OrganizationMemberships
+            .AnyAsync(m => m.OrganizationId == organizationId
+                && m.Role == UserRole.Admin
+                && m.IsActive
+                && m.Id != target.Id, ct);
+
+        return anotherActiveAdmin
+            ? null
+            : Result.Fail(new Error(ErrorCodes.Conflict,
+                "Er moet minstens één actieve admin overblijven in de organisatie."));
+    }
+
     public async Task<Result> SetHeadTrainerClubsAsync(
         Guid trainerId,
         Guid organizationId,
@@ -281,11 +351,11 @@ public class TrainerService(
         string inviteBaseUrl,
         CancellationToken ct = default)
     {
-        // Verify membership exists in this org and is a trainer.
+        // Verify membership exists in this org (trainer of extra admin).
         OrganizationMembership? membership = await context.OrganizationMemberships
             .FirstOrDefaultAsync(m => m.UserId == trainerId
                 && m.OrganizationId == organizationId
-                && m.Role == UserRole.Trainer, ct);
+                && (m.Role == UserRole.Trainer || m.Role == UserRole.Admin), ct);
 
         if (membership is null)
             return Result.Fail(new Error(ErrorCodes.NotFound, "Trainer niet gevonden in deze organisatie."));
@@ -328,6 +398,7 @@ public class TrainerService(
     public async Task<Result> DeactivateAsync(
         Guid trainerId,
         Guid organizationId,
+        Guid actingUserId,
         CancellationToken ct = default)
     {
         // Deactivatie = membership intrekken. De user-account blijft globaal bestaan;
@@ -335,8 +406,15 @@ public class TrainerService(
         var membership = await context.OrganizationMemberships
             .FirstOrDefaultAsync(m => m.UserId == trainerId && m.OrganizationId == organizationId, ct);
 
-        if (membership is null || membership.Role != UserRole.Trainer)
+        if (membership is null || (membership.Role != UserRole.Trainer && membership.Role != UserRole.Admin))
             return Result.Fail("Trainer niet gevonden");
+
+        if (trainerId == actingUserId)
+            return Result.Fail(new Error(ErrorCodes.Conflict, "Je kan jezelf niet deactiveren."));
+
+        Result? guard = await EnsureAnotherActiveAdminAsync(membership, organizationId, ct);
+        if (guard is not null)
+            return guard;
 
         membership.IsActive = false;
         await context.SaveChangesAsync(ct);
@@ -346,6 +424,7 @@ public class TrainerService(
     public async Task<Result> RemoveAsync(
         Guid trainerId,
         Guid organizationId,
+        Guid actingUserId,
         CancellationToken ct = default)
     {
         // Draai de hele remove-operatie in één transactie: anders kan tussen
@@ -356,8 +435,15 @@ public class TrainerService(
         var membership = await context.OrganizationMemberships
             .FirstOrDefaultAsync(m => m.UserId == trainerId && m.OrganizationId == organizationId, ct);
 
-        if (membership is null || membership.Role != UserRole.Trainer)
+        if (membership is null || (membership.Role != UserRole.Trainer && membership.Role != UserRole.Admin))
             return Result.Fail("Trainer niet gevonden");
+
+        if (trainerId == actingUserId)
+            return Result.Fail(new Error(ErrorCodes.Conflict, "Je kan jezelf niet verwijderen."));
+
+        Result? guard = await EnsureAnotherActiveAdminAsync(membership, organizationId, ct);
+        if (guard is not null)
+            return guard;
 
         var count = await context.Lessons
             .CountAsync(l => l.TrainerId == trainerId && l.OrganizationId == organizationId, ct);
