@@ -39,6 +39,12 @@ public interface IPaymentRepository
     Task<Payment?> GetLatestByCampEnrollmentIdAsync(Guid campEnrollmentId, CancellationToken ct = default);
 
     /// <summary>
+    /// Zoals <see cref="GetLatestByCampEnrollmentIdAsync"/>, maar getrackt zodat de caller
+    /// (bv. het groepsbedrag bijwerken na een ledenwijziging) kan muteren en opslaan.
+    /// </summary>
+    Task<Payment?> GetLatestTrackedByCampEnrollmentIdAsync(Guid campEnrollmentId, CancellationToken ct = default);
+
+    /// <summary>
     /// Meest recente openstaande (Pending) cash-betaling voor een kamp-inschrijving,
     /// getrackt en gescoped op organisatie. Gebruikt wanneer de coach een cash-betaling
     /// als betaald markeert. Tracked zodat de status-mutatie wordt opgeslagen.

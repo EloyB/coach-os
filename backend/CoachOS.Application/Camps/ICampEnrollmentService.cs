@@ -21,4 +21,13 @@ public interface ICampEnrollmentService
     /// laat de inschrijving op PendingPayment staan (de coach bevestigt later).
     /// </summary>
     Task<Result<ChooseCampPaymentResultDto>> ChoosePaymentAsync(Guid campEnrollmentId, int method, CancellationToken ct = default);
+
+    /// <summary>
+    /// Beheerder schrijft één deelnemer handmatig in. Gratis kamp: meteen bevestigd. Betaald kamp:
+    /// een cash-betaling wordt vastgelegd; <c>Paid</c> markeert ze meteen als betaald (bevestigd),
+    /// anders blijft de inschrijving PendingPayment. De inschrijfdeadline wordt genegeerd.
+    /// </summary>
+    Task<Result<Guid>> CreateManualAsync(
+        Guid campId, Guid organizationId, CreateManualCampEnrollmentRequest request,
+        CancellationToken ct = default);
 }
