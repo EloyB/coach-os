@@ -60,6 +60,13 @@ internal static class PlanningProposalBuilder
             };
 
             var leaderEnrollment = memberEnrollments.FirstOrDefault(e => e.Id == group.LeaderEnrollmentId);
+            // A group can only be auto-grouped when its age bucket is unambiguous. If an age field
+            // is in play (at least one member answered) but the members don't all share one bucket
+            // — answers missing or mixed — the group is ineligible for automatic grouping: keep it
+            // exclusive so it can neither wildcard into, nor absorb, a different age bucket. (A null
+            // AgeCategory on an *open* unit would otherwise be treated as unconstrained.)
+            bool canAutoGroup = (leaderEnrollment?.IsOpenToGrouping ?? false)
+                && !IsAgeAmbiguous(memberEnrollments);
             units.Add(new EnrollmentUnit(
                 Id: group.Id,
                 IsGroup: true,
@@ -67,7 +74,7 @@ internal static class PlanningProposalBuilder
                 EnrollmentIds: memberEnrollments.Select(e => e.Id).ToList(),
                 StudentNames: memberEnrollments.Select(e => e.StudentName).ToList(),
                 Size: memberEnrollments.Count,
-                IsOpenToGrouping: leaderEnrollment?.IsOpenToGrouping ?? false,
+                IsOpenToGrouping: canAutoGroup,
                 Preferences: groupPrefs,
                 AgeCategory: GetSharedAgeCategory(memberEnrollments)));
 
@@ -179,6 +186,15 @@ internal static class PlanningProposalBuilder
 
         return buckets.Distinct().Count() == 1 ? buckets[0] : null;
     }
+
+    /// <summary>
+    /// True when an age category is in play for the group (at least one member answered) but the
+    /// members do not all share a single bucket — answers are missing or mixed. Such a group cannot
+    /// be auto-grouped safely, so the caller keeps it exclusive instead of unconstrained.
+    /// </summary>
+    private static bool IsAgeAmbiguous(List<Enrollment> members)
+        => members.Any(m => !string.IsNullOrEmpty(GetAgeCategory(m)))
+            && GetSharedAgeCategory(members) is null;
 
     public static int GetEffectiveAssignmentSize(ScheduleAssignment assignment)
     {

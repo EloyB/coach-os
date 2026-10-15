@@ -72,4 +72,62 @@ public class PlanningProposalBuilderTests
 
         PlanningProposalBuilder.GetSharedAgeCategory(members).Should().Be("8-10 jaar");
     }
+
+    // ── BuildUnits: ambiguous-age groups are ineligible for automatic grouping ────
+
+    private static EnrollmentUnit BuildOpenGroupUnit(params string?[] memberBuckets)
+    {
+        Guid groupId = Guid.NewGuid();
+        var members = new List<Enrollment>();
+        foreach (string? bucket in memberBuckets)
+        {
+            Enrollment e = MemberWithAge(bucket);
+            e.EnrollmentGroupId = groupId;
+            e.IsOpenToGrouping = true;
+            members.Add(e);
+        }
+        var group = new EnrollmentGroup { Id = groupId, LeaderEnrollmentId = members[0].Id };
+
+        (List<EnrollmentUnit> units, _) = PlanningProposalBuilder.BuildUnits(
+            members, new[] { group }, new(), new(), new());
+        return units.Single(u => u.IsGroup);
+    }
+
+    [Test]
+    public void BuildUnits_OpenGroupWithMissingMemberAge_IsForcedExclusive()
+    {
+        // Regression: an open group whose age bucket is ambiguous (a member didn't answer) must
+        // NOT be auto-groupable — otherwise it could be merged into a slot of a different bucket.
+        EnrollmentUnit unit = BuildOpenGroupUnit("4-6", null);
+
+        unit.IsOpenToGrouping.Should().BeFalse();
+        unit.AgeCategory.Should().BeNull();
+    }
+
+    [Test]
+    public void BuildUnits_OpenGroupWithMixedMemberAges_IsForcedExclusive()
+    {
+        EnrollmentUnit unit = BuildOpenGroupUnit("4-6", "9-11");
+
+        unit.IsOpenToGrouping.Should().BeFalse();
+    }
+
+    [Test]
+    public void BuildUnits_OpenGroupAllSameAge_StaysOpenToGrouping()
+    {
+        EnrollmentUnit unit = BuildOpenGroupUnit("4-6", "4-6");
+
+        unit.IsOpenToGrouping.Should().BeTrue();
+        unit.AgeCategory.Should().Be("4-6");
+    }
+
+    [Test]
+    public void BuildUnits_OpenGroupWithNoAgeField_StaysOpenToGrouping()
+    {
+        // Feature off (nobody answered): behaves exactly as before — unconstrained and open.
+        EnrollmentUnit unit = BuildOpenGroupUnit(null, null);
+
+        unit.IsOpenToGrouping.Should().BeTrue();
+        unit.AgeCategory.Should().BeNull();
+    }
 }
