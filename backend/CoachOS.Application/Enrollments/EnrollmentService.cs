@@ -201,9 +201,15 @@ public class EnrollmentService(
         var order = 0;
         foreach (var dto in request.Fields)
         {
-            var optionsJson = dto.Type == (int)FormFieldType.MultipleChoice && dto.Options?.Count > 0
+            // MultipleChoice and AgeCategory both store their choices in Options.
+            var storesOptions = dto.Type == (int)FormFieldType.MultipleChoice
+                || dto.Type == (int)FormFieldType.AgeCategory;
+            var optionsJson = storesOptions && dto.Options?.Count > 0
                 ? JsonSerializer.Serialize(dto.Options)
                 : null;
+
+            // The age-category question is always mandatory, regardless of what the admin toggled.
+            var isRequired = dto.Type == (int)FormFieldType.AgeCategory || dto.IsRequired;
 
             if (dto.Id.HasValue)
             {
@@ -212,7 +218,7 @@ public class EnrollmentService(
                 {
                     existing.Label = dto.Label;
                     existing.Type = (FormFieldType)dto.Type;
-                    existing.IsRequired = dto.IsRequired;
+                    existing.IsRequired = isRequired;
                     existing.Order = order;
                     existing.Options = optionsJson;
                 }
@@ -224,7 +230,7 @@ public class EnrollmentService(
                     EnrollmentFormId = form.Id,
                     Label = dto.Label,
                     Type = (FormFieldType)dto.Type,
-                    IsRequired = dto.IsRequired,
+                    IsRequired = isRequired,
                     Order = order,
                     Options = optionsJson,
                 };
@@ -258,10 +264,24 @@ public class EnrollmentService(
         if (form is not null)
         {
             Error? formError = FormResponseValidator.Validate(
-                form.Fields.Select(f => (f.Id, f.IsRequired, f.Label)),
+                form.Fields.Select(f => (f.Id, f.IsRequired, f.Label, ChoiceOptions(f.Type, f.Options))),
                 request.Responses.Select(r => (r.FormFieldId, r.Value)));
             if (formError is not null)
                 return Result<Guid>.Fail(formError);
+
+            // 4b. Group members' responses are persisted too, so validate each against the same form.
+            //     Required-field presence is only enforced for the leader (the public form does not yet
+            //     collect per-member answers), but an unknown field id or an invalid choice value from
+            //     any member is rejected before the transaction opens.
+            foreach (var member in request.GroupMembers ?? [])
+            {
+                Error? memberError = FormResponseValidator.Validate(
+                    form.Fields.Select(f => (f.Id, f.IsRequired, f.Label, ChoiceOptions(f.Type, f.Options))),
+                    (member.Responses ?? []).Select(r => (r.FormFieldId, r.Value)),
+                    enforceRequired: false);
+                if (memberError is not null)
+                    return Result<Guid>.Fail(memberError);
+            }
         }
 
         // 4a. Inschrijfwijze afdwingen: de admin bepaalt per reeks of solo, groep of
@@ -579,9 +599,15 @@ public class EnrollmentService(
         EnrollmentForm? form = await enrollmentFormRepo.GetBySeriesIdReadOnlyAsync(lessonSeriesId, ct);
         if (form is not null)
         {
+            // Manual/admin flows: the dashboard dialog does not collect custom form answers, so
+            // required-field presence is not enforced here (unknown field ids and invalid choice
+            // values are still rejected). A manual enrollment is IsOpenToGrouping=false and an
+            // added member with no age makes its group ambiguous → exclusive, so neither can be
+            // auto-grouped across age buckets.
             Error? formError = FormResponseValidator.Validate(
-                form.Fields.Select(f => (f.Id, f.IsRequired, f.Label)),
-                request.Responses.Select(r => (r.FormFieldId, r.Value)));
+                form.Fields.Select(f => (f.Id, f.IsRequired, f.Label, ChoiceOptions(f.Type, f.Options))),
+                request.Responses.Select(r => (r.FormFieldId, r.Value)),
+                enforceRequired: false);
             if (formError is not null) return Result<Guid>.Fail(formError);
         }
 
@@ -693,9 +719,15 @@ public class EnrollmentService(
         EnrollmentForm? form = await enrollmentFormRepo.GetBySeriesIdReadOnlyAsync(lessonSeriesId, ct);
         if (form is not null)
         {
+            // Manual/admin flows: the dashboard dialog does not collect custom form answers, so
+            // required-field presence is not enforced here (unknown field ids and invalid choice
+            // values are still rejected). A manual enrollment is IsOpenToGrouping=false and an
+            // added member with no age makes its group ambiguous → exclusive, so neither can be
+            // auto-grouped across age buckets.
             Error? formError = FormResponseValidator.Validate(
-                form.Fields.Select(f => (f.Id, f.IsRequired, f.Label)),
-                request.Responses.Select(r => (r.FormFieldId, r.Value)));
+                form.Fields.Select(f => (f.Id, f.IsRequired, f.Label, ChoiceOptions(f.Type, f.Options))),
+                request.Responses.Select(r => (r.FormFieldId, r.Value)),
+                enforceRequired: false);
             if (formError is not null) return Result<Guid>.Fail(formError);
         }
 
@@ -1117,4 +1149,13 @@ public class EnrollmentService(
             return null;
         }
     }
+
+    /// <summary>
+    /// The set of values a choice field accepts (its configured options), used to reject
+    /// submitted responses that aren't one of the offered buckets. Null for non-choice fields.
+    /// </summary>
+    private IReadOnlyList<string>? ChoiceOptions(FormFieldType type, string? optionsJson)
+        => type is FormFieldType.MultipleChoice or FormFieldType.AgeCategory
+            ? DeserializeOptions(optionsJson)
+            : null;
 }

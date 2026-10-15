@@ -280,7 +280,7 @@ public class CampService(
         CampEnrollmentForm? form = await forms.GetByCampIdReadOnlyAsync(campId, ct);
         List<CampFormField> fields = form?.Fields.ToList() ?? [];
         Error? formError = FormResponseValidator.Validate(
-            fields.Select(f => (f.Id, f.IsRequired, f.Label)),
+            fields.Select(f => (f.Id, f.IsRequired, f.Label, ChoiceOptions(f.Type, f.Options))),
             request.Responses.Select(r => (r.CampFormFieldId, r.Value)));
         if (formError is not null)
             return Result.Fail(formError);
@@ -354,7 +354,7 @@ public class CampService(
         // Altijd valideren, ook zonder formulier: dan is de veldenset leeg en wordt elk antwoord
         // met een onbekend veld-id (bv. uit een ander kamp) netjes geweigerd i.p.v. opgeslagen.
         Error? formError = FormResponseValidator.Validate(
-            (form?.Fields ?? []).Select(f => (f.Id, f.IsRequired, f.Label)),
+            (form?.Fields ?? []).Select(f => (f.Id, f.IsRequired, f.Label, ChoiceOptions(f.Type, f.Options))),
             request.Responses.Select(r => (r.CampFormFieldId, r.Value)));
         if (formError is not null)
             return Result<Guid>.Fail(formError);
@@ -551,4 +551,13 @@ public class CampService(
         try { return JsonSerializer.Deserialize<List<string>>(json); }
         catch (JsonException) { return null; }
     }
+
+    /// <summary>
+    /// The set of values a choice field accepts (its configured options), used to reject
+    /// submitted responses that aren't one of the offered options. Null for non-choice fields.
+    /// </summary>
+    private static IReadOnlyList<string>? ChoiceOptions(FormFieldType type, string? optionsJson)
+        => type is FormFieldType.MultipleChoice or FormFieldType.AgeCategory
+            ? DeserializeOptions(optionsJson)
+            : null;
 }

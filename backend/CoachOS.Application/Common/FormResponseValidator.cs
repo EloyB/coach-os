@@ -9,11 +9,17 @@ namespace CoachOS.Application.Common;
 /// </summary>
 public static class FormResponseValidator
 {
+    /// <param name="enforceRequired">
+    /// When false, skip the required-field presence check but still reject unknown field ids and
+    /// invalid choice values. Used for group members, whose age answer the public form does not
+    /// (yet) collect — a missing answer is tolerated, but a forged/invalid one is not.
+    /// </param>
     public static Error? Validate(
-        IEnumerable<(Guid Id, bool IsRequired, string Label)> fields,
-        IEnumerable<(Guid FormFieldId, string Value)> responses)
+        IEnumerable<(Guid Id, bool IsRequired, string Label, IReadOnlyList<string>? AllowedValues)> fields,
+        IEnumerable<(Guid FormFieldId, string Value)> responses,
+        bool enforceRequired = true)
     {
-        List<(Guid Id, bool IsRequired, string Label)> fieldList = fields.ToList();
+        List<(Guid Id, bool IsRequired, string Label, IReadOnlyList<string>? AllowedValues)> fieldList = fields.ToList();
         List<(Guid FormFieldId, string Value)> responseList = responses.ToList();
 
         HashSet<Guid> fieldIds = fieldList.Select(f => f.Id).ToHashSet();
@@ -23,11 +29,29 @@ public static class FormResponseValidator
                 return new Error(ErrorCodes.Validation, "Ongeldig formulierveld.");
         }
 
-        foreach ((Guid id, bool isRequired, string label) in fieldList.Where(f => f.IsRequired))
+        if (enforceRequired)
         {
-            bool hasResponse = responseList.Any(r => r.FormFieldId == id && !string.IsNullOrWhiteSpace(r.Value));
-            if (!hasResponse)
-                return new Error(ErrorCodes.Validation, $"Veld '{label}' is verplicht.");
+            foreach ((Guid id, bool _, string label, _) in fieldList.Where(f => f.IsRequired))
+            {
+                bool hasResponse = responseList.Any(r => r.FormFieldId == id && !string.IsNullOrWhiteSpace(r.Value));
+                if (!hasResponse)
+                    return new Error(ErrorCodes.Validation, $"Veld '{label}' is verplicht.");
+            }
+        }
+
+        // Choice fields (MultipleChoice / AgeCategory) must carry one of the configured options.
+        // Without this, a forged response could invent a value the form never offered — which for
+        // the age category would create a bucket that leaves compatible participants ungrouped.
+        Dictionary<Guid, (IReadOnlyList<string> Values, string Label)> choiceFields = fieldList
+            .Where(f => f.AllowedValues is { Count: > 0 })
+            .ToDictionary(f => f.Id, f => ((IReadOnlyList<string>)f.AllowedValues!, f.Label));
+
+        foreach ((Guid formFieldId, string value) in responseList)
+        {
+            if (string.IsNullOrWhiteSpace(value)) continue;
+            if (choiceFields.TryGetValue(formFieldId, out (IReadOnlyList<string> Values, string Label) choice)
+                && !choice.Values.Contains(value))
+                return new Error(ErrorCodes.Validation, $"Ongeldige keuze voor veld '{choice.Label}'.");
         }
 
         return null;
