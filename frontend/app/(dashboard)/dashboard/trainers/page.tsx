@@ -564,10 +564,10 @@ function HeadTrainerControl({
         disabled={pending || (!active && !soleClub)}
         title={active ? t("removeHeadTrainer") : t("makeHeadTrainer")}
         aria-label={active ? t("removeHeadTrainer") : t("makeHeadTrainer")}
-        className={`p-1.5 rounded transition-all disabled:opacity-50 ${
+        className={`p-1.5 rounded transition-colors disabled:opacity-50 ${
           active
             ? "text-tennis-green bg-tennis-green/10"
-            : "opacity-100 lg:opacity-0 lg:group-hover:opacity-100 text-ink-3 hover:text-tennis-green hover:bg-tennis-green/10"
+            : "text-ink-3 hover:text-tennis-green hover:bg-tennis-green/10"
         }`}
       >
         <Crown size={14} />
@@ -591,10 +591,10 @@ function HeadTrainerControl({
           disabled={pending}
           title={t("headTrainerClubsTitle")}
           aria-label={t("headTrainerClubsTitle")}
-          className={`p-1.5 rounded transition-all disabled:opacity-50 ${
+          className={`p-1.5 rounded transition-colors disabled:opacity-50 ${
             active
               ? "text-tennis-green bg-tennis-green/10"
-              : "opacity-100 lg:opacity-0 lg:group-hover:opacity-100 text-ink-3 hover:text-tennis-green hover:bg-tennis-green/10"
+              : "text-ink-3 hover:text-tennis-green hover:bg-tennis-green/10"
           }`}
         >
           <Crown size={14} />
@@ -764,11 +764,11 @@ export default function TrainersPage() {
         </div>
       )}
 
-      {/* Trainer card grid */}
+      {/* Trainer table */}
       {isLoading ? (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
+        <div className="bg-paper border border-rule rounded-xl overflow-hidden">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="bg-paper border border-rule rounded-xl p-4 animate-pulse h-[160px]" />
+            <div key={i} className="h-[60px] border-b border-rule last:border-b-0 animate-pulse bg-canvas/40" />
           ))}
         </div>
       ) : !trainers?.length ? (
@@ -782,52 +782,88 @@ export default function TrainersPage() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
-          {allTrainers.map((tr) => {
-            const initials = getInitials(tr.firstName, tr.lastName);
-            const isInvited = !tr.isActive && tr.invitePending;
-            const isDeactivatedState = !tr.isActive && !tr.invitePending;
-            // De eigen admin verschijnt alleen in deze lijst zolang AdminsActAsTrainers
-            // aanstaat in /dashboard/settings. Beheer gebeurt daar, niet via deactivate/remove
-            // (de Admin-rol kun je op de trainerlijst niet wijzigen).
-            const isSelfAdmin = user?.role === "Admin" && tr.id === user?.userId;
-            const cap = capacityLabel(tr.currentWeekHoursBooked, tr.weeklyCapacityHours, t);
-            const loadPct = tr.weeklyCapacityHours > 0
-              ? Math.min(100, Math.round((tr.currentWeekHoursBooked / tr.weeklyCapacityHours) * 100))
-              : 0;
+        <div className="bg-paper border border-rule rounded-xl overflow-x-auto">
+          <table className="w-full min-w-[860px] text-left">
+            <thead>
+              <tr className="border-b border-rule bg-canvas/60 text-[10.5px] font-semibold uppercase tracking-[0.06em] text-ink-3">
+                <th className="px-4 py-2.5 font-semibold">{t("columnTrainer")}</th>
+                <th className="px-4 py-2.5 font-semibold">{t("columnRole")}</th>
+                <th className="px-4 py-2.5 font-semibold">{t("columnStatus")}</th>
+                <th className="px-4 py-2.5 font-semibold">{t("seriesCount")}</th>
+                <th className="px-4 py-2.5 font-semibold">{t("weekLoad")}</th>
+                <th className="px-4 py-2.5 font-semibold text-right">{t("columnActions")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {allTrainers.map((tr) => {
+                const initials = getInitials(tr.firstName, tr.lastName);
+                const isInvited = !tr.isActive && tr.invitePending;
+                const isDeactivatedState = !tr.isActive && !tr.invitePending;
+                // De eigen admin verschijnt alleen in deze lijst zolang AdminsActAsTrainers
+                // aanstaat in /dashboard/settings. Beheer gebeurt daar, niet via deactivate/remove
+                // (de Admin-rol kun je op de trainerlijst niet wijzigen).
+                const isSelfAdmin = user?.role === "Admin" && tr.id === user?.userId;
+                const cap = capacityLabel(tr.currentWeekHoursBooked, tr.weeklyCapacityHours, t);
+                const loadPct = tr.weeklyCapacityHours > 0
+                  ? Math.min(100, Math.round((tr.currentWeekHoursBooked / tr.weeklyCapacityHours) * 100))
+                  : 0;
+                const actionBtn =
+                  "p-1.5 rounded text-ink-3 hover:text-tennis-green hover:bg-tennis-green/10 transition-colors";
+                const dangerBtn =
+                  "p-1.5 rounded text-ink-3 hover:text-red-500 hover:bg-red-50 transition-colors";
 
-            return (
-              <div key={tr.id} className="bg-paper border border-rule rounded-xl p-4 group">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-[10px] bg-tennis-green grid place-items-center shrink-0">
-                    <span className="text-tennis-lime font-bold text-[13px]">{initials}</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-center">
-                      <p className="text-[13.5px] font-bold text-ink m-0 flex items-center gap-1.5">
-                        {tr.firstName} {tr.lastName}
-                        {tr.notes && tr.notes.trim() && (
-                          <StickyNote
-                            size={12}
-                            className="text-amber-500 shrink-0"
-                            aria-label={t("notesIndicator")}
-                          >
-                            <title>{tr.notes}</title>
-                          </StickyNote>
+                return (
+                  <tr
+                    key={tr.id}
+                    className={`border-b border-rule last:border-b-0 hover:bg-canvas/40 ${
+                      isDeactivatedState ? "opacity-70" : ""
+                    }`}
+                  >
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-[9px] bg-tennis-green grid place-items-center shrink-0">
+                          <span className="text-tennis-lime font-bold text-[12px]">{initials}</span>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[13.5px] font-bold text-ink m-0 flex items-center gap-1.5">
+                            <span className="truncate">{tr.firstName} {tr.lastName}</span>
+                            {tr.notes && tr.notes.trim() && (
+                              <StickyNote
+                                size={12}
+                                className="text-amber-500 shrink-0"
+                                aria-label={t("notesIndicator")}
+                              >
+                                <title>{tr.notes}</title>
+                              </StickyNote>
+                            )}
+                          </p>
+                          <p className="text-[11px] text-ink-3 font-mono mt-0.5 m-0 truncate">{tr.email}</p>
+                        </div>
+                      </div>
+                    </td>
+
+                    <td className="px-4 py-3">
+                      <div className="flex flex-wrap items-center gap-1">
+                        {tr.role === "Admin" ? (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-tennis-lime/30 text-tennis-green font-semibold">
+                            {t("adminBadge")}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-semibold">
+                            {t("roleTrainer")}
+                          </span>
                         )}
                         {tr.headTrainerClubIds.length > 0 && (
-                          <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-tennis-lime/30 px-1.5 py-0.5 text-[9px] font-semibold text-tennis-green">
+                          <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-tennis-lime/30 px-1.5 py-0.5 text-[10px] font-semibold text-tennis-green">
                             <Crown size={9} />
                             {t("headTrainerBadge")}
                           </span>
                         )}
-                      </p>
-                      {tr.role === "Admin" ? (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-tennis-lime/30 text-tennis-green font-semibold">
-                          {t("adminBadge")}
-                          {isInvited ? ` · ${t("invitedLabel")}` : isDeactivatedState ? ` · ${t("inactiveLabel")}` : ""}
-                        </span>
-                      ) : isInvited ? (
+                      </div>
+                    </td>
+
+                    <td className="px-4 py-3">
+                      {isInvited ? (
                         <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 font-semibold">
                           {t("invitedLabel")}
                         </span>
@@ -840,52 +876,44 @@ export default function TrainersPage() {
                           {t("activeLabel")}
                         </span>
                       )}
-                    </div>
-                    <p className="text-[11px] text-ink-3 font-mono mt-0.5 m-0">{tr.email}</p>
-                  </div>
-                </div>
+                    </td>
 
-                {tr.isActive && (
-                  <>
-                    <div className="grid grid-cols-[auto_1fr] gap-4 mt-3.5 pt-3 border-t border-dashed border-rule">
-                      <div>
-                        <p className="text-[9.5px] text-ink-3 uppercase tracking-[0.06em] m-0">{t("seriesCount")}</p>
-                        <p className="text-sm font-bold text-ink font-mono mt-0.5 m-0">
-                          {tr.lessonSeriesCount}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-[9.5px] text-ink-3 uppercase tracking-[0.06em] m-0">{t("weekLoad")}</p>
-                        {tr.weeklyCapacityHours > 0 ? (
-                          <div className="mt-1">
-                            <div className="flex items-center gap-1.5">
-                              <div className="flex-1 h-[5px] bg-gray-100 rounded-full overflow-hidden">
-                                <div
-                                  className={`h-full rounded-full transition-all ${
-                                    loadPct >= 85 ? "bg-red-500" : loadPct >= 50 ? "bg-tennis-green" : "bg-blue-400"
-                                  }`}
-                                  style={{ width: `${loadPct}%` }}
-                                />
-                              </div>
-                              <Mono className="text-[10px] text-ink-3">{tr.currentWeekHoursBooked}/{tr.weeklyCapacityHours}u</Mono>
+                    <td className="px-4 py-3 text-sm font-bold text-ink font-mono">
+                      {tr.isActive ? tr.lessonSeriesCount : <span className="text-ink-3 font-normal">&mdash;</span>}
+                    </td>
+
+                    <td className="px-4 py-3 w-[200px]">
+                      {tr.isActive && tr.weeklyCapacityHours > 0 ? (
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <div className="flex-1 h-[5px] bg-gray-100 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all ${
+                                  loadPct >= 85 ? "bg-red-500" : loadPct >= 50 ? "bg-tennis-green" : "bg-blue-400"
+                                }`}
+                                style={{ width: `${loadPct}%` }}
+                              />
                             </div>
-                            {cap.text && (
-                              <p className={`text-[9px] mt-0.5 m-0 font-medium ${cap.color}`}>
-                                {cap.text}
-                              </p>
-                            )}
+                            <Mono className="text-[10px] text-ink-3 whitespace-nowrap">
+                              {tr.currentWeekHoursBooked}/{tr.weeklyCapacityHours}u
+                            </Mono>
                           </div>
-                        ) : (
-                          <p className="text-sm font-bold text-ink font-mono mt-0.5 m-0">&mdash;</p>
+                          {cap.text && (
+                            <p className={`text-[10px] mt-0.5 m-0 font-medium ${cap.color}`}>{cap.text}</p>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-ink-3">&mdash;</span>
+                      )}
+                    </td>
+
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-1">
+                        {tr.isActive && isSelfAdmin && (
+                          <span className="text-[10.5px] text-ink-3 italic">{t("manageViaSettings")}</span>
                         )}
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap gap-1 justify-end items-center mt-2.5 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
-                        {isSelfAdmin ? (
-                          <span className="text-[9.5px] text-ink-3 italic">
-                            {t("manageViaSettings")}
-                          </span>
-                        ) : (
+
+                        {tr.isActive && !isSelfAdmin && (
                           <>
                             {tr.role === "Trainer" && (
                               <HeadTrainerControl
@@ -903,90 +931,94 @@ export default function TrainersPage() {
                               }
                               title={tr.role === "Admin" ? t("removeAdmin") : t("makeAdmin")}
                               aria-label={tr.role === "Admin" ? t("removeAdmin") : t("makeAdmin")}
-                              className="p-1.5 rounded text-ink-3 hover:text-tennis-green hover:bg-tennis-green/10 transition-all"
+                              className={actionBtn}
                             >
-                              {tr.role === "Admin" ? <ShieldOff size={14} /> : <ShieldCheck size={14} />}
+                              {tr.role === "Admin" ? <ShieldOff size={15} /> : <ShieldCheck size={15} />}
                             </button>
                             <button
                               onClick={() => setAvailabilityTrainer(tr)}
                               title={t("availabilityButton")}
                               aria-label={t("availabilityButton")}
-                              className="p-1.5 rounded text-ink-3 hover:text-tennis-green hover:bg-tennis-green/10 transition-all"
+                              className={actionBtn}
                             >
-                              <CalendarClock size={14} />
+                              <CalendarClock size={15} />
                             </button>
                             <button
                               onClick={() => setEditTrainer(tr)}
                               title={t("edit")}
-                              className="p-1.5 rounded text-ink-3 hover:text-tennis-green hover:bg-tennis-green/10 transition-all"
+                              aria-label={t("edit")}
+                              className={actionBtn}
                             >
-                              <Pencil size={14} />
+                              <Pencil size={15} />
                             </button>
                             {tr.lessonSeriesCount === 0 && (
                               <button
                                 onClick={() => handleRemoveClick(tr)}
                                 title={t("remove")}
-                                className="p-1.5 rounded text-ink-3 hover:text-red-500 hover:bg-red-50 transition-all"
+                                aria-label={t("remove")}
+                                className={dangerBtn}
                               >
-                                <Trash2 size={14} />
+                                <Trash2 size={15} />
                               </button>
                             )}
                           </>
                         )}
-                    </div>
-                  </>
-                )}
 
-                {isInvited && (
-                  <div className="mt-3 px-3 py-2.5 bg-amber-50/60 rounded-lg border border-dashed border-amber-200 flex justify-between items-center">
-                    <p className="text-[11px] text-amber-800 m-0">{t("invitePending")}</p>
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={() => setEditTrainer(tr)}
-                        title={t("edit")}
-                        className="p-1.5 rounded text-amber-700 hover:text-tennis-green hover:bg-tennis-green/10 transition-all"
-                      >
-                        <Pencil size={14} />
-                      </button>
-                      <button
-                        onClick={() => resendMutation.mutate(tr.id)}
-                        disabled={resendMutation.isPending}
-                        className="px-2.5 py-1 bg-white border border-amber-300 rounded text-[10.5px] text-amber-800 font-semibold disabled:opacity-50"
-                      >
-                        {resendMutation.isPending ? t("resending") : t("resend")}
-                      </button>
-                      <button
-                        onClick={() => handleRemoveClick(tr)}
-                        title={t("revokeInvite")}
-                        className="p-1.5 rounded text-amber-700 hover:text-red-500 hover:bg-red-50 transition-all"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  </div>
-                )}
+                        {isInvited && (
+                          <>
+                            <button
+                              onClick={() => resendMutation.mutate(tr.id)}
+                              disabled={resendMutation.isPending}
+                              className="px-2.5 py-1 bg-white border border-amber-300 rounded text-[10.5px] text-amber-800 font-semibold disabled:opacity-50"
+                            >
+                              {resendMutation.isPending ? t("resending") : t("resend")}
+                            </button>
+                            <button
+                              onClick={() => setEditTrainer(tr)}
+                              title={t("edit")}
+                              aria-label={t("edit")}
+                              className={actionBtn}
+                            >
+                              <Pencil size={15} />
+                            </button>
+                            <button
+                              onClick={() => handleRemoveClick(tr)}
+                              title={t("revokeInvite")}
+                              aria-label={t("revokeInvite")}
+                              className={dangerBtn}
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </>
+                        )}
 
-                {isDeactivatedState && (
-                  <div className="mt-3 flex gap-1 justify-end">
-                    <button
-                      onClick={() => setEditTrainer(tr)}
-                      title={t("edit")}
-                      className="p-1.5 rounded text-ink-3 hover:text-tennis-green hover:bg-tennis-green/10 transition-all"
-                    >
-                      <Pencil size={14} />
-                    </button>
-                    <button
-                      onClick={() => handleRemoveClick(tr)}
-                      title={t("remove")}
-                      className="p-1.5 rounded text-ink-3 hover:text-red-500 hover:bg-red-50 transition-all"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+                        {isDeactivatedState && (
+                          <>
+                            <button
+                              onClick={() => setEditTrainer(tr)}
+                              title={t("edit")}
+                              aria-label={t("edit")}
+                              className={actionBtn}
+                            >
+                              <Pencil size={15} />
+                            </button>
+                            <button
+                              onClick={() => handleRemoveClick(tr)}
+                              title={t("remove")}
+                              aria-label={t("remove")}
+                              className={dangerBtn}
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
 
