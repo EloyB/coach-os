@@ -351,14 +351,13 @@ public class CampService(
                 "Je kan geen lid toevoegen aan een groep waarvan de betaling al betaald is of online loopt."));
 
         CampEnrollmentForm? form = await forms.GetByCampIdReadOnlyAsync(campId, ct);
-        if (form is not null)
-        {
-            Error? formError = FormResponseValidator.Validate(
-                form.Fields.Select(f => (f.Id, f.IsRequired, f.Label)),
-                request.Responses.Select(r => (r.CampFormFieldId, r.Value)));
-            if (formError is not null)
-                return Result<Guid>.Fail(formError);
-        }
+        // Altijd valideren, ook zonder formulier: dan is de veldenset leeg en wordt elk antwoord
+        // met een onbekend veld-id (bv. uit een ander kamp) netjes geweigerd i.p.v. opgeslagen.
+        Error? formError = FormResponseValidator.Validate(
+            (form?.Fields ?? []).Select(f => (f.Id, f.IsRequired, f.Label)),
+            request.Responses.Select(r => (r.CampFormFieldId, r.Value)));
+        if (formError is not null)
+            return Result<Guid>.Fail(formError);
 
         string email = request.ParticipantEmail.Trim();
 

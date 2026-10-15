@@ -667,4 +667,55 @@ public class CampServiceTests
         _enrollments.Verify(r => r.RemoveFormResponse(note), Times.Once); // gewist
         _enrollments.Verify(r => r.RemoveFormResponse(size), Times.Never);
     }
+
+    [Test]
+    public async Task AddGroupMemberAsync_NoFormButResponseGiven_ReturnsValidationAndStoresNothing()
+    {
+        Camp camp = ArrangeCampWithGroup(out CampEnrollmentGroup group, out _, out _);
+        AddCampGroupMemberRequest request = new()
+        {
+            ParticipantName = "Lisa", ParticipantEmail = "lisa@test.com",
+            Responses = [new CampFormResponseValueDto { CampFormFieldId = Guid.NewGuid(), Value = "x" }],
+        };
+
+        Result<Guid> result = await _sut.AddGroupMemberAsync(camp.Id, group.Id, _orgId, request);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.Validation);
+        _enrollments.Verify(r => r.AddAsync(It.IsAny<CampEnrollment>(), It.IsAny<CancellationToken>()), Times.Never);
+        _enrollments.Verify(r => r.AddFormResponseAsync(It.IsAny<CampFormResponse>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task AddGroupMemberAsync_ResponseForFieldOfOtherCamp_ReturnsValidation()
+    {
+        Camp camp = ArrangeCampWithGroup(out CampEnrollmentGroup group, out _, out _);
+        _forms.Setup(f => f.GetByCampIdReadOnlyAsync(camp.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CampEnrollmentForm
+            {
+                Fields = [new CampFormField { Id = Guid.NewGuid(), Label = "Shirtmaat", IsRequired = false }],
+            });
+        AddCampGroupMemberRequest request = new()
+        {
+            ParticipantName = "Lisa", ParticipantEmail = "lisa@test.com",
+            Responses = [new CampFormResponseValueDto { CampFormFieldId = Guid.NewGuid(), Value = "x" }],
+        };
+
+        Result<Guid> result = await _sut.AddGroupMemberAsync(camp.Id, group.Id, _orgId, request);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.Validation);
+    }
+
+    [Test]
+    public async Task UpdateEnrollmentAsync_NoFormButResponseGiven_ReturnsValidation()
+    {
+        (Guid campId, CampEnrollment e) = ArrangeEditable();
+
+        Result result = await _sut.UpdateEnrollmentAsync(campId, e.Id, _orgId,
+            UpdateRequest((Guid.NewGuid(), "x")));
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.Validation);
+    }
 }

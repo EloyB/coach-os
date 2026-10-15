@@ -366,4 +366,62 @@ public class CampEnrollmentServiceTests
         _unitOfWork.Verify(u => u.RollbackTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(u => u.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
+
+    // ── Antwoorden zonder (passend) formulier ────────────────────────────────
+
+    [Test]
+    public async Task CreateManual_NoFormButResponseGiven_ReturnsValidationAndStoresNothing()
+    {
+        ArrangeManual(0m); // kamp zonder formulier
+        CreateManualCampEnrollmentRequest request = new()
+        {
+            ParticipantName = "Emma", ParticipantEmail = "emma@example.com",
+            Responses = [new CampFormResponseValueDto { CampFormFieldId = Guid.NewGuid(), Value = "x" }],
+        };
+
+        Result<Guid> result = await _sut.CreateManualAsync(_campId, _orgId, request);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.Validation);
+        _enrollments.Verify(r => r.AddFormResponseAsync(It.IsAny<CampFormResponse>(), It.IsAny<CancellationToken>()), Times.Never);
+        _enrollments.Verify(r => r.AddAsync(It.IsAny<CampEnrollment>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task CreateManual_ResponseForFieldOfOtherCamp_ReturnsValidation()
+    {
+        ArrangeManual(0m);
+        _forms.Setup(r => r.GetByCampIdReadOnlyAsync(_campId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CampEnrollmentForm
+            {
+                Fields = [new CampFormField { Id = Guid.NewGuid(), Label = "Shirtmaat", IsRequired = false }],
+            });
+        CreateManualCampEnrollmentRequest request = new()
+        {
+            ParticipantName = "Emma", ParticipantEmail = "emma@example.com",
+            Responses = [new CampFormResponseValueDto { CampFormFieldId = Guid.NewGuid(), Value = "x" }],
+        };
+
+        Result<Guid> result = await _sut.CreateManualAsync(_campId, _orgId, request);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.Validation);
+    }
+
+    [Test]
+    public async Task Submit_NoFormButResponseGiven_ReturnsValidation()
+    {
+        Happy(0m); // geen formulier
+        SubmitCampEnrollmentRequest request = new()
+        {
+            ParticipantName = "Emma", ParticipantEmail = "emma@example.com", EnrollmentType = "solo",
+            Responses = [new CampFormResponseValueDto { CampFormFieldId = Guid.NewGuid(), Value = "x" }],
+        };
+
+        Result<SubmitCampEnrollmentResultDto> result = await _sut.SubmitAsync(_campId, request, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.Validation);
+        _enrollments.Verify(r => r.AddAsync(It.IsAny<CampEnrollment>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
 }
