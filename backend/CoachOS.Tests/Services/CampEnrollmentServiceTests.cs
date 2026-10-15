@@ -1,3 +1,4 @@
+using CoachOS.Application.Abstractions;
 using CoachOS.Application.Camps;
 using CoachOS.Application.Camps.DTOs;
 using CoachOS.Application.MollieConnect;
@@ -25,6 +26,7 @@ public class CampEnrollmentServiceTests
     private Mock<IPaymentRepository> _paymentRepo = null!;
     private Mock<IMollieConnectService> _mollieConnect = null!;
     private Mock<IEmailService> _email = null!;
+    private Mock<IUnitOfWork> _unitOfWork = null!;
     private CampEnrollmentService _sut = null!;
 
     private readonly Guid _campId = Guid.NewGuid();
@@ -40,8 +42,10 @@ public class CampEnrollmentServiceTests
         _paymentRepo = new Mock<IPaymentRepository>();
         _mollieConnect = new Mock<IMollieConnectService>();
         _email = new Mock<IEmailService>();
+        _unitOfWork = new Mock<IUnitOfWork>();
         _sut = new CampEnrollmentService(_camps.Object, _enrollments.Object, _forms.Object,
-            _payments.Object, _paymentRepo.Object, _mollieConnect.Object, _email.Object,
+            _payments.Object, _paymentRepo.Object,
+            _unitOfWork.Object, _mollieConnect.Object, _email.Object,
             NullLogger<CampEnrollmentService>.Instance);
     }
 
@@ -228,5 +232,196 @@ public class CampEnrollmentServiceTests
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().Contain(e => e.Code == ErrorCodes.Conflict);
         _payments.Verify(p => p.CreatePaymentForCampEnrollmentAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    // ── CreateManualAsync ────────────────────────────────────────────────────
+
+    private static CreateManualCampEnrollmentRequest ManualReq(bool paid = false) => new()
+    {
+        ParticipantName = "Emma", ParticipantEmail = "emma@example.com", Paid = paid,
+    };
+
+    private void ArrangeManual(decimal price, int active = 0, int? max = 20)
+    {
+        Camp camp = BuildCamp(price);
+        camp.MaxParticipants = max;
+        _camps.Setup(r => r.GetByIdPublicAsync(_campId, It.IsAny<CancellationToken>())).ReturnsAsync(camp);
+        _forms.Setup(r => r.GetByCampIdReadOnlyAsync(_campId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((CampEnrollmentForm?)null);
+        _enrollments.Setup(r => r.CountActiveByCampAsync(_campId, It.IsAny<CancellationToken>())).ReturnsAsync(active);
+        _payments.Setup(p => p.RecordCampCashPaymentAsync(It.IsAny<Guid>(), _orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok());
+        _payments.Setup(p => p.MarkCampCashPaidAsync(_campId, It.IsAny<Guid>(), _orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok());
+    }
+
+    [Test]
+    public async Task CreateManual_FreeCamp_ConfirmsAndSendsMailWithoutPayment()
+    {
+        ArrangeManual(0m);
+
+        Result<Guid> result = await _sut.CreateManualAsync(_campId, _orgId, ManualReq());
+
+        result.IsSuccess.Should().BeTrue();
+        _enrollments.Verify(r => r.AddAsync(It.Is<CampEnrollment>(e => e.Status == EnrollmentStatus.Confirmed),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _payments.Verify(p => p.RecordCampCashPaymentAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _email.Verify(e => e.SendCampEnrollmentConfirmedAsync(
+            "emma@example.com", "Emma", "Paaskamp", It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Test]
+    public async Task CreateManual_PaidCampNotYetPaid_PendingPaymentWithCashRecordedNotMarked()
+    {
+        ArrangeManual(150m);
+
+        Result<Guid> result = await _sut.CreateManualAsync(_campId, _orgId, ManualReq(paid: false));
+
+        result.IsSuccess.Should().BeTrue();
+        _enrollments.Verify(r => r.AddAsync(It.Is<CampEnrollment>(e => e.Status == EnrollmentStatus.PendingPayment),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _payments.Verify(p => p.RecordCampCashPaymentAsync(It.IsAny<Guid>(), _orgId, It.IsAny<CancellationToken>()), Times.Once);
+        _payments.Verify(p => p.MarkCampCashPaidAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _email.Verify(e => e.SendCampEnrollmentConfirmedAsync(
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+            It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task CreateManual_PaidCampCashReceived_RecordsAndMarksPaid()
+    {
+        ArrangeManual(150m);
+
+        Result<Guid> result = await _sut.CreateManualAsync(_campId, _orgId, ManualReq(paid: true));
+
+        result.IsSuccess.Should().BeTrue();
+        _payments.Verify(p => p.RecordCampCashPaymentAsync(result.Value, _orgId, It.IsAny<CancellationToken>()), Times.Once);
+        _payments.Verify(p => p.MarkCampCashPaidAsync(_campId, result.Value, _orgId, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task CreateManual_CampOfOtherOrganization_ReturnsNotFound()
+    {
+        ArrangeManual(0m);
+
+        Result<Guid> result = await _sut.CreateManualAsync(_campId, Guid.NewGuid(), ManualReq());
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.NotFound);
+        _enrollments.Verify(r => r.AddAsync(It.IsAny<CampEnrollment>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task CreateManual_CampFull_ReturnsConflictAndRollsBack()
+    {
+        ArrangeManual(0m, active: 20, max: 20);
+
+        Result<Guid> result = await _sut.CreateManualAsync(_campId, _orgId, ManualReq());
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.Conflict);
+        _unitOfWork.Verify(u => u.RollbackTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task CreateManual_DuplicateEmail_ReturnsConflict()
+    {
+        ArrangeManual(0m);
+        _enrollments.Setup(r => r.IsDuplicateAsync(_campId, "emma@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        Result<Guid> result = await _sut.CreateManualAsync(_campId, _orgId, ManualReq());
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.Conflict);
+    }
+
+    [Test]
+    public async Task CreateManual_MissingRequiredField_ReturnsValidation()
+    {
+        ArrangeManual(0m);
+        _forms.Setup(r => r.GetByCampIdReadOnlyAsync(_campId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CampEnrollmentForm
+            {
+                Fields = [new CampFormField { Id = Guid.NewGuid(), Label = "Shirtmaat", IsRequired = true }],
+            });
+
+        Result<Guid> result = await _sut.CreateManualAsync(_campId, _orgId, ManualReq());
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.Validation);
+    }
+
+    [Test]
+    public async Task CreateManual_PaymentRecordFails_RollsBackAndFails()
+    {
+        ArrangeManual(150m);
+        _payments.Setup(p => p.RecordCampCashPaymentAsync(It.IsAny<Guid>(), _orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Fail(new Error(ErrorCodes.NotFound, "Kamp niet gevonden.")));
+
+        Result<Guid> result = await _sut.CreateManualAsync(_campId, _orgId, ManualReq());
+
+        result.IsSuccess.Should().BeFalse();
+        _unitOfWork.Verify(u => u.RollbackTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(u => u.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    // ── Antwoorden zonder (passend) formulier ────────────────────────────────
+
+    [Test]
+    public async Task CreateManual_NoFormButResponseGiven_ReturnsValidationAndStoresNothing()
+    {
+        ArrangeManual(0m); // kamp zonder formulier
+        CreateManualCampEnrollmentRequest request = new()
+        {
+            ParticipantName = "Emma", ParticipantEmail = "emma@example.com",
+            Responses = [new CampFormResponseValueDto { CampFormFieldId = Guid.NewGuid(), Value = "x" }],
+        };
+
+        Result<Guid> result = await _sut.CreateManualAsync(_campId, _orgId, request);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.Validation);
+        _enrollments.Verify(r => r.AddFormResponseAsync(It.IsAny<CampFormResponse>(), It.IsAny<CancellationToken>()), Times.Never);
+        _enrollments.Verify(r => r.AddAsync(It.IsAny<CampEnrollment>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task CreateManual_ResponseForFieldOfOtherCamp_ReturnsValidation()
+    {
+        ArrangeManual(0m);
+        _forms.Setup(r => r.GetByCampIdReadOnlyAsync(_campId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CampEnrollmentForm
+            {
+                Fields = [new CampFormField { Id = Guid.NewGuid(), Label = "Shirtmaat", IsRequired = false }],
+            });
+        CreateManualCampEnrollmentRequest request = new()
+        {
+            ParticipantName = "Emma", ParticipantEmail = "emma@example.com",
+            Responses = [new CampFormResponseValueDto { CampFormFieldId = Guid.NewGuid(), Value = "x" }],
+        };
+
+        Result<Guid> result = await _sut.CreateManualAsync(_campId, _orgId, request);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.Validation);
+    }
+
+    [Test]
+    public async Task Submit_NoFormButResponseGiven_ReturnsValidation()
+    {
+        Happy(0m); // geen formulier
+        SubmitCampEnrollmentRequest request = new()
+        {
+            ParticipantName = "Emma", ParticipantEmail = "emma@example.com", EnrollmentType = "solo",
+            Responses = [new CampFormResponseValueDto { CampFormFieldId = Guid.NewGuid(), Value = "x" }],
+        };
+
+        Result<SubmitCampEnrollmentResultDto> result = await _sut.SubmitAsync(_campId, request, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.Validation);
+        _enrollments.Verify(r => r.AddAsync(It.IsAny<CampEnrollment>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }

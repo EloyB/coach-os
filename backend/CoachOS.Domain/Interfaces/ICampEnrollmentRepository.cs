@@ -1,4 +1,3 @@
-using System.Data;
 using CoachOS.Domain.Entities;
 
 namespace CoachOS.Domain.Interfaces;
@@ -18,17 +17,25 @@ public interface ICampEnrollmentRepository
 
     Task<bool> IsDuplicateAsync(Guid campId, string participantEmail, CancellationToken ct = default);
 
+    /// <summary>Zoals <see cref="IsDuplicateAsync"/>, maar de opgegeven inschrijving telt niet mee (bewerken).</summary>
+    Task<bool> IsDuplicateExceptAsync(
+        Guid campId, string participantEmail, Guid exceptEnrollmentId, CancellationToken ct = default);
+
+    /// <summary>Tracked inschrijving incl. formulierantwoorden (voor bewerken); org-gescoped.</summary>
+    Task<CampEnrollment?> GetByIdWithResponsesAsync(
+        Guid id, Guid organizationId, CancellationToken ct = default);
+
+    void RemoveFormResponse(CampFormResponse response);
+
     Task<int> CountActiveByCampGroupsAsync(Guid campId, Guid organizationId, CancellationToken ct = default);
 
     /// <summary>Alle inschrijvingen van een kamp incl. FormResponses (admin-overzicht).</summary>
     Task<List<CampEnrollment>> GetByCampWithResponsesAsync(Guid campId, Guid organizationId, CancellationToken ct = default);
 
+    /// <summary>Tracked groep incl. leden (voor annuleren); org-gescoped.</summary>
+    Task<CampEnrollmentGroup?> GetGroupWithMembersAsync(Guid groupId, Guid organizationId, CancellationToken ct = default);
+
     Task AddAsync(CampEnrollment enrollment, CancellationToken ct = default);
     Task AddGroupAsync(CampEnrollmentGroup group, CancellationToken ct = default);
     Task AddFormResponseAsync(CampFormResponse response, CancellationToken ct = default);
-    Task SaveChangesAsync(CancellationToken ct = default);
-
-    Task BeginTransactionAsync(IsolationLevel isolationLevel, CancellationToken ct = default);
-    Task CommitTransactionAsync(CancellationToken ct = default);
-    Task RollbackTransactionAsync(CancellationToken ct = default);
 }

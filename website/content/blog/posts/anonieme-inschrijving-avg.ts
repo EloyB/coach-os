@@ -91,7 +91,7 @@ export const ANONIEME_INSCHRIJVING_AVG: BlogPost = {
     },
     {
       q: "Wat als CoachOS de data verwerkt — wie is verantwoordelijk?",
-      a: "Jij als club blijft verwerkingsverantwoordelijke; CoachOS treedt op als verwerker. Daarvoor hoort een verwerkersovereenkomst (DPA) bij die de afspraken vastlegt. CoachOS levert die als standaardbijlage bij elke pilot- of klantcontract.",
+      a: "Jij als club blijft verwerkingsverantwoordelijke; CoachOS treedt op als verwerker. Daarvoor hoort een verwerkersovereenkomst (DPA) bij die de afspraken vastlegt. CoachOS levert die als standaardbijlage bij elk klantcontract.",
     },
   ],
   related: ["hoe-plan-je-lesseizoen-tennisclub"],

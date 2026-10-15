@@ -19,6 +19,4 @@ public interface ILessonSeriePriceRepository
     Task ReplaceForSeriesAsync(
         Guid lessonSerieId, Guid organizationId, IEnumerable<LessonSeriePrice> prices,
         CancellationToken ct = default);
-
-    Task SaveChangesAsync(CancellationToken ct = default);
 }

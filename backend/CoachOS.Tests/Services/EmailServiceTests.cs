@@ -40,7 +40,7 @@ public class EmailServiceTests
     }
 
     [Test]
-    public async Task SendEnrollmentConfirmation_OmitsTrainerDetailsWhenNoTrainerIsAssigned()
+    public async Task SendEnrollmentConfirmation_DoesNotReferenceTrainer()
     {
         IReadOnlyDictionary<string, string>? captured = null;
         _renderer
@@ -51,7 +51,7 @@ public class EmailServiceTests
         try
         {
             await _sut.SendEnrollmentConfirmationAsync(
-                "a@b.be", "Anna", "Tennisreeks 1", string.Empty, null, CancellationToken.None);
+                "a@b.be", "Anna", "Tennisreeks 1", null, CancellationToken.None);
         }
         catch
         {
@@ -59,8 +59,8 @@ public class EmailServiceTests
         }
 
         captured.Should().NotBeNull();
-        captured!["trainerDescription"].Should().Be("Je club neemt indien nodig contact met je op.");
-        captured["trainerLine"].Should().BeEmpty();
+        captured!.Should().NotContainKey("trainerDescription");
+        captured.Should().NotContainKey("trainerLine");
     }
 
     [TestCase(0, "maandag")]   // EU 0 = maandag

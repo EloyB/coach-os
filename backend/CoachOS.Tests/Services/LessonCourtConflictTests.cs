@@ -1,3 +1,4 @@
+using CoachOS.Application.Abstractions;
 using CoachOS.Application.Configuration;
 using CoachOS.Application.LessonReschedule;
 using CoachOS.Application.LessonReschedule.DTOs;
@@ -37,6 +38,7 @@ public class LessonCourtConflictTests
     private Mock<IMollieConnectionRepository> _mollieConnectionRepo = null!;
     private Mock<IScheduleAssignmentRepository> _scheduleAssignmentRepo = null!;
     private Mock<ITimeSlotPreferenceRepository> _timeSlotPreferenceRepo = null!;
+    private Mock<IUnitOfWork> _unitOfWork = null!;
     private ApplicationMapper _mapper = null!;
 
     private LessonSerieService _serieService = null!;
@@ -63,6 +65,7 @@ public class LessonCourtConflictTests
         _mollieConnectionRepo = new Mock<IMollieConnectionRepository>();
         _scheduleAssignmentRepo = new Mock<IScheduleAssignmentRepository>();
         _timeSlotPreferenceRepo = new Mock<ITimeSlotPreferenceRepository>();
+        _unitOfWork = new Mock<IUnitOfWork>();
         _mapper = new ApplicationMapper();
 
         _serieService = new LessonSerieService(
@@ -76,12 +79,16 @@ public class LessonCourtConflictTests
             _scheduleAssignmentRepo.Object,
             _timeSlotPreferenceRepo.Object,
             _invitationRepo.Object,
-            _mapper);
+            _unitOfWork.Object,
+            TimeProvider.System,
+            _mapper,
+            NullLogger<LessonSerieService>.Instance);
 
         _standaloneService = new StandaloneLessonService(
             _lessonRepo.Object,
             _invitationRepo.Object,
             _tennisClubRepo.Object,
+            _unitOfWork.Object,
             _userLookup.Object,
             _emailService.Object,
             _mapper,
@@ -89,14 +96,15 @@ public class LessonCourtConflictTests
             {
                 StandaloneLessonInvitationBaseUrl = "http://localhost:5317/invitation"
             }),
-            NullLogger<StandaloneLessonService>.Instance);
+            NullLogger<StandaloneLessonService>.Instance,
+            TimeProvider.System);
 
         _rescheduleService = new LessonRescheduleService(
             _lessonRepo.Object,
             _invitationRepo.Object,
             _enrollmentRepo.Object,
             _serieRepo.Object,
-            _userLookup.Object,
+            _unitOfWork.Object,
             _emailService.Object,
             NullLogger<LessonRescheduleService>.Instance);
 
@@ -344,7 +352,7 @@ public class LessonCourtConflictTests
         result.IsSuccess.Should().BeFalse();
         result.Errors[0].Code.Should().Be(ErrorCodes.Conflict);
         result.Errors[0].Message.Should().Contain("Voorjaarslessen");
-        _lessonRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Test]
@@ -560,7 +568,12 @@ public class LessonCourtConflictTests
             OrgId, lesson.Id, BuildRescheduleRequest(), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
-        lesson.IsCancelled.Should().BeTrue();
+        // In-place verplaatsen: de les wordt niet geannuleerd, maar naar het nieuwe
+        // tijdstip verzet (datum/tijd aangepast op dezelfde les).
+        lesson.IsCancelled.Should().BeFalse();
+        lesson.Date.Should().Be(LessonDate);
+        lesson.StartTime.Should().Be(new TimeOnly(10, 0));
+        lesson.EndTime.Should().Be(new TimeOnly(11, 0));
     }
 
     [Test]
@@ -620,20 +633,17 @@ public class LessonCourtConflictTests
     }
 
     [Test]
-    public async Task RescheduleAsync_CopiesTennisClubIdToNewLesson()
+    public async Task RescheduleAsync_KeepsTennisClubIdOnMovedLesson()
     {
         Lesson lesson = BuildReschedulableLesson("Baan 1", tennisClubId: ClubId);
 
-        Lesson? captured = null;
-        _lessonRepo
-            .Setup(r => r.AddAsync(It.IsAny<Lesson>(), It.IsAny<CancellationToken>()))
-            .Callback<Lesson, CancellationToken>((l, _) => captured = l)
-            .Returns(Task.CompletedTask);
-
-        await _rescheduleService.RescheduleAsync(
+        Result<RescheduleLessonResultDto> result = await _rescheduleService.RescheduleAsync(
             OrgId, lesson.Id, BuildRescheduleRequest(), CancellationToken.None);
 
-        captured.Should().NotBeNull();
-        captured!.TennisClubId.Should().Be(ClubId);
+        result.IsSuccess.Should().BeTrue();
+        // In-place verplaatsen maakt geen nieuwe les aan; dezelfde les behoudt haar club.
+        lesson.TennisClubId.Should().Be(ClubId);
+        _lessonRepo.Verify(
+            r => r.AddAsync(It.IsAny<Lesson>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }

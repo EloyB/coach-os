@@ -1,3 +1,4 @@
+using CoachOS.Application.Abstractions;
 using CoachOS.Application.Pricing;
 using CoachOS.Application.Students.DTOs;
 using CoachOS.Domain.Entities;

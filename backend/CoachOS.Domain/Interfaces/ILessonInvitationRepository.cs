@@ -19,8 +19,6 @@ public interface ILessonInvitationRepository
 
     Task AddRangeAsync(IEnumerable<LessonInvitation> invitations, CancellationToken ct = default);
 
-    Task SaveChangesAsync(CancellationToken ct = default);
-
     /// <summary>
     /// Atomisch de Status van <c>Pending</c> naar <paramref name="target"/> flippen.
     /// Retourneert true als de update één rij raakte (pending was), anders false

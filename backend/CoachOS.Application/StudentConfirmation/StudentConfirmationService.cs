@@ -1,7 +1,9 @@
+using CoachOS.Application.Abstractions;
 using System.Security.Cryptography;
 using System.Text;
 using CoachOS.Application.Pricing;
 using CoachOS.Application.StudentConfirmation.DTOs;
+using CoachOS.Domain.Common;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
 using CoachOS.Domain.Interfaces;
@@ -18,8 +20,10 @@ public class StudentConfirmationService(
     Payments.IPaymentService paymentService,
     IPricingService pricingService,
     IEnrollmentRepository enrollmentRepo,
+    IUnitOfWork unitOfWork,
     IEmailService emailService,
-    ILogger<StudentConfirmationService> logger) : IStudentConfirmationService
+    ILogger<StudentConfirmationService> logger,
+    TimeProvider timeProvider) : IStudentConfirmationService
 {
     public async Task<Result<AssignmentDetailsDto>> GetByTokenAsync(
         string rawToken, CancellationToken ct = default)
@@ -53,21 +57,25 @@ public class StudentConfirmationService(
 
         // Prijs vóór de token-claim berekenen: faalt de berekening, dan blijft de
         // bevestiging herbruikbaar i.p.v. geclaimd achter te blijven zonder betaling.
-        PriceBreakdown? cashBreakdown = null;
+        // Cash: per lid een eigen bedrag zodat de club leden apart kan afvinken.
+        IReadOnlyDictionary<Guid, decimal>? cashPerMember = null;
+        decimal cashTotal = 0m;
         if (method == PaymentMethod.Cash)
         {
-            Result<PriceBreakdown> priceResult = await pricingService.CalculateForGroupAsync(
-                assignment.LessonSerieId, ResolveParticipants(assignment, token.Enrollment), ct);
+            Result<IReadOnlyDictionary<Guid, decimal>> priceResult =
+                await pricingService.CalculatePerParticipantAsync(
+                    assignment.LessonSerieId, ResolveParticipants(assignment, token.Enrollment), ct);
             if (!priceResult.IsSuccess)
                 return Result<ConfirmResultDto>.Fail(priceResult.Errors);
 
-            cashBreakdown = priceResult.Value!;
+            cashPerMember = priceResult.Value!;
+            cashTotal = cashPerMember.Values.Sum();
         }
 
         // Atomisch de token claimen: voorkomt dubbele bevestiging als de student
         // twee keer op "Bevestigen" tikt (dubbele Payment row anders gemaakt).
         var claimed = await tokenRepo.TryClaimResponseAsync(
-            token.Id, ConfirmationResponse.Confirmed, DateTime.UtcNow, ct);
+            token.Id, ConfirmationResponse.Confirmed, timeProvider.GetUtcNow().UtcDateTime, ct);
         if (!claimed)
             return Result<ConfirmResultDto>.Fail(
                 new Error(ErrorCodes.Validation, "Deze bevestiging is al verwerkt."));
@@ -76,20 +84,13 @@ public class StudentConfirmationService(
 
         if (method == PaymentMethod.Cash)
         {
-            // Camp-stijl: registreer een openstaande cash-betaling; de club bevestigt later.
-            Payment cashPayment = new()
-            {
-                OrganizationId = token.OrganizationId,
-                EnrollmentId = token.EnrollmentId,
-                Amount = cashBreakdown!.Total,
-                Status = PaymentStatus.Pending,
-                Method = PaymentMethod.Cash,
-                Description = $"Overschrijving — {series.Name}",
-            };
-            await paymentRepo.AddAsync(cashPayment, ct);
+            // Camp-stijl: registreer een openstaande cash-betaling per lid; de club
+            // bevestigt (en vinkt) later per lid of in één keer voor de hele groep.
+            await AddPerMemberCashPaymentsAsync(
+                cashPerMember!, token.OrganizationId, series.Name, ct);
 
             ConfirmEnrollmentStatuses(assignment, EnrollmentStatus.PendingPayment);
-            await paymentRepo.SaveChangesAsync(ct);
+            await unitOfWork.SaveChangesAsync(ct);
 
             try
             {
@@ -97,7 +98,7 @@ public class StudentConfirmationService(
                     token.Enrollment.ContactEmail,
                     token.Enrollment.StudentName,
                     series.Name,
-                    cashBreakdown!.Total,
+                    cashTotal,
                     ct: ct);
             }
             catch (Exception ex)
@@ -115,7 +116,7 @@ public class StudentConfirmationService(
         // De webhook (of de status-poll vanuit de thank-you-page) flipt enrollment
         // naar Confirmed bij geslaagde betaling.
         ConfirmEnrollmentStatuses(assignment, EnrollmentStatus.PendingPayment);
-        await paymentRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         var paymentResult = await paymentService.CreatePaymentForEnrollmentAsync(
             token.EnrollmentId, token.OrganizationId, ct);
@@ -151,14 +152,14 @@ public class StudentConfirmationService(
 
         // Atomisch declinen — idem redenering als Confirm.
         var claimed = await tokenRepo.TryClaimResponseAsync(
-            token.Id, ConfirmationResponse.Declined, DateTime.UtcNow, ct);
+            token.Id, ConfirmationResponse.Declined, timeProvider.GetUtcNow().UtcDateTime, ct);
         if (!claimed)
             return Result<List<AvailableSlotDto>>.Fail(
                 new Error(ErrorCodes.Validation, "Deze bevestiging is al verwerkt."));
 
         var assignment = token.ScheduleAssignment;
         assignment.Status = ScheduleAssignmentStatus.Declined;
-        await tokenRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         var slots = await GetAvailableSlotsForAssignmentAsync(token, ct);
         return Result<List<AvailableSlotDto>>.Ok(slots);
@@ -223,15 +224,18 @@ public class StudentConfirmationService(
                     $"Tijdslot heeft geen plaats meer ({currentCount}/{targetSlot.MaxStudents})."));
 
         // Idem als ConfirmAsync: prijs bepalen vóór de claim.
-        PriceBreakdown? cashBreakdown = null;
+        IReadOnlyDictionary<Guid, decimal>? cashPerMember = null;
+        decimal cashTotal = 0m;
         if (method == PaymentMethod.Cash)
         {
-            Result<PriceBreakdown> priceResult = await pricingService.CalculateForGroupAsync(
-                oldAssignment.LessonSerieId, ResolveParticipants(oldAssignment, token.Enrollment), ct);
+            Result<IReadOnlyDictionary<Guid, decimal>> priceResult =
+                await pricingService.CalculatePerParticipantAsync(
+                    oldAssignment.LessonSerieId, ResolveParticipants(oldAssignment, token.Enrollment), ct);
             if (!priceResult.IsSuccess)
                 return Result<ConfirmResultDto>.Fail(priceResult.Errors);
 
-            cashBreakdown = priceResult.Value!;
+            cashPerMember = priceResult.Value!;
+            cashTotal = cashPerMember.Values.Sum();
         }
 
         // Atomisch de token-response flippen VOOR het aanmaken van assignment/payment.
@@ -242,7 +246,7 @@ public class StudentConfirmationService(
             token.Id,
             ConfirmationResponse.Declined,
             ConfirmationResponse.Confirmed,
-            DateTime.UtcNow,
+            timeProvider.GetUtcNow().UtcDateTime,
             ct);
         if (!claimed)
             return Result<ConfirmResultDto>.Fail(
@@ -264,20 +268,14 @@ public class StudentConfirmationService(
 
         if (method == PaymentMethod.Cash)
         {
-            // Camp-stijl: registreer een openstaande cash-betaling; de club bevestigt later.
-            Payment cashPayment = new()
-            {
-                OrganizationId = token.OrganizationId,
-                EnrollmentId = token.EnrollmentId,
-                Amount = cashBreakdown!.Total,
-                Status = PaymentStatus.Pending,
-                Method = PaymentMethod.Cash,
-                Description = $"Overschrijving (alternatief) — {series.Name}",
-            };
-            await paymentRepo.AddAsync(cashPayment, ct);
+            // Camp-stijl: registreer een openstaande cash-betaling per lid; de club
+            // bevestigt (en vinkt) later per lid of in één keer voor de hele groep.
+            await AddPerMemberCashPaymentsAsync(
+                cashPerMember!, token.OrganizationId, series.Name, ct,
+                descriptionSuffix: " (alternatief)");
 
             ConfirmEnrollmentStatuses(oldAssignment, EnrollmentStatus.PendingPayment);
-            await paymentRepo.SaveChangesAsync(ct);
+            await unitOfWork.SaveChangesAsync(ct);
 
             try
             {
@@ -285,7 +283,7 @@ public class StudentConfirmationService(
                     token.Enrollment.ContactEmail,
                     token.Enrollment.StudentName,
                     series.Name,
-                    cashBreakdown!.Total,
+                    cashTotal,
                     ct: ct);
             }
             catch (Exception ex)
@@ -301,7 +299,7 @@ public class StudentConfirmationService(
 
         // Online: zelfde flow als ConfirmAsync — PendingPayment + Mollie checkout.
         ConfirmEnrollmentStatuses(oldAssignment, EnrollmentStatus.PendingPayment);
-        await paymentRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         var paymentResult = await paymentService.CreatePaymentForEnrollmentAsync(
             token.EnrollmentId, token.OrganizationId, ct);
@@ -349,26 +347,25 @@ public class StudentConfirmationService(
                 : $"{slot.CourtName}, {clubName}";
 
         // Calculate next occurrence of this DayOfWeek in Europe/Brussels timezone.
-        TimeZoneInfo brusselsTz = TimeZoneInfo.FindSystemTimeZoneById("Europe/Brussels");
-        DateTimeOffset nowBrussels = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, brusselsTz);
-        DateOnly today = DateOnly.FromDateTime(nowBrussels.DateTime);
+        DateOnly today = timeProvider.GetBrusselsToday();
 
-        // DayOfWeek in the entity is int (0=Sunday or 1=Monday depending on convention).
-        // .NET DayOfWeek: 0=Sunday, 1=Monday, ..., 6=Saturday.
-        DayOfWeek targetDay = (DayOfWeek)slot.DayOfWeek;
-        int daysUntil = ((int)targetDay - (int)today.DayOfWeek + 7) % 7;
+        // slot.DayOfWeek gebruikt de app-conventie (0=maandag ... 6=zondag, zie
+        // LessonSerieService), niet System.DayOfWeek (0=zondag) — vandaar de conversie
+        // hieronder in plaats van een rechtstreekse (DayOfWeek)-cast.
+        int todayAppDayOfWeek = ((int)today.DayOfWeek + 6) % 7;
+        int daysUntil = (slot.DayOfWeek - todayAppDayOfWeek + 7) % 7;
         if (daysUntil == 0) daysUntil = 7; // always next week if today is the same day
         DateOnly nextDate = today.AddDays(daysUntil);
 
         // Build UTC DateTimes from the local date + time in Brussels timezone.
         DateTime localStart = nextDate.ToDateTime(slot.StartTime);
         DateTime localEnd = nextDate.ToDateTime(slot.EndTime);
-        DateTimeOffset startUtc = new DateTimeOffset(localStart, brusselsTz.GetUtcOffset(localStart)).ToUniversalTime();
-        DateTimeOffset endUtc = new DateTimeOffset(localEnd, brusselsTz.GetUtcOffset(localEnd)).ToUniversalTime();
+        DateTimeOffset startUtc = new DateTimeOffset(localStart, TimeProviderExtensions.BrusselsTimeZone.GetUtcOffset(localStart)).ToUniversalTime();
+        DateTimeOffset endUtc = new DateTimeOffset(localEnd, TimeProviderExtensions.BrusselsTimeZone.GetUtcOffset(localEnd)).ToUniversalTime();
 
         string dtStart = startUtc.ToString("yyyyMMdd'T'HHmmss'Z'");
         string dtEnd = endUtc.ToString("yyyyMMdd'T'HHmmss'Z'");
-        string dtStamp = DateTimeOffset.UtcNow.ToString("yyyyMMdd'T'HHmmss'Z'");
+        string dtStamp = timeProvider.GetUtcNow().ToString("yyyyMMdd'T'HHmmss'Z'");
 
         string ics = string.Join("\r\n",
             "BEGIN:VCALENDAR",
@@ -392,43 +389,81 @@ public class StudentConfirmationService(
     public async Task<Result> MarkEnrollmentCashPaidAsync(
         Guid enrollmentId, Guid organizationId, CancellationToken ct = default)
     {
-        Payment? payment = await paymentRepo.GetLatestPendingCashByEnrollmentIdAsync(
-            enrollmentId, organizationId, ct);
-        if (payment is null)
-            return Result.Fail(new Error(
-                ErrorCodes.NotFound, "Geen openstaande overschrijving gevonden voor deze inschrijving."));
-
+        // Per lid (of solo): reken de eigen betaling af en bevestig enkel deze
+        // inschrijving. Voor de hele groep tegelijk: MarkGroupCashPaidAsync.
         Enrollment? enrollment = await enrollmentRepo.GetByIdWithGroupAsync(enrollmentId, organizationId, ct);
         if (enrollment is null)
             return Result.Fail(new Error(ErrorCodes.NotFound, "Inschrijving niet gevonden."));
 
-        payment.Status = PaymentStatus.Paid;
-        payment.PaidAt = DateTime.UtcNow;
+        DateTime now = timeProvider.GetUtcNow().UtcDateTime;
+        bool settled = await TrySettleMemberPaymentAsync(enrollmentId, organizationId, now, ct);
+        if (!settled)
+            return Result.Fail(new Error(
+                ErrorCodes.NotFound, "Geen openstaande betaling gevonden voor deze inschrijving."));
 
-        // Groep: leider betaalt voor iedereen → alle leden bevestigen. Solo: enkel deze.
-        // Group.Members bevat de leider zelf.
-        List<Enrollment> toConfirm =
+        if (enrollment.Status != EnrollmentStatus.Confirmed)
+            enrollment.Status = EnrollmentStatus.Confirmed;
+
+        // paymentRepo en enrollmentRepo delen dezelfde scoped DbContext → één save flusht beide.
+        await unitOfWork.SaveChangesAsync(ct);
+
+        // Cash-pad sloeg finalisatie bewust over bij bevestigen; nu (mogelijk) alles rond
+        // is, de reeks alsnog finaliseren indien alle deelnemers gereageerd/betaald hebben.
+        if (enrollment.LessonSerieId is { } serieId)
+            await TryFinalizeSeriesAsync(serieId, organizationId, ct);
+
+        await SendConfirmationEmailSafeAsync(enrollment, organizationId, [enrollment.StudentName], ct);
+        return Result.Ok();
+    }
+
+    public async Task<Result> MarkGroupCashPaidAsync(
+        Guid enrollmentId, Guid organizationId, CancellationToken ct = default)
+    {
+        // Markeer de hele groep (of solo) als betaald: alle openstaande betalingen van
+        // de leden op betaald + iedereen bevestigen. Werkt zowel voor per-lid cash-
+        // betalingen als voor één gedeelde (online/legacy) leider-betaling.
+        Enrollment? enrollment = await enrollmentRepo.GetByIdWithGroupAsync(enrollmentId, organizationId, ct);
+        if (enrollment is null)
+            return Result.Fail(new Error(ErrorCodes.NotFound, "Inschrijving niet gevonden."));
+
+        List<Enrollment> members =
             enrollment.EnrollmentGroupId.HasValue
             && enrollment.EnrollmentGroup is not null
             && enrollment.EnrollmentGroup.Members.Count > 0
                 ? enrollment.EnrollmentGroup.Members.ToList()
                 : [enrollment];
 
-        foreach (Enrollment e in toConfirm)
+        DateTime now = timeProvider.GetUtcNow().UtcDateTime;
+        bool anyPaid = false;
+        foreach (Enrollment m in members)
         {
-            if (e.Status != EnrollmentStatus.Confirmed)
-                e.Status = EnrollmentStatus.Confirmed;
+            if (await TrySettleMemberPaymentAsync(m.Id, organizationId, now, ct))
+                anyPaid = true;
+            if (m.Status != EnrollmentStatus.Confirmed)
+                m.Status = EnrollmentStatus.Confirmed;
         }
 
-        // paymentRepo en enrollmentRepo delen dezelfde scoped DbContext → één save flusht beide.
-        await paymentRepo.SaveChangesAsync(ct);
+        if (!anyPaid)
+            return Result.Fail(new Error(
+                ErrorCodes.NotFound, "Geen openstaande betaling gevonden voor deze groep."));
 
-        // Cash-pad sloeg finalisatie bewust over bij bevestigen; nu de betaling rond is,
-        // de reeks alsnog finaliseren indien alle deelnemers gereageerd hebben.
+        await unitOfWork.SaveChangesAsync(ct);
+
         if (enrollment.LessonSerieId is { } serieId)
             await TryFinalizeSeriesAsync(serieId, organizationId, ct);
 
-        // "Plek definitief"-mail, zelfde call als het online-betaalde pad in PaymentService.
+        await SendConfirmationEmailSafeAsync(
+            enrollment, organizationId, members.Select(m => m.StudentName).ToList(), ct);
+        return Result.Ok();
+    }
+
+    /// <summary>
+    /// "Plek definitief"-mail, zelfde call als het online-betaalde pad in PaymentService.
+    /// Faalt stil (gelogd): de bevestiging zelf is al opgeslagen.
+    /// </summary>
+    private async Task SendConfirmationEmailSafeAsync(
+        Enrollment enrollment, Guid organizationId, IReadOnlyList<string> participantNames, CancellationToken ct)
+    {
         try
         {
             Domain.Entities.LessonSerie? series = enrollment.LessonSerieId is { } sid
@@ -438,8 +473,7 @@ public class StudentConfirmationService(
                 enrollment.ContactEmail,
                 enrollment.StudentName,
                 series?.Name ?? string.Empty,
-                trainerName: string.Empty,
-                participantNames: toConfirm.Select(e => e.StudentName).ToList(),
+                participantNames: participantNames,
                 ct);
         }
         catch (Exception ex)
@@ -448,8 +482,6 @@ public class StudentConfirmationService(
                 "Bevestigingsmail mislukt voor enrollment {EnrollmentId} na cash-bevestiging.",
                 enrollment.Id);
         }
-
-        return Result.Ok();
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
@@ -465,7 +497,7 @@ public class StudentConfirmationService(
         if (token is null)
             return (null, new Error(ErrorCodes.NotFound, "Ongeldige of verlopen link."));
 
-        if (token.ExpiresAt < DateTime.UtcNow)
+        if (token.ExpiresAt < timeProvider.GetUtcNow().UtcDateTime)
             return (null, new Error(ErrorCodes.Validation, "Deze link is verlopen."));
 
         return (token, null);
@@ -537,6 +569,71 @@ public class StudentConfirmationService(
         return assignment.Enrollment is not null ? [assignment.Enrollment] : [fallback];
     }
 
+    /// <summary>
+    /// Maakt per deelnemer een openstaande cash-betaling met diens eigen bedrag, zodat
+    /// de club leden apart (of in één keer als groep) als betaald kan markeren. Voor een
+    /// solo-inschrijving is dit één betaling.
+    /// </summary>
+    /// <summary>
+    /// Rondt de betaling van één inschrijving af voor de admin-override "markeer als betaald".
+    /// Een openstaande (Pending) betaling wordt op Paid gezet. Bestaat die niet maar wél een
+    /// mislukte (Failed) betaling, dan wordt een nieuwe handmatige overschrijving-betaling
+    /// (Paid) geregistreerd terwijl de mislukte poging als historiek blijft staan. Geeft terug
+    /// of er iets afgerekend werd; slaat niet op — de caller flusht.
+    /// </summary>
+    private async Task<bool> TrySettleMemberPaymentAsync(
+        Guid enrollmentId, Guid organizationId, DateTime now, CancellationToken ct)
+    {
+        Payment? pending = await paymentRepo.GetLatestPendingByEnrollmentIdAsync(
+            enrollmentId, organizationId, ct);
+        if (pending is not null)
+        {
+            pending.Status = PaymentStatus.Paid;
+            pending.PaidAt = now;
+            return true;
+        }
+
+        Payment? failed = await paymentRepo.GetLatestFailedByEnrollmentIdAsync(
+            enrollmentId, organizationId, ct);
+        if (failed is not null)
+        {
+            await paymentRepo.AddAsync(new Payment
+            {
+                OrganizationId = organizationId,
+                EnrollmentId = enrollmentId,
+                Amount = failed.Amount,
+                Status = PaymentStatus.Paid,
+                Method = PaymentMethod.Transfer,
+                PaidAt = now,
+                Description = "Handmatige overschrijving (na mislukte online-betaling)",
+            }, ct);
+            return true;
+        }
+
+        return false;
+    }
+
+    private async Task AddPerMemberCashPaymentsAsync(
+        IReadOnlyDictionary<Guid, decimal> perMember,
+        Guid organizationId,
+        string seriesName,
+        CancellationToken ct,
+        string descriptionSuffix = "")
+    {
+        foreach ((Guid enrollmentId, decimal amount) in perMember)
+        {
+            await paymentRepo.AddAsync(new Payment
+            {
+                OrganizationId = organizationId,
+                EnrollmentId = enrollmentId,
+                Amount = amount,
+                Status = PaymentStatus.Pending,
+                Method = PaymentMethod.Cash,
+                Description = $"Overschrijving{descriptionSuffix} — {seriesName}",
+            }, ct);
+        }
+    }
+
     private async Task<List<AvailableSlotDto>> GetAvailableSlotsForAssignmentAsync(
         AssignmentConfirmationToken token, CancellationToken ct)
     {
@@ -591,7 +688,7 @@ public class StudentConfirmationService(
 
         // Stap 1: zijn er nog openstaande tokens? (student heeft nog niet gereageerd en is niet verlopen)
         var anyPending = tokens.Any(t => t.Response == ConfirmationResponse.Pending
-            && t.ExpiresAt >= DateTime.UtcNow);
+            && t.ExpiresAt >= timeProvider.GetUtcNow().UtcDateTime);
         if (anyPending) return;
 
         // Stap 2: zijn er deelnemers met een "gat" in de planning?
@@ -625,7 +722,7 @@ public class StudentConfirmationService(
         if (series.PlanningStatus == PlanningStatus.AwaitingConfirmation)
         {
             series.PlanningStatus = PlanningStatus.Scheduled;
-            await seriesRepo.SaveChangesAsync(ct);
+            await unitOfWork.SaveChangesAsync(ct);
             logger.LogInformation("Reeks {SeriesId} is volledig bevestigd — status Scheduled.", seriesId);
         }
     }

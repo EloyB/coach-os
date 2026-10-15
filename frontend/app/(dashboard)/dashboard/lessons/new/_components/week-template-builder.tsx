@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { LESSON_LEVELS } from "@/lib/api/lessonSeries";
 import type { TrainerDto } from "@/lib/api/trainers";
 import { formatDateShort } from "@/lib/date-utils";
+import { localId } from "@/lib/local-id";
 import type { WizardSlot } from "../_types";
 import { SlotDialog } from "./slot-dialog";
 
@@ -118,7 +119,7 @@ export function WeekTemplateBuilder({
   const [dialogDay, setDialogDay] = useState<number | null>(null);
 
   function handleAddSlot(slot: Omit<WizardSlot, "id">) {
-    onChange([...slots, { ...slot, id: crypto.randomUUID() }]);
+    onChange([...slots, { ...slot, id: localId() }]);
   }
 
   function handleRemoveSlot(id: string) {

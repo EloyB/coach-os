@@ -13,6 +13,4 @@ public interface IEnrollmentFormRepository
     Task AddAsync(EnrollmentForm form, CancellationToken ct = default);
 
     void RemoveField(FormField field);
-
-    Task SaveChangesAsync(CancellationToken ct = default);
 }

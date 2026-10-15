@@ -1,8 +1,10 @@
+using CoachOS.Application.Abstractions;
 using System.Security.Cryptography;
 using CoachOS.Application.Auth;
 using CoachOS.Application.Auth.DTOs;
 using CoachOS.Application.Trainers;
 using CoachOS.Application.Trainers.DTOs;
+using CoachOS.Domain.Common;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
 using CoachOS.Domain.Interfaces;
@@ -18,7 +20,8 @@ public class TrainerService(
     IEmailService emailService,
     ApplicationDbContext context,
     IAuthService authService,
-    IOrganizationSettingsRepository settingsRepo)
+    IOrganizationSettingsRepository settingsRepo,
+    TimeProvider timeProvider)
     : ITrainerService
 {
     public async Task<Result<Guid>> InviteAsync(
@@ -147,7 +150,10 @@ public class TrainerService(
                 FirstName = u.FirstName,
                 LastName = u.LastName,
                 Email = u.Email!,
-                IsActive = u.IsActive,
+                // Tenant-scoped: actief = membership actief in DEZE org, niet de globale
+                // account-vlag. Anders toont een in deze org gedeactiveerde trainer nog
+                // "Actief" terwijl availability/planning de membership-check (m.IsActive) faalt.
+                IsActive = m.IsActive,
                 InvitePending = u.InviteToken != null,
                 CreatedAt = u.CreatedAt,
                 LessonSeriesCount = context.LessonSeries
@@ -160,7 +166,7 @@ public class TrainerService(
         List<TrainerDto> trainers = await query.ToListAsync(ct);
 
         // Calculate current week hours booked in-memory (TimeOnly arithmetic not supported in EF/Npgsql)
-        DateOnly today = DateOnly.FromDateTime(DateTime.UtcNow);
+        DateOnly today = timeProvider.GetBrusselsToday();
         int dayOffset = ((int)today.DayOfWeek + 6) % 7; // Monday=0
         DateOnly weekStart = today.AddDays(-dayOffset);
         DateOnly weekEnd = weekStart.AddDays(6);

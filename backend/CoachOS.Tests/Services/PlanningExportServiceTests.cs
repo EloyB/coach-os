@@ -1,3 +1,4 @@
+using CoachOS.Application.Abstractions;
 using CoachOS.Application.Export;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
@@ -79,8 +80,51 @@ public class PlanningExportServiceTests
             m.DayName == "Maandag" && m.TrainerName == "Jan Janssen" && m.CourtName == "Baan 1");
     }
 
+    /// <summary>
+    /// Regressietest: WeeklyTemplateEntry.DayOfWeek gebruikt de app-conventie (0=maandag ... 6=zondag),
+    /// niet System.DayOfWeek (0=zondag). Zondag (app-waarde 6) matchte in de oude, buggy vergelijking
+    /// nooit iets (System.DayOfWeek.Sunday is 0), dus dit dekt precies het geval dat voorheen stilzwijgend
+    /// geen enkel lesmoment zou opleveren.
+    /// </summary>
     [Test]
-    public async Task ExportSeriePlanningAsync_GroupAssignment_ExpandsMembersPerDate()
+    public async Task ExportSeriePlanningAsync_SundaySlot_ExpandsIntoActualSundays()
+    {
+        var series = new LessonSerie
+        {
+            Id = SeriesId,
+            OrganizationId = OrgId,
+            Name = "Zondagreeks",
+            StartDate = new DateOnly(2026, 5, 1),
+            EndDate = new DateOnly(2026, 5, 31),
+            WeeklyTemplate = new List<WeeklyTemplateEntry>
+            {
+                new()
+                {
+                    Id = SlotId,
+                    LessonSerieId = SeriesId,
+                    DayOfWeek = 6, // Zondag (app-conventie)
+                    StartTime = new TimeOnly(9, 0),
+                    EndTime = new TimeOnly(10, 0),
+                    CourtName = "Baan 1",
+                    TrainerId = TrainerId,
+                    MaxStudents = 4,
+                },
+            },
+        };
+        _seriesRepo.Setup(r => r.GetByIdAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+        ArrangeEmptyEnrollmentData();
+
+        PlanningExportModel model = await CaptureModelAsync();
+
+        model.LessonMoments.Select(m => m.Date).Should().Equal(
+            new DateOnly(2026, 5, 3), new DateOnly(2026, 5, 10), new DateOnly(2026, 5, 17),
+            new DateOnly(2026, 5, 24), new DateOnly(2026, 5, 31));
+        model.LessonMoments.Should().OnlyContain(m => m.DayName == "Zondag");
+    }
+
+    [Test]
+    public async Task ExportSeriePlanningAsync_GroupAssignment_ListsMembersInMomentRoster()
     {
         ArrangeSeries();
 
@@ -115,11 +159,12 @@ public class PlanningExportServiceTests
 
         PlanningExportModel model = await CaptureModelAsync();
 
-        // 2 leden × 4 maandagen.
-        model.ScheduledLessons.Should().HaveCount(2 * MondaysInMay2026);
-        model.ScheduledLessons.Should().OnlyContain(s =>
-            s.GroupName == "Groep A" && s.Status == "Bevestigd");
-        model.ScheduledLessons.Select(s => s.StudentName).Distinct()
+        // Eén terugkerend lesmoment met beide groepsleden (niet uitgevouwen per datum).
+        model.MomentRosters.Should().ContainSingle();
+        var roster = model.MomentRosters[0];
+        roster.Players.Should().OnlyContain(p =>
+            p.GroupName == "Groep A" && p.Status == "Bevestigd");
+        roster.Players.Select(p => p.Name)
             .Should().BeEquivalentTo(new[] { "Tom", "Lisa" });
     }
 
@@ -148,7 +193,7 @@ public class PlanningExportServiceTests
 
         PlanningExportModel model = await CaptureModelAsync();
 
-        model.ScheduledLessons.Should().BeEmpty();
+        model.MomentRosters.Should().BeEmpty();
     }
 
     [Test]
@@ -228,7 +273,7 @@ public class PlanningExportServiceTests
                 {
                     Id = SlotId,
                     LessonSerieId = SeriesId,
-                    DayOfWeek = 1, // Maandag
+                    DayOfWeek = 0, // Maandag (app-conventie: 0=maandag ... 6=zondag)
                     StartTime = new TimeOnly(9, 0),
                     EndTime = new TimeOnly(10, 0),
                     CourtName = "Baan 1",

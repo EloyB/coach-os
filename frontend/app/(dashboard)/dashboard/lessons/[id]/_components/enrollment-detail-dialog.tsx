@@ -3,19 +3,21 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { Pencil, X } from "lucide-react";
+import { Pencil, UserMinus, X, Mail, Phone, MessageCircle, Euro } from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
-import { enrollmentStatusStyles } from "@/lib/status-styles";
+import { EnrollmentStatusBadge } from "./enrollment-status-badge";
+import { btnPrimary, btnSecondary } from "@/lib/styles";
 import { getEnrollmentsWithPreferences } from "@/lib/api/enrollments";
 import type { LessonSeriesEnrollmentDto } from "@/lib/api/enrollments";
+import { getLessonSeriePrices } from "@/lib/api/lessonSeriePrices";
 import { getPublicTimeSlots } from "@/lib/api/timeSlots";
-import { isHeadTrainerViewer } from "@/lib/auth";
+import { collapseParallelPrefs, MIXED_PREF } from "@/lib/preferences";
+import { canEditEnrollment, isHeadTrainerViewer } from "@/lib/auth";
 import type { TimeSlotDto } from "@/lib/api/timeSlots";
 
 const DAY_NAMES_SHORT = ["Ma", "Di", "Wo", "Do", "Vr", "Za", "Zo"];
@@ -45,16 +47,29 @@ export function EnrollmentDetailDialog({
   onEdit,
   groupMembers,
   onEditMember,
+  onRemoveMember,
+  onChangeGroupPriceOption,
+  onMarkMemberPaid,
+  onMarkGroupPaid,
 }: {
   enrollment: LessonSeriesEnrollmentDto;
   seriesId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onEdit: () => void;
+  /** Wanneer weggelaten: geen 'Bewerken'-knop (kijkmodus, bv. vanaf de planning). */
+  onEdit?: () => void;
   /** Wanneer gezet: toon een 'Leden'-sectie (groep-detail). `enrollment` = de leider. */
   groupMembers?: LessonSeriesEnrollmentDto[];
   /** Wanneer gezet: toon per lid een bewerk-knop die dit lid opent. */
   onEditMember?: (member: LessonSeriesEnrollmentDto) => void;
+  /** Wanneer gezet: toon per lid een 'uit groep halen'-knop. */
+  onRemoveMember?: (member: LessonSeriesEnrollmentDto) => void;
+  /** Wanneer gezet (bij een groep): toon een prijsoptie-selector voor de hele groep. */
+  onChangeGroupPriceOption?: (optionId: string | null) => void;
+  /** Wanneer gezet: markeer een individueel lid met een openstaande cash-betaling als betaald. */
+  onMarkMemberPaid?: (member: LessonSeriesEnrollmentDto) => void;
+  /** Wanneer gezet: markeer de hele groep in één keer als betaald. */
+  onMarkGroupPaid?: () => void;
 }) {
   const t = useTranslations("enrollmentDetail");
 
@@ -70,6 +85,19 @@ export function EnrollmentDetailDialog({
     enabled: open,
   });
 
+  const { data: priceOptions = [] } = useQuery({
+    queryKey: ["lessonSeriePrices", seriesId],
+    queryFn: () => getLessonSeriePrices(seriesId),
+    enabled: open && onChangeGroupPriceOption != null,
+  });
+
+  // De prijsoptie is één gedeelde waarde voor de groep (de leider = `enrollment` draagt de
+  // betaling). Vergrendeld zodra de groep betaald/bevestigd/geannuleerd is — gelijk aan de gate.
+  const groupPriceLocked =
+    enrollment.status === "Confirmed" ||
+    enrollment.status === "PendingPayment" ||
+    enrollment.status === "Cancelled";
+
   // Voorkeuren van déze inschrijving, geïndexeerd op slot-id.
   const prefMap = useMemo(() => {
     const map = new Map<string, number>();
@@ -83,6 +111,11 @@ export function EnrollmentDetailDialog({
   const contact = enrollment.hasOwnEmail
     ? (enrollment.studentEmail ?? "")
     : t("viaContact", { email: enrollment.contactEmail });
+  // Werkelijk mailadres om te contacteren (leden zonder eigen mail → contactpersoon).
+  const contactEmailAddr = enrollment.hasOwnEmail
+    ? enrollment.studentEmail
+    : enrollment.contactEmail;
+  const waPhone = enrollment.studentPhone?.replace(/[^0-9+]/g, "").replace(/^\+/, "");
 
   const hasGroup = !!(groupMembers && groupMembers.length > 0);
   const tabs: { id: TabId; label: string }[] = [
@@ -93,7 +126,14 @@ export function EnrollmentDetailDialog({
   const [activeTab, setActiveTab] = useState<TabId>("gegevens");
   // Hoofdtrainer = read-only: geen bewerk-affordances in de detail-dialog.
   const [readOnly, setReadOnly] = useState(false);
-  useEffect(() => setReadOnly(isHeadTrainerViewer()), []);
+  // Inschrijving bewerken is Admin-only (endpoint = RequireRole("Admin")); gewone
+  // trainers zien de bewerk-knop dus niet i.p.v. een gegarandeerde 403 bij opslaan.
+  const [canEdit, setCanEdit] = useState(false);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setReadOnly(isHeadTrainerViewer());
+    setCanEdit(canEditEnrollment());
+  }, []);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -106,13 +146,11 @@ export function EnrollmentDetailDialog({
         <DialogHeader>
           <DialogTitle className="flex flex-wrap items-center gap-2">
             {hasGroup ? t("groupTitle", { name: enrollment.studentName }) : enrollment.studentName}
-            {enrollmentStatusStyles[enrollment.status] && (
-              <Badge
-                className={`${enrollmentStatusStyles[enrollment.status].className} border-0 text-xs`}
-              >
-                {enrollmentStatusStyles[enrollment.status].label}
-              </Badge>
-            )}
+            <EnrollmentStatusBadge
+              status={enrollment.status}
+              paymentStatus={enrollment.paymentStatus}
+              className="text-xs"
+            />
           </DialogTitle>
         </DialogHeader>
 
@@ -139,10 +177,52 @@ export function EnrollmentDetailDialog({
         {/* Tab: Gegevens (basis + formulierantwoorden) */}
         {activeTab === "gegevens" && (
           <div className="space-y-5">
+            {/* Snel contact opnemen */}
+            {(contactEmailAddr || enrollment.studentPhone) && (
+              <div className="flex flex-wrap gap-2">
+                {contactEmailAddr && (
+                  <a
+                    href={`mailto:${contactEmailAddr}`}
+                    className="inline-flex items-center gap-1.5 rounded-md border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                  >
+                    <Mail size={13} className="text-gray-400" />
+                    {t("contactEmail")}
+                  </a>
+                )}
+                {enrollment.studentPhone && (
+                  <>
+                    <a
+                      href={`tel:${enrollment.studentPhone}`}
+                      className="inline-flex items-center gap-1.5 rounded-md border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                    >
+                      <Phone size={13} className="text-gray-400" />
+                      {t("contactCall")}
+                    </a>
+                    <a
+                      href={`https://wa.me/${waPhone}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded-md border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                    >
+                      <MessageCircle size={13} className="text-green-500" />
+                      {t("contactWhatsapp")}
+                    </a>
+                  </>
+                )}
+              </div>
+            )}
             <dl className="space-y-3.5">
-              <DetailRow label={t("contact")} value={contact} />
+              <DetailRow
+                label={t("contact")}
+                value={contact}
+                href={contactEmailAddr ? `mailto:${contactEmailAddr}` : undefined}
+              />
               {enrollment.studentPhone && (
-                <DetailRow label="Telefoon" value={enrollment.studentPhone} />
+                <DetailRow
+                  label="Telefoon"
+                  value={enrollment.studentPhone}
+                  href={`tel:${enrollment.studentPhone}`}
+                />
               )}
               <DetailRow
                 label={t("birthDate")}
@@ -161,6 +241,20 @@ export function EnrollmentDetailDialog({
                 label={t("enrolledAt")}
                 value={new Date(enrollment.enrolledAt).toLocaleDateString("nl-BE")}
               />
+              {enrollment.paymentMethod && (
+                <DetailRow
+                  label={t("paymentMethod")}
+                  value={
+                    enrollment.paymentMethod === "Cash"
+                      ? t("paymentMethodCash")
+                      : enrollment.paymentMethod === "Online"
+                        ? t("paymentMethodOnline")
+                        : enrollment.paymentMethod === "Transfer"
+                          ? t("paymentMethodTransfer")
+                          : enrollment.paymentMethod
+                  }
+                />
+              )}
               <DetailRow
                 label={t("openToGrouping")}
                 value={enrollment.isOpenToGrouping ? t("yes") : t("no")}
@@ -189,7 +283,51 @@ export function EnrollmentDetailDialog({
 
         {/* Tab: Groepsleden */}
         {activeTab === "leden" && hasGroup && (
-          <ul className="divide-y divide-gray-50 rounded-lg border border-gray-100">
+          <div className="space-y-4">
+            {onChangeGroupPriceOption && priceOptions.length > 0 && (
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">
+                  {t("groupPriceLabel")}
+                </label>
+                {groupPriceLocked ? (
+                  <p className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
+                    {priceOptions.find((o) => o.id === enrollment.selectedPriceOptionId)?.label
+                      ?? t("groupPriceNone")}
+                    <span className="mt-1 block text-xs text-gray-400">{t("groupPriceLocked")}</span>
+                  </p>
+                ) : (
+                  <select
+                    value={enrollment.selectedPriceOptionId ?? ""}
+                    onChange={(e) => onChangeGroupPriceOption(e.target.value || null)}
+                    className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:border-tennis-green focus:outline-none"
+                  >
+                    <option value="">{t("groupPriceNone")}</option>
+                    {priceOptions
+                      .slice()
+                      .sort((a, b) => a.sortOrder - b.sortOrder)
+                      .map((o) => (
+                        <option key={o.id} value={o.id}>
+                          {o.label} — €{o.totalPrice}
+                        </option>
+                      ))}
+                  </select>
+                )}
+                <p className="mt-1 text-xs text-gray-400">{t("groupPriceHint")}</p>
+              </div>
+            )}
+
+            {onMarkGroupPaid && (
+              <button
+                type="button"
+                onClick={onMarkGroupPaid}
+                className="mb-3 inline-flex items-center gap-1.5 rounded-lg bg-tennis-green px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-tennis-green/90"
+              >
+                <Euro size={14} />
+                {t("markGroupPaid")}
+              </button>
+            )}
+
+            <ul className="divide-y divide-gray-50 rounded-lg border border-gray-100">
             {groupMembers!.map((m) => {
               const mAge = computeAge(m.dateOfBirth);
               const mContact = m.hasOwnEmail
@@ -210,13 +348,11 @@ export function EnrollmentDetailDialog({
                           {t("leaderBadge")}
                         </span>
                       )}
-                      {enrollmentStatusStyles[m.status] && (
-                        <Badge
-                          className={`${enrollmentStatusStyles[m.status].className} shrink-0 border-0 text-[10px]`}
-                        >
-                          {enrollmentStatusStyles[m.status].label}
-                        </Badge>
-                      )}
+                      <EnrollmentStatusBadge
+                        status={m.status}
+                        paymentStatus={m.paymentStatus}
+                        className="shrink-0 text-[10px]"
+                      />
                     </div>
                     <div className="mt-0.5 truncate text-xs text-gray-500">
                       {[
@@ -228,20 +364,55 @@ export function EnrollmentDetailDialog({
                         .join(" · ")}
                     </div>
                   </div>
-                  {!readOnly && onEditMember && (
-                    <button
-                      type="button"
-                      onClick={() => onEditMember(m)}
-                      aria-label={t("editMemberLabel", { name: m.studentName })}
-                      className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-gray-400 hover:bg-gray-50 hover:text-tennis-green"
-                    >
-                      <Pencil size={13} />
-                    </button>
+                  {((canEdit && onEditMember) ||
+                    (!readOnly && onRemoveMember) ||
+                    (onMarkMemberPaid &&
+                      m.paymentMethod !== "Online" &&
+                      (m.paymentStatus === "Pending" ||
+                        m.paymentStatus === "Failed"))) && (
+                    <div className="mt-0.5 flex shrink-0 items-center gap-0.5">
+                      {onMarkMemberPaid &&
+                        m.paymentMethod !== "Online" &&
+                        (m.paymentStatus === "Pending" ||
+                          m.paymentStatus === "Failed") && (
+                          <button
+                            type="button"
+                            onClick={() => onMarkMemberPaid(m)}
+                            aria-label={t("markMemberPaidLabel", { name: m.studentName })}
+                            title={t("markMemberPaidLabel", { name: m.studentName })}
+                            className="flex h-7 w-7 items-center justify-center rounded-md text-gray-400 hover:bg-tennis-green/5 hover:text-tennis-green"
+                          >
+                            <Euro size={13} />
+                          </button>
+                        )}
+                      {canEdit && onEditMember && (
+                        <button
+                          type="button"
+                          onClick={() => onEditMember(m)}
+                          aria-label={t("editMemberLabel", { name: m.studentName })}
+                          className="flex h-7 w-7 items-center justify-center rounded-md text-gray-400 hover:bg-gray-50 hover:text-tennis-green"
+                        >
+                          <Pencil size={13} />
+                        </button>
+                      )}
+                      {!readOnly && onRemoveMember && m.status !== "Cancelled" && (
+                        <button
+                          type="button"
+                          onClick={() => onRemoveMember(m)}
+                          aria-label={t("removeMemberLabel", { name: m.studentName })}
+                          title={t("removeMemberLabel", { name: m.studentName })}
+                          className="flex h-7 w-7 items-center justify-center rounded-md text-gray-400 hover:bg-tennis-green/5 hover:text-tennis-green"
+                        >
+                          <UserMinus size={13} />
+                        </button>
+                      )}
+                    </div>
                   )}
                 </li>
               );
             })}
-          </ul>
+            </ul>
+          </div>
         )}
 
         {/* Tab: Beschikbaarheden */}
@@ -262,15 +433,15 @@ export function EnrollmentDetailDialog({
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+            className={btnSecondary}
           >
             {t("close")}
           </button>
-          {!readOnly && !groupMembers && (
+          {canEdit && !groupMembers && onEdit && (
             <button
               type="button"
               onClick={onEdit}
-              className="rounded-lg bg-tennis-green px-3 py-2 text-sm font-medium text-white hover:bg-tennis-green/90"
+              className={btnPrimary}
             >
               {t("edit")}
             </button>
@@ -281,26 +452,63 @@ export function EnrollmentDetailDialog({
   );
 }
 
-function DetailRow({ label, value }: { label: string; value: string }) {
+function DetailRow({
+  label,
+  value,
+  href,
+}: {
+  label: string;
+  value: string;
+  href?: string;
+}) {
   return (
     <div>
       <dt className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
         {label}
       </dt>
-      <dd className="mt-0.5 text-sm text-gray-800">{value}</dd>
+      <dd className="mt-0.5 text-sm text-gray-800">
+        {href ? (
+          <a
+            href={href}
+            className="break-all text-tennis-green underline decoration-tennis-green/30 underline-offset-2 hover:decoration-tennis-green"
+          >
+            {value}
+          </a>
+        ) : (
+          value
+        )}
+      </dd>
     </div>
   );
 }
 
 // ─── Availability grid (read-only) ──────────────────────────────────────────────
 
-function PrefDot({ pref, title }: { pref: number | undefined; title?: string }) {
+function PrefDot({
+  pref,
+  title,
+}: {
+  pref: number | typeof MIXED_PREF | null | undefined;
+  title?: string;
+}) {
+  // Parallelle banen zijn het onderling oneens (bv. legacy-data) — toon een
+  // aparte 'gemengd'-stip i.p.v. willekeurig de eerste waarde.
+  if (pref === MIXED_PREF)
+    return <span title={title} className="inline-block h-3 w-3 rounded-full bg-amber-400" />;
   if (pref === PREF_PREFERRED)
     return <span title={title} className="inline-block h-3 w-3 rounded-full bg-green-500" />;
   if (pref === PREF_AVAILABLE)
     return <span title={title} className="inline-block h-3 w-3 rounded-full border-2 border-blue-500" />;
-  if (pref === PREF_UNAVAILABLE) return <X size={13} className="text-gray-400" />;
+  if (pref === PREF_UNAVAILABLE) return <X size={13} className="text-gray-400" aria-label={title} />;
   return <span className="text-gray-300">–</span>;
+}
+
+// Korte NL-omschrijving van een voorkeur, voor de per-baan tooltip.
+function prefLabel(pref: number | undefined, t: (k: string) => string): string {
+  if (pref === PREF_PREFERRED) return t("prefPreferred");
+  if (pref === PREF_AVAILABLE) return t("prefAvailable");
+  if (pref === PREF_UNAVAILABLE) return t("prefUnavailable");
+  return "—";
 }
 
 function AvailabilityGrid({
@@ -361,19 +569,23 @@ function AvailabilityGrid({
                 </td>
                 {days.map((d) => {
                   const slots = cells.get(`${range}|${d}`) ?? [];
+                  // Parallelle banen op hetzelfde uur delen normaal dezelfde
+                  // voorkeur → één bolletje. Verschillen ze (legacy-data), dan
+                  // toont de collapse 'mixed'; de per-baan detail staat in de tooltip.
                   return (
                     <td key={d} className="px-2 py-3.5 text-center">
                       {slots.length === 0 ? (
                         <span className="text-gray-200">·</span>
                       ) : (
-                        <span className="inline-flex items-center justify-center gap-1">
-                          {slots.map((s) => (
-                            <PrefDot
-                              key={s.id}
-                              pref={prefMap.get(s.id)}
-                              title={s.courtName}
-                            />
-                          ))}
+                        <span className="inline-flex items-center justify-center">
+                          <PrefDot
+                            pref={collapseParallelPrefs(
+                              slots.map((s) => prefMap.get(s.id))
+                            )}
+                            title={slots
+                              .map((s) => `${s.courtName}: ${prefLabel(prefMap.get(s.id), t)}`)
+                              .join(" · ")}
+                          />
                         </span>
                       )}
                     </td>
@@ -398,6 +610,10 @@ function AvailabilityGrid({
         <span className="flex items-center gap-1.5">
           <X size={13} className="text-gray-400" />
           {t("prefUnavailable")}
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-3 w-3 rounded-full bg-amber-400" />
+          {t("prefMixed")}
         </span>
       </div>
     </div>

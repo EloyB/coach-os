@@ -13,6 +13,4 @@ public interface IOAuthStateRepository
 
     /// <summary>Bulk-cleanup van verlopen rijen; geroepen door een hosted service of admin tool.</summary>
     Task<int> DeleteExpiredAsync(DateTime utcNow, CancellationToken ct = default);
-
-    Task SaveChangesAsync(CancellationToken ct = default);
 }

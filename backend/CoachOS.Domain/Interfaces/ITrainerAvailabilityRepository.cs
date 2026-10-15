@@ -31,5 +31,4 @@ public interface ITrainerAvailabilityRepository
         CancellationToken ct = default);
 
     Task AddAsync(TrainerAvailability availability, CancellationToken ct = default);
-    Task SaveChangesAsync(CancellationToken ct = default);
 }

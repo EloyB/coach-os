@@ -1,17 +1,20 @@
 using System.Globalization;
 using CoachOS.Application.LessonReschedule.DTOs;
+using CoachOS.Domain.Common;
 using FluentValidation;
 
 namespace CoachOS.Application.LessonReschedule.Validators;
 
 public class RescheduleLessonRequestValidator : AbstractValidator<RescheduleLessonRequest>
 {
-    public RescheduleLessonRequestValidator()
+    public RescheduleLessonRequestValidator(TimeProvider timeProvider)
     {
+        DateOnly today = timeProvider.GetBrusselsToday();
+
         RuleFor(x => x.NewDate)
             .NotEmpty().WithMessage("Nieuwe datum is verplicht.")
             .Must(BeValidIsoDate).WithMessage("Nieuwe datum moet in formaat yyyy-MM-dd zijn.")
-            .Must(NotBeInThePast).WithMessage("Nieuwe datum mag niet in het verleden liggen.");
+            .Must(value => NotBeInThePast(value, today)).WithMessage("Nieuwe datum mag niet in het verleden liggen.");
 
         RuleFor(x => x.NewStartTime)
             .NotEmpty().WithMessage("Nieuwe starttijd is verplicht.")
@@ -37,12 +40,12 @@ public class RescheduleLessonRequestValidator : AbstractValidator<RescheduleLess
         => TimeOnly.TryParseExact(value, "HH:mm", CultureInfo.InvariantCulture,
             DateTimeStyles.None, out _);
 
-    private static bool NotBeInThePast(string value)
+    private static bool NotBeInThePast(string value, DateOnly today)
     {
         if (!DateOnly.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture,
                 DateTimeStyles.None, out DateOnly parsed))
             return true; // formaat-fout wordt elders gerapporteerd
-        return parsed >= DateOnly.FromDateTime(DateTime.UtcNow);
+        return parsed >= today;
     }
 
     private static bool EndAfterStart(RescheduleLessonRequest request)

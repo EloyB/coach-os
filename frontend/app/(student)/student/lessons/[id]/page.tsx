@@ -8,7 +8,8 @@ import { useTranslations } from "next-intl";
 import { getMyLesson } from "@/lib/api/student";
 import { Card, CardContent } from "@/components/ui/card";
 
-const DAYS_NL = ["zondag", "maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag"];
+// Backend-conventie: 0=maandag ... 6=zondag (zie CoachOS.Application/LessonSerie/LessonSerieService.cs).
+const DAYS_NL = ["maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag", "zondag"];
 
 export default function StudentLessonDetailPage() {
   const t = useTranslations("studentPortal");

@@ -15,13 +15,15 @@ public static class DateOfBirthRules
     public static bool IsParseable(string? value)
         => TryParse(value, out _);
 
-    public static bool IsNotInFuture(string? value)
-        => !TryParse(value, out DateOnly date) || date <= DateOnly.FromDateTime(DateTime.UtcNow);
+    /// <param name="today">"Vandaag" in Europe/Brussels-tijd — via <see cref="Domain.Common.TimeProviderExtensions.GetBrusselsToday"/>, nooit <see cref="DateTime.UtcNow"/> direct.</param>
+    public static bool IsNotInFuture(string? value, DateOnly today)
+        => !TryParse(value, out DateOnly date) || date <= today;
 
-    public static bool IsRealistic(string? value)
+    /// <param name="today">"Vandaag" in Europe/Brussels-tijd — via <see cref="Domain.Common.TimeProviderExtensions.GetBrusselsToday"/>, nooit <see cref="DateTime.UtcNow"/> direct.</param>
+    public static bool IsRealistic(string? value, DateOnly today)
     {
         if (!TryParse(value, out DateOnly date)) return true; // formaatfout is een aparte melding
-        int age = ParticipantCategoryResolverBridge.Age(date);
+        int age = Domain.Common.ParticipantCategoryResolver.CalculateAge(date, today);
         return age <= MaxAge;
     }
 
@@ -33,14 +35,4 @@ public static class DateOfBirthRules
         return DateOnly.TryParseExact(
             value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out date);
     }
-}
-
-/// <summary>
-/// Dunne brug naar de domeinlogica zodat Application niet zelf leeftijd berekent.
-/// </summary>
-internal static class ParticipantCategoryResolverBridge
-{
-    public static int Age(DateOnly dateOfBirth)
-        => Domain.Common.ParticipantCategoryResolver.CalculateAge(
-            dateOfBirth, DateOnly.FromDateTime(DateTime.UtcNow));
 }

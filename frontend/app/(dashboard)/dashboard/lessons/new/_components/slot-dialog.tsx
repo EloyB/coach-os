@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { FieldError } from "@/components/forms/field-error";
-import { inputClass } from "@/lib/styles";
+import { inputClass, btnPrimary, btnSecondary } from "@/lib/styles";
 import { LESSON_LEVELS } from "@/lib/api/lessonSeries";
 import type { TrainerDto } from "@/lib/api/trainers";
 import type { WizardSlot } from "../_types";
@@ -174,7 +174,7 @@ export function SlotDialog({
               <input
                 {...register("startTime")}
                 type="time"
-                className={inputClass}
+                className={inputClass + " appearance-none min-w-0 w-full"}
               />
               <FieldError message={errors.startTime?.message} />
             </div>
@@ -183,7 +183,7 @@ export function SlotDialog({
               <input
                 {...register("endTime")}
                 type="time"
-                className={inputClass}
+                className={inputClass + " appearance-none min-w-0 w-full"}
               />
               <FieldError message={errors.endTime?.message} />
             </div>
@@ -245,13 +245,13 @@ export function SlotDialog({
             <button
               type="button"
               onClick={handleClose}
-              className="flex-1 px-4 py-2 text-sm font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+              className={"flex-1 " + btnSecondary}
             >
               {t("cancel")}
             </button>
             <button
               type="submit"
-              className="flex-1 px-4 py-2 text-sm font-semibold text-white bg-tennis-green rounded-lg hover:bg-tennis-green/90 transition-colors"
+              className={"flex-1 " + btnPrimary}
             >
               {t("saveSlot")}
             </button>

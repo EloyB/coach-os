@@ -1,3 +1,4 @@
+using CoachOS.Application.Abstractions;
 using CoachOS.Application.Planning;
 using CoachOS.Application.Planning.DTOs;
 using CoachOS.Domain.Entities;

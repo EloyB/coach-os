@@ -20,6 +20,20 @@ public interface IEnrollmentService
     Task<Result<Guid>> SubmitEnrollmentAsync(
         Guid lessonSeriesId, SubmitEnrollmentRequest request, CancellationToken ct = default);
 
+    Task<Result<Guid>> CreateManualEnrollmentAsync(
+        Guid lessonSeriesId, CreateManualEnrollmentRequest request, Guid organizationId,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Voegt manueel een lid toe aan een bestaande groep. Het nieuwe lid erft de status
+    /// en gekozen prijsoptie van de groepsleider. Gate: geen lid toevoegen aan een groep
+    /// die al betaald (<see cref="Domain.Enums.EnrollmentStatus.PendingPayment"/>) of
+    /// bevestigd (<see cref="Domain.Enums.EnrollmentStatus.Confirmed"/>) is.
+    /// </summary>
+    Task<Result<Guid>> AddGroupMemberAsync(
+        Guid lessonSeriesId, Guid groupId, CreateManualEnrollmentRequest request,
+        Guid organizationId, CancellationToken ct = default);
+
     Task<Result<List<PublicTimeSlotDto>>> GetPublicTimeSlotsAsync(
         Guid lessonSeriesId, CancellationToken ct = default);
 

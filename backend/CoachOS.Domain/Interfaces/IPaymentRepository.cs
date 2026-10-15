@@ -39,6 +39,12 @@ public interface IPaymentRepository
     Task<Payment?> GetLatestByCampEnrollmentIdAsync(Guid campEnrollmentId, CancellationToken ct = default);
 
     /// <summary>
+    /// Zoals <see cref="GetLatestByCampEnrollmentIdAsync"/>, maar getrackt zodat de caller
+    /// (bv. het groepsbedrag bijwerken na een ledenwijziging) kan muteren en opslaan.
+    /// </summary>
+    Task<Payment?> GetLatestTrackedByCampEnrollmentIdAsync(Guid campEnrollmentId, CancellationToken ct = default);
+
+    /// <summary>
     /// Meest recente openstaande (Pending) cash-betaling voor een kamp-inschrijving,
     /// getrackt en gescoped op organisatie. Gebruikt wanneer de coach een cash-betaling
     /// als betaald markeert. Tracked zodat de status-mutatie wordt opgeslagen.
@@ -55,6 +61,24 @@ public interface IPaymentRepository
         Guid enrollmentId, Guid organizationId, CancellationToken ct = default);
 
     /// <summary>
+    /// Meest recente openstaande (Pending) betaling voor een reeks-inschrijving,
+    /// ongeacht methode (cash of online). Getrackt en org-gescoped. Gebruikt voor
+    /// de admin-override "markeer als betaald", zodat ook een vastgelopen online-
+    /// betaling handmatig afgerond kan worden.
+    /// </summary>
+    Task<Payment?> GetLatestPendingByEnrollmentIdAsync(
+        Guid enrollmentId, Guid organizationId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Meest recente mislukte (Failed) betaling voor een reeks-inschrijving, org-gescoped
+    /// en AsNoTracking. Gebruikt door de admin-override om een later via overschrijving
+    /// betaalde, eerder mislukte online-betaling af te ronden: het bedrag wordt hergebruikt
+    /// voor een nieuwe handmatige betaling; de mislukte poging blijft als historiek staan.
+    /// </summary>
+    Task<Payment?> GetLatestFailedByEnrollmentIdAsync(
+        Guid enrollmentId, Guid organizationId, CancellationToken ct = default);
+
+    /// <summary>
     /// Meest recente betaalmethode + status per kamp-inschrijving, in één query
     /// (vermijdt N+1 in het admin-overzicht). Inschrijvingen zonder betaling
     /// komen niet in de dictionary voor.
@@ -62,5 +86,11 @@ public interface IPaymentRepository
     Task<Dictionary<Guid, (PaymentMethod? Method, PaymentStatus Status)>> GetLatestMethodAndStatusByCampEnrollmentIdsAsync(
         IEnumerable<Guid> campEnrollmentIds, CancellationToken ct = default);
 
-    Task SaveChangesAsync(CancellationToken ct = default);
+    /// <summary>
+    /// Meest recente betaalmethode + status per reeks-inschrijving, in één query
+    /// (vermijdt N+1 in het inschrijvingen-overzicht). Inschrijvingen zonder betaling
+    /// komen niet in de dictionary voor.
+    /// </summary>
+    Task<Dictionary<Guid, (PaymentMethod? Method, PaymentStatus Status)>> GetLatestMethodAndStatusByEnrollmentIdsAsync(
+        IEnumerable<Guid> enrollmentIds, CancellationToken ct = default);
 }

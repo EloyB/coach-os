@@ -1,7 +1,6 @@
+using CoachOS.Application.Abstractions;
 using System.Text.Json;
 using CoachOS.Domain.Entities;
-using CoachOS.Domain.Interfaces;
-using CoachOS.Domain.Models;
 using CoachOS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -120,8 +119,16 @@ public sealed class EmailOutboxWorker(
                 var payload = JsonSerializer.Deserialize<EnrollmentConfirmationEmailPayload>(message.Payload)
                     ?? throw new InvalidOperationException("Invalid enrollment confirmation payload");
                 await emailService.SendEnrollmentConfirmationAsync(
-                    payload.Email, payload.Name, payload.SeriesName, payload.TrainerName,
+                    payload.Email, payload.Name, payload.SeriesName,
                     payload.ParticipantNames, ct);
+                break;
+            }
+            case EmailOutboxMessageTypes.GroupMemberAdded:
+            {
+                var payload = JsonSerializer.Deserialize<GroupMemberAddedEmailPayload>(message.Payload)
+                    ?? throw new InvalidOperationException("Invalid group member added payload");
+                await emailService.SendGroupMemberAddedAsync(
+                    payload.Email, payload.Name, payload.SeriesName, payload.GroupName, ct);
                 break;
             }
             case EmailOutboxMessageTypes.TrainerNotification:

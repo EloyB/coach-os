@@ -26,3 +26,22 @@ export const enrollmentStatusStyles: Record<string, EnrollmentStatusStyle> = {
     label: "Betaling in afwachting",
   },
 };
+
+/** Een mislukte online-betaling laat de inschrijving op PendingPayment staan; deze badge
+ *  maakt zichtbaar dat de laatste betaalpoging faalde i.p.v. "in afwachting". */
+export const paymentFailedStyle: EnrollmentStatusStyle = {
+  className: "bg-red-100 text-red-700",
+  label: "Betaling mislukt",
+};
+
+/**
+ * Weergegeven status voor een inschrijving: toont "Betaling mislukt" wanneer de laatste
+ * betaling faalde, anders de gewone inschrijvingsstatus.
+ */
+export function enrollmentDisplayStatus(
+  status: string,
+  paymentStatus: string | null | undefined,
+): EnrollmentStatusStyle | undefined {
+  if (paymentStatus === "Failed") return paymentFailedStyle;
+  return enrollmentStatusStyles[status];
+}

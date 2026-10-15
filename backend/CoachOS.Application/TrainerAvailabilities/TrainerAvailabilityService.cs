@@ -1,3 +1,4 @@
+using CoachOS.Application.Abstractions;
 using CoachOS.Application.Mappings;
 using CoachOS.Application.TrainerAvailabilities.DTOs;
 using CoachOS.Domain.Entities;
@@ -9,6 +10,7 @@ namespace CoachOS.Application.TrainerAvailabilities;
 public class TrainerAvailabilityService(
     ITrainerAvailabilityRepository repo,
     ITennisClubRepository clubRepo,
+    IUnitOfWork unitOfWork,
     IUserLookupService userLookup,
     ApplicationMapper mapper) : ITrainerAvailabilityService
 {
@@ -41,7 +43,7 @@ public class TrainerAvailabilityService(
 
         TrainerAvailability availability = mapper.ToTrainerAvailability(request, organizationId);
         await repo.AddAsync(availability, ct);
-        await repo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
         return Result<Guid>.Ok(availability.Id);
     }
 
@@ -52,7 +54,7 @@ public class TrainerAvailabilityService(
             return Result.Fail(new Error(ErrorCodes.NotFound, "Beschikbaarheid niet gevonden"));
 
         availability.IsActive = false;
-        await repo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
         return Result.Ok();
     }
 }

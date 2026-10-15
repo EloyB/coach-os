@@ -1,3 +1,4 @@
+using CoachOS.Application.Abstractions;
 using CoachOS.Application.Enrollments;
 using CoachOS.Application.Enrollments.DTOs;
 using CoachOS.Application.Mappings;
@@ -24,12 +25,15 @@ public class SharedContactEmailTests
     private Mock<IEnrollmentFormRepository> _enrollmentFormRepo = null!;
     private Mock<ILessonSerieRepository> _lessonSeriesRepo = null!;
     private Mock<IEnrollmentGroupRepository> _enrollmentGroupRepo = null!;
+    private Mock<IPaymentRepository> _paymentRepo = null!;
     private Mock<ITimeSlotPreferenceRepository> _timeSlotPreferenceRepo = null!;
     private Mock<IOrganizationSettingsRepository> _orgSettingsRepo = null!;
     private Mock<IUserLookupService> _userLookup = null!;
     private Mock<IEmailOutboxRepository> _emailOutboxRepository = null!;
+    private Mock<ILessonSeriePriceRepository> _priceRepo = null!;
     private ApplicationMapper _mapper = null!;
     private Mock<ILogger<EnrollmentService>> _logger = null!;
+    private Mock<IUnitOfWork> _unitOfWork = null!;
     private EnrollmentService _service = null!;
 
     private static readonly Guid OrgId = Guid.NewGuid();
@@ -42,12 +46,19 @@ public class SharedContactEmailTests
         _enrollmentFormRepo = new Mock<IEnrollmentFormRepository>();
         _lessonSeriesRepo = new Mock<ILessonSerieRepository>();
         _enrollmentGroupRepo = new Mock<IEnrollmentGroupRepository>();
+        _paymentRepo = new Mock<IPaymentRepository>();
+        _paymentRepo
+            .Setup(r => r.GetLatestMethodAndStatusByEnrollmentIdsAsync(
+                It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<Guid, (PaymentMethod? Method, PaymentStatus Status)>());
         _timeSlotPreferenceRepo = new Mock<ITimeSlotPreferenceRepository>();
         _orgSettingsRepo = new Mock<IOrganizationSettingsRepository>();
         _userLookup = new Mock<IUserLookupService>();
         _emailOutboxRepository = new Mock<IEmailOutboxRepository>();
+        _priceRepo = new Mock<ILessonSeriePriceRepository>();
         _mapper = new ApplicationMapper();
         _logger = new Mock<ILogger<EnrollmentService>>();
+        _unitOfWork = new Mock<IUnitOfWork>();
 
         // Reeks bestaat met ruime capaciteit, geen formulier, standaard org-instellingen.
         _lessonSeriesRepo
@@ -79,12 +90,16 @@ public class SharedContactEmailTests
             _enrollmentFormRepo.Object,
             _lessonSeriesRepo.Object,
             _enrollmentGroupRepo.Object,
+            _paymentRepo.Object,
             _timeSlotPreferenceRepo.Object,
             _orgSettingsRepo.Object,
             _userLookup.Object,
             _emailOutboxRepository.Object,
+            _priceRepo.Object,
+            _unitOfWork.Object,
             _mapper,
-            _logger.Object);
+            _logger.Object,
+            TimeProvider.System);
     }
 
     [Test]
@@ -142,7 +157,7 @@ public class SharedContactEmailTests
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().Contain(e => e.Code == ErrorCodes.Conflict);
-        _enrollmentRepo.Verify(r => r.RollbackTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(u => u.RollbackTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Test]

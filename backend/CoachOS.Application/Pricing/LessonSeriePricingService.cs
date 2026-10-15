@@ -9,7 +9,8 @@ namespace CoachOS.Application.Pricing;
 
 public class LessonSeriePricingService(
     ILessonSerieRepository lessonSeries,
-    ILessonSeriePriceRepository prices) : ILessonSeriePricingService
+    ILessonSeriePriceRepository prices,
+    IUnitOfWork unitOfWork) : ILessonSeriePricingService
 {
     public async Task<Result<List<LessonSeriePriceDto>>> GetPricesAsync(
         Guid lessonSerieId, Guid organizationId, CancellationToken ct = default)
@@ -50,7 +51,7 @@ public class LessonSeriePricingService(
             }).ToList();
 
         await prices.ReplaceForSeriesAsync(lessonSerieId, organizationId, rows, ct);
-        await prices.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         IReadOnlyList<LessonSeriePrice> saved = await prices.GetBySeriesAsync(lessonSerieId, organizationId, ct);
         return Result<List<LessonSeriePriceDto>>.Ok(saved.Select(ToDto).ToList());

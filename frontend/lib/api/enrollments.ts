@@ -64,6 +64,12 @@ export interface LessonSeriesEnrollmentDto {
   /** True als deze inschrijving de groepsleider is (draagt de gedeelde betaling). */
   isGroupLeader: boolean;
   isOpenToGrouping: boolean;
+  /** Gekozen prijsoptie (null = geen/legacy). */
+  selectedPriceOptionId: string | null;
+  /** Eigen betaalmethode: "Online" | "Cash", of null zonder eigen betaling. */
+  paymentMethod: string | null;
+  /** Eigen betaalstatus: "Pending" | "Paid" | ..., of null zonder eigen betaling. */
+  paymentStatus: string | null;
   formResponses: EnrollmentResponseItem[];
 }
 
@@ -74,8 +80,18 @@ export interface UpdateBasicEnrollmentRequest {
   studentPhone?: string | null;
   dateOfBirth: string;
   isOpenToGrouping: boolean;
+  /** Nieuwe prijsoptie (weglaten = ongemoeid). */
+  selectedPriceOptionId?: string | null;
 }
 
+export interface CreateManualEnrollmentRequest {
+  studentName: string;
+  contactEmail: string;
+  studentEmail?: string | null;
+  studentPhone?: string | null;
+  dateOfBirth: string;
+  responses?: { formFieldId: string; value: string }[];
+}
 export interface SaveFormFieldRequest {
   id?: string;
   label: string;
@@ -131,6 +147,29 @@ export async function saveEnrollmentForm(seriesId: string, fields: SaveFormField
 
 export async function submitEnrollment(seriesId: string, request: SubmitEnrollmentRequest): Promise<string> {
   const { data } = await publicApiClient.post<string>(`/public/lessonseries/${seriesId}/enroll`, request);
+  return data;
+}
+
+export async function createManualEnrollment(
+  seriesId: string,
+  request: CreateManualEnrollmentRequest,
+): Promise<string> {
+  const { data } = await apiClient.post<string>(
+    `/lessonseries/${seriesId}/enrollments/manual`,
+    request,
+  );
+  return data;
+}
+/** Voegt een lid toe aan een bestaande groep (erft status + prijsoptie van de groep). */
+export async function addGroupMember(
+  seriesId: string,
+  groupId: string,
+  request: CreateManualEnrollmentRequest,
+): Promise<string> {
+  const { data } = await apiClient.post<string>(
+    `/lessonseries/${seriesId}/enrollment-groups/${groupId}/members`,
+    request,
+  );
   return data;
 }
 
@@ -194,10 +233,33 @@ export async function cancelEnrollmentGroup(seriesId: string, groupId: string): 
 }
 
 /**
- * Markeert de openstaande overschrijving van een reeksinschrijving als betaald.
- * Bevestigt de inschrijving en verstuurt de bevestigingsmail. Faalt met NotFound
- * als er geen openstaande cash-betaling is voor deze inschrijving.
+ * Haalt één lid uit een groep. Standaard blijft het lid bestaan als losse inschrijving;
+ * met `cancel=true` wordt de inschrijving ook geannuleerd.
+ */
+export async function removeGroupMember(
+  seriesId: string,
+  groupId: string,
+  enrollmentId: string,
+  cancel = false,
+): Promise<void> {
+  const query = cancel ? "?cancel=true" : "";
+  await apiClient.delete(
+    `/lessonseries/${seriesId}/enrollment-groups/${groupId}/members/${enrollmentId}${query}`,
+  );
+}
+
+/**
+ * Markeert enkel deze inschrijving (lid of solo) als betaald: bevestigt de
+ * inschrijving en verstuurt de bevestigingsmail.
  */
 export async function markEnrollmentCashPaid(enrollmentId: string): Promise<void> {
   await apiClient.post(`/enrollments/${enrollmentId}/mark-cash-paid`);
+}
+
+/**
+ * Markeert de hele groep (of solo) van deze inschrijving als betaald in één keer:
+ * alle openstaande betalingen van de leden op betaald en iedereen bevestigd.
+ */
+export async function markGroupCashPaid(enrollmentId: string): Promise<void> {
+  await apiClient.post(`/enrollments/${enrollmentId}/mark-group-cash-paid`);
 }

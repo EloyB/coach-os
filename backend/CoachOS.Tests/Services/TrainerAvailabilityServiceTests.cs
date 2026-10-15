@@ -1,3 +1,4 @@
+using CoachOS.Application.Abstractions;
 using CoachOS.Application.Mappings;
 using CoachOS.Application.TrainerAvailabilities;
 using CoachOS.Application.TrainerAvailabilities.DTOs;
@@ -16,6 +17,7 @@ public class TrainerAvailabilityServiceTests
     private Mock<ITrainerAvailabilityRepository> _repo = null!;
     private Mock<ITennisClubRepository> _clubRepo = null!;
     private Mock<IUserLookupService> _userLookup = null!;
+    private Mock<IUnitOfWork> _unitOfWork = null!;
     private ApplicationMapper _mapper = null!;
     private TrainerAvailabilityService _sut = null!;
 
@@ -29,8 +31,9 @@ public class TrainerAvailabilityServiceTests
         _repo = new Mock<ITrainerAvailabilityRepository>();
         _clubRepo = new Mock<ITennisClubRepository>();
         _userLookup = new Mock<IUserLookupService>();
+        _unitOfWork = new Mock<IUnitOfWork>();
         _mapper = new ApplicationMapper();
-        _sut = new TrainerAvailabilityService(_repo.Object, _clubRepo.Object, _userLookup.Object, _mapper);
+        _sut = new TrainerAvailabilityService(_repo.Object, _clubRepo.Object, _unitOfWork.Object, _userLookup.Object, _mapper);
     }
 
     private CreateTrainerAvailabilityRequest ValidRequest() =>
@@ -63,7 +66,7 @@ public class TrainerAvailabilityServiceTests
                 && a.EndTime == new TimeOnly(21, 0)
                 && a.IsActive),
             It.IsAny<CancellationToken>()), Times.Once);
-        _repo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Test]
@@ -164,7 +167,7 @@ public class TrainerAvailabilityServiceTests
 
         result.IsSuccess.Should().BeTrue();
         entity.IsActive.Should().BeFalse();
-        _repo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Test]
@@ -177,6 +180,6 @@ public class TrainerAvailabilityServiceTests
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().Contain(e => e.Code == ErrorCodes.NotFound);
-        _repo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 }

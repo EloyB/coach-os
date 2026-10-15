@@ -19,7 +19,6 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { NativeSelect } from "@/components/ui/native-select";
 import { FieldError } from "@/components/forms/field-error";
 import { EmailTagInput } from "@/components/forms/email-tag-input";
-import { SlashLabel } from "@/components/ui/slash-label";
 import { inputClass } from "@/lib/styles";
 
 const schema = z.object({
@@ -53,9 +52,9 @@ function Label({
   required?: boolean;
 }) {
   return (
-    <label className="block text-[11.5px] font-semibold text-ink mb-1.5">
+    <label className="block text-sm font-medium text-gray-700 mb-1.5">
       {children}
-      {required && <span className="text-tennis-green ml-0.5">*</span>}
+      {required && <span className="text-red-400 ml-0.5">*</span>}
     </label>
   );
 }
@@ -124,27 +123,27 @@ export default function NewStandaloneLessonPage() {
 
   return (
     <>
-      {/* Page header */}
-      <div className="mb-5">
-        <Link
-          href="/dashboard/standalone-lessons"
-          className="inline-flex items-center gap-1 text-[11.5px] text-ink-3 hover:text-ink mb-2"
-        >
-          <ChevronLeft size={14} /> {t("back")}
-        </Link>
-        <SlashLabel>/nieuwe-les</SlashLabel>
-        <h1 className="text-lg font-bold text-ink tracking-tight mt-0.5">
+      {/* Back */}
+      <Link
+        href="/dashboard/standalone-lessons"
+        className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 transition-colors mb-6"
+      >
+        <ChevronLeft size={15} />
+        {t("back")}
+      </Link>
+
+      {/* Page title */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
           {t("createTitle")}
         </h1>
-        <p className="text-[12.5px] text-ink-3 mt-0.5">
-          {t("createSubtitle")}
-        </p>
+        <p className="text-gray-400 text-sm mt-1">{t("createSubtitle")}</p>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)}>
         <div className="bg-paper border border-rule rounded-xl p-6 space-y-5 max-w-[680px]">
           {/* Row 1: Date + Start time */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label required>{t("fieldDate")}</Label>
               <Controller
@@ -162,14 +161,14 @@ export default function NewStandaloneLessonPage() {
                 {...register("startTime")}
                 type="time"
                 step={300}
-                className={inputClass}
+                className={`${inputClass} appearance-none min-w-0`}
               />
               <FieldError message={errors.startTime?.message} />
             </div>
           </div>
 
           {/* Row 2: Duration + Court */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label required>{t("fieldDuration")}</Label>
               <Controller
@@ -234,7 +233,7 @@ export default function NewStandaloneLessonPage() {
           </div>
 
           {/* Row 3: Level + Max participants */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label>{t("fieldLevel")}</Label>
               <Controller
@@ -262,6 +261,7 @@ export default function NewStandaloneLessonPage() {
               <Label>{t("fieldMaxParticipants")}</Label>
               <input
                 {...register("maxParticipants", { valueAsNumber: true })}
+                onFocus={(e) => e.currentTarget.select()}
                 type="number"
                 min={0}
                 className={inputClass}
@@ -343,7 +343,7 @@ export default function NewStandaloneLessonPage() {
           <button
             type="submit"
             disabled={isSubmitting || createMutation.isPending}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-tennis-green text-tennis-lime text-[12.5px] font-semibold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-5 py-2.5 bg-tennis-green text-white text-sm font-semibold rounded-lg hover:bg-tennis-green/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {isSubmitting || createMutation.isPending
               ? t("scheduling")

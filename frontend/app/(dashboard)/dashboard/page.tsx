@@ -181,6 +181,7 @@ export default function DashboardPage() {
     {
       value: String(summary?.activeTrainerCount ?? 0),
       label: t("statTrainers", { count: summary?.activeTrainerCount ?? 0 }),
+      mobileHidden: true,
     },
     {
       value: String(summary?.activeSeriesCount ?? 0),

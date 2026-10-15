@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { TrainerDto } from "@/lib/api/trainers";
+import { btnPrimary, btnSecondary } from "@/lib/styles";
 import { formatDateShort } from "@/lib/date-utils";
 import { toLocalISODate, type WizardSlot } from "../_types";
 import { WeekTemplateBuilder } from "./week-template-builder";
@@ -81,7 +82,7 @@ export function EditWeekDialog({
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 px-4 py-2 text-sm font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+            className={"flex-1 " + btnSecondary}
           >
             {t("cancel")}
           </button>
@@ -91,7 +92,7 @@ export function EditWeekDialog({
               onSave(slots);
               onClose();
             }}
-            className="flex-1 px-4 py-2 text-sm font-semibold text-white bg-tennis-green rounded-lg hover:bg-tennis-green/90 transition-colors"
+            className={"flex-1 " + btnPrimary}
           >
             {t("saveWeek")}
           </button>

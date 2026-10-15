@@ -23,7 +23,7 @@ CoachOS.Tests/          → Unit & Integration Tests
 ### 1. Service Pattern (ALWAYS)
 
 - **Business logic** lives in service classes in `Application/{Feature}/`
-- Each feature has an **interface** in `Domain/Interfaces/` or `Application/{Feature}/I{Feature}Service.cs`
+- Each feature has an **interface** in `Application/{Feature}/I{Feature}Service.cs`
 - Each feature has a **service implementation** in `Application/{Feature}/{Feature}Service.cs`
 - **Request DTOs** in `Application/{Feature}/DTOs/`
 - **Validators** in `Application/{Feature}/Validators/`
@@ -41,8 +41,7 @@ CoachOS.Tests/          → Unit & Integration Tests
 **Domain (NO external dependencies):**
 
 - Pure entities, value objects, enums
-- Repository interfaces (`Domain/Interfaces/I{Entity}Repository.cs`)
-- Service interfaces for cross-cutting concerns (e.g. `IEmailService`, `IUserLookupService`)
+- Repository interfaces + `IUnitOfWork` (`Domain/Interfaces/`)
 - `Result<T>`, `Error`, `ErrorCodes` models
 - Only System.\* namespaces allowed
 - NO EF Core, NO ASP.NET, NO third-party libs
@@ -101,9 +100,10 @@ public interface ICourtRepository
     Task<IReadOnlyList<Court>> GetByOrganizationAsync(Guid organizationId, CancellationToken ct = default);
     Task<Court?> GetByIdAsync(Guid id, Guid organizationId, CancellationToken ct = default);
     Task AddAsync(Court court, CancellationToken ct = default);
-    Task SaveChangesAsync(CancellationToken ct = default);
 }
 ```
+
+Repositories never persist: no `SaveChangesAsync` or transaction methods. Services inject `IUnitOfWork` (`Domain/Interfaces/IUnitOfWork.cs`) for `SaveChangesAsync` and `Begin/Commit/RollbackTransactionAsync`.
 
 **3. EF Core Configuration** (`CoachOS.Infrastructure/Persistence/Configurations/`)
 
@@ -158,9 +158,6 @@ public class CourtRepository(ApplicationDbContext db) : ICourtRepository
 
     public async Task AddAsync(Court court, CancellationToken ct = default)
         => await db.Courts.AddAsync(court, ct);
-
-    public async Task SaveChangesAsync(CancellationToken ct = default)
-        => await db.SaveChangesAsync(ct);
 }
 ```
 
@@ -209,7 +206,7 @@ public interface ICourtService
 }
 
 // CourtService.cs
-public class CourtService(ICourtRepository repo, ApplicationMapper mapper) : ICourtService
+public class CourtService(ICourtRepository repo, IUnitOfWork unitOfWork, ApplicationMapper mapper) : ICourtService
 {
     public async Task<Result<List<CourtDto>>> GetAllAsync(Guid organizationId, CancellationToken ct = default)
     {
@@ -221,7 +218,7 @@ public class CourtService(ICourtRepository repo, ApplicationMapper mapper) : ICo
     {
         Court court = mapper.ToCourt(request, organizationId);
         await repo.AddAsync(court, ct);
-        await repo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
         return Result<Guid>.Ok(court.Id);
     }
 }
@@ -382,6 +379,8 @@ CoachOS.Application/
 │   │   └── CreateCourtRequestValidator.cs
 │   ├── ICourtService.cs
 │   └── CourtService.cs
+├── Abstractions/                   ← ports implemented in Infrastructure
+│   └── IEmailService.cs            ← (IEmailService, IMollieClient, IUserLookupService, ITenantContext, ...)
 ├── Mappings/
 │   └── ApplicationMapper.cs        ← Mapperly [Mapper] partial class
 └── DependencyInjection.cs
@@ -391,7 +390,7 @@ CoachOS.Domain/
 ├── Enums/
 ├── Interfaces/
 │   ├── ICourtRepository.cs         ← Repository interfaces live here
-│   └── IEmailService.cs            ← External service interfaces live here
+│   └── IUnitOfWork.cs              ← SaveChanges + transactions
 ├── Models/
 │   ├── Result.cs
 │   ├── Error.cs

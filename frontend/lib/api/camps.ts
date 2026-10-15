@@ -149,9 +149,11 @@ export interface CampEnrollmentDto {
   status: string;
   enrolledAt: string;
   groupName: string | null;
+  enrollmentGroupId: string | null;
+  isGroupLeader: boolean;
   paymentMethod: string | null;
   paymentStatus: string | null;
-  formResponses: { fieldLabel: string; value: string }[];
+  formResponses: { fieldId: string; fieldLabel: string; value: string }[];
 }
 
 // ── Admin ──
@@ -183,6 +185,72 @@ export async function saveCampForm(campId: string, fields: SaveCampFormFieldRequ
 }
 export async function getCampEnrollments(campId: string): Promise<CampEnrollmentDto[]> {
   const { data } = await apiClient.get<CampEnrollmentDto[]>(`/camps/${campId}/enrollments`);
+  return data;
+}
+export interface CreateManualCampEnrollmentRequest {
+  participantName: string;
+  participantEmail: string;
+  participantPhone: string | null;
+  /** true = cash al ontvangen (bevestigd); false = nog te betalen. Enkel relevant voor betaalde kampen. */
+  paid: boolean;
+  responses: { campFormFieldId: string; value: string }[];
+}
+export async function createManualCampEnrollment(
+  campId: string,
+  request: CreateManualCampEnrollmentRequest
+): Promise<string> {
+  const { data } = await apiClient.post<string>(
+    `/camps/${campId}/enrollments/manual`,
+    request
+  );
+  return data;
+}
+export interface AddCampGroupMemberRequest {
+  participantName: string;
+  participantEmail: string;
+  participantPhone: string | null;
+  responses: { campFormFieldId: string; value: string }[];
+}
+export async function addCampGroupMember(
+  campId: string,
+  groupId: string,
+  request: AddCampGroupMemberRequest
+): Promise<string> {
+  const { data } = await apiClient.post<string>(
+    `/camps/${campId}/enrollment-groups/${groupId}/members`,
+    request
+  );
+  return data;
+}
+export interface UpdateCampEnrollmentRequest {
+  participantName: string;
+  participantEmail: string;
+  participantPhone: string | null;
+  responses: { campFormFieldId: string; value: string }[];
+}
+export async function updateCampEnrollment(
+  campId: string,
+  enrollmentId: string,
+  request: UpdateCampEnrollmentRequest
+): Promise<void> {
+  await apiClient.put(`/camps/${campId}/enrollments/${enrollmentId}`, request);
+}
+export async function cancelCampEnrollment(
+  campId: string,
+  enrollmentId: string
+): Promise<void> {
+  await apiClient.delete(`/camps/${campId}/enrollments/${enrollmentId}`);
+}
+export async function cancelCampEnrollmentGroup(
+  campId: string,
+  groupId: string
+): Promise<void> {
+  await apiClient.delete(`/camps/${campId}/enrollment-groups/${groupId}`);
+}
+export async function exportCamp(campId: string): Promise<Blob> {
+  const { data } = await apiClient.get(`/camps/${campId}/export`, {
+    responseType: "blob",
+  });
   return data;
 }
 export async function markCampEnrollmentCashPaid(

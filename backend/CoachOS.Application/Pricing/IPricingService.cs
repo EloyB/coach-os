@@ -18,4 +18,13 @@ public interface IPricingService
     /// </param>
     Task<Result<PriceBreakdown>> CalculateForGroupAsync(
         Guid lessonSerieId, IReadOnlyList<Enrollment> participants, CancellationToken ct = default);
+
+    /// <summary>
+    /// Berekent het bedrag per deelnemer (enrollmentId → aandeel), volgens dezelfde
+    /// regels als <see cref="CalculateForGroupAsync"/>. Gebruikt om per groepslid een
+    /// eigen (cash/overschrijving-)betaling met het juiste bedrag aan te maken.
+    /// De som van de aandelen is gelijk aan het groepstotaal.
+    /// </summary>
+    Task<Result<IReadOnlyDictionary<Guid, decimal>>> CalculatePerParticipantAsync(
+        Guid lessonSerieId, IReadOnlyList<Enrollment> participants, CancellationToken ct = default);
 }

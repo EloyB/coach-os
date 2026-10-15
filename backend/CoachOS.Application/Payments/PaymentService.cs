@@ -1,3 +1,4 @@
+using CoachOS.Application.Abstractions;
 using CoachOS.Application.Configuration;
 using CoachOS.Application.MollieConnect;
 using CoachOS.Application.Payments.DTOs;
@@ -27,6 +28,7 @@ public class PaymentService(
     ICampRepository camps,
     ICampEnrollmentRepository campEnrollments,
     IOrganizationSettingsRepository orgSettings,
+    IUnitOfWork unitOfWork,
     IMollieClient mollieClient,
     IMollieConnectService mollieConnect,
     IEmailService emailService,
@@ -182,7 +184,7 @@ public class PaymentService(
             Description = paymentRequest.Description,
         };
         await payments.AddAsync(payment, ct);
-        await payments.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         return Result<CreatePaymentResultDto>.Ok(new CreatePaymentResultDto(
             payment.Id, molliePayment.CheckoutUrl));
@@ -214,10 +216,7 @@ public class PaymentService(
 
         // Groepsinschrijving = leider + leden; solo = 1. De leider draagt de betaling.
         // Group.Members includes the leader (the submit flow sets the leader's CampEnrollmentGroupId), so Count = total participants.
-        int participantCount = enrollment.CampEnrollmentGroupId.HasValue && enrollment.Group is not null
-            ? enrollment.Group.Members.Count
-            : 1;
-        if (participantCount < 1) participantCount = 1;
+        int participantCount = CountActiveCampParticipants(enrollment);
         decimal amount = camp.Price * participantCount;
 
         OrganizationSettingsEntity? settings = await orgSettings
@@ -284,7 +283,7 @@ public class PaymentService(
             Description = paymentRequest.Description,
         };
         await payments.AddAsync(payment, ct);
-        await payments.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         return Result<CreatePaymentResultDto>.Ok(new CreatePaymentResultDto(
             payment.Id, molliePayment.CheckoutUrl));
@@ -338,7 +337,7 @@ public class PaymentService(
         payment.PaidAt = snapshot.PaidAt;
         payment.FailureReason = snapshot.FailureReason;
         payment.Method = MapMollieMethod(snapshot.Method) ?? payment.Method;
-        await payments.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         if (newStatus == PaymentStatus.Paid)
         {
@@ -451,7 +450,7 @@ public class PaymentService(
             if (e.Status == EnrollmentStatus.Confirmed) continue;
             e.Status = EnrollmentStatus.Confirmed;
         }
-        await enrollments.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         LessonSerieEntity? series = enrollment.LessonSerieId is { } sid
             ? await lessonSeries.GetByIdPublicAsync(sid, ct)
@@ -462,7 +461,6 @@ public class PaymentService(
                 enrollment.ContactEmail,
                 enrollment.StudentName,
                 series?.Name ?? string.Empty,
-                trainerName: string.Empty,
                 // toConfirm = alle leden van de groep (of de solo-inschrijving); zo ziet
                 // de betalende contactpersoon voor wie de bevestiging geldt.
                 participantNames: toConfirm.Select(e => e.StudentName).ToList(),
@@ -498,6 +496,14 @@ public class PaymentService(
     private async Task ConfirmCampEnrollmentAndNotifyAsync(
         CampEnrollmentEntity enrollment, CancellationToken ct)
     {
+        // Een geannuleerde inschrijving mag nooit stilletjes heropstaan (laat-binnenkomende
+        // webhook of cash-markering): de betaling zelf wordt wel bewaard, zonder bevestiging.
+        if (enrollment.Status == EnrollmentStatus.Cancelled)
+        {
+            await unitOfWork.SaveChangesAsync(ct);
+            return;
+        }
+
         // Bevestig de hele groep (leider + leden) of de solo-inschrijving.
         List<CampEnrollmentEntity> toConfirm =
             enrollment.CampEnrollmentGroupId.HasValue && enrollment.Group is not null
@@ -508,10 +514,10 @@ public class PaymentService(
         // zodat een gedeactiveerd kamp toch echte naam + data in de mail toont.
         foreach (CampEnrollmentEntity e in toConfirm)
         {
-            if (e.Status == EnrollmentStatus.Confirmed) continue;
+            if (e.Status is EnrollmentStatus.Confirmed or EnrollmentStatus.Cancelled) continue;
             e.Status = EnrollmentStatus.Confirmed;
         }
-        await campEnrollments.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         try
         {
@@ -531,6 +537,18 @@ public class PaymentService(
                 "Bevestigingsmail mislukt voor kampinschrijving {Id} na betaling.",
                 enrollment.Id);
         }
+    }
+
+    /// <summary>
+    /// Betalende deelnemers: de groep (leider + leden) zonder geannuleerde leden, of 1 voor
+    /// een solo-inschrijving. Een geannuleerd lid mag niet meer meegerekend worden.
+    /// </summary>
+    private static int CountActiveCampParticipants(CampEnrollmentEntity enrollment)
+    {
+        int count = enrollment.CampEnrollmentGroupId.HasValue && enrollment.Group is not null
+            ? enrollment.Group.Members.Count(m => m.Status != EnrollmentStatus.Cancelled)
+            : 1;
+        return Math.Max(count, 1);
     }
 
     public async Task<Result> RecordCampCashPaymentAsync(
@@ -554,10 +572,7 @@ public class PaymentService(
                 ErrorCodes.Validation, "Dit kamp is gratis; een betaling is niet nodig."));
 
         // Zelfde deelnemertelling als de online flow: groep = leider + leden, solo = 1.
-        int participantCount = enrollment.CampEnrollmentGroupId.HasValue && enrollment.Group is not null
-            ? enrollment.Group.Members.Count
-            : 1;
-        if (participantCount < 1) participantCount = 1;
+        int participantCount = CountActiveCampParticipants(enrollment);
         decimal amount = camp.Price * participantCount;
 
         OrganizationSettingsEntity? settings = await orgSettings
@@ -575,7 +590,7 @@ public class PaymentService(
             Description = $"Cash - {camp.Name}",
         };
         await payments.AddAsync(payment, ct);
-        await payments.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         // Inschrijving blijft PendingPayment: de coach bevestigt de cash later.
         return Result.Ok();
@@ -593,6 +608,10 @@ public class PaymentService(
             && (enrollment.OrganizationId != organizationId || enrollment.CampId != campId))
             return Result.Fail(new Error(ErrorCodes.NotFound, "Inschrijving niet gevonden."));
 
+        if (enrollment is not null && enrollment.Status == EnrollmentStatus.Cancelled)
+            return Result.Fail(new Error(
+                ErrorCodes.Validation, "Deze inschrijving is geannuleerd en kan niet als betaald gemarkeerd worden."));
+
         PaymentEntity? payment = await payments.GetLatestPendingCashByCampEnrollmentIdAsync(
             campEnrollmentId, organizationId, ct);
         if (payment is null)
@@ -601,9 +620,8 @@ public class PaymentService(
 
         // Atomiciteit: de payment-mutatie wordt NIET apart opgeslagen. We muteren de
         // (getrackte) payment, muteren daarna de enrollment(s) en laten één enkele
-        // SaveChangesAsync in ConfirmCampEnrollmentAndNotifyAsync beide wegschrijven.
-        // PaymentRepository én CampEnrollmentRepository delen dezelfde scoped
-        // ApplicationDbContext, dus die ene save flusht beide change-sets. Zo kan een
+        // unitOfWork.SaveChangesAsync in ConfirmCampEnrollmentAndNotifyAsync beide
+        // wegschrijven (de unit of work flusht de volledige change-set). Zo kan een
         // crash niet langer een Paid-payment achterlaten met een PendingPayment-enrollment.
         payment.Status = PaymentStatus.Paid;
         payment.PaidAt = DateTime.UtcNow;
@@ -611,7 +629,7 @@ public class PaymentService(
         if (enrollment is null)
         {
             // Geen enrollment om te bevestigen → toch de payment-mutatie persisteren.
-            await payments.SaveChangesAsync(ct);
+            await unitOfWork.SaveChangesAsync(ct);
             return Result.Ok();
         }
 

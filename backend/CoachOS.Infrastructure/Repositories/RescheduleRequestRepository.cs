@@ -51,9 +51,4 @@ public class RescheduleRequestRepository(ApplicationDbContext context) : IResche
     {
         await context.RescheduleRequests.AddAsync(request, ct);
     }
-
-    public async Task SaveChangesAsync(CancellationToken ct = default)
-    {
-        await context.SaveChangesAsync(ct);
-    }
 }

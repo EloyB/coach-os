@@ -1,3 +1,4 @@
+using CoachOS.Application.Abstractions;
 using CoachOS.Application.LessonReschedule;
 using CoachOS.Application.LessonReschedule.DTOs;
 using CoachOS.Domain.Entities;
@@ -18,8 +19,8 @@ public class LessonRescheduleServiceTests
     private Mock<ILessonInvitationRepository> _invitationRepo = null!;
     private Mock<IEnrollmentRepository> _enrollmentRepo = null!;
     private Mock<ILessonSerieRepository> _serieRepo = null!;
-    private Mock<IUserLookupService> _userLookup = null!;
     private Mock<IEmailService> _emailService = null!;
+    private Mock<IUnitOfWork> _unitOfWork = null!;
     private LessonRescheduleService _service = null!;
 
     private static readonly Guid OrgId = Guid.NewGuid();
@@ -32,15 +33,15 @@ public class LessonRescheduleServiceTests
         _invitationRepo = new Mock<ILessonInvitationRepository>();
         _enrollmentRepo = new Mock<IEnrollmentRepository>();
         _serieRepo = new Mock<ILessonSerieRepository>();
-        _userLookup = new Mock<IUserLookupService>();
         _emailService = new Mock<IEmailService>();
+        _unitOfWork = new Mock<IUnitOfWork>();
 
         _service = new LessonRescheduleService(
             _lessonRepo.Object,
             _invitationRepo.Object,
             _enrollmentRepo.Object,
             _serieRepo.Object,
-            _userLookup.Object,
+            _unitOfWork.Object,
             _emailService.Object,
             NullLogger<LessonRescheduleService>.Instance);
 
@@ -57,13 +58,9 @@ public class LessonRescheduleServiceTests
         _enrollmentRepo
             .Setup(r => r.GetBySeriesAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<Enrollment>());
-
-        _userLookup
-            .Setup(u => u.GetUserNameByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync("Sara Trainer");
     }
 
-    private static Lesson BuildStandaloneLesson(bool cancelled = false, Guid? rescheduledTo = null)
+    private static Lesson BuildStandaloneLesson(bool cancelled = false)
         => new()
         {
             Id = Guid.NewGuid(),
@@ -77,7 +74,6 @@ public class LessonRescheduleServiceTests
             MaxStudents = 4,
             Level = LessonLevel.Beginner,
             IsCancelled = cancelled,
-            RescheduledToLessonId = rescheduledTo,
         };
 
     private static RescheduleLessonRequest BuildRequest(int daysFromNow = 14, string? reason = null)
@@ -88,9 +84,10 @@ public class LessonRescheduleServiceTests
             reason);
 
     [Test]
-    public async Task RescheduleAsync_StandaloneLesson_CreatesNewLessonAndCancelsOriginal()
+    public async Task RescheduleAsync_StandaloneLesson_UpdatesLessonInPlace()
     {
         Lesson lesson = BuildStandaloneLesson();
+        Guid originalId = lesson.Id;
         _lessonRepo
             .Setup(r => r.GetByIdInOrganizationAsync(lesson.Id, OrgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(lesson);
@@ -99,17 +96,17 @@ public class LessonRescheduleServiceTests
             OrgId, lesson.Id, BuildRequest(reason: "Trainer ziek"), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
-        lesson.IsCancelled.Should().BeTrue();
-        lesson.RescheduledToLessonId.Should().NotBeNull().And.Be(result.Value!.NewLessonId);
-        lesson.CancellationReason.Should().Be("Trainer ziek");
+        // Zelfde les, in-place verplaatst — geen nieuwe les, geen annulering.
+        result.Value!.NewLessonId.Should().Be(originalId);
+        lesson.IsCancelled.Should().BeFalse();
+        lesson.RescheduledToLessonId.Should().BeNull();
+        lesson.StartTime.Should().Be(new TimeOnly(14, 0));
+        lesson.EndTime.Should().Be(new TimeOnly(15, 0));
 
-        _lessonRepo.Verify(r => r.AddAsync(
-            It.Is<Lesson>(l => l.LessonSerieId == null && l.OrganizationId == OrgId &&
-                               l.StartTime == new TimeOnly(14, 0)),
-            It.IsAny<CancellationToken>()), Times.Once);
-        _lessonRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _lessonRepo.Verify(r => r.AddAsync(It.IsAny<Lesson>(), It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
         _invitationRepo.Verify(r => r.ReassignToLessonAsync(
-            lesson.Id, result.Value.NewLessonId, It.IsAny<CancellationToken>()), Times.Once);
+            It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Test]
@@ -126,21 +123,6 @@ public class LessonRescheduleServiceTests
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.Validation);
         _lessonRepo.Verify(r => r.AddAsync(It.IsAny<Lesson>(), It.IsAny<CancellationToken>()), Times.Never);
-    }
-
-    [Test]
-    public async Task RescheduleAsync_AlreadyRescheduled_ReturnsConflict()
-    {
-        Lesson lesson = BuildStandaloneLesson(rescheduledTo: Guid.NewGuid());
-        _lessonRepo
-            .Setup(r => r.GetByIdInOrganizationAsync(lesson.Id, OrgId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(lesson);
-
-        Result<RescheduleLessonResultDto> result = await _service.RescheduleAsync(
-            OrgId, lesson.Id, BuildRequest(), CancellationToken.None);
-
-        result.IsSuccess.Should().BeFalse();
-        result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.Conflict);
     }
 
     [Test]
@@ -198,6 +180,10 @@ public class LessonRescheduleServiceTests
             .Setup(r => r.GetByLessonAsync(It.IsAny<Guid>(), OrgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(invitees);
 
+        // Oude datum/tijd vastleggen vóór de in-place verplaatsing (de mail toont die).
+        DateOnly oldDate = lesson.Date;
+        TimeOnly oldStart = lesson.StartTime;
+
         Result<RescheduleLessonResultDto> result = await _service.RescheduleAsync(
             OrgId, lesson.Id, BuildRequest(reason: "Andere zaal"), CancellationToken.None);
 
@@ -206,16 +192,16 @@ public class LessonRescheduleServiceTests
 
         _emailService.Verify(e => e.SendLessonRescheduledAsync(
                 "a@x.be", "Anna", null,
-                lesson.Date, lesson.StartTime,
+                oldDate, oldStart,
                 It.IsAny<DateOnly>(), It.IsAny<TimeOnly>(), It.IsAny<TimeOnly>(),
-                "Baan 1", "Sara Trainer", "Andere zaal",
+                "Baan 1", "Andere zaal",
                 It.IsAny<CancellationToken>()),
             Times.Once);
         _emailService.Verify(e => e.SendLessonRescheduledAsync(
                 "c@x.be", It.IsAny<string>(), It.IsAny<string?>(),
                 It.IsAny<DateOnly>(), It.IsAny<TimeOnly>(),
                 It.IsAny<DateOnly>(), It.IsAny<TimeOnly>(), It.IsAny<TimeOnly>(),
-                It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<string?>(),
+                It.IsAny<string?>(), It.IsAny<string?>(),
                 It.IsAny<CancellationToken>()),
             Times.Never);
     }
@@ -253,7 +239,7 @@ public class LessonRescheduleServiceTests
                 "x@y.be", "Xan", "Beginners maandag",
                 It.IsAny<DateOnly>(), It.IsAny<TimeOnly>(),
                 It.IsAny<DateOnly>(), It.IsAny<TimeOnly>(), It.IsAny<TimeOnly>(),
-                It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<string?>(),
+                It.IsAny<string?>(), It.IsAny<string?>(),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }

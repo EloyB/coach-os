@@ -79,6 +79,50 @@ public class PricingService(
         });
     }
 
+    public async Task<Result<IReadOnlyDictionary<Guid, decimal>>> CalculatePerParticipantAsync(
+        Guid lessonSerieId, IReadOnlyList<Enrollment> participants, CancellationToken ct = default)
+    {
+        if (participants.Count == 0)
+        {
+            return Result<IReadOnlyDictionary<Guid, decimal>>.Fail(new Error(
+                ErrorCodes.Validation, "Een prijsberekening vereist minstens één deelnemer."));
+        }
+
+        LessonSerieEntity? series = await lessonSeries.GetByIdPublicAsync(lessonSerieId, ct);
+        if (series is null)
+        {
+            return Result<IReadOnlyDictionary<Guid, decimal>>.Fail(new Error(
+                ErrorCodes.NotFound, "Lessenreeks niet gevonden."));
+        }
+
+        IReadOnlyList<LessonSeriePrice> options = await prices.GetBySeriesPublicAsync(lessonSerieId, ct);
+
+        // Zelfde regels als CalculateForGroupAsync: prijsmatrix indien iemand een optie
+        // koos, anders legacy (LessonSerie.Price per persoon).
+        bool useOptions = options.Count > 0 && participants.Any(p => p.SelectedPriceOptionId is not null);
+        if (!useOptions)
+        {
+            decimal legacy = Round(series.Price);
+            return Result<IReadOnlyDictionary<Guid, decimal>>.Ok(
+                participants.ToDictionary(p => p.Id, _ => legacy));
+        }
+
+        Dictionary<Guid, LessonSeriePrice> optionsById = options.ToDictionary(p => p.Id);
+        Dictionary<Guid, decimal> perParticipant = [];
+        foreach (Enrollment p in participants)
+        {
+            if (p.SelectedPriceOptionId is null
+                || !optionsById.TryGetValue(p.SelectedPriceOptionId.Value, out LessonSeriePrice? option))
+            {
+                return Result<IReadOnlyDictionary<Guid, decimal>>.Fail(new Error(
+                    ErrorCodes.Validation, "Geselecteerde prijsoptie is niet geldig voor deze lessenreeks."));
+            }
+            perParticipant[p.Id] = Round(option.TotalPrice);
+        }
+
+        return Result<IReadOnlyDictionary<Guid, decimal>>.Ok(perParticipant);
+    }
+
     private static Result<PriceBreakdown> Legacy(LessonSerieEntity series, int groupSize)
     {
         decimal legacyTotal = Round(series.Price * groupSize);

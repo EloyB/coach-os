@@ -208,6 +208,68 @@ test.describe("Public Enrollment", () => {
       ]);
   });
 
+  test("collapses parallel courts into one hour and expands the preference on submit", async ({
+    page,
+  }) => {
+    // Drie parallelle banen op maandag 10:00–11:00 + één losse rij erna.
+    const parallelSlots = [
+      { id: "aaaaaaaa-0000-0000-0000-000000000001", dayOfWeek: 0, startTime: "10:00", endTime: "11:00", courtName: "Court A", maxStudents: 4 },
+      { id: "aaaaaaaa-0000-0000-0000-000000000002", dayOfWeek: 0, startTime: "10:00", endTime: "11:00", courtName: "Court B", maxStudents: 4 },
+      { id: "aaaaaaaa-0000-0000-0000-000000000003", dayOfWeek: 0, startTime: "10:00", endTime: "11:00", courtName: "Court C", maxStudents: 4 },
+      { id: "bbbbbbbb-0000-0000-0000-000000000001", dayOfWeek: 0, startTime: "11:00", endTime: "12:00", courtName: "Court A", maxStudents: 4 },
+    ];
+
+    await mockPublicApi(page, "GET", `/public/lessonseries/${seriesId}`, TEST_PUBLIC_SERIES);
+    await mockPublicApi(page, "GET", `/public/lessonseries/${seriesId}/form`, null, 204);
+    await mockPublicApi(page, "GET", `/public/lessonseries/${seriesId}/timeslots`, parallelSlots);
+
+    let postBody: Record<string, unknown> | null = null;
+    await page.route(`${API_BASE}/public/lessonseries/${seriesId}/enroll`, (route) => {
+      if (route.request().method() === "POST") {
+        postBody = route.request().postDataJSON();
+        return route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify("enrollment-id-123"),
+        });
+      }
+      return route.continue();
+    });
+
+    await page.goto(`/enroll/${seriesId}`);
+
+    // Het uur staat maar één keer per layout (desktop + mobiel = 2 DOM-nodes),
+    // niet drie keer voor de drie banen. En de baannaam is weg voor de speler.
+    await expect(page.getByText("10:00 — 11:00")).toHaveCount(2);
+    await expect(page.getByText("Court A")).toHaveCount(0);
+
+    // Kies "voorkeur" voor het 10:00-uur (eerste pref-knop in de desktop-rij).
+    const hourRow = page
+      .locator(".sm\\:grid")
+      .filter({ hasText: "10:00 — 11:00" })
+      .first();
+    await hourRow.getByRole("radio").first().check({ force: true });
+
+    const inputs = page.locator('input[type="text"]');
+    await inputs.nth(0).fill("Sophie");
+    await inputs.nth(1).fill("De Vries");
+    await page.locator('input[type="email"]').fill("sophie@example.be");
+    await page.locator('input[type="date"]').fill("1990-05-12");
+    await page.getByRole("button", { name: "Inschrijven" }).click();
+
+    await expect(page.getByText("Ingeschreven!")).toBeVisible();
+
+    // De ene keuze is uitgeklapt naar alle drie de parallelle banen, met
+    // preference = 2 (Preferred). De 11:00-rij bleef onaangeroerd.
+    await expect
+      .poll(() => postBody?.timeSlotPreferences)
+      .toEqual([
+        { weeklyTemplateEntryId: "aaaaaaaa-0000-0000-0000-000000000001", preference: 2 },
+        { weeklyTemplateEntryId: "aaaaaaaa-0000-0000-0000-000000000002", preference: 2 },
+        { weeklyTemplateEntryId: "aaaaaaaa-0000-0000-0000-000000000003", preference: 2 },
+      ]);
+  });
+
   test("shows enrollment form with custom fields", async ({ page }) => {
     const customForm = {
       id: "form-1",

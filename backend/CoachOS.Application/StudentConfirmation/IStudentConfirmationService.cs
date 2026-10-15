@@ -20,6 +20,11 @@ public interface IStudentConfirmationService
 
     Task<Result<string>> GenerateCalendarAsync(string rawToken, CancellationToken ct = default);
 
+    /// <summary>Markeert enkel deze inschrijving (lid of solo) als betaald.</summary>
     Task<Result> MarkEnrollmentCashPaidAsync(
+        Guid enrollmentId, Guid organizationId, CancellationToken ct = default);
+
+    /// <summary>Markeert de hele groep (of solo) als betaald in één keer.</summary>
+    Task<Result> MarkGroupCashPaidAsync(
         Guid enrollmentId, Guid organizationId, CancellationToken ct = default);
 }

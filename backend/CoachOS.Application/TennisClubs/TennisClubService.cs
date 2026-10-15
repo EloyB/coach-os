@@ -9,6 +9,7 @@ namespace CoachOS.Application.TennisClubs;
 public class TennisClubService(
     ITennisClubRepository tennisClubRepo,
     ILessonSerieRepository lessonSeriesRepo,
+    IUnitOfWork unitOfWork,
     ApplicationMapper mapper) : ITennisClubService
 {
     public async Task<Result<List<TennisClubDto>>> GetAllAsync(
@@ -39,7 +40,7 @@ public class TennisClubService(
         };
 
         await tennisClubRepo.AddAsync(club, ct);
-        await tennisClubRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         return Result<Guid>.Ok(club.Id);
     }
@@ -64,7 +65,7 @@ public class TennisClubService(
         if (request.Address is not null)
             club.Address = request.Address;
 
-        await tennisClubRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         return Result<TennisClubDto>.Ok(mapper.ToTennisClubDto(club));
     }
@@ -82,7 +83,7 @@ public class TennisClubService(
             return Result.Fail(new Error(ErrorCodes.Conflict, "Deze tennisclub kan niet worden verwijderd omdat er lesreeksen aan gekoppeld zijn."));
 
         await tennisClubRepo.DeleteAsync(club, ct);
-        await tennisClubRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         return Result.Ok();
     }

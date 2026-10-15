@@ -1,9 +1,12 @@
+using CoachOS.Application.Abstractions;
 using CoachOS.Application.Common;
 using CoachOS.Application.LessonSerie.DTOs;
 using CoachOS.Application.Mappings;
+using CoachOS.Domain.Common;
 using CoachOS.Domain.Enums;
 using CoachOS.Domain.Interfaces;
 using CoachOS.Domain.Models;
+using Microsoft.Extensions.Logging;
 
 namespace CoachOS.Application.LessonSerie;
 
@@ -18,7 +21,10 @@ public class LessonSerieService(
     IScheduleAssignmentRepository scheduleAssignmentRepo,
     ITimeSlotPreferenceRepository timeSlotPreferenceRepo,
     ILessonInvitationRepository lessonInvitationRepo,
-    ApplicationMapper mapper) : ILessonSerieService
+    IUnitOfWork unitOfWork,
+    TimeProvider timeProvider,
+    ApplicationMapper mapper,
+    ILogger<LessonSerieService> logger) : ILessonSerieService
 {
     public async Task<Result<List<LessonSerieDto>>> GetAllAsync(
         Guid organizationId, Guid? trainerId, IReadOnlyList<Guid> headTrainerClubIds, CancellationToken ct = default)
@@ -171,7 +177,7 @@ public class LessonSerieService(
         }
 
         await lessonSeriesRepo.AddAsync(series, ct);
-        await lessonSeriesRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         return Result<Guid>.Ok(series.Id);
     }
@@ -210,7 +216,7 @@ public class LessonSerieService(
         series.AcceptManualPayment = request.AcceptManualPayment;
 
         await lessonSeriesRepo.UpdateAsync(series, ct);
-        await lessonSeriesRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         var lessonCount = await lessonRepo.CountBySeriesIdAsync(series.Id, ct);
 
@@ -240,7 +246,7 @@ public class LessonSerieService(
         await lessonSeriesRepo.DeleteWeeklyTemplateRangeAsync(series.WeeklyTemplate, ct);
         await lessonRepo.DeleteRangeAsync(series.Lessons, ct);
         await lessonSeriesRepo.DeleteAsync(series, ct);
-        await lessonSeriesRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         return Result.Ok();
     }
@@ -279,7 +285,7 @@ public class LessonSerieService(
 
         Domain.Entities.Lesson lesson = mapper.ToLesson(request, series);
         await lessonRepo.AddAsync(lesson, ct);
-        await lessonRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         return Result<Guid>.Ok(lesson.Id);
     }
@@ -338,7 +344,7 @@ public class LessonSerieService(
         // tot en met de einddatum van de reeks. Zo verschijnt het weekslot zowel in de planning
         // (uit de weekindeling) als in de lesmomenten-kalender (uit de Lesson-rijen).
         LessonLevel? level = request.Level.HasValue ? (LessonLevel)request.Level.Value : null;
-        DateOnly today = DateOnly.FromDateTime(DateTime.UtcNow);
+        DateOnly today = timeProvider.GetBrusselsToday();
         DateOnly from = series.StartDate > today ? series.StartDate : today;
 
         foreach (DateOnly date in WeeklyLessonExpander.MatchingDates(request.DayOfWeek, from, series.EndDate))
@@ -360,7 +366,7 @@ public class LessonSerieService(
             });
         }
 
-        await lessonSeriesRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
         return Result<Guid>.Ok(entry.Id);
     }
 
@@ -494,30 +500,49 @@ public class LessonSerieService(
             }
         }
 
-        await lessonRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
-        if (newlyCancelled && lesson.LessonSerieId.HasValue)
+        if (newlyCancelled && lesson.LessonSerieId.HasValue
+            && lesson.WeeklyTemplateEntryId is Guid weeklyTemplateEntryId)
         {
-            List<Domain.Entities.Enrollment> enrollments =
-                await enrollmentRepo.GetBySeriesAsync(lesson.LessonSerieId.Value, organizationId, ct);
+            List<Domain.Entities.ScheduleAssignment> assignments =
+                await scheduleAssignmentRepo.GetBySeriesAsync(lesson.LessonSerieId.Value, organizationId, ct);
 
-            List<Domain.Entities.Enrollment> activeEnrollments = enrollments
+            // Een annulering geldt voor één concreet lesmoment. Haal ontvangers daarom uit
+            // de toewijzingen van het bijbehorende weekslot, niet uit alle inschrijvingen
+            // van de reeks: dezelfde reeks kan meerdere parallelle tijdsloten bevatten.
+            IEnumerable<Domain.Entities.Enrollment> assignedEnrollments = assignments
+                .Where(a => a.WeeklyTemplateEntryId == weeklyTemplateEntryId
+                    && a.Status != Domain.Enums.ScheduleAssignmentStatus.Declined)
+                .SelectMany(a => a.Enrollment is not null
+                    ? [a.Enrollment]
+                    : a.EnrollmentGroup?.Members ?? [])
                 .Where(e => e.Status is Domain.Enums.EnrollmentStatus.Pending
                     or Domain.Enums.EnrollmentStatus.Confirmed
-                    or Domain.Enums.EnrollmentStatus.PendingPayment)
-                .ToList();
+                    or Domain.Enums.EnrollmentStatus.PendingPayment);
 
-            // Eén mail per contactadres: een ouder met drie kinderen in de reeks hoort
+            // Eén mail per contactadres: een ouder met drie kinderen in hetzelfde slot hoort
             // één annuleringsbericht te krijgen, geen drie.
-            foreach (Domain.Entities.Enrollment enrollment in activeEnrollments.DistinctBy(e => e.ContactEmail))
+            foreach (Domain.Entities.Enrollment enrollment in assignedEnrollments
+                .DistinctBy(e => e.ContactEmail))
             {
-                _ = emailService.SendLessonCancellationAsync(
-                    enrollment.ContactEmail,
-                    enrollment.StudentName,
-                    series.Name,
-                    lesson.Date,
-                    lesson.StartTime,
-                    lesson.CancellationReason);
+                try
+                {
+                    await emailService.SendLessonCancellationAsync(
+                        enrollment.ContactEmail,
+                        enrollment.StudentName,
+                        series.Name,
+                        lesson.Date,
+                        lesson.StartTime,
+                        lesson.CancellationReason,
+                        ct);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex,
+                        "Annuleringsmail faalde voor {Email} (les {LessonId}, reeks {SeriesId})",
+                        enrollment.ContactEmail, lesson.Id, seriesId);
+                }
             }
         }
 
@@ -623,7 +648,7 @@ public class LessonSerieService(
             return Result.Fail(new Error(ErrorCodes.Conflict, "Verwijderen niet mogelijk: er zijn nog inschrijvingen op dit lesmoment."));
 
         await lessonRepo.DeleteAsync(lesson, ct);
-        await lessonRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         return Result.Ok();
     }
@@ -702,7 +727,7 @@ public class LessonSerieService(
         timeSlotPreferenceRepo.RemoveRange(preferenceStubs);
         await lessonRepo.DeleteRangeAsync(slotLessons, ct);
         await lessonSeriesRepo.DeleteWeeklyTemplateRangeAsync([entry], ct);
-        await lessonSeriesRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         return Result.Ok();
     }
@@ -770,7 +795,7 @@ public class LessonSerieService(
             lesson.MaxStudents = request.MaxStudents;
         }
 
-        await lessonSeriesRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
         return Result.Ok();
     }
 

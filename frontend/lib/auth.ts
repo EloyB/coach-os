@@ -38,6 +38,20 @@ export function isHeadTrainerViewer(): boolean {
   return u?.role === "Trainer" && (u?.headTrainerClubIds?.length ?? 0) > 0;
 }
 
+export function isEnrollmentManager(): boolean {
+  const u = getAuthUser();
+  return u?.role === "Admin" || isHeadTrainerViewer();
+}
+
+/**
+ * Enkel Admins mogen een inschrijving bewerken (prijsoptie wijzigen). Het
+ * onderliggende endpoint is Admin-only, dus hoofdtrainers krijgen deze knoppen
+ * niet te zien i.p.v. een gegarandeerde 403 bij het opslaan.
+ */
+export function canEditEnrollment(): boolean {
+  return getAuthUser()?.role === "Admin";
+}
+
 export function isSuperAdmin(): boolean {
   return getAuthUser()?.isSuperAdmin === true;
 }

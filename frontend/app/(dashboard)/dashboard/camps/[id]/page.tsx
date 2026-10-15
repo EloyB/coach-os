@@ -7,12 +7,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import {
   ChevronLeft,
-  ChevronDown,
-  ChevronUp,
   Trash2,
   Users,
-  Copy,
-  CheckCircle2,
   Pencil,
   X,
   Euro,
@@ -36,9 +32,6 @@ import {
 import {
   getCampById,
   deleteCamp,
-  getCampEnrollments,
-  markCampEnrollmentCashPaid,
-  type CampEnrollmentDto,
   type CampDetailDto,
 } from "@/lib/api/camps";
 import { getAxiosErrorMessages } from "@/lib/utils/api-errors";
@@ -48,242 +41,7 @@ import { CampFormBuilder } from "../_components/camp-form-builder";
 import { CampEditForm } from "../_components/camp-edit-form";
 import { CampDaysCard } from "../_components/camp-days-card";
 import { CampDaysReadOnlyCard } from "../_components/camp-days-readonly-card";
-
-// ─── Enrollment status badges ─────────────────────────────────────────────────
-
-function StatusBadge({ status }: { status: string }) {
-  const t = useTranslations("camps");
-  const map: Record<string, { label: string; className: string }> = {
-    Pending: {
-      label: t("statusPending"),
-      className: "bg-amber-50 text-amber-700",
-    },
-    PendingPayment: {
-      label: t("paymentPending"),
-      className: "bg-amber-50 text-amber-700",
-    },
-    Confirmed: {
-      label: t("statusConfirmed"),
-      className: "bg-tennis-green/10 text-tennis-green",
-    },
-    Cancelled: {
-      label: t("statusCancelled"),
-      className: "bg-canvas text-ink-3",
-    },
-  };
-  const entry = map[status] ?? { label: status, className: "bg-canvas text-ink-3" };
-  return (
-    <span
-      className={`text-[10.5px] px-2 py-0.5 rounded-full font-semibold ${entry.className}`}
-    >
-      {entry.label}
-    </span>
-  );
-}
-
-function PaymentBadge({
-  paymentMethod,
-  paymentStatus,
-}: {
-  paymentMethod: string | null;
-  paymentStatus: string | null;
-}) {
-  const t = useTranslations("camps");
-  if (!paymentMethod && !paymentStatus) return null;
-
-  let label: string;
-  let className: string;
-  if (paymentStatus === "Paid") {
-    label = t("paymentPaid");
-    className = "bg-tennis-green/10 text-tennis-green";
-  } else if (paymentMethod === "Cash") {
-    label = t("paymentCashPending");
-    className = "bg-amber-50 text-amber-700";
-  } else if (paymentMethod === "Online") {
-    label = t("paymentOnlinePending");
-    className = "bg-amber-50 text-amber-700";
-  } else {
-    label = t("paymentPending");
-    className = "bg-amber-50 text-amber-700";
-  }
-
-  return (
-    <span
-      className={`text-[10.5px] px-2 py-0.5 rounded-full font-semibold ${className}`}
-    >
-      {label}
-    </span>
-  );
-}
-
-function EnrollmentRow({
-  enrollment,
-  campId,
-}: {
-  enrollment: CampEnrollmentDto;
-  campId: string;
-}) {
-  const t = useTranslations("camps");
-  const queryClient = useQueryClient();
-  const [expanded, setExpanded] = useState(false);
-  const [markErrors, setMarkErrors] = useState<string[]>([]);
-  const hasResponses = enrollment.formResponses.length > 0;
-
-  const isCashPending =
-    enrollment.paymentMethod === "Cash" && enrollment.paymentStatus === "Pending";
-
-  const markPaidMutation = useMutation({
-    mutationFn: () => markCampEnrollmentCashPaid(campId, enrollment.id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["campEnrollments", campId] });
-      queryClient.invalidateQueries({ queryKey: ["camp", campId] });
-    },
-    onError: (error) => {
-      setMarkErrors(getAxiosErrorMessages(error, t("markPaidError")));
-    },
-  });
-
-  return (
-    <div className="border-b border-gray-100 last:border-b-0">
-      <div
-        className={`flex items-center justify-between px-5 py-3 ${hasResponses ? "cursor-pointer hover:bg-gray-50" : ""}`}
-        onClick={() => hasResponses && setExpanded((v) => !v)}
-      >
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-gray-900 truncate">
-            {enrollment.participantName}
-          </p>
-          <p className="text-xs text-gray-400 truncate">
-            {enrollment.participantEmail}
-            {enrollment.groupName ? ` · ${enrollment.groupName}` : ""}
-          </p>
-        </div>
-        <div className="flex items-center gap-3 ml-4">
-          <span className="text-xs text-gray-400">
-            {new Date(enrollment.enrolledAt).toLocaleDateString("nl-BE")}
-          </span>
-          <PaymentBadge
-            paymentMethod={enrollment.paymentMethod}
-            paymentStatus={enrollment.paymentStatus}
-          />
-          <StatusBadge status={enrollment.status} />
-          {hasResponses &&
-            (expanded ? (
-              <ChevronUp size={13} className="text-gray-400" />
-            ) : (
-              <ChevronDown size={13} className="text-gray-400" />
-            ))}
-        </div>
-      </div>
-
-      {isCashPending && (
-        <div
-          className="px-5 pb-3"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <button
-            type="button"
-            onClick={() => {
-              setMarkErrors([]);
-              markPaidMutation.mutate();
-            }}
-            disabled={markPaidMutation.isPending}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-tennis-green text-white text-xs font-semibold hover:bg-tennis-green/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            <CheckCircle2 size={13} />
-            {markPaidMutation.isPending ? t("markingPaid") : t("markPaid")}
-          </button>
-          {markErrors.length > 0 && (
-            <div className="text-xs text-red-600 mt-2 space-y-0.5">
-              {markErrors.map((msg, i) => (
-                <p key={i}>{msg}</p>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {expanded && hasResponses && (
-        <div className="px-5 pb-3">
-          <dl className="space-y-1.5 bg-[#FAFAF8] rounded-lg p-3">
-            {enrollment.formResponses.map((r, i) => (
-              <div key={i} className="flex gap-3 text-xs">
-                <dt className="text-gray-400 shrink-0 min-w-[120px]">
-                  {r.fieldLabel}
-                </dt>
-                <dd className="text-gray-900 font-medium">{r.value}</dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function EnrollmentsSection({ campId }: { campId: string }) {
-  const t = useTranslations("camps");
-  const [copied, setCopied] = useState(false);
-
-  const { data: enrollments = [], isLoading } = useQuery({
-    queryKey: ["campEnrollments", campId],
-    queryFn: () => getCampEnrollments(campId),
-  });
-
-  function handleCopyLink() {
-    const url = `${window.location.origin}/camp/${campId}`;
-    navigator.clipboard.writeText(url);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }
-
-  return (
-    <div className="bg-white rounded-xl shadow-sm shadow-gray-100 overflow-hidden">
-      <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <div className="w-6 h-6 rounded-md bg-tennis-green/10 flex items-center justify-center">
-            <Users size={13} className="text-tennis-green" />
-          </div>
-          <h2 className="text-sm font-semibold text-gray-900">
-            {t("enrollmentsTitle")}
-          </h2>
-          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-tennis-green/10 text-tennis-green text-xs font-bold">
-            {enrollments.length}
-          </span>
-        </div>
-        <button
-          type="button"
-          onClick={handleCopyLink}
-          className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-600 hover:text-gray-900"
-        >
-          {copied ? (
-            <>
-              <CheckCircle2 size={13} className="text-tennis-green" />
-              {t("linkCopied")}
-            </>
-          ) : (
-            <>
-              <Copy size={13} />
-              {t("shareLink")}
-            </>
-          )}
-        </button>
-      </div>
-
-      {isLoading ? (
-        <div className="p-5 text-xs text-gray-400">{t("enrollmentsLoading")}</div>
-      ) : enrollments.length === 0 ? (
-        <p className="p-5 text-xs text-gray-400">{t("enrollmentsEmpty")}</p>
-      ) : (
-        <div>
-          {enrollments.map((e) => (
-            <EnrollmentRow key={e.id} enrollment={e} campId={campId} />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
+import { CampEnrollmentsSection } from "../_components/camp-enrollments-section";
 
 // ─── Info chips ───────────────────────────────────────────────────────────────
 
@@ -438,19 +196,21 @@ export default function CampDetailPage({
                   <button
                     type="button"
                     onClick={() => setEditing(true)}
-                    className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+                    aria-label={t("editAction")}
+                    className="shrink-0 flex items-center gap-1.5 rounded-lg border border-gray-200 px-2 py-1.5 sm:px-3 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
                   >
-                    <Pencil size={12} />
-                    {t("editAction")}
+                    <Pencil size={13} />
+                    <span className="hidden sm:inline">{t("editAction")}</span>
                   </button>
                 ) : (
                   <button
                     type="button"
                     onClick={() => setEditing(false)}
-                    className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-500 hover:bg-gray-50 transition-colors"
+                    aria-label={t("close")}
+                    className="shrink-0 flex items-center gap-1.5 rounded-lg border border-gray-200 px-2 py-1.5 sm:px-3 text-xs font-medium text-gray-500 hover:bg-gray-50 transition-colors"
                   >
-                    <X size={12} />
-                    {t("close")}
+                    <X size={13} />
+                    <span className="hidden sm:inline">{t("close")}</span>
                   </button>
                 ))}
             </div>
@@ -480,7 +240,7 @@ export default function CampDetailPage({
           {isAdmin && <CampFormBuilder campId={id} />}
 
           {/* ── Section 3: Enrollments ── */}
-          <EnrollmentsSection campId={id} />
+          <CampEnrollmentsSection campId={id} campName={camp.name} />
 
           {/* ── Section 4: Danger zone (admin only) ── */}
           {isAdmin && (

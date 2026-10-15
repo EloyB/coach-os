@@ -1,3 +1,4 @@
+using CoachOS.Application.Abstractions;
 using CoachOS.Application.Planning.DTOs;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
@@ -12,6 +13,7 @@ public class PlanningService(
     IEnrollmentGroupRepository enrollmentGroupRepo,
     ITimeSlotPreferenceRepository timeSlotPreferenceRepo,
     IScheduleAssignmentRepository scheduleAssignmentRepo,
+    IUnitOfWork unitOfWork,
     IUserLookupService userLookup) : IPlanningService
 {
     public async Task<Result<PlanningOverviewDto>> GenerateProposalAsync(
@@ -110,7 +112,7 @@ public class PlanningService(
         await scheduleAssignmentRepo.AddRangeAsync(newAssignments, ct);
 
         series.PlanningStatus = PlanningStatus.Planning;
-        await lessonSeriesRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         return await GetPlanningOverviewAsync(seriesId, organizationId, ct);
     }
@@ -239,7 +241,7 @@ public class PlanningService(
                 new Error(ErrorCodes.Validation, "Alleen concepttoewijzingen kunnen vastgezet of vrijgegeven worden."));
 
         assignment.IsLocked = isLocked;
-        await scheduleAssignmentRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         return Result<PlanningAssignmentDto>.Ok(new PlanningAssignmentDto
         {

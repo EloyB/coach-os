@@ -8,7 +8,6 @@ import * as z from "zod";
 import { useTranslations } from "next-intl";
 import {
   GraduationCap,
-  UserX,
   Trash2,
   Mail,
   X,
@@ -23,7 +22,6 @@ import {
   getTrainers,
   inviteTrainer,
   updateTrainer,
-  deactivateTrainer,
   reassignTrainerSeries,
   removeTrainer,
   resendTrainerInvite,
@@ -278,7 +276,7 @@ function InviteForm({ onClose }: { onClose: () => void }) {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">
             {t("firstName")} <span className="text-red-400">*</span>
@@ -385,7 +383,11 @@ function EditTrainerDialog({
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent>
+      <DialogContent
+        // Voorkom dat Radix bij openen de eerste focusbare control autofocust —
+        // op mobiel klapt een net-gefocust veld/dropdown dan meteen open.
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>{t("editTitle")}</DialogTitle>
         </DialogHeader>
@@ -403,7 +405,7 @@ function EditTrainerDialog({
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 {t("firstName")} <span className="text-red-400">*</span>
@@ -501,7 +503,7 @@ function HeadTrainerControl({
         className={`p-1.5 rounded transition-all disabled:opacity-50 ${
           active
             ? "text-tennis-green bg-tennis-green/10"
-            : "opacity-0 group-hover:opacity-100 text-ink-3 hover:text-tennis-green hover:bg-tennis-green/10"
+            : "opacity-100 lg:opacity-0 lg:group-hover:opacity-100 text-ink-3 hover:text-tennis-green hover:bg-tennis-green/10"
         }`}
       >
         <Crown size={14} />
@@ -528,7 +530,7 @@ function HeadTrainerControl({
           className={`p-1.5 rounded transition-all disabled:opacity-50 ${
             active
               ? "text-tennis-green bg-tennis-green/10"
-              : "opacity-0 group-hover:opacity-100 text-ink-3 hover:text-tennis-green hover:bg-tennis-green/10"
+              : "opacity-100 lg:opacity-0 lg:group-hover:opacity-100 text-ink-3 hover:text-tennis-green hover:bg-tennis-green/10"
           }`}
         >
           <Crown size={14} />
@@ -596,11 +598,6 @@ export default function TrainersPage() {
   const { data: clubs = [] } = useQuery({
     queryKey: ["tennisClubs"],
     queryFn: getTennisClubs,
-  });
-
-  const deactivateMutation = useMutation({
-    mutationFn: deactivateTrainer,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["trainers"] }),
   });
 
   const headTrainerMutation = useMutation({
@@ -768,7 +765,7 @@ export default function TrainersPage() {
 
                 {tr.isActive && (
                   <>
-                    <div className="grid grid-cols-3 gap-2.5 mt-3.5 pt-3 border-t border-dashed border-rule">
+                    <div className="grid grid-cols-[auto_1fr] gap-4 mt-3.5 pt-3 border-t border-dashed border-rule">
                       <div>
                         <p className="text-[9.5px] text-ink-3 uppercase tracking-[0.06em] m-0">{t("seriesCount")}</p>
                         <p className="text-sm font-bold text-ink font-mono mt-0.5 m-0">
@@ -800,7 +797,8 @@ export default function TrainersPage() {
                           <p className="text-sm font-bold text-ink font-mono mt-0.5 m-0">&mdash;</p>
                         )}
                       </div>
-                      <div className="flex gap-1 justify-end items-end">
+                    </div>
+                    <div className="flex flex-wrap gap-1 justify-end items-center mt-2.5 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
                         {isSelfAdmin ? (
                           <span className="text-[9.5px] text-ink-3 italic">
                             {t("manageViaSettings")}
@@ -819,37 +817,28 @@ export default function TrainersPage() {
                               onClick={() => setAvailabilityTrainer(tr)}
                               title={t("availabilityButton")}
                               aria-label={t("availabilityButton")}
-                              className="opacity-0 group-hover:opacity-100 p-1.5 rounded text-ink-3 hover:text-tennis-green hover:bg-tennis-green/10 transition-all"
+                              className="p-1.5 rounded text-ink-3 hover:text-tennis-green hover:bg-tennis-green/10 transition-all"
                             >
                               <CalendarClock size={14} />
                             </button>
                             <button
                               onClick={() => setEditTrainer(tr)}
                               title={t("edit")}
-                              className="opacity-0 group-hover:opacity-100 p-1.5 rounded text-ink-3 hover:text-tennis-green hover:bg-tennis-green/10 transition-all"
+                              className="p-1.5 rounded text-ink-3 hover:text-tennis-green hover:bg-tennis-green/10 transition-all"
                             >
                               <Pencil size={14} />
-                            </button>
-                            <button
-                              onClick={() => deactivateMutation.mutate(tr.id)}
-                              disabled={deactivateMutation.isPending}
-                              title={t("deactivate")}
-                              className="opacity-0 group-hover:opacity-100 p-1.5 rounded text-ink-3 hover:text-amber-500 hover:bg-amber-50 transition-all"
-                            >
-                              <UserX size={14} />
                             </button>
                             {tr.lessonSeriesCount === 0 && (
                               <button
                                 onClick={() => handleRemoveClick(tr)}
                                 title={t("remove")}
-                                className="opacity-0 group-hover:opacity-100 p-1.5 rounded text-ink-3 hover:text-red-500 hover:bg-red-50 transition-all"
+                                className="p-1.5 rounded text-ink-3 hover:text-red-500 hover:bg-red-50 transition-all"
                               >
                                 <Trash2 size={14} />
                               </button>
                             )}
                           </>
                         )}
-                      </div>
                     </div>
                   </>
                 )}

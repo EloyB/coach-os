@@ -1,8 +1,8 @@
+using CoachOS.Application.Abstractions;
 using System.Net;
 using System.Net.Mail;
+using System.Net.Mime;
 using System.Text;
-using CoachOS.Domain.Interfaces;
-using CoachOS.Domain.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -17,6 +17,22 @@ public class EmailService(
     private readonly EmailOptions _options = options.Value;
     private static readonly string[] DaysNl =
         ["zondag", "maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag"];
+
+    // Logo wordt als inline resource (cid) meegestuurd, zodat de header-afbeelding
+    // ook toont wanneer de client externe afbeeldingen blokkeert. Templates
+    // verwijzen ernaar via src="cid:coachos-logo". Hergebruikt het embedded asset.
+    private const string LogoContentId = "coachos-logo";
+    private static readonly byte[] LogoBytes = LoadLogo();
+
+    private static byte[] LoadLogo()
+    {
+        using Stream? s = typeof(EmailService).Assembly
+            .GetManifestResourceStream("CoachOS.Infrastructure.Export.Assets.coachos-logo.png");
+        if (s is null) return [];
+        using var ms = new MemoryStream();
+        s.CopyTo(ms);
+        return ms.ToArray();
+    }
 
     public async Task SendTrainerInviteAsync(
         string toEmail, string firstName, string inviteUrl, CancellationToken ct = default)
@@ -54,27 +70,33 @@ public class EmailService(
         => names is { Count: > 1 } ? $"{label}: {string.Join(", ", names)}" : string.Empty;
 
     public async Task SendEnrollmentConfirmationAsync(
-        string studentEmail, string studentName, string seriesName, string trainerName,
+        string studentEmail, string studentName, string seriesName,
         IReadOnlyList<string>? participantNames = null, CancellationToken ct = default)
     {
-        string trainerDescription = string.IsNullOrWhiteSpace(trainerName)
-            ? "Je club neemt indien nodig contact met je op."
-            : $"Trainer {trainerName} neemt indien nodig contact met je op.";
-        string trainerLine = string.IsNullOrWhiteSpace(trainerName)
-            ? string.Empty
-            : $"Trainer: {trainerName}";
-
         var html = renderer.Render("enrollment-confirmation", new Dictionary<string, string>
         {
             ["studentName"] = studentName,
             ["seriesName"] = seriesName,
-            ["trainerDescription"] = trainerDescription,
-            ["trainerLine"] = trainerLine,
             ["participantsLine"] = ParticipantsLine(participantNames, "Ingeschreven"),
             ["year"] = DateTime.UtcNow.Year.ToString(),
         });
         await SendAsync(studentEmail, studentName,
             $"Inschrijving bevestigd: {seriesName}", html, ct);
+    }
+
+    public async Task SendGroupMemberAddedAsync(
+        string studentEmail, string studentName, string seriesName, string groupName,
+        CancellationToken ct = default)
+    {
+        var html = renderer.Render("group-member-added", new Dictionary<string, string>
+        {
+            ["studentName"] = studentName,
+            ["seriesName"] = seriesName,
+            ["groupName"] = groupName,
+            ["year"] = DateTime.UtcNow.Year.ToString(),
+        });
+        await SendAsync(studentEmail, studentName,
+            $"Toegevoegd aan {groupName}: {seriesName}", html, ct);
     }
 
     public async Task SendEnrollmentPendingCashAsync(
@@ -162,6 +184,55 @@ public class EmailService(
             $"Bevestig de lesmomenten voor {names} — {seriesName}", html, ct);
     }
 
+    public async Task SendScheduleInfoAsync(
+        string toEmail, string toName, string seriesName, string groupName,
+        int dayOfWeek, string startTime, string endTime, string? courtName,
+        CancellationToken ct = default)
+    {
+        // dayOfWeek in EU-conventie (0 = maandag) → DaysNl is .NET-conventie (0 = zondag).
+        var dayName = DaysNl[(Math.Clamp(dayOfWeek, 0, 6) + 1) % 7];
+        var courtLine = string.IsNullOrWhiteSpace(courtName) ? string.Empty : $"Baan: {courtName}";
+
+        var html = renderer.Render("schedule-info", new Dictionary<string, string>
+        {
+            ["studentName"] = toName,
+            ["seriesName"] = seriesName,
+            ["groupName"] = groupName,
+            ["dayName"] = dayName,
+            ["startTime"] = startTime,
+            ["endTime"] = endTime,
+            ["courtLine"] = courtLine,
+            ["year"] = DateTime.UtcNow.Year.ToString(),
+        });
+        await SendAsync(toEmail, toName,
+            $"Je lesmoment is ingepland: {seriesName}", html, ct);
+    }
+
+    public async Task SendAssignmentMovedAsync(
+        string toEmail, string toName, string seriesName,
+        int oldDayOfWeek, string oldStartTime, string oldEndTime,
+        int newDayOfWeek, string newStartTime, string newEndTime, string? newCourtName,
+        IReadOnlyList<string>? participantNames = null, CancellationToken ct = default)
+    {
+        // dayOfWeek in EU-conventie (0 = maandag) → DaysNl is .NET-conventie (0 = zondag).
+        string OldDay() => DaysNl[(Math.Clamp(oldDayOfWeek, 0, 6) + 1) % 7];
+        string NewDay() => DaysNl[(Math.Clamp(newDayOfWeek, 0, 6) + 1) % 7];
+        var courtLine = string.IsNullOrWhiteSpace(newCourtName) ? string.Empty : $"Baan: {newCourtName}";
+
+        var html = renderer.Render("assignment-moved", new Dictionary<string, string>
+        {
+            ["studentName"] = toName,
+            ["seriesName"] = seriesName,
+            ["oldMoment"] = $"{OldDay()} {oldStartTime} — {oldEndTime}",
+            ["newMoment"] = $"{NewDay()} {newStartTime} — {newEndTime}",
+            ["courtLine"] = courtLine,
+            ["participantsLine"] = ParticipantsLine(participantNames, "Deze les is voor"),
+            ["year"] = DateTime.UtcNow.Year.ToString(),
+        });
+        await SendAsync(toEmail, toName,
+            $"Je lesmoment is verplaatst: {seriesName}", html, ct);
+    }
+
     public async Task SendStudentMagicLinkAsync(
         string toEmail, string magicLinkUrl, CancellationToken ct = default)
     {
@@ -244,7 +315,7 @@ public class EmailService(
         string toEmail, string toName, string? seriesName,
         DateOnly oldDate, TimeOnly oldStartTime,
         DateOnly newDate, TimeOnly newStartTime, TimeOnly newEndTime,
-        string? courtName, string trainerName, string? reason,
+        string? courtName, string? reason,
         CancellationToken ct = default)
     {
         string oldDayName = DaysNl[(int)oldDate.DayOfWeek];
@@ -269,7 +340,6 @@ public class EmailService(
             ["newStartTime"] = newStartTime.ToString("HH:mm"),
             ["newEndTime"] = newEndTime.ToString("HH:mm"),
             ["courtLine"] = courtLine,
-            ["trainerName"] = trainerName,
             ["raw:reasonBlock"] = reasonBlock,
             ["year"] = DateTime.UtcNow.Year.ToString(),
         });
@@ -284,7 +354,6 @@ public class EmailService(
         TimeOnly startTime,
         TimeOnly endTime,
         string? courtName,
-        string trainerName,
         string? levelText,
         string? notes,
         string invitationUrl,
@@ -301,7 +370,6 @@ public class EmailService(
         string html = renderer.Render("standalone-lesson-invitation", new Dictionary<string, string>
         {
             ["greetingName"] = greetingName,
-            ["trainerName"] = trainerName,
             ["dayName"] = dayName,
             ["dateText"] = dateText,
             ["startTime"] = startTime.ToString("HH:mm"),
@@ -379,11 +447,24 @@ public class EmailService(
         {
             From = new MailAddress(_options.FromAddress, _options.FromName),
             Subject = subject,
-            Body = htmlBody,
-            IsBodyHtml = true
         };
 
         message.To.Add(new MailAddress(toEmail, toName));
+
+        // HTML als AlternateView zodat we het logo als inline (cid) resource kunnen
+        // koppelen; message.Body/IsBodyHtml vervalt daarmee.
+        AlternateView htmlView = AlternateView.CreateAlternateViewFromString(
+            htmlBody, Encoding.UTF8, MediaTypeNames.Text.Html);
+        if (LogoBytes.Length > 0)
+        {
+            LinkedResource logo = new(new MemoryStream(LogoBytes), new ContentType(MediaTypeNames.Image.Png))
+            {
+                ContentId = LogoContentId,
+                TransferEncoding = TransferEncoding.Base64,
+            };
+            htmlView.LinkedResources.Add(logo);
+        }
+        message.AlternateViews.Add(htmlView);
 
         try
         {

@@ -41,7 +41,7 @@ export const AUDIENCES: Audience[] = [
     bullets: [
       "Publieke inschrijflink per reeks",
       "Multi-club via één account",
-      "Gratis tijdens pilot",
+      "30 dagen gratis proberen",
     ],
     slug: "voor-trainers",
   },

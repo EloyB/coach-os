@@ -7,9 +7,20 @@ import {
   Settings,
   Ticket,
   Tent,
+  type LucideIcon,
 } from "lucide-react";
 
-export const navItems = [
+export interface NavItem {
+  label: string;
+  /** Kortere variant voor de mobiele bottom-nav (valt terug op label). */
+  shortLabel?: string;
+  href: string;
+  icon: LucideIcon;
+  exact?: boolean;
+  adminOnly?: boolean;
+}
+
+export const navItems: NavItem[] = [
   {
     label: "Vandaag",
     href: "/dashboard",
@@ -30,6 +41,7 @@ export const navItems = [
   },
   {
     label: "Losse lessen",
+    shortLabel: "Losse",
     href: "/dashboard/standalone-lessons",
     icon: Ticket,
     exact: false,

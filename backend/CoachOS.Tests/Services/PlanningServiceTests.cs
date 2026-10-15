@@ -1,3 +1,4 @@
+using CoachOS.Application.Abstractions;
 using CoachOS.Application.Planning;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
@@ -17,6 +18,7 @@ public class PlanningServiceTests
     private Mock<ITimeSlotPreferenceRepository> _prefRepo = null!;
     private Mock<IScheduleAssignmentRepository> _assignmentRepo = null!;
     private Mock<IUserLookupService> _userLookup = null!;
+    private Mock<IUnitOfWork> _unitOfWork = null!;
     private PlanningService _service = null!;
 
     private static readonly Guid OrgId = Guid.NewGuid();
@@ -32,6 +34,7 @@ public class PlanningServiceTests
         _prefRepo = new Mock<ITimeSlotPreferenceRepository>();
         _assignmentRepo = new Mock<IScheduleAssignmentRepository>();
         _userLookup = new Mock<IUserLookupService>();
+        _unitOfWork = new Mock<IUnitOfWork>();
 
         _service = new PlanningService(
             _seriesRepo.Object,
@@ -39,6 +42,7 @@ public class PlanningServiceTests
             _groupRepo.Object,
             _prefRepo.Object,
             _assignmentRepo.Object,
+            _unitOfWork.Object,
             _userLookup.Object);
     }
 
@@ -96,7 +100,7 @@ public class PlanningServiceTests
 
         // Algorithm ran — assignments were persisted
         _assignmentRepo.Verify(r => r.AddRangeAsync(It.IsAny<IEnumerable<ScheduleAssignment>>(), It.IsAny<CancellationToken>()), Times.Once);
-        _seriesRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.AtLeastOnce);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.AtLeastOnce);
     }
 
     // ── Guard tegen onbedoelde regenerate (Bug 1) ────────────────────────────
@@ -255,7 +259,7 @@ public class PlanningServiceTests
         assignment.IsLocked.Should().BeTrue();
         result.Value!.IsLocked.Should().BeTrue();
         result.Value.Status.Should().Be("Proposed");
-        _assignmentRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Test]
@@ -280,7 +284,7 @@ public class PlanningServiceTests
         result.IsSuccess.Should().BeFalse();
         result.Errors[0].Code.Should().Be("validation");
         assignment.IsLocked.Should().BeFalse();
-        _assignmentRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────

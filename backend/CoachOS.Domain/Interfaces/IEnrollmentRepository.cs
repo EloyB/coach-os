@@ -1,4 +1,3 @@
-using System.Data;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
 
@@ -61,14 +60,4 @@ public interface IEnrollmentRepository
     Task AddAsync(Enrollment enrollment, CancellationToken ct = default);
 
     Task AddFormResponseAsync(FormResponse response, CancellationToken ct = default);
-
-    Task SaveChangesAsync(CancellationToken ct = default);
-
-    Task BeginTransactionAsync(CancellationToken ct = default);
-
-    Task BeginTransactionAsync(IsolationLevel isolationLevel, CancellationToken ct = default);
-
-    Task CommitTransactionAsync(CancellationToken ct = default);
-
-    Task RollbackTransactionAsync(CancellationToken ct = default);
 }

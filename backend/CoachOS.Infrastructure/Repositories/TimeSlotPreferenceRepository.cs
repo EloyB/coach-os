@@ -46,9 +46,4 @@ public class TimeSlotPreferenceRepository(ApplicationDbContext context) : ITimeS
     {
         context.TimeSlotPreferences.RemoveRange(preferences);
     }
-
-    public async Task SaveChangesAsync(CancellationToken ct = default)
-    {
-        await context.SaveChangesAsync(ct);
-    }
 }

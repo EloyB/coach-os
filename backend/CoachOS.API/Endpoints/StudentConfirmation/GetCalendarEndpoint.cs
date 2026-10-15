@@ -15,9 +15,15 @@ public class GetCalendarEndpoint : IEndpoint
                 if (!result.IsSuccess)
                     return result.ToErrorResult();
 
-                return Results.Text(result.Value!, "text/calendar", Encoding.UTF8);
+                return CreateCalendarDownload(result.Value!);
             })
         .AllowAnonymous()
         .WithTags("StudentConfirmation");
     }
+
+    public static IResult CreateCalendarDownload(string icsContent)
+        => Results.File(
+            Encoding.UTF8.GetBytes(icsContent),
+            "text/calendar; charset=utf-8",
+            "calendar.ics");
 }

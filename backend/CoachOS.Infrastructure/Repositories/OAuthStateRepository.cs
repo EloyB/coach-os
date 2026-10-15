@@ -30,9 +30,4 @@ public class OAuthStateRepository(ApplicationDbContext context) : IOAuthStateRep
             .Where(s => s.ExpiresAt < utcNow)
             .ExecuteDeleteAsync(ct);
     }
-
-    public async Task SaveChangesAsync(CancellationToken ct = default)
-    {
-        await context.SaveChangesAsync(ct);
-    }
 }

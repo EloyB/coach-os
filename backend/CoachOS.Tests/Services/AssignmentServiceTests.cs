@@ -1,9 +1,12 @@
+using CoachOS.Application.Abstractions;
 using CoachOS.Application.Planning;
 using CoachOS.Application.Planning.DTOs;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
 using CoachOS.Domain.Interfaces;
+using CoachOS.Domain.Models;
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using NUnit.Framework;
 
@@ -16,6 +19,8 @@ public class AssignmentServiceTests
     private Mock<IEnrollmentRepository> _enrollmentRepo = null!;
     private Mock<IEnrollmentGroupRepository> _groupRepo = null!;
     private Mock<IScheduleAssignmentRepository> _assignmentRepo = null!;
+    private Mock<IEmailService> _emailService = null!;
+    private Mock<IUnitOfWork> _unitOfWork = null!;
     private AssignmentService _service = null!;
 
     private static readonly Guid OrgId = Guid.NewGuid();
@@ -29,12 +34,17 @@ public class AssignmentServiceTests
         _enrollmentRepo = new Mock<IEnrollmentRepository>();
         _groupRepo = new Mock<IEnrollmentGroupRepository>();
         _assignmentRepo = new Mock<IScheduleAssignmentRepository>();
+        _emailService = new Mock<IEmailService>();
+        _unitOfWork = new Mock<IUnitOfWork>();
 
         _service = new AssignmentService(
             _seriesRepo.Object,
             _enrollmentRepo.Object,
             _groupRepo.Object,
-            _assignmentRepo.Object);
+            _assignmentRepo.Object,
+            _unitOfWork.Object,
+            _emailService.Object,
+            NullLogger<AssignmentService>.Instance);
     }
 
     // ── UpdateAssignmentAsync ────────────────────────────────────────────────
@@ -54,8 +64,11 @@ public class AssignmentServiceTests
     }
 
     [Test]
-    public async Task UpdateAssignmentAsync_ConfirmedAssignment_ReturnsValidationError()
+    public async Task UpdateAssignmentAsync_ConfirmedAssignment_MovesToNewSlot()
     {
+        // Betaling hangt aan de inschrijving, niet aan het slot: een bevestigde toewijzing
+        // mag de admin daarom nog naar een ander tijdslot verplaatsen.
+        var newSlotId = Guid.NewGuid();
         var assignment = new ScheduleAssignment
         {
             Id = Guid.NewGuid(),
@@ -69,10 +82,10 @@ public class AssignmentServiceTests
             .ReturnsAsync(assignment);
 
         var result = await _service.UpdateAssignmentAsync(
-            SeriesId, assignment.Id, new UpdateAssignmentRequest { WeeklyTemplateEntryId = Guid.NewGuid() }, OrgId);
+            SeriesId, assignment.Id, new UpdateAssignmentRequest { WeeklyTemplateEntryId = newSlotId }, OrgId);
 
-        result.IsSuccess.Should().BeFalse();
-        result.Errors[0].Code.Should().Be("validation");
+        result.IsSuccess.Should().BeTrue();
+        assignment.WeeklyTemplateEntryId.Should().Be(newSlotId);
     }
 
     [Test]
@@ -96,6 +109,84 @@ public class AssignmentServiceTests
 
         result.IsSuccess.Should().BeTrue();
         assignment.WeeklyTemplateEntryId.Should().Be(newSlotId);
+    }
+
+    [Test]
+    public async Task UpdateAssignmentAsync_ConfirmedMoveWithNotify_SendsMovedEmail()
+    {
+        var newSlotId = Guid.NewGuid();
+        var oldSlot = new WeeklyTemplateEntry
+        {
+            Id = SlotId, LessonSerieId = SeriesId, DayOfWeek = 2, MaxStudents = 4,
+        };
+        var newSlot = new WeeklyTemplateEntry
+        {
+            Id = newSlotId, LessonSerieId = SeriesId, DayOfWeek = 3, MaxStudents = 4,
+        };
+        var series = new LessonSerie
+        {
+            Id = SeriesId, OrganizationId = OrgId, Name = "Testreeks",
+            WeeklyTemplate = [oldSlot, newSlot],
+        };
+        var enrollment = new Enrollment
+        {
+            Id = Guid.NewGuid(), LessonSerieId = SeriesId,
+            StudentName = "Bram", ContactEmail = "bram@test.be",
+        };
+        var assignment = new ScheduleAssignment
+        {
+            Id = Guid.NewGuid(), OrganizationId = OrgId, LessonSerieId = SeriesId,
+            WeeklyTemplateEntryId = SlotId, WeeklyTemplateEntry = oldSlot,
+            EnrollmentId = enrollment.Id, Enrollment = enrollment,
+            Status = ScheduleAssignmentStatus.Confirmed,
+        };
+
+        _assignmentRepo.Setup(r => r.GetByIdAsync(assignment.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(assignment);
+        _assignmentRepo.Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ScheduleAssignment>());
+        _seriesRepo.Setup(r => r.GetByIdAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+
+        var result = await _service.UpdateAssignmentAsync(
+            SeriesId, assignment.Id,
+            new UpdateAssignmentRequest { WeeklyTemplateEntryId = newSlotId, NotifyStudent = true },
+            OrgId);
+
+        result.IsSuccess.Should().BeTrue();
+        _emailService.Verify(e => e.SendAssignmentMovedAsync(
+            "bram@test.be", "Bram", "Testreeks",
+            2, It.IsAny<string>(), It.IsAny<string>(),
+            3, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(),
+            It.IsAny<IReadOnlyList<string>?>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task UpdateAssignmentAsync_ConfirmedMoveWithoutNotify_DoesNotSendEmail()
+    {
+        var newSlotId = Guid.NewGuid();
+        var assignment = new ScheduleAssignment
+        {
+            Id = Guid.NewGuid(), OrganizationId = OrgId, LessonSerieId = SeriesId,
+            WeeklyTemplateEntryId = SlotId,
+            WeeklyTemplateEntry = new WeeklyTemplateEntry { Id = SlotId, DayOfWeek = 2 },
+            Status = ScheduleAssignmentStatus.Confirmed,
+        };
+
+        _assignmentRepo.Setup(r => r.GetByIdAsync(assignment.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(assignment);
+
+        var result = await _service.UpdateAssignmentAsync(
+            SeriesId, assignment.Id,
+            new UpdateAssignmentRequest { WeeklyTemplateEntryId = newSlotId, NotifyStudent = false },
+            OrgId);
+
+        result.IsSuccess.Should().BeTrue();
+        _emailService.Verify(e => e.SendAssignmentMovedAsync(
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+            It.IsAny<int>(), It.IsAny<string>(), It.IsAny<string>(),
+            It.IsAny<int>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(),
+            It.IsAny<IReadOnlyList<string>?>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     // ── CreateGroupAsync ─────────────────────────────────────────────────────
@@ -235,6 +326,125 @@ public class AssignmentServiceTests
     }
 
     [Test]
+    public async Task CreateAssignmentAsync_SameEnrollmentDifferentSlot_Succeeds()
+    {
+        // Multi-slot: een inschrijving die al op slot A staat mag ook op slot B.
+        var slotB = Guid.NewGuid();
+        var series = PlanningServiceTests.BuildSeries(withSlots: true, slotId: SlotId);
+        series.WeeklyTemplate.Add(new WeeklyTemplateEntry
+        {
+            Id = slotB, LessonSerieId = SeriesId, MaxStudents = 4,
+        });
+
+        var enrollment = new Enrollment
+        {
+            Id = Guid.NewGuid(), LessonSerieId = SeriesId,
+            Status = EnrollmentStatus.Pending, StudentName = "Emma Claes",
+        };
+        var existingOnSlotA = new ScheduleAssignment
+        {
+            Id = Guid.NewGuid(), LessonSerieId = SeriesId, WeeklyTemplateEntryId = SlotId,
+            EnrollmentId = enrollment.Id, Enrollment = enrollment,
+            Status = ScheduleAssignmentStatus.Proposed,
+        };
+
+        _seriesRepo.Setup(r => r.GetByIdAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+        _enrollmentRepo.Setup(r => r.GetByIdAsync(enrollment.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(enrollment);
+        _assignmentRepo.Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([existingOnSlotA]);
+
+        var result = await _service.CreateAssignmentAsync(
+            SeriesId,
+            new CreateAssignmentRequest { EnrollmentId = enrollment.Id, WeeklyTemplateEntryId = slotB },
+            OrgId);
+
+        result.IsSuccess.Should().BeTrue(string.Join("; ", result.Errors.Select(e => e.Message)));
+        _assignmentRepo.Verify(r => r.AddRangeAsync(
+            It.Is<IEnumerable<ScheduleAssignment>>(a =>
+                a.Single().EnrollmentId == enrollment.Id
+                && a.Single().WeeklyTemplateEntryId == slotB),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task CreateAssignmentAsync_SameEnrollmentSameSlot_ReturnsValidationError()
+    {
+        // Duplicaat op hetzelfde slot blijft geweigerd.
+        var series = PlanningServiceTests.BuildSeries(withSlots: true, slotId: SlotId);
+        var enrollment = new Enrollment
+        {
+            Id = Guid.NewGuid(), LessonSerieId = SeriesId,
+            Status = EnrollmentStatus.Pending, StudentName = "Emma Claes",
+        };
+        var existingOnSlotA = new ScheduleAssignment
+        {
+            Id = Guid.NewGuid(), LessonSerieId = SeriesId, WeeklyTemplateEntryId = SlotId,
+            EnrollmentId = enrollment.Id, Enrollment = enrollment,
+            Status = ScheduleAssignmentStatus.Proposed,
+        };
+
+        _seriesRepo.Setup(r => r.GetByIdAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+        _enrollmentRepo.Setup(r => r.GetByIdAsync(enrollment.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(enrollment);
+        _assignmentRepo.Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([existingOnSlotA]);
+
+        var result = await _service.CreateAssignmentAsync(
+            SeriesId,
+            new CreateAssignmentRequest { EnrollmentId = enrollment.Id, WeeklyTemplateEntryId = SlotId },
+            OrgId);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be("validation");
+        _assignmentRepo.Verify(r => r.AddRangeAsync(
+            It.IsAny<IEnumerable<ScheduleAssignment>>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task CreateAssignmentAsync_DeclinedSameSlot_HeractiveertDeToewijzing()
+    {
+        // Een eerder geweigerd (Declined) slot mag opnieuw gekozen worden: de bestaande
+        // rij wordt heractiveerd naar Proposed (geen duplicaat, unieke index blijft intact).
+        var series = PlanningServiceTests.BuildSeries(withSlots: true, slotId: SlotId);
+        var enrollment = new Enrollment
+        {
+            Id = Guid.NewGuid(), LessonSerieId = SeriesId,
+            Status = EnrollmentStatus.Pending, StudentName = "Emma Claes",
+        };
+        var declinedOnSlot = new ScheduleAssignment
+        {
+            Id = Guid.NewGuid(), LessonSerieId = SeriesId, WeeklyTemplateEntryId = SlotId,
+            EnrollmentId = enrollment.Id, Enrollment = enrollment,
+            Status = ScheduleAssignmentStatus.Declined,
+        };
+
+        _seriesRepo.Setup(r => r.GetByIdAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+        _enrollmentRepo.Setup(r => r.GetByIdAsync(enrollment.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(enrollment);
+        _assignmentRepo.Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([declinedOnSlot]);
+        _assignmentRepo.Setup(r => r.GetByIdAsync(declinedOnSlot.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(declinedOnSlot);
+
+        var result = await _service.CreateAssignmentAsync(
+            SeriesId,
+            new CreateAssignmentRequest { EnrollmentId = enrollment.Id, WeeklyTemplateEntryId = SlotId },
+            OrgId);
+
+        result.IsSuccess.Should().BeTrue(string.Join("; ", result.Errors.Select(e => e.Message)));
+        result.Value.Should().Be(declinedOnSlot.Id);
+        declinedOnSlot.Status.Should().Be(ScheduleAssignmentStatus.Proposed);
+        declinedOnSlot.IsLocked.Should().BeTrue();
+        _assignmentRepo.Verify(r => r.AddRangeAsync(
+            It.IsAny<IEnumerable<ScheduleAssignment>>(), It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
     public async Task UpdateAssignmentAsync_UsesActiveMemberCountForMovedGroup()
     {
         var newSlotId = Guid.NewGuid();
@@ -321,5 +531,143 @@ public class AssignmentServiceTests
         result.IsSuccess.Should().BeTrue();
         group.Members.Should().AllSatisfy(m => m.EnrollmentGroupId.Should().BeNull());
         _groupRepo.Verify(r => r.Delete(group), Times.Once);
+    }
+
+    // ── RemoveMemberFromGroupAsync ───────────────────────────────────────────
+
+    private (EnrollmentGroup Group, Enrollment Leader, List<Enrollment> Members) BuildGroup(
+        int size, EnrollmentStatus status = EnrollmentStatus.Pending)
+    {
+        Guid groupId = Guid.NewGuid();
+        List<Enrollment> members = [];
+        for (int i = 0; i < size; i++)
+        {
+            members.Add(new Enrollment
+            {
+                Id = Guid.NewGuid(), OrganizationId = OrgId, LessonSerieId = SeriesId,
+                StudentName = $"Lid {i}", EnrolledAt = new DateTime(2026, 1, 1).AddDays(i),
+                Status = status, EnrollmentGroupId = groupId,
+            });
+        }
+        EnrollmentGroup group = new()
+        {
+            Id = groupId, OrganizationId = OrgId, LessonSerieId = SeriesId,
+            Name = "Groep A", LeaderEnrollmentId = members[0].Id, Members = members,
+        };
+        _groupRepo.Setup(r => r.GetByIdAsync(groupId, OrgId, It.IsAny<CancellationToken>())).ReturnsAsync(group);
+        _assignmentRepo.Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ScheduleAssignment>());
+        return (group, members[0], members);
+    }
+
+    [Test]
+    public async Task RemoveMember_GroupOf3_RegularMember_DetachesOnly()
+    {
+        var (group, leader, members) = BuildGroup(3);
+        Enrollment target = members[2]; // geen leider
+
+        Result<bool> result = await _service.RemoveMemberFromGroupAsync(
+            SeriesId, group.Id, target.Id, OrgId, ct: CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        target.EnrollmentGroupId.Should().BeNull();
+        target.Status.Should().Be(EnrollmentStatus.Pending);       // niet geannuleerd: blijft actieve solo
+        group.LeaderEnrollmentId.Should().Be(leader.Id);           // leider onveranderd
+        _groupRepo.Verify(r => r.Delete(It.IsAny<EnrollmentGroup>()), Times.Never); // niet ontbonden
+        _assignmentRepo.Verify(r => r.RemoveRange(It.IsAny<IEnumerable<ScheduleAssignment>>()), Times.Never);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task RemoveMember_GroupOf3_RegularMember_WithCancel_DetachesAndCancels()
+    {
+        var (group, leader, members) = BuildGroup(3);
+        Enrollment target = members[2];
+
+        Result<bool> result = await _service.RemoveMemberFromGroupAsync(
+            SeriesId, group.Id, target.Id, OrgId, cancelEnrollment: true, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        target.EnrollmentGroupId.Should().BeNull();
+        target.Status.Should().Be(EnrollmentStatus.Cancelled);     // ook geannuleerd
+        group.LeaderEnrollmentId.Should().Be(leader.Id);
+        _groupRepo.Verify(r => r.Delete(It.IsAny<EnrollmentGroup>()), Times.Never);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task RemoveMember_GroupOf3_Leader_PromotesEarliestEnrolled()
+    {
+        var (group, leader, members) = BuildGroup(3);
+        // members[1] is vroeger ingeschreven dan members[2] (EnrolledAt oplopend) -> die wordt leider
+
+        Result<bool> result = await _service.RemoveMemberFromGroupAsync(
+            SeriesId, group.Id, leader.Id, OrgId, ct: CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        leader.EnrollmentGroupId.Should().BeNull();
+        group.LeaderEnrollmentId.Should().Be(members[1].Id);
+        _groupRepo.Verify(r => r.Delete(It.IsAny<EnrollmentGroup>()), Times.Never);
+    }
+
+    [Test]
+    public async Task RemoveMember_GroupOf2_Dissolves_AndConvertsAssignmentToRemainingMember()
+    {
+        var (group, leader, members) = BuildGroup(2);
+        Enrollment remaining = members[1];
+        // groep is ingepland: één groeps-toewijzing (Proposed)
+        ScheduleAssignment groupAssignment = new()
+        {
+            Id = Guid.NewGuid(), OrganizationId = OrgId, LessonSerieId = SeriesId,
+            WeeklyTemplateEntryId = Guid.NewGuid(), EnrollmentGroupId = group.Id,
+            Status = ScheduleAssignmentStatus.Proposed, IsLocked = false,
+        };
+        _assignmentRepo.Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ScheduleAssignment> { groupAssignment });
+
+        List<ScheduleAssignment>? added = null;
+        _assignmentRepo.Setup(r => r.AddRangeAsync(It.IsAny<IEnumerable<ScheduleAssignment>>(), It.IsAny<CancellationToken>()))
+            .Callback<IEnumerable<ScheduleAssignment>, CancellationToken>((a, _) => added = a.ToList())
+            .Returns(Task.CompletedTask);
+
+        Result<bool> result = await _service.RemoveMemberFromGroupAsync(
+            SeriesId, group.Id, leader.Id, OrgId, ct: CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        remaining.EnrollmentGroupId.Should().BeNull();                       // laatste lid wordt solo
+        _groupRepo.Verify(r => r.Delete(group), Times.Once);                 // groep ontbonden
+        _assignmentRepo.Verify(r => r.RemoveRange(It.IsAny<IEnumerable<ScheduleAssignment>>()), Times.Once);
+        added.Should().NotBeNull();
+        added!.Should().ContainSingle();
+        added![0].EnrollmentId.Should().Be(remaining.Id);                    // plek behouden als individueel
+        added![0].EnrollmentGroupId.Should().BeNull();
+        added![0].WeeklyTemplateEntryId.Should().Be(groupAssignment.WeeklyTemplateEntryId);
+        added![0].Status.Should().Be(ScheduleAssignmentStatus.Proposed);
+    }
+
+    [Test]
+    public async Task RemoveMember_Confirmed_ReturnsConflict()
+    {
+        var (group, leader, members) = BuildGroup(3, EnrollmentStatus.Confirmed);
+
+        Result<bool> result = await _service.RemoveMemberFromGroupAsync(
+            SeriesId, group.Id, members[2].Id, OrgId, ct: CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.Code == ErrorCodes.Conflict);
+        members[2].EnrollmentGroupId.Should().Be(group.Id);                 // niets gemuteerd
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task RemoveMember_NotAMember_ReturnsNotFound()
+    {
+        var (group, _, _) = BuildGroup(3);
+
+        Result<bool> result = await _service.RemoveMemberFromGroupAsync(
+            SeriesId, group.Id, Guid.NewGuid(), OrgId, ct: CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.Code == ErrorCodes.NotFound);
     }
 }

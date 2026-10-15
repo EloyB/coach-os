@@ -16,6 +16,4 @@ public interface IEnrollmentGroupRepository
     Task AddAsync(EnrollmentGroup group, CancellationToken ct = default);
 
     void Delete(EnrollmentGroup group);
-
-    Task SaveChangesAsync(CancellationToken ct = default);
 }

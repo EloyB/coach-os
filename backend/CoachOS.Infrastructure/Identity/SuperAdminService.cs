@@ -1,9 +1,9 @@
+using CoachOS.Application.Abstractions;
 using System.Security.Cryptography;
 using CoachOS.Application.SuperAdmin;
 using CoachOS.Application.SuperAdmin.DTOs;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
-using CoachOS.Domain.Interfaces;
 using CoachOS.Domain.Models;
 using CoachOS.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;

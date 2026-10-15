@@ -5,7 +5,7 @@ namespace CoachOS.Application.Planning;
 
 public interface IAssignmentService
 {
-    Task<Result<bool>> CreateAssignmentAsync(
+    Task<Result<Guid>> CreateAssignmentAsync(
         Guid seriesId, CreateAssignmentRequest request,
         Guid organizationId, CancellationToken ct = default);
 
@@ -21,4 +21,8 @@ public interface IAssignmentService
 
     Task<Result<bool>> DissolveGroupAsync(
         Guid seriesId, Guid groupId, Guid organizationId, CancellationToken ct = default);
+
+    Task<Result<bool>> RemoveMemberFromGroupAsync(
+        Guid seriesId, Guid groupId, Guid enrollmentId, Guid organizationId,
+        bool cancelEnrollment = false, CancellationToken ct = default);
 }

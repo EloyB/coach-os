@@ -1,3 +1,4 @@
+using CoachOS.Application.Abstractions;
 using CoachOS.Application.Configuration;
 using CoachOS.Application.Planning;
 using CoachOS.Application.Pricing;
@@ -24,6 +25,7 @@ public class ConfirmationOrchestrationServiceTests
     private Mock<IPricingService> _pricingService = null!;
     private Mock<IOptions<AppOptions>> _appOptions = null!;
     private Mock<ILogger<ConfirmationOrchestrationService>> _logger = null!;
+    private Mock<IUnitOfWork> _unitOfWork = null!;
     private ConfirmationOrchestrationService _service = null!;
 
     private static readonly Guid OrgId = Guid.NewGuid();
@@ -59,12 +61,14 @@ public class ConfirmationOrchestrationServiceTests
         _appOptions = new Mock<IOptions<AppOptions>>();
         _appOptions.Setup(o => o.Value).Returns(new AppOptions());
         _logger = new Mock<ILogger<ConfirmationOrchestrationService>>();
+        _unitOfWork = new Mock<IUnitOfWork>();
 
         _service = new ConfirmationOrchestrationService(
             _seriesRepo.Object,
             _assignmentRepo.Object,
             _tokenRepo.Object,
             _paymentRepo.Object,
+            _unitOfWork.Object,
             _emailService.Object,
             _pricingService.Object,
             _appOptions.Object,
@@ -357,5 +361,56 @@ public class ConfirmationOrchestrationServiceTests
         _paymentRepo.Verify(r => r.AddAsync(It.IsAny<Payment>(), It.IsAny<CancellationToken>()), Times.Never);
         assignment.Status.Should().Be(ScheduleAssignmentStatus.AwaitingConfirmation,
             "zonder geldige prijs mag de toewijzing niet bevestigd worden");
+    }
+
+    // ── GetNonRespondersAsync ────────────────────────────────────────────────
+
+    [Test]
+    public async Task GetNonRespondersAsync_MultiplePendingTokensPerAssignment_ReturnsNewestOnly()
+    {
+        // Opnieuw verzenden laat het oude pending-token bestaan (enkel verlopen).
+        // GetNonResponders mag per toewijzing niet twee keer dezelfde rij teruggeven,
+        // anders krijgt de frontend dubbele React-keys.
+        LessonSerie series = PlanningServiceTests.BuildSeries(withSlots: true, SeriesId, OrgId, SlotId);
+        Enrollment enrollment = PlanningServiceTests.BuildEnrollment("Alice", OrgId, SeriesId);
+
+        ScheduleAssignment assignment = new()
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = OrgId,
+            LessonSerieId = SeriesId,
+            WeeklyTemplateEntryId = SlotId,
+            EnrollmentId = enrollment.Id,
+            Enrollment = enrollment,
+            Status = ScheduleAssignmentStatus.AwaitingConfirmation,
+        };
+
+        AssignmentConfirmationToken MakeToken(DateTime expiresAt) => new()
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = OrgId,
+            ScheduleAssignmentId = assignment.Id,
+            ScheduleAssignment = assignment,
+            EnrollmentId = enrollment.Id,
+            Enrollment = enrollment,
+            TokenHash = Guid.NewGuid().ToString(),
+            ExpiresAt = expiresAt,
+            Response = ConfirmationResponse.Pending,
+        };
+
+        var newest = MakeToken(DateTime.UtcNow.AddHours(72));
+        var superseded = MakeToken(DateTime.UtcNow.AddHours(-1));
+
+        _seriesRepo.Setup(r => r.GetByIdAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+        _tokenRepo.Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<AssignmentConfirmationToken> { superseded, newest });
+
+        var result = await _service.GetNonRespondersAsync(SeriesId, OrgId);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().ContainSingle("per toewijzing hoort er maar één rij te zijn");
+        result.Value[0].AssignmentId.Should().Be(assignment.Id);
+        result.Value[0].ExpiresAt.Should().Be(newest.ExpiresAt, "de nieuwste token telt");
     }
 }

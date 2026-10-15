@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
@@ -110,6 +110,12 @@ function inputClass(hasError: boolean) {
   }`;
 }
 
+// iOS Safari negeert de breedte van een <input type="date"> zonder appearance-none,
+// waardoor het veld uit z'n container puilt. min-w-0 laat het krimpen binnen flex/grid.
+function dateInputClass(hasError: boolean) {
+  return `${inputClass(hasError)} appearance-none min-w-0`;
+}
+
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function EnrollPage() {
@@ -141,7 +147,8 @@ export default function EnrollPage() {
     dateOfBirth?: string;
   }>({});
 
-  // Availability preferences
+  // Availability preferences, keyed per uur-groep (dayOfWeek|startTime|endTime),
+  // niet per individueel slot — parallelle banen op hetzelfde uur delen één keuze.
   const [preferences, setPreferences] = useState<Record<string, number>>({});
 
   // Enrollment type. De reeks bepaalt welke wijzen toegelaten zijn; "solo" is
@@ -159,6 +166,35 @@ export default function EnrollPage() {
 
   const user = getAuthUser();
   const isAdminOrTrainer = user?.role === "Admin" || user?.role === "Trainer";
+
+  // Vouw parallelle banen op hetzelfde uur samen tot één groep. De speler kiest
+  // beschikbaarheid per uur; bij submit klappen we de keuze uit naar alle
+  // onderliggende weeklyTemplateEntryId's (zie handleSubmit).
+  const slotGroups = useMemo(() => {
+    const sorted = [...timeSlots].sort(
+      (a, b) => a.dayOfWeek - b.dayOfWeek || a.startTime.localeCompare(b.startTime)
+    );
+    const byKey = new Map<
+      string,
+      { key: string; dayOfWeek: number; startTime: string; endTime: string; entryIds: string[] }
+    >();
+    for (const slot of sorted) {
+      const key = `${slot.dayOfWeek}|${slot.startTime}|${slot.endTime}`;
+      const existing = byKey.get(key);
+      if (existing) {
+        existing.entryIds.push(slot.id);
+      } else {
+        byKey.set(key, {
+          key,
+          dayOfWeek: slot.dayOfWeek,
+          startTime: slot.startTime,
+          endTime: slot.endTime,
+          entryIds: [slot.id],
+        });
+      }
+    }
+    return Array.from(byKey.values());
+  }, [timeSlots]);
 
   useEffect(() => {
     async function loadData() {
@@ -232,8 +268,8 @@ export default function EnrollPage() {
     }
   }
 
-  function setPreference(slotId: string, pref: number) {
-    setPreferences((prev) => ({ ...prev, [slotId]: pref }));
+  function setPreference(groupKey: string, pref: number) {
+    setPreferences((prev) => ({ ...prev, [groupKey]: pref }));
   }
 
   function addGroupMember() {
@@ -383,12 +419,16 @@ export default function EnrollPage() {
         .filter(([, v]) => v.trim())
         .map(([formFieldId, value]) => ({ formFieldId, value }));
 
-      const timeSlotPreferences = Object.entries(preferences).map(
-        ([weeklyTemplateEntryId, preference]) => ({
+      // Klap de per-uur keuze uit naar elke parallelle baan in die groep — de
+      // backend verwacht één preference per weeklyTemplateEntryId.
+      const timeSlotPreferences = slotGroups.flatMap((group) => {
+        const preference = preferences[group.key];
+        if (preference == null) return [];
+        return group.entryIds.map((weeklyTemplateEntryId) => ({
           weeklyTemplateEntryId,
           preference,
-        })
-      );
+        }));
+      });
 
       await submitEnrollment(seriesId, {
         studentName: `${firstName.trim()} ${lastName.trim()}`,
@@ -508,46 +548,88 @@ export default function EnrollPage() {
 
   // ─── Preference button component ────────────────────────────────────────
 
+  // Legende: icoon in een gekleurde ring + label, zodat elk niveau ook zonder
+  // kleur (kleurenblindheid) herkenbaar is aan zijn vorm.
+  function PrefLegend() {
+    const items = [
+      { icon: "check", color: "#22c55e", label: t("pref_preferred") },
+      { icon: "question", color: "#f97316", label: t("pref_available") },
+      { icon: "x", color: "#ef4444", label: t("pref_unavailable") },
+    ] as const;
+    return (
+      <>
+        {items.map((it) => (
+          <div key={it.label} className="flex items-center gap-1.5">
+            <span
+              className="inline-flex h-5 w-5 items-center justify-center rounded-full border-2"
+              style={{ borderColor: it.color, color: it.color }}
+            >
+              {it.icon === "check" ? (
+                <Check size={11} strokeWidth={3} />
+              ) : it.icon === "question" ? (
+                <span className="text-[10px] font-bold leading-none">?</span>
+              ) : (
+                <X size={11} strokeWidth={3} />
+              )}
+            </span>
+            {it.label}
+          </div>
+        ))}
+      </>
+    );
+  }
+
   function PrefButton({
-    slotId,
+    groupKey,
     value,
     color,
     icon,
+    slotLabel,
   }: {
-    slotId: string;
+    groupKey: string;
     value: number;
-    color: { border: string; bg: string };
-    icon: "check" | "x";
+    color: { border: string; bg: string; idle: string; iconIdle: string };
+    icon: "check" | "question" | "x";
+    slotLabel?: string;
   }) {
-    const isSelected = preferences[slotId] === value;
+    const isSelected = preferences[groupKey] === value;
+    // Icoon altijd tonen: wit als geselecteerd, anders een lichte tint zodat je ook
+    // leeg meteen ziet wat de cirkel betekent (helpt bij kleurenblindheid).
+    const iconColor = isSelected ? "#ffffff" : color.iconIdle;
+    const prefName =
+      value === PREF_PREFERRED
+        ? t("pref_preferred")
+        : value === PREF_AVAILABLE
+          ? t("pref_available")
+          : t("pref_unavailable");
     return (
       <label className="cursor-pointer">
         <input
           type="radio"
-          name={`pref_${slotId}`}
+          name={`pref_${groupKey}`}
           checked={isSelected}
-          onChange={() => setPreference(slotId, value)}
+          onChange={() => setPreference(groupKey, value)}
+          aria-label={slotLabel ? `${prefName} — ${slotLabel}` : prefName}
           className="sr-only peer"
         />
         <div
-          className="w-8 h-8 rounded-full border-2 flex items-center justify-center transition-colors"
+          className="w-10 h-10 rounded-full border-2 flex items-center justify-center transition-colors"
           style={{
-            borderColor: isSelected ? color.border : "#e5e7eb",
+            borderColor: isSelected ? color.border : color.idle,
             backgroundColor: isSelected ? color.bg : "transparent",
           }}
         >
           {icon === "check" ? (
-            <Check
-              size={16}
-              strokeWidth={3}
-              className={isSelected ? "text-white" : "text-transparent"}
-            />
+            <Check size={18} strokeWidth={3} color={iconColor} />
+          ) : icon === "question" ? (
+            <span
+              style={{ color: iconColor }}
+              className="text-[15px] font-bold leading-none"
+            >
+              ?
+            </span>
           ) : (
-            <X
-              size={16}
-              strokeWidth={3}
-              className={isSelected ? "text-white" : "text-transparent"}
-            />
+            <X size={18} strokeWidth={3} color={iconColor} />
           )}
         </div>
       </label>
@@ -576,10 +658,6 @@ export default function EnrollPage() {
       </div>
     );
   }
-
-  const sortedSlots = [...timeSlots].sort(
-    (a, b) => a.dayOfWeek - b.dayOfWeek || a.startTime.localeCompare(b.startTime)
-  );
 
   // Niveau is optioneel — geen badge tonen als het niet ingevuld is
   const levelLabel =
@@ -830,7 +908,7 @@ export default function EnrollPage() {
                           }
                         }}
                         max={new Date().toISOString().slice(0, 10)}
-                        className={inputClass(!!baseErrors.dateOfBirth)}
+                        className={dateInputClass(!!baseErrors.dateOfBirth)}
                       />
                       {baseErrors.dateOfBirth ? (
                         <p className="text-xs text-red-500 mt-1">
@@ -1057,7 +1135,7 @@ export default function EnrollPage() {
                                   updateGroupMember(i, "dateOfBirth", e.target.value)
                                 }
                                 max={new Date().toISOString().slice(0, 10)}
-                                className={inputClass(!!memberErrors[i]?.dateOfBirth)}
+                                className={dateInputClass(!!memberErrors[i]?.dateOfBirth)}
                               />
                               {memberErrors[i]?.dateOfBirth && (
                                 <p className="text-xs text-red-500 mt-1">
@@ -1073,7 +1151,7 @@ export default function EnrollPage() {
                 </div>
 
                 {/* ── Availability grid ── */}
-                {sortedSlots.length > 0 && (
+                {slotGroups.length > 0 && (
                   <>
                     <hr className="border-gray-100" />
                     <div>
@@ -1084,20 +1162,10 @@ export default function EnrollPage() {
                         {t("availability_desc")}
                       </p>
 
-                      {/* Mobile legend — shown once above the grid */}
+                      {/* Mobile legend — de bolletjes zijn ook kleurgecodeerd (zie PrefButton),
+                          dus deze legende bevestigt enkel de betekenis van de kleuren. */}
                       <div className="sm:hidden flex items-center gap-4 mb-3 text-xs text-gray-500">
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-3 h-3 rounded-full bg-green-500" />
-                          {t("pref_preferred")}
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-3 h-3 rounded-full bg-blue-500" />
-                          {t("pref_available")}
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-3 h-3 rounded-full bg-gray-400" />
-                          {t("pref_unavailable")}
-                        </div>
+                        <PrefLegend />
                       </div>
 
                       <div className="border border-gray-200 rounded-lg overflow-hidden">
@@ -1109,78 +1177,80 @@ export default function EnrollPage() {
                           <div className="px-2 py-2.5 text-xs font-semibold text-green-700 uppercase text-center">
                             {t("pref_preferred")}
                           </div>
-                          <div className="px-2 py-2.5 text-xs font-semibold text-blue-700 uppercase text-center">
+                          <div className="px-2 py-2.5 text-xs font-semibold text-orange-600 uppercase text-center">
                             {t("pref_available")}
                           </div>
-                          <div className="px-2 py-2.5 text-xs font-semibold text-gray-500 uppercase text-center">
+                          <div className="px-2 py-2.5 text-xs font-semibold text-red-600 uppercase text-center">
                             Niet besch.
                           </div>
                         </div>
 
-                        {/* Rows grouped by day */}
+                        {/* Rows grouped by day — één rij per uur (parallelle banen samengevouwen) */}
                         {(() => {
-                          const grouped: { day: number; slots: TimeSlotDto[] }[] = [];
-                          for (const slot of sortedSlots) {
+                          const grouped: { day: number; groups: typeof slotGroups }[] = [];
+                          for (const g of slotGroups) {
                             const last = grouped[grouped.length - 1];
-                            if (last && last.day === slot.dayOfWeek) {
-                              last.slots.push(slot);
+                            if (last && last.day === g.dayOfWeek) {
+                              last.groups.push(g);
                             } else {
-                              grouped.push({ day: slot.dayOfWeek, slots: [slot] });
+                              grouped.push({ day: g.dayOfWeek, groups: [g] });
                             }
                           }
 
-                          return grouped.map((group, gi) => (
+                          return grouped.map((day, gi) => (
                             <div
-                              key={group.day}
+                              key={day.day}
                               className={gi < grouped.length - 1 ? "border-b border-gray-200" : ""}
                             >
                               {/* Day header */}
                               <div className="px-4 py-2 bg-gray-50/70 border-b border-gray-100">
                                 <span className="text-xs font-semibold text-gray-700">
-                                  {DAY_NAMES[group.day]}
+                                  {DAY_NAMES[day.day]}
                                 </span>
                               </div>
 
-                              {/* Slots for this day */}
-                              {group.slots.map((slot, si) => (
+                              {/* Uur-groepen voor deze dag */}
+                              {day.groups.map((group, si) => {
+                                const slotLabel = `${DAY_NAMES[day.day]} ${group.startTime} — ${group.endTime}`;
+                                return (
                                 <div
-                                  key={slot.id}
+                                  key={group.key}
                                   className={
-                                    si < group.slots.length - 1 ? "border-b border-gray-100" : ""
+                                    si < day.groups.length - 1 ? "border-b border-gray-100" : ""
                                   }
                                 >
                                   {/* Desktop: table row */}
                                   <div className="hidden sm:grid grid-cols-[1fr_100px_100px_100px] hover:bg-gray-50/50">
-                                    <div className="px-4 py-3">
+                                    <div className="px-4 py-3 flex items-center">
                                       <div className="text-sm font-medium text-gray-900">
-                                        {slot.startTime} — {slot.endTime}
-                                      </div>
-                                      <div className="text-xs text-gray-500">
-                                        {slot.courtName}
+                                        {group.startTime} — {group.endTime}
                                       </div>
                                     </div>
-                                    <div className="flex items-center justify-center">
+                                    <div className="flex items-center justify-center py-3">
                                       <PrefButton
-                                        slotId={slot.id}
+                                        groupKey={group.key}
                                         value={PREF_PREFERRED}
-                                        color={{ border: "#22c55e", bg: "#22c55e" }}
+                                        color={{ border: "#22c55e", bg: "#22c55e", idle: "#bbf7d0", iconIdle: "#86efac" }}
                                         icon="check"
+                                        slotLabel={slotLabel}
                                       />
                                     </div>
-                                    <div className="flex items-center justify-center">
+                                    <div className="flex items-center justify-center py-3">
                                       <PrefButton
-                                        slotId={slot.id}
+                                        groupKey={group.key}
                                         value={PREF_AVAILABLE}
-                                        color={{ border: "#3b82f6", bg: "#3b82f6" }}
-                                        icon="check"
+                                        color={{ border: "#f97316", bg: "#f97316", idle: "#fed7aa", iconIdle: "#fdba74" }}
+                                        icon="question"
+                                        slotLabel={slotLabel}
                                       />
                                     </div>
-                                    <div className="flex items-center justify-center">
+                                    <div className="flex items-center justify-center py-3">
                                       <PrefButton
-                                        slotId={slot.id}
+                                        groupKey={group.key}
                                         value={PREF_UNAVAILABLE}
-                                        color={{ border: "#9ca3af", bg: "#9ca3af" }}
+                                        color={{ border: "#ef4444", bg: "#ef4444", idle: "#fecaca", iconIdle: "#fca5a5" }}
                                         icon="x"
+                                        slotLabel={slotLabel}
                                       />
                                     </div>
                                   </div>
@@ -1189,35 +1259,36 @@ export default function EnrollPage() {
                                   <div className="sm:hidden px-4 py-3 flex items-center justify-between">
                                     <div>
                                       <div className="text-sm font-medium text-gray-900">
-                                        {slot.startTime} — {slot.endTime}
-                                      </div>
-                                      <div className="text-xs text-gray-500">
-                                        {slot.courtName}
+                                        {group.startTime} — {group.endTime}
                                       </div>
                                     </div>
                                     <div className="flex items-center gap-2.5 shrink-0">
                                       <PrefButton
-                                        slotId={slot.id}
+                                        groupKey={group.key}
                                         value={PREF_PREFERRED}
-                                        color={{ border: "#22c55e", bg: "#22c55e" }}
+                                        color={{ border: "#22c55e", bg: "#22c55e", idle: "#bbf7d0", iconIdle: "#86efac" }}
                                         icon="check"
+                                        slotLabel={slotLabel}
                                       />
                                       <PrefButton
-                                        slotId={slot.id}
+                                        groupKey={group.key}
                                         value={PREF_AVAILABLE}
-                                        color={{ border: "#3b82f6", bg: "#3b82f6" }}
-                                        icon="check"
+                                        color={{ border: "#f97316", bg: "#f97316", idle: "#fed7aa", iconIdle: "#fdba74" }}
+                                        icon="question"
+                                        slotLabel={slotLabel}
                                       />
                                       <PrefButton
-                                        slotId={slot.id}
+                                        groupKey={group.key}
                                         value={PREF_UNAVAILABLE}
-                                        color={{ border: "#9ca3af", bg: "#9ca3af" }}
+                                        color={{ border: "#ef4444", bg: "#ef4444", idle: "#fecaca", iconIdle: "#fca5a5" }}
                                         icon="x"
+                                        slotLabel={slotLabel}
                                       />
                                     </div>
                                   </div>
                                 </div>
-                              ))}
+                                );
+                              })}
                             </div>
                           ));
                         })()}
@@ -1225,18 +1296,7 @@ export default function EnrollPage() {
 
                       {/* Legend — desktop only (mobile has inline labels) */}
                       <div className="hidden sm:flex items-center gap-4 mt-3 text-xs text-gray-500">
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-3 h-3 rounded-full bg-green-500" />
-                          {t("pref_preferred")}
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-3 h-3 rounded-full bg-blue-500" />
-                          {t("pref_available")}
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-3 h-3 rounded-full bg-gray-400" />
-                          {t("pref_unavailable")}
-                        </div>
+                        <PrefLegend />
                       </div>
                     </div>
                   </>

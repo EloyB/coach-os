@@ -8,6 +8,7 @@ import { getSlotSuggestions } from "@/lib/api/slotSuggestions";
 import type { SlotSuggestionDto } from "@/lib/api/slotSuggestions";
 import type { WizardSlot } from "../_types";
 import type { SlotDefaults } from "./calendar-week-view";
+import { localId } from "@/lib/local-id";
 
 const DAY_NAMES_FULL = [
   "Maandag",
@@ -54,7 +55,7 @@ export function SlotSuggestionsPanel({
       (_, index) => {
         const trainer = suggestion.trainers[index] ?? null;
         return {
-          id: crypto.randomUUID(),
+          id: localId(),
           dayOfWeek: suggestion.dayOfWeek,
           startTime: suggestion.startTime,
           endTime: suggestion.endTime,

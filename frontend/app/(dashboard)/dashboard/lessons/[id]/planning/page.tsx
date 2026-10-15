@@ -5,22 +5,21 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import {
-  ArrowLeft,
+  ChevronLeft,
   RefreshCw,
   Check,
   Users,
   Mail,
-  Phone,
-  MessageCircle,
   Lock,
+  Unlock,
   Plus,
+  ChevronDown,
+  Search,
+  X,
+  Ban,
 } from "lucide-react";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,6 +37,7 @@ import {
   confirmPlanning,
   createAssignment,
   deleteAssignment,
+  updateAssignment,
   lockAssignment,
   unlockAssignment,
   sendAssignmentConfirmation,
@@ -49,6 +49,19 @@ import type {
 } from "@/lib/api/planning";
 import { getLessonSeriesById, deleteWeekSlot } from "@/lib/api/lessonSeries";
 import { getTrainers } from "@/lib/api/trainers";
+import {
+  getLessonSeriesEnrollments,
+  updateBasicEnrollment,
+  removeGroupMember,
+} from "@/lib/api/enrollments";
+import type { LessonSeriesEnrollmentDto } from "@/lib/api/enrollments";
+import { EnrollmentDetailDialog } from "../_components/enrollment-detail-dialog";
+import { EditEnrollmentDialog } from "../_components/edit-enrollment-dialog";
+import {
+  HoverCard,
+  HoverCardTrigger,
+  HoverCardContent,
+} from "@/components/ui/hover-card";
 import {
   AddWeekSlotDialog,
   type WeekSlotEditData,
@@ -63,11 +76,17 @@ import {
 } from "@/components/calendar/calendar-grid";
 import { getInitials, getAvatarColor } from "@/lib/planning-avatars";
 import { TimeslotDetailDialog } from "./_components/timeslot-detail-dialog";
-import { isHeadTrainerViewer } from "@/lib/auth";
+import { ConfirmedUnitActions } from "./_components/confirmed-unit-actions";
+import {
+  isHeadTrainerViewer,
+  canEditEnrollment,
+  isEnrollmentManager,
+} from "@/lib/auth";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const DAY_NAMES_SHORT = ["Ma", "Di", "Wo", "Do", "Vr", "Za", "Zo"];
+const DAY_NAMES_FULL = ["Maandag", "Dinsdag", "Woensdag", "Donderdag", "Vrijdag", "Zaterdag", "Zondag"];
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 
@@ -78,12 +97,20 @@ export default function PlanningPage({
 }) {
   const { id } = use(params);
   const t = useTranslations("planning");
+  const te = useTranslations("enrollmentsTable");
   const router = useRouter();
   const queryClient = useQueryClient();
   // Hoofdtrainer = read-only: enkel de planning raadplegen, geen bewerkacties.
   // Reactief via effect zodat het na hydration klopt (localStorage is er niet bij SSR).
   const [readOnly, setReadOnly] = useState(false);
-  useEffect(() => setReadOnly(isHeadTrainerViewer()), []);
+  // Prijs/inschrijving bewerken is Admin-only; lid verwijderen mag ook een hoofdtrainer.
+  const [canEdit, setCanEdit] = useState(false);
+  const [canManage, setCanManage] = useState(false);
+  useEffect(() => {
+    setReadOnly(isHeadTrainerViewer());
+    setCanEdit(canEditEnrollment());
+    setCanManage(isEnrollmentManager());
+  }, []);
 
   const { data: series } = useQuery({
     queryKey: ["lessonSeries", id],
@@ -104,6 +131,79 @@ export default function PlanningPage({
     queryFn: () => getPlanningOverview(id),
   });
 
+  // Volledige inschrijvingen (DOB, prijsoptie, formuliervragen, …) om de
+  // detail-dialog vanaf de planning te kunnen tonen. Zelfde query als de
+  // reeks-tabel, dus meestal al gecached.
+  //
+  // BELANGRIJK: het /enrollments-endpoint is NIET per-reeks access-checked zoals
+  // /planning. Een hoofdtrainer (read-only) mag deze PII dus niet eager laden —
+  // enkel wie mag bewerken (Admin) heeft de detail-dialog nodig. Gegate op een
+  // synchrone check zodat de request bij head trainers nooit vertrekt.
+  const { data: fullEnrollments = [] } = useQuery({
+    queryKey: ["enrollments", id],
+    queryFn: () => getLessonSeriesEnrollments(id),
+    enabled: !isHeadTrainerViewer(),
+  });
+
+  // Klik op een persoon/groep → detail-dialog. Bewerken kan van hieruit.
+  const [detailTarget, setDetailTarget] = useState<{
+    enrollment: LessonSeriesEnrollmentDto;
+    groupMembers?: LessonSeriesEnrollmentDto[];
+  } | null>(null);
+  // Aanpas-dialog voor één inschrijving (solo of groepslid).
+  const [editingEnrollment, setEditingEnrollment] =
+    useState<LessonSeriesEnrollmentDto | null>(null);
+  // Bevestiging vóór een lid uit de groep te halen.
+  const [memberToRemove, setMemberToRemove] =
+    useState<LessonSeriesEnrollmentDto | null>(null);
+
+  // Lid uit de groep halen (losmaken, of losmaken + inschrijving annuleren).
+  const removeMemberMutation = useMutation({
+    mutationFn: ({
+      member,
+      cancel,
+    }: {
+      member: LessonSeriesEnrollmentDto;
+      cancel: boolean;
+    }) => removeGroupMember(id, member.enrollmentGroupId!, member.id, cancel),
+    onSuccess: (_data, { cancel }) => {
+      toast.success(
+        cancel ? te("removeFromGroupCancelSuccess") : te("removeFromGroupSuccess")
+      );
+      setMemberToRemove(null);
+      queryClient.invalidateQueries({ queryKey: ["enrollments", id] });
+      queryClient.invalidateQueries({ queryKey: ["planning", id] });
+      queryClient.invalidateQueries({ queryKey: ["lessonSeries", id] });
+    },
+    onError: () => toast.error(te("removeFromGroupError")),
+  });
+
+  // Prijsoptie voor de hele groep: bewerk op de leider; backend propageert.
+  const changeGroupPriceMutation = useMutation({
+    mutationFn: ({
+      leader,
+      optionId,
+    }: {
+      leader: LessonSeriesEnrollmentDto;
+      optionId: string | null;
+    }) =>
+      updateBasicEnrollment(id, leader.id, {
+        studentName: leader.studentName,
+        contactEmail: leader.contactEmail,
+        studentEmail: leader.studentEmail,
+        studentPhone: leader.studentPhone,
+        dateOfBirth: leader.dateOfBirth ?? "",
+        isOpenToGrouping: leader.isOpenToGrouping,
+        selectedPriceOptionId: optionId,
+      }),
+    onSuccess: () => {
+      toast.success(te("groupPriceSuccess"));
+      queryClient.invalidateQueries({ queryKey: ["enrollments", id] });
+      queryClient.invalidateQueries({ queryKey: ["lessonSeries", id] });
+    },
+    onError: () => toast.error(te("groupPriceError")),
+  });
+
 
   const generateMutation = useMutation({
     mutationFn: (force: boolean = false) => generatePlanning(id, force),
@@ -117,6 +217,29 @@ export default function PlanningPage({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["planning", id] });
     },
+  });
+
+  // Verplaatst een toewijzing naar een ander tijdslot (in-place). Werkt ook voor bevestigde
+  // toewijzingen — de betaling hangt aan de inschrijving, niet aan het slot.
+  const moveMutation = useMutation({
+    mutationFn: ({
+      assignmentId,
+      slotId,
+      notifyStudent,
+    }: {
+      assignmentId: string;
+      slotId: string;
+      notifyStudent: boolean;
+    }) =>
+      updateAssignment(id, assignmentId, {
+        weeklyTemplateEntryId: slotId,
+        notifyStudent,
+      }),
+    onSuccess: (_data, { notifyStudent }) => {
+      toast.success(notifyStudent ? t("moveSuccessNotified") : t("moveSuccess"));
+      queryClient.invalidateQueries({ queryKey: ["planning", id] });
+    },
+    onError: () => toast.error(t("moveError")),
   });
 
   const lockMutation = useMutation({
@@ -144,17 +267,49 @@ export default function PlanningPage({
     },
   });
 
-  // Manual assign
-  const [assigningEnrollmentId, setAssigningEnrollmentId] = useState<string | null>(null);
+  // Toewijs-modus: klik 'Toewijzen' op een sidebar-kaart → de kalendertegels
+  // kleuren naar de beschikbaarheid van deze persoon/groep en klikken op een
+  // tegel wijst toe. `prefs` = de voorkeuren om op te kleuren (leider bij groep).
+  const [assignTarget, setAssignTarget] = useState<
+    | { kind: "solo"; enrollmentId: string; name: string; size: number; prefs: Record<string, string> }
+    | { kind: "group"; groupId: string; name: string; size: number; prefs: Record<string, string> }
+    | null
+  >(null);
 
-  // Slot hover popover (read-only peek)
-  const [hoveredSlotId, setHoveredSlotId] = useState<string | null>(null);
-  const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Eerder geweigerd slot dat opnieuw gekozen wordt: bevestiging voor we toewijzen.
+  const [declineConfirmSlotId, setDeclineConfirmSlotId] = useState<string | null>(null);
+
+  // Zoekterm om personen te filteren in het rechterpaneel (alle secties).
+  const [sidebarQuery, setSidebarQuery] = useState("");
+
+  // Niet-toegewezen: uitklapbaar, default open (het is de actieve werklijst).
+  const [showUnassigned, setShowUnassigned] = useState(true);
+  // Toegewezen-sectie: default ingeklapt; per eenheid een extra-slot-kiezer.
+  const [showAssigned, setShowAssigned] = useState(false);
+  // Bevestigd-sectie: default open (verschijnt enkel als er aangeboden/bevestigde zijn).
+  const [showConfirmed, setShowConfirmed] = useState(true);
+  const [addingSlotForKey, setAddingSlotForKey] = useState<string | null>(null);
+  // Bevestiging vóór 'Definitief aanbieden' vanuit de Toegewezen-sectie.
+  // Per toewijzing (één slot) — het endpoint maakt één token + één mail. Bulk over
+  // meerdere slots is bewust out-of-scope (zou meerdere concurrerende mails geven);
+  // een multi-slot eenheid bied je per slot aan via de tijdslot-dialog.
+  const [offerTarget, setOfferTarget] = useState<{ id: string; name: string } | null>(null);
 
   // Slot detail dialog (click to open)
   const [openSlotId, setOpenSlotId] = useState<string | null>(null);
   const [addingSlot, setAddingSlot] = useState(false);
   const [editingSlot, setEditingSlot] = useState<WeekSlotEditData | null>(null);
+  // Geselecteerde dag voor de mobiele dag-weergave (0=Ma .. 6=Zo).
+  const [selectedDay, setSelectedDay] = useState(0);
+  // Mobiele weergave (< sm): toont één dag i.p.v. de volledige week-grid.
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 639px)");
+    const sync = () => setIsMobile(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
 
   const deleteSlotMutation = useMutation({
     mutationFn: (entryId: string) => deleteWeekSlot(id, entryId),
@@ -170,9 +325,37 @@ export default function PlanningPage({
       createAssignment(id, { enrollmentId, groupId, weeklyTemplateEntryId: slotId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["planning", id] });
-      setAssigningEnrollmentId(null);
+      setAssignTarget(null);
     },
   });
+
+  // Extra tijdslot toevoegen aan een nog-niet-bevestigd persoon. Voegt het slot
+  // enkel toe als concept — géén automatische aanbieding/betaalmail. De mailing-flow
+  // voor extra slots bespreken we nog met de testers en finetunen we later.
+  const addExtraSlotMutation = useMutation({
+    mutationFn: ({
+      target,
+      slotId,
+    }: {
+      target: { enrollmentId?: string; groupId?: string };
+      slotId: string;
+    }) => createAssignment(id, { ...target, weeklyTemplateEntryId: slotId }),
+    onSuccess: () => {
+      toast.success(t("extraSlotAddedSuccess"));
+      queryClient.invalidateQueries({ queryKey: ["planning", id] });
+    },
+    onError: () => toast.error(t("extraSlotAddError")),
+  });
+
+  // Esc sluit de toewijs-modus.
+  useEffect(() => {
+    if (!assignTarget) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setAssignTarget(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [assignTarget]);
 
   // Auto-generate only once, only when status is "Enrollment" (never generated before)
   const hasAutoGeneratedRef = useRef(false);
@@ -201,6 +384,12 @@ export default function PlanningPage({
     return map;
   }, [planning]);
 
+  const fullEnrollmentMap = useMemo(() => {
+    const map = new Map<string, LessonSeriesEnrollmentDto>();
+    for (const e of fullEnrollments) map.set(e.id, e);
+    return map;
+  }, [fullEnrollments]);
+
   // Assignments by timeSlotId
   const assignmentsBySlot = useMemo(() => {
     const map = new Map<string, PlanningAssignmentDto[]>();
@@ -219,6 +408,7 @@ export default function PlanningPage({
     const set = new Set<string>();
     if (!planning) return set;
     for (const a of planning.assignments) {
+      if (a.status === "Declined") continue;
       if (a.enrollmentId) {
         set.add(a.enrollmentId);
       } else if (a.groupId) {
@@ -234,10 +424,27 @@ export default function PlanningPage({
     const set = new Set<string>();
     if (!planning) return set;
     for (const a of planning.assignments) {
+      if (a.status === "Declined") continue;
       if (a.groupId) set.add(a.groupId);
     }
     return set;
   }, [planning]);
+
+  // Slots die de geselecteerde persoon/groep al geweigerd heeft (status Declined).
+  // In de toewijs-modus mogen die niet opnieuw gekozen worden voor deze eenheid.
+  const declinedSlotsForTarget = useMemo(() => {
+    const set = new Set<string>();
+    if (!planning || !assignTarget) return set;
+    for (const a of planning.assignments) {
+      if (a.status !== "Declined") continue;
+      const match =
+        assignTarget.kind === "group"
+          ? a.groupId === assignTarget.groupId
+          : a.enrollmentId === assignTarget.enrollmentId;
+      if (match) set.add(a.timeSlotId);
+    }
+    return set;
+  }, [planning, assignTarget]);
 
   // Unassigned: split into solo enrollees and unassigned groups
   const { unassignedSolos, unassignedGroups } = useMemo(() => {
@@ -282,38 +489,210 @@ export default function PlanningPage({
     };
   }, [planning]);
 
+  // Dagen met tijdslots — voedt de dag-tabs in de mobiele weergave.
+  const daysWithSlots = useMemo(() => {
+    if (!planning) return [] as number[];
+    const set = new Set<number>();
+    for (const s of planning.timeSlots) set.add(s.dayOfWeek);
+    return [...set].sort((a, b) => a - b);
+  }, [planning]);
+
+  // Houd de geselecteerde dag geldig zodra de slot-dagen bekend/gewijzigd zijn.
+  useEffect(() => {
+    if (daysWithSlots.length > 0 && !daysWithSlots.includes(selectedDay)) {
+      setSelectedDay(daysWithSlots[0]);
+    }
+  }, [daysWithSlots, selectedDay]);
+
+  // Toegewezen eenheden (solo of groep), met hun slot(s) — één rij per persoon/groep.
+  const assignedUnits = useMemo(() => {
+    if (!planning) return [];
+    type Unit = {
+      key: string;
+      type: "solo" | "group";
+      name: string;
+      target: { enrollmentId?: string; groupId?: string };
+      rep: PlanningAssignmentDto;
+      assignments: PlanningAssignmentDto[];
+      slots: { id: string; label: string }[];
+    };
+    const byKey = new Map<string, Unit>();
+    for (const a of planning.assignments) {
+      if (a.status === "Declined") continue;
+      let key: string, type: "solo" | "group", name: string;
+      let target: { enrollmentId?: string; groupId?: string };
+      if (a.groupId) {
+        const g = groupMap.get(a.groupId);
+        if (!g) continue;
+        key = `g:${a.groupId}`;
+        type = "group";
+        name = g.name;
+        target = { groupId: a.groupId };
+      } else if (a.enrollmentId) {
+        const e = enrollmentMap.get(a.enrollmentId);
+        if (!e) continue;
+        key = `e:${a.enrollmentId}`;
+        type = "solo";
+        name = e.studentName;
+        target = { enrollmentId: a.enrollmentId };
+      } else {
+        continue;
+      }
+      const slot = planning.timeSlots.find((s) => s.id === a.timeSlotId);
+      const label = slot ? `${DAY_NAMES_SHORT[slot.dayOfWeek]} ${slot.startTime}` : "?";
+      const existing = byKey.get(key);
+      if (existing) {
+        existing.slots.push({ id: a.timeSlotId, label });
+        existing.assignments.push(a);
+      } else {
+        byKey.set(key, {
+          key, type, name, target, rep: a,
+          assignments: [a],
+          slots: [{ id: a.timeSlotId, label }],
+        });
+      }
+    }
+    return [...byKey.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }, [planning, groupMap, enrollmentMap]);
+
+  // Sidebar-secties volgen de lifecycle, elke eenheid in exact één sectie:
+  //  - "Toegewezen": concept (alle toewijzingen nog Proposed)
+  //  - "Wachten op bevestiging" (NonRespondersPanel): definitief aangeboden, nog niet bevestigd
+  //  - "Bevestigd": minstens één bevestigde (Confirmed) toewijzing
+  const conceptUnits = useMemo(
+    () => assignedUnits.filter((u) => u.assignments.every((a) => a.status === "Proposed")),
+    [assignedUnits]
+  );
+  const confirmedUnits = useMemo(
+    () =>
+      assignedUnits.filter((u) =>
+        u.assignments.some((a) => a.status === "Confirmed")
+      ),
+    [assignedUnits]
+  );
+
+  // ─── Zoeken in het rechterpaneel ───────────────────────────────────────────
+  // Filtert alle secties op naam. Een groep matcht op groepsnaam óf op een lidnaam,
+  // zodat je een groepslid ook via zijn eigen naam terugvindt.
+  const sidebarQ = sidebarQuery.trim().toLowerCase();
+  const sidebarSearching = sidebarQ.length > 0;
+  const nameMatches = (name: string) => name.toLowerCase().includes(sidebarQ);
+  const groupMatchesQuery = (groupId: string | undefined, groupName: string) => {
+    if (nameMatches(groupName)) return true;
+    if (!groupId) return false;
+    const g = groupMap.get(groupId);
+    return (
+      !!g &&
+      g.memberEnrollmentIds.some((mId) => {
+        const e = enrollmentMap.get(mId);
+        return !!e && nameMatches(e.studentName);
+      })
+    );
+  };
+  const unitMatchesQuery = (u: { type: "solo" | "group"; name: string; target: { enrollmentId?: string; groupId?: string } }) =>
+    u.type === "group"
+      ? groupMatchesQuery(u.target.groupId, u.name)
+      : nameMatches(u.name);
+
+  const shownUnassignedSolos = sidebarSearching
+    ? unassignedSolos.filter((e) => nameMatches(e.studentName))
+    : unassignedSolos;
+  const shownUnassignedGroups = sidebarSearching
+    ? unassignedGroups.filter((g) => groupMatchesQuery(g.id, g.name))
+    : unassignedGroups;
+  const shownConceptUnits = sidebarSearching
+    ? conceptUnits.filter(unitMatchesQuery)
+    : conceptUnits;
+  const shownConfirmedUnits = sidebarSearching
+    ? confirmedUnits.filter(unitMatchesQuery)
+    : confirmedUnits;
+  const shownTotalUnassigned =
+    shownUnassignedSolos.length + shownUnassignedGroups.length;
+
   // Stats
   const totalUnassigned = unassignedSolos.length + unassignedGroups.length;
   const totalSlots = planning?.timeSlots.length ?? 0;
   const totalCapacity =
     planning?.timeSlots.reduce((sum, s) => sum + s.maxCapacity, 0) ?? 0;
   const totalEnrollments = planning?.enrollments.length ?? 0;
-  const lockedAssignmentsCount =
-    planning?.assignments.filter((assignment) => assignment.isLocked).length ?? 0;
 
-  // Helper: get names for a slot's assignments
-  function getSlotNames(slotId: string): string[] {
+  // Namen + enrollment-id per persoon voor een slot, zodat de avatar/naam
+  // klikbaar is naar de detail-dialog.
+  function getSlotPeople(slotId: string): { name: string; enrollmentId: string }[] {
     const assignments = assignmentsBySlot.get(slotId) ?? [];
-    const names: string[] = [];
+    const people: { name: string; enrollmentId: string }[] = [];
     for (const a of assignments) {
       if (a.enrollmentId) {
         const e = enrollmentMap.get(a.enrollmentId);
-        if (e) names.push(e.studentName);
+        if (e) people.push({ name: e.studentName, enrollmentId: e.id });
       } else if (a.groupId) {
         const g = groupMap.get(a.groupId);
         if (g) {
           for (const memberId of g.memberEnrollmentIds) {
             const e = enrollmentMap.get(memberId);
-            if (e) names.push(e.studentName);
+            if (e) people.push({ name: e.studentName, enrollmentId: e.id });
           }
         }
       }
     }
-    return names;
+    return people;
   }
 
   function getSlotCurrentCount(slotId: string): number {
-    return getSlotNames(slotId).length;
+    return getSlotPeople(slotId).length;
+  }
+
+  // Detail-dialog openers (kijkmodus). Sluit de slot-dialog zodat er geen
+  // modals stapelen.
+  function openPersonDetail(enrollmentId: string) {
+    const e = fullEnrollmentMap.get(enrollmentId);
+    if (!e) return;
+    setOpenSlotId(null);
+    setDetailTarget({ enrollment: e });
+  }
+
+  function openGroupDetail(groupId: string) {
+    const group = groupMap.get(groupId);
+    if (!group) return;
+    const leader = fullEnrollmentMap.get(group.leaderEnrollmentId);
+    if (!leader) return;
+    const members = group.memberEnrollmentIds
+      .map((mid) => fullEnrollmentMap.get(mid))
+      .filter((e): e is LessonSeriesEnrollmentDto => e != null);
+    setOpenSlotId(null);
+    setDetailTarget({ enrollment: leader, groupMembers: members });
+  }
+
+  // Multi-slot: slots waar deze persoon/groep nog extra bij kan (niet het huidige
+  // of een reeds toegewezen slot, en met genoeg vrije plaats).
+  function eligibleExtraSlots(assignment: PlanningAssignmentDto) {
+    if (!planning) return [];
+    const size = assignment.groupId
+      ? groupMap.get(assignment.groupId)?.memberEnrollmentIds.length ?? 1
+      : 1;
+    const takenSlotIds = new Set(
+      planning.assignments
+        .filter((a) =>
+          assignment.groupId
+            ? a.groupId === assignment.groupId
+            : a.enrollmentId != null && a.enrollmentId === assignment.enrollmentId
+        )
+        .map((a) => a.timeSlotId)
+    );
+    return planning.timeSlots
+      .filter((s) => !takenSlotIds.has(s.id))
+      .map((s) => ({
+        id: s.id,
+        dayOfWeek: s.dayOfWeek,
+        startTime: s.startTime,
+        endTime: s.endTime,
+        courtName: s.courtName,
+        remaining: s.maxCapacity - getSlotCurrentCount(s.id),
+      }))
+      .filter((s) => s.remaining >= size)
+      .sort(
+        (a, b) => a.dayOfWeek - b.dayOfWeek || a.startTime.localeCompare(b.startTime)
+      );
   }
 
   function slotHasProposed(slotId: string): boolean {
@@ -321,14 +700,23 @@ export default function PlanningPage({
     return assignments.some((a) => a.status === "Proposed");
   }
 
-  // Helper: find which slot a group is assigned to
-  function getGroupSlotLabel(groupId: string): string | null {
-    if (!planning) return null;
-    const assignment = planning.assignments.find((a) => a.groupId === groupId);
-    if (!assignment) return null;
-    const slot = planning.timeSlots.find((s) => s.id === assignment.timeSlotId);
-    if (!slot) return null;
-    return `${DAY_NAMES_SHORT[slot.dayOfWeek]} ${slot.startTime} — ${slot.endTime}`;
+  // Voor de 'Wachten op bevestiging'-kaarten (die enkel een assignmentId kennen):
+  // resolve de persoon/groep en de vrije extra-slots vanuit de planning-data.
+  function targetForAssignment(
+    assignmentId: string
+  ): { enrollmentId?: string; groupId?: string } | null {
+    const a = planning?.assignments.find((x) => x.id === assignmentId);
+    if (!a) return null;
+    return a.groupId
+      ? { groupId: a.groupId }
+      : a.enrollmentId
+        ? { enrollmentId: a.enrollmentId }
+        : null;
+  }
+
+  function eligibleSlotsForAssignment(assignmentId: string) {
+    const a = planning?.assignments.find((x) => x.id === assignmentId);
+    return a ? eligibleExtraSlots(a) : [];
   }
 
   // ─── Loading / Error ────────────────────────────────────────────────────
@@ -351,22 +739,204 @@ export default function PlanningPage({
     );
   }
 
+  // Mobiele agenda-lijst voor één dag — hergebruikt dezelfde slot-logica als de
+  // desktop-grid (status, capaciteit, toewijs-modus, personen), maar als kaartjes.
+  const renderMobileDay = (dayIndex: number) => {
+    const daySlots = planning.timeSlots
+      .filter((s) => s.dayOfWeek === dayIndex)
+      .sort((a, b) => a.startTime.localeCompare(b.startTime));
+
+    if (daySlots.length === 0) {
+      return (
+        <p className="py-8 text-center text-sm text-gray-400">
+          {t("noSlotsThisDay")}
+        </p>
+      );
+    }
+
+    return (
+      <div className="space-y-2">
+        {daySlots.map((slot) => {
+          const slotAssignments = assignmentsBySlot.get(slot.id) ?? [];
+          const currentCount = getSlotCurrentCount(slot.id);
+          const hasProposed = slotHasProposed(slot.id);
+          const hasAwaiting = slotAssignments.some(
+            (a) => a.status === "AwaitingConfirmation"
+          );
+          const hasConfirmed = slotAssignments.some((a) => a.status === "Confirmed");
+          const hasAutoMerged = slotAssignments.some((a) => a.isAutoMerged);
+          const lockedAssignment = slotAssignments.find((a) => a.isLocked);
+          const slotStatus: "concept" | "offered" | "confirmed" | "empty" =
+            hasProposed
+              ? "concept"
+              : hasAwaiting
+                ? "offered"
+                : hasConfirmed
+                  ? "confirmed"
+                  : "empty";
+
+          const assignPref = assignTarget?.prefs[slot.id];
+          const declinedForTarget =
+            assignTarget != null && declinedSlotsForTarget.has(slot.id);
+          const assignFits =
+            assignTarget != null &&
+            slot.maxCapacity - currentCount >= assignTarget.size;
+          const assignable = assignTarget != null && assignFits;
+
+          const railColor = assignTarget
+            ? !assignFits
+              ? "bg-gray-300"
+              : assignPref === "Preferred"
+                ? "bg-green-500"
+                : assignPref === "Available"
+                  ? "bg-blue-500"
+                  : "bg-gray-300"
+            : slotStatus === "concept"
+              ? "bg-amber-400"
+              : slotStatus === "offered"
+                ? "bg-blue-400"
+                : slotStatus === "confirmed"
+                  ? "bg-tennis-green"
+                  : "bg-gray-300";
+          const cardBg = assignTarget
+            ? !assignFits
+              ? "bg-gray-50 border-gray-200"
+              : assignPref === "Preferred"
+                ? "bg-green-50 border-green-300"
+                : assignPref === "Available"
+                  ? "bg-blue-50 border-blue-300"
+                  : "bg-white border-gray-200"
+            : "bg-white border-gray-100";
+          const countTextColor =
+            slotStatus === "concept"
+              ? "text-amber-700"
+              : slotStatus === "offered"
+                ? "text-blue-700"
+                : slotStatus === "confirmed"
+                  ? "text-green-700"
+                  : "text-gray-400";
+
+          const handleClick = () => {
+            if (assignTarget) {
+              if (!assignFits) return;
+              if (declinedForTarget) {
+                setDeclineConfirmSlotId(slot.id);
+                return;
+              }
+              assignMutation.mutate(
+                assignTarget.kind === "solo"
+                  ? { enrollmentId: assignTarget.enrollmentId, slotId: slot.id }
+                  : { groupId: assignTarget.groupId, slotId: slot.id }
+              );
+              return;
+            }
+            setOpenSlotId(slot.id);
+          };
+
+          const people = getSlotPeople(slot.id);
+
+          return (
+            <div
+              key={slot.id}
+              role="button"
+              tabIndex={0}
+              onClick={handleClick}
+              className={`flex items-stretch gap-3 rounded-xl border ${cardBg} p-3 transition-shadow ${
+                assignTarget
+                  ? assignable
+                    ? "cursor-pointer ring-2 ring-offset-1 ring-tennis-green/30"
+                    : "cursor-not-allowed opacity-60"
+                  : "cursor-pointer hover:shadow-sm"
+              }`}
+            >
+              <span className={`w-1 shrink-0 rounded-full ${railColor}`} />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-semibold text-gray-900">
+                    {slot.startTime} – {slot.endTime}
+                  </span>
+                  <span
+                    className={`flex items-center gap-1 shrink-0 text-xs font-medium ${countTextColor}`}
+                  >
+                    {lockedAssignment && (
+                      <Lock size={11} className="text-tennis-green" />
+                    )}
+                    {currentCount}/{slot.maxCapacity}
+                  </span>
+                </div>
+                <p className="mt-0.5 truncate text-xs text-gray-500">
+                  {declinedForTarget ? (
+                    <span className="inline-flex items-center gap-1 text-amber-700">
+                      <Ban size={11} /> {t("declinedBadge")}
+                    </span>
+                  ) : (
+                    <>
+                      {[slot.courtName, slot.trainerName]
+                        .filter(Boolean)
+                        .join(" · ") || t("noCourtTrainer")}
+                      {hasAutoMerged && (
+                        <span className="ml-1 italic text-gray-400">auto</span>
+                      )}
+                    </>
+                  )}
+                </p>
+                {people.length > 0 ? (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {people.map((p, i) => {
+                      const c = getAvatarColor(p.name);
+                      return (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openPersonDetail(p.enrollmentId);
+                          }}
+                          className="flex items-center gap-1 rounded-full bg-gray-50 py-0.5 pl-0.5 pr-2 hover:bg-gray-100"
+                        >
+                          <span
+                            className={`flex h-5 w-5 items-center justify-center rounded-full ${c.bg} ${c.text} text-[8px] font-bold`}
+                          >
+                            {getInitials(p.name)}
+                          </span>
+                          <span className="text-[11px] text-gray-700">
+                            {p.name}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="mt-1 text-[11px] text-gray-400">
+                    {t("noOneAssigned")}
+                  </p>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   // ─── Render ─────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex flex-col h-full -mx-8 -my-8">
-      {/* Top bar */}
-      <div className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-4">
-          <Link
-            href={`/dashboard/lessons/${id}`}
-            className="text-sm text-gray-500 hover:text-tennis-green flex items-center gap-1"
-          >
-            <ArrowLeft size={16} />
-            {t("backToSeries")}
-          </Link>
-          <div className="h-5 w-px bg-gray-200" />
-          <h1 className="text-lg font-semibold text-gray-900">
+    <div className="flex flex-col gap-4 sm:h-full">
+      {/* Terug naar lesreeks — boven de header-card, zoals op de detailpagina */}
+      <Link
+        href={`/dashboard/lessons/${id}`}
+        className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 transition-colors"
+      >
+        <ChevronLeft size={15} />
+        {t("backToSeries")}
+      </Link>
+
+      {/* Header-card: titel, acties en legende */}
+      <div className="bg-white rounded-xl shadow-sm shadow-gray-100 overflow-hidden">
+      <div className="px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 min-w-0">
+          <h1 className="text-base sm:text-lg font-semibold text-gray-900 min-w-0">
             {t("pageTitle")} — {series?.name ?? "..."}
           </h1>
           {planning.planningStatus === "Planning" && (
@@ -385,40 +955,39 @@ export default function PlanningPage({
             </span>
           )}
           {planning.planningLastEditedAt && (
-            <span className="text-xs text-gray-400">
+            <span className="hidden sm:inline text-xs text-gray-400">
               {t("lastEdited")}: {new Date(planning.planningLastEditedAt).toLocaleDateString("nl-BE", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
             </span>
           )}
         </div>
         {!readOnly && planning.planningStatus !== "Scheduled" && (
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap shrink-0">
             <button
               type="button"
               onClick={() => setAddingSlot(true)}
-              className="inline-flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
+              aria-label={t("addSlot")}
+              title={t("addSlot")}
+              className="inline-flex items-center gap-2 border border-gray-300 text-gray-700 px-3 sm:px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
             >
               <Plus size={15} />
-              {t("addSlot")}
+              <span className="hidden sm:inline">{t("addSlot")}</span>
             </button>
-            <Link
-              href={`/dashboard/lessons/${id}`}
-              className="inline-flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
-            >
-              {t("goBack")}
-            </Link>
-
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <button
                   type="button"
                   disabled={generateMutation.isPending}
-                  className="inline-flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition disabled:opacity-50"
+                  aria-label={t("regenerate")}
+                  title={t("regenerate")}
+                  className="inline-flex items-center gap-2 border border-gray-300 text-gray-700 px-3 sm:px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition disabled:opacity-50"
                 >
                   <RefreshCw
                     size={16}
                     className={generateMutation.isPending ? "animate-spin" : ""}
                   />
-                  {generateMutation.isPending ? t("generating") : t("regenerate")}
+                  <span className="hidden sm:inline">
+                    {generateMutation.isPending ? t("generating") : t("regenerate")}
+                  </span>
                 </button>
               </AlertDialogTrigger>
               <AlertDialogContent>
@@ -453,7 +1022,12 @@ export default function PlanningPage({
                 <button
                   type="button"
                   disabled={confirmMutation.isPending || totalUnassigned > 0}
-                  className="inline-flex items-center gap-2 bg-tennis-green text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-tennis-green/90 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  title={
+                    totalUnassigned > 0
+                      ? t("confirmDisabledUnassigned", { count: totalUnassigned })
+                      : undefined
+                  }
+                  className="inline-flex items-center gap-2 bg-tennis-green text-white px-3 sm:px-4 py-2 rounded-lg text-sm font-medium hover:bg-tennis-green/90 transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Check size={16} />
                   {confirmMutation.isPending ? t("confirming") : t("confirm")}
@@ -481,51 +1055,87 @@ export default function PlanningPage({
         )}
       </div>
 
-      {/* Legend bar */}
-      <div className="bg-white border-b border-gray-200 px-8 py-3 flex items-center gap-5 text-xs text-gray-500 shrink-0">
-        <div className="flex items-center gap-1.5">
-          <div className="w-4 h-3 rounded border border-green-300 bg-green-50" />
-          {t("legendAutoAssigned")}
+      {/* Legende + stats — onderrij van de header-card */}
+      <div className="border-t border-gray-100 px-4 sm:px-6 py-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-500">
+        <div className="flex items-center gap-1.5 shrink-0">
+          <div className="w-4 h-3 rounded border border-amber-400 bg-amber-50" />
+          {t("legendConcept")}
         </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-4 h-3 rounded border border-amber-300 bg-amber-50" />
-          {t("legendSuggestion")}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <div className="w-4 h-3 rounded border border-blue-400 bg-blue-50" />
+          {t("legendOffered")}
         </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-4 h-3 rounded border border-blue-300 bg-blue-50" />
-          {t("legendAutoGrouped")}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <div className="w-4 h-3 rounded border border-tennis-green bg-green-50" />
+          {t("legendConfirmed")}
         </div>
-        <div className="ml-auto text-xs text-gray-400">
+        <div className="flex items-center gap-1.5 shrink-0">
+          <Lock size={11} className="text-tennis-green" />
+          {t("legendLocked")}
+        </div>
+        <div className="w-full sm:w-auto sm:ml-auto text-xs text-gray-400">
           {t("enrollmentsCount", { count: totalEnrollments })} ·{" "}
           {t("timeSlotsCount", { count: totalSlots })} ·{" "}
           {t("spotsCount", { count: totalCapacity })}
         </div>
       </div>
+      </div>
 
-      {!readOnly && planning.planningStatus !== "Scheduled" && (
-        <div className="bg-amber-50 border-b border-amber-100 px-8 py-3 shrink-0">
-          <div className="flex items-center gap-3 text-sm text-amber-900">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700">
-              <Lock size={16} />
+      {/* Toewijs-modus banner */}
+      {assignTarget && (
+        <div className="bg-tennis-green/10 border border-tennis-green/20 rounded-xl px-4 sm:px-6 py-3">
+          <div className="flex items-center gap-3 text-sm text-tennis-green">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-tennis-green/15 text-tennis-green">
+              <Check size={16} />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="font-semibold">{t("lockHelpTitle")}</p>
-              <p className="text-xs text-amber-700">{t("lockHelpDesc")}</p>
+              <p className="font-semibold">
+                Kies een tijdslot voor {assignTarget.name}
+              </p>
+              <p className="text-xs text-tennis-green/70">
+                <span className="inline-block h-2 w-2 rounded-full bg-green-500 align-middle" /> voorkeur ·{" "}
+                <span className="inline-block h-2 w-2 rounded-full bg-blue-500 align-middle" /> beschikbaar ·{" "}
+                <span className="inline-block h-2 w-2 rounded-full bg-gray-300 align-middle" /> niet beschikbaar/vol ·{" "}
+                <Ban size={10} className="inline align-middle text-amber-500" /> eerder geweigerd · Esc om te annuleren
+              </p>
             </div>
-            {lockedAssignmentsCount > 0 && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-tennis-green shadow-sm">
-                <Lock size={12} />
-                {t("lockedCount", { count: lockedAssignmentsCount })}
-              </span>
-            )}
+            <button
+              type="button"
+              onClick={() => setAssignTarget(null)}
+              className="rounded-lg border border-tennis-green/30 bg-white px-3 py-1.5 text-xs font-medium text-tennis-green hover:bg-tennis-green/5"
+            >
+              Annuleren
+            </button>
           </div>
         </div>
       )}
 
       {/* Calendar + Sidebar */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Calendar area */}
-        <div className="flex-1 p-6 overflow-auto">
+      <div className="flex flex-col gap-4 sm:flex-row sm:flex-1 sm:min-h-0">
+        {/* Calendar-card */}
+        <div className="flex-1 min-w-0 bg-white rounded-xl shadow-sm shadow-gray-100 p-4 sm:p-6 sm:self-start sm:max-h-full sm:overflow-auto">
+          {/* Dag-tabs — alleen op gsm; kiest welke dag de agenda-lijst toont. */}
+          {isMobile && daysWithSlots.length > 0 && (
+            <div className="mb-3 flex gap-1.5 overflow-x-auto pb-1">
+              {daysWithSlots.map((d) => (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => setSelectedDay(d)}
+                  className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                    d === selectedDay
+                      ? "bg-tennis-green text-white"
+                      : "border border-rule bg-white text-ink-2 hover:bg-gray-50"
+                  }`}
+                >
+                  {DAY_NAMES_FULL[d]}
+                </button>
+              ))}
+            </div>
+          )}
+          {isMobile ? (
+            renderMobileDay(selectedDay)
+          ) : (
           <CalendarGrid
             slots={[]}
             readOnly
@@ -566,28 +1176,108 @@ export default function PlanningPage({
                     const slotAssignments = assignmentsBySlot.get(slot.id) ?? [];
                     const currentCount = getSlotCurrentCount(slot.id);
                     const hasProposed = slotHasProposed(slot.id);
+                    const hasAwaiting = slotAssignments.some(
+                      (a) => a.status === "AwaitingConfirmation"
+                    );
+                    const hasConfirmed = slotAssignments.some(
+                      (a) => a.status === "Confirmed"
+                    );
                     const hasAutoMerged = slotAssignments.some((a) => a.isAutoMerged);
                     const lockedAssignment = slotAssignments.find((a) => a.isLocked);
-                    const borderColor = lockedAssignment
-                      ? "border-tennis-green"
-                      : hasAutoMerged
-                        ? "border-blue-300"
-                        : hasProposed
-                          ? "border-amber-300"
-                          : "border-green-300";
-                    const bgColor = lockedAssignment
-                      ? "bg-green-50"
-                      : hasAutoMerged
-                        ? "bg-blue-50"
-                        : hasProposed
-                          ? "bg-amber-50"
-                          : "bg-green-50";
+
+                    // Tegelkleur volgt de bevestigings-lifecycle. Bij een gemengd slot
+                    // wint de meest urgente status (Concept > Aangeboden > Bevestigd),
+                    // zodat "hier moet je nog iets doen" nooit verborgen raakt.
+                    const slotStatus: "concept" | "offered" | "confirmed" | "empty" =
+                      hasProposed
+                        ? "concept"
+                        : hasAwaiting
+                          ? "offered"
+                          : hasConfirmed
+                            ? "confirmed"
+                            : "empty";
+
+                    // Toewijs-modus: kleur naar de voorkeur van de geselecteerde
+                    // persoon/groep en bepaal of ze er nog bij passen.
+                    const assignPref = assignTarget?.prefs[slot.id];
+                    // Een eerder geweigerd slot blijft kiesbaar (foutieve afwijzing /
+                    // heroverweging), maar vraagt eerst een bevestiging.
+                    const declinedForTarget =
+                      assignTarget != null && declinedSlotsForTarget.has(slot.id);
+                    const assignFits =
+                      assignTarget != null &&
+                      slot.maxCapacity - currentCount >= assignTarget.size;
+
+                    const borderColor = assignTarget
+                      ? !assignFits
+                        ? "border-gray-200"
+                        : assignPref === "Preferred"
+                          ? "border-green-500"
+                          : assignPref === "Available"
+                            ? "border-blue-500"
+                            : "border-gray-300"
+                      : slotStatus === "concept"
+                        ? "border-amber-400"
+                        : slotStatus === "offered"
+                          ? "border-blue-400"
+                          : slotStatus === "confirmed"
+                            ? "border-tennis-green"
+                            : "border-gray-200";
+                    const bgColor = assignTarget
+                      ? !assignFits
+                        ? "bg-gray-50"
+                        : assignPref === "Preferred"
+                          ? "bg-green-100"
+                          : assignPref === "Available"
+                            ? "bg-blue-100"
+                            : "bg-gray-100/60"
+                      : slotStatus === "concept"
+                        ? "bg-amber-50"
+                        : slotStatus === "offered"
+                          ? "bg-blue-50"
+                          : slotStatus === "confirmed"
+                            ? "bg-green-50"
+                            : "bg-gray-50";
+                    const countTextColor =
+                      slotStatus === "concept"
+                        ? "text-amber-700"
+                        : slotStatus === "offered"
+                          ? "text-blue-700"
+                          : slotStatus === "confirmed"
+                            ? "text-green-700"
+                            : "text-gray-400";
+
+                    // In toewijs-modus is een volle tegel niet klikbaar; anders
+                    // wijst een klik toe (ook een 'niet beschikbaar'-tegel, als
+                    // bewuste overschrijving). Buiten toewijs-modus opent de dialog.
+                    const assignable = assignTarget != null && assignFits;
+                    const handleTileClick = () => {
+                      if (assignTarget) {
+                        if (!assignFits) return;
+                        if (declinedForTarget) {
+                          setDeclineConfirmSlotId(slot.id);
+                          return;
+                        }
+                        assignMutation.mutate(
+                          assignTarget.kind === "solo"
+                            ? { enrollmentId: assignTarget.enrollmentId, slotId: slot.id }
+                            : { groupId: assignTarget.groupId, slotId: slot.id }
+                        );
+                        return;
+                      }
+                      setOpenSlotId(slot.id);
+                    };
 
                     return (
+                      <HoverCard key={slot.id} openDelay={120} closeDelay={80}>
+                        <HoverCardTrigger asChild>
                       <div
-                        key={slot.id}
-                        className={`absolute ${bgColor} border ${borderColor} rounded-lg px-2 py-1.5 cursor-pointer shadow-sm transition-shadow z-10 ${
-                          hoveredSlotId === slot.id ? "shadow-md z-30" : ""
+                        className={`absolute ${bgColor} border ${borderColor} rounded-lg px-2 py-1.5 shadow-sm transition-shadow z-10 hover:shadow-md ${
+                          assignTarget
+                            ? assignable
+                              ? "cursor-pointer ring-2 ring-offset-1 ring-tennis-green/30"
+                              : "cursor-not-allowed opacity-60"
+                            : "cursor-pointer"
                         }`}
                         style={{
                           top: pos.top,
@@ -595,56 +1285,106 @@ export default function PlanningPage({
                           left: `calc(${col.colIndex * colWidthPct}% + 1px)`,
                           width: `calc(${colWidthPct}% - 2px)`,
                         }}
-                        onClick={() => setOpenSlotId(slot.id)}
-                        onMouseEnter={() => {
-                          if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
-                          if (slotAssignments.length > 0) setHoveredSlotId(slot.id);
-                        }}
-                        onMouseLeave={() => {
-                          hoverTimeoutRef.current = setTimeout(() => setHoveredSlotId(null), 200);
-                        }}
+                        title={
+                          declinedForTarget
+                            ? t("declinedSlotForTarget", {
+                                name: assignTarget?.name ?? "",
+                              })
+                            : undefined
+                        }
+                        onClick={handleTileClick}
                       >
-                        {/* Hover popover — read-only peek; klik op de tegel voor acties */}
-                        {hoveredSlotId === slot.id && (
-                          <div
-                            className="absolute left-full top-0 ml-2 z-50 bg-white border border-gray-200 rounded-xl shadow-lg p-3 w-60"
-                            onMouseEnter={() => {
-                              if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
-                            }}
-                            onMouseLeave={() => {
-                              hoverTimeoutRef.current = setTimeout(() => setHoveredSlotId(null), 200);
-                            }}
+                        {/* Header: court + status-glyphs + capacity */}
+                        <div className="flex items-center justify-between gap-1">
+                          <div className="flex items-center gap-1 min-w-0">
+                            {/* Toewijs-modus: dit slot werd door de geselecteerde
+                                eenheid eerder geweigerd → kiesbaar mits bevestiging. */}
+                            {declinedForTarget ? (
+                              <span className="inline-flex items-center gap-0.5 rounded bg-amber-100 px-1 py-0.5 text-[9px] font-semibold text-amber-700">
+                                <Ban size={9} />
+                                {t("declinedBadge")}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-medium text-gray-500 truncate">
+                                {slot.courtName ?? ""}
+                              </span>
+                            )}
+                            {hasAutoMerged && !declinedForTarget && (
+                              <span className="text-[9px] text-gray-400 italic shrink-0">
+                                auto
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            {lockedAssignment && (
+                              <Lock
+                                size={9}
+                                className="text-tennis-green shrink-0"
+                              />
+                            )}
+                            <span className={`text-[10px] ${countTextColor}`}>
+                              {currentCount}/{slot.maxCapacity}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Assigned people — enkel avatars (namen + klik zitten in de hover-popover) */}
+                        {pos.height >= 36 &&
+                          (() => {
+                            const people = getSlotPeople(slot.id);
+                            if (people.length === 0) return null;
+
+                            return (
+                              <div className="mt-1 flex items-center gap-0.5 flex-wrap">
+                                {people.map((person, i) => {
+                                  const color = getAvatarColor(person.name);
+                                  return (
+                                    <div
+                                      key={i}
+                                      title={person.name}
+                                      className={`w-5 h-5 rounded-full ${color.bg} ${color.text} flex items-center justify-center text-[8px] font-bold shrink-0`}
+                                    >
+                                      {getInitials(person.name)}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            );
+                          })()}
+                      </div>
+                        </HoverCardTrigger>
+                        {slotAssignments.length > 0 && (
+                          <HoverCardContent
+                            side="right"
+                            align="start"
+                            sideOffset={8}
+                            collisionPadding={12}
+                            className="w-64 p-3"
                           >
                             <div className="text-[11px] font-semibold text-gray-800 mb-0.5">
                               {DAY_NAMES_SHORT[slot.dayOfWeek]} {slot.startTime}–{slot.endTime}
                             </div>
                             <div className="text-[10px] text-gray-400 mb-2">
-                              {[
-                                slot.courtName,
-                                slot.trainerName,
-                              ].filter(Boolean).join(" · ") || "\u00A0"}
+                              {[slot.courtName, slot.trainerName].filter(Boolean).join(" · ")}
                             </div>
                             <div className="space-y-2.5">
                               {slotAssignments.map((assignment) => {
-                                const aNames: string[] = [];
+                                const aPeople: { name: string; enrollmentId: string }[] = [];
                                 let gName: string | null = null;
-
                                 if (assignment.groupId) {
                                   const group = groupMap.get(assignment.groupId);
                                   if (group) {
                                     gName = group.name;
                                     for (const mId of group.memberEnrollmentIds) {
                                       const e = enrollmentMap.get(mId);
-                                      if (e) aNames.push(e.studentName);
+                                      if (e) aPeople.push({ name: e.studentName, enrollmentId: mId });
                                     }
                                   }
                                 } else if (assignment.enrollmentId) {
                                   const e = enrollmentMap.get(assignment.enrollmentId);
-                                  if (e) aNames.push(e.studentName);
+                                  if (e) aPeople.push({ name: e.studentName, enrollmentId: assignment.enrollmentId });
                                 }
-
-                                if (aNames.length === 0) return null;
-
+                                if (aPeople.length === 0) return null;
                                 return (
                                   <div key={assignment.id}>
                                     {(gName || assignment.isLocked) && (
@@ -666,15 +1406,23 @@ export default function PlanningPage({
                                       </div>
                                     )}
                                     <div className={`space-y-1 ${gName ? "pl-2" : ""}`}>
-                                      {aNames.map((name, ni) => {
-                                        const aColor = getAvatarColor(name);
+                                      {aPeople.map((person, ni) => {
+                                        const aColor = getAvatarColor(person.name);
                                         return (
-                                          <div key={ni} className="flex items-center gap-1.5">
+                                          <button
+                                            key={ni}
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              openPersonDetail(person.enrollmentId);
+                                            }}
+                                            className="flex w-full items-center gap-1.5 rounded px-1 py-0.5 -mx-1 text-left hover:bg-gray-50"
+                                          >
                                             <div className={`w-4 h-4 rounded-full ${aColor.bg} ${aColor.text} flex items-center justify-center text-[7px] font-bold shrink-0`}>
-                                              {getInitials(name)}
+                                              {getInitials(person.name)}
                                             </div>
-                                            <span className="text-[11px] text-gray-700">{name}</span>
-                                          </div>
+                                            <span className="text-[11px] text-gray-700 hover:text-tennis-green">{person.name}</span>
+                                          </button>
                                         );
                                       })}
                                     </div>
@@ -685,115 +1433,79 @@ export default function PlanningPage({
                             <div className="mt-2 pt-2 border-t border-gray-100 text-[10px] text-gray-400">
                               {t("occupied", { count: currentCount, max: slot.maxCapacity })}
                             </div>
-                          </div>
+                          </HoverCardContent>
                         )}
-
-                        {/* Header: court + capacity + auto badge */}
-                        <div className="flex items-center justify-between gap-1">
-                          <div className="flex items-center gap-1 min-w-0">
-                            <span className="text-[10px] font-medium text-gray-500 truncate">
-                              {slot.courtName ?? ""}
-                            </span>
-                            {hasAutoMerged && (
-                              <span className="text-[9px] text-blue-500 italic shrink-0">
-                                auto
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-1 shrink-0">
-                            <span
-                              className={`text-[10px] ${
-                                hasAutoMerged
-                                  ? "text-blue-600"
-                                  : hasProposed
-                                    ? "text-amber-600"
-                                    : "text-green-600"
-                              }`}
-                            >
-                              {currentCount}/{slot.maxCapacity}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Assigned people — flat list of avatars */}
-                        {pos.height >= 36 &&
-                          (() => {
-                            const allNames = getSlotNames(slot.id);
-                            if (allNames.length === 0) return null;
-
-                            if (allNames.length === 1) {
-                              const name = allNames[0];
-                              const color = getAvatarColor(name);
-                              return (
-                                <div className="mt-1 flex items-center gap-1">
-                                  <div
-                                    title={name}
-                                    className={`w-5 h-5 rounded-full ${color.bg} ${color.text} flex items-center justify-center text-[8px] font-bold shrink-0`}
-                                  >
-                                    {getInitials(name)}
-                                  </div>
-                                  <span className="text-[10px] text-gray-700 truncate">
-                                    {name}
-                                  </span>
-                                </div>
-                              );
-                            }
-
-                            return (
-                              <div className="mt-1 flex items-center gap-0.5 flex-wrap">
-                                {allNames.map((name, i) => {
-                                  const color = getAvatarColor(name);
-                                  return (
-                                    <div
-                                      key={i}
-                                      title={name}
-                                      className={`w-5 h-5 rounded-full ${color.bg} ${color.text} flex items-center justify-center text-[8px] font-bold shrink-0 cursor-default`}
-                                    >
-                                      {getInitials(name)}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            );
-                          })()}
-                      </div>
+                      </HoverCard>
                     );
                   })}
                 </>
               );
             }}
           />
+          )}
 
         </div>
 
-        {/* Right sidebar */}
-        <aside className="w-80 bg-white border-l border-gray-200 flex flex-col shrink-0 overflow-auto">
-          {/* Non-responders (only in AwaitingConfirmation) */}
-          {planning.planningStatus === "AwaitingConfirmation" && (
-            <NonRespondersPanel seriesId={id} />
-          )}
-
-          {/* Unassigned */}
-          <div className="p-4 border-b border-gray-100">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-gray-900">
-                {t("unassigned")}
-              </h3>
-              {totalUnassigned > 0 && (
-                <span className="text-xs bg-red-100 text-red-700 font-medium px-2 py-0.5 rounded-full">
-                  {totalUnassigned}
-                </span>
+        {/* Right sidebar-card */}
+        <aside className="w-full sm:w-80 bg-white rounded-xl shadow-sm shadow-gray-100 flex flex-col shrink-0 overflow-hidden sm:min-h-0 sm:overflow-y-auto">
+          {/* Zoekbalk — filtert personen over alle secties. */}
+          <div className="sm:sticky sm:top-0 z-10 border-b border-gray-100 bg-white p-3">
+            <div className="relative">
+              <Search
+                size={14}
+                className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400"
+              />
+              <input
+                type="text"
+                value={sidebarQuery}
+                onChange={(e) => setSidebarQuery(e.target.value)}
+                placeholder={t("searchPeople")}
+                className="w-full rounded-md border border-gray-200 bg-gray-50 py-1.5 pl-8 pr-7 text-xs text-gray-700 placeholder:text-gray-400 focus:border-tennis-green focus:bg-white focus:outline-none"
+              />
+              {sidebarQuery && (
+                <button
+                  type="button"
+                  aria-label={t("searchClear")}
+                  onClick={() => setSidebarQuery("")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 transition-colors hover:text-gray-600"
+                >
+                  <X size={13} />
+                </button>
               )}
             </div>
+          </div>
 
-            {totalUnassigned === 0 ? (
+          {/* Unassigned (uitklapbaar) — bij zoeken verborgen als er geen match is. */}
+          {(!sidebarSearching || shownTotalUnassigned > 0) && (
+          <div className="p-4 border-b border-gray-100">
+            <button
+              type="button"
+              onClick={() => setShowUnassigned((v) => !v)}
+              className="mb-3 flex w-full cursor-pointer items-center justify-between"
+            >
+              <span className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                {t("unassigned")}
+                {shownTotalUnassigned > 0 && (
+                  <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+                    {shownTotalUnassigned}
+                  </span>
+                )}
+              </span>
+              <ChevronDown
+                size={16}
+                className={`text-gray-400 transition-transform ${showUnassigned || sidebarSearching ? "rotate-180" : ""}`}
+              />
+            </button>
+
+            {(showUnassigned || sidebarSearching) &&
+              (shownTotalUnassigned === 0 ? (
               <p className="text-xs text-gray-400">
                 Iedereen is toegewezen
               </p>
             ) : (
               <div className="space-y-2">
                 {/* Unassigned groups */}
-                {unassignedGroups.map((group) => {
+                {shownUnassignedGroups.map((group) => {
                   const members = group.memberEnrollmentIds
                     .map((mId) => enrollmentMap.get(mId))
                     .filter(Boolean) as PlanningEnrollmentDto[];
@@ -802,146 +1514,81 @@ export default function PlanningPage({
                   return (
                     <div
                       key={group.id}
-                      className="border border-amber-200 bg-amber-50/50 rounded-lg p-3"
+                      className="rounded-lg border border-amber-200 bg-amber-50/50 p-2.5"
                     >
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="w-7 h-7 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                      <div className="flex items-center gap-2">
+                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700">
                           <Users size={13} />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <div className="text-xs font-medium text-gray-900">
+                          <button
+                            type="button"
+                            onClick={() => openGroupDetail(group.id)}
+                            className="block max-w-full cursor-pointer truncate text-left text-xs font-medium text-gray-900 hover:text-tennis-green hover:underline"
+                          >
                             {group.name}
-                          </div>
-                          <div className="text-[10px] text-amber-600">
-                            {members.length} leden
-                          </div>
+                          </button>
+                          <div className="text-[10px] text-amber-600">{members.length} leden</div>
                         </div>
-
-                        {/* Contact leader */}
-                        {leader && (
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <button
-                                type="button"
-                                className="shrink-0 w-6 h-6 flex items-center justify-center rounded-md text-gray-400 hover:text-tennis-green hover:bg-tennis-green/5 transition-colors"
-                              >
-                                <MessageCircle size={13} />
-                              </button>
-                            </PopoverTrigger>
-                            <PopoverContent side="left" align="start" sideOffset={4} className="w-40 p-1">
-                              <a href={`mailto:${leader.studentEmail}`} className="flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-gray-700 hover:bg-gray-50 transition-colors">
-                                <Mail size={12} className="text-gray-400" /> E-mail
-                              </a>
-                              {leader.studentPhone && (
-                                <>
-                                  <a href={`tel:${leader.studentPhone}`} className="flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-gray-700 hover:bg-gray-50 transition-colors">
-                                    <Phone size={12} className="text-gray-400" /> Bellen
-                                  </a>
-                                  <a href={`https://wa.me/${leader.studentPhone.replace(/[^0-9+]/g, "").replace(/^\+/, "")}?text=${encodeURIComponent(`Hallo ${leader.studentName}, betreft de planning van ${series?.name ?? "de lesreeks"}.`)}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-gray-700 hover:bg-gray-50 transition-colors">
-                                    <MessageCircle size={12} className="text-green-500" /> WhatsApp
-                                  </a>
-                                </>
-                              )}
-                            </PopoverContent>
-                          </Popover>
-                        )}
+                        {!readOnly && leader && (() => {
+                          const active =
+                            assignTarget?.kind === "group" && assignTarget.groupId === group.id;
+                          return (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setAssignTarget(
+                                  active
+                                    ? null
+                                    : {
+                                        kind: "group",
+                                        groupId: group.id,
+                                        name: group.name,
+                                        size: members.length,
+                                        prefs: leader.preferences,
+                                      }
+                                )
+                              }
+                              className={`shrink-0 cursor-pointer rounded-md border px-2 py-1 text-[10px] font-semibold transition-colors ${
+                                active
+                                  ? "border-gray-200 text-gray-500 hover:bg-gray-50"
+                                  : "border-tennis-green/30 text-tennis-green hover:bg-tennis-green/5"
+                              }`}
+                            >
+                              {active ? t("cancelAssign") : t("assignShort")}
+                            </button>
+                          );
+                        })()}
                       </div>
 
-                      {/* Group members */}
-                      <div className="space-y-1 mb-2">
+                      <div className="mt-2 flex flex-wrap gap-1">
                         {members.map((m) => {
                           const color = getAvatarColor(m.studentName);
+                          const isLeader = m.id === group.leaderEnrollmentId;
                           return (
-                            <div key={m.id} className="flex items-center gap-1.5">
-                              <div className={`w-4 h-4 rounded-full ${color.bg} ${color.text} flex items-center justify-center text-[7px] font-bold shrink-0`}>
+                            <button
+                              key={m.id}
+                              type="button"
+                              onClick={() => openPersonDetail(m.id)}
+                              title={isLeader ? `${m.studentName} (leider)` : m.studentName}
+                              className="flex cursor-pointer items-center gap-1 rounded-full bg-white/70 py-0.5 pl-0.5 pr-2 transition-colors hover:bg-white"
+                            >
+                              <div className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[7px] font-bold ${color.bg} ${color.text}`}>
                                 {getInitials(m.studentName)}
                               </div>
-                              <span className="text-[10px] text-gray-700">{m.studentName}</span>
-                              {m.id === group.leaderEnrollmentId && (
-                                <span className="text-[9px] text-gray-400 italic">leider</span>
-                              )}
-                            </div>
+                              <span className="max-w-[80px] truncate text-[10px] text-gray-700">
+                                {m.studentName}
+                              </span>
+                            </button>
                           );
                         })}
                       </div>
-
-                      {/* Leader's preferences */}
-                      {leader && Object.keys(leader.preferences).length > 0 && (
-                        <div className="flex flex-wrap gap-1 mb-2">
-                          {Object.entries(leader.preferences).map(([slotId, pref]) => {
-                            const slot = planning.timeSlots.find((s) => s.id === slotId);
-                            if (!slot) return null;
-                            const isAvailable = pref === "Available" || pref === "Preferred";
-                            return (
-                              <span
-                                key={slotId}
-                                className={`text-[10px] px-1.5 py-0.5 rounded ${
-                                  pref === "Preferred"
-                                    ? "bg-green-100 text-green-700"
-                                    : pref === "Available"
-                                      ? "bg-blue-100 text-blue-700"
-                                      : "bg-gray-100 text-gray-400"
-                                }`}
-                              >
-                                {DAY_NAMES_SHORT[slot.dayOfWeek]} {slot.startTime.replace(":00", "")}{" "}
-                                {isAvailable ? (pref === "Preferred" ? "★" : "✓") : "✕"}
-                              </span>
-                            );
-                          })}
-                        </div>
-                      )}
-
-                      {/* Manual assign for group */}
-                      {!readOnly && leader && (
-                        assigningEnrollmentId === group.id ? (
-                          <div className="mt-2 space-y-1.5">
-                            <p className="text-[10px] text-gray-500 font-medium">Kies een tijdslot:</p>
-                            <div className="space-y-1">
-                              {planning.timeSlots
-                                .sort((a, b) => a.dayOfWeek - b.dayOfWeek || a.startTime.localeCompare(b.startTime))
-                                .map((slot) => {
-                                  const count = getSlotCurrentCount(slot.id);
-                                  const remaining = slot.maxCapacity - count;
-                                  const fits = remaining >= members.length;
-                                  return (
-                                    <button
-                                      key={slot.id}
-                                      type="button"
-                                      disabled={!fits || assignMutation.isPending}
-                                      onClick={() => assignMutation.mutate({ groupId: group.id, slotId: slot.id })}
-                                      className={`w-full text-left px-2 py-1.5 rounded text-[10px] transition-colors ${
-                                        !fits
-                                          ? "bg-gray-50 text-gray-300 cursor-not-allowed"
-                                          : "bg-white border border-gray-200 text-gray-700 hover:border-tennis-green hover:bg-tennis-green/5 cursor-pointer"
-                                      }`}
-                                    >
-                                      <span className="font-medium">{DAY_NAMES_SHORT[slot.dayOfWeek]} {slot.startTime}–{slot.endTime}</span>
-                                      {slot.courtName && <span className="text-gray-400 ml-1">· {slot.courtName}</span>}
-                                      <span className="float-right text-gray-400">{count}/{slot.maxCapacity}</span>
-                                    </button>
-                                  );
-                                })}
-                            </div>
-                            <button type="button" onClick={() => setAssigningEnrollmentId(null)} className="text-[10px] text-gray-400 hover:text-gray-600">
-                              Annuleren
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => setAssigningEnrollmentId(group.id)}
-                            className="mt-1 text-[10px] text-tennis-green hover:underline font-medium"
-                          >
-                            {t("assignManually")} →
-                          </button>
-                        )
-                      )}
                     </div>
                   );
                 })}
 
                 {/* Unassigned solos */}
-                {unassignedSolos.map((enrollment) => {
+                {shownUnassignedSolos.map((enrollment) => {
                   const availableSlotIds = Object.entries(enrollment.preferences)
                     .filter(([, p]) => p === "Preferred" || p === "Available")
                     .map(([id]) => id);
@@ -960,26 +1607,28 @@ export default function PlanningPage({
                     return count >= slot.maxCapacity;
                   });
                   const noSlotsConfigured = planning.timeSlots.length === 0;
+                  // Toon enkel een statusregel bij een probleem; is de persoon
+                  // gewoon plaatsbaar (heeft opties met plaats), dan geen ruis.
                   const reasonText = noSlotsConfigured
                     ? t("noSlotsAvailable")
                     : allAvailableAreFull
                       ? t("noSlotCapacity")
                       : hasPreferred
-                        ? t("multipleOptions")
+                        ? null
                         : t("noFittingSlot");
 
                   return (
                     <div
                       key={enrollment.id}
-                      className={`border rounded-lg p-3 ${
+                      className={`rounded-lg border p-2.5 ${
                         hasPreferred && !allAvailableAreFull
                           ? "border-amber-200 bg-amber-50/50"
                           : "border-red-200 bg-red-50/50"
                       }`}
                     >
-                      <div className="flex items-center gap-2 mb-2">
+                      <div className="flex items-center gap-2">
                         <div
-                          className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
+                          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
                             hasPreferred && !allAvailableAreFull
                               ? "bg-amber-100 text-amber-700"
                               : "bg-red-100 text-red-700"
@@ -988,212 +1637,348 @@ export default function PlanningPage({
                           {getInitials(enrollment.studentName)}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <div className="text-xs font-medium text-gray-900 truncate">
-                            {enrollment.studentName}
-                          </div>
-                          <div
-                            className={`text-[10px] ${
-                              hasPreferred && !allAvailableAreFull
-                                ? "text-amber-600"
-                                : "text-red-600"
-                            }`}
+                          <button
+                            type="button"
+                            onClick={() => openPersonDetail(enrollment.id)}
+                            className="block max-w-full cursor-pointer truncate text-left text-xs font-medium text-gray-900 hover:text-tennis-green hover:underline"
                           >
-                            {reasonText}
-                          </div>
+                            {enrollment.studentName}
+                          </button>
+                          {reasonText && (
+                            <div className="text-[10px] text-red-600">
+                              {reasonText}
+                            </div>
+                          )}
                         </div>
-
-                        {/* Contact dropdown */}
-                        <Popover>
-                          <PopoverTrigger asChild>
+                        {!readOnly && (() => {
+                          const active =
+                            assignTarget?.kind === "solo" &&
+                            assignTarget.enrollmentId === enrollment.id;
+                          return (
                             <button
                               type="button"
-                              className="shrink-0 w-6 h-6 flex items-center justify-center rounded-md text-gray-400 hover:text-tennis-green hover:bg-tennis-green/5 transition-colors"
+                              onClick={() =>
+                                setAssignTarget(
+                                  active
+                                    ? null
+                                    : {
+                                        kind: "solo",
+                                        enrollmentId: enrollment.id,
+                                        name: enrollment.studentName,
+                                        size: 1,
+                                        prefs: enrollment.preferences,
+                                      }
+                                )
+                              }
+                              className={`shrink-0 cursor-pointer rounded-md border px-2 py-1 text-[10px] font-semibold transition-colors ${
+                                active
+                                  ? "border-gray-200 text-gray-500 hover:bg-gray-50"
+                                  : "border-tennis-green/30 text-tennis-green hover:bg-tennis-green/5"
+                              }`}
                             >
-                              <MessageCircle size={13} />
+                              {active ? t("cancelAssign") : t("assignShort")}
                             </button>
-                          </PopoverTrigger>
-                          <PopoverContent side="left" align="start" sideOffset={4} className="w-40 p-1">
-                            <a href={`mailto:${enrollment.studentEmail}`} className="flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-gray-700 hover:bg-gray-50 transition-colors">
-                              <Mail size={12} className="text-gray-400" /> E-mail
-                            </a>
-                            {enrollment.studentPhone && (
-                              <>
-                                <a href={`tel:${enrollment.studentPhone}`} className="flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-gray-700 hover:bg-gray-50 transition-colors">
-                                  <Phone size={12} className="text-gray-400" /> Bellen
-                                </a>
-                                <a href={`https://wa.me/${enrollment.studentPhone.replace(/[^0-9+]/g, "").replace(/^\+/, "")}?text=${encodeURIComponent(`Hallo ${enrollment.studentName}, betreft de planning van ${series?.name ?? "de lesreeks"}.`)}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-gray-700 hover:bg-gray-50 transition-colors">
-                                  <MessageCircle size={12} className="text-green-500" /> WhatsApp
-                                </a>
-                              </>
-                            )}
-                            {!enrollment.studentPhone && (
-                              <div className="px-2.5 py-1.5 text-[10px] text-gray-400 italic">Geen telefoonnummer</div>
-                            )}
-                          </PopoverContent>
-                        </Popover>
+                          );
+                        })()}
                       </div>
-
-                      {/* Preference badges */}
-                      {Object.keys(enrollment.preferences).length > 0 && (
-                        <div className="flex flex-wrap gap-1">
-                          {Object.entries(enrollment.preferences).map(
-                            ([slotId, pref]) => {
-                              const slot = planning.timeSlots.find((s) => s.id === slotId);
-                              if (!slot) return null;
-                              const isAvailable = pref === "Available" || pref === "Preferred";
-                              return (
-                                <span
-                                  key={slotId}
-                                  className={`text-[10px] px-1.5 py-0.5 rounded ${
-                                    pref === "Preferred"
-                                      ? "bg-green-100 text-green-700"
-                                      : pref === "Available"
-                                        ? "bg-blue-100 text-blue-700"
-                                        : "bg-gray-100 text-gray-400"
-                                  }`}
-                                >
-                                  {DAY_NAMES_SHORT[slot.dayOfWeek]} {slot.startTime.replace(":00", "")}{" "}
-                                  {isAvailable ? (pref === "Preferred" ? "★" : "✓") : "✕"}
-                                </span>
-                              );
-                            }
-                          )}
-                        </div>
-                      )}
-
-                      {/* Manual assign: slot picker */}
-                      {!readOnly &&
-                        (assigningEnrollmentId === enrollment.id ? (
-                        <div className="mt-2 space-y-1.5">
-                          <p className="text-[10px] text-gray-500 font-medium">Kies een tijdslot:</p>
-                          <div className="space-y-1">
-                            {planning.timeSlots
-                              .sort((a, b) => a.dayOfWeek - b.dayOfWeek || a.startTime.localeCompare(b.startTime))
-                              .map((slot) => {
-                                const count = getSlotCurrentCount(slot.id);
-                                const isFull = count >= slot.maxCapacity;
-                                return (
-                                  <button
-                                    key={slot.id}
-                                    type="button"
-                                    disabled={isFull || assignMutation.isPending}
-                                    onClick={() => assignMutation.mutate({ enrollmentId: enrollment.id, slotId: slot.id })}
-                                    className={`w-full text-left px-2 py-1.5 rounded text-[10px] transition-colors ${
-                                      isFull
-                                        ? "bg-gray-50 text-gray-300 cursor-not-allowed"
-                                        : "bg-white border border-gray-200 text-gray-700 hover:border-tennis-green hover:bg-tennis-green/5 cursor-pointer"
-                                    }`}
-                                  >
-                                    <span className="font-medium">{DAY_NAMES_SHORT[slot.dayOfWeek]} {slot.startTime}–{slot.endTime}</span>
-                                    {slot.courtName && <span className="text-gray-400 ml-1">· {slot.courtName}</span>}
-                                    <span className="float-right text-gray-400">{count}/{slot.maxCapacity}</span>
-                                  </button>
-                                );
-                              })}
-                          </div>
-                          <button type="button" onClick={() => setAssigningEnrollmentId(null)} className="text-[10px] text-gray-400 hover:text-gray-600">
-                            Annuleren
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => setAssigningEnrollmentId(enrollment.id)}
-                          className="mt-2 text-[10px] text-tennis-green hover:underline font-medium"
-                        >
-                          {t("assignManually")} →
-                        </button>
-                      ))}
                     </div>
                   );
                 })}
               </div>
-            )}
+            ))}
           </div>
+          )}
 
-          {/* Groups */}
+          {/* Toegewezen (uitklapbaar) — bij zoeken verborgen als er geen match is. */}
+          {(!sidebarSearching || shownConceptUnits.length > 0) && (
           <div className="p-4 border-b border-gray-100">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-gray-900">
-                {t("groups")}
-              </h3>
-            </div>
+            <button
+              type="button"
+              onClick={() => setShowAssigned((v) => !v)}
+              className="flex w-full cursor-pointer items-center justify-between"
+            >
+              <span className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                {t("assigned")}
+                {shownConceptUnits.length > 0 && (
+                  <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+                    {shownConceptUnits.length}
+                  </span>
+                )}
+              </span>
+              <ChevronDown
+                size={16}
+                className={`text-gray-400 transition-transform ${showAssigned || sidebarSearching ? "rotate-180" : ""}`}
+              />
+            </button>
 
-            {planning.groups.length === 0 ? (
-              <p className="text-xs text-gray-400">Geen groepen</p>
-            ) : (
-              <div className="space-y-2">
-                {planning.groups.map((group) => {
-                  const slotLabel = getGroupSlotLabel(group.id);
-                  const memberNames = group.memberEnrollmentIds
-                    .map((id) => enrollmentMap.get(id)?.studentName ?? "?")
-                    .join(", ");
-                  const groupAssignment = planning.assignments.find(
-                    (a) => a.groupId === group.id
-                  );
-                  const isAutoMerged = groupAssignment?.isAutoMerged ?? false;
-                  const isLocked = groupAssignment?.isLocked ?? false;
-                  const canOfferDefinitively = groupAssignment?.status === "Proposed";
+            {(showAssigned || sidebarSearching) && (
+              <div className="mt-3 space-y-2">
+                {shownConceptUnits.length === 0 ? (
+                  <p className="text-xs text-gray-400">{t("nobodyAssigned")}</p>
+                ) : (
+                  shownConceptUnits.map((unit) => {
+                    const options = eligibleExtraSlots(unit.rep);
+                    const isOpen = addingSlotForKey === unit.key;
+                    // Lock/aanbieden werken op alle nog-voorgestelde toewijzingen
+                    // van deze eenheid (kan meerdere slots zijn bij multi-slot).
+                    const proposed = unit.assignments.filter(
+                      (a) => a.status === "Proposed"
+                    );
+                    const canOffer = proposed.length > 0;
+                    const allLocked = canOffer && proposed.every((a) => a.isLocked);
+                    return (
+                      <div key={unit.key} className="rounded-lg border border-gray-200 p-2.5">
+                        <div className="flex items-center gap-2">
+                          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500">
+                            {unit.type === "group" ? (
+                              <Users size={13} />
+                            ) : (
+                              <span className="text-[10px] font-bold">{getInitials(unit.name)}</span>
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate text-xs font-medium text-gray-900">
+                              {unit.name}
+                            </div>
+                            <div className="mt-0.5 flex flex-wrap gap-1">
+                              {unit.slots.map((s, i) => (
+                                <span
+                                  key={i}
+                                  className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-600"
+                                >
+                                  {s.label}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
 
-                  return (
-                    <div
-                      key={group.id}
-                      className={`border rounded-lg p-3 ${
-                        isLocked
-                          ? "border-tennis-green bg-green-50/50"
-                          : isAutoMerged
-                            ? "border-blue-200 bg-blue-50/30"
-                            : "border-gray-200"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-[10px] font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded">
-                          {group.name}
-                        </span>
-                        <div className="flex items-center gap-1.5">
-                          {isLocked && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-tennis-green shadow-sm">
-                              <Lock size={10} />
-                              {t("locked")}
-                            </span>
-                          )}
-                          <span className={`text-[10px] ${isAutoMerged ? "text-blue-500 italic" : "text-gray-400"}`}>
-                            {isAutoMerged ? t("autoGrouped") : t("preFormed")}
-                          </span>
-                        </div>
+                        {!readOnly && (
+                          <div className="mt-2 border-t border-gray-100 pt-2">
+                            {isOpen ? (
+                              <div className="space-y-1.5">
+                                <p className="text-[10px] font-medium text-gray-500">
+                                  {t("chooseExtraSlot")}
+                                </p>
+                                {options.length === 0 ? (
+                                  <p className="text-[10px] text-gray-400">
+                                    {t("noOtherSlotAvailable")}
+                                  </p>
+                                ) : (
+                                  <div className="space-y-1">
+                                    {options.map((s) => (
+                                      <button
+                                        key={s.id}
+                                        type="button"
+                                        disabled={assignMutation.isPending}
+                                        onClick={() => {
+                                          assignMutation.mutate({ ...unit.target, slotId: s.id });
+                                          setAddingSlotForKey(null);
+                                        }}
+                                        className="w-full cursor-pointer rounded-md border border-gray-200 px-2 py-1.5 text-left text-[10px] text-gray-700 transition-colors hover:border-tennis-green hover:bg-tennis-green/5 disabled:opacity-50"
+                                      >
+                                        <span className="font-medium">
+                                          {DAY_NAMES_SHORT[s.dayOfWeek]} {s.startTime}–{s.endTime}
+                                        </span>
+                                        {s.courtName && (
+                                          <span className="ml-1 text-gray-400">· {s.courtName}</span>
+                                        )}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => setAddingSlotForKey(null)}
+                                  className="cursor-pointer text-[10px] text-gray-400 hover:text-gray-600"
+                                >
+                                  {t("cancel")}
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => setAddingSlotForKey(unit.key)}
+                                  className="inline-flex cursor-pointer items-center gap-1 text-[11px] font-medium text-tennis-green hover:underline"
+                                >
+                                  <Plus size={12} />
+                                  {t("addExtraSlot")}
+                                </button>
+                                {canOffer && (
+                                  <div className="ml-auto flex items-center gap-0.5">
+                                    <button
+                                      type="button"
+                                      title={
+                                        allLocked
+                                          ? t("unlock")
+                                          : unit.type === "group"
+                                            ? t("lockGroup")
+                                            : t("lock")
+                                      }
+                                      aria-label={allLocked ? t("unlock") : t("lock")}
+                                      onClick={() => {
+                                        if (allLocked) {
+                                          proposed
+                                            .filter((a) => a.isLocked)
+                                            .forEach((a) =>
+                                              lockMutation.mutate({ assignmentId: a.id, isLocked: true })
+                                            );
+                                        } else {
+                                          proposed
+                                            .filter((a) => !a.isLocked)
+                                            .forEach((a) =>
+                                              lockMutation.mutate({ assignmentId: a.id, isLocked: false })
+                                            );
+                                        }
+                                      }}
+                                      disabled={lockMutation.isPending}
+                                      className={`inline-flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md transition-colors disabled:opacity-50 ${
+                                        allLocked
+                                          ? "text-tennis-green hover:bg-tennis-green/10"
+                                          : "text-gray-400 hover:bg-tennis-green/5 hover:text-tennis-green"
+                                      }`}
+                                    >
+                                      {allLocked ? <Unlock size={14} /> : <Lock size={14} />}
+                                    </button>
+                                    {/* Aanbieden gaat per toewijzing/slot (één token + één
+                                        mail). Bij een multi-slot eenheid zou één klik
+                                        meerdere concurrerende mails geven; bied die dan
+                                        per slot aan via de tijdslot-dialog. */}
+                                    {proposed.length === 1 && (
+                                      <button
+                                        type="button"
+                                        title={t("offerDefinitively")}
+                                        aria-label={t("offerDefinitively")}
+                                        onClick={() =>
+                                          setOfferTarget({
+                                            id: proposed[0].id,
+                                            name: unit.name,
+                                          })
+                                        }
+                                        disabled={sendConfirmationMutation.isPending}
+                                        className="inline-flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-tennis-green transition-colors hover:bg-tennis-green/10 disabled:opacity-50"
+                                      >
+                                        <Mail size={14} />
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
-                      <div className="text-[10px] text-gray-600">
-                        {memberNames}
-                      </div>
-                      {slotLabel && (
-                        <div className="text-[10px] text-gray-400 mt-1.5 flex items-center gap-1">
-                          <Check size={12} className="text-green-500" />
-                          {slotLabel}
-                        </div>
-                      )}
-                      {isLocked && (
-                        <div className="mt-1.5 flex items-center gap-1 text-[10px] font-medium text-tennis-green">
-                          <Lock size={11} />
-                          {t("lockedKeepsOnRegenerate")}
-                        </div>
-                      )}
-                      {!readOnly && canOfferDefinitively && groupAssignment && (
-                        <button
-                          type="button"
-                          onClick={() => sendConfirmationMutation.mutate(groupAssignment.id)}
-                          disabled={sendConfirmationMutation.isPending}
-                          className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-md bg-tennis-green px-2 py-1.5 text-[11px] font-semibold text-white hover:bg-tennis-green/90 disabled:opacity-50"
-                        >
-                          <Mail size={12} />
-                          {t("offerDefinitively")}
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
+                    );
+                  })
+                )}
               </div>
             )}
           </div>
+          )}
+
+          {/* Wachten op bevestiging — definitief aangeboden, nog niet bevestigd.
+              Verschijnt zodra er openstaande bevestigingsverzoeken zijn (self-hide bij leeg). */}
+          <NonRespondersPanel
+            seriesId={id}
+            query={sidebarQ}
+            onOpenAssignment={(assignmentId) => {
+              const a = planning.assignments.find((x) => x.id === assignmentId);
+              if (a) setOpenSlotId(a.timeSlotId);
+            }}
+            eligibleSlotsForAssignment={eligibleSlotsForAssignment}
+            targetForAssignment={targetForAssignment}
+            onAddExtraSlot={(target, slotId) =>
+              addExtraSlotMutation.mutate({ target, slotId })
+            }
+            isAddExtraPending={addExtraSlotMutation.isPending}
+          />
+
+          {/* Bevestigd (uitklapbaar) — enkel écht bevestigde (Confirmed) eenheden;
+              klik op een rij opent de tijdslot-dialog met acties (Verplaatsen). */}
+          {shownConfirmedUnits.length > 0 && (
+            <div className="p-4 border-b border-gray-100">
+              <button
+                type="button"
+                onClick={() => setShowConfirmed((v) => !v)}
+                className="flex w-full cursor-pointer items-center justify-between"
+              >
+                <span className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                  {t("confirmedSection")}
+                  <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                    {shownConfirmedUnits.length}
+                  </span>
+                </span>
+                <ChevronDown
+                  size={16}
+                  className={`text-gray-400 transition-transform ${showConfirmed || sidebarSearching ? "rotate-180" : ""}`}
+                />
+              </button>
+
+              {(showConfirmed || sidebarSearching) && (
+                <div className="mt-3 space-y-2">
+                  {shownConfirmedUnits.map((unit) => {
+                    const slotEntries = unit.assignments.map((a) => {
+                      const slot = planning.timeSlots.find(
+                        (s) => s.id === a.timeSlotId
+                      );
+                      return {
+                        assignmentId: a.id,
+                        label: slot
+                          ? `${DAY_NAMES_SHORT[slot.dayOfWeek]} ${slot.startTime}`
+                          : "?",
+                      };
+                    });
+                    return (
+                      <div
+                        key={unit.key}
+                        className="flex items-center gap-2 rounded-lg border border-gray-200 p-2.5"
+                      >
+                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500">
+                          {unit.type === "group" ? (
+                            <Users size={13} />
+                          ) : (
+                            <span className="text-[10px] font-bold">{getInitials(unit.name)}</span>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-xs font-medium text-gray-900">
+                            {unit.name}
+                          </div>
+                          <div className="mt-0.5 flex flex-wrap gap-1">
+                            {unit.slots.map((s, i) => (
+                              <span
+                                key={i}
+                                className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-600"
+                              >
+                                {s.label}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                        {!readOnly && (
+                          <ConfirmedUnitActions
+                            unitName={unit.name}
+                            slotEntries={slotEntries}
+                            target={unit.target}
+                            options={eligibleExtraSlots(unit.rep)}
+                            onMove={(assignmentId, slotId, notifyStudent) =>
+                              moveMutation.mutate({ assignmentId, slotId, notifyStudent })
+                            }
+                            onAssignExtra={(target, slotId) =>
+                              assignMutation.mutate({ ...target, slotId })
+                            }
+                            isMovePending={moveMutation.isPending}
+                            isAssignPending={assignMutation.isPending}
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Capacity per slot — grouped by day */}
           <div className="p-4">
@@ -1275,6 +2060,15 @@ export default function PlanningPage({
         }
         onOffer={(assignmentId) => sendConfirmationMutation.mutate(assignmentId)}
         onUnassign={(assignmentId) => unassignMutation.mutate(assignmentId)}
+        onMove={(assignmentId, slotId, notifyStudent) =>
+          moveMutation.mutate({ assignmentId, slotId, notifyStudent })
+        }
+        isMovePending={moveMutation.isPending}
+        eligibleSlotsFor={eligibleExtraSlots}
+        onAssignToSlot={(target, slotId) =>
+          assignMutation.mutate({ ...target, slotId })
+        }
+        isAssignPending={assignMutation.isPending}
         isLockPending={lockMutation.isPending}
         isOfferPending={sendConfirmationMutation.isPending}
         isUnassignPending={unassignMutation.isPending}
@@ -1299,7 +2093,124 @@ export default function PlanningPage({
           });
           setOpenSlotId(null);
         }}
+        onOpenPerson={openPersonDetail}
+        onOpenGroup={openGroupDetail}
       />
+
+      {detailTarget && (
+        <EnrollmentDetailDialog
+          open
+          onOpenChange={(o) => !o && setDetailTarget(null)}
+          enrollment={detailTarget.enrollment}
+          seriesId={id}
+          groupMembers={detailTarget.groupMembers}
+          onEdit={
+            !canEdit || detailTarget.groupMembers
+              ? undefined
+              : () => {
+                  const e = detailTarget.enrollment;
+                  setDetailTarget(null);
+                  setEditingEnrollment(e);
+                }
+          }
+          onEditMember={
+            canEdit && detailTarget.groupMembers
+              ? (m) => setEditingEnrollment(m)
+              : undefined
+          }
+          onRemoveMember={
+            canManage && detailTarget.groupMembers
+              ? (m) => setMemberToRemove(m)
+              : undefined
+          }
+          onChangeGroupPriceOption={
+            canEdit && detailTarget.groupMembers
+              ? (optionId) =>
+                  changeGroupPriceMutation.mutate({
+                    leader: detailTarget.enrollment,
+                    optionId,
+                  })
+              : undefined
+          }
+        />
+      )}
+
+      {editingEnrollment && (
+        <EditEnrollmentDialog
+          enrollment={editingEnrollment}
+          seriesId={id}
+          open
+          onOpenChange={(o) => !o && setEditingEnrollment(null)}
+        />
+      )}
+
+      {/* Lid uit de groep halen — bevestiging (losmaken of ook annuleren) */}
+      <AlertDialog
+        open={memberToRemove !== null}
+        onOpenChange={(o) => !o && setMemberToRemove(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{te("removeFromGroupTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {te("removeFromGroupBody", { name: memberToRemove?.studentName ?? "" })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
+            <AlertDialogCancel>{te("back")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() =>
+                memberToRemove &&
+                removeMemberMutation.mutate({ member: memberToRemove, cancel: true })
+              }
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {te("removeFromGroupCancel")}
+            </AlertDialogAction>
+            <AlertDialogAction
+              onClick={() =>
+                memberToRemove &&
+                removeMemberMutation.mutate({ member: memberToRemove, cancel: false })
+              }
+              className="bg-tennis-green hover:bg-tennis-green/90"
+            >
+              {te("removeFromGroupDetach")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Eerder geweigerd slot opnieuw kiezen — bevestiging */}
+      <AlertDialog
+        open={declineConfirmSlotId !== null}
+        onOpenChange={(o) => !o && setDeclineConfirmSlotId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("declinedReassignTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("declinedReassignBody", { name: assignTarget?.name ?? "" })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("declinedReassignCancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-tennis-green hover:bg-tennis-green/90"
+              onClick={() => {
+                if (!assignTarget || !declineConfirmSlotId) return;
+                assignMutation.mutate(
+                  assignTarget.kind === "solo"
+                    ? { enrollmentId: assignTarget.enrollmentId, slotId: declineConfirmSlotId }
+                    : { groupId: assignTarget.groupId, slotId: declineConfirmSlotId }
+                );
+                setDeclineConfirmSlotId(null);
+              }}
+            >
+              {t("declinedReassignConfirm")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {(addingSlot || editingSlot) && (
         <AddWeekSlotDialog
@@ -1318,6 +2229,34 @@ export default function PlanningPage({
           }}
         />
       )}
+
+      {/* Bevestiging vóór definitief aanbieden vanuit de Toegewezen-sectie */}
+      <AlertDialog
+        open={offerTarget !== null}
+        onOpenChange={(open) => !open && setOfferTarget(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("offerConfirmTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("offerConfirmBody", { name: offerTarget?.name ?? "" })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("offerConfirmCancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (offerTarget) sendConfirmationMutation.mutate(offerTarget.id);
+                setOfferTarget(null);
+              }}
+              className="bg-tennis-green hover:bg-tennis-green/90"
+            >
+              {t("offerConfirmButton")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </div>
   );
 }

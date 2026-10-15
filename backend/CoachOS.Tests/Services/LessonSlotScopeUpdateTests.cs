@@ -1,3 +1,4 @@
+using CoachOS.Application.Abstractions;
 using CoachOS.Application.LessonSerie;
 using CoachOS.Application.LessonSerie.DTOs;
 using CoachOS.Application.Mappings;
@@ -6,6 +7,7 @@ using CoachOS.Domain.Enums;
 using CoachOS.Domain.Interfaces;
 using CoachOS.Domain.Models;
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using NUnit.Framework;
 
@@ -29,6 +31,7 @@ public class LessonSlotScopeUpdateTests
     private Mock<IScheduleAssignmentRepository> _scheduleAssignmentRepo = null!;
     private Mock<ITimeSlotPreferenceRepository> _timeSlotPreferenceRepo = null!;
     private Mock<ILessonInvitationRepository> _invitationRepo = null!;
+    private Mock<IUnitOfWork> _unitOfWork = null!;
     private ApplicationMapper _mapper = null!;
     private LessonSerieService _service = null!;
 
@@ -47,13 +50,16 @@ public class LessonSlotScopeUpdateTests
         _scheduleAssignmentRepo = new Mock<IScheduleAssignmentRepository>();
         _timeSlotPreferenceRepo = new Mock<ITimeSlotPreferenceRepository>();
         _invitationRepo = new Mock<ILessonInvitationRepository>();
+        _unitOfWork = new Mock<IUnitOfWork>();
         _mapper = new ApplicationMapper();
 
         _service = new LessonSerieService(
             _serieRepo.Object, _lessonRepo.Object, _enrollmentRepo.Object,
             _tennisClubRepo.Object, _userLookup.Object, _emailService.Object,
             _mollieConnectionRepo.Object, _scheduleAssignmentRepo.Object,
-            _timeSlotPreferenceRepo.Object, _invitationRepo.Object, _mapper);
+            _timeSlotPreferenceRepo.Object, _invitationRepo.Object,
+            _unitOfWork.Object, TimeProvider.System, _mapper,
+            NullLogger<LessonSerieService>.Instance);
 
         _userLookup
             .Setup(u => u.IsActiveTrainerAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
@@ -134,7 +140,7 @@ public class LessonSlotScopeUpdateTests
         sibling.EndTime.Should().Be(new TimeOnly(19, 30));
         // Geannuleerde les blijft ongemoeid.
         cancelledSibling.EndTime.Should().Be(new TimeOnly(19, 0));
-        _lessonRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Test]
@@ -170,7 +176,7 @@ public class LessonSlotScopeUpdateTests
         edited.EndTime.Should().Be(new TimeOnly(19, 30));
         sibling.EndTime.Should().Be(new TimeOnly(19, 30));
         cancelledSibling.EndTime.Should().Be(new TimeOnly(19, 0));
-        _serieRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Test]
@@ -246,7 +252,7 @@ public class LessonSlotScopeUpdateTests
             It.Is<IEnumerable<Lesson>>(ls => ls.Count() == 2), It.IsAny<CancellationToken>()), Times.Once);
         _serieRepo.Verify(r => r.DeleteWeeklyTemplateRangeAsync(
             It.Is<IEnumerable<WeeklyTemplateEntry>>(e => e.Contains(entry)), It.IsAny<CancellationToken>()), Times.Once);
-        _serieRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Test]
@@ -279,7 +285,7 @@ public class LessonSlotScopeUpdateTests
         result.Errors.Should().Contain(e => e.Code == ErrorCodes.Conflict);
         _lessonRepo.Verify(r => r.DeleteRangeAsync(
             It.IsAny<IEnumerable<Lesson>>(), It.IsAny<CancellationToken>()), Times.Never);
-        _serieRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Test]
@@ -325,7 +331,7 @@ public class LessonSlotScopeUpdateTests
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().Contain(e => e.Code == ErrorCodes.Conflict);
         entry.EndTime.Should().Be(new TimeOnly(19, 0)); // niets gemuteerd
-        _serieRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Test]
@@ -339,7 +345,7 @@ public class LessonSlotScopeUpdateTests
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().Contain(e => e.Code == ErrorCodes.Validation);
-        _serieRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Test]
@@ -368,6 +374,6 @@ public class LessonSlotScopeUpdateTests
         // Propagatie afgebroken vóór mutatie: template + zusje ongemoeid, niets opgeslagen.
         entry.EndTime.Should().Be(new TimeOnly(19, 0));
         sibling.EndTime.Should().Be(new TimeOnly(19, 0));
-        _lessonRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 }

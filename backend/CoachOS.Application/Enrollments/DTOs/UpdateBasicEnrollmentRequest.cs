@@ -16,4 +16,7 @@ public record UpdateBasicEnrollmentRequest
     public string DateOfBirth { get; init; } = string.Empty;
 
     public bool IsOpenToGrouping { get; init; }
+
+    /// <summary>Nieuwe prijsoptie voor deze inschrijving (en, bij een groep, alle leden). Null laat ze ongemoeid/leeg.</summary>
+    public Guid? SelectedPriceOptionId { get; init; }
 }

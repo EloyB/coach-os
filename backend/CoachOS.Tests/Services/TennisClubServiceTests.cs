@@ -15,6 +15,7 @@ public class TennisClubServiceTests
 {
     private Mock<ITennisClubRepository> _tennisClubRepo = null!;
     private Mock<ILessonSerieRepository> _lessonSeriesRepo = null!;
+    private Mock<IUnitOfWork> _unitOfWork = null!;
     private ApplicationMapper _mapper = null!;
     private TennisClubService _service = null!;
 
@@ -25,8 +26,9 @@ public class TennisClubServiceTests
     {
         _tennisClubRepo = new Mock<ITennisClubRepository>();
         _lessonSeriesRepo = new Mock<ILessonSerieRepository>();
+        _unitOfWork = new Mock<IUnitOfWork>();
         _mapper = new ApplicationMapper();
-        _service = new TennisClubService(_tennisClubRepo.Object, _lessonSeriesRepo.Object, _mapper);
+        _service = new TennisClubService(_tennisClubRepo.Object, _lessonSeriesRepo.Object, _unitOfWork.Object, _mapper);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

@@ -15,7 +15,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { getTennisClubs } from "@/lib/api/tennisClubs";
-import { getMollieConnectionStatus } from "@/lib/api/mollieConnect";
+import {
+  MOLLIE_CONNECTION_QUERY_KEY,
+  getMollieConnectionStatus,
+} from "@/lib/api/mollieConnect";
 import { FieldError } from "@/components/forms/field-error";
 import { DatePicker } from "@/components/ui/date-picker";
 import { inputClass } from "@/lib/styles";
@@ -115,7 +118,7 @@ export function Step1Basisinfo({ defaultValues, onNext }: Step1Props) {
   });
 
   const { data: mollie } = useQuery({
-    queryKey: ["mollieStatus"],
+    queryKey: MOLLIE_CONNECTION_QUERY_KEY,
     queryFn: getMollieConnectionStatus,
   });
   const mollieConnected = mollie?.connected ?? false;
@@ -189,6 +192,7 @@ export function Step1Basisinfo({ defaultValues, onNext }: Step1Props) {
             </span>
             <input
               {...register("price", { valueAsNumber: true })}
+              onFocus={(e) => e.currentTarget.select()}
               type="number"
               min={0}
               step={0.01}
@@ -203,6 +207,7 @@ export function Step1Basisinfo({ defaultValues, onNext }: Step1Props) {
           <Label required>{t("maxRegistrations")}</Label>
           <input
             {...register("maxRegistrations", { valueAsNumber: true })}
+            onFocus={(e) => e.currentTarget.select()}
             type="number"
             min={1}
             max={500}
@@ -217,6 +222,7 @@ export function Step1Basisinfo({ defaultValues, onNext }: Step1Props) {
             <Label required>{t("minAge")}</Label>
             <input
               {...register("minAge", { valueAsNumber: true })}
+              onFocus={(e) => e.currentTarget.select()}
               type="number"
               min={0}
               max={120}
@@ -228,6 +234,7 @@ export function Step1Basisinfo({ defaultValues, onNext }: Step1Props) {
             <Label required>{t("maxAge")}</Label>
             <input
               {...register("maxAge", { valueAsNumber: true })}
+              onFocus={(e) => e.currentTarget.select()}
               type="number"
               min={0}
               max={120}
@@ -249,7 +256,7 @@ export function Step1Basisinfo({ defaultValues, onNext }: Step1Props) {
                 value={field.value ?? ""}
                 disabled={clubsLoading}
               >
-                <SelectTrigger className="border border-gray-200 rounded-lg h-9 text-sm focus:ring-2 focus:ring-tennis-green/30 focus:border-tennis-green">
+                <SelectTrigger className="w-full border border-gray-200 rounded-lg h-9 text-sm focus:ring-2 focus:ring-tennis-green/30 focus:border-tennis-green">
                   <SelectValue
                     placeholder={
                       clubsLoading ? t("clubLoading") : t("clubPlaceholder")
@@ -275,7 +282,7 @@ export function Step1Basisinfo({ defaultValues, onNext }: Step1Props) {
         </div>
 
         {/* Startdatum + Einddatum */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <Label required>{t("startDate")}</Label>
             <Controller

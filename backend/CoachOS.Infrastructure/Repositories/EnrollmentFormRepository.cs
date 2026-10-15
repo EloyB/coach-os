@@ -37,9 +37,4 @@ public class EnrollmentFormRepository(ApplicationDbContext context) : IEnrollmen
     {
         context.FormFields.Remove(field);
     }
-
-    public async Task SaveChangesAsync(CancellationToken ct = default)
-    {
-        await context.SaveChangesAsync(ct);
-    }
 }

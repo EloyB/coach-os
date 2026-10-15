@@ -25,8 +25,6 @@ public interface IAssignmentConfirmationTokenRepository
     Task AddRangeAsync(
         IEnumerable<AssignmentConfirmationToken> tokens, CancellationToken ct = default);
 
-    Task SaveChangesAsync(CancellationToken ct = default);
-
     /// <summary>
     /// Atomisch de Response van <c>Pending</c> naar <paramref name="target"/> flippen.
     /// Retourneert true als de update één rij raakte (pending was), anders false

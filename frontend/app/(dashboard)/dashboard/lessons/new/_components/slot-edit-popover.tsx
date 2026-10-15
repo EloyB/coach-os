@@ -9,6 +9,12 @@ import {
   PopoverAnchor,
 } from "@/components/ui/popover";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -18,7 +24,7 @@ import {
 import { LESSON_LEVELS } from "@/lib/api/lessonSeries";
 import { getTrainers, isAssignableTrainer } from "@/lib/api/trainers";
 import { getTrainerAvailabilities } from "@/lib/api/trainerAvailabilities";
-import { inputClass } from "@/lib/styles";
+import { inputClass, btnPrimary } from "@/lib/styles";
 import type { WizardSlot } from "../_types";
 
 interface SlotEditPopoverProps {
@@ -27,6 +33,10 @@ interface SlotEditPopoverProps {
   tennisClubId: string;
   onSave: (updated: WizardSlot) => void;
   onClose: () => void;
+  /** Kant waar de popover opent op desktop (naast de grid). */
+  side?: "right" | "bottom";
+  /** Mobiel: toon de editor als gecentreerde dialog i.p.v. een anker-popover. */
+  asDialog?: boolean;
 }
 
 export function SlotEditPopover({
@@ -35,6 +45,8 @@ export function SlotEditPopover({
   tennisClubId,
   onSave,
   onClose,
+  side = "right",
+  asDialog = false,
 }: SlotEditPopoverProps) {
   const t = useTranslations("lessonWizard");
 
@@ -123,53 +135,41 @@ export function SlotEditPopover({
     });
   }
 
-  return (
-    <Popover open onOpenChange={(open) => !open && onClose()}>
-      <PopoverAnchor virtualRef={{ current: anchorRef }} />
-      <PopoverContent
-        side="right"
-        align="start"
-        sideOffset={8}
-        className="w-64 p-4 space-y-3"
-        onOpenAutoFocus={(e) => e.preventDefault()}
-      >
-        <p className="text-xs font-semibold text-gray-900 mb-2">
-          {t("editSlotTitle")}
-        </p>
-
+  const body = (
+    <>
         {/* Start / End time */}
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className="block text-[11px] font-medium text-gray-500 mb-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
               {t("startTime")}
             </label>
             <input
               type="time"
               value={startTime}
               onChange={(e) => setStartTime(e.target.value)}
-              className={inputClass + " !h-7 !text-xs !px-2"}
+              className={inputClass + " appearance-none min-w-0"}
             />
           </div>
           <div>
-            <label className="block text-[11px] font-medium text-gray-500 mb-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
               {t("endTime")}
             </label>
             <input
               type="time"
               value={endTime}
               onChange={(e) => setEndTime(e.target.value)}
-              className={inputClass + " !h-7 !text-xs !px-2"}
+              className={inputClass + " appearance-none min-w-0"}
             />
           </div>
         </div>
 
         {/* Trainer */}
         <div>
-          <label className="block text-[11px] font-medium text-gray-500 mb-1">
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">
             {t("trainer")}
           </label>
           <Select onValueChange={setTrainerId} value={trainerId}>
-            <SelectTrigger className="border border-gray-200 rounded-lg h-7 text-xs">
+            <SelectTrigger className="border border-gray-200 rounded-lg h-9 text-sm">
               <SelectValue placeholder={t("trainerPlaceholder")} />
             </SelectTrigger>
             <SelectContent>
@@ -201,7 +201,7 @@ export function SlotEditPopover({
 
         {/* Court name */}
         <div>
-          <label className="block text-[11px] font-medium text-gray-500 mb-1">
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">
             {t("courtName")}
           </label>
           <input
@@ -210,14 +210,14 @@ export function SlotEditPopover({
             value={courtName}
             onChange={(e) => setCourtName(e.target.value)}
             placeholder={t("courtNamePlaceholder")}
-            className={inputClass + " !h-7 !text-xs !px-2"}
+            className={inputClass}
           />
         </div>
 
         {/* Max students + Level */}
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className="block text-[11px] font-medium text-gray-500 mb-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
               {t("maxStudents")}
             </label>
             <input
@@ -225,15 +225,15 @@ export function SlotEditPopover({
               min={1}
               value={maxStudents}
               onChange={(e) => setMaxStudents(parseInt(e.target.value) || 1)}
-              className={inputClass + " !h-7 !text-xs !px-2"}
+              className={inputClass}
             />
           </div>
           <div>
-            <label className="block text-[11px] font-medium text-gray-500 mb-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
               {t("level")}
             </label>
             <Select onValueChange={setLevel} value={level}>
-              <SelectTrigger className="border border-gray-200 rounded-lg h-7 text-xs">
+              <SelectTrigger className="border border-gray-200 rounded-lg h-9 text-sm">
                 <SelectValue placeholder={t("levelNone")} />
               </SelectTrigger>
               <SelectContent>
@@ -254,10 +254,45 @@ export function SlotEditPopover({
         <button
           type="button"
           onClick={handleSave}
-          className="w-full px-3 py-1.5 bg-tennis-green text-white text-xs font-semibold rounded-lg hover:bg-tennis-green/90 transition-colors"
+          className={"w-full " + btnPrimary}
         >
           {t("saveSlot")}
         </button>
+    </>
+  );
+
+  // Mobiel: gecentreerde dialog i.p.v. een anker-popover.
+  if (asDialog) {
+    return (
+      <Dialog open onOpenChange={(open) => !open && onClose()}>
+        <DialogContent
+          className="w-[calc(100vw-32px)] max-w-sm space-y-3 p-4"
+          onOpenAutoFocus={(e) => e.preventDefault()}
+        >
+          <DialogHeader>
+            <DialogTitle>{t("editSlotTitle")}</DialogTitle>
+          </DialogHeader>
+          {body}
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  return (
+    <Popover open onOpenChange={(open) => !open && onClose()}>
+      <PopoverAnchor virtualRef={{ current: anchorRef }} />
+      <PopoverContent
+        side={side}
+        align={side === "bottom" ? "center" : "start"}
+        sideOffset={8}
+        collisionPadding={12}
+        className="w-72 max-w-[calc(100vw-24px)] p-4 space-y-3"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
+        <p className="text-xs font-semibold text-gray-900 mb-2">
+          {t("editSlotTitle")}
+        </p>
+        {body}
       </PopoverContent>
     </Popover>
   );

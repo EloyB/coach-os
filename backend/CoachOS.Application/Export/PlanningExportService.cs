@@ -1,3 +1,5 @@
+using CoachOS.Application.Abstractions;
+using CoachOS.Domain.Common;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
 using CoachOS.Domain.Interfaces;
@@ -37,20 +39,25 @@ public class PlanningExportService(
 
         Dictionary<Guid, string> trainerNames = await ResolveTrainerNamesAsync(series, ct);
 
-        DateOnly today = DateOnly.FromDateTime(timeProvider.GetLocalNow().DateTime);
+        DateOnly today = timeProvider.GetBrusselsToday();
+
+        Dictionary<Guid, Enrollment> enrollmentsById = enrollments.ToDictionary(e => e.Id);
+        Dictionary<Guid, EnrollmentGroup> groupsById = groups.ToDictionary(g => g.Id);
+        Dictionary<Guid, List<AssignedPlayer>> playersBySlot =
+            BuildPlayersBySlot(assignments, enrollmentsById, groupsById);
 
         PlanningExportModel model = new()
         {
             SeriesName = series.Name,
             ExportedOn = today,
             FormFieldLabels = CollectFormFieldLabels(enrollments),
-            Enrollments = BuildEnrollmentRows(enrollments),
+            Enrollments = BuildEnrollmentRows(enrollments, groupsById),
             LessonMoments = BuildLessonMomentRows(series, trainerNames),
-            ScheduledLessons = BuildScheduledRows(series, assignments, enrollments, groups),
+            MomentRosters = BuildMomentRosters(series, playersBySlot, trainerNames),
         };
 
         byte[] content = workbookBuilder.Build(model);
-        string fileName = BuildFileName(series.Name, today);
+        string fileName = ExportLabels.FileName(series.Name, "planning", "lessenreeks", today);
         return Result<ExportFileDto>.Ok(new ExportFileDto(content, fileName, XlsxContentType));
     }
 
@@ -79,17 +86,31 @@ public class PlanningExportService(
             .Select(x => x.Label)
             .ToList();
 
-    private static IReadOnlyList<EnrollmentRow> BuildEnrollmentRows(List<Enrollment> enrollments)
+    private static IReadOnlyList<EnrollmentRow> BuildEnrollmentRows(
+        List<Enrollment> enrollments, Dictionary<Guid, EnrollmentGroup> groupsById)
         => enrollments
-            .OrderBy(e => e.StudentName)
-            .Select(e => new EnrollmentRow(
-                e.StudentName,
-                e.ContactEmail,
-                e.StudentPhone,
-                EnrollmentStatusLabel(e.Status),
-                e.EnrolledAt,
-                e.Notes,
-                e.FormResponses
+            .Select(e =>
+            {
+                EnrollmentGroup? group = e.EnrollmentGroupId.HasValue
+                    && groupsById.TryGetValue(e.EnrollmentGroupId.Value, out EnrollmentGroup? g) ? g : null;
+                bool isLeader = group is not null && group.LeaderEnrollmentId == e.Id;
+                string type = group is null ? "Individueel" : isLeader ? "Groepsleider" : "Groepslid";
+                return (Enrollment: e, Group: group, IsLeader: isLeader, Type: type);
+            })
+            // Individuen eerst (lege groepsnaam), daarna groepen geclusterd met de leider bovenaan.
+            .OrderBy(x => x.Group?.Name ?? string.Empty)
+            .ThenByDescending(x => x.IsLeader)
+            .ThenBy(x => x.Enrollment.StudentName)
+            .Select(x => new EnrollmentRow(
+                x.Enrollment.StudentName,
+                x.Type,
+                x.Group?.Name,
+                x.Enrollment.ContactEmail,
+                x.Enrollment.StudentPhone,
+                ExportLabels.EnrollmentStatus(x.Enrollment.Status),
+                x.Enrollment.EnrolledAt,
+                x.Enrollment.Notes,
+                x.Enrollment.FormResponses
                     .Where(r => r.FormField is not null)
                     .GroupBy(r => r.FormField.Label)
                     .ToDictionary(g => g.Key, g => string.Join(", ", g.Select(r => r.Value)))))
@@ -110,7 +131,7 @@ public class PlanningExportService(
             foreach (DateOnly date in ExpandDates(series.StartDate, series.EndDate, slot.DayOfWeek))
             {
                 rows.Add(new LessonMomentRow(
-                    date, DutchDay(date.DayOfWeek), slot.StartTime, slot.EndTime,
+                    date, ExportLabels.DutchDay(date.DayOfWeek), slot.StartTime, slot.EndTime,
                     trainerName, slot.CourtName, slot.MaxStudents));
             }
         }
@@ -121,16 +142,12 @@ public class PlanningExportService(
             .ToList();
     }
 
-    private static IReadOnlyList<ScheduledRow> BuildScheduledRows(
-        LessonSerieEntity series,
+    /// <summary>Per weekslot de spelers die er (niet-geweigerd) op ingedeeld zijn.</summary>
+    private static Dictionary<Guid, List<AssignedPlayer>> BuildPlayersBySlot(
         List<ScheduleAssignment> assignments,
-        List<Enrollment> enrollments,
-        List<EnrollmentGroup> groups)
+        Dictionary<Guid, Enrollment> enrollmentsById,
+        Dictionary<Guid, EnrollmentGroup> groupsById)
     {
-        Dictionary<Guid, Enrollment> enrollmentsById = enrollments.ToDictionary(e => e.Id);
-        Dictionary<Guid, EnrollmentGroup> groupsById = groups.ToDictionary(g => g.Id);
-
-        // Per weekslot de spelers die er (niet-geweigerd) op ingedeeld zijn.
         Dictionary<Guid, List<AssignedPlayer>> playersBySlot = [];
         foreach (ScheduleAssignment a in assignments)
         {
@@ -145,79 +162,62 @@ public class PlanningExportService(
             if (a.EnrollmentGroupId.HasValue && groupsById.TryGetValue(a.EnrollmentGroupId.Value, out EnrollmentGroup? group))
             {
                 foreach (Enrollment member in group.Members)
-                    players.Add(new AssignedPlayer(member.StudentName, member.ContactEmail, group.Name, statusLabel));
+                    players.Add(new AssignedPlayer(member.StudentName, group.Name, statusLabel));
             }
             else if (a.EnrollmentId.HasValue && enrollmentsById.TryGetValue(a.EnrollmentId.Value, out Enrollment? enrollment))
             {
-                players.Add(new AssignedPlayer(enrollment.StudentName, enrollment.ContactEmail, null, statusLabel));
+                players.Add(new AssignedPlayer(enrollment.StudentName, null, statusLabel));
             }
         }
+        return playersBySlot;
+    }
 
-        List<ScheduledRow> rows = [];
+    private static readonly string[] AppDayNames =
+        ["Maandag", "Dinsdag", "Woensdag", "Donderdag", "Vrijdag", "Zaterdag", "Zondag"];
+
+    private static IReadOnlyList<MomentRosterRow> BuildMomentRosters(
+        LessonSerieEntity series,
+        Dictionary<Guid, List<AssignedPlayer>> playersBySlot,
+        Dictionary<Guid, string> trainerNames)
+    {
+        List<MomentRosterRow> rows = [];
+
         foreach (WeeklyTemplateEntry slot in series.WeeklyTemplate)
         {
-            if (!playersBySlot.TryGetValue(slot.Id, out List<AssignedPlayer>? players))
+            if (!playersBySlot.TryGetValue(slot.Id, out List<AssignedPlayer>? players) || players.Count == 0)
                 continue;
 
-            foreach (DateOnly date in ExpandDates(series.StartDate, series.EndDate, slot.DayOfWeek))
-            {
-                foreach (AssignedPlayer p in players)
-                {
-                    rows.Add(new ScheduledRow(
-                        date, slot.StartTime, slot.EndTime,
-                        p.Name, p.Email, p.GroupName, p.Status));
-                }
-            }
+            string? trainerName = slot.TrainerId.HasValue
+                && trainerNames.TryGetValue(slot.TrainerId.Value, out string? name)
+                    ? name
+                    : null;
+
+            List<RosterPlayer> roster = players
+                .OrderBy(p => p.GroupName ?? string.Empty)
+                .ThenBy(p => p.Name)
+                .Select(p => new RosterPlayer(p.Name, p.GroupName, p.Status))
+                .ToList();
+
+            int dayIndex = Math.Clamp(slot.DayOfWeek, 0, 6);
+            rows.Add(new MomentRosterRow(
+                AppDayNames[dayIndex], slot.StartTime, slot.EndTime,
+                trainerName, slot.CourtName, slot.MaxStudents, roster));
         }
 
         return rows
-            .OrderBy(r => r.Date)
+            .OrderBy(r => Array.IndexOf(AppDayNames, r.DayName))
             .ThenBy(r => r.StartTime)
-            .ThenBy(r => r.StudentName)
             .ToList();
-    }
-
-    private static string BuildFileName(string seriesName, DateOnly today)
-    {
-        string safe = new(seriesName
-            .Select(c => char.IsLetterOrDigit(c) || c is ' ' or '-' or '_' ? c : '-')
-            .ToArray());
-        safe = safe.Trim();
-        if (string.IsNullOrWhiteSpace(safe))
-            safe = "lessenreeks";
-
-        return $"{safe}-planning-{today:yyyyMMdd}.xlsx";
     }
 
     private static IEnumerable<DateOnly> ExpandDates(DateOnly start, DateOnly end, int dayOfWeek)
     {
-        // WeeklyTemplateEntry.DayOfWeek (0 = zondag) lijnt 1-op-1 op System.DayOfWeek.
+        // WeeklyTemplateEntry.DayOfWeek gebruikt de app-conventie (0=maandag ... 6=zondag),
+        // niet System.DayOfWeek (0=zondag) — vandaar de conversie i.p.v. een rechtstreekse vergelijking.
         for (DateOnly d = start; d <= end; d = d.AddDays(1))
-            if ((int)d.DayOfWeek == dayOfWeek)
+            if (((int)d.DayOfWeek + 6) % 7 == dayOfWeek)
                 yield return d;
     }
-
-    private static string DutchDay(DayOfWeek d) => d switch
-    {
-        DayOfWeek.Monday => "Maandag",
-        DayOfWeek.Tuesday => "Dinsdag",
-        DayOfWeek.Wednesday => "Woensdag",
-        DayOfWeek.Thursday => "Donderdag",
-        DayOfWeek.Friday => "Vrijdag",
-        DayOfWeek.Saturday => "Zaterdag",
-        DayOfWeek.Sunday => "Zondag",
-        _ => d.ToString(),
-    };
-
-    private static string EnrollmentStatusLabel(EnrollmentStatus s) => s switch
-    {
-        EnrollmentStatus.Pending => "In afwachting",
-        EnrollmentStatus.Confirmed => "Bevestigd",
-        EnrollmentStatus.Cancelled => "Geannuleerd",
-        EnrollmentStatus.Waitlisted => "Wachtlijst",
-        EnrollmentStatus.PendingPayment => "Wacht op betaling",
-        _ => s.ToString(),
-    };
 
     private static string AssignmentStatusLabel(ScheduleAssignmentStatus s) => s switch
     {
@@ -228,5 +228,5 @@ public class PlanningExportService(
         _ => s.ToString(),
     };
 
-    private readonly record struct AssignedPlayer(string Name, string Email, string? GroupName, string Status);
+    private readonly record struct AssignedPlayer(string Name, string? GroupName, string Status);
 }

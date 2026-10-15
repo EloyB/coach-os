@@ -1,4 +1,4 @@
-using CoachOS.Domain.Interfaces;
+using CoachOS.Application.Abstractions;
 
 namespace CoachOS.Infrastructure.MultiTenancy;
 

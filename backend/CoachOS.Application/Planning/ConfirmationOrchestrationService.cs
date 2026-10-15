@@ -1,3 +1,4 @@
+using CoachOS.Application.Abstractions;
 using System.Security.Cryptography;
 using System.Text;
 using CoachOS.Application.Configuration;
@@ -17,6 +18,7 @@ public class ConfirmationOrchestrationService(
     IScheduleAssignmentRepository scheduleAssignmentRepo,
     IAssignmentConfirmationTokenRepository tokenRepo,
     IPaymentRepository paymentRepo,
+    IUnitOfWork unitOfWork,
     IEmailService emailService,
     IPricingService pricingService,
     IOptions<AppOptions> appOptions,
@@ -29,7 +31,11 @@ public class ConfirmationOrchestrationService(
         if (series is null)
             return Result<bool>.Fail(new Error(ErrorCodes.NotFound, "Lessenreeks niet gevonden."));
 
-        if (series.PlanningStatus != PlanningStatus.Planning)
+        // Ook toegestaan wanneer de planning al eens bevestigd is (AwaitingConfirmation):
+        // dan biedt deze actie de resterende voorstellen aan (bv. iemand die na een
+        // afwijzing opnieuw ingepland werd). Enkel Proposed-toewijzingen worden verwerkt,
+        // dus reeds aangeboden/bevestigde personen krijgen geen tweede mail.
+        if (series.PlanningStatus is not (PlanningStatus.Planning or PlanningStatus.AwaitingConfirmation))
             return Result<bool>.Fail(
                 new Error(ErrorCodes.Validation, "Planning moet eerst gegenereerd worden."));
 
@@ -72,18 +78,18 @@ public class ConfirmationOrchestrationService(
         // Atomic: status-flips + token-inserts moeten samen committen. Zonder transactie
         // kan een crash tussen de twee saves de reeks in Planning laten met zwevende tokens
         // (of tokens zonder status-flip op de assignments).
-        await lessonSeriesRepo.BeginTransactionAsync(ct);
+        await unitOfWork.BeginTransactionAsync(ct);
         try
         {
             await scheduleAssignmentRepo.SetProposedToAwaitingConfirmationAsync(seriesId, organizationId, ct);
             await tokenRepo.AddRangeAsync(tokens, ct);
             series.PlanningStatus = PlanningStatus.AwaitingConfirmation;
-            await lessonSeriesRepo.SaveChangesAsync(ct);
-            await lessonSeriesRepo.CommitTransactionAsync(ct);
+            await unitOfWork.SaveChangesAsync(ct);
+            await unitOfWork.CommitTransactionAsync(ct);
         }
         catch (Exception ex)
         {
-            await lessonSeriesRepo.RollbackTransactionAsync(ct);
+            await unitOfWork.RollbackTransactionAsync(ct);
             logger.LogError(ex, "Planning-bevestiging commit mislukt voor reeks {SeriesId}", seriesId);
             return Result<bool>.Fail(new Error(ErrorCodes.Unexpected, "Planning kon niet bevestigd worden. Probeer het opnieuw."));
         }
@@ -134,6 +140,14 @@ public class ConfirmationOrchestrationService(
                 logger.LogError(ex, "E-mail naar {ContactEmail} mislukt voor toewijzingen {AssignmentIds}.",
                     group.Key, string.Join(", ", entries.Select(e => e.assignment.Id)));
             }
+        }
+
+        // Info-mail naar groepsleden met eigen adres (leider kreeg hierboven de echte mail).
+        foreach (var (_, assignment, _) in emailsToSend)
+        {
+            if (assignment.EnrollmentGroup is null) continue;
+            if (!slotById.TryGetValue(assignment.WeeklyTemplateEntryId, out var slot)) continue;
+            await NotifyGroupMembersInfoAsync(series, assignment, slot, ct);
         }
 
         logger.LogInformation(
@@ -192,7 +206,7 @@ public class ConfirmationOrchestrationService(
         if (!hasRemainingProposed)
             series.PlanningStatus = PlanningStatus.AwaitingConfirmation;
 
-        await lessonSeriesRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         try
         {
@@ -205,6 +219,9 @@ public class ConfirmationOrchestrationService(
             return Result<bool>.Fail(
                 new Error(ErrorCodes.Validation, "E-mail kon niet verzonden worden. Probeer opnieuw of contacteer de lesnemer handmatig."));
         }
+
+        // Info-mail naar groepsleden met eigen adres (leider kreeg zojuist de echte mail).
+        await NotifyGroupMembersInfoAsync(series, assignment, slot, ct);
 
         logger.LogInformation("Toewijzing {AssignmentId} definitief aangeboden voor reeks {SeriesId}.", assignment.Id, seriesId);
         return Result<bool>.Ok(true);
@@ -219,7 +236,13 @@ public class ConfirmationOrchestrationService(
                 new Error(ErrorCodes.NotFound, "Lessenreeks niet gevonden."));
 
         var tokens = await tokenRepo.GetBySeriesAsync(seriesId, organizationId, ct);
-        var pending = tokens.Where(t => t.Response == ConfirmationResponse.Pending).ToList();
+        // Opnieuw verzenden laat het oude pending-token bestaan (enkel verlopen), dus per
+        // toewijzing kunnen er meerdere pending tokens zijn — hou enkel het nieuwste over.
+        var pending = tokens
+            .Where(t => t.Response == ConfirmationResponse.Pending)
+            .GroupBy(t => t.ScheduleAssignmentId)
+            .Select(g => g.OrderByDescending(t => t.ExpiresAt).First())
+            .ToList();
         if (pending.Count == 0)
             return Result<List<NonResponderDto>>.Ok([]);
 
@@ -300,7 +323,7 @@ public class ConfirmationOrchestrationService(
             Response = ConfirmationResponse.Pending,
         };
         await tokenRepo.AddRangeAsync([newToken], ct);
-        await tokenRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         try
         {
@@ -382,7 +405,7 @@ public class ConfirmationOrchestrationService(
             token.RespondedAt = DateTime.UtcNow;
         }
 
-        await paymentRepo.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         // No-tracking: concurrent requests kunnen tokens via ExecuteUpdateAsync hebben
         // gemuteerd zonder dat onze change tracker dat weet. Tracking-read zou dan via
@@ -408,7 +431,7 @@ public class ConfirmationOrchestrationService(
         if (!stillPending && !hasBlockingParticipant && series.PlanningStatus == PlanningStatus.AwaitingConfirmation)
         {
             series.PlanningStatus = PlanningStatus.Scheduled;
-            await lessonSeriesRepo.SaveChangesAsync(ct);
+            await unitOfWork.SaveChangesAsync(ct);
         }
 
         logger.LogInformation("Admin bevestigde toewijzing {AssignmentId} (€{Amount}).", assignment.Id, payment.Amount);
@@ -449,6 +472,43 @@ public class ConfirmationOrchestrationService(
             $"{baseUrl}/{rawToken}",
             participantNames,
             ct);
+    }
+
+    /// <summary>
+    /// Stuurt een informatieve "je lesmoment is ingepland"-mail naar elk groepslid met
+    /// een eigen e-mailadres (de leider uitgezonderd: die krijgt de echte bevestig+betaal-
+    /// mail). Leden zonder eigen adres lopen via de leider en krijgen dus niets apart.
+    /// Fouten per lid worden gelogd, niet doorgeworpen — de bevestiging mag niet falen.
+    /// </summary>
+    private async Task NotifyGroupMembersInfoAsync(
+        CoachOS.Domain.Entities.LessonSerie series, ScheduleAssignment assignment,
+        WeeklyTemplateEntry slot, CancellationToken ct)
+    {
+        if (assignment.EnrollmentGroup is null) return;
+        var group = assignment.EnrollmentGroup;
+
+        foreach (var member in group.Members)
+        {
+            // Enkel leden met een eigen adres: dan is hun ContactEmail hun eigen adres
+            // (bij leden zonder eigen adres wijst ContactEmail naar de leider — die krijgt
+            // al de echte bevestig+betaal-mail, dus die slaan we over).
+            if (member.Id == group.LeaderEnrollmentId) continue;
+            if (string.IsNullOrWhiteSpace(member.StudentEmail)) continue;
+
+            try
+            {
+                await emailService.SendScheduleInfoAsync(
+                    member.ContactEmail, member.StudentName, series.Name, group.Name,
+                    slot.DayOfWeek, slot.StartTime.ToString("HH:mm"), slot.EndTime.ToString("HH:mm"),
+                    slot.CourtName, ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex,
+                    "Info-mail naar groepslid {EnrollmentId} mislukt (bevestiging is wel gelukt).",
+                    member.Id);
+            }
+        }
     }
 
     /// <summary>

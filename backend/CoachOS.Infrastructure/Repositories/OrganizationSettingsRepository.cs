@@ -24,9 +24,4 @@ public class OrganizationSettingsRepository(ApplicationDbContext context) : IOrg
     {
         await context.OrganizationSettings.AddAsync(settings, ct);
     }
-
-    public async Task SaveChangesAsync(CancellationToken ct = default)
-    {
-        await context.SaveChangesAsync(ct);
-    }
 }

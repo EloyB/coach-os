@@ -31,12 +31,17 @@ public static class HeadTrainerAccess
             "Geen toegang tot deze reeks: je bent geen hoofdtrainer van de bijhorende club."));
     }
 
+    public static Result EnsureManualEnrollmentAllowed(HttpContext ctx)
+    {
+        if (ctx.IsAdmin() || ctx.GetHeadTrainerClubIds().Count > 0)
+            return Result.Ok();
+
+        return Result.Fail(new Error(ErrorCodes.Forbidden,
+            "Enkel admins en hoofdtrainers kunnen handmatig inschrijvingen beheren."));
+    }
+
     /// <summary>
-    /// Hoofdtrainers hebben enkel leesrechten op inschrijvingen/planning van hun club(s):
-    /// bekijken mag, muteren niet. Spiegelt de frontend-gating (<c>isHeadTrainerViewer</c>).
-    /// Admin mag alles; een gewone trainer (zonder hoofdtrainer-club) ook. Blokkeert dus enkel
-    /// de niet-admin hoofdtrainer op muterende endpoints — client-side verbergen is geen
-    /// autorisatiegrens, dus dwing het hier af.
+    /// Hoofdtrainers hebben enkel leesrechten op overige mutaties.
     /// </summary>
     public static Result EnsureWriteAllowed(HttpContext ctx)
     {

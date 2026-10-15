@@ -15,6 +15,7 @@ public class OnboardingServiceTests
     private Mock<IMollieConnectionRepository> _mollieRepo = null!;
     private Mock<ITennisClubRepository> _clubRepo = null!;
     private Mock<ILessonSerieRepository> _seriesRepo = null!;
+    private Mock<IUnitOfWork> _unitOfWork = null!;
     private OnboardingService _sut = null!;
 
     private static readonly Guid OrgId = Guid.NewGuid();
@@ -26,6 +27,7 @@ public class OnboardingServiceTests
         _mollieRepo = new Mock<IMollieConnectionRepository>();
         _clubRepo = new Mock<ITennisClubRepository>();
         _seriesRepo = new Mock<ILessonSerieRepository>();
+        _unitOfWork = new Mock<IUnitOfWork>();
 
         // Defaults: alles uit. Tests die een stap "compleet" willen overschrijven dit.
         _mollieRepo.Setup(r => r.GetByOrganizationReadOnlyAsync(OrgId, It.IsAny<CancellationToken>()))
@@ -39,7 +41,8 @@ public class OnboardingServiceTests
             _settingsRepo.Object,
             _mollieRepo.Object,
             _clubRepo.Object,
-            _seriesRepo.Object);
+            _seriesRepo.Object,
+            _unitOfWork.Object);
     }
 
     private void ArrangeSettings(OrganizationSettings settings)
@@ -158,7 +161,7 @@ public class OnboardingServiceTests
         result.IsSuccess.Should().BeTrue();
         settings.AdminsActAsTrainers.Should().BeTrue();
         settings.TrainerModeChosenAt.Should().NotBeNull();
-        _settingsRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Test]
@@ -212,6 +215,6 @@ public class OnboardingServiceTests
         firstStamp.Should().NotBeNull();
         settings.OnboardingDismissedAt.Should().Be(firstStamp);
         // Eerste call schrijft, tweede call is no-op → exact 1 SaveChanges.
-        _settingsRepo.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 }

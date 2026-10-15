@@ -20,12 +20,14 @@ public sealed class PlanningExportModel
 
     public IReadOnlyList<EnrollmentRow> Enrollments { get; init; } = [];
     public IReadOnlyList<LessonMomentRow> LessonMoments { get; init; } = [];
-    public IReadOnlyList<ScheduledRow> ScheduledLessons { get; init; } = [];
+    public IReadOnlyList<MomentRosterRow> MomentRosters { get; init; } = [];
 }
 
 /// <summary>Tab 1 — één inschrijving + spelerdata + custom formulier-antwoorden.</summary>
 public sealed record EnrollmentRow(
     string StudentName,
+    string EnrollmentType,
+    string? GroupName,
     string StudentEmail,
     string? StudentPhone,
     string Status,
@@ -43,12 +45,18 @@ public sealed record LessonMomentRow(
     string? CourtName,
     int MaxStudents);
 
-/// <summary>Tab 3 — één speler die op een concreet lesmoment ingedeeld is.</summary>
-public sealed record ScheduledRow(
-    DateOnly Date,
+/// <summary>
+/// Tab — één terugkerend wekelijks lesmoment met de spelers die erop ingedeeld zijn.
+/// Compact overzicht "wie zit waar", niet uitgevouwen per datum.
+/// </summary>
+public sealed record MomentRosterRow(
+    string DayName,
     TimeOnly StartTime,
     TimeOnly EndTime,
-    string StudentName,
-    string StudentEmail,
-    string? GroupName,
-    string Status);
+    string? TrainerName,
+    string? CourtName,
+    int MaxStudents,
+    IReadOnlyList<RosterPlayer> Players);
+
+/// <summary>Eén speler binnen een <see cref="MomentRosterRow"/>.</summary>
+public sealed record RosterPlayer(string Name, string? GroupName, string Status);

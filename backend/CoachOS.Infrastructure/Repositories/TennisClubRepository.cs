@@ -34,11 +34,6 @@ public class TennisClubRepository(ApplicationDbContext context) : ITennisClubRep
         return Task.CompletedTask;
     }
 
-    public async Task SaveChangesAsync(CancellationToken ct = default)
-    {
-        await context.SaveChangesAsync(ct);
-    }
-
     public async Task<bool> ExistsAsync(Guid id, Guid organizationId, CancellationToken ct = default)
     {
         return await context.TennisClubs

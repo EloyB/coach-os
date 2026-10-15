@@ -2,9 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import {
@@ -20,6 +17,8 @@ import {
   Copy,
   CheckCircle2,
   MoreVertical,
+  UserMinus,
+  UserPlus,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -33,25 +32,25 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { FieldError } from "@/components/forms/field-error";
-import { inputClass } from "@/lib/styles";
-import { enrollmentStatusStyles } from "@/lib/status-styles";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { EditEnrollmentDialog } from "./edit-enrollment-dialog";
+import { EnrollmentStatusBadge } from "./enrollment-status-badge";
 import {
   getLessonSeriesEnrollments,
   cancelEnrollment,
   cancelEnrollmentGroup,
+  removeGroupMember,
   markEnrollmentCashPaid,
+  markGroupCashPaid,
   updateBasicEnrollment,
 } from "@/lib/api/enrollments";
 import type { LessonSeriesEnrollmentDto } from "@/lib/api/enrollments";
 import { EnrollmentDetailDialog } from "./enrollment-detail-dialog";
-import { isHeadTrainerViewer } from "@/lib/auth";
+import { canEditEnrollment, isEnrollmentManager, isHeadTrainerViewer } from "@/lib/auth";
+import { ManualEnrollmentDialog } from "./manual-enrollment-dialog";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -156,6 +155,15 @@ function SectionHeaderRow({ label, count }: { label: string; count: number }) {
   );
 }
 
+// Kop voor de mobiele kaartenlijst (geen tabelrij).
+function SectionHeading({ label, count }: { label: string; count: number }) {
+  return (
+    <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+      {label} <span className="text-gray-400">({count})</span>
+    </p>
+  );
+}
+
 // ─── Person row (solo of groepslid) ────────────────────────────────────────────
 
 function PersonRow({
@@ -167,6 +175,7 @@ function PersonRow({
   isMatch,
   openMenuId,
   setOpenMenuId,
+  variant = "row",
 }: {
   enrollment: LessonSeriesEnrollmentDto;
   seriesId: string;
@@ -176,6 +185,7 @@ function PersonRow({
   isMatch: boolean;
   openMenuId: string | null;
   setOpenMenuId: (id: string | null) => void;
+  variant?: "row" | "card";
 }) {
   const t = useTranslations("enrollmentsTable");
   const queryClient = useQueryClient();
@@ -185,8 +195,22 @@ function PersonRow({
   // Hoofdtrainer = read-only: geen bewerk-/annuleer-/betaalacties. Reactief zodat
   // het na hydratie klopt (localStorage is null tijdens SSR).
   const [readOnly, setReadOnly] = useState(false);
-  useEffect(() => setReadOnly(isHeadTrainerViewer()), []);
-  const showActionsMenu = openMenuId === enrollment.id;
+  const [canManage, setCanManage] = useState(false);
+  // Inschrijving bewerken is Admin-only (endpoint = RequireRole("Admin")); gewone
+  // trainers zien de bewerk-knop dus niet i.p.v. een gegarandeerde 403 bij opslaan.
+  const [canEdit, setCanEdit] = useState(false);
+  useEffect(() => {
+    // Auth staat alleen in localStorage; pas na hydration kunnen acties zichtbaar worden.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setReadOnly(isHeadTrainerViewer());
+    setCanManage(isEnrollmentManager());
+    setCanEdit(canEditEnrollment());
+  }, []);
+  // Mobiele kaart en desktop-rij renderen beide dezelfde inschrijving; een
+  // variant-specifieke key voorkomt dat de verborgen tweeling het gedeelde
+  // menu-open-state reset.
+  const menuKey = variant === "card" ? `card:${enrollment.id}` : enrollment.id;
+  const showActionsMenu = openMenuId === menuKey;
 
   const isCancelled = enrollment.status === "Cancelled";
   const isPendingPayment = enrollment.status === "PendingPayment";
@@ -210,6 +234,185 @@ function PersonRow({
       queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
     },
   });
+
+  const actionsMenu = (
+    <Popover
+      open={showActionsMenu}
+      onOpenChange={(o) => setOpenMenuId(o ? menuKey : null)}
+    >
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          onClick={(e) => e.stopPropagation()}
+          aria-label={t("actionsLabel", { name: enrollment.studentName })}
+          className="flex h-8 w-8 items-center justify-center rounded-md border border-gray-100 text-gray-400 hover:bg-gray-50 hover:text-gray-700"
+        >
+          <MoreVertical size={15} />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="end"
+        onClick={(e) => e.stopPropagation()}
+        className="w-52 p-1 text-sm"
+      >
+        <button
+          type="button"
+          onClick={() => {
+            setOpenMenuId(null);
+            setDetailOpen(true);
+          }}
+          className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+        >
+          <Eye size={13} />
+          {t("viewDetails")}
+        </button>
+        {!readOnly && isPendingPayment && ownsPayment && (
+          <button
+            type="button"
+            disabled={markPaidMutation.isPending}
+            onClick={() => {
+              setOpenMenuId(null);
+              markPaidMutation.mutate();
+            }}
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-tennis-green hover:bg-tennis-green/5 disabled:opacity-50"
+          >
+            <Euro size={13} />
+            {t("markPaid")}
+          </button>
+        )}
+        {canEdit && !isCancelled && (
+          <button
+            type="button"
+            onClick={() => {
+              setOpenMenuId(null);
+              setEditing(true);
+            }}
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-gray-700 hover:bg-tennis-green/5 hover:text-tennis-green"
+          >
+            <Pencil size={13} />
+            {t("editAction")}
+          </button>
+        )}
+        {canManage && !isCancelled && (
+          <button
+            type="button"
+            disabled={cancelMutation.isPending}
+            onClick={() => {
+              setOpenMenuId(null);
+              setConfirmCancelOpen(true);
+            }}
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-red-600 hover:bg-red-50 disabled:opacity-50"
+          >
+            <Trash2 size={13} />
+            {t("cancelAction")}
+          </button>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+
+  const dialogs = (
+    <>
+      <EnrollmentDetailDialog
+        enrollment={enrollment}
+        seriesId={seriesId}
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        onEdit={() => {
+          setDetailOpen(false);
+          setEditing(true);
+        }}
+      />
+
+      <EditEnrollmentDialog
+        enrollment={enrollment}
+        seriesId={seriesId}
+        open={editing}
+        onOpenChange={setEditing}
+      />
+
+      <AlertDialog open={confirmCancelOpen} onOpenChange={setConfirmCancelOpen}>
+        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("cancelTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("cancelBody", { name: enrollment.studentName })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("back")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => cancelMutation.mutate()}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {t("confirmCancel")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+
+  if (variant === "card") {
+    return (
+      <>
+        <div
+          onClick={() => setDetailOpen(true)}
+          className={`rounded-xl border border-gray-100 bg-white p-3 ${
+            isCancelled ? "opacity-50" : "cursor-pointer hover:border-gray-200"
+          } ${isMatch ? "bg-tennis-lime/10" : ""} ${
+            isMember ? "ml-4 border-l-2 border-l-tennis-green/20" : ""
+          }`}
+        >
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                {isMember && (
+                  <User size={13} className="shrink-0 text-gray-300" />
+                )}
+                <span
+                  className={`text-sm font-medium text-gray-800 ${
+                    isCancelled ? "line-through" : ""
+                  }`}
+                >
+                  {enrollment.studentName}
+                </span>
+                {isLeader && (
+                  <span className="shrink-0 rounded bg-tennis-green/10 px-1.5 py-0.5 text-[10px] font-semibold text-tennis-green">
+                    {t("leader")}
+                  </span>
+                )}
+                {isDuplicate && (
+                  <Badge className="shrink-0 border-0 bg-amber-100 text-amber-700 text-[10px]">
+                    {t("possibleDuplicate")}
+                  </Badge>
+                )}
+              </div>
+              <p className="mt-1 break-all text-xs text-gray-500">
+                {enrollment.hasOwnEmail
+                  ? (enrollment.studentEmail ?? "")
+                  : t("viaContact", { email: enrollment.contactEmail })}
+              </p>
+              {enrollment.studentPhone && (
+                <p className="mt-0.5 text-xs text-gray-500">
+                  {enrollment.studentPhone}
+                </p>
+              )}
+              <EnrollmentStatusBadge
+                status={enrollment.status}
+                paymentStatus={enrollment.paymentStatus}
+                className="mt-1.5 text-xs"
+              />
+            </div>
+            <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+              {actionsMenu}
+            </div>
+          </div>
+        </div>
+        {dialogs}
+      </>
+    );
+  }
 
   return (
     <>
@@ -264,129 +467,19 @@ function PersonRow({
 
         {/* Status */}
         <td className="px-4 py-2.5">
-          {enrollmentStatusStyles[enrollment.status] && (
-            <Badge
-              className={`${enrollmentStatusStyles[enrollment.status].className} border-0 text-xs`}
-            >
-              {enrollmentStatusStyles[enrollment.status].label}
-            </Badge>
-          )}
+          <EnrollmentStatusBadge
+            status={enrollment.status}
+            paymentStatus={enrollment.paymentStatus}
+            className="text-xs"
+          />
         </td>
 
         {/* Acties */}
         <td className="px-4 py-2.5 text-right whitespace-nowrap">
-          <div className="relative inline-block">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setOpenMenuId(showActionsMenu ? null : enrollment.id);
-              }}
-              aria-label={t("actionsLabel", { name: enrollment.studentName })}
-              className="flex h-8 w-8 items-center justify-center rounded-md border border-gray-100 text-gray-400 hover:bg-gray-50 hover:text-gray-700"
-            >
-              <MoreVertical size={15} />
-            </button>
-            {showActionsMenu && (
-              <div
-                onClick={(e) => e.stopPropagation()}
-                className="absolute right-0 top-full z-50 mt-1 min-w-48 rounded-lg border border-gray-100 bg-white py-1 text-sm shadow-lg"
-              >
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOpenMenuId(null);
-                    setDetailOpen(true);
-                  }}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
-                >
-                  <Eye size={13} />
-                  {t("viewDetails")}
-                </button>
-                {!readOnly && isPendingPayment && ownsPayment && (
-                  <button
-                    type="button"
-                    disabled={markPaidMutation.isPending}
-                    onClick={() => {
-                      setOpenMenuId(null);
-                      markPaidMutation.mutate();
-                    }}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-tennis-green hover:bg-tennis-green/5 disabled:opacity-50"
-                  >
-                    <Euro size={13} />
-                    {t("markPaid")}
-                  </button>
-                )}
-                {!readOnly && !isCancelled && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setOpenMenuId(null);
-                      setEditing(true);
-                    }}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-gray-700 hover:bg-tennis-green/5 hover:text-tennis-green"
-                  >
-                    <Pencil size={13} />
-                    {t("editAction")}
-                  </button>
-                )}
-                {!readOnly && !isCancelled && (
-                  <button
-                    type="button"
-                    disabled={cancelMutation.isPending}
-                    onClick={() => {
-                      setOpenMenuId(null);
-                      setConfirmCancelOpen(true);
-                    }}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-red-600 hover:bg-red-50 disabled:opacity-50"
-                  >
-                    <Trash2 size={13} />
-                    {t("cancelAction")}
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
+          {actionsMenu}
         </td>
       </tr>
-
-      <EnrollmentDetailDialog
-        enrollment={enrollment}
-        seriesId={seriesId}
-        open={detailOpen}
-        onOpenChange={setDetailOpen}
-        onEdit={() => {
-          setDetailOpen(false);
-          setEditing(true);
-        }}
-      />
-
-      <EditEnrollmentDialog
-        enrollment={enrollment}
-        seriesId={seriesId}
-        open={editing}
-        onOpenChange={setEditing}
-      />
-
-      <AlertDialog open={confirmCancelOpen} onOpenChange={setConfirmCancelOpen}>
-        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t("cancelTitle")}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("cancelBody", { name: enrollment.studentName })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t("back")}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => cancelMutation.mutate()}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              {t("confirmCancel")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {dialogs}
     </>
   );
 }
@@ -401,6 +494,7 @@ function GroupBlockRows({
   matchedIds,
   openMenuId,
   setOpenMenuId,
+  variant = "row",
 }: {
   block: Extract<Block, { kind: "group" }>;
   seriesId: string;
@@ -409,31 +503,93 @@ function GroupBlockRows({
   matchedIds: Set<string> | null;
   openMenuId: string | null;
   setOpenMenuId: (id: string | null) => void;
+  variant?: "row" | "card";
 }) {
   const t = useTranslations("enrollmentsTable");
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
+  const [addMemberOpen, setAddMemberOpen] = useState(false);
   const [editingMember, setEditingMember] =
+    useState<LessonSeriesEnrollmentDto | null>(null);
+  const [memberToRemove, setMemberToRemove] =
     useState<LessonSeriesEnrollmentDto | null>(null);
   // Hoofdtrainer = read-only: geen betaal-/annuleer-acties op groepsniveau.
   const [readOnly, setReadOnly] = useState(false);
-  useEffect(() => setReadOnly(isHeadTrainerViewer()), []);
+  const [canManage, setCanManage] = useState(false);
+  // Prijsoptie wijzigen is Admin-only (endpoint = RequireRole("Admin")); hoofdtrainers
+  // zien de selector dus niet i.p.v. een gegarandeerde 403 bij het opslaan.
+  const [canEdit, setCanEdit] = useState(false);
+  useEffect(() => {
+    // Auth staat alleen in localStorage; pas na hydration kunnen acties zichtbaar worden.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setReadOnly(isHeadTrainerViewer());
+    setCanManage(isEnrollmentManager());
+    setCanEdit(canEditEnrollment());
+  }, []);
   const expanded = forceExpanded || open;
 
   const { leader, members } = block;
-  const menuId = `group:${block.groupId}`;
+  const menuId = `${variant === "card" ? "cardgroup" : "group"}:${block.groupId}`;
   const showActionsMenu = openMenuId === menuId;
-  const leaderPendingPayment = leader.status === "PendingPayment";
+  // Groep heeft nog iets te innen zolang één lid (of de leider bij een online-groep)
+  // een openstaande óf mislukte betaling heeft. Mislukt telt mee zodat een vastgelopen
+  // online-betaling die later via overschrijving betaald werd, alsnog afvinkbaar is.
+  const groupHasOpenPayment = members.some(
+    (m) => m.paymentStatus === "Pending" || m.paymentStatus === "Failed",
+  );
 
-  const markPaidMutation = useMutation({
-    mutationFn: () => markEnrollmentCashPaid(leader.id),
+  const markGroupPaidMutation = useMutation({
+    mutationFn: () => markGroupCashPaid(leader.id),
     onSuccess: () => {
       toast.success(t("toastMarkedPaid"));
       queryClient.invalidateQueries({ queryKey: ["enrollments", seriesId] });
       queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
     },
+  });
+
+  const markMemberPaidMutation = useMutation({
+    mutationFn: (memberId: string) => markEnrollmentCashPaid(memberId),
+    onSuccess: () => {
+      toast.success(t("toastMarkedPaid"));
+      queryClient.invalidateQueries({ queryKey: ["enrollments", seriesId] });
+      queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
+    },
+  });
+
+  // Lid uit de groep halen vanuit de detail-dialog (zelfde actie als het icoon op de ledenrij).
+  const removeMemberMutation = useMutation({
+    mutationFn: ({ member, cancel }: { member: LessonSeriesEnrollmentDto; cancel: boolean }) =>
+      removeGroupMember(seriesId, member.enrollmentGroupId!, member.id, cancel),
+    onSuccess: (_data, { cancel }) => {
+      toast.success(cancel ? t("removeFromGroupCancelSuccess") : t("removeFromGroupSuccess"));
+      setMemberToRemove(null);
+      queryClient.invalidateQueries({ queryKey: ["enrollments", seriesId] });
+      queryClient.invalidateQueries({ queryKey: ["planning", seriesId] });
+      queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
+    },
+    onError: () => toast.error(t("removeFromGroupError")),
+  });
+
+  // Prijsoptie voor de hele groep: bewerk ze op de leider; de backend propageert naar alle leden.
+  const changeGroupPriceMutation = useMutation({
+    mutationFn: (optionId: string | null) =>
+      updateBasicEnrollment(seriesId, leader.id, {
+        studentName: leader.studentName,
+        contactEmail: leader.contactEmail,
+        studentEmail: leader.studentEmail,
+        studentPhone: leader.studentPhone,
+        dateOfBirth: leader.dateOfBirth ?? "",
+        isOpenToGrouping: leader.isOpenToGrouping,
+        selectedPriceOptionId: optionId,
+      }),
+    onSuccess: () => {
+      toast.success(t("groupPriceSuccess"));
+      queryClient.invalidateQueries({ queryKey: ["enrollments", seriesId] });
+      queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
+    },
+    onError: () => toast.error(t("groupPriceError")),
   });
 
   const cancelGroupMutation = useMutation({
@@ -447,6 +603,226 @@ function GroupBlockRows({
       toast.error(t("toastGroupCancelError"));
     },
   });
+
+  const groupActionsMenu = (
+    <Popover
+      open={showActionsMenu}
+      onOpenChange={(o) => setOpenMenuId(o ? menuId : null)}
+    >
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          onClick={(e) => e.stopPropagation()}
+          aria-label={t("actionsLabelGroup", { name: leader.studentName })}
+          className="flex h-8 w-8 items-center justify-center rounded-md border border-gray-100 text-gray-400 hover:bg-gray-50 hover:text-gray-700"
+        >
+          <MoreVertical size={15} />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="end"
+        onClick={(e) => e.stopPropagation()}
+        className="w-52 p-1 text-sm"
+      >
+        <button
+          type="button"
+          onClick={() => {
+            setOpenMenuId(null);
+            setDetailOpen(true);
+          }}
+          className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+        >
+          <Eye size={13} />
+          {t("viewDetails")}
+        </button>
+        {canManage &&
+          leader.status !== "Confirmed" &&
+          leader.status !== "PendingPayment" && (
+            <button
+              type="button"
+              onClick={() => {
+                setOpenMenuId(null);
+                setAddMemberOpen(true);
+              }}
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+            >
+              <UserPlus size={13} />
+              {t("addMember")}
+            </button>
+          )}
+        {!readOnly && groupHasOpenPayment && (
+          <button
+            type="button"
+            disabled={markGroupPaidMutation.isPending}
+            onClick={() => {
+              setOpenMenuId(null);
+              markGroupPaidMutation.mutate();
+            }}
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-tennis-green hover:bg-tennis-green/5 disabled:opacity-50"
+          >
+            <Euro size={13} />
+            {t("markGroupPaid")}
+          </button>
+        )}
+        {canManage && (
+          <button
+            type="button"
+            disabled={cancelGroupMutation.isPending}
+            onClick={() => {
+              setOpenMenuId(null);
+              setConfirmCancelOpen(true);
+            }}
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-red-600 hover:bg-red-50 disabled:opacity-50"
+          >
+            <Trash2 size={13} />
+            {t("cancelGroup")}
+          </button>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+
+  const groupDialogs = (
+    <>
+      <EnrollmentDetailDialog
+        enrollment={leader}
+        seriesId={seriesId}
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        onEdit={() => {}}
+        groupMembers={members}
+        onEditMember={setEditingMember}
+        onRemoveMember={canManage ? setMemberToRemove : undefined}
+        onMarkMemberPaid={
+          !readOnly ? (m) => markMemberPaidMutation.mutate(m.id) : undefined
+        }
+        onMarkGroupPaid={
+          !readOnly && groupHasOpenPayment
+            ? () => markGroupPaidMutation.mutate()
+            : undefined
+        }
+        onChangeGroupPriceOption={
+          canEdit ? (id) => changeGroupPriceMutation.mutate(id) : undefined
+        }
+      />
+
+      <ManualEnrollmentDialog
+        seriesId={seriesId}
+        groupId={block.groupId}
+        open={addMemberOpen}
+        onOpenChange={setAddMemberOpen}
+      />
+
+      <AlertDialog
+        open={memberToRemove !== null}
+        onOpenChange={(o) => !o && setMemberToRemove(null)}
+      >
+        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("removeFromGroupTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("removeFromGroupBody", {
+                name: memberToRemove?.studentName ?? "",
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
+            <AlertDialogCancel>{t("back")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() =>
+                memberToRemove &&
+                removeMemberMutation.mutate({
+                  member: memberToRemove,
+                  cancel: true,
+                })
+              }
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {t("removeFromGroupCancel")}
+            </AlertDialogAction>
+            <AlertDialogAction
+              onClick={() =>
+                memberToRemove &&
+                removeMemberMutation.mutate({
+                  member: memberToRemove,
+                  cancel: false,
+                })
+              }
+              className="bg-tennis-green hover:bg-tennis-green/90"
+            >
+              {t("removeFromGroupDetach")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {editingMember && (
+        <EditEnrollmentDialog
+          enrollment={editingMember}
+          seriesId={seriesId}
+          open={editingMember !== null}
+          onOpenChange={(o) => !o && setEditingMember(null)}
+        />
+      )}
+
+      <AlertDialog open={confirmCancelOpen} onOpenChange={setConfirmCancelOpen}>
+        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("cancelGroupTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("cancelGroupBody", { count: members.length })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("back")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => cancelGroupMutation.mutate()}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {t("confirmCancel")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+
+  if (variant === "card") {
+    return (
+      <>
+        <div
+          onClick={() => setDetailOpen(true)}
+          className="cursor-pointer rounded-xl border border-gray-100 bg-gray-50/60 p-3 hover:border-gray-200"
+        >
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <Users size={14} className="shrink-0 text-tennis-green" />
+                <span className="text-sm font-semibold text-gray-800">
+                  {t("group")} · {leader.studentName}
+                </span>
+                <Badge className="shrink-0 border-0 bg-tennis-green/10 text-tennis-green text-[11px]">
+                  {t("members", { count: members.length })}
+                </Badge>
+              </div>
+              <p className="mt-1 text-xs text-gray-500">
+                {formatEnrolledAt(leader.enrolledAt)}
+              </p>
+              <EnrollmentStatusBadge
+                status={leader.status}
+                paymentStatus={leader.paymentStatus}
+                className="mt-1.5 text-xs"
+              />
+            </div>
+            <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+              {groupActionsMenu}
+            </div>
+          </div>
+        </div>
+        {groupDialogs}
+      </>
+    );
+  }
 
   return (
     <>
@@ -492,76 +868,16 @@ function GroupBlockRows({
 
         {/* Status (leider) */}
         <td className="px-4 py-2.5">
-          {enrollmentStatusStyles[leader.status] && (
-            <Badge
-              className={`${enrollmentStatusStyles[leader.status].className} border-0 text-xs`}
-            >
-              {enrollmentStatusStyles[leader.status].label}
-            </Badge>
-          )}
+          <EnrollmentStatusBadge
+            status={leader.status}
+            paymentStatus={leader.paymentStatus}
+            className="text-xs"
+          />
         </td>
 
         {/* Acties — groepsniveau */}
         <td className="px-4 py-2.5 text-right whitespace-nowrap">
-          <div className="relative inline-block">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setOpenMenuId(showActionsMenu ? null : menuId);
-              }}
-              aria-label={t("actionsLabelGroup", { name: leader.studentName })}
-              className="flex h-8 w-8 items-center justify-center rounded-md border border-gray-100 text-gray-400 hover:bg-gray-50 hover:text-gray-700"
-            >
-              <MoreVertical size={15} />
-            </button>
-            {showActionsMenu && (
-              <div
-                onClick={(e) => e.stopPropagation()}
-                className="absolute right-0 top-full z-50 mt-1 min-w-48 rounded-lg border border-gray-100 bg-white py-1 text-sm shadow-lg"
-              >
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOpenMenuId(null);
-                    setDetailOpen(true);
-                  }}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
-                >
-                  <Eye size={13} />
-                  {t("viewDetails")}
-                </button>
-                {!readOnly && leaderPendingPayment && (
-                  <button
-                    type="button"
-                    disabled={markPaidMutation.isPending}
-                    onClick={() => {
-                      setOpenMenuId(null);
-                      markPaidMutation.mutate();
-                    }}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-tennis-green hover:bg-tennis-green/5 disabled:opacity-50"
-                  >
-                    <Euro size={13} />
-                    {t("markPaid")}
-                  </button>
-                )}
-                {!readOnly && (
-                <button
-                  type="button"
-                  disabled={cancelGroupMutation.isPending}
-                  onClick={() => {
-                    setOpenMenuId(null);
-                    setConfirmCancelOpen(true);
-                  }}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-red-600 hover:bg-red-50 disabled:opacity-50"
-                >
-                  <Trash2 size={13} />
-                  {t("cancelGroup")}
-                </button>
-                )}
-              </div>
-            )}
-          </div>
+          {groupActionsMenu}
         </td>
       </tr>
 
@@ -570,50 +886,16 @@ function GroupBlockRows({
           <MemberRow
             key={m.id}
             enrollment={m}
+            seriesId={seriesId}
+            canManage={canManage}
             isLeader={m.id === leader.id}
             isDuplicate={duplicateIds.has(m.id)}
             isMatch={matchedIds?.has(m.id) ?? false}
+            openMenuId={openMenuId}
+            setOpenMenuId={setOpenMenuId}
           />
         ))}
-
-      <EnrollmentDetailDialog
-        enrollment={leader}
-        seriesId={seriesId}
-        open={detailOpen}
-        onOpenChange={setDetailOpen}
-        onEdit={() => {}}
-        groupMembers={members}
-        onEditMember={setEditingMember}
-      />
-
-      {editingMember && (
-        <EditEnrollmentDialog
-          enrollment={editingMember}
-          seriesId={seriesId}
-          open={editingMember !== null}
-          onOpenChange={(o) => !o && setEditingMember(null)}
-        />
-      )}
-
-      <AlertDialog open={confirmCancelOpen} onOpenChange={setConfirmCancelOpen}>
-        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t("cancelGroupTitle")}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("cancelGroupBody", { count: members.length })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t("back")}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => cancelGroupMutation.mutate()}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              {t("confirmCancel")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {groupDialogs}
     </>
   );
 }
@@ -622,20 +904,75 @@ function GroupBlockRows({
 
 function MemberRow({
   enrollment,
+  seriesId,
+  canManage,
   isLeader,
   isDuplicate,
   isMatch,
+  openMenuId,
+  setOpenMenuId,
 }: {
   enrollment: LessonSeriesEnrollmentDto;
+  seriesId: string;
+  canManage: boolean;
   isLeader: boolean;
   isDuplicate: boolean;
   isMatch: boolean;
+  openMenuId: string | null;
+  setOpenMenuId: (id: string | null) => void;
 }) {
   const t = useTranslations("enrollmentsTable");
+  const queryClient = useQueryClient();
+  const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+  // Hoofdtrainer = read-only (geen betaalactie); bewerken is Admin-only. Reactief
+  // zodat het na hydratie klopt (localStorage is null tijdens SSR).
+  const [readOnly, setReadOnly] = useState(false);
+  const [canEdit, setCanEdit] = useState(false);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setReadOnly(isHeadTrainerViewer());
+    setCanEdit(canEditEnrollment());
+  }, []);
   const isCancelled = enrollment.status === "Cancelled";
   const age = computeAge(enrollment.dateOfBirth);
 
+  const menuKey = `member:${enrollment.id}`;
+  const showActionsMenu = openMenuId === menuKey;
+  // Per lid afrekenen geldt voor een eigen (niet-online) betaling die nog openstaat of
+  // mislukte. De gedeelde online leider-betaling wordt via "hele groep" afgehandeld.
+  const canMarkPaid =
+    !readOnly &&
+    enrollment.paymentMethod !== "Online" &&
+    (enrollment.paymentStatus === "Pending" ||
+      enrollment.paymentStatus === "Failed");
+  const canRemove = canManage && !isCancelled;
+  const canEditMember = canEdit && !isCancelled;
+  const hasActions = canMarkPaid || canRemove || canEditMember;
+
+  const removeMemberMutation = useMutation({
+    mutationFn: (cancel: boolean) =>
+      removeGroupMember(seriesId, enrollment.enrollmentGroupId!, enrollment.id, cancel),
+    onSuccess: (_data, cancel) => {
+      toast.success(cancel ? t("removeFromGroupCancelSuccess") : t("removeFromGroupSuccess"));
+      queryClient.invalidateQueries({ queryKey: ["enrollments", seriesId] });
+      queryClient.invalidateQueries({ queryKey: ["planning", seriesId] });
+      queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
+    },
+    onError: () => toast.error(t("removeFromGroupError")),
+  });
+
+  const markPaidMutation = useMutation({
+    mutationFn: () => markEnrollmentCashPaid(enrollment.id),
+    onSuccess: () => {
+      toast.success(t("toastMarkedPaid"));
+      queryClient.invalidateQueries({ queryKey: ["enrollments", seriesId] });
+      queryClient.invalidateQueries({ queryKey: ["lessonSeries", seriesId] });
+    },
+  });
+
   return (
+    <>
     <tr
       className={`border-t border-gray-50 ${isCancelled ? "opacity-50" : ""} ${
         isMatch ? "bg-tennis-lime/10" : ""
@@ -675,16 +1012,108 @@ function MemberRow({
         {formatEnrolledAt(enrollment.enrolledAt)}
       </td>
       <td className="px-4 py-2.5">
-        {enrollmentStatusStyles[enrollment.status] && (
-          <Badge
-            className={`${enrollmentStatusStyles[enrollment.status].className} border-0 text-xs`}
+        <EnrollmentStatusBadge
+          status={enrollment.status}
+          paymentStatus={enrollment.paymentStatus}
+          className="text-xs"
+        />
+      </td>
+      <td className="px-4 py-2.5 text-right whitespace-nowrap">
+        {hasActions && (
+          <Popover
+            open={showActionsMenu}
+            onOpenChange={(o) => setOpenMenuId(o ? menuKey : null)}
           >
-            {enrollmentStatusStyles[enrollment.status].label}
-          </Badge>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                aria-label={t("actionsLabel", { name: enrollment.studentName })}
+                className="ml-auto flex h-8 w-8 items-center justify-center rounded-md border border-gray-100 text-gray-400 hover:bg-gray-50 hover:text-gray-700"
+              >
+                <MoreVertical size={15} />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-52 p-1 text-sm">
+              {canMarkPaid && (
+                <button
+                  type="button"
+                  disabled={markPaidMutation.isPending}
+                  onClick={() => {
+                    setOpenMenuId(null);
+                    markPaidMutation.mutate();
+                  }}
+                  className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-tennis-green hover:bg-tennis-green/5 disabled:opacity-50"
+                >
+                  <Euro size={13} />
+                  {t("markPaid")}
+                </button>
+              )}
+              {canEditMember && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenMenuId(null);
+                    setEditing(true);
+                  }}
+                  className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-gray-700 hover:bg-tennis-green/5 hover:text-tennis-green"
+                >
+                  <Pencil size={13} />
+                  {t("editAction")}
+                </button>
+              )}
+              {canRemove && (
+                <button
+                  type="button"
+                  disabled={removeMemberMutation.isPending}
+                  onClick={() => {
+                    setOpenMenuId(null);
+                    setConfirmRemoveOpen(true);
+                  }}
+                  className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-red-600 hover:bg-red-50 disabled:opacity-50"
+                >
+                  <UserMinus size={13} />
+                  {t("removeFromGroup")}
+                </button>
+              )}
+            </PopoverContent>
+          </Popover>
         )}
       </td>
-      <td className="px-4 py-2.5" />
     </tr>
+
+    <AlertDialog open={confirmRemoveOpen} onOpenChange={setConfirmRemoveOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{t("removeFromGroupTitle")}</AlertDialogTitle>
+          <AlertDialogDescription>
+            {t("removeFromGroupBody", { name: enrollment.studentName })}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
+          <AlertDialogCancel>{t("back")}</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => removeMemberMutation.mutate(true)}
+            className="bg-red-600 hover:bg-red-700"
+          >
+            {t("removeFromGroupCancel")}
+          </AlertDialogAction>
+          <AlertDialogAction
+            onClick={() => removeMemberMutation.mutate(false)}
+            className="bg-tennis-green hover:bg-tennis-green/90"
+          >
+            {t("removeFromGroupDetach")}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
+    <EditEnrollmentDialog
+      enrollment={enrollment}
+      seriesId={seriesId}
+      open={editing}
+      onOpenChange={setEditing}
+    />
+    </>
   );
 }
 
@@ -700,19 +1129,9 @@ function EnrollmentsTable({
   const t = useTranslations("enrollmentsTable");
   const [query, setQuery] = useState("");
   const [showCancelled, setShowCancelled] = useState(false);
-  // Eén open acties-menu tegelijk (rij-id), gedeeld over alle rijen.
+  // Eén open acties-menu tegelijk (rij-id), gedeeld over alle rijen. Radix Popover
+  // sluit zelf bij klik-buiten/Escape en portalt de inhoud buiten de scroll-container.
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-
-  // Klik buiten het open menu sluit het. De toggle-knop en het menu zelf doen
-  // stopPropagation, dus deze document-listener vangt enkel klikken erbuiten.
-  useEffect(() => {
-    if (openMenuId === null) return;
-    function handleOutside() {
-      setOpenMenuId(null);
-    }
-    document.addEventListener("click", handleOutside);
-    return () => document.removeEventListener("click", handleOutside);
-  }, [openMenuId]);
 
   const cancelledCount = useMemo(
     () => enrollments.filter((e) => e.status === "Cancelled").length,
@@ -803,8 +1222,61 @@ function EnrollmentsTable({
           {q ? t("noResults", { query }) : t("empty")}
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full table-fixed border-collapse text-left [&_td]:border-r [&_td]:border-gray-100 [&_th]:border-r [&_th]:border-gray-100 [&_td:last-child]:border-r-0 [&_th:last-child]:border-r-0">
+        <>
+          {/* Mobiel: kaartenlijst i.p.v. tabel (geen horizontale scroll/overflow) */}
+          <div className="space-y-5 p-4 sm:hidden">
+            {soloBlocks.length > 0 && (
+              <div>
+                <SectionHeading
+                  label={t("sectionIndividual")}
+                  count={soloBlocks.length}
+                />
+                <div className="space-y-2">
+                  {soloBlocks.map((block) => (
+                    <PersonRow
+                      key={block.enrollment.id}
+                      enrollment={block.enrollment}
+                      seriesId={seriesId}
+                      isMember={false}
+                      isLeader={false}
+                      isDuplicate={duplicateIds.has(block.enrollment.id)}
+                      isMatch={matchedIds?.has(block.enrollment.id) ?? false}
+                      openMenuId={openMenuId}
+                      setOpenMenuId={setOpenMenuId}
+                      variant="card"
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+            {groupBlocks.length > 0 && (
+              <div>
+                <SectionHeading
+                  label={t("sectionGroups")}
+                  count={groupBlocks.length}
+                />
+                <div className="space-y-2">
+                  {groupBlocks.map((block) => (
+                    <GroupBlockRows
+                      key={block.groupId}
+                      block={block}
+                      seriesId={seriesId}
+                      forceExpanded={!!q}
+                      duplicateIds={duplicateIds}
+                      matchedIds={matchedIds}
+                      openMenuId={openMenuId}
+                      setOpenMenuId={setOpenMenuId}
+                      variant="card"
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Desktop: tabel */}
+          <div className="hidden overflow-x-auto sm:block">
+            <table className="w-full min-w-[640px] table-fixed border-collapse text-left [&_td]:border-r [&_td]:border-gray-100 [&_th]:border-r [&_th]:border-gray-100 [&_td:last-child]:border-r-0 [&_th:last-child]:border-r-0">
             <colgroup>
               <col style={{ width: "36%" }} />
               <col style={{ width: "26%" }} />
@@ -858,7 +1330,8 @@ function EnrollmentsTable({
               ))}
             </tbody>
           </table>
-        </div>
+          </div>
+        </>
       )}
     </div>
   );
@@ -869,6 +1342,14 @@ function EnrollmentsTable({
 export function EnrollmentsSection({ seriesId }: { seriesId: string }) {
   const t = useTranslations("enrollmentsTable");
   const [copied, setCopied] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
+  const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
+  const [canManage, setCanManage] = useState(false);
+  useEffect(() => {
+    // Auth staat alleen in localStorage; pas na hydration kunnen acties zichtbaar worden.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCanManage(isEnrollmentManager());
+  }, []);
 
   const { data: enrollments = [], isLoading } = useQuery({
     queryKey: ["enrollments", seriesId],
@@ -891,29 +1372,86 @@ export function EnrollmentsSection({ seriesId }: { seriesId: string }) {
       id="enrollments"
       className="bg-white rounded-xl shadow-sm shadow-gray-100 overflow-visible scroll-mt-20"
     >
-      <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+      <div className="px-5 py-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2.5">
           <h2 className="text-sm font-semibold text-gray-800">{t("title")}</h2>
           <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-tennis-green/10 text-xs font-bold text-tennis-green">
             {activeCount}
           </span>
         </div>
-        <button
-          onClick={handleCopyLink}
-          className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
-        >
-          {copied ? (
-            <>
-              <CheckCircle2 size={12} className="text-green-500" />
-              {t("copied")}
-            </>
-          ) : (
-            <>
-              <Copy size={12} />
-              {t("copyLink")}
-            </>
+        <div className="flex items-center gap-2">
+          {/* Desktop: knoppen inline */}
+          {canManage && (
+            <button
+              type="button"
+              onClick={() => setManualOpen(true)}
+              className="hidden rounded-lg bg-tennis-green px-3 py-1.5 text-xs font-semibold text-white hover:bg-tennis-green/90 sm:block"
+            >
+              {t("manualAdd")}
+            </button>
           )}
-        </button>
+          <button
+            onClick={handleCopyLink}
+            className="hidden items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 sm:flex"
+          >
+            {copied ? (
+              <>
+                <CheckCircle2 size={12} className="text-green-500" />
+                {t("copied")}
+              </>
+            ) : (
+              <>
+                <Copy size={12} />
+                {t("copyLink")}
+              </>
+            )}
+          </button>
+
+          {/* Mobiel: ⋮-menu met dezelfde acties */}
+          <Popover open={headerMenuOpen} onOpenChange={setHeaderMenuOpen}>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                aria-label="Meer acties"
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 sm:hidden"
+              >
+                <MoreVertical size={16} />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-52 p-1 text-sm">
+              {canManage && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setHeaderMenuOpen(false);
+                    setManualOpen(true);
+                  }}
+                  className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                >
+                  <UserPlus size={14} />
+                  {t("manualAdd")}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleCopyLink}
+                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+              >
+                {copied ? (
+                  <>
+                    <CheckCircle2 size={14} className="text-green-500" />
+                    {t("copied")}
+                  </>
+                ) : (
+                  <>
+                    <Copy size={14} />
+                    {t("copyLink")}
+                  </>
+                )}
+              </button>
+            </PopoverContent>
+          </Popover>
+        </div>
       </div>
 
       {isLoading ? (
@@ -930,142 +1468,13 @@ export function EnrollmentsSection({ seriesId }: { seriesId: string }) {
       ) : (
         <EnrollmentsTable enrollments={enrollments} seriesId={seriesId} />
       )}
+      <ManualEnrollmentDialog
+        seriesId={seriesId}
+        open={manualOpen}
+        onOpenChange={setManualOpen}
+      />
     </div>
   );
 }
 
 // ─── Edit dialog (verplaatst uit page.tsx) ─────────────────────────────────────
-
-const basicEnrollmentSchema = z.object({
-  studentName: z.string().min(1, "Naam is verplicht"),
-  contactEmail: z.string().email("Ongeldig e-mailadres"),
-  studentEmail: z.string().email("Ongeldig e-mailadres").or(z.literal("")),
-  studentPhone: z.string(),
-  dateOfBirth: z.string().min(1, "Geboortedatum is verplicht"),
-  isOpenToGrouping: z.boolean(),
-});
-
-type BasicEnrollmentFormValues = z.infer<typeof basicEnrollmentSchema>;
-
-function EditEnrollmentDialog({
-  enrollment,
-  seriesId,
-  open,
-  onOpenChange,
-}: {
-  enrollment: LessonSeriesEnrollmentDto;
-  seriesId: string;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
-  const t = useTranslations("enrollmentsTable");
-  const queryClient = useQueryClient();
-  const form = useForm<BasicEnrollmentFormValues>({
-    resolver: zodResolver(basicEnrollmentSchema),
-    values: {
-      studentName: enrollment.studentName,
-      contactEmail: enrollment.contactEmail,
-      studentEmail: enrollment.studentEmail ?? "",
-      studentPhone: enrollment.studentPhone ?? "",
-      dateOfBirth: enrollment.dateOfBirth ?? "",
-      isOpenToGrouping: enrollment.isOpenToGrouping,
-    },
-  });
-
-  const mutation = useMutation({
-    mutationFn: (values: BasicEnrollmentFormValues) =>
-      updateBasicEnrollment(seriesId, enrollment.id, {
-        studentName: values.studentName,
-        contactEmail: values.contactEmail,
-        studentEmail: values.studentEmail?.trim() ? values.studentEmail : null,
-        studentPhone: values.studentPhone?.trim() ? values.studentPhone : null,
-        dateOfBirth: values.dateOfBirth,
-        isOpenToGrouping: values.isOpenToGrouping,
-      }),
-    onSuccess: () => {
-      toast.success(t("toastUpdated"));
-      queryClient.invalidateQueries({ queryKey: ["enrollments", seriesId] });
-      queryClient.invalidateQueries({ queryKey: ["planning", seriesId] });
-      onOpenChange(false);
-    },
-  });
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent onClick={(e) => e.stopPropagation()} className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Inschrijving aanpassen</DialogTitle>
-          <DialogDescription>
-            Wijzig enkel basisgegevens. Betaling en planning blijven ongewijzigd.
-          </DialogDescription>
-        </DialogHeader>
-        <p className="text-xs text-gray-500">
-          Ingeschreven op {new Date(enrollment.enrolledAt).toLocaleDateString("nl-BE")}
-        </p>
-        <form
-          onSubmit={form.handleSubmit((values) => mutation.mutate(values))}
-          className="space-y-4"
-        >
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="sm:col-span-2">
-              <label className="mb-1 block text-xs font-medium text-gray-600">
-                Naam deelnemer
-              </label>
-              <input className={inputClass} {...form.register("studentName")} />
-              <FieldError message={form.formState.errors.studentName?.message} />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">
-                Contact e-mail
-              </label>
-              <input type="email" className={inputClass} {...form.register("contactEmail")} />
-              <FieldError message={form.formState.errors.contactEmail?.message} />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">
-                Eigen e-mail deelnemer
-              </label>
-              <input type="email" className={inputClass} {...form.register("studentEmail")} />
-              <FieldError message={form.formState.errors.studentEmail?.message} />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">Telefoon</label>
-              <input className={inputClass} {...form.register("studentPhone")} />
-              <FieldError message={form.formState.errors.studentPhone?.message} />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">
-                Geboortedatum
-              </label>
-              <input type="date" className={inputClass} {...form.register("dateOfBirth")} />
-              <FieldError message={form.formState.errors.dateOfBirth?.message} />
-            </div>
-          </div>
-          <label className="flex items-center gap-2 text-xs text-gray-600">
-            <input type="checkbox" {...form.register("isOpenToGrouping")} />
-            Open voor groepering met andere deelnemers
-          </label>
-          <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
-            Deze wijziging past geen betaalstatus, betalingsbedrag of planningstoewijzing aan.
-          </p>
-          <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={() => onOpenChange(false)}
-              className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
-            >
-              Annuleren
-            </button>
-            <button
-              type="submit"
-              disabled={mutation.isPending}
-              className="rounded-lg bg-tennis-green px-3 py-2 text-sm font-medium text-white hover:bg-tennis-green/90 disabled:opacity-50"
-            >
-              {mutation.isPending ? "Opslaan…" : "Opslaan"}
-            </button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}

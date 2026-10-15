@@ -1,3 +1,4 @@
+using CoachOS.Application.Abstractions;
 using CoachOS.Application.Configuration;
 using CoachOS.Application.MollieConnect;
 using CoachOS.Application.Payments;
@@ -28,6 +29,7 @@ public class PaymentServiceTests
     private Mock<IMollieConnectService> _connect = null!;
     private Mock<IEmailService> _email = null!;
     private Mock<IPricingService> _pricing = null!;
+    private Mock<IUnitOfWork> _unitOfWork = null!;
     private PaymentService _sut = null!;
 
     private static readonly Guid OrgId = Guid.NewGuid();
@@ -68,6 +70,7 @@ public class PaymentServiceTests
         _connect = new Mock<IMollieConnectService>();
         _email = new Mock<IEmailService>();
         _pricing = new Mock<IPricingService>();
+        _unitOfWork = new Mock<IUnitOfWork>();
         SetupPrice(MatrixTotal, groupSize: 1);
         _pricing
             .Setup(p => p.CalculateForGroupAsync(
@@ -90,6 +93,7 @@ public class PaymentServiceTests
             _camps.Object,
             _campEnrollments.Object,
             _orgSettings.Object,
+            _unitOfWork.Object,
             _mollie.Object,
             _connect.Object,
             _email.Object,
@@ -431,7 +435,7 @@ public class PaymentServiceTests
         result.IsSuccess.Should().BeTrue();
         _mollie.Verify(m => m.GetPaymentAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()),
             Times.Never);
-        _payments.Verify(p => p.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Test]
@@ -475,7 +479,7 @@ public class PaymentServiceTests
         payment.PaidAt.Should().NotBeNull();
         enrollment.Status.Should().Be(EnrollmentStatus.Confirmed);
         _email.Verify(e => e.SendEnrollmentConfirmationAsync(
-            "student@example.com", "Test Student", "Voorjaar 2026", string.Empty,
+            "student@example.com", "Test Student", "Voorjaar 2026",
             It.IsAny<IReadOnlyList<string>?>(), It.IsAny<CancellationToken>()),
             Times.Once);
     }
@@ -574,7 +578,8 @@ public class PaymentServiceTests
         result.IsSuccess.Should().BeTrue();
         payment.Status.Should().Be(PaymentStatus.Failed);
         payment.FailureReason.Should().Be("insufficient_funds");
-        _enrollments.Verify(e => e.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+        // Enkel de payment-update wordt weggeschreven — geen tweede save voor een enrollment-bevestiging.
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     // ── RecordCampCashPaymentAsync ────────────────────────────────────────────
@@ -610,6 +615,47 @@ public class PaymentServiceTests
         saved.Amount.Should().Be(120m);
         saved.CampEnrollmentId.Should().Be(campEnrollmentId);
         enrollment.Status.Should().Be(EnrollmentStatus.PendingPayment);
+    }
+
+    [Test]
+    public async Task RecordCampCash_GroupWithCancelledMember_CountsOnlyActiveMembers()
+    {
+        Guid leaderId = Guid.NewGuid();
+        Guid campId = Guid.NewGuid();
+        Guid groupId = Guid.NewGuid();
+        CampEnrollment leader = new()
+        {
+            Id = leaderId, OrganizationId = OrgId, CampId = campId, CampEnrollmentGroupId = groupId,
+            Status = EnrollmentStatus.PendingPayment,
+        };
+        CampEnrollment active = new()
+        {
+            Id = Guid.NewGuid(), OrganizationId = OrgId, CampId = campId, CampEnrollmentGroupId = groupId,
+            Status = EnrollmentStatus.PendingPayment,
+        };
+        CampEnrollment cancelled = new()
+        {
+            Id = Guid.NewGuid(), OrganizationId = OrgId, CampId = campId, CampEnrollmentGroupId = groupId,
+            Status = EnrollmentStatus.Cancelled,
+        };
+        leader.Group = new CampEnrollmentGroup
+        {
+            Id = groupId, LeaderEnrollmentId = leaderId, Members = [leader, active, cancelled],
+        };
+        _campEnrollments.Setup(c => c.GetByIdWithGroupAsync(leaderId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(leader);
+        _camps.Setup(c => c.GetByIdPublicAsync(campId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Camp { Id = campId, OrganizationId = OrgId, Name = "Paaskamp", Price = 100m });
+
+        Payment? saved = null;
+        _payments.Setup(p => p.AddAsync(It.IsAny<Payment>(), It.IsAny<CancellationToken>()))
+            .Callback<Payment, CancellationToken>((p, _) => saved = p)
+            .Returns(Task.CompletedTask);
+
+        Result result = await _sut.RecordCampCashPaymentAsync(leaderId, OrgId);
+
+        result.IsSuccess.Should().BeTrue();
+        saved!.Amount.Should().Be(200m); // 2 actieve leden × 100, geannuleerd lid telt niet mee
     }
 
     [Test]
@@ -668,6 +714,83 @@ public class PaymentServiceTests
         _email.Verify(e => e.SendCampEnrollmentConfirmedAsync(
             "emma@example.com", "Emma", "Paaskamp", It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()),
             Times.Once);
+    }
+
+    [Test]
+    public async Task MarkCampCashPaid_CancelledEnrollment_FailsAndStaysCancelled()
+    {
+        Guid campEnrollmentId = Guid.NewGuid();
+        Guid campId = Guid.NewGuid();
+        Payment cash = new()
+        {
+            Id = Guid.NewGuid(), OrganizationId = OrgId, CampEnrollmentId = campEnrollmentId,
+            Method = PaymentMethod.Cash, Status = PaymentStatus.Pending,
+        };
+        CampEnrollment enrollment = new()
+        {
+            Id = campEnrollmentId, OrganizationId = OrgId, CampId = campId,
+            ParticipantEmail = "emma@example.com", ParticipantName = "Emma",
+            Status = EnrollmentStatus.Cancelled,
+        };
+        _payments.Setup(p => p.GetLatestPendingCashByCampEnrollmentIdAsync(campEnrollmentId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(cash);
+        _campEnrollments.Setup(c => c.GetByIdWithGroupAsync(campEnrollmentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(enrollment);
+
+        Result result = await _sut.MarkCampCashPaidAsync(campId, campEnrollmentId, OrgId);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.Validation);
+        cash.Status.Should().Be(PaymentStatus.Pending);
+        enrollment.Status.Should().Be(EnrollmentStatus.Cancelled);
+        _email.Verify(e => e.SendCampEnrollmentConfirmedAsync(
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+            It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Test]
+    public async Task MarkCampCashPaid_GroupWithCancelledMember_DoesNotReviveCancelledMember()
+    {
+        Guid leaderId = Guid.NewGuid();
+        Guid campId = Guid.NewGuid();
+        Guid groupId = Guid.NewGuid();
+        Payment cash = new()
+        {
+            Id = Guid.NewGuid(), OrganizationId = OrgId, CampEnrollmentId = leaderId,
+            Method = PaymentMethod.Cash, Status = PaymentStatus.Pending,
+        };
+        CampEnrollment leader = new()
+        {
+            Id = leaderId, OrganizationId = OrgId, CampId = campId, CampEnrollmentGroupId = groupId,
+            ParticipantEmail = "sarah@example.com", ParticipantName = "Sarah",
+            Status = EnrollmentStatus.PendingPayment, Camp = new Camp { Id = campId, Name = "Paaskamp" },
+        };
+        CampEnrollment active = new()
+        {
+            Id = Guid.NewGuid(), OrganizationId = OrgId, CampId = campId, CampEnrollmentGroupId = groupId,
+            ParticipantName = "Tom", Status = EnrollmentStatus.PendingPayment,
+        };
+        CampEnrollment cancelled = new()
+        {
+            Id = Guid.NewGuid(), OrganizationId = OrgId, CampId = campId, CampEnrollmentGroupId = groupId,
+            ParticipantName = "Lisa", Status = EnrollmentStatus.Cancelled,
+        };
+        leader.Group = new CampEnrollmentGroup
+        {
+            Id = groupId, LeaderEnrollmentId = leaderId, Members = [leader, active, cancelled],
+        };
+        _payments.Setup(p => p.GetLatestPendingCashByCampEnrollmentIdAsync(leaderId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(cash);
+        _campEnrollments.Setup(c => c.GetByIdWithGroupAsync(leaderId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(leader);
+
+        Result result = await _sut.MarkCampCashPaidAsync(campId, leaderId, OrgId);
+
+        result.IsSuccess.Should().BeTrue();
+        leader.Status.Should().Be(EnrollmentStatus.Confirmed);
+        active.Status.Should().Be(EnrollmentStatus.Confirmed);
+        cancelled.Status.Should().Be(EnrollmentStatus.Cancelled);
     }
 
     [Test]

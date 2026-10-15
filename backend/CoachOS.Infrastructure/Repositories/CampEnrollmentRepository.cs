@@ -1,4 +1,3 @@
-using System.Data;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
 using CoachOS.Domain.Interfaces;
@@ -62,6 +61,32 @@ public class CampEnrollmentRepository(ApplicationDbContext context) : ICampEnrol
                 (e.Status == EnrollmentStatus.Confirmed || e.Status == EnrollmentStatus.Pending || e.Status == EnrollmentStatus.PendingPayment), ct);
     }
 
+    public async Task<bool> IsDuplicateExceptAsync(
+        Guid campId, string participantEmail, Guid exceptEnrollmentId, CancellationToken ct = default)
+    {
+        string normalized = participantEmail.Trim().ToLower();
+        return await context.CampEnrollments
+            .AsNoTracking()
+            .AnyAsync(e =>
+                e.CampId == campId &&
+                e.Id != exceptEnrollmentId &&
+                e.ParticipantEmail.ToLower() == normalized &&
+                (e.Status == EnrollmentStatus.Confirmed || e.Status == EnrollmentStatus.Pending || e.Status == EnrollmentStatus.PendingPayment), ct);
+    }
+
+    public async Task<CampEnrollment?> GetByIdWithResponsesAsync(
+        Guid id, Guid organizationId, CancellationToken ct = default)
+    {
+        return await context.CampEnrollments
+            .Include(e => e.FormResponses)
+            .FirstOrDefaultAsync(e => e.Id == id && e.OrganizationId == organizationId, ct);
+    }
+
+    public void RemoveFormResponse(CampFormResponse response)
+    {
+        context.CampFormResponses.Remove(response);
+    }
+
     public async Task<int> CountActiveByCampGroupsAsync(
         Guid campId, Guid organizationId, CancellationToken ct = default)
     {
@@ -83,6 +108,14 @@ public class CampEnrollmentRepository(ApplicationDbContext context) : ICampEnrol
             .ToListAsync(ct);
     }
 
+    public async Task<CampEnrollmentGroup?> GetGroupWithMembersAsync(
+        Guid groupId, Guid organizationId, CancellationToken ct = default)
+    {
+        return await context.CampEnrollmentGroups
+            .Include(g => g.Members)
+            .FirstOrDefaultAsync(g => g.Id == groupId && g.OrganizationId == organizationId, ct);
+    }
+
     public async Task AddAsync(CampEnrollment enrollment, CancellationToken ct = default)
     {
         await context.CampEnrollments.AddAsync(enrollment, ct);
@@ -96,27 +129,5 @@ public class CampEnrollmentRepository(ApplicationDbContext context) : ICampEnrol
     public async Task AddFormResponseAsync(CampFormResponse response, CancellationToken ct = default)
     {
         await context.CampFormResponses.AddAsync(response, ct);
-    }
-
-    public async Task SaveChangesAsync(CancellationToken ct = default)
-    {
-        await context.SaveChangesAsync(ct);
-    }
-
-    public async Task BeginTransactionAsync(IsolationLevel isolationLevel, CancellationToken ct = default)
-    {
-        await context.Database.BeginTransactionAsync(isolationLevel, ct);
-    }
-
-    public async Task CommitTransactionAsync(CancellationToken ct = default)
-    {
-        if (context.Database.CurrentTransaction is not null)
-            await context.Database.CommitTransactionAsync(ct);
-    }
-
-    public async Task RollbackTransactionAsync(CancellationToken ct = default)
-    {
-        if (context.Database.CurrentTransaction is not null)
-            await context.Database.RollbackTransactionAsync(ct);
     }
 }
