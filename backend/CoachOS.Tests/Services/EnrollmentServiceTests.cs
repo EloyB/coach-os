@@ -1340,6 +1340,67 @@ public class EnrollmentServiceTests
             It.IsAny<CancellationToken>()), Times.Once);
     }
 
+    [Test]
+    public async Task CreateManualEnrollmentAsync_WithMandatoryAgeFieldAndNoResponses_Succeeds()
+    {
+        // Regression: the admin manual dialog sends no form responses, so a mandatory
+        // age-category field must not block manual enrollment (required-presence is not
+        // enforced for manual flows — the enrollment is IsOpenToGrouping=false anyway).
+        LessonSerie series = BuildActiveSeries();
+        _lessonSeriesRepo
+            .Setup(r => r.GetByIdPublicAsync(SeriesId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+        _enrollmentRepo
+            .Setup(r => r.CountActiveBySeriesAsync(SeriesId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(0);
+        _enrollmentRepo
+            .Setup(r => r.IsDuplicateParticipantAsync(
+                SeriesId, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateOnly?>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        EnrollmentForm form = new()
+        {
+            Id = Guid.NewGuid(),
+            LessonSerieId = SeriesId,
+            Fields = new List<FormField>
+            {
+                new()
+                {
+                    Id = Guid.NewGuid(),
+                    Label = "Leeftijdscategorie",
+                    Type = FormFieldType.AgeCategory,
+                    IsRequired = true,
+                    Options = "[\"8-10 jaar\",\"Volwassenen\"]",
+                },
+            },
+        };
+        _enrollmentFormRepo
+            .Setup(r => r.GetBySeriesIdReadOnlyAsync(SeriesId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(form);
+        _orgSettingsRepo
+            .Setup(r => r.GetByOrganizationReadOnlyAsync(OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((OrganizationSettings?)null);
+        _enrollmentRepo
+            .Setup(r => r.AddAsync(It.IsAny<Enrollment>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        _emailOutboxRepository
+            .Setup(r => r.AddRangeAsync(It.IsAny<IEnumerable<EmailOutboxMessage>>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        Result<Guid> result = await _service.CreateManualEnrollmentAsync(
+            SeriesId,
+            new CreateManualEnrollmentRequest
+            {
+                StudentName = "Nieuwe speler",
+                ContactEmail = "parent@example.com",
+                DateOfBirth = "2010-05-10",
+            },
+            OrgId);
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
     // ── AddGroupMemberAsync ──────────────────────────────────────────────────
 
     private static readonly Guid OrgIdG = Guid.NewGuid();

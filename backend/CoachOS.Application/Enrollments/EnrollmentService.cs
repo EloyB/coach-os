@@ -599,9 +599,15 @@ public class EnrollmentService(
         EnrollmentForm? form = await enrollmentFormRepo.GetBySeriesIdReadOnlyAsync(lessonSeriesId, ct);
         if (form is not null)
         {
+            // Manual/admin flows: the dashboard dialog does not collect custom form answers, so
+            // required-field presence is not enforced here (unknown field ids and invalid choice
+            // values are still rejected). A manual enrollment is IsOpenToGrouping=false and an
+            // added member with no age makes its group ambiguous → exclusive, so neither can be
+            // auto-grouped across age buckets.
             Error? formError = FormResponseValidator.Validate(
                 form.Fields.Select(f => (f.Id, f.IsRequired, f.Label, ChoiceOptions(f.Type, f.Options))),
-                request.Responses.Select(r => (r.FormFieldId, r.Value)));
+                request.Responses.Select(r => (r.FormFieldId, r.Value)),
+                enforceRequired: false);
             if (formError is not null) return Result<Guid>.Fail(formError);
         }
 
@@ -713,9 +719,15 @@ public class EnrollmentService(
         EnrollmentForm? form = await enrollmentFormRepo.GetBySeriesIdReadOnlyAsync(lessonSeriesId, ct);
         if (form is not null)
         {
+            // Manual/admin flows: the dashboard dialog does not collect custom form answers, so
+            // required-field presence is not enforced here (unknown field ids and invalid choice
+            // values are still rejected). A manual enrollment is IsOpenToGrouping=false and an
+            // added member with no age makes its group ambiguous → exclusive, so neither can be
+            // auto-grouped across age buckets.
             Error? formError = FormResponseValidator.Validate(
                 form.Fields.Select(f => (f.Id, f.IsRequired, f.Label, ChoiceOptions(f.Type, f.Options))),
-                request.Responses.Select(r => (r.FormFieldId, r.Value)));
+                request.Responses.Select(r => (r.FormFieldId, r.Value)),
+                enforceRequired: false);
             if (formError is not null) return Result<Guid>.Fail(formError);
         }
 
