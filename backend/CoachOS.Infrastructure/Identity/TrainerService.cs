@@ -12,6 +12,7 @@ using CoachOS.Domain.Models;
 using CoachOS.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace CoachOS.Infrastructure.Identity;
 
@@ -248,6 +249,9 @@ public class TrainerService(
         if (newRole is not (UserRole.Admin or UserRole.Trainer))
             return Result.Fail(new Error(ErrorCodes.Validation, "Rol moet Admin of Trainer zijn."));
 
+        // Check + wijziging moeten atomair zijn t.o.v. andere admin-wijzigingen in deze org.
+        await using IDbContextTransaction tx = await BeginAdminChangeAsync(organizationId, ct);
+
         // Enkel Trainer ↔ Admin binnen déze organisatie (tenant-scoped).
         OrganizationMembership? membership = await context.OrganizationMemberships
             .Include(m => m.HeadTrainerClubs)
@@ -277,7 +281,29 @@ public class TrainerService(
 
         membership.Role = newRole;
         await context.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
         return Result.Ok();
+    }
+
+    /// <summary>
+    /// Start een transactie en serialiseert admin-wijzigingen per organisatie met een
+    /// Postgres advisory lock (vervalt automatisch bij commit/rollback). Zonder dit kunnen twee
+    /// gelijktijdige requests elk "er is nog een andere admin" zien en samen de laatste twee admins
+    /// wegnemen. Het lock moet genomen worden vóór het lezen van het lidmaatschap en de guard.
+    /// </summary>
+    private async Task<IDbContextTransaction> BeginAdminChangeAsync(
+        Guid organizationId, CancellationToken ct)
+    {
+        IDbContextTransaction tx = await context.Database.BeginTransactionAsync(ct);
+
+        if (context.Database.ProviderName?.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            string key = $"coachos:org-admins:{organizationId}";
+            await context.Database.ExecuteSqlInterpolatedAsync(
+                $"SELECT pg_advisory_xact_lock(hashtextextended({key}, 0))", ct);
+        }
+
+        return tx;
     }
 
     /// <summary>
@@ -401,6 +427,9 @@ public class TrainerService(
         Guid actingUserId,
         CancellationToken ct = default)
     {
+        // Check + wijziging moeten atomair zijn t.o.v. andere admin-wijzigingen in deze org.
+        await using IDbContextTransaction tx = await BeginAdminChangeAsync(organizationId, ct);
+
         // Deactivatie = membership intrekken. De user-account blijft globaal bestaan;
         // ze kunnen in andere orgs blijven werken.
         var membership = await context.OrganizationMemberships
@@ -418,6 +447,7 @@ public class TrainerService(
 
         membership.IsActive = false;
         await context.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
         return Result.Ok();
     }
 
@@ -430,7 +460,8 @@ public class TrainerService(
         // Draai de hele remove-operatie in één transactie: anders kan tussen
         // "check resterende memberships" en "delete user" een parallelle invite
         // een nieuw membership aanmaken — en we verwijderen alsnog de user.
-        await using var tx = await context.Database.BeginTransactionAsync(ct);
+        // Dezelfde transactie serialiseert ook admin-wijzigingen per organisatie (laatste-admin-guard).
+        await using IDbContextTransaction tx = await BeginAdminChangeAsync(organizationId, ct);
 
         var membership = await context.OrganizationMemberships
             .FirstOrDefaultAsync(m => m.UserId == trainerId && m.OrganizationId == organizationId, ct);
