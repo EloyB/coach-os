@@ -268,6 +268,20 @@ public class EnrollmentService(
                 request.Responses.Select(r => (r.FormFieldId, r.Value)));
             if (formError is not null)
                 return Result<Guid>.Fail(formError);
+
+            // 4b. Group members' responses are persisted too, so validate each against the same form.
+            //     Required-field presence is only enforced for the leader (the public form does not yet
+            //     collect per-member answers), but an unknown field id or an invalid choice value from
+            //     any member is rejected before the transaction opens.
+            foreach (var member in request.GroupMembers ?? [])
+            {
+                Error? memberError = FormResponseValidator.Validate(
+                    form.Fields.Select(f => (f.Id, f.IsRequired, f.Label, ChoiceOptions(f.Type, f.Options))),
+                    (member.Responses ?? []).Select(r => (r.FormFieldId, r.Value)),
+                    enforceRequired: false);
+                if (memberError is not null)
+                    return Result<Guid>.Fail(memberError);
+            }
         }
 
         // 4a. Inschrijfwijze afdwingen: de admin bepaalt per reeks of solo, groep of

@@ -98,4 +98,43 @@ public class FormResponseValidatorTests
             new[] { (choice, "") });
         error.Should().BeNull();
     }
+
+    // ── enforceRequired: false (group members) ────────────────────────────────
+
+    [Test]
+    public void Validate_MemberMissingRequired_AllowedWhenNotEnforcingRequired()
+    {
+        // A group member may omit the (required) age answer — the public form does not collect it.
+        Guid age = Guid.NewGuid();
+        Error? error = FormResponseValidator.Validate(
+            new[] { Field(age, true, "Leeftijdscategorie", new[] { "8-10 jaar", "Volwassenen" }) },
+            new List<(Guid, string)>(),
+            enforceRequired: false);
+        error.Should().BeNull();
+    }
+
+    [Test]
+    public void Validate_MemberInvalidBucket_RejectedEvenWhenNotEnforcingRequired()
+    {
+        // But a forged/invalid bucket from a member is still rejected.
+        Guid age = Guid.NewGuid();
+        Error? error = FormResponseValidator.Validate(
+            new[] { Field(age, true, "Leeftijdscategorie", new[] { "8-10 jaar", "Volwassenen" }) },
+            new[] { (age, "verzonnen-bucket") },
+            enforceRequired: false);
+        error.Should().NotBeNull();
+        error!.Message.Should().Be("Ongeldige keuze voor veld 'Leeftijdscategorie'.");
+    }
+
+    [Test]
+    public void Validate_MemberUnknownFieldId_RejectedEvenWhenNotEnforcingRequired()
+    {
+        Guid age = Guid.NewGuid();
+        Error? error = FormResponseValidator.Validate(
+            new[] { Field(age, true, "Leeftijdscategorie", new[] { "8-10 jaar", "Volwassenen" }) },
+            new[] { (Guid.NewGuid(), "8-10 jaar") },
+            enforceRequired: false);
+        error.Should().NotBeNull();
+        error!.Message.Should().Be("Ongeldig formulierveld.");
+    }
 }
