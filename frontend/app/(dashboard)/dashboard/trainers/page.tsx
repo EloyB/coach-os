@@ -11,6 +11,7 @@ import {
   Trash2,
   Mail,
   X,
+  MoreVertical,
   Pencil,
   StickyNote,
   CalendarClock,
@@ -536,99 +537,156 @@ function EditTrainerDialog({
   );
 }
 
-// ─── Head trainer control ──────────────────────────────────────────────────────
+// ─── Row actions menu ──────────────────────────────────────────────────────────
 
-function HeadTrainerControl({
+function TrainerActionsMenu({
   trainer,
   clubs,
-  onSave,
-  pending,
+  isInvited,
+  pendingHeadTrainer,
+  pendingResend,
+  onEdit,
+  onAvailability,
+  onRoleChange,
+  onRemove,
+  onResend,
+  onSaveHeadTrainerClubs,
 }: {
   trainer: TrainerDto;
   clubs: { id: string; name: string }[];
-  onSave: (clubIds: string[]) => void;
-  pending: boolean;
+  isInvited: boolean;
+  pendingHeadTrainer: boolean;
+  pendingResend: boolean;
+  onEdit: () => void;
+  onAvailability: () => void;
+  onRoleChange: () => void;
+  onRemove: () => void;
+  onResend: () => void;
+  onSaveHeadTrainerClubs: (clubIds: string[]) => void;
 }) {
   const t = useTranslations("trainers");
-  const active = trainer.headTrainerClubIds.length > 0;
+  const [open, setOpen] = useState(false);
+  const name = `${trainer.firstName} ${trainer.lastName}`;
+  const isAdmin = trainer.role === "Admin";
+  const canHeadTrainer = trainer.isActive && !isAdmin && clubs.length > 0;
+  const canRemove = !trainer.isActive || trainer.lessonSeriesCount === 0;
+  const itemClass =
+    "flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-gray-700 hover:bg-gray-50 disabled:opacity-50";
 
-  // 0 of 1 club in de org: kroon is een simpele toggle van die ene club.
-  if (clubs.length <= 1) {
-    const soleClub = clubs[0]?.id;
-    const toggle = () =>
-      onSave(active ? [] : soleClub ? [soleClub] : []);
-    return (
-      <button
-        type="button"
-        onClick={toggle}
-        disabled={pending || (!active && !soleClub)}
-        title={active ? t("removeHeadTrainer") : t("makeHeadTrainer")}
-        aria-label={active ? t("removeHeadTrainer") : t("makeHeadTrainer")}
-        className={`p-1.5 rounded transition-colors disabled:opacity-50 ${
-          active
-            ? "text-tennis-green bg-tennis-green/10"
-            : "text-ink-3 hover:text-tennis-green hover:bg-tennis-green/10"
-        }`}
-      >
-        <Crown size={14} />
-      </button>
-    );
-  }
+  const run = (fn: () => void) => () => {
+    setOpen(false);
+    fn();
+  };
 
-  // Meerdere clubs: popover met checkboxes.
   const toggleClub = (clubId: string) => {
     const set = new Set(trainer.headTrainerClubIds);
     if (set.has(clubId)) set.delete(clubId);
     else set.add(clubId);
-    onSave([...set]);
+    onSaveHeadTrainerClubs([...set]);
   };
 
+  const headActive = trainer.headTrainerClubIds.length > 0;
+
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
           type="button"
-          disabled={pending}
-          title={t("headTrainerClubsTitle")}
-          aria-label={t("headTrainerClubsTitle")}
-          className={`p-1.5 rounded transition-colors disabled:opacity-50 ${
-            active
-              ? "text-tennis-green bg-tennis-green/10"
-              : "text-ink-3 hover:text-tennis-green hover:bg-tennis-green/10"
-          }`}
+          aria-label={t("actionsLabel", { name })}
+          className="flex h-8 w-8 items-center justify-center rounded-md border border-gray-100 text-gray-400 hover:bg-gray-50 hover:text-gray-700"
         >
-          <Crown size={14} />
+          <MoreVertical size={15} />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-56 p-2">
-        <p className="px-2 py-1.5 text-xs font-semibold text-gray-500">
-          {t("headTrainerClubsTitle")}
-        </p>
-        <div className="space-y-0.5">
-          {clubs.map((club) => {
-            const checked = trainer.headTrainerClubIds.includes(club.id);
-            return (
-              <button
-                key={club.id}
-                type="button"
-                onClick={() => toggleClub(club.id)}
-                disabled={pending}
-                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-gray-50"
-              >
-                <span
-                  className={
-                    checked
-                      ? "flex h-4 w-4 items-center justify-center rounded border border-tennis-green bg-tennis-green text-white"
-                      : "flex h-4 w-4 items-center justify-center rounded border border-gray-300"
-                  }
+      <PopoverContent align="end" className="w-60 p-1 text-sm">
+        {isInvited && (
+          <button
+            type="button"
+            disabled={pendingResend}
+            onClick={run(onResend)}
+            className={itemClass}
+          >
+            <Mail size={13} />
+            {pendingResend ? t("resending") : t("resend")}
+          </button>
+        )}
+
+        {trainer.isActive && (
+          <>
+            <button type="button" onClick={run(onAvailability)} className={itemClass}>
+              <CalendarClock size={13} />
+              {t("availabilityButton")}
+            </button>
+          </>
+        )}
+
+        <button type="button" onClick={run(onEdit)} className={itemClass}>
+          <Pencil size={13} />
+          {t("edit")}
+        </button>
+
+        {trainer.isActive && (
+          <button type="button" onClick={run(onRoleChange)} className={itemClass}>
+            {isAdmin ? <ShieldOff size={13} /> : <ShieldCheck size={13} />}
+            {isAdmin ? t("removeAdmin") : t("makeAdmin")}
+          </button>
+        )}
+
+        {canHeadTrainer && clubs.length === 1 && (
+          <button
+            type="button"
+            disabled={pendingHeadTrainer}
+            onClick={() => onSaveHeadTrainerClubs(headActive ? [] : [clubs[0].id])}
+            className={itemClass}
+          >
+            <Crown size={13} />
+            {headActive ? t("removeHeadTrainer") : t("makeHeadTrainer")}
+          </button>
+        )}
+
+        {canHeadTrainer && clubs.length > 1 && (
+          <div className="mt-1 border-t border-gray-100 pt-1">
+            <p className="px-3 py-1.5 text-xs font-semibold text-gray-500">
+              {t("headTrainerClubsTitle")}
+            </p>
+            {clubs.map((club) => {
+              const checked = trainer.headTrainerClubIds.includes(club.id);
+              return (
+                <button
+                  key={club.id}
+                  type="button"
+                  disabled={pendingHeadTrainer}
+                  onClick={() => toggleClub(club.id)}
+                  className={itemClass}
                 >
-                  {checked && <Crown size={9} />}
-                </span>
-                <span className="truncate">{club.name}</span>
-              </button>
-            );
-          })}
-        </div>
+                  <span
+                    className={
+                      checked
+                        ? "flex h-4 w-4 shrink-0 items-center justify-center rounded border border-tennis-green bg-tennis-green text-white"
+                        : "flex h-4 w-4 shrink-0 items-center justify-center rounded border border-gray-300"
+                    }
+                  >
+                    {checked && <Crown size={9} />}
+                  </span>
+                  <span className="truncate">{club.name}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {(canRemove || isInvited) && (
+          <div className="mt-1 border-t border-gray-100 pt-1">
+            <button
+              type="button"
+              onClick={run(onRemove)}
+              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-red-600 hover:bg-red-50"
+            >
+              <Trash2 size={13} />
+              {isInvited ? t("revokeInvite") : t("remove")}
+            </button>
+          </div>
+        )}
       </PopoverContent>
     </Popover>
   );
@@ -791,7 +849,9 @@ export default function TrainersPage() {
                 <th className="px-4 py-2.5 font-semibold">{t("columnStatus")}</th>
                 <th className="px-4 py-2.5 font-semibold">{t("seriesCount")}</th>
                 <th className="px-4 py-2.5 font-semibold">{t("weekLoad")}</th>
-                <th className="px-4 py-2.5 font-semibold text-right">{t("columnActions")}</th>
+                <th className="py-2.5 pl-10 pr-4 w-[190px]">
+                  <span className="sr-only">{t("columnActions")}</span>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -807,10 +867,6 @@ export default function TrainersPage() {
                 const loadPct = tr.weeklyCapacityHours > 0
                   ? Math.min(100, Math.round((tr.currentWeekHoursBooked / tr.weeklyCapacityHours) * 100))
                   : 0;
-                const actionBtn =
-                  "p-1.5 rounded text-ink-3 hover:text-tennis-green hover:bg-tennis-green/10 transition-colors";
-                const dangerBtn =
-                  "p-1.5 rounded text-ink-3 hover:text-red-500 hover:bg-red-50 transition-colors";
 
                 return (
                   <tr
@@ -907,110 +963,28 @@ export default function TrainersPage() {
                       )}
                     </td>
 
-                    <td className="px-4 py-3">
+                    <td className="py-3 pl-10 pr-4">
                       <div className="flex items-center justify-end gap-1">
-                        {tr.isActive && isSelfAdmin && (
+                        {tr.isActive && isSelfAdmin ? (
                           <span className="text-[10.5px] text-ink-3 italic">{t("manageViaSettings")}</span>
-                        )}
-
-                        {tr.isActive && !isSelfAdmin && (
-                          <>
-                            {tr.role === "Trainer" && (
-                              <HeadTrainerControl
-                                trainer={tr}
-                                clubs={clubs}
-                                pending={headTrainerMutation.isPending}
-                                onSave={(clubIds) =>
-                                  headTrainerMutation.mutate({ id: tr.id, clubIds })
-                                }
-                              />
-                            )}
-                            <button
-                              onClick={() =>
-                                setRoleChange({ trainer: tr, makeAdmin: tr.role !== "Admin" })
-                              }
-                              title={tr.role === "Admin" ? t("removeAdmin") : t("makeAdmin")}
-                              aria-label={tr.role === "Admin" ? t("removeAdmin") : t("makeAdmin")}
-                              className={actionBtn}
-                            >
-                              {tr.role === "Admin" ? <ShieldOff size={15} /> : <ShieldCheck size={15} />}
-                            </button>
-                            <button
-                              onClick={() => setAvailabilityTrainer(tr)}
-                              title={t("availabilityButton")}
-                              aria-label={t("availabilityButton")}
-                              className={actionBtn}
-                            >
-                              <CalendarClock size={15} />
-                            </button>
-                            <button
-                              onClick={() => setEditTrainer(tr)}
-                              title={t("edit")}
-                              aria-label={t("edit")}
-                              className={actionBtn}
-                            >
-                              <Pencil size={15} />
-                            </button>
-                            {tr.lessonSeriesCount === 0 && (
-                              <button
-                                onClick={() => handleRemoveClick(tr)}
-                                title={t("remove")}
-                                aria-label={t("remove")}
-                                className={dangerBtn}
-                              >
-                                <Trash2 size={15} />
-                              </button>
-                            )}
-                          </>
-                        )}
-
-                        {isInvited && (
-                          <>
-                            <button
-                              onClick={() => resendMutation.mutate(tr.id)}
-                              disabled={resendMutation.isPending}
-                              className="px-2.5 py-1 bg-white border border-amber-300 rounded text-[10.5px] text-amber-800 font-semibold disabled:opacity-50"
-                            >
-                              {resendMutation.isPending ? t("resending") : t("resend")}
-                            </button>
-                            <button
-                              onClick={() => setEditTrainer(tr)}
-                              title={t("edit")}
-                              aria-label={t("edit")}
-                              className={actionBtn}
-                            >
-                              <Pencil size={15} />
-                            </button>
-                            <button
-                              onClick={() => handleRemoveClick(tr)}
-                              title={t("revokeInvite")}
-                              aria-label={t("revokeInvite")}
-                              className={dangerBtn}
-                            >
-                              <Trash2 size={15} />
-                            </button>
-                          </>
-                        )}
-
-                        {isDeactivatedState && (
-                          <>
-                            <button
-                              onClick={() => setEditTrainer(tr)}
-                              title={t("edit")}
-                              aria-label={t("edit")}
-                              className={actionBtn}
-                            >
-                              <Pencil size={15} />
-                            </button>
-                            <button
-                              onClick={() => handleRemoveClick(tr)}
-                              title={t("remove")}
-                              aria-label={t("remove")}
-                              className={dangerBtn}
-                            >
-                              <Trash2 size={15} />
-                            </button>
-                          </>
+                        ) : (
+                          <TrainerActionsMenu
+                            trainer={tr}
+                            clubs={clubs}
+                            isInvited={isInvited}
+                            pendingHeadTrainer={headTrainerMutation.isPending}
+                            pendingResend={resendMutation.isPending}
+                            onEdit={() => setEditTrainer(tr)}
+                            onAvailability={() => setAvailabilityTrainer(tr)}
+                            onRoleChange={() =>
+                              setRoleChange({ trainer: tr, makeAdmin: tr.role !== "Admin" })
+                            }
+                            onRemove={() => handleRemoveClick(tr)}
+                            onResend={() => resendMutation.mutate(tr.id)}
+                            onSaveHeadTrainerClubs={(clubIds) =>
+                              headTrainerMutation.mutate({ id: tr.id, clubIds })
+                            }
+                          />
                         )}
                       </div>
                     </td>

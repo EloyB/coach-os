@@ -889,6 +889,7 @@
     "columnRole": "Rol",
     "columnStatus": "Status",
     "columnActions": "Acties",
+    "actionsLabel": "Acties voor {name}",
     "headTrainerBadge": "Hoofdtrainer",
     "makeHeadTrainer": "Maak hoofdtrainer (inschrijvingen + planning bekijken)",
     "removeHeadTrainer": "Hoofdtrainer-rechten intrekken",
