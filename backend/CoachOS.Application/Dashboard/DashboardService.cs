@@ -2,6 +2,7 @@ using CoachOS.Application.Abstractions;
 using CoachOS.Application.Dashboard.DTOs;
 using CoachOS.Domain.Common;
 using CoachOS.Domain.Entities;
+using CoachOS.Domain.Enums;
 using CoachOS.Domain.Interfaces;
 using CoachOS.Domain.Models;
 using LessonSerieEntity = CoachOS.Domain.Entities.LessonSerie;
@@ -15,6 +16,8 @@ public class DashboardService(
     ITennisClubRepository tennisClubRepo,
     IUserLookupService userLookup,
     IAssignmentConfirmationTokenRepository confirmationTokenRepo,
+    IScheduleAssignmentRepository assignmentRepo,
+    ILessonInvitationRepository invitationRepo,
     TimeProvider timeProvider) : IDashboardService
 {
     public async Task<Result<DashboardSummaryDto>> GetSummaryAsync(
@@ -85,6 +88,140 @@ public class DashboardService(
 
         return Result<DashboardSummaryDto>.Ok(summary);
     }
+
+    /// <summary>Maximale bereikgrootte: een maandkalender (6 weken) past er ruim in.</summary>
+    private const int MaxMyLessonsRangeDays = 62;
+
+    public async Task<Result<List<MyLessonDto>>> GetMyLessonsAsync(
+        Guid organizationId, Guid trainerId, DateOnly from, DateOnly to, CancellationToken ct = default)
+    {
+        if (to < from)
+            return Result<List<MyLessonDto>>.Fail(
+                new Error(ErrorCodes.Validation, "De einddatum mag niet voor de begindatum liggen."));
+
+        if (to.DayNumber - from.DayNumber > MaxMyLessonsRangeDays)
+            return Result<List<MyLessonDto>>.Fail(
+                new Error(ErrorCodes.Validation, $"Het datumbereik mag maximaal {MaxMyLessonsRangeDays} dagen zijn."));
+
+        List<Lesson> lessons =
+            await lessonRepo.GetByTrainerAndDateRangeAsync(trainerId, organizationId, from, to, ct);
+
+        List<Guid> seriesIds = lessons
+            .Where(l => l.LessonSerieId.HasValue)
+            .Select(l => l.LessonSerieId!.Value)
+            .Distinct()
+            .ToList();
+
+        Dictionary<Guid, int> enrollmentCounts = seriesIds.Count > 0
+            ? await enrollmentRepo.CountActiveBySeriesIdsAsync(seriesIds, ct)
+            : [];
+
+        List<MyLessonDto> dtos = lessons.Select(l => new MyLessonDto
+        {
+            Id = l.Id,
+            SeriesId = l.LessonSerieId,
+            SeriesName = l.LessonSerie?.Name,
+            Date = l.Date.ToString("yyyy-MM-dd"),
+            StartTime = l.StartTime.ToString("HH:mm"),
+            EndTime = l.EndTime.ToString("HH:mm"),
+            CourtName = l.CourtName,
+            // Reeks-lessen: club via de reeks (dubbele opslag vermijden); losse lessen: eigen club.
+            TennisClubName = l.LessonSerie?.TennisClub?.Name ?? l.TennisClub?.Name,
+            EnrolledCount = l.LessonSerieId.HasValue
+                ? enrollmentCounts.GetValueOrDefault(l.LessonSerieId.Value, 0)
+                : null,
+        }).ToList();
+
+        return Result<List<MyLessonDto>>.Ok(dtos);
+    }
+
+    public async Task<Result<MyLessonDetailDto>> GetMyLessonAsync(
+        Guid organizationId, Guid trainerId, Guid lessonId, CancellationToken ct = default)
+    {
+        Lesson? lesson = await lessonRepo.GetForTrainerAsync(lessonId, trainerId, organizationId, ct);
+        if (lesson is null)
+            return Result<MyLessonDetailDto>.Fail(new Error(ErrorCodes.NotFound, "Les niet gevonden."));
+
+        List<MyLessonParticipantDto> participants;
+
+        if (lesson.LessonSerieId is null)
+        {
+            IReadOnlyList<LessonInvitation> invitations =
+                await invitationRepo.GetByLessonAsync(lesson.Id, organizationId, ct);
+            participants = invitations
+                .OrderBy(i => i.InvitationSentAt)
+                .Select(i => new MyLessonParticipantDto
+                {
+                    Name = string.IsNullOrWhiteSpace(i.FirstName) ? i.Email : i.FirstName!,
+                    Status = i.Status switch
+                    {
+                        LessonInvitationStatus.Accepted => "accepted",
+                        LessonInvitationStatus.Declined => "declined",
+                        _ => "pending",
+                    },
+                })
+                .ToList();
+        }
+        else
+        {
+            // De reeks is ingepland (anders zou GetForTrainerAsync de les niet teruggeven):
+            // toon enkel wie in het weekslot van déze les is ingepland.
+            List<ScheduleAssignment> assignments =
+                await assignmentRepo.GetBySeriesAsync(lesson.LessonSerieId.Value, organizationId, ct);
+
+            participants = assignments
+                .Where(a => a.WeeklyTemplateEntryId == lesson.WeeklyTemplateEntryId
+                    && a.Status != ScheduleAssignmentStatus.Declined)
+                .SelectMany(a => AssignedPeople(a)
+                    .Select(e => new MyLessonParticipantDto
+                    {
+                        Name = e.StudentName,
+                        Status = a.Status switch
+                        {
+                            ScheduleAssignmentStatus.Confirmed => "confirmed",
+                            ScheduleAssignmentStatus.AwaitingConfirmation => "awaiting",
+                            _ => "proposed",
+                        },
+                    }))
+                .DistinctBy(p => p.Name)
+                .OrderBy(p => p.Name)
+                .ToList();
+        }
+
+        TennisClub? club = lesson.LessonSerie?.TennisClub ?? lesson.TennisClub;
+
+        MyLessonDetailDto dto = new()
+        {
+            Id = lesson.Id,
+            SeriesId = lesson.LessonSerieId,
+            SeriesName = lesson.LessonSerie?.Name,
+            Date = lesson.Date.ToString("yyyy-MM-dd"),
+            StartTime = lesson.StartTime.ToString("HH:mm"),
+            EndTime = lesson.EndTime.ToString("HH:mm"),
+            DurationMinutes = (int)(lesson.EndTime.ToTimeSpan() - lesson.StartTime.ToTimeSpan()).TotalMinutes,
+            CourtName = lesson.CourtName,
+            TennisClubName = club?.Name,
+            TennisClubAddress = club?.Address,
+            Level = (int?)(lesson.Level ?? lesson.LessonSerie?.Level),
+            Notes = lesson.Notes,
+            MaxParticipants = lesson.MaxStudents,
+            Participants = participants,
+        };
+
+        return Result<MyLessonDetailDto>.Ok(dto);
+    }
+
+    /// <summary>De spelers achter een toewijzing: de inschrijving zelf, of alle leden van de groep.</summary>
+    private static IEnumerable<Enrollment> AssignedPeople(ScheduleAssignment assignment)
+    {
+        if (assignment.Enrollment is not null)
+            return IsActiveEnrollment(assignment.Enrollment) ? [assignment.Enrollment] : [];
+
+        return assignment.EnrollmentGroup?.Members.Where(IsActiveEnrollment) ?? [];
+    }
+
+    private static bool IsActiveEnrollment(Enrollment e) =>
+        e.Status is not (EnrollmentStatus.Cancelled or EnrollmentStatus.Waitlisted);
 
     public async Task<Result<InboxDto>> GetInboxAsync(
         Guid organizationId, int limit = 10, CancellationToken ct = default)

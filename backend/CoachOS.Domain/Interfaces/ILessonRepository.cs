@@ -17,6 +17,26 @@ public interface ILessonRepository
         Guid trainerId, Guid organizationId, DateOnly fromDate, CancellationToken ct = default);
     Task<Dictionary<Guid, int>> GetLessonCountsBySeriesIdsAsync(IEnumerable<Guid> seriesIds, CancellationToken ct = default);
     Task<List<Lesson>> GetUpcomingByOrganizationAsync(Guid organizationId, DateOnly fromDate, int limit, CancellationToken ct = default);
+
+    /// <summary>
+    /// Niet-geannuleerde lessen waarvan <paramref name="trainerId"/> de trainer is, binnen een
+    /// organisatie en datumbereik (inclusief), op datum + starttijd gesorteerd. Enkel "officieel
+    /// ingeplande" lessen: losse lessen, of lessen van een reeks waarvan de planning door de admin
+    /// bevestigd is (<c>AwaitingConfirmation</c> of <c>Scheduled</c>). Reeksen die nog in de
+    /// inschrijf- of voorstelfase zitten, hebben nog geen vaste lessen voor de trainer.
+    /// Inclusief reeks en club zodat de aanroeper geen extra queries nodig heeft.
+    /// </summary>
+    Task<List<Lesson>> GetByTrainerAndDateRangeAsync(
+        Guid trainerId, Guid organizationId, DateOnly from, DateOnly to, CancellationToken ct = default);
+
+    /// <summary>
+    /// Eén niet-geannuleerde, officieel ingeplande les van de gegeven trainer (zelfde regel als
+    /// <see cref="GetByTrainerAndDateRangeAsync"/>), inclusief reeks en club. Geeft null terug als de
+    /// les niet bestaat, geannuleerd is, nog niet ingepland is of van een andere trainer is.
+    /// </summary>
+    Task<Lesson?> GetForTrainerAsync(
+        Guid lessonId, Guid trainerId, Guid organizationId, CancellationToken ct = default);
+
     Task<int> CountByOrganizationAndDateRangeAsync(Guid organizationId, DateOnly from, DateOnly to, CancellationToken ct = default);
     Task<Dictionary<string, int>> CountByOrganizationWeeksAsync(Guid organizationId, int weeks, CancellationToken ct = default);
     /// <summary>
