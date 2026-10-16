@@ -258,4 +258,36 @@ public class LessonRescheduleServiceTests
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.NotFound);
     }
+
+    [Test]
+    public async Task RescheduleAsync_TrainerMovesOwnLesson_Succeeds()
+    {
+        Lesson lesson = BuildStandaloneLesson();
+        _lessonRepo
+            .Setup(r => r.GetByIdInOrganizationAsync(lesson.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(lesson);
+
+        Result<RescheduleLessonResultDto> result = await _service.RescheduleAsync(
+            OrgId, lesson.Id, BuildRequest(), CancellationToken.None, actingTrainerId: TrainerId);
+
+        result.IsSuccess.Should().BeTrue();
+        lesson.StartTime.Should().Be(new TimeOnly(14, 0));
+    }
+
+    [Test]
+    public async Task RescheduleAsync_TrainerMovesSomeoneElsesLesson_IsForbiddenAndChangesNothing()
+    {
+        Lesson lesson = BuildStandaloneLesson();
+        _lessonRepo
+            .Setup(r => r.GetByIdInOrganizationAsync(lesson.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(lesson);
+
+        Result<RescheduleLessonResultDto> result = await _service.RescheduleAsync(
+            OrgId, lesson.Id, BuildRequest(), CancellationToken.None, actingTrainerId: Guid.NewGuid());
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.Forbidden);
+        lesson.StartTime.Should().Be(new TimeOnly(10, 0));
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
 }

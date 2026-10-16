@@ -13,7 +13,7 @@ public class DeleteWeeklyTemplateEntryEndpoint : IEndpoint
             var result = await service.DeleteWeekSlotAsync(seriesId, entryId, ctx.GetOrganizationId(), ct);
             return result.IsSuccess ? Results.NoContent() : result.ToErrorResult();
         })
-        .RequireAuthorization()
+        .RequireAuthorization(policy => policy.RequireRole("Admin"))
         .WithTags("LessonSerie");
     }
 }

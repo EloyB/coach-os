@@ -14,7 +14,7 @@ public class UpdateLessonSerieEndpoint : IEndpoint
             var result = await service.UpdateAsync(id, ctx.GetOrganizationId(), request, ct);
             return result.IsSuccess ? Results.Ok(result.Value) : result.ToErrorResult();
         })
-        .RequireAuthorization()
+        .RequireAuthorization(policy => policy.RequireRole("Admin"))
         .AddEndpointFilter<ValidationFilter<UpdateLessonSerieRequest>>()
         .WithTags("LessonSerie");
     }

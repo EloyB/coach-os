@@ -16,7 +16,7 @@ public class UpdateWeeklyTemplateEntryEndpoint : IEndpoint
             var result = await service.UpdateWeekSlotAsync(seriesId, entryId, ctx.GetOrganizationId(), request, ct);
             return result.IsSuccess ? Results.NoContent() : result.ToErrorResult();
         })
-        .RequireAuthorization()
+        .RequireAuthorization(policy => policy.RequireRole("Admin"))
         .AddEndpointFilter<ValidationFilter<UpdateWeekSlotRequest>>()
         .WithTags("LessonSerie");
     }

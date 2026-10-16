@@ -13,7 +13,7 @@ public class DeleteLessonEndpoint : IEndpoint
             var result = await service.DeleteLessonAsync(seriesId, lessonId, ctx.GetOrganizationId(), wholeSlot, ct);
             return result.IsSuccess ? Results.NoContent() : result.ToErrorResult();
         })
-        .RequireAuthorization()
+        .RequireAuthorization(policy => policy.RequireRole("Admin"))
         .WithTags("LessonSerie");
     }
 }

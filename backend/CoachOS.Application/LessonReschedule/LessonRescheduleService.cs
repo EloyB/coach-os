@@ -23,12 +23,18 @@ public class LessonRescheduleService(
         Guid organizationId,
         Guid lessonId,
         RescheduleLessonRequest request,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        Guid? actingTrainerId = null)
     {
         Lesson? lesson = await lessonRepo.GetByIdInOrganizationAsync(lessonId, organizationId, ct);
         if (lesson is null)
             return Result<RescheduleLessonResultDto>.Fail(
                 new Error(ErrorCodes.NotFound, "Les niet gevonden."));
+
+        // Een trainer verplaatst enkel zijn eigen les; een admin mag alles.
+        if (actingTrainerId.HasValue && lesson.TrainerId != actingTrainerId)
+            return Result<RescheduleLessonResultDto>.Fail(
+                new Error(ErrorCodes.Forbidden, "Je kan enkel je eigen lessen verplaatsen."));
 
         if (lesson.IsCancelled)
             return Result<RescheduleLessonResultDto>.Fail(
