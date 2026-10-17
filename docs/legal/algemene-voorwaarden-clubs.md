@@ -4,7 +4,7 @@
 **Laatst bijgewerkt:** [DATUM INWERKINGTREDING]
 **Taal:** Nederlands. Bij een vertaling heeft de Nederlandstalige versie voorrang.
 
-> ⚠️ **Concept — na te lezen door een advocaat (Belgisch ondernemings- en contractenrecht) voor dit live gaat.** Bijzondere aandacht voor: aansprakelijkheid (art. 12), wijzigingen (art. 15) en de bepalingen die onder de B2B-regels over onrechtmatige bedingen vallen (Boek VI WER, art. VI.91/1 e.v.). Beslissingen die nog open liggen, staan als **[KEUZE]**.
+> ⚠️ **Concept — na te lezen door een advocaat (Belgisch ondernemings- en contractenrecht) voor dit live gaat.** Bijzondere aandacht voor: aansprakelijkheid (art. 12), wijzigingen (art. 15) en de bepalingen die onder de B2B-regels over onrechtmatige bedingen vallen (Boek VI WER, art. VI.91/1 e.v.). Wat nog in de software gebouwd moet worden, staat als **[TE BOUWEN]**.
 
 Deze voorwaarden gelden tussen Studio Swyft en de organisatie die CoachOS gebruikt. Ze vormen samen met de [verwerkersovereenkomst](./verwerkersovereenkomst.md) één geheel. De voorwaarden voor spelers die zich via CoachOS inschrijven voor lessen staan in een apart document.
 
@@ -25,7 +25,7 @@ Contact: info@coach-os.be.
 - **Klantgegevens**: alle gegevens die de Klant, zijn Gebruikers of zijn Spelers in de Dienst invoeren, waaronder persoonsgegevens.
 - **Proefperiode**: de gratis periode van 30 dagen na registratie (artikel 5).
 - **Abonnement**: de betalende overeenkomst na of in de plaats van de Proefperiode (artikel 6).
-- **Actieve leerling**: een Speler die in de lopende abonnementsperiode in de Dienst is ingeschreven voor minstens één lessenreeks, losse les of kamp van de Klant. **[KEUZE: telling per seizoen of rollend over 12 maanden — zie `docs/onboarding-billing-plan.md`, punt 5]**
+- **Actieve leerling**: een Speler die in de lopende abonnementsperiode in de Dienst is ingeschreven voor minstens één lessenreeks, losse les of kamp van de Klant. We tellen per abonnementsjaar: elke Speler telt één keer, ook als hij in dat jaar meerdere keren ingeschreven is. Bij een maandabonnement loopt het abonnementsjaar vanaf de startdatum van het Abonnement.
 
 ## 3. Toepassing
 
@@ -63,15 +63,15 @@ Contact: info@coach-os.be.
 
 6.2. **Prijzen** zijn in euro en exclusief btw.
 
-6.3. **Meer leerlingen dan de formule toelaat.** Een overschrijding tot 10% boven de limiet rekenen we niet aan. Bij een grotere overschrijding rekenen we per extra Actieve leerling de meerprijs aan die op de prijzenpagina staat. Dat gebeurt bij de volgende verlenging, op dezelfde factuur. Wordt de limiet duidelijk en blijvend overschreden, dan kunnen we de Klant voorstellen over te stappen naar een hogere formule. **[KEUZE: bedrag meerprijs en drempel — `docs/pricing-open-points.md`]**
+6.3. **Meer leerlingen dan de formule toelaat.** Een overschrijding tot 10% boven de limiet rekenen we niet aan. Boven die marge rekenen we € 3 (exclusief btw) aan per extra Actieve leerling per abonnementsjaar. Dat gebeurt bij de volgende verlenging, op dezelfde factuur. Wordt de limiet duidelijk en blijvend overschreden, dan kunnen we de Klant voorstellen over te stappen naar een hogere formule.
 
 6.4. **Overstappen naar een hogere formule** kan op elk moment. Het verschil voor de resterende periode wordt pro rata aangerekend. Overstappen naar een lagere formule gaat in bij de volgende verlenging.
 
-6.5. **Betaling.** Een Abonnement wordt vooraf betaald voor de hele periode, per maand of per jaar. Dat kan online via onze betaalpartner Mollie (bijvoorbeeld Bancontact, iDEAL, kaart of domiciliëring), of met een factuur en overschrijving, te betalen binnen 30 dagen na de factuurdatum. **[KEUZE: maandelijkse betaling aanbieden of enkel jaarlijks]**
+6.5. **Betaling.** Een Abonnement wordt vooraf betaald voor de hele periode, per maand of per jaar. Dat kan online via onze betaalpartner Mollie (bijvoorbeeld Bancontact, iDEAL, kaart of domiciliëring), of met een factuur en overschrijving, te betalen binnen 30 dagen na de factuurdatum. Een jaarabonnement levert de korting op die op de prijzenpagina staat.
 
 6.6. **Facturen** worden elektronisch verstuurd naar het facturatieadres van de Klant. Waar de wet dat vereist, gebeurt dat via Peppol.
 
-6.7. **Te late betaling.** Is een factuur op de vervaldag niet betaald, dan sturen we een herinnering. Blijft de betaling 14 dagen na die herinnering uit, dan mogen we de toegang beperken tot inloggen, raadplegen en exporteren tot de betaling binnen is. We sluiten een account nooit plots en volledig af wegens een betalingsachterstand. Op onbetaalde facturen zijn de wettelijke interest en forfaitaire schadevergoeding verschuldigd uit de Wet van 2 augustus 2002 betreffende de bestrijding van de betalingsachterstand bij handelstransacties. **[KEUZE: interest/forfait toepassen tegenover verenigingen of niet]**
+6.7. **Te late betaling.** Is een factuur op de vervaldag niet betaald, dan sturen we een herinnering. Blijft de betaling 14 dagen na die herinnering uit, dan mogen we de toegang beperken tot inloggen, raadplegen en exporteren tot de betaling binnen is. We sluiten een account nooit plots en volledig af wegens een betalingsachterstand. Op onbetaalde facturen mogen we de wettelijke interest en forfaitaire schadevergoeding aanrekenen uit de Wet van 2 augustus 2002 betreffende de bestrijding van de betalingsachterstand bij handelstransacties.
 
 6.8. **Klachten over een factuur** meldt de Klant per e-mail binnen 15 dagen na de factuurdatum, met een motivatie.
 
@@ -101,7 +101,7 @@ Bij een ernstige inbreuk mogen we het betrokken onderdeel of account tijdelijk b
 
 8.3. De Klant is verantwoordelijk voor de inhoud die hij in de Dienst zet. Dat omvat zijn lessenreeksen, prijzen, betaalvoorwaarden tegenover Spelers en de vragen in zijn inschrijfformulieren. De overeenkomst over de lessen zelf komt tot stand tussen de Klant en de Speler. Studio Swyft is daarin geen partij.
 
-8.4. **Gevoelige gegevens.** De Dienst is niet bedoeld voor bijzondere categorieën van persoonsgegevens (artikel 9 AVG), zoals medische informatie. De Klant vraagt die niet op in zijn inschrijfformulieren. **[KEUZE: uitzondering voor een vrij veld "allergieën/aandachtspunten" als de Klant daar bewust voor kiest, met een waarschuwing in het formulier]**
+8.4. **Gevoelige gegevens.** De Dienst is niet bedoeld voor bijzondere categorieën van persoonsgegevens (artikel 9 AVG), zoals medische informatie. De Klant vraagt die niet op in zijn inschrijfformulieren. Eén uitzondering: de Klant mag een vraag naar allergieën of aandachtspunten toevoegen als dat nodig is voor de veiligheid van de deelnemers, zoals bij jeugdkampen. Hij doet dat dan bewust, vraagt niet meer dan nodig, en is ervoor verantwoordelijk dat hij daarvoor een rechtsgrond heeft en de betrokkenen informeert. **[TE BOUWEN: waarschuwing in de formulierbouwer bij zo'n vraag]**
 
 ## 9. Persoonsgegevens
 
@@ -127,7 +127,7 @@ Bij een ernstige inbreuk mogen we het betrokken onderdeel of account tijdelijk b
 
 11.2. **De Klantgegevens blijven van de Klant.** We gebruiken ze alleen om de Dienst te leveren zoals beschreven in de verwerkersovereenkomst. De Klant kan ze op elk moment exporteren met de exportfuncties van de Dienst.
 
-11.3. De Klant geeft ons het recht om zijn naam en logo te tonen als referentie op onze website. Hij kan dat op elk moment per e-mail weigeren. **[KEUZE]**
+11.3. We tonen de naam of het logo van de Klant alleen als referentie, bijvoorbeeld op onze website, als de Klant daar uitdrukkelijk mee akkoord gaat. Hij kan dat akkoord op elk moment per e-mail intrekken.
 
 11.4. Suggesties van de Klant om de Dienst te verbeteren, mogen we vrij gebruiken.
 

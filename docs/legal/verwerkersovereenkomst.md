@@ -3,7 +3,7 @@
 **Versie:** concept 2026-10 (nog niet in werking)
 **Laatst bijgewerkt:** [DATUM INWERKINGTREDING]
 
-> ⚠️ **Concept — na te lezen door een advocaat (privacyrecht) voor dit live gaat.** Opbouw en inhoud volgen de standaardcontractbepalingen van de Europese Commissie voor de verhouding tussen verwerkingsverantwoordelijke en verwerker (Uitvoeringsbesluit (EU) 2021/915, artikel 28, lid 7 AVG). Advies aan de advocaat: overweeg de officiële tekst van die bepalingen letterlijk over te nemen als Deel A en dit document te behouden als Bijlagen I–IV. Open beslissingen staan als **[KEUZE]**.
+> ⚠️ **Concept — na te lezen door een advocaat (privacyrecht) voor dit live gaat.** Opbouw en inhoud volgen de standaardcontractbepalingen van de Europese Commissie voor de verhouding tussen verwerkingsverantwoordelijke en verwerker (Uitvoeringsbesluit (EU) 2021/915, artikel 28, lid 7 AVG). Advies aan de advocaat: overweeg de officiële tekst van die bepalingen letterlijk over te nemen als Deel A en dit document te behouden als Bijlagen I–IV. Wat nog in de software gebouwd moet worden, staat als **[TE BOUWEN]**.
 
 Deze verwerkersovereenkomst maakt deel uit van de [algemene voorwaarden](./algemene-voorwaarden-clubs.md). Ze wordt aanvaard bij de registratie van een account op CoachOS. We bewaren welke versie aanvaard werd en wanneer.
 
@@ -39,7 +39,7 @@ De begrippen in deze overeenkomst, zoals *persoonsgegevens*, *verwerking*, *inbr
 
 2.3. Vindt de verwerker dat een instructie in strijd is met de AVG of met ander gegevensbeschermingsrecht, dan meldt hij dat meteen.
 
-2.4. De verwerker gebruikt de persoonsgegevens niet voor eigen doeleinden. Dat omvat marketing, het verkopen van gegevens en het trainen van AI-modellen. Statistieken die volledig geanonimiseerd zijn en niet herleidbaar tot een persoon of club, gebruikt de verwerker wel om de Dienst te verbeteren en om de facturatie te bepalen, zoals het aantal actieve leerlingen. **[KEUZE: laten staan of schrappen]**
+2.4. De verwerker gebruikt de persoonsgegevens niet voor eigen doeleinden. Dat omvat marketing, het verkopen van gegevens en het trainen van AI-modellen. Statistieken die volledig geanonimiseerd zijn en niet herleidbaar tot een persoon of club, gebruikt de verwerker wel om de Dienst te verbeteren en om de facturatie te bepalen, zoals het aantal actieve leerlingen.
 
 ## 3. Vertrouwelijkheid
 
@@ -134,7 +134,7 @@ Op deze overeenkomst is Belgisch recht van toepassing. Bevoegd is de onderneming
 
 De verwerker slaat **geen** betaalkaart- of bankrekeninggegevens van spelers op. Die vult de betaler rechtstreeks in bij de betaalprovider van de Klant (zie Bijlage III).
 
-**Bijzondere categorieën van persoonsgegevens**: niet beoogd. Antwoorden op eigen formuliervragen van de Klant worden echter ongefilterd opgeslagen en komen ook in de exports terecht. Stelt de Klant zelf een vraag naar bijvoorbeeld gezondheid of allergieën, dan is hij daarvoor verantwoordelijk (artikel 8.4 van de algemene voorwaarden). **[KEUZE + eventueel TE BOUWEN: waarschuwing in de formulierbouwer]**
+**Bijzondere categorieën van persoonsgegevens**: niet beoogd. Antwoorden op eigen formuliervragen van de Klant worden echter ongefilterd opgeslagen en komen ook in de exports terecht. Alleen een vraag naar allergieën of aandachtspunten is toegelaten, als de Klant die bewust toevoegt voor de veiligheid van de deelnemers. Daarvoor is de Klant verantwoordelijk (artikel 8.4 van de algemene voorwaarden). **[TE BOUWEN: waarschuwing in de formulierbouwer]**
 
 **Aard en doeleinden van de verwerking**
 - Opslaan en beheren van inschrijvingen voor lessenreeksen, losse lessen en kampen.
@@ -146,7 +146,7 @@ De verwerker slaat **geen** betaalkaart- of bankrekeninggegevens van spelers op.
 - Technische logging voor beveiliging en foutopsporing.
 
 **Duur en bewaring**
-- Zolang de Klant een account heeft, beslist de Klant zelf over het bewaren van zijn gegevens, binnen de mogelijkheden van de Dienst. **[TE BOUWEN: de Dienst kan vandaag geen inschrijvingen of spelergegevens definitief verwijderen; een geannuleerde inschrijving blijft bewaard. Voorstel: verwijderfunctie voor inschrijvingen + automatische verwijdering van spelergegevens [X] maanden na het einde van een reeks of kamp. Let op: `algemene-voorwaarden-inschrijving.md` art. 11.5 belooft spelers al 24 maanden.]**
+- Zolang de Klant een account heeft, beslist de Klant zelf over het bewaren van zijn gegevens, binnen de mogelijkheden van de Dienst. De persoonsgegevens van spelers worden automatisch verwijderd of geanonimiseerd 24 maanden na het einde van de laatste lessenreeks, les of kamp waarvoor ze ingeschreven waren. Dat stemt overeen met de voorwaarden voor spelers (`algemene-voorwaarden-inschrijving.md`, art. 11.5). De Klant kan inschrijvingen ook eerder laten verwijderen. **[TE BOUWEN: de Dienst kan vandaag geen inschrijvingen of spelergegevens verwijderen, en de automatische verwijdering na 24 maanden bestaat nog niet]**
 - Na het einde van de dienstverlening: zie artikel 10. **[TE BOUWEN: er bestaat nog geen proces om een organisatie volledig te verwijderen; tot dat gebouwd is, moet het manueel en gedocumenteerd gebeuren]**
 - Technische logs: 7 dagen.
 - Eenmalige links en codes verlopen automatisch:

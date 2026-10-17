@@ -3,7 +3,7 @@
 **Versie:** concept 2026-10 (nog niet in werking)
 **Laatst bijgewerkt:** [DATUM INWERKINGTREDING]
 
-> ⚠️ **Concept — na te lezen door een advocaat (privacyrecht).** Open punten staan als **[KEUZE]** of **[TE BOUWEN]**.
+> ⚠️ **Concept — na te lezen door een advocaat (privacyrecht).** Wat nog in de software gebouwd moet worden, staat als **[TE BOUWEN]**.
 
 ## 1. Wie is verantwoordelijk?
 
@@ -22,9 +22,9 @@ Hoe de club je gegevens gebruikt, lees je in de privacyverklaring van de club en
 | Wie | Welke gegevens | Waarvoor | Rechtsgrond | Hoe lang |
 |---|---|---|---|---|
 | **Clubs en hun gebruikers** (beheerders, trainers) | Naam, e-mailadres, telefoon, naam en adres van de organisatie, rol, inloggegevens (wachtwoord enkel versleuteld), aanvaarde versie van onze voorwaarden | Het account aanmaken en beheren, de dienst leveren, service-e-mails sturen (verificatie, uitnodigingen, herinneringen over de proefperiode) | Uitvoering van de overeenkomst (art. 6.1.b AVG) | Zolang het account bestaat, daarna zoals in artikel 14 van de algemene voorwaarden (export tot 30 dagen, verwijdering na 90 dagen) |
-| **Klanten met een abonnement** | Facturatiegegevens: naam en adres van de organisatie, btw-nummer, contactpersoon, betaalhistoriek | Facturen opmaken en betalingen opvolgen | Uitvoering van de overeenkomst en wettelijke verplichting (boekhouding) | 7 jaar, zoals de boekhoudwetgeving vereist **[KEUZE/advocaat: 7 of 10 jaar]** |
-| **Wie ons mailt of het contactformulier gebruikt** | Naam, e-mailadres, organisatie, je bericht, en bij het formulier ook je IP-adres | Je vraag beantwoorden en je demo of contact opvolgen | Gerechtvaardigd belang (art. 6.1.f AVG): je vraag beantwoorden | Tot 12 maanden na het laatste contact **[TE BOUWEN: formulierdata worden nu zonder einddatum bewaard; IP-adres best niet meer opslaan]** |
-| **Inschrijvers op de wachtlijst** | E-mailadres en eventueel naam en organisatie, IP-adres | Je verwittigen wanneer CoachOS beschikbaar is | Toestemming (art. 6.1.a AVG); je kan die altijd intrekken | Tot je je uitschrijft, of tot 6 maanden na de lancering **[TE BOUWEN, zie hierboven]** |
+| **Klanten met een abonnement** | Facturatiegegevens: naam en adres van de organisatie, btw-nummer, contactpersoon, betaalhistoriek | Facturen opmaken en betalingen opvolgen | Uitvoering van de overeenkomst en wettelijke verplichting (boekhouding) | 10 jaar, zoals de boekhoud- en btw-wetgeving vereist |
+| **Wie ons mailt of het contactformulier gebruikt** | Naam, e-mailadres, organisatie en je bericht | Je vraag beantwoorden en je demo of contact opvolgen | Gerechtvaardigd belang (art. 6.1.f AVG): je vraag beantwoorden | Tot 12 maanden na het laatste contact **[TE BOUWEN: formulierdata worden nu zonder einddatum bewaard, met IP-adres; IP niet meer opslaan + automatisch verwijderen na 12 maanden]** |
+| **Inschrijvers op de wachtlijst** | E-mailadres en eventueel naam en organisatie | Je verwittigen wanneer CoachOS beschikbaar is | Toestemming (art. 6.1.a AVG); je kan die altijd intrekken | Tot je je uitschrijft, en uiterlijk tot 6 maanden na de lancering **[TE BOUWEN, zie hierboven]** |
 | **Bezoekers van coach-os.be en app.coach-os.be** | IP-adres, browsertype, opgevraagde pagina, tijdstip | Beveiliging, misbruik tegengaan (zoals beperking van het aantal aanvragen) en foutopsporing | Gerechtvaardigd belang (art. 6.1.f AVG): een veilige en werkende dienst | 7 dagen in onze logs |
 
 We verkopen je gegevens niet en gebruiken ze niet voor reclame.
