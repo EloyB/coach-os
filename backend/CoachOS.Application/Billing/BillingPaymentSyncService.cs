@@ -35,7 +35,8 @@ public class BillingPaymentSyncService(
             return Result.Fail(fetched.Errors);
         BillingPaymentDetails details = fetched.Value!;
 
-        SubscriptionPayment? payment = await payments.GetByMolliePaymentIdAsync(molliePaymentId, ct);
+        SubscriptionPayment? payment = await payments.GetByMolliePaymentIdAsync(molliePaymentId, ct)
+                                       ?? await LinkByMetadataAsync(details, ct);
         if (payment is null)
         {
             if (details.SubscriptionId is null)
@@ -50,6 +51,28 @@ public class BillingPaymentSyncService(
         return payment.Kind == SubscriptionPaymentKind.First
             ? await ProcessFirstAsync(payment, details, ct)
             : await ProcessRenewalAsync(payment, details, ct);
+    }
+
+    /// <summary>
+    /// Herstelpad voor een webhook die binnenkomt vóór we het Mollie payment-id lokaal bewaarden
+    /// (race met de klant, of een crash net na het aanmaken bij Mollie): de lokale rij wordt altijd
+    /// eerst opgeslagen en via de metadata teruggevonden en gekoppeld.
+    /// </summary>
+    private async Task<SubscriptionPayment?> LinkByMetadataAsync(BillingPaymentDetails details, CancellationToken ct)
+    {
+        if (!details.Metadata.TryGetValue("subscriptionPaymentId", out string? rawPaymentId)
+            || !details.Metadata.TryGetValue("organizationId", out string? rawOrganizationId)
+            || !Guid.TryParse(rawPaymentId, out Guid paymentId)
+            || !Guid.TryParse(rawOrganizationId, out Guid organizationId))
+            return null;
+
+        SubscriptionPayment? payment = await payments.GetByIdAsync(paymentId, organizationId, ct);
+        if (payment is null || payment.MolliePaymentId is not null)
+            return null;
+
+        logger.LogInformation("Mollie-betaling {MolliePaymentId} via metadata gekoppeld aan {PaymentId}", details.Id, payment.Id);
+        payment.MolliePaymentId = details.Id;
+        return payment;
     }
 
     public async Task<Result<BillingOverviewDto>> SyncLatestCheckoutAsync(Guid organizationId, CancellationToken ct = default)
@@ -222,6 +245,19 @@ public class BillingPaymentSyncService(
             return Result.Ok();
         }
 
+        decimal expectedAmount = BelgianVat.Gross(subscription.Price);
+        if (details.CustomerId != subscription.MollieCustomerId || details.Amount != expectedAmount)
+        {
+            logger.LogWarning("Verlenging {PaymentId} wijkt af voor {OrgId}: klant {CustomerId}, bedrag {Amount}",
+                details.Id, subscription.OrganizationId, details.CustomerId, details.Amount);
+            if (details.Status == "paid")
+            {
+                await NotifySuperAdminAsync("Verlenging wijkt af van het abonnement",
+                    $"Mollie-betaling {details.Id} (subscription {details.SubscriptionId}) van organisatie {subscription.OrganizationId} hoort bij klant {details.CustomerId} voor {details.Amount} EUR, maar het abonnement verwacht klant {subscription.MollieCustomerId} voor {expectedAmount} EUR. De betaling werd niet geregistreerd en de periode niet verlengd: kijk de subscription na in Mollie en regel het verschil manueel.", ct);
+            }
+            return Result.Ok();
+        }
+
         DateOnly lastEnd = await payments.GetLatestBilledPeriodEndAsync(subscription.Id, ct)
                            ?? subscription.CurrentPeriodEnd
                            ?? timeProvider.GetBrusselsToday().AddDays(-1);
@@ -287,6 +323,9 @@ public class BillingPaymentSyncService(
         SubscriptionPayment oneOff = SubscriptionPayment.ForPeriod(
             subscription, SubscriptionPaymentKind.OneOff, BillingPaymentMethod.Mollie,
             failed.Plan, failed.Interval, failed.PeriodStart, failed.PeriodEnd, failed.AmountExclVat);
+        // Eerst lokaal opslaan: een webhook die binnenkomt vóór de koppeling vindt de rij via de metadata.
+        await payments.AddAsync(oneOff, ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         Result<BillingPaymentResult> created = await mollie.CreatePaymentAsync(new BillingPaymentRequest(
             Amount: oneOff.AmountInclVat,
@@ -295,19 +334,28 @@ public class BillingPaymentSyncService(
             RedirectUrl: $"{_frontendBaseUrl}/dashboard/settings/subscription?return=1",
             WebhookUrl: WebhookUrl(),
             CustomerId: subscription.MollieCustomerId,
-            Metadata: new Dictionary<string, string> { ["subscriptionPaymentId"] = oneOff.Id.ToString() }), ct);
+            Metadata: new Dictionary<string, string>
+            {
+                ["subscriptionPaymentId"] = oneOff.Id.ToString(),
+                ["organizationId"] = oneOff.OrganizationId.ToString(),
+            }), ct);
 
         if (!created.IsSuccess)
         {
+            oneOff.Status = SubscriptionPaymentStatus.Failed;
+            await unitOfWork.SaveChangesAsync(ct);
             await NotifySuperAdminAsync("Verlenging mislukt, geen betaallink",
                 $"De automatische betaling van {organization.Name} mislukte en er kon geen nieuwe betaallink aangemaakt worden.", ct);
             return;
         }
 
-        oneOff.MolliePaymentId = created.Value!.Id;
-        oneOff.CheckoutUrl = created.Value.CheckoutUrl;
-        await payments.AddAsync(oneOff, ct);
-        await unitOfWork.SaveChangesAsync(ct);
+        oneOff.MolliePaymentId ??= created.Value!.Id;
+        oneOff.CheckoutUrl = created.Value!.CheckoutUrl;
+        if (!await unitOfWork.TrySaveChangesAsync(ct) || oneOff.Status != SubscriptionPaymentStatus.Open)
+        {
+            logger.LogInformation("Betaallink {PaymentId} werd al verwerkt voor de koppeling; geen mail", created.Value.Id);
+            return;
+        }
 
         await TryAsync(() => email.SendSubscriptionPaymentFailedAsync(
             organization.Email, organization.Name, oneOff.AmountInclVat, oneOff.CheckoutUrl, ct), "mail mislukte betaling");

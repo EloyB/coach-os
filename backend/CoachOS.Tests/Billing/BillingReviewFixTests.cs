@@ -275,4 +275,90 @@ public class BillingReviewFixTests
         (await _sync.IsOwnPaymentAsync(Guid.NewGuid(), payment.MolliePaymentId!)).Should().BeFalse();
         (await _sync.IsOwnPaymentAsync(org.Id, "tr_onbekend")).Should().BeFalse();
     }
+
+    // ── Hermes-review 2: webhook vóór lokale koppeling, verlenging valideren ───────────
+
+    private async Task<(Organization Org, Subscription Active)> ActiveMollieAsync()
+    {
+        (Organization org, _) = await _ctx.SeedOrganizationAsync(trialEndsAt: new DateOnly(2026, 11, 4));
+        await PayAsync(await CheckoutAsync(org.Id, Mollie(SubscriptionPlan.Set, BillingInterval.Monthly)));
+        return (org, await _ctx.ReloadSubscriptionAsync(org.Id));
+    }
+
+    [Test]
+    public async Task H1_OneOffWebhookArrivesBeforeLocalSave_StillAdvancesPeriod()
+    {
+        (Organization org, Subscription active) = await ActiveMollieAsync();
+        _ctx.Mollie.Setup(m => m.CreatePaymentAsync(It.IsAny<BillingPaymentRequest>(), It.IsAny<CancellationToken>()))
+            .Returns(async (BillingPaymentRequest request, CancellationToken ct) =>
+            {
+                Result<BillingPaymentResult> created = await _ctx.FakeMollie.CreatePaymentAsync(request, ct);
+                _ctx.FakeMollie.SetFakeStatus(created.Value!.Id, "paid");
+                await _sync.SyncAsync(created.Value.Id, ct); // klant betaalt meteen, webhook komt eerst
+                return created;
+            });
+        string recurringId = _ctx.FakeMollie.AddFakeRecurringPayment(
+            active.MollieSubscriptionId!, active.MollieCustomerId!, 59.29m, "failed");
+
+        await _sync.SyncAsync(recurringId);
+        _ctx.Db.ChangeTracker.Clear();
+
+        SubscriptionPayment oneOff = (await _ctx.ReloadPaymentsAsync(org.Id)).Single(p => p.Kind == SubscriptionPaymentKind.OneOff);
+        oneOff.Status.Should().Be(SubscriptionPaymentStatus.Paid);
+        oneOff.MolliePaymentId.Should().NotBeNull();
+        (await _ctx.ReloadSubscriptionAsync(org.Id)).CurrentPeriodEnd.Should().Be(oneOff.PeriodEnd);
+    }
+
+    [Test]
+    public async Task H1_FirstPaymentWebhookBeforeMollieIdSaved_ActivatesViaMetadata()
+    {
+        (Organization org, _) = await _ctx.SeedOrganizationAsync(trialEndsAt: new DateOnly(2026, 11, 4));
+        SubscriptionPayment first = await CheckoutAsync(org.Id, Mollie(SubscriptionPlan.Set, BillingInterval.Monthly));
+        string molliePaymentId = first.MolliePaymentId!;
+        SubscriptionPayment stored = _ctx.Db.SubscriptionPayments.Single(p => p.Id == first.Id);
+        stored.MolliePaymentId = null; // crash/race: Mollie kent de betaling, wij nog niet
+        _ctx.Db.SaveChanges();
+        _ctx.Db.ChangeTracker.Clear();
+        _ctx.FakeMollie.SetFakeStatus(molliePaymentId, "paid");
+
+        await _sync.SyncAsync(molliePaymentId);
+        _ctx.Db.ChangeTracker.Clear();
+
+        SubscriptionPayment paid = (await _ctx.ReloadPaymentsAsync(org.Id)).Single();
+        paid.Status.Should().Be(SubscriptionPaymentStatus.Paid);
+        paid.MolliePaymentId.Should().Be(molliePaymentId);
+        (await _ctx.ReloadSubscriptionAsync(org.Id)).Status.Should().Be(SubscriptionStatus.Active);
+    }
+
+    [Test]
+    public async Task H2_RecurringWithWrongAmount_IsNotRegisteredAndSuperAdminIsNotified()
+    {
+        (Organization org, Subscription active) = await ActiveMollieAsync();
+        DateOnly? periodEnd = active.CurrentPeriodEnd;
+        _ctx.Email.Invocations.Clear();
+        string recurringId = _ctx.FakeMollie.AddFakeRecurringPayment(
+            active.MollieSubscriptionId!, active.MollieCustomerId!, 1.00m, "paid");
+
+        await _sync.SyncAsync(recurringId);
+
+        (await _ctx.ReloadPaymentsAsync(org.Id)).Should().NotContain(p => p.Kind == SubscriptionPaymentKind.Recurring);
+        (await _ctx.ReloadSubscriptionAsync(org.Id)).CurrentPeriodEnd.Should().Be(periodEnd);
+        _ctx.Email.Verify(e => e.SendBillingSuperAdminNoticeAsync(BillingTestContext.SuperAdminEmail,
+            It.IsAny<string>(), It.Is<string>(b => b.Contains(recurringId)), It.IsAny<string?>(),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task H2_RecurringForOtherCustomer_IsNotRegistered()
+    {
+        (Organization org, Subscription active) = await ActiveMollieAsync();
+        DateOnly? periodEnd = active.CurrentPeriodEnd;
+        string recurringId = _ctx.FakeMollie.AddFakeRecurringPayment(
+            active.MollieSubscriptionId!, "cst_iemand_anders", 59.29m, "paid");
+
+        await _sync.SyncAsync(recurringId);
+
+        (await _ctx.ReloadPaymentsAsync(org.Id)).Should().NotContain(p => p.Kind == SubscriptionPaymentKind.Recurring);
+        (await _ctx.ReloadSubscriptionAsync(org.Id)).CurrentPeriodEnd.Should().Be(periodEnd);
+    }
 }

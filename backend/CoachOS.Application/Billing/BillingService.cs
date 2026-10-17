@@ -393,9 +393,10 @@ public class BillingService(
             return Result<CheckoutResultDto>.Fail(created.Errors);
         }
 
-        payment.MolliePaymentId = created.Value!.Id;
-        payment.CheckoutUrl = created.Value.CheckoutUrl;
-        await unitOfWork.SaveChangesAsync(ct);
+        payment.MolliePaymentId ??= created.Value!.Id;
+        payment.CheckoutUrl = created.Value!.CheckoutUrl;
+        // false: een webhook koppelde en verwerkte de betaling al (via de metadata); de checkout-link blijft geldig.
+        await unitOfWork.TrySaveChangesAsync(ct);
 
         logger.LogInformation("Organisatie {OrgId} startte Mollie-checkout {PaymentId} voor {Plan} ({Interval})",
             organization.Id, payment.MolliePaymentId, plan, interval);
