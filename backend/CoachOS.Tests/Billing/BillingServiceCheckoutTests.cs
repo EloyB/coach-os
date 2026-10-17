@@ -118,8 +118,8 @@ public class BillingServiceCheckoutTests
     public async Task StartCheckout_WhileSubscriptionRuns_ReturnsConflictAndCallsNoMollie(SubscriptionStatus status)
     {
         (Organization org, Subscription seeded) = await _ctx.SeedOrganizationAsync(status);
-        Subscription tracked = await _ctx.Subscriptions.GetByOrganizationAsync(org.Id, tracked: true);
-        tracked!.CurrentPeriodEnd = BillingTestContext.Today.AddDays(10);
+        Subscription tracked = (await _ctx.Subscriptions.GetByOrganizationAsync(org.Id, tracked: true))!;
+        tracked.CurrentPeriodEnd = BillingTestContext.Today.AddDays(10);
         tracked.CancelAt = status == SubscriptionStatus.Cancelled ? BillingTestContext.Today.AddDays(10) : null;
         await _ctx.Db.SaveChangesAsync();
 

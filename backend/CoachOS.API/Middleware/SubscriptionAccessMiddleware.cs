@@ -1,10 +1,8 @@
 using CoachOS.API.Auth;
-using CoachOS.Application.Configuration;
 using CoachOS.Application.Subscriptions;
 using CoachOS.Application.Subscriptions.DTOs;
 using CoachOS.Domain.Enums;
 using CoachOS.Domain.Models;
-using Microsoft.Extensions.Options;
 
 namespace CoachOS.API.Middleware;
 
@@ -20,9 +18,11 @@ public class SubscriptionAccessMiddleware(RequestDelegate next)
     // /api/billing: een vergrendelde club moet altijd een plan kunnen kiezen en betalen.
     private static readonly string[] AlwaysAllowedPrefixes = ["/api/auth", "/api/subscription", "/api/super-admin", "/api/billing"];
 
-    public async Task InvokeAsync(HttpContext context, IOptions<BillingOptions> billingOptions)
+    // Geen snelkoppeling op Billing:EnforceTrialExpiry: een vergrendeld account (Locked) is altijd
+    // enkel-lezen. ISubscriptionAccessService past die instelling zelf toe op verlopen proeven.
+    public async Task InvokeAsync(HttpContext context)
     {
-        if (!billingOptions.Value.EnforceTrialExpiry || !IsGuardedRequest(context))
+        if (!IsGuardedRequest(context))
         {
             await next(context);
             return;
@@ -41,10 +41,10 @@ public class SubscriptionAccessMiddleware(RequestDelegate next)
         {
             context.Response.StatusCode = StatusCodes.Status402PaymentRequired;
             context.Response.ContentType = "application/json";
-            await context.Response.WriteAsJsonAsync(new
-            {
-                message = "Je proefperiode is afgelopen. Je account staat op enkel-lezen."
-            });
+            string message = status.Value.Status == SubscriptionStatus.Locked.ToString()
+                ? "Je account is vergrendeld. Kies een abonnement om verder te werken."
+                : "Je proefperiode is afgelopen. Je account staat op enkel-lezen.";
+            await context.Response.WriteAsJsonAsync(new { message });
             return;
         }
 
