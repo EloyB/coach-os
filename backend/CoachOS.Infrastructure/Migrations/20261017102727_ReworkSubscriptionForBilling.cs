@@ -186,6 +186,13 @@ namespace CoachOS.Infrastructure.Migrations
                 name: "IX_SubscriptionPayments_SubscriptionId_PeriodStart",
                 table: "SubscriptionPayments",
                 columns: new[] { "SubscriptionId", "PeriodStart" });
+
+            // De enum SubscriptionPlan ging van Starter..Enterprise (per trainer) naar
+            // Game/Set/Match. Legacy- en proefabonnementen hebben geen plan: oude waarden wissen
+            // zodat ze niet stilzwijgend als Game/Set/Match gelezen worden.
+            migrationBuilder.Sql("""
+                UPDATE "Subscriptions" SET "Plan" = NULL WHERE "Status" IN (1, 2);
+                """);
         }
 
         /// <inheritdoc />

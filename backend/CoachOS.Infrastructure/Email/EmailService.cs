@@ -455,15 +455,15 @@ public class EmailService(
             <= 0 => (
                 "Je gratis proef van CoachOS loopt af",
                 "Je proefperiode loopt af",
-                $"Je gratis proef eindigt op {trialEndsAt:dd/MM/yyyy}. Je hoeft niets te doen: je account en al je gegevens blijven gewoon beschikbaar. We nemen binnenkort persoonlijk contact met je op om te bekijken hoe je verder wil."),
+                $"Je gratis proef eindigt op {trialEndsAt:dd/MM/yyyy}. Kies een abonnement om CoachOS verder te gebruiken; je account en al je gegevens blijven gewoon bewaard."),
             1 => (
                 "Nog 1 dag in je gratis proef van CoachOS",
                 "Nog 1 dag proef",
-                $"Je gratis proef loopt nog tot en met {trialEndsAt:dd/MM/yyyy}. Je hoeft niets te doen: we nemen contact met je op voor de proef afloopt, en je gegevens blijven bewaard."),
+                $"Je gratis proef loopt nog tot en met {trialEndsAt:dd/MM/yyyy}. Kies nu al een abonnement: je betaalde periode start pas na je proef, dus je verliest geen gratis dagen."),
             _ => (
                 $"Nog {daysRemaining} dagen in je gratis proef van CoachOS",
                 $"Nog {daysRemaining} dagen proef",
-                $"Je gratis proef loopt nog tot en met {trialEndsAt:dd/MM/yyyy}. Je hoeft niets te doen: we nemen contact met je op voor de proef afloopt, en je gegevens blijven bewaard."),
+                $"Je gratis proef loopt nog tot en met {trialEndsAt:dd/MM/yyyy}. Kies nu al een abonnement: je betaalde periode start pas na je proef, dus je verliest geen gratis dagen."),
         };
 
         string html = renderer.Render("trial-reminder", new Dictionary<string, string>
@@ -471,7 +471,7 @@ public class EmailService(
             ["organizationName"] = organizationName,
             ["heading"] = heading,
             ["body"] = body,
-            ["appUrl"] = $"{appUrl.TrimEnd('/')}/dashboard",
+            ["appUrl"] = $"{appUrl.TrimEnd('/')}/dashboard/settings/subscription",
             ["year"] = DateTime.UtcNow.Year.ToString(),
         });
         await SendAsync(toEmail, organizationName, subject, html, ct);
