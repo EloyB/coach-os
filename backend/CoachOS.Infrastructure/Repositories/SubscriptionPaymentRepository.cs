@@ -26,8 +26,7 @@ public class SubscriptionPaymentRepository(ApplicationDbContext context) : ISubs
             .IgnoreQueryFilters()
             .AsNoTracking()
             .Where(p => p.OrganizationId == organizationId)
-            .OrderByDescending(p => p.PeriodStart)
-            .ThenByDescending(p => p.CreatedAt)
+            .OrderByDescending(p => p.CreatedAt)
             .ToListAsync(ct);
 
     public async Task<SubscriptionPayment?> GetLatestOpenFirstAsync(Guid organizationId, CancellationToken ct = default)

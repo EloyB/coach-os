@@ -242,6 +242,29 @@ public class BillingServiceCheckoutTests
         result.Errors[0].Message.Should().Be("Dit btw-nummer is niet geldig volgens VIES.");
     }
 
+    [Test]
+    public async Task GetOverview_ListsMostRecentlyCreatedPaymentFirst()
+    {
+        // Eerst een overschrijving voor een LATERE periode, dan een betaling voor een vroegere:
+        // de historiek (en de terugkeer-melding) moet de laatst aangemaakte eerst tonen.
+        (Organization org, Subscription subscription) = await _ctx.SeedOrganizationAsync();
+        _ctx.Db.SubscriptionPayments.Add(SubscriptionPayment.ForPeriod(subscription, SubscriptionPaymentKind.First,
+            BillingPaymentMethod.Mollie, SubscriptionPlan.Set, BillingInterval.Monthly,
+            new DateOnly(2026, 11, 5), new DateOnly(2026, 12, 4), 49m));
+        await _ctx.Db.SaveChangesAsync();
+        await Task.Delay(5);
+        SubscriptionPayment newest = SubscriptionPayment.ForPeriod(subscription, SubscriptionPaymentKind.First,
+            BillingPaymentMethod.Mollie, SubscriptionPlan.Game, BillingInterval.Monthly,
+            BillingTestContext.Today, new DateOnly(2026, 11, 16), 25m);
+        _ctx.Db.SubscriptionPayments.Add(newest);
+        await _ctx.Db.SaveChangesAsync();
+        _ctx.Db.ChangeTracker.Clear();
+
+        BillingOverviewDto overview = (await _sut.GetOverviewAsync(org.Id)).Value!;
+
+        overview.Payments[0].Id.Should().Be(newest.Id);
+    }
+
     [TestCase(70, "Set")]
     [TestCase(0, "Game")]
     [TestCase(600, "Match")]

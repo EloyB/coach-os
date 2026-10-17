@@ -16,7 +16,7 @@ public interface ISubscriptionPaymentRepository
     /// <summary>Tracked, cross-org (webhook).</summary>
     Task<SubscriptionPayment?> GetByMolliePaymentIdAsync(string molliePaymentId, CancellationToken ct = default);
 
-    /// <summary>AsNoTracking, nieuwste periode eerst.</summary>
+    /// <summary>AsNoTracking, laatst aangemaakte betaling eerst.</summary>
     Task<IReadOnlyList<SubscriptionPayment>> ListByOrganizationAsync(Guid organizationId, CancellationToken ct = default);
 
     /// <summary>Tracked: de laatst aangemaakte openstaande eerste Mollie-betaling, of null.</summary>
