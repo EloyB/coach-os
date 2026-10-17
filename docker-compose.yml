@@ -58,6 +58,10 @@ services:
       # Lokaal dev gebruikt Mollie's test mode (test cards, geen echt geld);
       # productie laat dit op false zodat live payments doorgaan.
       Mollie__UseTestMode: "true"
+      # Abonnementen van clubs (eigen Mollie-account van Studio Swyft, geen Connect).
+      # Leeg = fake-Mollie. Voor echte testbetalingen: MOLLIE_BILLING_API_KEY=test_… in .env.
+      # Lokaal komen geen webhooks binnen; de status volgt bij terugkeer naar de app.
+      MollieBilling__ApiKey: "${MOLLIE_BILLING_API_KEY:-}"
       # DataProtection keystore in een named volume zodat tokens rebuilds overleven.
       # Zonder dit worden bestaande Mollie-tokens in de DB onleesbaar bij elke
       # `docker-compose up --build backend` (keys liggen anders in /tmp).

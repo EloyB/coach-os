@@ -1,5 +1,6 @@
 "use client";
 
+import { hasPendingMollieCheckout } from "@/lib/billing";
 import { Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -61,32 +62,37 @@ function SubscriptionPageContent() {
     queryClient.invalidateQueries({ queryKey: ["subscription"] });
   }
 
-  const syncMutation = useMutation({
-    mutationFn: syncCheckout,
-    onSuccess: (next) => {
+  // Variabele van de mutatie = "melding tonen" (enkel gebruikt in onSuccess).
+  const syncMutation = useMutation<BillingOverview, Error, boolean>({
+    mutationFn: () => syncCheckout(),
+    onSuccess: (next, announce) => {
+      const wasActive = overview?.status === "Active";
       applyOverview(next);
       const latest = next.payments[0];
-      if (next.status === "Active") toast.success(t("returnPaid"));
+      if (next.status === "Active" && (announce || !wasActive)) toast.success(t("returnPaid"));
+      else if (!announce) return;
       else if (latest?.status === "Failed" || latest?.status === "Expired" || latest?.status === "Canceled") toast.error(t("returnFailed"));
       else toast.info(t("returnOpen"));
       router.replace(pathname);
     },
   });
 
-  // Terugkeer van Mollie (echte checkout): status één keer ophalen, ook zonder webhook.
+  // Terugkeer van Mollie (?return=1), of een eerste betaling die nog openstaat (bv. na opnieuw
+  // inloggen): status één keer ophalen, ook zonder webhook. Enkel bij terugkeer altijd een melding.
   const syncedOnce = useRef(false);
+  const pendingCheckout = hasPendingMollieCheckout(overview);
   useEffect(() => {
-    if (isReturn && !syncedOnce.current) {
+    if ((isReturn || pendingCheckout) && !syncedOnce.current) {
       syncedOnce.current = true;
-      syncMutation.mutate();
+      syncMutation.mutate(isReturn);
     }
-  }, [isReturn, syncMutation]);
+  }, [isReturn, pendingCheckout, syncMutation]);
 
   const fakeMutation = useMutation({
     mutationFn: (status: "paid" | "failed") => setFakePaymentStatus(fakePaymentId ?? "", status),
     onSuccess: () => {
       setShowFakePanel(false);
-      syncMutation.mutate();
+      syncMutation.mutate(true);
     },
   });
 

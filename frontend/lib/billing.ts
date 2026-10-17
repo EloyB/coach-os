@@ -1,5 +1,7 @@
 /** Pure helpers voor de abonnementspagina. Zelfde regels als de backend (enkel Belgische btw). */
 
+import type { BillingOverview } from "@/lib/api/billing";
+
 export const VAT_RATE = 0.21;
 export const OVERAGE_MARGIN = 0.1;
 
@@ -50,4 +52,9 @@ const euro = new Intl.NumberFormat("nl-BE", { style: "currency", currency: "EUR"
 
 export function formatEuro(amount: number): string {
   return euro.format(amount);
+}
+
+/** Er staat een eerste Mollie-betaling open: de status bij Mollie ophalen (ook zonder webhook of ?return=1). */
+export function hasPendingMollieCheckout(overview: BillingOverview | undefined): boolean {
+  return overview?.payments.some((p) => p.kind === "First" && p.method === "Mollie" && p.status === "Open") ?? false;
 }

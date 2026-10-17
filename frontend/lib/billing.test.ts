@@ -4,11 +4,13 @@ import {
   exceedsLimit,
   formatEuro,
   grossAmount,
+  hasPendingMollieCheckout,
   isValidBelgianVat,
   planPrice,
   suggestPlan,
   type PlanOption,
 } from "./billing";
+import type { BillingOverview, SubscriptionPayment } from "./api/billing";
 
 const plans: PlanOption[] = [
   { plan: 1, name: "Game", monthlyPrice: 25, yearlyPrice: 250, studentLimit: 60 },
@@ -76,5 +78,25 @@ describe("isValidBelgianVat", () => {
     expect(isValidBelgianVat("BE012345678")).toBe(false);
     expect(isValidBelgianVat("NL123456789B01")).toBe(false);
     expect(isValidBelgianVat("")).toBe(false);
+  });
+});
+
+describe("hasPendingMollieCheckout", () => {
+  const payment = (overrides: Partial<SubscriptionPayment>): SubscriptionPayment => ({
+    id: "p", kind: "First", method: "Mollie", status: "Open", plan: "Set", interval: "Monthly",
+    periodStart: "2026-11-17", periodEnd: "2026-12-16", amountExclVat: 49, amountInclVat: 59.29,
+    paidAt: null, dueDate: null, checkoutUrl: "https://mollie.test", invoiceStatus: "NotNeeded",
+    invoiceNumber: null, invoicePdfUrl: null, invoiceLastError: null, ...overrides,
+  });
+  const overview = (payments: SubscriptionPayment[]) => ({ payments }) as BillingOverview;
+
+  it("true bij een openstaande eerste Mollie-betaling", () => {
+    expect(hasPendingMollieCheckout(overview([payment({})]))).toBe(true);
+  });
+
+  it("false als de eerste betaling al verwerkt is of per overschrijving loopt", () => {
+    expect(hasPendingMollieCheckout(overview([payment({ status: "Paid" })]))).toBe(false);
+    expect(hasPendingMollieCheckout(overview([payment({ kind: "BankTransfer", method: "BankTransfer" })]))).toBe(false);
+    expect(hasPendingMollieCheckout(undefined)).toBe(false);
   });
 });
