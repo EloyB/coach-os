@@ -4,19 +4,15 @@ namespace CoachOS.Application.Subscriptions.DTOs;
 public class SubscriptionDto
 {
     public Guid OrganizationId { get; set; }
-    public string Plan { get; set; } = string.Empty;
-    public string Interval { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public string? Plan { get; set; }
+    public string? Interval { get; set; }
     public int StudentLimit { get; set; }
     public decimal Price { get; set; }
     public string StartDate { get; set; } = string.Empty;
     public string? EndDate { get; set; }
-    public bool IsActive { get; set; }
 
     public string? MollieCustomerId { get; set; }
-    public string? LastPaymentId { get; set; }
-    public string? LastCheckoutUrl { get; set; }
-    public string? LastPaymentStatus { get; set; }
-    public string? LastPaidAt { get; set; }
 
     /// <summary>
     /// <c>false</c> wanneer er nog geen echte platform-Mollie-key is: de betaallink

@@ -25,14 +25,15 @@ public class SubscriptionConfiguration : IEntityTypeConfiguration<Subscription>
         builder.Property(s => s.MollieSubscriptionId)
             .HasMaxLength(100);
 
-        builder.Property(s => s.LastPaymentId)
-            .HasMaxLength(100);
+        builder.Property(s => s.OverageMarginPercent)
+            .HasPrecision(5, 2);
 
-        builder.Property(s => s.LastCheckoutUrl)
-            .HasMaxLength(1000);
+        builder.Property(s => s.OveragePricePerStudent)
+            .HasPrecision(10, 2);
 
-        builder.Property(s => s.LastPaymentStatus)
-            .HasMaxLength(50);
+        builder.HasIndex(s => s.MollieSubscriptionId)
+            .IsUnique()
+            .HasFilter("\"MollieSubscriptionId\" IS NOT NULL");
 
         builder.HasOne(s => s.Organization)
             .WithOne(o => o.Subscription)

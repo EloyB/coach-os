@@ -43,23 +43,29 @@ public class Subscription : BaseEntity
     /// <summary>Mollie customer op ons platform-account (bv. <c>cst_xxx</c>).</summary>
     public string? MollieCustomerId { get; set; }
 
-    /// <summary>Mollie recurring subscription-id. Ongebruikt in de MVP (handmatige betaallinks).</summary>
+    /// <summary>Mollie Subscription voor automatische verlenging (<c>sub_xxx</c>).</summary>
     public string? MollieSubscriptionId { get; set; }
 
-    /// <summary>Laatste aangemaakte billing-payment (bv. <c>tr_xxx</c>).</summary>
-    public string? LastPaymentId { get; set; }
+    public BillingPaymentMethod? PaymentMethod { get; set; }
 
-    /// <summary>Checkout-URL van de laatste betaallink; stuur je door naar de club.</summary>
-    public string? LastCheckoutUrl { get; set; }
+    /// <summary>Lopende betaalde periode (inclusief beide dagen).</summary>
+    public DateOnly? CurrentPeriodStart { get; set; }
+    public DateOnly? CurrentPeriodEnd { get; set; }
 
-    /// <summary>Laatst gekende Mollie-status van de billing-payment (open, paid, failed, ...).</summary>
-    public string? LastPaymentStatus { get; set; }
+    /// <summary>Opgezegd per deze datum (einde van de lopende periode); null = niet opgezegd.</summary>
+    public DateOnly? CancelAt { get; set; }
 
-    /// <summary>UTC moment waarop de laatste betaling als betaald is bevestigd.</summary>
-    public DateTime? LastPaidAt { get; set; }
+    /// <summary>Door de superadmin toegekende deal: vaste einddatum, geen automatische verlenging.</summary>
+    public bool IsDeal { get; set; }
+
+    // Snapshot bij afsluiten (voorwaarden art. 6.1): geldt tot de volgende verlenging.
+    public int? StudentLimit { get; set; }
+    public decimal? OverageMarginPercent { get; set; }
+    public decimal? OveragePricePerStudent { get; set; }
 
     // Navigation properties
     public Organization Organization { get; set; } = null!;
+    public ICollection<SubscriptionPayment> Payments { get; set; } = new List<SubscriptionPayment>();
 
     /// <summary>Nieuwe proef van <see cref="TrialDays"/> dagen, zonder plan of betaalgegevens.</summary>
     public static Subscription StartTrial(Guid organizationId, DateOnly today) => new()
