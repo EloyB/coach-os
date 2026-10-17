@@ -23,6 +23,11 @@ public class SubscriptionRepository(ApplicationDbContext context) : ISubscriptio
     public async Task AddAsync(Subscription subscription, CancellationToken ct = default)
         => await context.Subscriptions.AddAsync(subscription, ct);
 
+    public async Task<Subscription?> GetByMollieSubscriptionIdAsync(string mollieSubscriptionId, CancellationToken ct = default)
+        => await context.Subscriptions
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(s => s.MollieSubscriptionId == mollieSubscriptionId, ct);
+
     public async Task<Subscription?> GetByOrganizationReadOnlyAsync(Guid organizationId, CancellationToken ct = default)
     {
         return await context.Subscriptions

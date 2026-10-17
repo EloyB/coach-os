@@ -21,4 +21,7 @@ public interface ISubscriptionPaymentRepository
 
     /// <summary>Tracked: de laatst aangemaakte openstaande eerste Mollie-betaling, of null.</summary>
     Task<SubscriptionPayment?> GetLatestOpenFirstAsync(Guid organizationId, CancellationToken ct = default);
+
+    /// <summary>Laatste einddatum van een geregistreerde periode (ongeacht status), of null.</summary>
+    Task<DateOnly?> GetLatestPeriodEndAsync(Guid subscriptionId, CancellationToken ct = default);
 }

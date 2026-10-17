@@ -38,4 +38,11 @@ public class SubscriptionPaymentRepository(ApplicationDbContext context) : ISubs
                         && p.Status == SubscriptionPaymentStatus.Open)
             .OrderByDescending(p => p.CreatedAt)
             .FirstOrDefaultAsync(ct);
+
+    public async Task<DateOnly?> GetLatestPeriodEndAsync(Guid subscriptionId, CancellationToken ct = default)
+        => await context.SubscriptionPayments
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(p => p.SubscriptionId == subscriptionId)
+            .MaxAsync(p => (DateOnly?)p.PeriodEnd, ct);
 }

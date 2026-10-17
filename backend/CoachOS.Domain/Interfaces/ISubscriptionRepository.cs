@@ -14,6 +14,9 @@ public interface ISubscriptionRepository
 
     Task AddAsync(Subscription subscription, CancellationToken ct = default);
 
+    /// <summary>Tracked, cross-org: het abonnement dat bij een Mollie Subscription hoort (verlengingswebhook).</summary>
+    Task<Subscription?> GetByMollieSubscriptionIdAsync(string mollieSubscriptionId, CancellationToken ct = default);
+
     /// <summary>AsNoTracking read; gebruik voor toegangs- en statuschecks.</summary>
     Task<Subscription?> GetByOrganizationReadOnlyAsync(Guid organizationId, CancellationToken ct = default);
 

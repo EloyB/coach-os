@@ -74,6 +74,16 @@ public class FakeBillingMollieClient(
         return true;
     }
 
+    /// <summary>Dev/test: simuleert een automatische verlenging die Mollie aanmaakt voor een subscription.</summary>
+    public string AddFakeRecurringPayment(string subscriptionId, string customerId, decimal amount, string status)
+    {
+        string id = $"tr_fake_{Guid.NewGuid():N}";
+        DateTime? paidAt = status == "paid" ? timeProvider.GetUtcNow().UtcDateTime : null;
+        _payments[id] = new BillingPaymentDetails(
+            id, status, amount, paidAt, "recurring", customerId, subscriptionId, new Dictionary<string, string>());
+        return id;
+    }
+
     private Result<BillingPaymentResult> Create(BillingPaymentRequest request, string sequenceType)
     {
         string id = $"tr_fake_{Guid.NewGuid():N}";

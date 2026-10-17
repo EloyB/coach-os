@@ -58,6 +58,7 @@ public static class DependencyInjection
         services.AddScoped<ICampExportService, CampExportService>();
         services.AddScoped<ISubscriptionAccessService, SubscriptionAccessService>();
         services.AddScoped<IBillingService, BillingService>();
+        services.AddScoped<IBillingPaymentSyncService, BillingPaymentSyncService>();
         services.AddScoped<ITrialReminderService, TrialReminderService>();
 
         return services;
