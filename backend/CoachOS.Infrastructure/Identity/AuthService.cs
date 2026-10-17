@@ -503,7 +503,10 @@ public class AuthService(
         bool onlyIfExpired = false,
         CancellationToken cancellationToken = default)
     {
-        ApplicationUser? user = await userManager.FindByIdAsync(userId.ToString());
+        // AsNoTracking: de schrijfactie hieronder loopt via ExecuteUpdate (zie VerifyEmailAsync).
+        ApplicationUser? user = await userManager.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
         if (user is null || !user.IsActive)
             return Result<bool>.Fail(new Error(ErrorCodes.NotFound, "Account niet gevonden"));
 
@@ -520,17 +523,38 @@ public class AuthService(
         if (user.EmailVerificationSentAt is not null
             && now - user.EmailVerificationSentAt.Value < EmailVerificationCodes.ResendCooldown)
         {
-            return Result<bool>.Fail(new Error(ErrorCodes.Validation, "Wacht even voor je een nieuwe code aanvraagt."));
+            return ResendCooldownError();
         }
 
         if (user.EmailVerificationSendCount >= EmailVerificationCodes.MaxSends)
             return Result<bool>.Fail(new Error(ErrorCodes.Validation, "Je hebt te veel codes aangevraagd. Neem contact op via info@coach-os.be."));
 
-        string code = IssueVerificationCode(user, now);
-        user.UpdatedAt = now;
-        IdentityResult updateResult = await userManager.UpdateAsync(user);
-        if (!updateResult.Succeeded)
-            return Result<bool>.Fail(updateResult.Errors.Select(e => e.Description));
+        // De nieuwe code wordt atomair in de database geclaimd, met de wachttijd en het maximum
+        // als voorwaarde. Bij gelijktijdige requests slaagt er zo precies één, en enkel die
+        // verstuurt een mail; de checks hierboven geven alleen een duidelijke foutmelding.
+        string code = EmailVerificationCodes.Generate();
+        string codeHash = EmailVerificationCodes.Hash(userId, code);
+        DateTime codeExpiry = now.Add(EmailVerificationCodes.Lifetime);
+        DateTime cooldownStart = now - EmailVerificationCodes.ResendCooldown;
+        int claimed = await userManager.Users
+            .Where(u => u.Id == userId
+                        && u.IsActive
+                        && !u.EmailConfirmed
+                        && (u.EmailVerificationSentAt == null || u.EmailVerificationSentAt <= cooldownStart)
+                        && u.EmailVerificationSendCount < EmailVerificationCodes.MaxSends)
+            .ExecuteUpdateAsync(
+                setters => setters
+                    .SetProperty(u => u.EmailVerificationCodeHash, codeHash)
+                    .SetProperty(u => u.EmailVerificationCodeExpiry, codeExpiry)
+                    .SetProperty(u => u.EmailVerificationSentAt, now)
+                    .SetProperty(u => u.EmailVerificationAttempts, 0)
+                    .SetProperty(u => u.EmailVerificationSendCount, u => u.EmailVerificationSendCount + 1)
+                    .SetProperty(u => u.UpdatedAt, now),
+                cancellationToken);
+
+        // Een gelijktijdig request was ons net voor: er is net een verse code verstuurd.
+        if (claimed == 0)
+            return onlyIfExpired ? Result<bool>.Ok(false) : ResendCooldownError();
 
         try
         {
@@ -553,6 +577,9 @@ public class AuthService(
             .AsNoTracking()
             .AnyAsync(u => u.Id == userId && u.EmailConfirmed, cancellationToken);
     }
+
+    private static Result<bool> ResendCooldownError() =>
+        Result<bool>.Fail(new Error(ErrorCodes.Validation, "Wacht even voor je een nieuwe code aanvraagt."));
 
     /// <summary>Zet een verse verificatiecode op de user (nog niet opgeslagen) en geeft de leesbare code terug.</summary>
     private static string IssueVerificationCode(ApplicationUser user, DateTime now)
