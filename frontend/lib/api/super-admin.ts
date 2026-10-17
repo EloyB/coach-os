@@ -1,4 +1,5 @@
 import apiClient from "@/lib/api-client";
+import type { BillingProfile, SubscriptionPayment, SubscriptionStatusName } from "@/lib/api/billing";
 
 export interface AdminOrganizationDto {
   organizationId: string;
@@ -26,7 +27,7 @@ export interface OrganizationListItemDto {
   isEarlyBird: boolean;
   adminCount: number;
   createdAt: string;
-  subscriptionStatus: "Legacy" | "Trialing" | "Active";
+  subscriptionStatus: SubscriptionStatusName;
   /** Laatste dag van de proef (yyyy-MM-dd); null buiten een proef. */
   trialEndsAt: string | null;
   /** Game/Set/Match; null zolang er geen plan is. */
@@ -35,19 +36,27 @@ export interface OrganizationListItemDto {
 
 export interface SubscriptionDto {
   organizationId: string;
-  plan: string;
-  interval: string;
-  studentLimit: number;
+  status: SubscriptionStatusName;
+  plan: string | null;
+  interval: "Monthly" | "Yearly" | null;
+  paymentMethod: "Mollie" | "BankTransfer" | null;
+  studentLimit: number | null;
   price: number;
+  priceInclVat: number;
   startDate: string;
-  endDate: string | null;
-  isActive: boolean;
+  trialEndsAt: string | null;
+  currentPeriodStart: string | null;
+  currentPeriodEnd: string | null;
+  cancelAt: string | null;
+  isDeal: boolean;
   mollieCustomerId: string | null;
-  lastPaymentId: string | null;
-  lastCheckoutUrl: string | null;
-  lastPaymentStatus: string | null;
-  lastPaidAt: string | null;
+  mollieSubscriptionId: string | null;
+  /** false = fake-Mollie (geen echte betalingen). */
   billingConfigured: boolean;
+  /** false = Billit nog niet gekoppeld (fake-facturen). */
+  invoicingConfigured: boolean;
+  profile: BillingProfile | null;
+  payments: SubscriptionPayment[];
 }
 
 export interface SubscriptionPlanOption {
@@ -58,10 +67,11 @@ export interface SubscriptionPlanOption {
   studentLimit: number;
 }
 
-export interface AssignSubscriptionRequest {
+/** Deal: plan, prijs excl. btw (mag 0) en einddatum (yyyy-MM-dd); verlengt niet automatisch. */
+export interface AssignDealRequest {
   plan: number;
-  interval: number;
-  startDate: string | null;
+  price: number;
+  endDate: string;
 }
 
 export interface CreateAdminRequest {
@@ -115,62 +125,36 @@ export async function getSubscriptionPlans(): Promise<SubscriptionPlanOption[]> 
   return data;
 }
 
-export async function getSubscription(
-  organizationId: string
-): Promise<SubscriptionDto | null> {
+export async function getSubscription(organizationId: string): Promise<SubscriptionDto | null> {
   const { data } = await apiClient.get<SubscriptionDto | null>(
     `/super-admin/organizations/${organizationId}/subscription`
   );
   return data || null;
 }
 
-export async function assignSubscription(
-  organizationId: string,
-  request: AssignSubscriptionRequest
-): Promise<SubscriptionDto> {
-  const { data } = await apiClient.put<SubscriptionDto>(
-    `/super-admin/organizations/${organizationId}/subscription`,
-    request
-  );
+function subscriptionUrl(organizationId: string, action: string): string {
+  return `/super-admin/organizations/${organizationId}/subscription/${action}`;
+}
+
+export async function assignDeal(organizationId: string, request: AssignDealRequest): Promise<SubscriptionDto> {
+  const { data } = await apiClient.post<SubscriptionDto>(subscriptionUrl(organizationId, "deal"), request);
   return data;
 }
 
-export async function setSubscriptionActive(
-  organizationId: string,
-  isActive: boolean
-): Promise<SubscriptionDto> {
-  const { data } = await apiClient.put<SubscriptionDto>(
-    `/super-admin/organizations/${organizationId}/subscription/active`,
-    { isActive }
-  );
-  return data;
-}
-
-export async function createSubscriptionPaymentLink(
-  organizationId: string
-): Promise<SubscriptionDto> {
+export async function markSubscriptionPaymentPaid(organizationId: string, paymentId: string): Promise<SubscriptionDto> {
   const { data } = await apiClient.post<SubscriptionDto>(
-    `/super-admin/organizations/${organizationId}/subscription/payment-link`
+    subscriptionUrl(organizationId, `payments/${paymentId}/mark-paid`)
   );
   return data;
 }
 
-export async function refreshSubscriptionPayment(
-  organizationId: string
-): Promise<SubscriptionDto> {
-  const { data } = await apiClient.post<SubscriptionDto>(
-    `/super-admin/organizations/${organizationId}/subscription/refresh`
-  );
+export async function cancelOrganizationSubscription(organizationId: string): Promise<SubscriptionDto> {
+  const { data } = await apiClient.post<SubscriptionDto>(subscriptionUrl(organizationId, "cancel"));
   return data;
 }
 
-export async function markSubscriptionPaid(
-  organizationId: string
-): Promise<SubscriptionDto> {
-  const { data } = await apiClient.post<SubscriptionDto>(
-    `/super-admin/organizations/${organizationId}/subscription/mark-paid`
-  );
-  return data;
+export async function sendPaymentInvitation(organizationId: string): Promise<void> {
+  await apiClient.post(subscriptionUrl(organizationId, "invite"));
 }
 
 export async function extendOrganizationTrial(

@@ -57,7 +57,17 @@ export default function OrganizationsPage() {
         ? t("subscriptionTrialExpired", { date })
         : t("subscriptionTrialUntil", { date });
     }
-    return org.subscriptionStatus === "Active" ? t("subscriptionActive") : t("subscriptionLegacy");
+    const plan = org.subscriptionPlan ?? "";
+    switch (org.subscriptionStatus) {
+      case "Active":
+        return t("subscriptionActive", { plan });
+      case "Cancelled":
+        return t("subscriptionCancelled", { plan });
+      case "Locked":
+        return t("subscriptionLocked");
+      default:
+        return t("subscriptionLegacy");
+    }
   }
 
   return (

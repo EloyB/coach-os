@@ -1,124 +1,125 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { toast } from "sonner";
+import { ArrowLeft, FileText } from "lucide-react";
 
 import {
-  assignSubscription,
-  createSubscriptionPaymentLink,
+  assignDeal,
+  cancelOrganizationSubscription,
+  extendOrganizationTrial,
   getSubscription,
   getSubscriptionPlans,
   listOrganizations,
-  markSubscriptionPaid,
-  refreshSubscriptionPayment,
-  setSubscriptionActive,
+  markSubscriptionPaymentPaid,
+  sendPaymentInvitation,
   type SubscriptionDto,
 } from "@/lib/api/super-admin";
+import { formatEuro } from "@/lib/billing";
+import { formatDateNL } from "@/lib/date-utils";
 import { inputClass } from "@/lib/styles";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
-import { SubscriptionBadge } from "@/components/super-admin/subscription-badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
-const INTERVAL_MONTHLY = 1;
-const INTERVAL_YEARLY = 2;
+const TRIAL_EXTENSION_DAYS = 14;
+
+function Row({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex gap-4 py-1.5 text-sm">
+      <dt className="w-36 shrink-0 text-ink-3">{label}</dt>
+      <dd className="text-ink">{children}</dd>
+    </div>
+  );
+}
+
+function Card({ title, subtitle, children }: { title: string; subtitle?: string; children: ReactNode }) {
+  return (
+    <section className="rounded-lg border border-rule bg-white p-6">
+      <h2 className="text-base font-bold text-ink">{title}</h2>
+      {subtitle && <p className="mt-1 text-sm text-ink-3">{subtitle}</p>}
+      <div className="mt-4">{children}</div>
+    </section>
+  );
+}
 
 export default function OrganizationDetailPage() {
   const t = useTranslations("superAdmin");
-  const params = useParams();
-  const organizationId = params.id as string;
+  const organizationId = useParams().id as string;
   const queryClient = useQueryClient();
+  const subscriptionKey = ["super-admin", "subscription", organizationId] as const;
 
-  const { data: orgs } = useQuery({
-    queryKey: ["super-admin", "organizations"],
-    queryFn: listOrganizations,
-  });
+  const { data: orgs } = useQuery({ queryKey: ["super-admin", "organizations"], queryFn: listOrganizations });
   const org = orgs?.find((o) => o.id === organizationId);
-
-  const { data: plans } = useQuery({
-    queryKey: ["super-admin", "subscription-plans"],
-    queryFn: getSubscriptionPlans,
-  });
-
+  const { data: plans } = useQuery({ queryKey: ["super-admin", "subscription-plans"], queryFn: getSubscriptionPlans });
   const { data: subscription, isLoading } = useQuery({
-    queryKey: ["super-admin", "subscription", organizationId],
+    queryKey: subscriptionKey,
     queryFn: () => getSubscription(organizationId),
   });
 
-  const [plan, setPlan] = useState<number>(1);
-  const [interval, setInterval] = useState<number>(INTERVAL_YEARLY);
-  const [startDate, setStartDate] = useState<string>("");
+  const [dealPlan, setDealPlan] = useState(1);
+  const [dealPrice, setDealPrice] = useState(0);
+  const [dealEndDate, setDealEndDate] = useState("");
+  const [confirmCancel, setConfirmCancel] = useState(false);
 
-  // Vul het formulier met het bestaande abonnement, of met verstandige defaults.
-  useEffect(() => {
-    if (subscription) {
-      const planId = plans?.find((p) => p.name === subscription.plan)?.plan ?? 1;
-      setPlan(planId);
-      setInterval(subscription.interval === "Yearly" ? INTERVAL_YEARLY : INTERVAL_MONTHLY);
-      setStartDate(subscription.startDate);
-    } else if (!startDate) {
-      setStartDate(new Date().toISOString().slice(0, 10));
-    }
-  }, [subscription, plans, startDate]);
-
-  function onSettled(data: SubscriptionDto) {
-    queryClient.setQueryData(["super-admin", "subscription", organizationId], data);
+  function apply(next: SubscriptionDto) {
+    queryClient.setQueryData(subscriptionKey, next);
     queryClient.invalidateQueries({ queryKey: ["super-admin", "organizations"] });
   }
 
-  const assignMutation = useMutation({
-    mutationFn: () =>
-      assignSubscription(organizationId, { plan, interval, startDate: startDate || null }),
-    onSuccess: onSettled,
+  const dealMutation = useMutation({
+    mutationFn: () => assignDeal(organizationId, { plan: dealPlan, price: dealPrice, endDate: dealEndDate }),
+    onSuccess: (next) => {
+      apply(next);
+      toast.success(t("dealSaved"));
+    },
   });
-
-  const activeMutation = useMutation({
-    mutationFn: (isActive: boolean) => setSubscriptionActive(organizationId, isActive),
-    onSuccess: onSettled,
-  });
-
-  const paymentLinkMutation = useMutation({
-    mutationFn: () => createSubscriptionPaymentLink(organizationId),
-    onSuccess: onSettled,
-  });
-
-  const refreshMutation = useMutation({
-    mutationFn: () => refreshSubscriptionPayment(organizationId),
-    onSuccess: onSettled,
-  });
-
   const markPaidMutation = useMutation({
-    mutationFn: () => markSubscriptionPaid(organizationId),
-    onSuccess: onSettled,
+    mutationFn: (paymentId: string) => markSubscriptionPaymentPaid(organizationId, paymentId),
+    onSuccess: (next) => {
+      apply(next);
+      toast.success(t("paymentMarkedPaid"));
+    },
+  });
+  const cancelMutation = useMutation({
+    mutationFn: () => cancelOrganizationSubscription(organizationId),
+    onSuccess: (next) => {
+      apply(next);
+      toast.success(t("billingCancelled"));
+    },
+  });
+  const inviteMutation = useMutation({
+    mutationFn: () => sendPaymentInvitation(organizationId),
+    onSuccess: () => toast.success(t("billingInviteSent")),
+  });
+  const extendMutation = useMutation({
+    mutationFn: () => extendOrganizationTrial(organizationId, TRIAL_EXTENSION_DAYS),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: subscriptionKey }),
   });
 
-  const selectedPlan = plans?.find((p) => p.plan === plan);
-  const selectedPrice =
-    selectedPlan && (interval === INTERVAL_YEARLY ? selectedPlan.yearlyPrice : selectedPlan.monthlyPrice);
+  const status = subscription?.status ?? "Legacy";
 
   return (
     <div className="max-w-3xl space-y-6">
       <div>
-        <Link
-          href="/super-admin/organizations"
-          className="inline-flex items-center gap-1.5 text-sm text-ink-3 hover:text-ink"
-        >
+        <Link href="/super-admin/organizations" className="inline-flex items-center gap-1.5 text-sm text-ink-3 hover:text-ink">
           <ArrowLeft className="h-4 w-4" />
           {t("navOrganizations")}
         </Link>
-        <div className="mt-2 flex items-center gap-3">
-          <h1 className="text-2xl font-bold text-ink">{org?.name ?? t("loading")}</h1>
-          {subscription && (
-            <SubscriptionBadge
-              plan={subscription.plan}
-              active={subscription.isActive}
-              paymentStatus={subscription.lastPaymentStatus}
-            />
-          )}
-        </div>
+        <h1 className="mt-2 text-2xl font-bold text-ink">{org?.name ?? t("loading")}</h1>
         {org && <p className="mt-1 text-sm text-ink-3">{org.email}</p>}
       </div>
 
@@ -126,143 +127,203 @@ export default function OrganizationDetailPage() {
         <div className="text-sm text-ink-3">{t("loading")}</div>
       ) : (
         <>
-          {/* Plan toekennen */}
-          <section className="rounded-lg border border-rule bg-white p-6">
-            <h2 className="text-base font-bold text-ink">{t("subPlanTitle")}</h2>
-            <p className="mt-1 text-sm text-ink-3">{t("subPlanSubtitle")}</p>
+          <Card title={t("billingTitle")}>
+            {!subscription ? (
+              <p className="text-sm text-ink-3">{t("billingNone")}</p>
+            ) : (
+              <>
+                <dl>
+                  <Row label={t("billingStatus")}>
+                    {t(`billingStatus${status}`)}
+                    {subscription.isDeal && (
+                      <span className="ml-2 rounded-full bg-tennis-lime px-2 py-0.5 text-[11px] font-semibold text-ink">
+                        {t("billingDealBadge")}
+                      </span>
+                    )}
+                  </Row>
+                  {subscription.plan && (
+                    <Row label={t("billingPlan")}>
+                      {subscription.plan}
+                      {subscription.interval && ` · ${subscription.interval}`}
+                    </Row>
+                  )}
+                  {subscription.paymentMethod && (
+                    <Row label={t("billingMethod")}>
+                      {subscription.paymentMethod === "Mollie" ? t("billingMethodMollie") : t("billingMethodBankTransfer")}
+                    </Row>
+                  )}
+                  {subscription.plan && (
+                    <Row label={t("billingPrice")}>
+                      {t("billingPriceValue", {
+                        net: formatEuro(subscription.price),
+                        gross: formatEuro(subscription.priceInclVat),
+                      })}
+                    </Row>
+                  )}
+                  {subscription.currentPeriodStart && subscription.currentPeriodEnd && (
+                    <Row label={t("billingPeriod")}>
+                      {formatDateNL(subscription.currentPeriodStart)} – {formatDateNL(subscription.currentPeriodEnd)}
+                    </Row>
+                  )}
+                  {status === "Trialing" && subscription.trialEndsAt && (
+                    <Row label={t("billingTrialEnds")}>{formatDateNL(subscription.trialEndsAt)}</Row>
+                  )}
+                  {subscription.cancelAt && <Row label={t("billingCancelAt")}>{formatDateNL(subscription.cancelAt)}</Row>}
+                  {subscription.mollieCustomerId && (
+                    <Row label={t("billingMollieIds")}>
+                      <span className="font-mono text-xs">
+                        {subscription.mollieCustomerId}
+                        {subscription.mollieSubscriptionId && ` · ${subscription.mollieSubscriptionId}`}
+                      </span>
+                    </Row>
+                  )}
+                </dl>
 
-            <div className="mt-4 grid gap-4 sm:grid-cols-3">
-              <label className="block">
-                <span className="mb-1 block text-xs font-medium text-ink-2">{t("subPlanLabel")}</span>
-                <NativeSelect value={plan} onChange={(e) => setPlan(Number(e.target.value))}>
+                {(!subscription.billingConfigured || !subscription.invoicingConfigured) && (
+                  <div className="mt-3 space-y-1 rounded-md bg-amber-50 p-3 text-xs text-amber-800">
+                    {!subscription.billingConfigured && <p>{t("billingFakeMollie")}</p>}
+                    {!subscription.invoicingConfigured && <p>{t("billingFakeInvoicing")}</p>}
+                  </div>
+                )}
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {status === "Trialing" && (
+                    <Button variant="outline" onClick={() => extendMutation.mutate()} disabled={extendMutation.isPending}>
+                      {t("extendTrial", { days: TRIAL_EXTENSION_DAYS })}
+                    </Button>
+                  )}
+                  {status === "Legacy" && (
+                    <Button variant="outline" onClick={() => inviteMutation.mutate()} disabled={inviteMutation.isPending}>
+                      {t("billingInvite")}
+                    </Button>
+                  )}
+                  {status === "Active" && (
+                    <Button variant="outline" onClick={() => setConfirmCancel(true)} disabled={cancelMutation.isPending}>
+                      {t("billingCancel")}
+                    </Button>
+                  )}
+                </div>
+              </>
+            )}
+          </Card>
+
+          <Card title={t("dealTitle")} subtitle={t("dealSubtitle")}>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <label className="text-xs font-medium text-ink-2">
+                {t("dealPlan")}
+                <NativeSelect value={dealPlan} onChange={(e) => setDealPlan(Number(e.target.value))} className="mt-1">
                   {plans?.map((p) => (
                     <option key={p.plan} value={p.plan}>
-                      {p.name} ({p.studentLimit} lln.)
+                      {p.name}
                     </option>
                   ))}
                 </NativeSelect>
               </label>
-
-              <label className="block">
-                <span className="mb-1 block text-xs font-medium text-ink-2">{t("subIntervalLabel")}</span>
-                <NativeSelect value={interval} onChange={(e) => setInterval(Number(e.target.value))}>
-                  <option value={INTERVAL_MONTHLY}>{t("subMonthly")}</option>
-                  <option value={INTERVAL_YEARLY}>{t("subYearly")}</option>
-                </NativeSelect>
-              </label>
-
-              <label className="block">
-                <span className="mb-1 block text-xs font-medium text-ink-2">{t("subStartDate")}</span>
+              <label className="text-xs font-medium text-ink-2">
+                {t("dealPrice")}
                 <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className={inputClass}
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={dealPrice}
+                  onChange={(e) => setDealPrice(e.target.valueAsNumber || 0)}
+                  className={`${inputClass} mt-1`}
                 />
               </label>
+              <label className="text-xs font-medium text-ink-2">
+                {t("dealEndDate")}
+                <input type="date" value={dealEndDate} onChange={(e) => setDealEndDate(e.target.value)} className={`${inputClass} mt-1`} />
+              </label>
             </div>
+            <Button className="mt-4" onClick={() => dealMutation.mutate()} disabled={dealMutation.isPending || !dealEndDate}>
+              {t("dealSubmit")}
+            </Button>
+          </Card>
 
-            <div className="mt-4 flex items-center justify-between">
-              <span className="text-sm text-ink-2">
-                {selectedPrice !== undefined && (
-                  <>
-                    {t("subPrice")}: <strong className="text-ink">€{selectedPrice}</strong>{" "}
-                    {t("subExclVat")}
-                  </>
+          <Card title={t("profileTitle")}>
+            {subscription?.profile ? (
+              <dl>
+                <Row label={t("profileTitle")}>
+                  {subscription.profile.name}
+                  <br />
+                  {subscription.profile.street}, {subscription.profile.postalCode} {subscription.profile.city}
+                  <br />
+                  {subscription.profile.invoiceEmail}
+                </Row>
+                {subscription.profile.vatNumber && (
+                  <Row label={t("profileVat")}>
+                    {subscription.profile.vatNumber} (
+                    {subscription.profile.vatVerified ? t("profileVatVerified") : t("profileVatUnverified")})
+                  </Row>
                 )}
-              </span>
-              <Button onClick={() => assignMutation.mutate()} disabled={assignMutation.isPending}>
-                {assignMutation.isPending ? t("submitting") : t("subAssign")}
-              </Button>
-            </div>
-            {assignMutation.isError && (
-              <p className="mt-2 text-sm text-red-600">{t("subError")}</p>
+              </dl>
+            ) : (
+              <p className="text-sm text-ink-3">{t("profileNone")}</p>
             )}
-          </section>
+          </Card>
 
-          {subscription && (
-            <>
-              {/* Status */}
-              <section className="rounded-lg border border-rule bg-white p-6">
-                <h2 className="text-base font-bold text-ink">{t("subStatusTitle")}</h2>
-                <div className="mt-4 flex items-center justify-between">
-                  <div className="text-sm text-ink-2">
-                    {subscription.isActive ? t("subActive") : t("subInactive")}
-                  </div>
-                  <Button
-                    variant="outline"
-                    onClick={() => activeMutation.mutate(!subscription.isActive)}
-                    disabled={activeMutation.isPending}
-                  >
-                    {subscription.isActive ? t("subDeactivate") : t("subActivate")}
-                  </Button>
-                </div>
-              </section>
-
-              {/* Betaling */}
-              <section className="rounded-lg border border-rule bg-white p-6">
-                <h2 className="text-base font-bold text-ink">{t("subBillingTitle")}</h2>
-
-                {!subscription.billingConfigured && (
-                  <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                    {t("subFakeNote")}
-                  </p>
-                )}
-
-                <div className="mt-4 flex flex-wrap items-center gap-3">
-                  <Button
-                    onClick={() => paymentLinkMutation.mutate()}
-                    disabled={paymentLinkMutation.isPending}
-                  >
-                    {paymentLinkMutation.isPending ? t("submitting") : t("subGenerateLink")}
-                  </Button>
-                  {subscription.lastPaymentId && (
-                    <>
-                      <Button
-                        variant="outline"
-                        onClick={() => refreshMutation.mutate()}
-                        disabled={refreshMutation.isPending}
-                      >
-                        {t("subRefresh")}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={() => markPaidMutation.mutate()}
-                        disabled={markPaidMutation.isPending}
-                      >
-                        {t("subMarkPaid")}
-                      </Button>
-                    </>
-                  )}
-                </div>
-
-                {subscription.lastCheckoutUrl && (
-                  <div className="mt-4 space-y-2 text-sm">
-                    <div className="flex items-center gap-2">
-                      <span className="text-ink-3">{t("subCheckoutLink")}:</span>
-                      <a
-                        href={subscription.lastCheckoutUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-tennis-green hover:underline break-all"
-                      >
-                        {subscription.lastCheckoutUrl}
-                        <ExternalLink className="h-3.5 w-3.5 shrink-0" />
-                      </a>
+          <Card title={t("paymentsTitle")}>
+            {!subscription || subscription.payments.length === 0 ? (
+              <p className="text-sm text-ink-3">{t("paymentsEmpty")}</p>
+            ) : (
+              <ul className="divide-y divide-rule">
+                {subscription.payments.map((p) => (
+                  <li key={p.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 py-3 text-sm">
+                    <div className="min-w-[200px] flex-1">
+                      <p className="font-semibold text-ink">
+                        {p.plan} · {formatEuro(p.amountInclVat)} · {p.kind}
+                      </p>
+                      <p className="text-xs text-ink-3">
+                        {formatDateNL(p.periodStart)} – {formatDateNL(p.periodEnd)}
+                        {p.status === "Open" && p.dueDate && ` · ${t("paymentDue", { date: formatDateNL(p.dueDate) })}`}
+                      </p>
+                      {p.invoiceLastError && p.invoiceStatus === "Failed" && (
+                        <p className="text-xs text-red-600">{t("paymentInvoiceError", { error: p.invoiceLastError })}</p>
+                      )}
                     </div>
-                    <div className="text-ink-3">
-                      {t("subPaymentStatus")}:{" "}
-                      <strong className="text-ink">{subscription.lastPaymentStatus}</strong>
-                      {subscription.lastPaidAt &&
-                        ` · ${new Date(subscription.lastPaidAt).toLocaleString("nl-BE")}`}
-                    </div>
-                  </div>
-                )}
-              </section>
-            </>
-          )}
+                    <span className="text-xs font-semibold text-ink-2">{p.status}</span>
+                    {p.invoiceNumber &&
+                      (p.invoicePdfUrl ? (
+                        <a href={p.invoicePdfUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-tennis-green">
+                          <FileText className="h-3 w-3" />
+                          {t("paymentInvoice", { number: p.invoiceNumber })}
+                        </a>
+                      ) : (
+                        <span className="text-xs text-ink-3">{t("paymentInvoice", { number: p.invoiceNumber })}</span>
+                      ))}
+                    {p.status === "Open" && p.method === "BankTransfer" && (
+                      <Button size="sm" variant="outline" onClick={() => markPaidMutation.mutate(p.id)} disabled={markPaidMutation.isPending}>
+                        {t("paymentMarkPaid")}
+                      </Button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
         </>
       )}
+
+      <AlertDialog open={confirmCancel} onOpenChange={setConfirmCancel}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("billingCancelConfirmTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("billingCancelConfirmBody")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("billingCancelKeep")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setConfirmCancel(false);
+                cancelMutation.mutate();
+              }}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {t("billingCancelConfirm")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
