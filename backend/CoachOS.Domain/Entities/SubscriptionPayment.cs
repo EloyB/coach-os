@@ -39,5 +39,36 @@ public class SubscriptionPayment : BaseEntity
     public string? InvoicePdfUrl { get; set; }
     public string? InvoiceLastError { get; set; }
 
+    /// <summary>
+    /// Optimistische concurrency: webhooks en de factuurjob kunnen tegelijk dezelfde rij
+    /// bijwerken. Wordt bij elke wijziging vernieuwd (ApplicationDbContext.SaveChanges).
+    /// </summary>
+    public Guid ConcurrencyStamp { get; set; } = Guid.NewGuid();
+
     public Subscription Subscription { get; set; } = null!;
+
+    /// <summary>Nieuwe betaling voor een periode; bedragen met Belgische btw.</summary>
+    public static SubscriptionPayment ForPeriod(
+        Subscription subscription,
+        SubscriptionPaymentKind kind,
+        BillingPaymentMethod method,
+        SubscriptionPlan plan,
+        BillingInterval interval,
+        DateOnly periodStart,
+        DateOnly periodEnd,
+        decimal amountExclVat) => new()
+    {
+        Id = Guid.NewGuid(),
+        OrganizationId = subscription.OrganizationId,
+        SubscriptionId = subscription.Id,
+        Kind = kind,
+        Method = method,
+        Plan = plan,
+        Interval = interval,
+        PeriodStart = periodStart,
+        PeriodEnd = periodEnd,
+        AmountExclVat = amountExclVat,
+        VatRate = Subscriptions.BelgianVat.Rate,
+        AmountInclVat = Subscriptions.BelgianVat.Gross(amountExclVat),
+    };
 }

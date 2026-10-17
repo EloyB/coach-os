@@ -67,6 +67,36 @@ public class Subscription : BaseEntity
     public Organization Organization { get; set; } = null!;
     public ICollection<SubscriptionPayment> Payments { get; set; } = new List<SubscriptionPayment>();
 
+    /// <summary>
+    /// Een betaalde periode loopt (of de club zegde op maar de periode loopt nog): geen nieuwe
+    /// checkout toegelaten.
+    /// </summary>
+    public bool IsRunning(DateOnly today)
+        => Status == SubscriptionStatus.Active
+           || (Status == SubscriptionStatus.Cancelled && CancelAt is DateOnly cancelAt && cancelAt >= today);
+
+    /// <summary>
+    /// Zet een betaald plan actief met snapshot van prijs, limiet en meerprijs (voorwaarden
+    /// art. 6.1). <see cref="TrialEndsAt"/> blijft bewaard als historiek.
+    /// </summary>
+    public void ActivatePaidPlan(
+        SubscriptionPlan plan, BillingInterval interval, BillingPaymentMethod method,
+        DateOnly periodStart, DateOnly periodEnd, decimal priceExclVat)
+    {
+        Plan = plan;
+        Interval = interval;
+        PaymentMethod = method;
+        Price = priceExclVat;
+        StudentLimit = Subscriptions.SubscriptionPlanCatalog.Get(plan).StudentLimit;
+        OverageMarginPercent = Subscriptions.SubscriptionPlanCatalog.OverageMarginPercent;
+        OveragePricePerStudent = Subscriptions.SubscriptionPlanCatalog.OveragePricePerStudent;
+        CurrentPeriodStart = periodStart;
+        CurrentPeriodEnd = periodEnd;
+        Status = SubscriptionStatus.Active;
+        CancelAt = null;
+        IsDeal = false;
+    }
+
     /// <summary>Nieuwe proef van <see cref="TrialDays"/> dagen, zonder plan of betaalgegevens.</summary>
     public static Subscription StartTrial(Guid organizationId, DateOnly today) => new()
     {

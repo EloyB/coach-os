@@ -1,0 +1,41 @@
+using CoachOS.Domain.Entities;
+using CoachOS.Domain.Enums;
+using CoachOS.Domain.Interfaces;
+using CoachOS.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
+
+namespace CoachOS.Infrastructure.Repositories;
+
+public class SubscriptionPaymentRepository(ApplicationDbContext context) : ISubscriptionPaymentRepository
+{
+    public async Task AddAsync(SubscriptionPayment payment, CancellationToken ct = default)
+        => await context.SubscriptionPayments.AddAsync(payment, ct);
+
+    public async Task<SubscriptionPayment?> GetByIdAsync(Guid id, Guid organizationId, CancellationToken ct = default)
+        => await context.SubscriptionPayments
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(p => p.Id == id && p.OrganizationId == organizationId, ct);
+
+    public async Task<SubscriptionPayment?> GetByMolliePaymentIdAsync(string molliePaymentId, CancellationToken ct = default)
+        => await context.SubscriptionPayments
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(p => p.MolliePaymentId == molliePaymentId, ct);
+
+    public async Task<IReadOnlyList<SubscriptionPayment>> ListByOrganizationAsync(Guid organizationId, CancellationToken ct = default)
+        => await context.SubscriptionPayments
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(p => p.OrganizationId == organizationId)
+            .OrderByDescending(p => p.PeriodStart)
+            .ThenByDescending(p => p.CreatedAt)
+            .ToListAsync(ct);
+
+    public async Task<SubscriptionPayment?> GetLatestOpenFirstAsync(Guid organizationId, CancellationToken ct = default)
+        => await context.SubscriptionPayments
+            .IgnoreQueryFilters()
+            .Where(p => p.OrganizationId == organizationId
+                        && p.Kind == SubscriptionPaymentKind.First
+                        && p.Status == SubscriptionPaymentStatus.Open)
+            .OrderByDescending(p => p.CreatedAt)
+            .FirstOrDefaultAsync(ct);
+}

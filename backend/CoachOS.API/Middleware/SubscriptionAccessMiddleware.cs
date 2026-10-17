@@ -17,7 +17,8 @@ namespace CoachOS.API.Middleware;
 public class SubscriptionAccessMiddleware(RequestDelegate next)
 {
     // Paden die ook in enkel-lezen moeten blijven werken (sessiebeheer, eigen account).
-    private static readonly string[] AlwaysAllowedPrefixes = ["/api/auth", "/api/subscription", "/api/super-admin"];
+    // /api/billing: een vergrendelde club moet altijd een plan kunnen kiezen en betalen.
+    private static readonly string[] AlwaysAllowedPrefixes = ["/api/auth", "/api/subscription", "/api/super-admin", "/api/billing"];
 
     public async Task InvokeAsync(HttpContext context, IOptions<BillingOptions> billingOptions)
     {

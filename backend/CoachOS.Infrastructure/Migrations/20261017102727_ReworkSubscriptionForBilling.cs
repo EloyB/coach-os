@@ -131,6 +131,7 @@ namespace CoachOS.Infrastructure.Migrations
                     InvoiceNumber = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
                     InvoicePdfUrl = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
                     InvoiceLastError = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
+                    ConcurrencyStamp = table.Column<Guid>(type: "uuid", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },

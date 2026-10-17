@@ -210,6 +210,8 @@ public class ApplicationDbContext(
             else if (entry.State == EntityState.Modified)
             {
                 entry.Entity.UpdatedAt = now;
+                if (entry.Entity is SubscriptionPayment payment)
+                    payment.ConcurrencyStamp = Guid.NewGuid();
             }
         }
 

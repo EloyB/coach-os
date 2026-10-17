@@ -136,6 +136,9 @@ public static class DependencyInjection
         services.AddScoped<IAssignmentConfirmationTokenRepository, AssignmentConfirmationTokenRepository>();
         services.AddScoped<IPaymentRepository, PaymentRepository>();
         services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();
+        services.AddScoped<ISubscriptionPaymentRepository, SubscriptionPaymentRepository>();
+        services.AddScoped<IBillingProfileRepository, BillingProfileRepository>();
+        services.AddScoped<IActiveStudentCounter, ActiveStudentCounter>();
         services.AddScoped<IOrganizationRepository, OrganizationRepository>();
         services.AddScoped<IMagicLinkTokenRepository, MagicLinkTokenRepository>();
         services.AddScoped<IStudentMagicLinkService, StudentMagicLinkService>();
@@ -144,7 +147,6 @@ public static class DependencyInjection
         services.AddScoped<IOrganizationSettingsRepository, OrganizationSettingsRepository>();
         services.AddScoped<IMollieConnectionRepository, MollieConnectionRepository>();
         services.AddScoped<IOAuthStateRepository, OAuthStateRepository>();
-        services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();
         services.AddHostedService<TrialReminderWorker>();
         services.AddScoped<ICampRepository, CampRepository>();
         services.AddScoped<ICampEnrollmentRepository, CampEnrollmentRepository>();

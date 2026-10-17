@@ -19,6 +19,7 @@ public class SubscriptionPaymentConfiguration : IEntityTypeConfiguration<Subscri
         builder.Property(p => p.InvoiceNumber).HasMaxLength(50);
         builder.Property(p => p.InvoicePdfUrl).HasMaxLength(1000);
         builder.Property(p => p.InvoiceLastError).HasMaxLength(2000);
+        builder.Property(p => p.ConcurrencyStamp).IsConcurrencyToken();
 
         builder.HasOne(p => p.Subscription)
             .WithMany(s => s.Payments)

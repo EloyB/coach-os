@@ -1,3 +1,4 @@
+using CoachOS.Application.Billing;
 using System.Reflection;
 using CoachOS.Application.Camps;
 using CoachOS.Application.Dashboard;
@@ -56,6 +57,7 @@ public static class DependencyInjection
         services.AddScoped<IPlanningExportService, PlanningExportService>();
         services.AddScoped<ICampExportService, CampExportService>();
         services.AddScoped<ISubscriptionAccessService, SubscriptionAccessService>();
+        services.AddScoped<IBillingService, BillingService>();
         services.AddScoped<ITrialReminderService, TrialReminderService>();
 
         return services;

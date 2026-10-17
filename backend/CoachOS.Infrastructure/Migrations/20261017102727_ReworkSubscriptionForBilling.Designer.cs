@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CoachOS.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20261017101539_ReworkSubscriptionForBilling")]
+    [Migration("20261017102727_ReworkSubscriptionForBilling")]
     partial class ReworkSubscriptionForBilling
     {
         /// <inheritdoc />
@@ -1647,6 +1647,10 @@ namespace CoachOS.Infrastructure.Migrations
                     b.Property<string>("CheckoutUrl")
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
