@@ -15,4 +15,7 @@ public interface IUserLookupService
     Task<int> CountActiveTrainersAsync(Guid organizationId, CancellationToken ct = default);
     Task<Dictionary<Guid, (string FullName, string Email)>> GetUserNamesAndEmailsByIdsAsync(IEnumerable<Guid> ids, CancellationToken ct = default);
     Task<(string FullName, string Email)?> GetUserInfoByIdAsync(Guid id, CancellationToken ct = default);
+
+    /// <summary>E-mailadressen van de actieve beheerders (rol Admin) van een organisatie.</summary>
+    Task<IReadOnlyList<string>> GetActiveAdminEmailsAsync(Guid organizationId, CancellationToken ct = default);
 }
