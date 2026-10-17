@@ -477,6 +477,44 @@ public class EmailService(
         await SendAsync(toEmail, organizationName, subject, html, ct);
     }
 
+    public Task SendSubscriptionStartedAsync(
+        string toEmail, string organizationName, string planName, string intervalLabel,
+        decimal amountInclVat, DateOnly periodStart, bool bankTransfer, DateOnly? dueDate,
+        string manageUrl, CancellationToken ct = default)
+        => SendBillingNoticeAsync(toEmail, organizationName,
+            BillingEmails.SubscriptionStarted(planName, intervalLabel, amountInclVat, periodStart, bankTransfer, dueDate),
+            manageUrl, ct);
+
+    public Task SendSubscriptionPaymentFailedAsync(
+        string toEmail, string organizationName, decimal amountInclVat, string paymentUrl,
+        CancellationToken ct = default)
+        => SendBillingNoticeAsync(toEmail, organizationName, BillingEmails.PaymentFailed(amountInclVat), paymentUrl, ct);
+
+    public Task SendSubscriptionInvitationAsync(
+        string toEmail, string organizationName, string subscribeUrl, CancellationToken ct = default)
+        => SendBillingNoticeAsync(toEmail, organizationName, BillingEmails.Invitation(), subscribeUrl, ct);
+
+    public Task SendBillingSuperAdminNoticeAsync(
+        string toEmail, string subject, string body, string? link, CancellationToken ct = default)
+        => SendBillingNoticeAsync(toEmail, "superadmin",
+            new BillingEmailContent($"[CoachOS facturatie] {subject}", subject, body, "Openen"),
+            link ?? "https://app.coach-os.be/super-admin", ct);
+
+    private async Task SendBillingNoticeAsync(
+        string toEmail, string organizationName, BillingEmailContent content, string buttonUrl, CancellationToken ct)
+    {
+        string html = renderer.Render("billing-notice", new Dictionary<string, string>
+        {
+            ["organizationName"] = organizationName,
+            ["heading"] = content.Heading,
+            ["body"] = content.Body,
+            ["buttonLabel"] = content.ButtonLabel,
+            ["buttonUrl"] = buttonUrl,
+            ["year"] = DateTime.UtcNow.Year.ToString(),
+        });
+        await SendAsync(toEmail, organizationName, content.Subject, html, ct);
+    }
+
     // ── Core send method (reused by all email types) ──────────────────────────
 
     /// <summary>
