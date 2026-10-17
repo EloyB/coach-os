@@ -45,7 +45,7 @@ We werken met deze dienstverleners, die gegevens alleen in onze opdracht verwerk
 | Google Ireland Ltd (Google Workspace) | Onze mailbox | EU/wereldwijd. Bij doorgifte buiten de EER gelden standaardcontractbepalingen en het EU-US Data Privacy Framework. |
 | Mollie B.V. | Betaling van abonnementen **[vanaf de start van betaalde abonnementen]** | Nederland (EU) |
 | Billit NV | Facturatie en verzending van facturen via Peppol **[vanaf de start van betaalde abonnementen]** | België (EU) |
-| GitHub Inc. | Ontwikkeling en uitrol van nieuwe versies | VS (standaardcontractbepalingen, EU-US Data Privacy Framework) **[zie verwerkersovereenkomst, bijlage III]** |
+| GitHub Inc. | Ontwikkeling en uitrol van nieuwe versies | VS (standaardcontractbepalingen, EU-US Data Privacy Framework) **[wordt geschrapt na issue #260]** |
 
 Daarnaast geven we gegevens alleen door als de wet ons daartoe verplicht, bijvoorbeeld op vraag van een gerechtelijke instantie.
 

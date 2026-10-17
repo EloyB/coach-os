@@ -108,7 +108,7 @@ Wat nog niet bekend is, wordt aangevuld zodra het beschikbaar is.
 
 ## 11. Aansprakelijkheid
 
-Voor de aansprakelijkheid tussen partijen gelden de beperkingen uit artikel 12 van de algemene voorwaarden. Die beperkingen doen geen afbreuk aan de rechten van betrokkenen uit artikel 82 AVG. **[KEUZE: advocaat laten beoordelen of het plafond ook voor privacy-inbreuken moet gelden, of een apart, hoger plafond]**
+Voor de aansprakelijkheid tussen partijen gelden de beperkingen uit artikel 12 van de algemene voorwaarden. Die beperkingen doen geen afbreuk aan de rechten van betrokkenen uit artikel 82 AVG. **[VRAAG VOOR DE ADVOCAAT: moet dit plafond ook gelden voor privacy-inbreuken, of is een apart, hoger plafond aangewezen?]**
 
 ## 12. Toepasselijk recht
 
@@ -205,7 +205,7 @@ De verwerker slaat **geen** betaalkaart- of bankrekeninggegevens van spelers op.
 |---|---|---|---|---|
 | **Scaleway SAS** | Frankrijk | Hosting van server en database, opslag van geheime sleutels, DNS en het versturen van e-mails (Transactional Email) | Parijs, Frankrijk (EU) | Verwerkersovereenkomst van Scaleway |
 | **Google Ireland Ltd** (Google Workspace) | Ierland | Ontvangst en opslag van e-mail naar @coach-os.be-adressen, zoals supportvragen van de Klant die persoonsgegevens kunnen bevatten | EU/wereldwijd | Cloud Data Processing Addendum van Google, met standaardcontractbepalingen en EU-US Data Privacy Framework |
-| **GitHub Inc.** | Verenigde Staten | Uitvoeren van database-updates bij een nieuwe versie van de Dienst. Er worden geen gegevens gekopieerd, maar er is tijdens die stap wel technische toegang. | VS | GitHub Data Protection Agreement, met standaardcontractbepalingen en EU-US Data Privacy Framework. **[KEUZE: liever de database-updates vanaf de eigen server in Frankrijk laten lopen; dan valt GitHub als subverwerker weg]** |
+| **GitHub Inc.** | Verenigde Staten | Uitvoeren van database-updates bij een nieuwe versie van de Dienst. Er worden geen gegevens gekopieerd, maar er is tijdens die stap wel technische toegang. | VS | GitHub Data Protection Agreement, met standaardcontractbepalingen en EU-US Data Privacy Framework. **[WORDT GESCHRAPT: de database-updates verhuizen naar de eigen server in Frankrijk, waarna GitHub geen subverwerker meer is — issue #260]** |
 
 **Geen subverwerker: de betaalprovider van de Klant.** Online betalingen van spelers verlopen via het eigen Mollie-account van de Klant, dat de Klant zelf aan CoachOS koppelt. Mollie B.V. (Nederland) handelt die betalingen af op basis van de overeenkomst tussen de Klant en Mollie. CoachOS stuurt Mollie alleen het bedrag, een omschrijving en technische referenties. Naam en e-mailadres vult de betaler zelf in bij Mollie.
 

@@ -140,7 +140,7 @@ Bij een ernstige inbreuk mogen we het betrokken onderdeel of account tijdelijk b
 - de overeenkomst tussen de Klant en zijn Spelers;
 - storingen bij derden die we niet in de hand hebben, zoals betaalproviders, e-mailontvangers en internetproviders.
 
-12.3. Onze totale aansprakelijkheid is per kalenderjaar beperkt tot het bedrag dat de Klant ons in de 12 maanden vóór het schadegeval betaald heeft. Tijdens de gratis Proefperiode is ze beperkt tot € 250. **[KEUZE: bedragen]**
+12.3. Onze totale aansprakelijkheid is per kalenderjaar beperkt tot het bedrag dat de Klant ons in de 12 maanden vóór het schadegeval betaald heeft. Tijdens de gratis Proefperiode is ze beperkt tot € 250.
 
 12.4. Deze beperkingen gelden niet bij opzet of grove fout, bij fraude, en ook niet als de wet ze anders niet toelaat.
 
