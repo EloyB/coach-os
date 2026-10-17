@@ -100,7 +100,7 @@ public class BillingReviewFixTests
         SubscriptionPayment first = await CheckoutAsync(org.Id, Mollie(SubscriptionPlan.Set, BillingInterval.Monthly));
         // Eerste betaling blijft open maar is ouder dan het blokkeervenster van een uur.
         SubscriptionPayment old = _ctx.Db.SubscriptionPayments.Single(p => p.Id == first.Id);
-        old.CreatedAt = DateTime.UtcNow.AddHours(-3);
+        old.CreatedAt = _ctx.Time.GetUtcNow().UtcDateTime.AddHours(-3);
         await _ctx.Db.SaveChangesAsync();
         _ctx.Db.ChangeTracker.Clear();
         SubscriptionPayment second = await CheckoutAsync(org.Id, Mollie(SubscriptionPlan.Game, BillingInterval.Monthly));
@@ -261,5 +261,18 @@ public class BillingReviewFixTests
         created.Should().Be(0);
         (await _ctx.ReloadPaymentsAsync(org.Id)).Single().InvoiceStatus.Should().Be(InvoiceStatus.Pending);
         _ctx.Invoicing.Verify(i => i.CreateInvoiceAsync(It.IsAny<InvoiceRequest>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    // ── Hermes: dev-endpoint enkel voor betalingen van de eigen organisatie ─────────────
+
+    [Test]
+    public async Task IsOwnPayment_OnlyForPaymentsOfTheCallerOrganization()
+    {
+        (Organization org, _) = await _ctx.SeedOrganizationAsync(SubscriptionStatus.Locked);
+        SubscriptionPayment payment = await CheckoutAsync(org.Id, Mollie(SubscriptionPlan.Game, BillingInterval.Monthly));
+
+        (await _sync.IsOwnPaymentAsync(org.Id, payment.MolliePaymentId!)).Should().BeTrue();
+        (await _sync.IsOwnPaymentAsync(Guid.NewGuid(), payment.MolliePaymentId!)).Should().BeFalse();
+        (await _sync.IsOwnPaymentAsync(org.Id, "tr_onbekend")).Should().BeFalse();
     }
 }

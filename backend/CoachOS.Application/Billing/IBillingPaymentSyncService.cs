@@ -23,4 +23,7 @@ public interface IBillingPaymentSyncService
     /// eerste betaling) krijgen alsnog hun automatische verlenging. Geeft het aantal herstelde terug.
     /// </summary>
     Task<int> ReconcileMissingRenewalsAsync(DateOnly today, CancellationToken ct = default);
+
+    /// <summary>True als de Mollie-betaling bij een abonnement van deze organisatie hoort.</summary>
+    Task<bool> IsOwnPaymentAsync(Guid organizationId, string molliePaymentId, CancellationToken ct = default);
 }

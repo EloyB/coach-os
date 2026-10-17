@@ -1,3 +1,4 @@
+using CoachOS.API.Extensions;
 using CoachOS.Application.Billing;
 using CoachOS.Domain.Models;
 using CoachOS.Infrastructure.Mollie;
@@ -19,10 +20,13 @@ public class SetFakeBillingPaymentStatusEndpoint : IEndpoint
     {
         app.MapPost("/dev/billing/fake-payments/{id}/status", async (
                 string id, FakeStatusRequest request, IServiceProvider services,
-                IBillingPaymentSyncService sync, CancellationToken ct) =>
+                IBillingPaymentSyncService sync, HttpContext ctx, CancellationToken ct) =>
             {
                 FakeBillingMollieClient? fake = services.GetService<FakeBillingMollieClient>();
                 if (fake is null)
+                    return Results.NotFound();
+                // Enkel betalingen van de eigen organisatie.
+                if (!await sync.IsOwnPaymentAsync(ctx.GetOrganizationId(), id, ct))
                     return Results.NotFound();
                 if (!AllowedStatuses.Contains(request.Status))
                     return Results.BadRequest(new[] { "Ongeldige status" });

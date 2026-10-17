@@ -177,6 +177,12 @@ public class BillingPaymentSyncService(
         return true;
     }
 
+    public async Task<bool> IsOwnPaymentAsync(Guid organizationId, string molliePaymentId, CancellationToken ct = default)
+    {
+        SubscriptionPayment? payment = await payments.GetByMolliePaymentIdAsync(molliePaymentId, ct);
+        return payment is not null && payment.OrganizationId == organizationId;
+    }
+
     public async Task<int> ReconcileMissingRenewalsAsync(DateOnly today, CancellationToken ct = default)
     {
         IReadOnlyList<Subscription> missing = await subscriptions.ListMissingAutomaticRenewalAsync(ct);

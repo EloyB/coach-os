@@ -96,13 +96,31 @@ public class BillingMollieClient(
             : Result<string>.Fail(response.Errors);
     }
 
+    /// <summary>
+    /// Elk 2xx-antwoord is succes, ook zonder body (204 No Content): een DELETE moet geen object
+    /// teruggeven om geslaagd te zijn.
+    /// </summary>
     public async Task<Result> CancelSubscriptionAsync(string customerId, string subscriptionId, CancellationToken ct = default)
     {
-        Result<MollieIdResponse> response = await SendAsync<MollieIdResponse>(
-            HttpMethod.Delete,
-            $"/v2/customers/{Uri.EscapeDataString(customerId)}/subscriptions/{Uri.EscapeDataString(subscriptionId)}",
-            null, "Kon de automatische verlenging bij Mollie niet stopzetten.", ct);
-        return response.IsSuccess ? Result.Ok() : Result.Fail(response.Errors);
+        string path = $"/v2/customers/{Uri.EscapeDataString(customerId)}/subscriptions/{Uri.EscapeDataString(subscriptionId)}";
+        using HttpRequestMessage request = new(HttpMethod.Delete, $"{_options.ApiBaseUrl.TrimEnd('/')}{path}");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _options.ApiKey);
+
+        try
+        {
+            using HttpResponseMessage response = await httpClient.SendAsync(request, ct);
+            if (response.IsSuccessStatusCode)
+                return Result.Ok();
+
+            string error = await response.Content.ReadAsStringAsync(ct);
+            logger.LogWarning("Mollie billing DELETE {Path} gaf {Status}: {Body}", path, (int)response.StatusCode, error);
+            return Result.Fail(new Error(ErrorCodes.ExternalService, "Kon de automatische verlenging bij Mollie niet stopzetten."));
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException && !ct.IsCancellationRequested)
+        {
+            logger.LogError(ex, "Fout bij Mollie billing DELETE {Path}", path);
+            return Result.Fail(new Error(ErrorCodes.ExternalService, "Kon Mollie niet bereiken."));
+        }
     }
 
     public async Task<Result> RefundPaymentAsync(string paymentId, decimal amount, string description, CancellationToken ct = default)

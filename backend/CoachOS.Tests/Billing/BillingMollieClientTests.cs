@@ -93,6 +93,16 @@ public class BillingMollieClientTests
     }
 
     [Test]
+    public async Task CancelSubscription_NoContentResponse_IsSuccess()
+    {
+        RecordingHttpHandler handler = new(_ => new HttpResponseMessage(HttpStatusCode.NoContent));
+
+        Result result = await Create(handler).CancelSubscriptionAsync("cst_1", "sub_1");
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Test]
     public async Task Refund_PostsAmountToPaymentRefunds()
     {
         RecordingHttpHandler handler = RecordingHttpHandler.Json(HttpStatusCode.Created, """{"id":"re_1","status":"queued"}""");
