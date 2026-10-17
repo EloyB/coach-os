@@ -20,6 +20,8 @@ import { OnboardingChecklist } from "@/components/dashboard/onboarding/onboardin
 import { WelcomeModal } from "@/components/dashboard/onboarding/welcome-modal";
 import { getAuthUser } from "@/lib/auth";
 import { getOnboardingState } from "@/lib/api/onboarding";
+import { TrainerDashboard } from "@/components/dashboard/trainer-dashboard";
+import { useClientValue } from "@/lib/hooks/use-client-value";
 
 function formatDate(dateStr: string): string {
   const [year, month, day] = dateStr.split("-");
@@ -131,7 +133,7 @@ function InboxSection({ inbox }: { inbox: InboxResponse | undefined }) {
   );
 }
 
-export default function DashboardPage() {
+function AdminDashboard() {
   const t = useTranslations("dashboard");
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -348,4 +350,13 @@ export default function DashboardPage() {
       </div>
     </>
   );
+}
+
+export default function DashboardPage() {
+  // De rol zit in localStorage en is pas na mount bekend. Tot dan renderen we niets, zodat een
+  // trainer nooit even de (organisatiebrede) beheerdersqueries afvuurt.
+  const role = useClientValue(() => getAuthUser()?.role ?? "");
+
+  if (role === null) return null;
+  return role === "Trainer" ? <TrainerDashboard /> : <AdminDashboard />;
 }

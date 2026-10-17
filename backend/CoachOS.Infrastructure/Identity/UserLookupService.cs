@@ -19,6 +19,15 @@ public class UserLookupService(
             .ToDictionaryAsync(u => u.Id, u => (u.FirstName + " " + u.LastName).Trim(), ct);
     }
 
+    public async Task<int?> GetWeeklyCapacityHoursAsync(Guid userId, Guid organizationId, CancellationToken ct = default)
+    {
+        return await context.OrganizationMemberships
+            .AsNoTracking()
+            .Where(m => m.UserId == userId && m.OrganizationId == organizationId && m.IsActive)
+            .Select(m => (int?)m.WeeklyCapacityHours)
+            .FirstOrDefaultAsync(ct);
+    }
+
     public async Task<string?> GetUserNameByIdAsync(Guid id, CancellationToken ct = default)
     {
         var result = await context.Users

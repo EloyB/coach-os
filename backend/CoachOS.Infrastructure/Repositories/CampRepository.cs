@@ -16,6 +16,21 @@ public class CampRepository(ApplicationDbContext db) : ICampRepository
             .OrderByDescending(c => c.StartDate)
             .ToListAsync(ct);
 
+    public async Task<IReadOnlyList<CampDayTrainer>> GetTrainerDaysAsync(
+        Guid trainerId, Guid organizationId, DateOnly from, DateOnly to, CancellationToken ct = default)
+        => await db.CampDayTrainers
+            .AsNoTracking()
+            .Include(a => a.CampDay)
+                .ThenInclude(d => d.Camp)
+                    .ThenInclude(c => c.TennisClub)
+            .Where(a => a.OrganizationId == organizationId
+                && a.TrainerId == trainerId
+                && a.CampDay.Date >= from && a.CampDay.Date <= to
+                && a.CampDay.Camp.IsActive)
+            .OrderBy(a => a.CampDay.Date)
+            .ThenBy(a => a.StartTime)
+            .ToListAsync(ct);
+
     public async Task<Camp?> GetByIdWithDetailsAsync(Guid id, Guid organizationId, CancellationToken ct = default)
         => await db.Camps
             .Include(c => c.Days).ThenInclude(d => d.TrainerAssignments)
