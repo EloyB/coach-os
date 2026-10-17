@@ -163,6 +163,112 @@ public class BillingService(
             : await StartMollieAsync(organization, profile, subscription, plan, interval, periodStart, periodEnd, priceExclVat, ct);
     }
 
+    public async Task<Result<BillingOverviewDto>> CancelAsync(Guid organizationId, CancellationToken ct = default)
+    {
+        DateOnly today = timeProvider.GetBrusselsToday();
+        Subscription? subscription = await subscriptions.GetByOrganizationAsync(organizationId, tracked: true, ct);
+        if (subscription is null || subscription.Status != SubscriptionStatus.Active)
+            return Result<BillingOverviewDto>.Fail(new Error(ErrorCodes.Validation, "Er is geen lopend abonnement om op te zeggen."));
+
+        if (!string.IsNullOrEmpty(subscription.MollieSubscriptionId) && !string.IsNullOrEmpty(subscription.MollieCustomerId))
+        {
+            Result stopped = await mollie.CancelSubscriptionAsync(subscription.MollieCustomerId, subscription.MollieSubscriptionId, ct);
+            if (!stopped.IsSuccess)
+                return Result<BillingOverviewDto>.Fail(stopped.Errors);
+        }
+
+        bool paidPeriodStarted = subscription.CurrentPeriodStart is not DateOnly start || today >= start;
+        if (subscription.IsDeal)
+        {
+            subscription.Status = SubscriptionStatus.Cancelled;
+            subscription.CancelAt = today;
+            subscription.CurrentPeriodEnd = today;
+        }
+        else if (paidPeriodStarted)
+        {
+            subscription.Status = SubscriptionStatus.Cancelled;
+            subscription.CancelAt = subscription.CurrentPeriodEnd;
+        }
+        else
+        {
+            Result undone = await UndoPrepaidPeriodAsync(subscription, ct);
+            if (!undone.IsSuccess)
+                return Result<BillingOverviewDto>.Fail(undone.Errors);
+            subscription.LockAfterTrialCancellation(today);
+        }
+
+        await unitOfWork.SaveChangesAsync(ct);
+        logger.LogInformation("Abonnement van {OrgId} opgezegd (status {Status})", organizationId, subscription.Status);
+        return await GetOverviewAsync(organizationId, ct);
+    }
+
+    /// <summary>
+    /// Betaald tijdens de proef en opgezegd voor de periode begon: Mollie-betaling terugstorten,
+    /// openstaande factuur schrappen. Een al gemaakte factuur vraagt een creditnota (superadmin).
+    /// </summary>
+    private async Task<Result> UndoPrepaidPeriodAsync(Subscription subscription, CancellationToken ct)
+    {
+        IReadOnlyList<SubscriptionPayment> history = await payments.ListBySubscriptionAsync(subscription.Id, ct);
+        List<string> invoiceNumbers = [];
+        bool manualRefund = false;
+
+        foreach (SubscriptionPayment snapshot in history.Where(p => p.PeriodStart == subscription.CurrentPeriodStart))
+        {
+            SubscriptionPayment? payment = await payments.GetByIdAsync(snapshot.Id, subscription.OrganizationId, ct);
+            if (payment is null)
+                continue;
+
+            if (payment.Status == SubscriptionPaymentStatus.Paid && payment.Method == BillingPaymentMethod.Mollie
+                && payment.MolliePaymentId is string molliePaymentId)
+            {
+                Result refund = await mollie.RefundPaymentAsync(molliePaymentId, payment.AmountInclVat,
+                    "Opzegging CoachOS-abonnement voor de start", ct);
+                if (!refund.IsSuccess)
+                    return refund;
+                payment.Status = SubscriptionPaymentStatus.Refunded;
+            }
+            else if (payment.Status == SubscriptionPaymentStatus.Paid)
+            {
+                manualRefund = true;
+            }
+            else if (payment.Status == SubscriptionPaymentStatus.Open)
+            {
+                payment.Status = SubscriptionPaymentStatus.Canceled;
+            }
+
+            if (payment.InvoiceStatus == InvoiceStatus.Created)
+                invoiceNumbers.Add(payment.InvoiceNumber ?? payment.Id.ToString());
+            else
+                payment.InvoiceStatus = InvoiceStatus.NotNeeded;
+        }
+
+        Organization? organization = await organizations.GetByIdAsync(subscription.OrganizationId, tracked: false, ct);
+        string name = organization?.Name ?? subscription.OrganizationId.ToString();
+        string body = $"{name} zegde het abonnement op voor de betaalde periode begon. Het account is vergrendeld tot de club een plan kiest.";
+        if (invoiceNumbers.Count > 0)
+            body += $" Maak een creditnota in Billit voor factuur {string.Join(", ", invoiceNumbers)}.";
+        if (manualRefund)
+            body += " Er was al per overschrijving betaald: stort dat bedrag manueel terug.";
+        await NotifySuperAdminAsync("Opzegging tijdens de proef", body, ct);
+
+        return Result.Ok();
+    }
+
+    private async Task NotifySuperAdminAsync(string subject, string body, CancellationToken ct)
+    {
+        string to = superAdminOptions.Value.Email;
+        if (string.IsNullOrWhiteSpace(to))
+            return;
+        try
+        {
+            await email.SendBillingSuperAdminNoticeAsync(to, subject, body, $"{_frontendBaseUrl}/super-admin", ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "Superadmin-melding '{Subject}' versturen mislukt", subject);
+        }
+    }
+
     private async Task<Result<CheckoutResultDto>> StartBankTransferAsync(
         Organization organization, Subscription subscription, SubscriptionPlan plan, BillingInterval interval,
         DateOnly periodStart, DateOnly periodEnd, decimal priceExclVat, DateOnly today, CancellationToken ct)

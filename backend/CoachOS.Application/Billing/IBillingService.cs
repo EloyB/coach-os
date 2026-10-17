@@ -17,4 +17,11 @@ public interface IBillingService
     /// </summary>
     Task<Result<CheckoutResultDto>> StartCheckoutAsync(
         Guid organizationId, CheckoutRequest request, CancellationToken ct = default);
+
+    /// <summary>
+    /// Zegt het lopende abonnement op. Loopt de betaalde periode al: stopt aan het einde ervan
+    /// (geen terugbetaling). Betaald tijdens de proef, periode nog niet begonnen: terugbetaling,
+    /// geen proef meer en het account wordt vergrendeld tot er een plan gekozen wordt.
+    /// </summary>
+    Task<Result<BillingOverviewDto>> CancelAsync(Guid organizationId, CancellationToken ct = default);
 }

@@ -97,6 +97,28 @@ public class Subscription : BaseEntity
         IsDeal = false;
     }
 
+    /// <summary>
+    /// Opzegging voor de eerste betaalde periode begon: proef stopt (gisteren was de laatste dag),
+    /// plan en periode vervallen en het account is vergrendeld tot er opnieuw een plan gekozen wordt.
+    /// De Mollie customer blijft bewaard voor een volgende checkout.
+    /// </summary>
+    public void LockAfterTrialCancellation(DateOnly today)
+    {
+        Status = SubscriptionStatus.Locked;
+        TrialEndsAt = today.AddDays(-1);
+        Plan = null;
+        Interval = null;
+        PaymentMethod = null;
+        Price = 0m;
+        StudentLimit = null;
+        OverageMarginPercent = null;
+        OveragePricePerStudent = null;
+        CurrentPeriodStart = null;
+        CurrentPeriodEnd = null;
+        CancelAt = null;
+        MollieSubscriptionId = null;
+    }
+
     /// <summary>Nieuwe proef van <see cref="TrialDays"/> dagen, zonder plan of betaalgegevens.</summary>
     public static Subscription StartTrial(Guid organizationId, DateOnly today) => new()
     {
