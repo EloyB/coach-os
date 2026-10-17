@@ -205,6 +205,7 @@ public class BillingService(
         bool paidPeriodStarted = subscription.CurrentPeriodStart is not DateOnly start || today >= start;
         if (subscription.IsDeal)
         {
+            await SettleCancelledDealAsync(subscription, ct);
             subscription.Status = SubscriptionStatus.Cancelled;
             subscription.CancelAt = today;
             subscription.CurrentPeriodEnd = today;
@@ -278,6 +279,50 @@ public class BillingService(
         await NotifySuperAdminAsync("Opzegging tijdens de proef", body, ct);
 
         return Result.Ok();
+    }
+
+    /// <summary>
+    /// Een deal stopt meteen bij opzegging: de openstaande dealbetaling vervalt, zodat de volledige
+    /// periode niet meer aangerekend wordt. Een al verstuurde factuur vraagt een creditnota, een al
+    /// betaalde deal een manuele afrekening (superadmin).
+    /// </summary>
+    private async Task SettleCancelledDealAsync(Subscription subscription, CancellationToken ct)
+    {
+        IReadOnlyList<SubscriptionPayment> history = await payments.ListBySubscriptionAsync(subscription.Id, ct);
+        List<string> invoiceNumbers = [];
+        List<string> paidInvoices = [];
+        foreach (SubscriptionPayment snapshot in history.Where(p => p.Kind == SubscriptionPaymentKind.Deal
+                     && p.PeriodStart == subscription.CurrentPeriodStart))
+        {
+            SubscriptionPayment? payment = await payments.GetByIdAsync(snapshot.Id, subscription.OrganizationId, ct);
+            if (payment is null)
+                continue;
+
+            if (payment.Status == SubscriptionPaymentStatus.Paid)
+            {
+                paidInvoices.Add(payment.InvoiceNumber ?? payment.Id.ToString());
+                continue;
+            }
+            if (payment.Status != SubscriptionPaymentStatus.Open)
+                continue;
+
+            payment.Status = SubscriptionPaymentStatus.Canceled;
+            if (payment.InvoiceStatus == InvoiceStatus.Created)
+                invoiceNumbers.Add(payment.InvoiceNumber ?? payment.Id.ToString());
+            else
+                payment.InvoiceStatus = InvoiceStatus.NotNeeded;
+        }
+
+        if (invoiceNumbers.Count == 0 && paidInvoices.Count == 0)
+            return;
+
+        Organization? organization = await organizations.GetByIdAsync(subscription.OrganizationId, tracked: false, ct);
+        string body = $"De deal van {organization?.Name ?? subscription.OrganizationId.ToString()} werd vandaag stopgezet.";
+        if (invoiceNumbers.Count > 0)
+            body += $" Maak een creditnota in Billit voor factuur {string.Join(", ", invoiceNumbers)}.";
+        if (paidInvoices.Count > 0)
+            body += $" De deal was al betaald ({string.Join(", ", paidInvoices)}): regel een eventuele terugbetaling en creditnota manueel.";
+        await NotifySuperAdminAsync("Deal stopgezet", body, ct);
     }
 
     /// <summary>

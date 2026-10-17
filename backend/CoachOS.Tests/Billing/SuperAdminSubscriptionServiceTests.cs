@@ -183,4 +183,62 @@ public class SuperAdminSubscriptionServiceTests
         dto.Profile!.Name.Should().Be("TC Brederode vzw");
         dto.Payments.Should().ContainSingle().Which.Status.Should().Be("Open");
     }
+
+    // ── Deal opzeggen: de openstaande dealbetaling mag de volledige periode niet meer aanrekenen ──
+
+    private async Task<(Organization Org, SubscriptionPayment Deal)> ActiveDealAsync()
+    {
+        (Organization org, _) = await _ctx.SeedOrganizationAsync(SubscriptionStatus.Legacy);
+        await _sut.AssignDealAsync(org.Id, Deal(300m));
+        _ctx.Db.ChangeTracker.Clear();
+        return (org, (await _ctx.ReloadPaymentsAsync(org.Id)).Single());
+    }
+
+    [Test]
+    public async Task CancelDeal_OpenPaymentNotYetInvoiced_IsCanceledWithoutInvoice()
+    {
+        (Organization org, _) = await ActiveDealAsync();
+
+        (await _sut.CancelAsync(org.Id)).IsSuccess.Should().BeTrue();
+
+        SubscriptionPayment deal = (await _ctx.ReloadPaymentsAsync(org.Id)).Single();
+        deal.Status.Should().Be(SubscriptionPaymentStatus.Canceled);
+        deal.InvoiceStatus.Should().Be(InvoiceStatus.NotNeeded);
+        (await _ctx.ReloadSubscriptionAsync(org.Id)).Status.Should().Be(SubscriptionStatus.Cancelled);
+    }
+
+    [Test]
+    public async Task CancelDeal_InvoiceAlreadyCreated_CancelsPaymentAndAsksForCreditNote()
+    {
+        (Organization org, SubscriptionPayment deal) = await ActiveDealAsync();
+        SubscriptionPayment stored = _ctx.Db.SubscriptionPayments.Single(p => p.Id == deal.Id);
+        stored.InvoiceStatus = InvoiceStatus.Created;
+        stored.InvoiceNumber = "FAKE-2026-0042";
+        _ctx.Db.SaveChanges();
+        _ctx.Db.ChangeTracker.Clear();
+
+        await _sut.CancelAsync(org.Id);
+
+        SubscriptionPayment reloaded = (await _ctx.ReloadPaymentsAsync(org.Id)).Single();
+        reloaded.Status.Should().Be(SubscriptionPaymentStatus.Canceled);
+        reloaded.InvoiceStatus.Should().Be(InvoiceStatus.Created);
+        _ctx.Email.Verify(e => e.SendBillingSuperAdminNoticeAsync(BillingTestContext.SuperAdminEmail,
+            It.IsAny<string>(), It.Is<string>(b => b.Contains("FAKE-2026-0042") && b.Contains("creditnota")),
+            It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task CancelDeal_AlreadyPaid_KeepsPaymentAndAsksForManualSettlement()
+    {
+        (Organization org, SubscriptionPayment deal) = await ActiveDealAsync();
+        await _sut.MarkPaymentPaidAsync(org.Id, deal.Id);
+        _ctx.Db.ChangeTracker.Clear();
+
+        await _sut.CancelAsync(org.Id);
+
+        (await _ctx.ReloadPaymentsAsync(org.Id)).Single().Status.Should().Be(SubscriptionPaymentStatus.Paid);
+        _ctx.Email.Verify(e => e.SendBillingSuperAdminNoticeAsync(BillingTestContext.SuperAdminEmail,
+            It.IsAny<string>(), It.Is<string>(b => b.Contains("al betaald")),
+            It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
 }

@@ -62,6 +62,8 @@ services:
       # Leeg = fake-Mollie. Voor echte testbetalingen: MOLLIE_BILLING_API_KEY=test_… in .env.
       # Lokaal komen geen webhooks binnen; de status volgt bij terugkeer naar de app.
       MollieBilling__ApiKey: "${MOLLIE_BILLING_API_KEY:-}"
+      # Optioneel: publieke URL (bv. een cloudflared quick tunnel) zodat Mollie-webhooks lokaal binnenkomen.
+      MollieBilling__WebhookBaseUrl: "${MOLLIE_BILLING_WEBHOOK_BASE_URL:-}"
       # DataProtection keystore in een named volume zodat tokens rebuilds overleven.
       # Zonder dit worden bestaande Mollie-tokens in de DB onleesbaar bij elke
       # `docker-compose up --build backend` (keys liggen anders in /tmp).
