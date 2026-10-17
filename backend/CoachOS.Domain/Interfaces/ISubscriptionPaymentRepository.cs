@@ -24,4 +24,11 @@ public interface ISubscriptionPaymentRepository
 
     /// <summary>Laatste einddatum van een geregistreerde periode (ongeacht status), of null.</summary>
     Task<DateOnly?> GetLatestPeriodEndAsync(Guid subscriptionId, CancellationToken ct = default);
+
+    /// <summary>AsNoTracking: betalingen waarvoor nu een factuur(poging) moet gebeuren.</summary>
+    Task<IReadOnlyList<SubscriptionPayment>> ListInvoiceDueAsync(
+        DateTime nowUtc, int maxAttempts, int take, CancellationToken ct = default);
+
+    /// <summary>AsNoTracking: alle betalingen van een abonnement.</summary>
+    Task<IReadOnlyList<SubscriptionPayment>> ListBySubscriptionAsync(Guid subscriptionId, CancellationToken ct = default);
 }

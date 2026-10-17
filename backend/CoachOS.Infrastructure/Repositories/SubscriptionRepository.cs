@@ -28,6 +28,16 @@ public class SubscriptionRepository(ApplicationDbContext context) : ISubscriptio
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(s => s.MollieSubscriptionId == mollieSubscriptionId, ct);
 
+    public async Task<IReadOnlyList<Subscription>> ListForBillingMaintenanceAsync(
+        DateOnly periodEndHorizon, CancellationToken ct = default)
+        => await context.Subscriptions
+            .IgnoreQueryFilters()
+            .Where(s => (s.Status == SubscriptionStatus.Active || s.Status == SubscriptionStatus.Cancelled)
+                        && s.CurrentPeriodEnd != null
+                        && s.CurrentPeriodEnd <= periodEndHorizon
+                        && (s.PaymentMethod == BillingPaymentMethod.BankTransfer || s.IsDeal))
+            .ToListAsync(ct);
+
     public async Task<Subscription?> GetByOrganizationReadOnlyAsync(Guid organizationId, CancellationToken ct = default)
     {
         return await context.Subscriptions

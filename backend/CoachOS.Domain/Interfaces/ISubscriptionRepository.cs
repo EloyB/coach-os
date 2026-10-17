@@ -17,6 +17,12 @@ public interface ISubscriptionRepository
     /// <summary>Tracked, cross-org: het abonnement dat bij een Mollie Subscription hoort (verlengingswebhook).</summary>
     Task<Subscription?> GetByMollieSubscriptionIdAsync(string mollieSubscriptionId, CancellationToken ct = default);
 
+    /// <summary>
+    /// Tracked, cross-org: actieve of opgezegde abonnementen per overschrijving of deal waarvan de
+    /// periode uiterlijk op <paramref name="periodEndHorizon"/> eindigt (dagelijkse billing-job).
+    /// </summary>
+    Task<IReadOnlyList<Subscription>> ListForBillingMaintenanceAsync(DateOnly periodEndHorizon, CancellationToken ct = default);
+
     /// <summary>AsNoTracking read; gebruik voor toegangs- en statuschecks.</summary>
     Task<Subscription?> GetByOrganizationReadOnlyAsync(Guid organizationId, CancellationToken ct = default);
 

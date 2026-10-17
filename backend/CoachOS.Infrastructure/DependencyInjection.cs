@@ -148,6 +148,7 @@ public static class DependencyInjection
         services.AddScoped<IMollieConnectionRepository, MollieConnectionRepository>();
         services.AddScoped<IOAuthStateRepository, OAuthStateRepository>();
         services.AddHostedService<TrialReminderWorker>();
+        services.AddHostedService<CoachOS.Infrastructure.Billing.BillingWorker>();
         services.AddScoped<ICampRepository, CampRepository>();
         services.AddScoped<ICampEnrollmentRepository, CampEnrollmentRepository>();
         services.AddScoped<ICampEnrollmentFormRepository, CampEnrollmentFormRepository>();

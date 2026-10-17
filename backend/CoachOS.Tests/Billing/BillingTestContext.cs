@@ -27,7 +27,7 @@ public sealed class BillingTestContext : IDisposable
     public const string SuperAdminEmail = "super@coach-os.be";
 
     public ApplicationDbContext Db { get; }
-    public FixedTimeProvider Time { get; } = new(new DateTimeOffset(2026, 10, 17, 10, 0, 0, TimeSpan.Zero));
+    public AdjustableTimeProvider Time { get; } = new(new DateTimeOffset(2026, 10, 17, 10, 0, 0, TimeSpan.Zero));
     public FakeBillingMollieClient FakeMollie { get; }
     public Mock<IBillingMollieClient> Mollie { get; }
     public Mock<IEmailService> Email { get; } = new();
@@ -114,6 +114,10 @@ public sealed class BillingTestContext : IDisposable
     public BillingPaymentSyncService CreateSyncService(IBillingService billing) => new(
         Subscriptions, Payments, Organizations, Mollie.Object, Email.Object, UnitOfWork, billing, Time,
         App, MollieOptions, SuperAdmin, NullLogger<BillingPaymentSyncService>.Instance);
+
+    public BillingMaintenanceService CreateMaintenanceService() => new(
+        Subscriptions, Payments, Profiles, Organizations, Invoicing.Object, Email.Object, UnitOfWork, Time,
+        App, SuperAdmin, NullLogger<BillingMaintenanceService>.Instance);
 
     /// <summary>Organisatie met één actieve admin en een abonnement in de gevraagde toestand.</summary>
     public async Task<(Organization Org, Subscription Subscription)> SeedOrganizationAsync(
