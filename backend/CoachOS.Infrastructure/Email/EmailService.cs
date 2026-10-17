@@ -430,6 +430,53 @@ public class EmailService(
             $"Inschrijving bevestigd: {campName}", html, ct);
     }
 
+    public async Task SendEmailVerificationAsync(
+        string toEmail, string firstName, string code, CancellationToken ct = default)
+    {
+        string html = renderer.Render("email-verification", new Dictionary<string, string>
+        {
+            ["firstName"] = firstName,
+            ["code"] = code,
+            ["validMinutes"] = ((int)Application.Auth.EmailVerificationCodes.Lifetime.TotalMinutes).ToString(),
+            ["year"] = DateTime.UtcNow.Year.ToString(),
+        });
+        // Bewust géén code in het onderwerp: SendAsync logt elk onderwerp.
+        await SendAsync(toEmail, firstName, "Je verificatiecode voor CoachOS", html, ct);
+    }
+
+    public async Task SendTrialReminderAsync(
+        string toEmail, string organizationName, int daysRemaining, DateOnly trialEndsAt,
+        string appUrl, CancellationToken ct = default)
+    {
+        (string subject, string heading, string body) = daysRemaining switch
+        {
+            // Vertrekt op de laatste proefdag, of later als de job een tijd stillag — de tekst
+            // noemt daarom de einddatum in plaats van "vandaag" of "voorbij".
+            <= 0 => (
+                "Je gratis proef van CoachOS loopt af",
+                "Je proefperiode loopt af",
+                $"Je gratis proef eindigt op {trialEndsAt:dd/MM/yyyy}. Je hoeft niets te doen: je account en al je gegevens blijven gewoon beschikbaar. We nemen binnenkort persoonlijk contact met je op om te bekijken hoe je verder wil."),
+            1 => (
+                "Nog 1 dag in je gratis proef van CoachOS",
+                "Nog 1 dag proef",
+                $"Je gratis proef loopt nog tot en met {trialEndsAt:dd/MM/yyyy}. Je hoeft niets te doen: we nemen contact met je op voor de proef afloopt, en je gegevens blijven bewaard."),
+            _ => (
+                $"Nog {daysRemaining} dagen in je gratis proef van CoachOS",
+                $"Nog {daysRemaining} dagen proef",
+                $"Je gratis proef loopt nog tot en met {trialEndsAt:dd/MM/yyyy}. Je hoeft niets te doen: we nemen contact met je op voor de proef afloopt, en je gegevens blijven bewaard."),
+        };
+
+        string html = renderer.Render("trial-reminder", new Dictionary<string, string>
+        {
+            ["organizationName"] = organizationName,
+            ["heading"] = heading,
+            ["body"] = body,
+            ["appUrl"] = $"{appUrl.TrimEnd('/')}/dashboard",
+            ["year"] = DateTime.UtcNow.Year.ToString(),
+        });
+        await SendAsync(toEmail, organizationName, subject, html, ct);
+    }
+
     // ── Core send method (reused by all email types) ──────────────────────────
 
     /// <summary>

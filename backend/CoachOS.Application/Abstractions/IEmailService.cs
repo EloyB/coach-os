@@ -155,4 +155,23 @@ public interface IEmailService
         DateOnly startDate,
         DateOnly endDate,
         CancellationToken ct = default);
+
+    /// <summary>Verificatiecode waarmee een nieuwe gebruiker zijn e-mailadres bevestigt.</summary>
+    Task SendEmailVerificationAsync(
+        string toEmail,
+        string firstName,
+        string code,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Herinnering dat de gratis proef bijna of net afgelopen is. De inhoud volgt uit
+    /// <paramref name="daysRemaining"/> (0 = proef loopt vandaag af of is voorbij).
+    /// </summary>
+    Task SendTrialReminderAsync(
+        string toEmail,
+        string organizationName,
+        int daysRemaining,
+        DateOnly trialEndsAt,
+        string appUrl,
+        CancellationToken ct = default);
 }

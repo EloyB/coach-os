@@ -1491,6 +1491,9 @@ namespace CoachOS.Infrastructure.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
+                    b.Property<int?>("LastTrialReminderDay")
+                        .HasColumnType("integer");
+
                     b.Property<string>("MollieCustomerId")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
@@ -1506,10 +1509,18 @@ namespace CoachOS.Infrastructure.Migrations
                     b.Property<Guid>("OrganizationId")
                         .HasColumnType("uuid");
 
-                    b.Property<int>("Plan")
+                    b.Property<int?>("Plan")
                         .HasColumnType("integer");
 
                     b.Property<DateOnly>("StartDate")
+                        .HasColumnType("date");
+
+                    b.Property<int>("Status")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
+
+                    b.Property<DateOnly?>("TrialEndsAt")
                         .HasColumnType("date");
 
                     b.Property<DateTime>("UpdatedAt")
@@ -1557,6 +1568,44 @@ namespace CoachOS.Infrastructure.Migrations
                         .HasDatabaseName("IX_TennisClubs_OrganizationId_Name");
 
                     b.ToTable("TennisClubs");
+                });
+
+            modelBuilder.Entity("CoachOS.Domain.Entities.TermsAcceptance", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("AcceptedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("DocumentType")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Version")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("TermsAcceptances");
                 });
 
             modelBuilder.Entity("CoachOS.Domain.Entities.TimeSlotPreference", b =>
@@ -1709,6 +1758,22 @@ namespace CoachOS.Infrastructure.Migrations
 
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("boolean");
+
+                    b.Property<int>("EmailVerificationAttempts")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("EmailVerificationCodeExpiry")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("EmailVerificationCodeHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int>("EmailVerificationSendCount")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("EmailVerificationSentAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("FirstName")
                         .IsRequired()
@@ -2425,6 +2490,17 @@ namespace CoachOS.Infrastructure.Migrations
                 });
 
             modelBuilder.Entity("CoachOS.Domain.Entities.TennisClub", b =>
+                {
+                    b.HasOne("CoachOS.Domain.Entities.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Organization");
+                });
+
+            modelBuilder.Entity("CoachOS.Domain.Entities.TermsAcceptance", b =>
                 {
                     b.HasOne("CoachOS.Domain.Entities.Organization", "Organization")
                         .WithMany()

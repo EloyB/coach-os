@@ -26,6 +26,9 @@ export interface OrganizationListItemDto {
   isEarlyBird: boolean;
   adminCount: number;
   createdAt: string;
+  subscriptionStatus: "Legacy" | "Trialing" | "Active";
+  /** Laatste dag van de proef (yyyy-MM-dd); null buiten een proef. */
+  trialEndsAt: string | null;
 }
 
 export interface CreateAdminRequest {
@@ -69,5 +72,14 @@ export async function setOrganizationEarlyBird(
 ): Promise<void> {
   await apiClient.put(`/super-admin/organizations/${organizationId}/early-bird`, {
     isEarlyBird,
+  });
+}
+
+export async function extendOrganizationTrial(
+  organizationId: string,
+  days: number
+): Promise<void> {
+  await apiClient.post(`/super-admin/organizations/${organizationId}/extend-trial`, {
+    days,
   });
 }

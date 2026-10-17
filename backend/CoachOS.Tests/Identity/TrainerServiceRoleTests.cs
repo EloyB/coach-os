@@ -77,6 +77,7 @@ public class TrainerServiceRoleTests
             FirstName = name ?? role.ToString(),
             LastName = "Test",
             IsActive = active,
+            EmailConfirmed = true,
         };
         _db.Users.Add(user);
         OrganizationMembership membership = new()
@@ -292,6 +293,24 @@ public class TrainerServiceRoleTests
             .SingleAsync(m => m.UserId == existing.Id && m.OrganizationId == OrgId);
         membership.Role.Should().Be(UserRole.Admin);
         membership.IsActive.Should().BeTrue();
+    }
+
+    [Test]
+    public async Task Invite_ExistingUserWithUnconfirmedEmail_ReturnsConflictWithoutMembership()
+    {
+        OrganizationMembership other = await AddMemberAsync(UserRole.Admin, orgId: OtherOrgId);
+        ApplicationUser existing = await _db.Users.SingleAsync(u => u.Id == other.UserId);
+        existing.EmailConfirmed = false;
+        await _db.SaveChangesAsync();
+        _userManager.Setup(m => m.FindByEmailAsync(existing.Email!)).ReturnsAsync(existing);
+
+        Result<Guid> result = await _sut.InviteAsync(
+            OrgId, "Kaat", "Kaper", existing.Email!, "https://app.test", asAdmin: true);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.Conflict);
+        (await _db.OrganizationMemberships.AnyAsync(m => m.UserId == existing.Id && m.OrganizationId == OrgId))
+            .Should().BeFalse();
     }
 
     // ── Ledenlijst ───────────────────────────────────────────────────────────

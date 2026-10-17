@@ -1,0 +1,45 @@
+name: PR Check — Frontend
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'frontend/**'
+      - '!frontend/**/*.md'
+      - '.github/workflows/pr-check-frontend.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  typecheck-test-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Zelfde major als het productie-image (frontend/Dockerfile.prod: node:22-alpine).
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.13'
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck
+        run: bunx tsc --noEmit
+
+      - name: Unit tests
+        run: bun run test:unit
+
+      - name: Build
+        run: bun run build
+        env:
+          NEXT_PUBLIC_API_URL: https://app.coach-os.be/api

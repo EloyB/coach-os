@@ -15,6 +15,7 @@ using CoachOS.Infrastructure.MultiTenancy;
 using CoachOS.Infrastructure.Persistence;
 using CoachOS.Infrastructure.Repositories;
 using CoachOS.Infrastructure.Security;
+using CoachOS.Infrastructure.Subscriptions;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -60,6 +61,8 @@ public static class DependencyInjection
         services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.Section));
         services.Configure<AppOptions>(configuration.GetSection(AppOptions.Section));
         services.Configure<MollieOptions>(configuration.GetSection(MollieOptions.Section));
+        services.Configure<RegistrationOptions>(configuration.GetSection(RegistrationOptions.Section));
+        services.Configure<BillingOptions>(configuration.GetSection(BillingOptions.Section));
 
         // TimeProvider is in .NET 8+ ingebouwd; testen kunnen FakeTimeProvider injecteren.
         services.AddSingleton(TimeProvider.System);
@@ -115,6 +118,8 @@ public static class DependencyInjection
         services.AddScoped<IOrganizationSettingsRepository, OrganizationSettingsRepository>();
         services.AddScoped<IMollieConnectionRepository, MollieConnectionRepository>();
         services.AddScoped<IOAuthStateRepository, OAuthStateRepository>();
+        services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();
+        services.AddHostedService<TrialReminderWorker>();
         services.AddScoped<ICampRepository, CampRepository>();
         services.AddScoped<ICampEnrollmentRepository, CampEnrollmentRepository>();
         services.AddScoped<ICampEnrollmentFormRepository, CampEnrollmentFormRepository>();

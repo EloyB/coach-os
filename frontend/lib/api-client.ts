@@ -2,6 +2,13 @@ import axios from 'axios';
 import { clearAuth } from '@/lib/auth';
 import { showApiErrorToast } from '@/lib/api-error-toast';
 
+declare module 'axios' {
+  interface AxiosRequestConfig {
+    /** Achtergrond-calls waarvan een fout de gebruiker niet mag storen: geen foutmelding tonen. */
+    skipErrorToast?: boolean;
+  }
+}
+
 const apiClient = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
   headers: {
@@ -28,7 +35,9 @@ apiClient.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    showApiErrorToast(error, { suppressForbidden: true });
+    if (!error.config?.skipErrorToast) {
+      showApiErrorToast(error, { suppressForbidden: true });
+    }
 
     return Promise.reject(error);
   }

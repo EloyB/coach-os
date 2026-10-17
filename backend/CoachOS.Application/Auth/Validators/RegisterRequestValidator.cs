@@ -32,5 +32,15 @@ public class RegisterRequestValidator : AbstractValidator<RegisterRequest>
             .MinimumLength(8).WithMessage("Wachtwoord moet minimaal 8 karakters zijn")
             .Must(p => p.Any(char.IsUpper)).WithMessage("Wachtwoord moet minimaal 1 hoofdletter bevatten")
             .Must(p => p.Any(char.IsDigit)).WithMessage("Wachtwoord moet minimaal 1 cijfer bevatten");
+
+        RuleFor(x => x.AcceptTerms)
+            .Equal(true).WithMessage("Je moet akkoord gaan met de algemene voorwaarden");
+
+        RuleFor(x => x.AcceptDataProcessingAgreement)
+            .Equal(true).WithMessage("Je moet akkoord gaan met de verwerkersovereenkomst");
+
+        // Bewust een vage melding: een bot hoeft niet te weten welk veld hem verraadde.
+        RuleFor(x => x.Website)
+            .Empty().WithMessage("Registratie mislukt. Probeer het opnieuw.");
     }
 }

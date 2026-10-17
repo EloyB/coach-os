@@ -26,6 +26,19 @@ public class ApplicationUser : Microsoft.AspNetCore.Identity.IdentityUser<Guid>
     public string? InviteToken { get; set; }
     public DateTime? InviteTokenExpiry { get; set; }
 
+    /// <summary>Hash van de openstaande e-mailverificatiecode; null zodra bevestigd of nooit aangevraagd.</summary>
+    public string? EmailVerificationCodeHash { get; set; }
+    public DateTime? EmailVerificationCodeExpiry { get; set; }
+
+    /// <summary>Wanneer de laatste code verstuurd werd — begrenst hoe vaak een nieuwe aangevraagd kan worden.</summary>
+    public DateTime? EmailVerificationSentAt { get; set; }
+
+    /// <summary>Aantal pogingen op de huidige code.</summary>
+    public int EmailVerificationAttempts { get; set; }
+
+    /// <summary>Totaal aantal verstuurde codes voor dit account.</summary>
+    public int EmailVerificationSendCount { get; set; }
+
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 

@@ -1,4 +1,5 @@
 using CoachOS.API.Extensions;
+using CoachOS.API.Filters;
 using CoachOS.Application.Planning;
 
 namespace CoachOS.API.Endpoints.Planning;
@@ -15,6 +16,7 @@ public class ResendConfirmationEndpoint : IEndpoint
                 return result.IsSuccess ? Results.Ok(result.Value) : result.ToErrorResult();
             })
         .RequireAuthorization(policy => policy.RequireRole("Admin"))
+        .AddEndpointFilter<RequireVerifiedEmailFilter>()
         .WithTags("Planning");
     }
 }

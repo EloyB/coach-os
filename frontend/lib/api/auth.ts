@@ -19,6 +19,8 @@ export interface AuthResponse {
   memberships: OrganizationMembershipInfo[];
   isSuperAdmin?: boolean;
   headTrainerClubIds?: string[];
+  /** False zolang een zelf-geregistreerde gebruiker zijn e-mailadres nog niet bevestigd heeft. */
+  emailVerified?: boolean;
 }
 
 export interface AcceptInviteRequest {
@@ -60,6 +62,10 @@ export interface RegisterRequest {
   lastName: string;
   email: string;
   password: string;
+  acceptTerms: boolean;
+  acceptDataProcessingAgreement: boolean;
+  /** Honeypot — blijft leeg bij echte gebruikers. */
+  website?: string;
 }
 
 export async function login(request: LoginRequest): Promise<AuthResponse> {
@@ -70,6 +76,25 @@ export async function login(request: LoginRequest): Promise<AuthResponse> {
 export async function register(request: RegisterRequest): Promise<AuthResponse> {
   const { data } = await apiClient.post<AuthResponse>('/auth/register', request);
   return data;
+}
+
+export async function verifyEmail(code: string): Promise<void> {
+  await apiClient.post('/auth/verify-email', { code });
+}
+
+/**
+ * Vraagt een nieuwe verificatiecode aan. Met `onlyIfExpired` vertrekt er enkel een mail als de
+ * vorige code niet meer geldig is. Geeft terug of er effectief een mail verstuurd is.
+ */
+export async function resendEmailVerification(
+  options: { onlyIfExpired?: boolean } = {}
+): Promise<boolean> {
+  const { data } = await apiClient.post<{ sent: boolean }>(
+    '/auth/resend-verification',
+    null,
+    { params: options.onlyIfExpired ? { onlyIfExpired: true } : undefined, skipErrorToast: options.onlyIfExpired }
+  );
+  return data.sent;
 }
 
 export async function registerStudent(request: RegisterStudentRequest): Promise<AuthResponse> {

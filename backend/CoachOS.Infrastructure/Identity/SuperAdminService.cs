@@ -2,6 +2,7 @@ using CoachOS.Application.Abstractions;
 using System.Security.Cryptography;
 using CoachOS.Application.SuperAdmin;
 using CoachOS.Application.SuperAdmin.DTOs;
+using CoachOS.Domain.Common;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
 using CoachOS.Domain.Models;
@@ -16,6 +17,7 @@ public class SuperAdminService(
     UserManager<ApplicationUser> userManager,
     ApplicationDbContext context,
     IEmailService emailService,
+    TimeProvider timeProvider,
     ILogger<SuperAdminService> logger)
     : ISuperAdminService
 {
@@ -63,6 +65,9 @@ public class SuperAdminService(
                 AdminsActAsTrainers = true,
                 OnboardingStartedAt = DateTime.UtcNow,
             });
+
+            // Zelfde proef als bij zelfregistratie: de organisatie is even nieuw.
+            context.Subscriptions.Add(Subscription.StartTrial(organization.Id, timeProvider.GetBrusselsToday()));
 
             await context.SaveChangesAsync(ct);
 
@@ -262,23 +267,70 @@ public class SuperAdminService(
 
     public async Task<Result<List<OrganizationListItemDto>>> ListOrganizationsAsync(CancellationToken ct = default)
     {
-        var orgs = await context.Organizations
+        var rows = await context.Organizations
             .AsNoTracking()
             .OrderBy(o => o.Name)
-            .Select(o => new OrganizationListItemDto
+            .Select(o => new
             {
-                Id = o.Id,
-                Name = o.Name,
-                Email = o.Email,
-                IsActive = o.IsActive,
-                IsEarlyBird = o.IsEarlyBird,
-                CreatedAt = o.CreatedAt,
+                o.Id,
+                o.Name,
+                o.Email,
+                o.IsActive,
+                o.IsEarlyBird,
+                o.CreatedAt,
                 AdminCount = context.OrganizationMemberships.Count(m =>
-                    m.OrganizationId == o.Id && m.Role == UserRole.Admin && m.IsActive)
+                    m.OrganizationId == o.Id && m.Role == UserRole.Admin && m.IsActive),
+                SubscriptionStatus = o.Subscription == null ? (SubscriptionStatus?)null : o.Subscription.Status,
+                TrialEndsAt = o.Subscription == null ? null : o.Subscription.TrialEndsAt
             })
             .ToListAsync(ct);
 
+        List<OrganizationListItemDto> orgs = rows.Select(r =>
+        {
+            // Geen abonnement = organisatie van vóór het abonnementsmodel.
+            SubscriptionStatus status = r.SubscriptionStatus ?? SubscriptionStatus.Legacy;
+            return new OrganizationListItemDto
+            {
+                Id = r.Id,
+                Name = r.Name,
+                Email = r.Email,
+                IsActive = r.IsActive,
+                IsEarlyBird = r.IsEarlyBird,
+                CreatedAt = r.CreatedAt,
+                AdminCount = r.AdminCount,
+                SubscriptionStatus = status.ToString(),
+                TrialEndsAt = status == SubscriptionStatus.Trialing ? r.TrialEndsAt : null
+            };
+        }).ToList();
+
         return Result<List<OrganizationListItemDto>>.Ok(orgs);
+    }
+
+    public async Task<Result> ExtendTrialAsync(Guid organizationId, int days, CancellationToken ct = default)
+    {
+        Subscription? subscription = await context.Subscriptions
+            .FirstOrDefaultAsync(s => s.OrganizationId == organizationId, ct);
+
+        if (subscription is null)
+            return Result.Fail(new Error(ErrorCodes.NotFound, "Organisatie heeft geen abonnement."));
+
+        if (subscription.Status != SubscriptionStatus.Trialing)
+            return Result.Fail(new Error(ErrorCodes.Validation, "Enkel een organisatie in proef kan verlengd worden."));
+
+        // Een al verlopen proef verlengt vanaf vandaag, anders zou de klant dagen verliezen.
+        DateOnly today = timeProvider.GetBrusselsToday();
+        DateOnly currentEnd = subscription.TrialEndsAt ?? today;
+        DateOnly extendFrom = currentEnd > today ? currentEnd : today;
+
+        subscription.TrialEndsAt = extendFrom.AddDays(days);
+        // Herinneringen opnieuw laten lopen tegenover de nieuwe einddatum.
+        subscription.LastTrialReminderDay = null;
+        await context.SaveChangesAsync(ct);
+
+        logger.LogInformation(
+            "SuperAdmin heeft de proef van organisatie {OrgId} verlengd met {Days} dagen tot {TrialEndsAt}",
+            organizationId, days, subscription.TrialEndsAt);
+        return Result.Ok();
     }
 
     public async Task<Result> SetOrganizationEarlyBirdAsync(Guid organizationId, bool isEarlyBird, CancellationToken ct = default)

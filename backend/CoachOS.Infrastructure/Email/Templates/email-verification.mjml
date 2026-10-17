@@ -1,0 +1,49 @@
+<mjml>
+  <mj-head>
+    <mj-title>Bevestig je e-mailadres — CoachOS</mj-title>
+    <mj-preview>Je verificatiecode voor CoachOS</mj-preview>
+    <mj-attributes>
+      <mj-all font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" />
+      <mj-text color="#6b7280" font-size="15px" line-height="1.6" />
+      <mj-class name="heading" font-size="26px" font-weight="700" color="#111827" letter-spacing="-0.5px" line-height="1.2" />
+      <mj-class name="fine" font-size="13px" color="#9ca3af" />
+      <mj-class name="brand" color="#FFFFFF" font-size="22px" font-weight="700" letter-spacing="-0.5px" />
+      <mj-class name="tagline" color="#D0FF14" font-size="11px" letter-spacing="2px" font-weight="600" text-transform="uppercase" />
+    </mj-attributes>
+  </mj-head>
+  <mj-body background-color="#FAFAF8" width="600px">
+    <mj-section css-class="cos-header" background-color="#2D5016" padding="28px 40px" border-radius="12px 12px 0 0">
+      <mj-column>
+        <mj-text mj-class="brand"><img src="cid:coachos-logo" alt="" width="40" height="40" style="width:40px;height:40px;border-radius:9px;vertical-align:middle;margin-right:12px" />Coach<span style="color:#D0FF14">OS</span></mj-text>
+      </mj-column>
+    </mj-section>
+
+    <mj-section css-class="cos-card" background-color="#FFFFFF" padding="40px">
+      <mj-column>
+        <mj-text mj-class="heading">Bevestig je e-mailadres</mj-text>
+        <mj-text padding-top="16px">
+          Hoi {{firstName}},<br /><br />
+          Welkom bij CoachOS! Vul onderstaande code in om je e-mailadres te bevestigen.
+        </mj-text>
+        <mj-text align="center" padding="28px 0" font-size="36px" font-weight="700" color="#2D5016" letter-spacing="10px" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace">
+          {{code}}
+        </mj-text>
+        <mj-text mj-class="fine">
+          Deze code is {{validMinutes}} minuten geldig. Heb jij geen account aangemaakt? Negeer deze e-mail dan veilig.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <mj-section css-class="cos-info" background-color="#FAFAF8" padding="24px 40px">
+      <mj-column>
+        <mj-text mj-class="fine" align="center">
+          Verstuurd door CoachOS — vragen?
+          <a href="mailto:info@coach-os.be" style="color:#2D5016;text-decoration:none;font-weight:600">info@coach-os.be</a>
+        </mj-text>
+        <mj-text font-size="11px" color="#d1d5db" align="center" padding-top="8px">
+          © {{year}} CoachOS
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>
