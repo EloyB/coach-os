@@ -130,3 +130,38 @@ export async function getMyLesson(lessonId: string): Promise<MyLessonDetailDto> 
   );
   return data;
 }
+
+// ─── Overzicht + kampdagen (trainersdashboard) ───────────────────────────────
+
+export interface MyCampDayDto {
+  campId: string;
+  campName: string;
+  date: string;
+  /** Het venster van de trainer zelf (kan korter zijn dan de kampuren). */
+  startTime: string;
+  endTime: string;
+  tennisClubName: string | null;
+}
+
+export async function getMyCampDays(from: string, to: string): Promise<MyCampDayDto[]> {
+  const { data } = await apiClient.get<MyCampDayDto[]>("/dashboard/my-camp-days", {
+    params: { from, to },
+  });
+  return data;
+}
+
+export interface MyOverviewDto {
+  /** Eerstvolgende les die nog niet voorbij is; null als er niets gepland staat. */
+  nextLesson: MyLessonDto | null;
+  /** Geplande uren (lessen + kampdagen) in de huidige week (ma–zo). */
+  hoursThisWeek: number;
+  /** Geplande uren (lessen + kampdagen) in de huidige kalendermaand. */
+  hoursThisMonth: number;
+  /** Wekelijkse capaciteit in uren; 0 = niet ingesteld. */
+  weeklyCapacityHours: number;
+}
+
+export async function getMyOverview(): Promise<MyOverviewDto> {
+  const { data } = await apiClient.get<MyOverviewDto>("/dashboard/my-overview");
+  return data;
+}

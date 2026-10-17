@@ -18,6 +18,7 @@ public class DashboardService(
     IAssignmentConfirmationTokenRepository confirmationTokenRepo,
     IScheduleAssignmentRepository assignmentRepo,
     ILessonInvitationRepository invitationRepo,
+    ICampRepository campRepo,
     TimeProvider timeProvider) : IDashboardService
 {
     public async Task<Result<DashboardSummaryDto>> GetSummaryAsync(
@@ -116,24 +117,121 @@ public class DashboardService(
             ? await enrollmentRepo.CountActiveBySeriesIdsAsync(seriesIds, ct)
             : [];
 
-        List<MyLessonDto> dtos = lessons.Select(l => new MyLessonDto
-        {
-            Id = l.Id,
-            SeriesId = l.LessonSerieId,
-            SeriesName = l.LessonSerie?.Name,
-            Date = l.Date.ToString("yyyy-MM-dd"),
-            StartTime = l.StartTime.ToString("HH:mm"),
-            EndTime = l.EndTime.ToString("HH:mm"),
-            CourtName = l.CourtName,
-            // Reeks-lessen: club via de reeks (dubbele opslag vermijden); losse lessen: eigen club.
-            TennisClubName = l.LessonSerie?.TennisClub?.Name ?? l.TennisClub?.Name,
-            EnrolledCount = l.LessonSerieId.HasValue
-                ? enrollmentCounts.GetValueOrDefault(l.LessonSerieId.Value, 0)
-                : null,
-        }).ToList();
+        List<MyLessonDto> dtos = lessons
+            .Select(l => MapMyLesson(
+                l,
+                l.LessonSerieId.HasValue
+                    ? enrollmentCounts.GetValueOrDefault(l.LessonSerieId.Value, 0)
+                    : null))
+            .ToList();
 
         return Result<List<MyLessonDto>>.Ok(dtos);
     }
+
+    public async Task<Result<List<MyCampDayDto>>> GetMyCampDaysAsync(
+        Guid organizationId, Guid trainerId, DateOnly from, DateOnly to, CancellationToken ct = default)
+    {
+        if (to < from)
+            return Result<List<MyCampDayDto>>.Fail(
+                new Error(ErrorCodes.Validation, "De einddatum mag niet voor de begindatum liggen."));
+
+        if (to.DayNumber - from.DayNumber > MaxMyLessonsRangeDays)
+            return Result<List<MyCampDayDto>>.Fail(
+                new Error(ErrorCodes.Validation, $"Het datumbereik mag maximaal {MaxMyLessonsRangeDays} dagen zijn."));
+
+        IReadOnlyList<CampDayTrainer> days =
+            await campRepo.GetTrainerDaysAsync(trainerId, organizationId, from, to, ct);
+
+        return Result<List<MyCampDayDto>>.Ok(days.Select(MapCampDay).ToList());
+    }
+
+    private static MyCampDayDto MapCampDay(CampDayTrainer a) => new()
+    {
+        CampId = a.CampDay.CampId,
+        CampName = a.CampDay.Camp.Name,
+        Date = a.CampDay.Date.ToString("yyyy-MM-dd"),
+        StartTime = a.StartTime.ToString("HH:mm"),
+        EndTime = a.EndTime.ToString("HH:mm"),
+        TennisClubName = a.CampDay.Camp.TennisClub?.Name,
+    };
+
+    /// <summary>Aantal vooruitgekeken dagen om de eerstvolgende les te zoeken.</summary>
+    private const int NextLessonLookaheadDays = 120;
+
+    public async Task<Result<MyOverviewDto>> GetMyOverviewAsync(
+        Guid organizationId, Guid trainerId, CancellationToken ct = default)
+    {
+        DateTime nowBrussels = timeProvider.GetBrusselsNow();
+        DateOnly today = DateOnly.FromDateTime(nowBrussels);
+        TimeOnly nowTime = TimeOnly.FromDateTime(nowBrussels);
+
+        // Week (ma–zo) en kalendermaand rond vandaag.
+        DateOnly weekStart = today.AddDays(-(((int)today.DayOfWeek + 6) % 7));
+        DateOnly weekEnd = weekStart.AddDays(6);
+        DateOnly monthStart = new(today.Year, today.Month, 1);
+        DateOnly monthEnd = monthStart.AddMonths(1).AddDays(-1);
+
+        DateOnly rangeStart = weekStart < monthStart ? weekStart : monthStart;
+        DateOnly rangeEnd = weekEnd > monthEnd ? weekEnd : monthEnd;
+
+        // Uren: lessen + kampdagen van deze trainer, één keer opgehaald en over week/maand verdeeld.
+        List<Lesson> periodLessons =
+            await lessonRepo.GetByTrainerAndDateRangeAsync(trainerId, organizationId, rangeStart, rangeEnd, ct);
+        IReadOnlyList<CampDayTrainer> periodCampDays =
+            await campRepo.GetTrainerDaysAsync(trainerId, organizationId, rangeStart, rangeEnd, ct);
+
+        List<(DateOnly Date, double Hours)> slots =
+        [
+            .. periodLessons.Select(l => (l.Date, (l.EndTime - l.StartTime).TotalHours)),
+            .. periodCampDays.Select(a => (a.CampDay.Date, (a.EndTime - a.StartTime).TotalHours)),
+        ];
+        double Sum(DateOnly from, DateOnly to) =>
+            Math.Round(slots.Where(s => s.Date >= from && s.Date <= to).Sum(s => s.Hours), 1);
+
+        // Eerstvolgende les die nog niet voorbij is.
+        List<Lesson> upcoming = await lessonRepo.GetByTrainerAndDateRangeAsync(
+            trainerId, organizationId, today, today.AddDays(NextLessonLookaheadDays), ct);
+        Lesson? next = upcoming.FirstOrDefault(l => l.Date > today || l.EndTime > nowTime);
+
+        MyLessonDto? nextDto = null;
+        if (next is not null)
+        {
+            int? enrolled = null;
+            if (next.LessonSerieId is Guid seriesId)
+            {
+                Dictionary<Guid, int> counts =
+                    await enrollmentRepo.CountActiveBySeriesIdsAsync([seriesId], ct);
+                enrolled = counts.GetValueOrDefault(seriesId, 0);
+            }
+            nextDto = MapMyLesson(next, enrolled);
+        }
+
+        int capacity = await userLookup.GetWeeklyCapacityHoursAsync(trainerId, organizationId, ct) ?? 0;
+
+        MyOverviewDto overview = new()
+        {
+            NextLesson = nextDto,
+            HoursThisWeek = Sum(weekStart, weekEnd),
+            HoursThisMonth = Sum(monthStart, monthEnd),
+            WeeklyCapacityHours = capacity,
+        };
+
+        return Result<MyOverviewDto>.Ok(overview);
+    }
+
+    private static MyLessonDto MapMyLesson(Lesson l, int? enrolledCount) => new()
+    {
+        Id = l.Id,
+        SeriesId = l.LessonSerieId,
+        SeriesName = l.LessonSerie?.Name,
+        Date = l.Date.ToString("yyyy-MM-dd"),
+        StartTime = l.StartTime.ToString("HH:mm"),
+        EndTime = l.EndTime.ToString("HH:mm"),
+        CourtName = l.CourtName,
+        // Reeks-lessen: club via de reeks (dubbele opslag vermijden); losse lessen: eigen club.
+        TennisClubName = l.LessonSerie?.TennisClub?.Name ?? l.TennisClub?.Name,
+        EnrolledCount = enrolledCount,
+    };
 
     public async Task<Result<MyLessonDetailDto>> GetMyLessonAsync(
         Guid organizationId, Guid trainerId, Guid lessonId, CancellationToken ct = default)

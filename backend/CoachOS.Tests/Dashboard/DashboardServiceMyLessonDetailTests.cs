@@ -36,7 +36,7 @@ public class DashboardServiceMyLessonDetailTests
             Mock.Of<ILessonSerieRepository>(), _lessons.Object, Mock.Of<IEnrollmentRepository>(),
             Mock.Of<ITennisClubRepository>(), Mock.Of<IUserLookupService>(),
             Mock.Of<IAssignmentConfirmationTokenRepository>(), _assignments.Object, _invitations.Object,
-            TimeProvider.System);
+            Mock.Of<ICampRepository>(), TimeProvider.System);
     }
 
     private static Enrollment Student(string name, EnrollmentStatus status = EnrollmentStatus.Confirmed) =>

@@ -34,6 +34,7 @@ public class DashboardServiceMyLessonsTests
             Mock.Of<IAssignmentConfirmationTokenRepository>(),
             Mock.Of<IScheduleAssignmentRepository>(),
             Mock.Of<ILessonInvitationRepository>(),
+            Mock.Of<ICampRepository>(),
             TimeProvider.System);
     }
 

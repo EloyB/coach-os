@@ -54,3 +54,33 @@ public class MyLessonParticipantDto
     /// </summary>
     public string Status { get; set; } = string.Empty;
 }
+
+/// <summary>Een kampdag waarvoor de trainer is ingepland, met het eigen tijdvenster van de trainer.</summary>
+public class MyCampDayDto
+{
+    public Guid CampId { get; set; }
+    public string CampName { get; set; } = string.Empty;
+    public string Date { get; set; } = string.Empty;
+
+    /// <summary>Het venster van de trainer zelf (kan korter zijn dan de kampuren).</summary>
+    public string StartTime { get; set; } = string.Empty;
+    public string EndTime { get; set; } = string.Empty;
+
+    public string? TennisClubName { get; set; }
+}
+
+/// <summary>Samenvatting voor het trainersdashboard: volgende les en uren.</summary>
+public class MyOverviewDto
+{
+    /// <summary>Eerstvolgende les die nog niet voorbij is; null als er niets gepland staat.</summary>
+    public MyLessonDto? NextLesson { get; set; }
+
+    /// <summary>Geplande uren (lessen + kampdagen) in de huidige week (ma–zo), op 1 decimaal.</summary>
+    public double HoursThisWeek { get; set; }
+
+    /// <summary>Geplande uren (lessen + kampdagen) in de huidige kalendermaand, op 1 decimaal.</summary>
+    public double HoursThisMonth { get; set; }
+
+    /// <summary>Wekelijkse capaciteit (uren) van de trainer; 0 = niet ingesteld.</summary>
+    public int WeeklyCapacityHours { get; set; }
+}

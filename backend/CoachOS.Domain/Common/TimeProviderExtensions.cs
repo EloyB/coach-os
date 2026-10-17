@@ -10,6 +10,10 @@ public static class TimeProviderExtensions
 {
     public static readonly TimeZoneInfo BrusselsTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Europe/Brussels");
 
+    /// <summary>Huidig tijdstip als lokale Brusselse datum + tijd (zonder tijdzone-info).</summary>
+    public static DateTime GetBrusselsNow(this TimeProvider timeProvider) =>
+        TimeZoneInfo.ConvertTime(timeProvider.GetUtcNow(), BrusselsTimeZone).DateTime;
+
     public static DateOnly GetBrusselsToday(this TimeProvider timeProvider)
     {
         DateTimeOffset nowBrussels = TimeZoneInfo.ConvertTime(timeProvider.GetUtcNow(), BrusselsTimeZone);
