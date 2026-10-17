@@ -12,7 +12,8 @@ public class GetMyLessonEndpoint : IEndpoint
         app.MapGet("/dashboard/my-lessons/{lessonId:guid}", async (
             Guid lessonId, IDashboardService service, HttpContext ctx, CancellationToken ct) =>
         {
-            var result = await service.GetMyLessonAsync(ctx.GetOrganizationId(), ctx.GetUserId(), lessonId, ct);
+            var result = await service.GetMyLessonAsync(
+                ctx.GetOrganizationId(), ctx.GetUserId(), lessonId, ctx.GetHeadTrainerClubIds(), ct);
             return result.IsSuccess ? Results.Ok(result.Value) : result.ToErrorResult();
         })
         .RequireAuthorization()

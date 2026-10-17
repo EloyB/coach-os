@@ -18,6 +18,8 @@ import {
   type MyLessonDetailDto,
   type MyLessonParticipantStatus,
 } from "@/lib/api/dashboard";
+import { getAuthUser } from "@/lib/auth";
+import { useClientValue } from "@/lib/hooks/use-client-value";
 import { cn } from "@/lib/utils";
 
 const STATUS_STYLE: Record<MyLessonParticipantStatus, string> = {
@@ -55,6 +57,12 @@ function InfoRow({
 
 function LessonBody({ lesson }: { lesson: MyLessonDetailDto }) {
   const t = useTranslations("dashboard");
+  const userId = useClientValue(() => getAuthUser()?.userId ?? "");
+  // Bij een les van een collega (hoofdtrainer-dashboard) tonen we wie ze geeft.
+  const otherTrainer =
+    lesson.trainerName && lesson.trainerId && lesson.trainerId !== userId
+      ? lesson.trainerName
+      : null;
 
   const href = lesson.seriesId
     ? `/dashboard/lessons/${lesson.seriesId}`
@@ -72,6 +80,9 @@ function LessonBody({ lesson }: { lesson: MyLessonDetailDto }) {
             · {t("trainerLessonDuration", { minutes: lesson.durationMinutes })}
           </span>
         </InfoRow>
+        {otherTrainer && (
+          <InfoRow label={t("trainerLessonTrainer")}>{otherTrainer}</InfoRow>
+        )}
         {lesson.tennisClubName && (
           <InfoRow label={t("trainerLessonClub")}>
             <p className="font-medium">{lesson.tennisClubName}</p>

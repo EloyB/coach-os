@@ -154,9 +154,35 @@ public class LessonRepository(ApplicationDbContext context, TimeProvider timePro
             .ToListAsync(ct);
     }
 
-    public async Task<Lesson?> GetForTrainerAsync(
-        Guid lessonId, Guid trainerId, Guid organizationId, CancellationToken ct = default)
+    public async Task<List<Lesson>> GetByClubsAndDateRangeAsync(
+        IReadOnlyList<Guid> clubIds, Guid organizationId, DateOnly from, DateOnly to, CancellationToken ct = default)
     {
+        List<Guid> clubs = clubIds.ToList();
+        return await context.Lessons
+            .AsNoTracking()
+            .Include(l => l.LessonSerie)
+                .ThenInclude(s => s!.TennisClub)
+            .Include(l => l.TennisClub)
+            .Where(l => l.OrganizationId == organizationId
+                && l.Date >= from && l.Date <= to
+                && !l.IsCancelled
+                && ((l.LessonSerieId != null
+                        && clubs.Contains(l.LessonSerie!.TennisClubId)
+                        && (l.LessonSerie.PlanningStatus == PlanningStatus.AwaitingConfirmation
+                            || l.LessonSerie.PlanningStatus == PlanningStatus.Scheduled))
+                    || (l.LessonSerieId == null
+                        && l.TennisClubId != null
+                        && clubs.Contains(l.TennisClubId.Value))))
+            .OrderBy(l => l.Date)
+            .ThenBy(l => l.StartTime)
+            .ToListAsync(ct);
+    }
+
+    public async Task<Lesson?> GetForTrainerAsync(
+        Guid lessonId, Guid trainerId, IReadOnlyList<Guid> headTrainerClubIds, Guid organizationId,
+        CancellationToken ct = default)
+    {
+        List<Guid> clubs = headTrainerClubIds.ToList();
         return await context.Lessons
             .AsNoTracking()
             .Include(l => l.LessonSerie)
@@ -164,11 +190,13 @@ public class LessonRepository(ApplicationDbContext context, TimeProvider timePro
             .Include(l => l.TennisClub)
             .FirstOrDefaultAsync(l => l.Id == lessonId
                 && l.OrganizationId == organizationId
-                && l.TrainerId == trainerId
                 && !l.IsCancelled
                 && (l.LessonSerieId == null
                     || l.LessonSerie!.PlanningStatus == PlanningStatus.AwaitingConfirmation
-                    || l.LessonSerie.PlanningStatus == PlanningStatus.Scheduled), ct);
+                    || l.LessonSerie.PlanningStatus == PlanningStatus.Scheduled)
+                && (l.TrainerId == trainerId
+                    || (l.LessonSerieId != null && clubs.Contains(l.LessonSerie!.TennisClubId))
+                    || (l.LessonSerieId == null && l.TennisClubId != null && clubs.Contains(l.TennisClubId.Value))), ct);
     }
 
     public async Task<int> CountByOrganizationAndDateRangeAsync(
