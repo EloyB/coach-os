@@ -16,7 +16,7 @@ public class CreateLessonEndpoint : IEndpoint
                 ? Results.Created($"/api/lessonseries/{id}", result.Value)
                 : result.ToErrorResult();
         })
-        .RequireAuthorization()
+        .RequireAuthorization(policy => policy.RequireRole("Admin"))
         .AddEndpointFilter<ValidationFilter<CreateLessonRequest>>()
         .WithTags("LessonSerie");
     }

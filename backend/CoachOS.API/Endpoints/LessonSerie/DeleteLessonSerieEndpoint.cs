@@ -12,7 +12,7 @@ public class DeleteLessonSerieEndpoint : IEndpoint
             var result = await service.DeleteAsync(id, ctx.GetOrganizationId(), ct);
             return result.IsSuccess ? Results.NoContent() : result.ToErrorResult();
         })
-        .RequireAuthorization()
+        .RequireAuthorization(policy => policy.RequireRole("Admin"))
         .WithTags("LessonSerie");
     }
 }

@@ -374,11 +374,30 @@ public class LessonSerieService(
         string.IsNullOrWhiteSpace(court) ? "" : court.Trim();
 
     public async Task<Result<LessonDto>> UpdateLessonAsync(
-        Guid seriesId, Guid lessonId, Guid organizationId, UpdateLessonRequest request, CancellationToken ct = default)
+        Guid seriesId, Guid lessonId, Guid organizationId, UpdateLessonRequest request,
+        CancellationToken ct = default, Guid? actingTrainerId = null)
     {
         Domain.Entities.Lesson? lesson = await lessonRepo.GetByIdAsync(lessonId, seriesId, organizationId, ct);
         if (lesson is null)
             return Result<LessonDto>.Fail(new Error(ErrorCodes.NotFound, "Lesmoment niet gevonden."));
+
+        // Een trainer past enkel zijn eigen les aan, en niets dat andere trainers of de planning raakt.
+        if (actingTrainerId.HasValue)
+        {
+            if (lesson.TrainerId != actingTrainerId)
+                return Result<LessonDto>.Fail(new Error(ErrorCodes.Forbidden,
+                    "Je kan enkel je eigen lessen aanpassen."));
+
+            // Een lege TrainerId betekent voor een trainer "ongewijzigd" (annuleren en ongedaan maken
+            // sturen geen trainer mee); een andere trainer opgeven mag enkel een admin.
+            if (request.TrainerId.HasValue && request.TrainerId != lesson.TrainerId)
+                return Result<LessonDto>.Fail(new Error(ErrorCodes.Forbidden,
+                    "Enkel een admin kan een les aan een andere trainer toewijzen."));
+
+            if (string.Equals(request.ApplyTo, "slot", StringComparison.OrdinalIgnoreCase))
+                return Result<LessonDto>.Fail(new Error(ErrorCodes.Forbidden,
+                    "Enkel een admin kan het hele weekslot aanpassen."));
+        }
 
         Domain.Entities.LessonSerie? series = await lessonSeriesRepo.GetByIdAsync(seriesId, organizationId, ct);
         if (series is null)
@@ -392,7 +411,9 @@ public class LessonSerieService(
                 return Result<LessonDto>.Fail(
                     new Error(ErrorCodes.Validation, "Deze trainer behoort niet tot deze organisatie."));
         }
-        lesson.TrainerId = request.TrainerId;
+        // Admin: de opgegeven trainer (ook null = ontkoppelen). Trainer: de toewijzing blijft ongewijzigd.
+        if (!actingTrainerId.HasValue)
+            lesson.TrainerId = request.TrainerId;
 
         if (request.Date is not null)
         {

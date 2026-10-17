@@ -63,10 +63,12 @@
   },
   "lessonSeries": {
     "title": "Lesreeksen",
+    "viewPlanning": "Bekijk planning",
     "subtitle": "Beheer je lesreeksen en lesmomenten",
     "create": "Nieuwe lesreeks",
     "empty": "Nog geen lesreeksen",
     "emptyDescription": "Maak je eerste lesreeks aan en begin met plannen.",
+    "emptyDescriptionTrainer": "Je hebt nog geen lesreeksen. Zodra een beheerder je aan een reeks koppelt, verschijnt die hier.",
     "name": "Naam",
     "description": "Omschrijving",
     "trainer": "Trainer",

@@ -17,10 +17,13 @@ public class UpdateLessonEndpoint : IEndpoint
             HttpContext ctx,
             CancellationToken ct) =>
         {
-            var result = await service.UpdateLessonAsync(seriesId, lessonId, ctx.GetOrganizationId(), request, ct);
+            // Admin: geen beperking. Trainer (ook hoofdtrainer): enkel de eigen les.
+            Guid? actingTrainerId = ctx.IsAdmin() ? null : ctx.GetUserId();
+            var result = await service.UpdateLessonAsync(
+                seriesId, lessonId, ctx.GetOrganizationId(), request, ct, actingTrainerId);
             return result.IsSuccess ? Results.Ok(result.Value) : result.ToErrorResult();
         })
-        .RequireAuthorization()
+        .RequireAuthorization(policy => policy.RequireRole("Admin", "Trainer"))
         .AddEndpointFilter<ValidationFilter<UpdateLessonRequest>>()
         .WithTags("LessonSeries");
     }
