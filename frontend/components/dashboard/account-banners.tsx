@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { Mono } from "@/components/ui/mono";
 import { getSubscriptionStatus } from "@/lib/api/subscription";
 import type { AuthUser } from "@/lib/auth";
+import { subscriptionStatusQueryKey } from "@/lib/subscription-query";
 
 type Tone = "info" | "warn";
 
@@ -41,7 +42,7 @@ export function AccountBanners({ user }: AccountBannersProps) {
   const isAdmin = user.role === "Admin";
 
   const { data: subscription } = useQuery({
-    queryKey: ["subscription", "status"],
+    queryKey: subscriptionStatusQueryKey(user.organizationId),
     queryFn: getSubscriptionStatus,
     staleTime: 5 * 60_000,
     retry: false,
