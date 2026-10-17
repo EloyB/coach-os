@@ -1,41 +1,66 @@
+"use client";
+
+import { useState } from "react";
 import { ArrowRight } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Mono } from "@/components/ui/mono";
 import { PricingCard } from "@/components/sections/pricing-card";
 import {
-  PRICING_DISCLAIMER,
+  type Billing,
   PRICING_HEADING,
+  PRICING_ONBOARDING_NOTE,
   PRICING_SUB,
   PRICING_TIERS,
+  PRICING_VAT_NOTE,
 } from "@/content/pricing";
 
 interface PricingProps {
-  /** Hide the "Bekijk volledige prijslijst" link (e.g. when rendered ON the /prijzen page itself). */
+  /** Verberg de "Bekijk volledige prijslijst"-link (bv. op de /prijzen-pagina zelf). */
   hideCompareLink?: boolean;
+  /** Verberg het tekstblok (label, titel, sub, note) boven de panelen, bv. op de /prijzen-pagina waar de hero dat al dekt. */
+  hideHeader?: boolean;
 }
 
-export function Pricing({ hideCompareLink = false }: PricingProps) {
+export function Pricing({
+  hideCompareLink = false,
+  hideHeader = false,
+}: PricingProps) {
+  const [billing, setBilling] = useState<Billing>("yearly");
+
   return (
     <section id="prijzen" className="border-b border-rule bg-canvas">
       <div className="mx-auto max-w-6xl px-6 py-20 md:py-28">
-        <div className="max-w-2xl">
-          <Mono className="text-[11px] tracking-[0.18em] text-ink-3">
-            TARIEVEN
-          </Mono>
-          <h2 className="mt-3 text-3xl font-bold tracking-tight md:text-4xl">
-            {PRICING_HEADING}
-          </h2>
-          <p className="mt-3 text-base text-ink-2">{PRICING_SUB}</p>
-          <p className="mt-4 inline-flex items-center rounded-md border border-warn/30 bg-warn/10 px-3 py-1.5 text-xs font-medium text-ink-2">
-            <span className="mr-2 inline-block h-1.5 w-1.5 rounded-full bg-warn" />
-            {PRICING_DISCLAIMER}
-          </p>
+        {hideHeader ? null : (
+          <div className="max-w-2xl">
+            <Mono className="text-[11px] tracking-[0.18em] text-ink-3">
+              TARIEVEN
+            </Mono>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight md:text-4xl">
+              {PRICING_HEADING}
+            </h2>
+            <p className="mt-3 text-base text-ink-2">{PRICING_SUB}</p>
+            <p className="mt-4 flex items-start gap-2 rounded-md border border-tennis-green/25 bg-tennis-green/5 px-3 py-2 text-xs font-medium text-ink-2">
+              <span className="mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-tennis-green" />
+              {PRICING_ONBOARDING_NOTE}
+            </p>
+          </div>
+        )}
+
+        {/* Maand / jaar toggle */}
+        <div className={cn("flex items-center gap-3", !hideHeader && "mt-10")}>
+          <BillingToggle billing={billing} onChange={setBilling} />
+          <span className="text-xs font-medium text-ink-3">
+            Jaarlijks = 2 maanden gratis
+          </span>
         </div>
 
-        <div className="mt-12 grid gap-6 lg:grid-cols-3">
+        <div className="mt-8 grid gap-6 md:grid-cols-3">
           {PRICING_TIERS.map((tier) => (
-            <PricingCard key={tier.id} tier={tier} />
+            <PricingCard key={tier.id} tier={tier} billing={billing} />
           ))}
         </div>
+
+        <p className="mt-6 text-xs text-ink-3">{PRICING_VAT_NOTE}</p>
 
         {hideCompareLink ? null : (
           <div className="mt-10 flex flex-wrap items-center justify-between gap-4 border-t border-rule pt-8">
@@ -54,5 +79,47 @@ export function Pricing({ hideCompareLink = false }: PricingProps) {
         )}
       </div>
     </section>
+  );
+}
+
+function BillingToggle({
+  billing,
+  onChange,
+}: {
+  billing: Billing;
+  onChange: (b: Billing) => void;
+}) {
+  return (
+    <div
+      role="tablist"
+      aria-label="Facturatieperiode"
+      className="inline-flex rounded-lg border border-rule bg-paper p-1"
+    >
+      {(
+        [
+          { id: "monthly", label: "Maandelijks" },
+          { id: "yearly", label: "Jaarlijks" },
+        ] as const
+      ).map((opt) => {
+        const active = billing === opt.id;
+        return (
+          <button
+            key={opt.id}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(opt.id)}
+            className={cn(
+              "rounded-md px-4 py-1.5 text-sm font-semibold transition-colors",
+              active
+                ? "bg-tennis-green text-paper"
+                : "text-ink-2 hover:text-ink",
+            )}
+          >
+            {opt.label}
+          </button>
+        );
+      })}
+    </div>
   );
 }

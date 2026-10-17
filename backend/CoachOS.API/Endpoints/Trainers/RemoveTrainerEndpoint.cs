@@ -9,7 +9,7 @@ public class RemoveTrainerEndpoint : IEndpoint
     {
         app.MapDelete("/trainers/{id:guid}/remove", async (Guid id, ITrainerService service, HttpContext ctx, CancellationToken ct) =>
         {
-            var result = await service.RemoveAsync(id, ctx.GetOrganizationId(), ct);
+            var result = await service.RemoveAsync(id, ctx.GetOrganizationId(), ctx.GetUserId(), ct);
             return result.IsSuccess ? Results.NoContent() : result.ToErrorResult();
         })
         .RequireAuthorization(policy => policy.RequireRole("Admin"))

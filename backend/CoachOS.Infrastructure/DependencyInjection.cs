@@ -95,6 +95,7 @@ public static class DependencyInjection
         services.AddSingleton<IMjmlTemplateRenderer, MjmlTemplateRenderer>();
         services.AddScoped<IEmailService, EmailService>();
         services.AddSingleton<IPlanningWorkbookBuilder, ClosedXmlPlanningWorkbookBuilder>();
+        services.AddSingleton<ICampWorkbookBuilder, ClosedXmlCampWorkbookBuilder>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<ILessonSerieRepository, LessonSerieRepository>();
         services.AddScoped<ILessonRepository, LessonRepository>();

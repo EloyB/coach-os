@@ -20,4 +20,35 @@ public interface ICampService
     /// </summary>
     Task<Result> MarkEnrollmentCashPaidAsync(
         Guid campId, Guid campEnrollmentId, Guid organizationId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Annuleert een kamp-inschrijving (soft-cancel). De leider van een groep met nog
+    /// actieve leden kan niet los geannuleerd worden: annuleer dan de hele groep.
+    /// De plaats komt automatisch vrij (capaciteitstelling sluit geannuleerd uit).
+    /// </summary>
+    Task<Result> CancelEnrollmentAsync(
+        Guid campId, Guid campEnrollmentId, Guid organizationId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Past naam, e-mail, telefoon en formulierantwoorden van een kamp-inschrijving aan.
+    /// Betaling, bedrag en status blijven ongemoeid; een geannuleerde inschrijving is niet bewerkbaar.
+    /// </summary>
+    Task<Result> UpdateEnrollmentAsync(
+        Guid campId, Guid campEnrollmentId, Guid organizationId, UpdateCampEnrollmentRequest request,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Voegt een deelnemer toe aan een bestaande kampgroep (beheerder-actie). Het lid erft
+    /// de status van de leider. Geweigerd zodra de groepsbetaling betaald is of online loopt;
+    /// bij een openstaande cash-betaling wordt het bedrag bijgewerkt.
+    /// </summary>
+    Task<Result<Guid>> AddGroupMemberAsync(
+        Guid campId, Guid groupId, Guid organizationId, AddCampGroupMemberRequest request,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Annuleert alle nog-actieve leden van een kampgroep atomair (één SaveChanges).
+    /// </summary>
+    Task<Result> CancelGroupAsync(
+        Guid campId, Guid groupId, Guid organizationId, CancellationToken ct = default);
 }

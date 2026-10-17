@@ -153,8 +153,9 @@ Als seed faalt: drift in DTO/validator/migratie → eerst `seed-data.json` + `se
 ## Working Style
 
 - Ask clarifying questions one at a time — never list multiple questions at once.
-- Never run `git push` or create PRs. The user handles pushing and PR creation.
+- Branches: never commit on `main`. Create a feature branch first (one branch per feature; do not mix unrelated features).
 - `git commit` is allowed — make logical, atomic commits with clear conventional-commit messages.
+- Creating pull requests (via `gh pr create`) is allowed. Pushing the feature branch to open the PR is part of that. Never push to `main`, never force-push, and never merge a PR — the user does that.
 
 ## graphify
 

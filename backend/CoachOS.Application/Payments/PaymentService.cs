@@ -216,10 +216,7 @@ public class PaymentService(
 
         // Groepsinschrijving = leider + leden; solo = 1. De leider draagt de betaling.
         // Group.Members includes the leader (the submit flow sets the leader's CampEnrollmentGroupId), so Count = total participants.
-        int participantCount = enrollment.CampEnrollmentGroupId.HasValue && enrollment.Group is not null
-            ? enrollment.Group.Members.Count
-            : 1;
-        if (participantCount < 1) participantCount = 1;
+        int participantCount = CountActiveCampParticipants(enrollment);
         decimal amount = camp.Price * participantCount;
 
         OrganizationSettingsEntity? settings = await orgSettings
@@ -499,6 +496,14 @@ public class PaymentService(
     private async Task ConfirmCampEnrollmentAndNotifyAsync(
         CampEnrollmentEntity enrollment, CancellationToken ct)
     {
+        // Een geannuleerde inschrijving mag nooit stilletjes heropstaan (laat-binnenkomende
+        // webhook of cash-markering): de betaling zelf wordt wel bewaard, zonder bevestiging.
+        if (enrollment.Status == EnrollmentStatus.Cancelled)
+        {
+            await unitOfWork.SaveChangesAsync(ct);
+            return;
+        }
+
         // Bevestig de hele groep (leider + leden) of de solo-inschrijving.
         List<CampEnrollmentEntity> toConfirm =
             enrollment.CampEnrollmentGroupId.HasValue && enrollment.Group is not null
@@ -509,7 +514,7 @@ public class PaymentService(
         // zodat een gedeactiveerd kamp toch echte naam + data in de mail toont.
         foreach (CampEnrollmentEntity e in toConfirm)
         {
-            if (e.Status == EnrollmentStatus.Confirmed) continue;
+            if (e.Status is EnrollmentStatus.Confirmed or EnrollmentStatus.Cancelled) continue;
             e.Status = EnrollmentStatus.Confirmed;
         }
         await unitOfWork.SaveChangesAsync(ct);
@@ -534,6 +539,18 @@ public class PaymentService(
         }
     }
 
+    /// <summary>
+    /// Betalende deelnemers: de groep (leider + leden) zonder geannuleerde leden, of 1 voor
+    /// een solo-inschrijving. Een geannuleerd lid mag niet meer meegerekend worden.
+    /// </summary>
+    private static int CountActiveCampParticipants(CampEnrollmentEntity enrollment)
+    {
+        int count = enrollment.CampEnrollmentGroupId.HasValue && enrollment.Group is not null
+            ? enrollment.Group.Members.Count(m => m.Status != EnrollmentStatus.Cancelled)
+            : 1;
+        return Math.Max(count, 1);
+    }
+
     public async Task<Result> RecordCampCashPaymentAsync(
         Guid campEnrollmentId, Guid organizationId, CancellationToken ct = default)
     {
@@ -555,10 +572,7 @@ public class PaymentService(
                 ErrorCodes.Validation, "Dit kamp is gratis; een betaling is niet nodig."));
 
         // Zelfde deelnemertelling als de online flow: groep = leider + leden, solo = 1.
-        int participantCount = enrollment.CampEnrollmentGroupId.HasValue && enrollment.Group is not null
-            ? enrollment.Group.Members.Count
-            : 1;
-        if (participantCount < 1) participantCount = 1;
+        int participantCount = CountActiveCampParticipants(enrollment);
         decimal amount = camp.Price * participantCount;
 
         OrganizationSettingsEntity? settings = await orgSettings
@@ -593,6 +607,10 @@ public class PaymentService(
         if (enrollment is not null
             && (enrollment.OrganizationId != organizationId || enrollment.CampId != campId))
             return Result.Fail(new Error(ErrorCodes.NotFound, "Inschrijving niet gevonden."));
+
+        if (enrollment is not null && enrollment.Status == EnrollmentStatus.Cancelled)
+            return Result.Fail(new Error(
+                ErrorCodes.Validation, "Deze inschrijving is geannuleerd en kan niet als betaald gemarkeerd worden."));
 
         PaymentEntity? payment = await payments.GetLatestPendingCashByCampEnrollmentIdAsync(
             campEnrollmentId, organizationId, ct);
