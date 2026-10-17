@@ -23,7 +23,8 @@ public class SubscriptionStartTrialTests
         subscription.StartDate.Should().Be(today);
         subscription.TrialEndsAt.Should().Be(new DateOnly(2026, 11, 4));
         subscription.Plan.Should().BeNull();
-        subscription.MonthlyPrice.Should().Be(0);
+        subscription.Price.Should().Be(0);
+        subscription.Interval.Should().BeNull();
         subscription.MollieCustomerId.Should().BeNull();
         subscription.LastTrialReminderDay.Should().BeNull();
         subscription.IsActive.Should().BeTrue();

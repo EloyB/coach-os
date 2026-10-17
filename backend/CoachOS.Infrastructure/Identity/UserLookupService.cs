@@ -30,6 +30,19 @@ public class UserLookupService(
         return result?.Trim();
     }
 
+    public async Task<IReadOnlyList<string>> GetActiveAdminEmailsAsync(Guid organizationId, CancellationToken ct = default)
+        => await (
+                from m in context.OrganizationMemberships.IgnoreQueryFilters().AsNoTracking()
+                join u in context.Users.AsNoTracking() on m.UserId equals u.Id
+                where m.OrganizationId == organizationId
+                      && m.IsActive
+                      && u.IsActive
+                      && m.Role == UserRole.Admin
+                      && u.Email != null
+                select u.Email!)
+            .Distinct()
+            .ToListAsync(ct);
+
     public async Task<List<(Guid Id, string FullName)>> GetOrganizationMembersAsync(Guid organizationId, CancellationToken ct = default)
     {
         // Tenant-scoped via OrganizationMembership ipv de legacy user.OrganizationId.

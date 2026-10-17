@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import {
@@ -56,7 +57,17 @@ export default function OrganizationsPage() {
         ? t("subscriptionTrialExpired", { date })
         : t("subscriptionTrialUntil", { date });
     }
-    return org.subscriptionStatus === "Active" ? t("subscriptionActive") : t("subscriptionLegacy");
+    const plan = org.subscriptionPlan ?? "";
+    switch (org.subscriptionStatus) {
+      case "Active":
+        return t("subscriptionActive", { plan });
+      case "Cancelled":
+        return t("subscriptionCancelled", { plan });
+      case "Locked":
+        return t("subscriptionLocked");
+      default:
+        return t("subscriptionLegacy");
+    }
   }
 
   return (
@@ -90,7 +101,14 @@ export default function OrganizationsPage() {
               )}
               {orgs?.map((org) => (
                 <tr key={org.id} className="border-t border-rule">
-                  <td className="px-4 py-3 font-medium text-ink">{org.name}</td>
+                  <td className="px-4 py-3 font-medium text-ink">
+                    <Link
+                      href={`/super-admin/organizations/${org.id}`}
+                      className="text-ink hover:text-tennis-green hover:underline"
+                    >
+                      {org.name}
+                    </Link>
+                  </td>
                   <td className="px-4 py-3 text-ink-2">{org.email}</td>
                   <td className="px-4 py-3 text-ink-2">{org.adminCount}</td>
                   <td className="px-4 py-3">

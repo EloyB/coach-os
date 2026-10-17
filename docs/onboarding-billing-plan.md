@@ -1,6 +1,6 @@
 # Onboarding, abonnement & betaling — plan
 
-**Status:** Fase 1 gebouwd (okt 2026, branch `feat/onboarding-trial-phase1`); Fase 2–5 nog niet. Opgesteld okt 2026, na het live zetten van de prijzen-pagina.
+**Status:** Fase 1 gebouwd (okt 2026, #252); Fase 2 + deel van fase 3 gebouwd (okt 2026, branch `feat/billing-self-service`, ontwerp in issue #267); Fase 4–5 nog niet. Opgesteld okt 2026, na het live zetten van de prijzen-pagina.
 **Doel:** de flow vanaf "Start gratis" op de website tot een werkend account met abonnement en toegang tot de app.
 **Bron:** "CoachOS registratie & facturatie" + afstemming over het nieuwe prijsmodel.
 
@@ -48,6 +48,16 @@ Elke fase is pas "done" na een groene reset + seed.
 - `SubscriptionPlan` ombouwen naar Game/Set/Match, met **vastgelegde** prijs, limiet, marge en meerprijs op het abonnement (prijswijziging raakt bestaande klanten pas bij verlenging).
 - Checkout: facturatiegegevens + VIES-check (`BillingProfile`), plankeuze (voorstel op basis van huidig aantal leerlingen), eerste betaling via een **apart platform-Mollie-account** (`IBillingMollieClient`), platform-webhook, Mollie Subscription (12 maanden), betaalmuur bij het eerste moment (eerste formulier publiceren / "Nu activeren" / proef-einde).
 - Facturatie: `IInvoicingService` + `BillitInvoicingService` (met fake voor lokaal), via een **outbox** met herhaalpogingen; idempotent per betaling (één factuur per betaling).
+
+**Zoals gebouwd (fase 2, issue #267):**
+- Club-admin kiest zelf onder *Instellingen > Abonnement*: Game/Set/Match, per maand of per jaar, met een voorstel op basis van het aantal actieve leerlingen (lessenreeksen + kampen, uniek op naam + e-mail) en een waarschuwing bij een te klein plan. Enkel Belgische clubs (21% btw); facturatieprofiel met optionele VIES-controle.
+- Betaalwijzen: Mollie (eerste betaling `sequenceType=first` → Mollie Subscription voor automatische verlenging) of factuur + overschrijving (enkel jaarlijks, 30 dagen termijn, meteen actief).
+- De eerste betaalde periode start de dag na de proef; de Mollie Subscription start na die eerste (al betaalde) periode, zodat er nooit dubbel afgeschreven wordt.
+- Webhook `/api/webhooks/mollie-billing` + terugkeer-sync; idempotent onder gelijktijdige webhooks (concurrency-token + unieke Mollie payment-id). Mislukte verlenging → losse betaallink + mails.
+- `SubscriptionPayments` = betaalhistoriek én factuur-outbox; `BillingWorker` maakt facturen (backoff, max. 8 pogingen) en verlengt jaarlijks per overschrijving 30 dagen vooraf.
+- Billit zit achter `IInvoicingService`; **voorlopig een fake** (nummers `FAKE-jjjj-0001`) tot er API-toegang is. Mollie-platform draait als fake zolang `MollieBilling__ApiKey` leeg is.
+- Nieuwe statussen `Cancelled` (opgezegd, loopt tot einde periode) en `Locked` (opgezegd tijdens de proef vóór de start: terugbetaling, proef stopt, enkel-lezen tot er een plan gekozen wordt — ook als `EnforceTrialExpiry` uit staat).
+- Superadmin: overzicht, deal (vaste einddatum, geen verlenging), overschrijving als betaald markeren, opzeggen namens de club, uitnodiging tot betalen voor legacy-klanten. Eloy's handmatige betaallink/(de)activeren is vervangen.
 
 ### Fase 3 — Factuur & overschrijving
 *Voor vzw's/penningmeesters.*

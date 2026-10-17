@@ -29,6 +29,7 @@ import { FieldError } from "@/components/forms/field-error";
 import { inputClass } from "@/lib/styles";
 import { OrganizationSection } from "./organization-section";
 import { MollieSection } from "./mollie-section";
+import { SubscriptionLinkCard } from "./subscription-link-card";
 
 // ─── Form Schema ──────────────────────────────────────────────────────────────
 
@@ -154,6 +155,9 @@ export default function SettingsPage() {
           Beheer de basisinstellingen van je organisatie.
         </p>
       </div>
+
+      {/* Abonnement */}
+      <SubscriptionLinkCard />
 
       {/* Organisatie-instellingen */}
       <OrganizationSection />

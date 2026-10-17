@@ -35,7 +35,7 @@ export function middleware(request: NextRequest) {
   if (pathname.startsWith("/super-admin")) {
     if (!hasToken) {
       const loginUrl = new URL("/login", request.url);
-      loginUrl.searchParams.set("redirect", pathname);
+      loginUrl.searchParams.set("redirect", `${pathname}${request.nextUrl.search}`);
       return NextResponse.redirect(loginUrl);
     }
     if (!hasSuperAdmin) {
@@ -47,7 +47,7 @@ export function middleware(request: NextRequest) {
 
   if (pathname.startsWith("/dashboard") && !hasToken) {
     const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("redirect", pathname);
+    loginUrl.searchParams.set("redirect", `${pathname}${request.nextUrl.search}`);
     return NextResponse.redirect(loginUrl);
   }
 
@@ -71,7 +71,7 @@ export function middleware(request: NextRequest) {
 
   if (pathname.startsWith("/student/") && !hasToken) {
     const loginUrl = new URL("/student-login", request.url);
-    loginUrl.searchParams.set("redirect", pathname);
+    loginUrl.searchParams.set("redirect", `${pathname}${request.nextUrl.search}`);
     return NextResponse.redirect(loginUrl);
   }
 
