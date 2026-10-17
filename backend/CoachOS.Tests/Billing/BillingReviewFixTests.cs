@@ -361,4 +361,51 @@ public class BillingReviewFixTests
         (await _ctx.ReloadPaymentsAsync(org.Id)).Should().NotContain(p => p.Kind == SubscriptionPaymentKind.Recurring);
         (await _ctx.ReloadSubscriptionAsync(org.Id)).CurrentPeriodEnd.Should().Be(periodEnd);
     }
+
+    // ── Hermes-review 3: eerste betaling valideren ──────────────────────────────────────
+
+    private void ReportPaidAs(string molliePaymentId, decimal? amount = null, string? customerId = null)
+    {
+        BillingPaymentDetails real = _ctx.FakeMollie.GetPaymentDetailsAsync(molliePaymentId).Result.Value!;
+        _ctx.Mollie.Setup(m => m.GetPaymentDetailsAsync(molliePaymentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<BillingPaymentDetails>.Ok(real with
+            {
+                Status = "paid",
+                PaidAt = _ctx.Time.GetUtcNow().UtcDateTime,
+                Amount = amount ?? real.Amount,
+                CustomerId = customerId ?? real.CustomerId,
+            }));
+    }
+
+    [Test]
+    public async Task H3_FirstPaidWithWrongAmount_DoesNotActivateAndNotifiesSuperAdmin()
+    {
+        (Organization org, _) = await _ctx.SeedOrganizationAsync(trialEndsAt: new DateOnly(2026, 11, 4));
+        SubscriptionPayment first = await CheckoutAsync(org.Id, Mollie(SubscriptionPlan.Set, BillingInterval.Monthly));
+        ReportPaidAs(first.MolliePaymentId!, amount: 1.00m);
+
+        await _sync.SyncAsync(first.MolliePaymentId!);
+        _ctx.Db.ChangeTracker.Clear();
+
+        (await _ctx.ReloadSubscriptionAsync(org.Id)).Status.Should().NotBe(SubscriptionStatus.Active);
+        (await _ctx.ReloadPaymentsAsync(org.Id)).Single().Status.Should().Be(SubscriptionPaymentStatus.Open);
+        _ctx.Mollie.Verify(m => m.CreateSubscriptionAsync(It.IsAny<BillingSubscriptionRequest>(), It.IsAny<CancellationToken>()), Times.Never);
+        _ctx.Email.Verify(e => e.SendBillingSuperAdminNoticeAsync(BillingTestContext.SuperAdminEmail,
+            It.IsAny<string>(), It.Is<string>(b => b.Contains(first.MolliePaymentId!)), It.IsAny<string?>(),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task H3_FirstPaidForOtherCustomer_DoesNotActivate()
+    {
+        (Organization org, _) = await _ctx.SeedOrganizationAsync(trialEndsAt: new DateOnly(2026, 11, 4));
+        SubscriptionPayment first = await CheckoutAsync(org.Id, Mollie(SubscriptionPlan.Set, BillingInterval.Monthly));
+        ReportPaidAs(first.MolliePaymentId!, customerId: "cst_iemand_anders");
+
+        await _sync.SyncAsync(first.MolliePaymentId!);
+        _ctx.Db.ChangeTracker.Clear();
+
+        (await _ctx.ReloadSubscriptionAsync(org.Id)).Status.Should().NotBe(SubscriptionStatus.Active);
+        (await _ctx.ReloadPaymentsAsync(org.Id)).Single().Status.Should().Be(SubscriptionPaymentStatus.Open);
+    }
 }

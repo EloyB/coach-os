@@ -99,16 +99,22 @@ public class BillingPaymentSyncService(
         if (payment.Status != SubscriptionPaymentStatus.Open || newStatus == SubscriptionPaymentStatus.Open)
             return Result.Ok();
 
-        payment.Status = newStatus;
         Subscription? subscription = null;
         if (newStatus == SubscriptionPaymentStatus.Paid)
         {
-            payment.PaidAt = details.PaidAt ?? timeProvider.GetUtcNow().UtcDateTime;
-            payment.InvoiceStatus = InvoiceStatus.Pending;
-
             subscription = await subscriptions.GetByOrganizationAsync(payment.OrganizationId, tracked: true, ct);
             if (subscription is null)
                 return Result.Fail(new Error(ErrorCodes.NotFound, "Abonnement niet gevonden."));
+
+            if (details.CustomerId != subscription.MollieCustomerId || details.Amount != payment.AmountInclVat)
+                return await RejectMismatchedFirstPaymentAsync(payment, subscription, details, ct);
+        }
+
+        payment.Status = newStatus;
+        if (newStatus == SubscriptionPaymentStatus.Paid && subscription is not null)
+        {
+            payment.PaidAt = details.PaidAt ?? timeProvider.GetUtcNow().UtcDateTime;
+            payment.InvoiceStatus = InvoiceStatus.Pending;
 
             // Er loopt al een abonnement (bv. een tweede checkout in een ander tabblad werd ook
             // betaald): nooit een tweede activatie of Mollie Subscription, wel terugbetalen.
@@ -361,6 +367,20 @@ public class BillingPaymentSyncService(
             organization.Email, organization.Name, oneOff.AmountInclVat, oneOff.CheckoutUrl, ct), "mail mislukte betaling");
         await NotifySuperAdminAsync("Automatische betaling mislukt",
             $"De automatische betaling van {organization.Name} ({BillingEmailAmount(oneOff.AmountInclVat)}) is mislukt. De club kreeg een betaallink.", ct);
+    }
+
+    /// <summary>
+    /// Betaalde eerste betaling die niet klopt met wat we aanmaakten (ander bedrag of andere
+    /// Mollie-klant): niet activeren, de lokale betaling blijft open en de super-admin kijkt het na.
+    /// </summary>
+    private async Task<Result> RejectMismatchedFirstPaymentAsync(
+        SubscriptionPayment payment, Subscription subscription, BillingPaymentDetails details, CancellationToken ct)
+    {
+        logger.LogWarning("Eerste betaling {PaymentId} wijkt af voor {OrgId}: klant {CustomerId}, bedrag {Amount}",
+            details.Id, payment.OrganizationId, details.CustomerId, details.Amount);
+        await NotifySuperAdminAsync("Eerste betaling wijkt af",
+            $"Mollie-betaling {details.Id} van organisatie {payment.OrganizationId} hoort bij klant {details.CustomerId} voor {details.Amount} EUR, maar de checkout verwacht klant {subscription.MollieCustomerId} voor {payment.AmountInclVat} EUR. Het abonnement werd niet geactiveerd: kijk de betaling na in Mollie en markeer ze manueel als betaald of betaal terug.", ct);
+        return Result.Ok();
     }
 
     /// <summary>Slaat op; false als een andere instantie dezelfde betaling net bijwerkte.</summary>
