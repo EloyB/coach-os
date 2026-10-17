@@ -258,3 +258,14 @@ export async function createLessonSeriesWizard(
   const { data } = await apiClient.post<string>("/lessonseries", request);
   return data;
 }
+
+export interface OrganizationTrainerDto {
+  id: string;
+  fullName: string;
+}
+
+/** Actieve trainers van de organisatie (ook toegankelijk voor trainers; bv. voor kleuren in agenda's). */
+export async function getOrganizationTrainers(): Promise<OrganizationTrainerDto[]> {
+  const { data } = await apiClient.get<OrganizationTrainerDto[]>("/lessonseries/members");
+  return data;
+}

@@ -74,6 +74,11 @@ export async function getDashboardMetrics(weeks: number = 7): Promise<DashboardM
 
 export interface MyLessonDto {
   id: string;
+  /** De trainer van deze les (om eigen lessen van clublessen te onderscheiden). */
+  trainerId: string | null;
+  /** Naam van de trainer; enkel ingevuld bij clublessen (hoofdtrainer-dashboard). */
+  trainerName: string | null;
+
   /** Null voor losse lessen. */
   seriesId: string | null;
   seriesName: string | null;
@@ -108,6 +113,8 @@ export interface MyLessonParticipantDto {
 
 export interface MyLessonDetailDto {
   id: string;
+  trainerId: string | null;
+  trainerName: string | null;
   seriesId: string | null;
   seriesName: string | null;
   date: string;
@@ -163,5 +170,13 @@ export interface MyOverviewDto {
 
 export async function getMyOverview(): Promise<MyOverviewDto> {
   const { data } = await apiClient.get<MyOverviewDto>("/dashboard/my-overview");
+  return data;
+}
+
+/** Lessen van alle trainers in de club(s) waar de gebruiker hoofdtrainer is (403 voor andere gebruikers). */
+export async function getClubLessons(from: string, to: string): Promise<MyLessonDto[]> {
+  const { data } = await apiClient.get<MyLessonDto[]>("/dashboard/club-lessons", {
+    params: { from, to },
+  });
   return data;
 }

@@ -18,8 +18,9 @@ import type { InboxItemDto, InboxResponse } from "@/lib/api/dashboard";
 import { useTranslations } from "next-intl";
 import { OnboardingChecklist } from "@/components/dashboard/onboarding/onboarding-checklist";
 import { WelcomeModal } from "@/components/dashboard/onboarding/welcome-modal";
-import { getAuthUser } from "@/lib/auth";
+import { getAuthUser, isHeadTrainerViewer } from "@/lib/auth";
 import { getOnboardingState } from "@/lib/api/onboarding";
+import { HeadTrainerDashboard } from "@/components/dashboard/head-trainer-dashboard";
 import { TrainerDashboard } from "@/components/dashboard/trainer-dashboard";
 import { useClientValue } from "@/lib/hooks/use-client-value";
 
@@ -355,8 +356,15 @@ function AdminDashboard() {
 export default function DashboardPage() {
   // De rol zit in localStorage en is pas na mount bekend. Tot dan renderen we niets, zodat een
   // trainer nooit even de (organisatiebrede) beheerdersqueries afvuurt.
-  const role = useClientValue(() => getAuthUser()?.role ?? "");
+  // Een hoofdtrainer is een Trainer met minstens één hoofdtrainer-club en krijgt een eigen dashboard.
+  const dashboard = useClientValue(() => {
+    const role = getAuthUser()?.role ?? "";
+    if (role === "Trainer") return isHeadTrainerViewer() ? "head-trainer" : "trainer";
+    return role;
+  });
 
-  if (role === null) return null;
-  return role === "Trainer" ? <TrainerDashboard /> : <AdminDashboard />;
+  if (dashboard === null) return null;
+  if (dashboard === "head-trainer") return <HeadTrainerDashboard />;
+  if (dashboard === "trainer") return <TrainerDashboard />;
+  return <AdminDashboard />;
 }

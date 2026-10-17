@@ -64,17 +64,19 @@ public class DashboardServiceMyLessonDetailTests
     };
 
     private void GivenLesson(Lesson lesson) =>
-        _lessons.Setup(r => r.GetForTrainerAsync(lesson.Id, TrainerId, OrgId, It.IsAny<CancellationToken>()))
+        _lessons.Setup(r => r.GetForTrainerAsync(
+                lesson.Id, TrainerId, It.IsAny<IReadOnlyList<Guid>>(), OrgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(lesson);
 
     [Test]
     public async Task GetMyLesson_UnknownOrForeignLesson_ReturnsNotFound()
     {
         Guid id = Guid.NewGuid();
-        _lessons.Setup(r => r.GetForTrainerAsync(id, TrainerId, OrgId, It.IsAny<CancellationToken>()))
+        _lessons.Setup(r => r.GetForTrainerAsync(
+                id, TrainerId, It.IsAny<IReadOnlyList<Guid>>(), OrgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Lesson?)null);
 
-        Result<MyLessonDetailDto> result = await _sut.GetMyLessonAsync(OrgId, TrainerId, id);
+        Result<MyLessonDetailDto> result = await _sut.GetMyLessonAsync(OrgId, TrainerId, id, []);
 
         result.IsSuccess.Should().BeFalse();
         result.Errors[0].Code.Should().Be(ErrorCodes.NotFound);
@@ -88,7 +90,7 @@ public class DashboardServiceMyLessonDetailTests
         _assignments.Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
 
-        MyLessonDetailDto dto = (await _sut.GetMyLessonAsync(OrgId, TrainerId, lesson.Id)).Value!;
+        MyLessonDetailDto dto = (await _sut.GetMyLessonAsync(OrgId, TrainerId, lesson.Id, [])).Value!;
 
         dto.SeriesName.Should().Be("Jeugdtraining");
         dto.Date.Should().Be("2026-10-21");
@@ -144,7 +146,7 @@ public class DashboardServiceMyLessonDetailTests
                 },
             ]);
 
-        MyLessonDetailDto dto = (await _sut.GetMyLessonAsync(OrgId, TrainerId, lesson.Id)).Value!;
+        MyLessonDetailDto dto = (await _sut.GetMyLessonAsync(OrgId, TrainerId, lesson.Id, [])).Value!;
 
         dto.Participants.Select(p => (p.Name, p.Status)).Should().BeEquivalentTo(
         [
@@ -179,7 +181,7 @@ public class DashboardServiceMyLessonDetailTests
                 new LessonInvitation { Email = "ben@x.be", FirstName = "Ben", Status = LessonInvitationStatus.Declined, InvitationSentAt = DateTime.UtcNow },
             ]);
 
-        MyLessonDetailDto dto = (await _sut.GetMyLessonAsync(OrgId, TrainerId, lesson.Id)).Value!;
+        MyLessonDetailDto dto = (await _sut.GetMyLessonAsync(OrgId, TrainerId, lesson.Id, [])).Value!;
 
         dto.SeriesId.Should().BeNull();
         dto.Level.Should().Be((int)LessonLevel.Advanced);
