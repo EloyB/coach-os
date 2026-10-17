@@ -53,6 +53,8 @@ export interface BillingOverview {
   activeStudentCount: number;
   suggestedPlan: string;
   canCheckout: boolean;
+  /** false zolang Mollie en Billit niet echt gekoppeld zijn (buiten Development): geen self-service. */
+  checkoutAvailable: boolean;
   /** false = fake-Mollie (geen echte betalingen, enkel lokaal/dev). */
   billingConfigured: boolean;
   overageMarginPercent: number;

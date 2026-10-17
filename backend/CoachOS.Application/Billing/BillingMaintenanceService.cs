@@ -22,6 +22,7 @@ public class BillingMaintenanceService(
     TimeProvider timeProvider,
     IOptions<AppOptions> appOptions,
     IOptions<SuperAdminOptions> superAdminOptions,
+    IOptions<BillingOptions> billingOptions,
     ILogger<BillingMaintenanceService> logger) : IBillingMaintenanceService
 {
     public const int MaxInvoiceAttempts = 8;
@@ -30,6 +31,11 @@ public class BillingMaintenanceService(
 
     public async Task<int> ProcessPendingInvoicesAsync(CancellationToken ct = default)
     {
+        // Zonder echte Billit-koppeling (buiten Development) blijven facturen open tot Billit er is,
+        // zodat klanten geen testnummers krijgen.
+        if (!invoicing.IsConfigured && !billingOptions.Value.AllowFakeIntegrations)
+            return 0;
+
         DateTime now = timeProvider.GetUtcNow().UtcDateTime;
         IReadOnlyList<SubscriptionPayment> due = await payments.ListInvoiceDueAsync(now, MaxInvoiceAttempts, InvoiceBatchSize, ct);
 
@@ -160,7 +166,7 @@ public class BillingMaintenanceService(
                 await NotifyUnpaidAsync(subscription, ct);
         }
 
-        if (today > periodEnd && next is not null)
+        if (today > periodEnd && next is not null && subscription.CancelAt is null)
         {
             subscription.CurrentPeriodStart = next.PeriodStart;
             subscription.CurrentPeriodEnd = next.PeriodEnd;

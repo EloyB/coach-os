@@ -1,6 +1,7 @@
 using System.Net;
 using CoachOS.Application.Abstractions;
 using CoachOS.Application.Configuration;
+using CoachOS.Domain.Models;
 using CoachOS.Infrastructure.Invoicing;
 using CoachOS.Infrastructure.Mollie;
 using CoachOS.Infrastructure.Vat;
@@ -55,7 +56,7 @@ public class FakeBillingAdaptersTests
     [Test]
     public async Task FakeMollie_UnknownPayment_Fails()
     {
-        (await CreateFakeMollie().GetPaymentDetailsAsync("tr_onbekend")).IsSuccess.Should().BeFalse();
+        (await CreateFakeMollie().GetPaymentDetailsAsync("tr_onbekend")).Errors[0].Code.Should().Be(ErrorCodes.NotFound);
     }
 
     [Test]

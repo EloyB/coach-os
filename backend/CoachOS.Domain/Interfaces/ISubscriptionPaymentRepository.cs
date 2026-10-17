@@ -22,8 +22,12 @@ public interface ISubscriptionPaymentRepository
     /// <summary>Tracked: de laatst aangemaakte openstaande eerste Mollie-betaling, of null.</summary>
     Task<SubscriptionPayment?> GetLatestOpenFirstAsync(Guid organizationId, CancellationToken ct = default);
 
-    /// <summary>Laatste einddatum van een geregistreerde periode (ongeacht status), of null.</summary>
-    Task<DateOnly?> GetLatestPeriodEndAsync(Guid subscriptionId, CancellationToken ct = default);
+    /// <summary>
+    /// Laatste einddatum van een periode die echt aangerekend werd: betaald, of een automatische
+    /// verlenging die nog loopt of mislukte (die periode wordt dan via een losse betaallink gedekt).
+    /// Afgebroken, verlopen en terugbetaalde betalingen tellen niet mee.
+    /// </summary>
+    Task<DateOnly?> GetLatestBilledPeriodEndAsync(Guid subscriptionId, CancellationToken ct = default);
 
     /// <summary>AsNoTracking: betalingen waarvoor nu een factuur(poging) moet gebeuren.</summary>
     Task<IReadOnlyList<SubscriptionPayment>> ListInvoiceDueAsync(

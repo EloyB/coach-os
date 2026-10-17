@@ -90,7 +90,7 @@ public class BillingMollieClient(
 
         Result<MollieIdResponse> response = await SendAsync<MollieIdResponse>(
             HttpMethod.Post, $"/v2/customers/{Uri.EscapeDataString(request.CustomerId)}/subscriptions", payload,
-            "Kon de automatische verlenging bij Mollie niet aanmaken.", ct);
+            "Kon de automatische verlenging bij Mollie niet aanmaken.", ct, request.IdempotencyKey);
         return response.IsSuccess
             ? Result<string>.Ok(response.Value!.Id)
             : Result<string>.Fail(response.Errors);
@@ -142,11 +142,14 @@ public class BillingMollieClient(
     }
 
     private async Task<Result<T>> SendAsync<T>(
-        HttpMethod method, string path, object? body, string userMessage, CancellationToken ct)
+        HttpMethod method, string path, object? body, string userMessage, CancellationToken ct,
+        string? idempotencyKey = null)
         where T : MollieIdResponse
     {
         using HttpRequestMessage request = new(method, $"{_options.ApiBaseUrl.TrimEnd('/')}{path}");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _options.ApiKey);
+        if (!string.IsNullOrEmpty(idempotencyKey))
+            request.Headers.Add("Idempotency-Key", idempotencyKey);
         if (body is not null)
             request.Content = JsonContent.Create(body, options: JsonOptions);
 
@@ -158,7 +161,11 @@ public class BillingMollieClient(
                 string error = await response.Content.ReadAsStringAsync(ct);
                 logger.LogWarning("Mollie billing {Method} {Path} gaf {Status}: {Body}",
                     method, path, (int)response.StatusCode, error);
-                return Result<T>.Fail(new Error(ErrorCodes.ExternalService, userMessage));
+                // 404 = bestaat niet bij Mollie (geen storing): niet opnieuw proberen.
+                string code = response.StatusCode == System.Net.HttpStatusCode.NotFound
+                    ? ErrorCodes.NotFound
+                    : ErrorCodes.ExternalService;
+                return Result<T>.Fail(new Error(code, userMessage));
             }
 
             T? payload = await response.Content.ReadFromJsonAsync<T>(JsonOptions, ct);

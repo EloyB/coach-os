@@ -48,6 +48,10 @@ public sealed class BillingWorker(
             if (_lastDailyRun != today)
             {
                 await service.RunDailyAsync(today, ct);
+                IBillingPaymentSyncService sync = scope.ServiceProvider.GetRequiredService<IBillingPaymentSyncService>();
+                int repaired = await sync.ReconcileMissingRenewalsAsync(today, ct);
+                if (repaired > 0)
+                    logger.LogWarning("{Count} ontbrekende automatische verlenging(en) hersteld", repaired);
                 _lastDailyRun = today;
             }
 

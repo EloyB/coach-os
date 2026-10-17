@@ -87,6 +87,11 @@ public class BillingPaymentSyncService(
             if (subscription is null)
                 return Result.Fail(new Error(ErrorCodes.NotFound, "Abonnement niet gevonden."));
 
+            // Er loopt al een abonnement (bv. een tweede checkout in een ander tabblad werd ook
+            // betaald): nooit een tweede activatie of Mollie Subscription, wel terugbetalen.
+            if (subscription.IsRunning(timeProvider.GetBrusselsToday()) || !string.IsNullOrEmpty(subscription.MollieSubscriptionId))
+                return await RefundDuplicateFirstPaymentAsync(payment, ct);
+
             subscription.ActivatePaidPlan(payment.Plan, payment.Interval, BillingPaymentMethod.Mollie,
                 payment.PeriodStart, payment.PeriodEnd, payment.AmountExclVat);
         }
@@ -99,7 +104,7 @@ public class BillingPaymentSyncService(
 
         logger.LogInformation("Abonnement van {OrgId} actief na eerste betaling {PaymentId}",
             payment.OrganizationId, payment.MolliePaymentId);
-        await StartAutomaticRenewalAsync(subscription, payment, ct);
+        await StartAutomaticRenewalAsync(subscription, payment, payment.PeriodEnd.AddDays(1), ct);
 
         Organization? organization = await organizations.GetByIdAsync(payment.OrganizationId, tracked: false, ct);
         if (organization is not null)
@@ -113,27 +118,86 @@ public class BillingPaymentSyncService(
         return Result.Ok();
     }
 
-    private async Task StartAutomaticRenewalAsync(Subscription subscription, SubscriptionPayment payment, CancellationToken ct)
+    /// <summary>
+    /// Een eerste betaling werd betaald terwijl er al een abonnement loopt: Mollie-betaling
+    /// terugstorten, als terugbetaald markeren en de superadmin verwittigen.
+    /// </summary>
+    private async Task<Result> RefundDuplicateFirstPaymentAsync(SubscriptionPayment payment, CancellationToken ct)
+    {
+        payment.InvoiceStatus = InvoiceStatus.NotNeeded;
+        if (!await TrySaveClaimAsync(payment.MolliePaymentId!, ct))
+            return Result.Ok();
+
+        Result refund = await mollie.RefundPaymentAsync(payment.MolliePaymentId!, payment.AmountInclVat,
+            "Dubbele betaling CoachOS-abonnement", ct);
+        if (refund.IsSuccess)
+        {
+            payment.Status = SubscriptionPaymentStatus.Refunded;
+            await unitOfWork.SaveChangesAsync(ct);
+        }
+
+        logger.LogWarning("Dubbele eerste betaling {PaymentId} voor {OrgId} (terugbetaald: {Refunded})",
+            payment.MolliePaymentId, payment.OrganizationId, refund.IsSuccess);
+        await NotifySuperAdminAsync("Dubbele betaling",
+            refund.IsSuccess
+                ? $"Organisatie {payment.OrganizationId} betaalde een tweede keer ({payment.MolliePaymentId}) terwijl er al een abonnement liep. De betaling werd automatisch terugbetaald."
+                : $"Organisatie {payment.OrganizationId} betaalde een tweede keer ({payment.MolliePaymentId}) terwijl er al een abonnement liep. De automatische terugbetaling mislukte: stort manueel terug.",
+            ct);
+        return Result.Ok();
+    }
+
+    /// <summary>
+    /// Maakt de Mollie Subscription voor automatische verlenging, met een idempotency-key per eerste
+    /// betaling: een herhaling (herstel na een crash, zie <see cref="ReconcileMissingRenewalsAsync"/>)
+    /// geeft dezelfde subscription terug in plaats van een tweede.
+    /// </summary>
+    private async Task<bool> StartAutomaticRenewalAsync(
+        Subscription subscription, SubscriptionPayment firstPayment, DateOnly startDate, CancellationToken ct)
     {
         Result<string> created = await mollie.CreateSubscriptionAsync(new BillingSubscriptionRequest(
             CustomerId: subscription.MollieCustomerId!,
-            Amount: payment.AmountInclVat,
-            Interval: BillingPeriods.MollieInterval(payment.Interval),
-            StartDate: payment.PeriodEnd.AddDays(1),
-            Description: $"CoachOS {payment.Plan} ({BillingService.IntervalLabel(payment.Interval)})",
+            Amount: BelgianVat.Gross(subscription.Price),
+            Interval: BillingPeriods.MollieInterval(subscription.Interval ?? firstPayment.Interval),
+            StartDate: startDate,
+            Description: $"CoachOS {subscription.Plan} ({BillingService.IntervalLabel(subscription.Interval ?? firstPayment.Interval)})",
             WebhookUrl: WebhookUrl(),
-            Metadata: new Dictionary<string, string> { ["organizationId"] = subscription.OrganizationId.ToString() }), ct);
+            Metadata: new Dictionary<string, string> { ["organizationId"] = subscription.OrganizationId.ToString() },
+            IdempotencyKey: $"subscription-{firstPayment.Id}"), ct);
 
         if (!created.IsSuccess)
         {
             logger.LogError("Mollie Subscription aanmaken mislukt voor {OrgId}", subscription.OrganizationId);
             await NotifySuperAdminAsync("Automatische verlenging niet aangemaakt",
-                $"De eerste betaling van organisatie {subscription.OrganizationId} is gelukt, maar de automatische verlenging bij Mollie kon niet aangemaakt worden. Maak ze manueel aan of contacteer de club.", ct);
-            return;
+                $"Het abonnement van organisatie {subscription.OrganizationId} is betaald, maar de automatische verlenging bij Mollie kon (nog) niet aangemaakt worden. De dagelijkse job probeert opnieuw.", ct);
+            return false;
         }
 
         subscription.MollieSubscriptionId = created.Value;
         await unitOfWork.SaveChangesAsync(ct);
+        return true;
+    }
+
+    public async Task<int> ReconcileMissingRenewalsAsync(DateOnly today, CancellationToken ct = default)
+    {
+        IReadOnlyList<Subscription> missing = await subscriptions.ListMissingAutomaticRenewalAsync(ct);
+        int repaired = 0;
+        foreach (Subscription subscription in missing)
+        {
+            IReadOnlyList<SubscriptionPayment> history = await payments.ListBySubscriptionAsync(subscription.Id, ct);
+            SubscriptionPayment? first = history
+                .Where(p => p.Kind == SubscriptionPaymentKind.First && p.Status == SubscriptionPaymentStatus.Paid)
+                .OrderByDescending(p => p.PaidAt)
+                .FirstOrDefault();
+            if (first is null || subscription.CurrentPeriodEnd is not DateOnly periodEnd)
+                continue;
+
+            // Mollie aanvaardt geen startdatum in het verleden.
+            DateOnly startDate = periodEnd.AddDays(1) > today ? periodEnd.AddDays(1) : today.AddDays(1);
+            if (await StartAutomaticRenewalAsync(subscription, first, startDate, ct))
+                repaired++;
+        }
+
+        return repaired;
     }
 
     /// <summary>Nieuwe verlengingsbetaling die Mollie zelf aanmaakte (nog geen rij bij ons).</summary>
@@ -144,10 +208,15 @@ public class BillingPaymentSyncService(
         {
             logger.LogWarning("Verlenging {PaymentId} voor onbekende Mollie Subscription {SubscriptionId}",
                 details.Id, details.SubscriptionId);
+            if (details.Status == "paid")
+            {
+                await NotifySuperAdminAsync("Betaling voor onbekend abonnement",
+                    $"Mollie ontving betaling {details.Id} ({details.Amount} EUR) voor subscription {details.SubscriptionId}, die bij geen enkel actief CoachOS-abonnement hoort. Kijk na in Mollie of er een verweesde subscription loopt.", ct);
+            }
             return Result.Ok();
         }
 
-        DateOnly lastEnd = await payments.GetLatestPeriodEndAsync(subscription.Id, ct)
+        DateOnly lastEnd = await payments.GetLatestBilledPeriodEndAsync(subscription.Id, ct)
                            ?? subscription.CurrentPeriodEnd
                            ?? timeProvider.GetBrusselsToday().AddDays(-1);
         DateOnly start = lastEnd.AddDays(1);

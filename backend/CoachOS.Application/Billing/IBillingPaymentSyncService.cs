@@ -17,4 +17,10 @@ public interface IBillingPaymentSyncService
     /// ook zonder webhook) en geeft het actuele overzicht terug.
     /// </summary>
     Task<Result<BillingOverviewDto>> SyncLatestCheckoutAsync(Guid organizationId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Herstel: betaalde Mollie-abonnementen zonder Mollie Subscription (crash of Mollie-fout na de
+    /// eerste betaling) krijgen alsnog hun automatische verlenging. Geeft het aantal herstelde terug.
+    /// </summary>
+    Task<int> ReconcileMissingRenewalsAsync(DateOnly today, CancellationToken ct = default);
 }

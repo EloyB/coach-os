@@ -40,6 +40,8 @@ public sealed class BillingTestContext : IDisposable
         Options.Create(new MollieBillingOptions { WebhookBaseUrl = "https://api.test" });
     public IOptions<SuperAdminOptions> SuperAdmin { get; } =
         Options.Create(new SuperAdminOptions { Email = SuperAdminEmail });
+    public IOptions<BillingOptions> BillingOptions { get; } =
+        Options.Create(new BillingOptions { AllowFakeIntegrations = true });
 
     public SubscriptionRepository Subscriptions { get; }
     public SubscriptionPaymentRepository Payments { get; }
@@ -108,8 +110,8 @@ public sealed class BillingTestContext : IDisposable
     }
 
     public BillingService CreateBillingService() => new(
-        Subscriptions, Payments, Profiles, Organizations, Students.Object, Mollie.Object, Vat.Object,
-        Email.Object, UnitOfWork, Time, App, MollieOptions, SuperAdmin, NullLogger<BillingService>.Instance);
+        Subscriptions, Payments, Profiles, Organizations, Students.Object, Mollie.Object, Invoicing.Object, Vat.Object,
+        Email.Object, UnitOfWork, Time, App, MollieOptions, SuperAdmin, BillingOptions, NullLogger<BillingService>.Instance);
 
     public BillingPaymentSyncService CreateSyncService(IBillingService billing) => new(
         Subscriptions, Payments, Organizations, Mollie.Object, Email.Object, UnitOfWork, billing, Time,
@@ -117,7 +119,7 @@ public sealed class BillingTestContext : IDisposable
 
     public BillingMaintenanceService CreateMaintenanceService() => new(
         Subscriptions, Payments, Profiles, Organizations, Invoicing.Object, Email.Object, UnitOfWork, Time,
-        App, SuperAdmin, NullLogger<BillingMaintenanceService>.Instance);
+        App, SuperAdmin, BillingOptions, NullLogger<BillingMaintenanceService>.Instance);
 
     /// <summary>Organisatie met één actieve admin en een abonnement in de gevraagde toestand.</summary>
     public async Task<(Organization Org, Subscription Subscription)> SeedOrganizationAsync(

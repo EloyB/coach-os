@@ -67,7 +67,11 @@ public sealed record BillingPaymentDetails(
     string? SubscriptionId,
     IReadOnlyDictionary<string, string> Metadata);
 
-/// <summary>Request voor een Mollie Subscription. Bedrag incl. btw; interval in Mollie-syntax.</summary>
+/// <summary>
+/// Request voor een Mollie Subscription. Bedrag incl. btw; interval in Mollie-syntax.
+/// <paramref name="IdempotencyKey"/> zorgt dat een herhaalde aanvraag (herstel na een crash)
+/// geen tweede subscription aanmaakt.
+/// </summary>
 public sealed record BillingSubscriptionRequest(
     string CustomerId,
     decimal Amount,
@@ -75,4 +79,5 @@ public sealed record BillingSubscriptionRequest(
     DateOnly StartDate,
     string Description,
     string? WebhookUrl,
-    IReadOnlyDictionary<string, string> Metadata);
+    IReadOnlyDictionary<string, string> Metadata,
+    string? IdempotencyKey = null);

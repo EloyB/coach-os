@@ -157,7 +157,11 @@ function SubscriptionPageContent() {
 
           {overview.canCheckout && (
             <Section icon={<Sparkles size={14} />} title={t("planTitle")} subtitle={t("planSubtitle")}>
-              <PlanPicker overview={overview} pending={checkoutMutation.isPending} onCheckout={(r) => checkoutMutation.mutate(r)} />
+              {overview.checkoutAvailable ? (
+                <PlanPicker overview={overview} pending={checkoutMutation.isPending} onCheckout={(r) => checkoutMutation.mutate(r)} />
+              ) : (
+                <p className="p-5 text-sm text-gray-600">{t("checkoutUnavailable")}</p>
+              )}
             </Section>
           )}
 

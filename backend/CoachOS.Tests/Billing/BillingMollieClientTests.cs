@@ -127,9 +127,19 @@ public class BillingMollieClientTests
     }
 
     [Test]
-    public async Task GetPaymentDetails_MollieError_ReturnsExternalService()
+    public async Task GetPaymentDetails_UnknownPayment_ReturnsNotFound()
     {
         RecordingHttpHandler handler = RecordingHttpHandler.Json(HttpStatusCode.NotFound, """{"status":404}""");
+
+        Result<BillingPaymentDetails> result = await Create(handler).GetPaymentDetailsAsync("tr_x");
+
+        result.Errors[0].Code.Should().Be(ErrorCodes.NotFound);
+    }
+
+    [Test]
+    public async Task GetPaymentDetails_MollieError_ReturnsExternalService()
+    {
+        RecordingHttpHandler handler = RecordingHttpHandler.Json(HttpStatusCode.InternalServerError, """{"status":500}""");
 
         Result<BillingPaymentDetails> result = await Create(handler).GetPaymentDetailsAsync("tr_x");
 

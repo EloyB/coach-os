@@ -63,6 +63,9 @@ public sealed class BillingOverviewDto
     public int ActiveStudentCount { get; init; }
     public string SuggestedPlan { get; init; } = string.Empty;
     public bool CanCheckout { get; init; }
+
+    /// <summary>False zolang Mollie en Billit niet echt gekoppeld zijn (buiten Development): geen self-service.</summary>
+    public bool CheckoutAvailable { get; init; }
     public bool BillingConfigured { get; init; }
     public decimal OverageMarginPercent { get; init; }
     public decimal OveragePricePerStudent { get; init; }

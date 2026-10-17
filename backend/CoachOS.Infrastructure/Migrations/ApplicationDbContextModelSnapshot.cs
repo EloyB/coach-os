@@ -1545,6 +1545,10 @@ namespace CoachOS.Infrastructure.Migrations
                     b.Property<DateOnly?>("CancelAt")
                         .HasColumnType("date");
 
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 

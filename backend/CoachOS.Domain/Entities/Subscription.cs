@@ -63,6 +63,12 @@ public class Subscription : BaseEntity
     public decimal? OverageMarginPercent { get; set; }
     public decimal? OveragePricePerStudent { get; set; }
 
+    /// <summary>
+    /// Optimistische concurrency: twee gelijktijdige checkouts voor dezelfde club mogen niet allebei
+    /// slagen. Wordt bij elke wijziging vernieuwd (ApplicationDbContext.SaveChanges).
+    /// </summary>
+    public Guid ConcurrencyStamp { get; set; } = Guid.NewGuid();
+
     // Navigation properties
     public Organization Organization { get; set; } = null!;
     public ICollection<SubscriptionPayment> Payments { get; set; } = new List<SubscriptionPayment>();

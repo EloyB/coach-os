@@ -22,6 +22,13 @@ namespace CoachOS.Infrastructure.Migrations
                 type: "date",
                 nullable: true);
 
+            migrationBuilder.AddColumn<Guid>(
+                name: "ConcurrencyStamp",
+                table: "Subscriptions",
+                type: "uuid",
+                nullable: false,
+                defaultValue: new Guid("00000000-0000-0000-0000-000000000000"));
+
             migrationBuilder.AddColumn<DateOnly>(
                 name: "CurrentPeriodEnd",
                 table: "Subscriptions",
@@ -210,6 +217,10 @@ namespace CoachOS.Infrastructure.Migrations
 
             migrationBuilder.DropColumn(
                 name: "CancelAt",
+                table: "Subscriptions");
+
+            migrationBuilder.DropColumn(
+                name: "ConcurrencyStamp",
                 table: "Subscriptions");
 
             migrationBuilder.DropColumn(

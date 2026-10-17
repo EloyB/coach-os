@@ -1444,6 +1444,7 @@
     "fakeTitle": "Testbetaling (ontwikkelomgeving)",
     "fakeBody": "Er is geen echte Mollie-sleutel ingesteld. Kies hoe deze testbetaling afloopt.",
     "fakePaid": "Betaling geslaagd",
-    "fakeFailed": "Betaling mislukt"
+    "fakeFailed": "Betaling mislukt",
+    "checkoutUnavailable": "Zelf een abonnement afsluiten kan binnenkort. Neem intussen contact op via info@coach-os.be, dan regelen we het samen."
   }
 }

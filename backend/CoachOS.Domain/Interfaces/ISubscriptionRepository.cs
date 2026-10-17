@@ -23,6 +23,12 @@ public interface ISubscriptionRepository
     /// </summary>
     Task<IReadOnlyList<Subscription>> ListForBillingMaintenanceAsync(DateOnly periodEndHorizon, CancellationToken ct = default);
 
+    /// <summary>
+    /// Tracked, cross-org: actieve Mollie-abonnementen (geen deal, niet opgezegd) zonder Mollie
+    /// Subscription — de automatische verlenging werd niet (of niet volledig) aangemaakt.
+    /// </summary>
+    Task<IReadOnlyList<Subscription>> ListMissingAutomaticRenewalAsync(CancellationToken ct = default);
+
     /// <summary>AsNoTracking read; gebruik voor toegangs- en statuschecks.</summary>
     Task<Subscription?> GetByOrganizationReadOnlyAsync(Guid organizationId, CancellationToken ct = default);
 

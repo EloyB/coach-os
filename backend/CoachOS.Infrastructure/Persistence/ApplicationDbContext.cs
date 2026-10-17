@@ -212,6 +212,8 @@ public class ApplicationDbContext(
                 entry.Entity.UpdatedAt = now;
                 if (entry.Entity is SubscriptionPayment payment)
                     payment.ConcurrencyStamp = Guid.NewGuid();
+                else if (entry.Entity is Subscription subscription)
+                    subscription.ConcurrencyStamp = Guid.NewGuid();
             }
         }
 

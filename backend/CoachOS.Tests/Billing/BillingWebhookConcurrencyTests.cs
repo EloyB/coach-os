@@ -129,6 +129,37 @@ public class BillingWebhookConcurrencyTests
     }
 
     [Test]
+    public async Task ConcurrentCheckouts_SameOrganization_AtMostOneOpenFirstPayment()
+    {
+        for (int round = 0; round < Rounds; round++)
+        {
+            using BillingTestContext main = new(_options, null, null);
+            (Organization org, _) = await main.SeedOrganizationAsync(email: $"admin-{Guid.NewGuid():N}@test.be");
+            List<BillingTestContext> contexts = Enumerable.Range(0, ConcurrentWebhooks)
+                .Select(_ => new BillingTestContext(_options, main.FakeMollie, main.Mollie))
+                .ToList();
+            try
+            {
+                await RunConcurrentlyAsync(contexts.Select(c =>
+                {
+                    BillingService billing = c.CreateBillingService();
+                    return (Func<Task>)(() => billing.StartCheckoutAsync(org.Id, new CheckoutRequest(
+                        (int)SubscriptionPlan.Set, (int)BillingInterval.Monthly, (int)BillingPaymentMethod.Mollie)));
+                }));
+            }
+            finally
+            {
+                contexts.ForEach(c => c.Dispose());
+            }
+
+            (await main.ReloadPaymentsAsync(org.Id)).Count(p => p.Status == SubscriptionPaymentStatus.Open)
+                .Should().BeLessThanOrEqualTo(1, $"ronde {round}");
+            main.Mollie.Verify(m => m.CreateFirstPaymentAsync(It.IsAny<BillingPaymentRequest>(), It.IsAny<CancellationToken>()),
+                Times.AtMostOnce(), $"ronde {round}");
+        }
+    }
+
+    [Test]
     public async Task ConcurrentWebhooks_SameRecurringPayment_OneRecurringRow()
     {
         for (int round = 0; round < Rounds; round++)

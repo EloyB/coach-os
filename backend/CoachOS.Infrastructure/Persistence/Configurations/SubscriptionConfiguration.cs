@@ -25,6 +25,8 @@ public class SubscriptionConfiguration : IEntityTypeConfiguration<Subscription>
         builder.Property(s => s.MollieSubscriptionId)
             .HasMaxLength(100);
 
+        builder.Property(s => s.ConcurrencyStamp).IsConcurrencyToken();
+
         builder.Property(s => s.OverageMarginPercent)
             .HasPrecision(5, 2);
 

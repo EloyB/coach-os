@@ -7,7 +7,7 @@ namespace CoachOS.API.Endpoints.Webhooks;
 /// <summary>
 /// Webhook van ons eigen Mollie-account (CoachOS-abonnementen), los van de Connect-webhook
 /// <c>/webhooks/mollie</c>. Mollie stuurt enkel <c>id=tr_xxx</c>; de status halen we zelf op.
-/// Antwoordt altijd 200, anders blijft Mollie opnieuw proberen.
+/// Antwoordt 200, behalve 503 als Mollie zelf niet bereikbaar was (dan probeert Mollie opnieuw).
 /// </summary>
 public class MollieBillingWebhookEndpoint : IEndpoint
 {
@@ -31,7 +31,7 @@ public class MollieBillingWebhookEndpoint : IEndpoint
                     logger.LogWarning("Billing-webhook sync faalde voor {Id}: {Errors}",
                         id, string.Join(", ", result.Errors.Select(e => e.Message)));
                 }
-                return Results.Ok();
+                return Results.StatusCode(BillingWebhookResponses.StatusCodeFor(result));
             })
             .AllowAnonymous()
             .RequireRateLimiting("public")

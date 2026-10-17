@@ -38,6 +38,17 @@ public class SubscriptionRepository(ApplicationDbContext context) : ISubscriptio
                         && (s.PaymentMethod == BillingPaymentMethod.BankTransfer || s.IsDeal))
             .ToListAsync(ct);
 
+    public async Task<IReadOnlyList<Subscription>> ListMissingAutomaticRenewalAsync(CancellationToken ct = default)
+        => await context.Subscriptions
+            .IgnoreQueryFilters()
+            .Where(s => s.Status == SubscriptionStatus.Active
+                        && s.PaymentMethod == BillingPaymentMethod.Mollie
+                        && !s.IsDeal
+                        && s.CancelAt == null
+                        && s.MollieSubscriptionId == null
+                        && s.MollieCustomerId != null)
+            .ToListAsync(ct);
+
     public async Task<Subscription?> GetByOrganizationReadOnlyAsync(Guid organizationId, CancellationToken ct = default)
     {
         return await context.Subscriptions

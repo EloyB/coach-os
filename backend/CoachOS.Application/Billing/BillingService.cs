@@ -19,6 +19,7 @@ public class BillingService(
     IOrganizationRepository organizations,
     IActiveStudentCounter students,
     IBillingMollieClient mollie,
+    IInvoicingService invoicing,
     IVatNumberValidator vatValidator,
     IEmailService email,
     IUnitOfWork unitOfWork,
@@ -26,8 +27,19 @@ public class BillingService(
     IOptions<AppOptions> appOptions,
     IOptions<MollieBillingOptions> mollieOptions,
     IOptions<SuperAdminOptions> superAdminOptions,
+    IOptions<BillingOptions> billingOptions,
     ILogger<BillingService> logger) : IBillingService
 {
+    private const string CheckoutUnavailableMessage =
+        "Zelf een abonnement afsluiten kan binnenkort. Neem intussen contact op via info@coach-os.be.";
+    private const string ConcurrentCheckoutMessage =
+        "Er wordt al een abonnement afgesloten voor deze club. Ververs de pagina en probeer opnieuw.";
+
+    /// <summary>
+    /// Afrekenen kan enkel met echte koppelingen (Mollie-key én Billit), of in Development met fakes.
+    /// </summary>
+    private bool CheckoutAvailable => billingOptions.Value.AllowFakeIntegrations || (mollie.IsConfigured && invoicing.IsConfigured);
+
     /// <summary>Een openstaande eerste betaling blokkeert een nieuwe checkout zo lang.</summary>
     private static readonly TimeSpan OpenCheckoutWindow = TimeSpan.FromHours(1);
     private const int BankTransferTermDays = 30;
@@ -64,6 +76,7 @@ public class BillingService(
             ActiveStudentCount = activeStudents,
             SuggestedPlan = SubscriptionPlanCatalog.Suggest(activeStudents).Name,
             CanCheckout = subscription is null || !subscription.IsRunning(today),
+            CheckoutAvailable = CheckoutAvailable,
             BillingConfigured = mollie.IsConfigured,
             OverageMarginPercent = SubscriptionPlanCatalog.OverageMarginPercent,
             OveragePricePerStudent = SubscriptionPlanCatalog.OveragePricePerStudent,
@@ -123,6 +136,9 @@ public class BillingService(
         BillingPaymentMethod method = (BillingPaymentMethod)request.Method;
         DateOnly today = timeProvider.GetBrusselsToday();
 
+        if (!CheckoutAvailable)
+            return Result<CheckoutResultDto>.Fail(new Error(ErrorCodes.Validation, CheckoutUnavailableMessage));
+
         if (method == BillingPaymentMethod.BankTransfer && interval != BillingInterval.Yearly)
         {
             return Result<CheckoutResultDto>.Fail(new Error(ErrorCodes.Validation,
@@ -154,6 +170,10 @@ public class BillingService(
                 "Er staat al een betaling open. Rond die eerst af of probeer het binnen een uur opnieuw."));
         }
 
+        // Raakt het concurrency-token van het abonnement: van twee gelijktijdige checkouts voor
+        // dezelfde club kan maar één de eerste opslag winnen (de andere krijgt Conflict).
+        subscription.ConcurrencyStamp = Guid.NewGuid();
+
         decimal priceExclVat = SubscriptionPlanCatalog.PriceFor(plan, interval);
         DateOnly periodStart = BillingPeriods.FirstPeriodStart(subscription, today);
         DateOnly periodEnd = BillingPeriods.PeriodEnd(periodStart, interval);
@@ -175,6 +195,11 @@ public class BillingService(
             Result stopped = await mollie.CancelSubscriptionAsync(subscription.MollieCustomerId, subscription.MollieSubscriptionId, ct);
             if (!stopped.IsSuccess)
                 return Result<BillingOverviewDto>.Fail(stopped.Errors);
+
+            // Meteen vastleggen: faalt hierna iets (terugbetaling), dan zegt een nieuwe poging niet
+            // opnieuw op bij Mollie (dat geeft een fout op een al gestopte subscription).
+            subscription.MollieSubscriptionId = null;
+            await unitOfWork.SaveChangesAsync(ct);
         }
 
         bool paidPeriodStarted = subscription.CurrentPeriodStart is not DateOnly start || today >= start;
@@ -188,6 +213,7 @@ public class BillingService(
         {
             subscription.Status = SubscriptionStatus.Cancelled;
             subscription.CancelAt = subscription.CurrentPeriodEnd;
+            await CancelFuturePeriodsAsync(subscription, ct);
         }
         else
         {
@@ -254,6 +280,38 @@ public class BillingService(
         return Result.Ok();
     }
 
+    /// <summary>
+    /// Opgezegd tijdens een lopende periode: een al aangemaakte verlenging (overschrijving, 30 dagen
+    /// vooraf gefactureerd) vervalt. Een al verstuurde factuur vraagt een creditnota.
+    /// </summary>
+    private async Task CancelFuturePeriodsAsync(Subscription subscription, CancellationToken ct)
+    {
+        if (subscription.CurrentPeriodEnd is not DateOnly periodEnd)
+            return;
+
+        IReadOnlyList<SubscriptionPayment> history = await payments.ListBySubscriptionAsync(subscription.Id, ct);
+        List<string> invoiceNumbers = [];
+        foreach (SubscriptionPayment snapshot in history.Where(p => p.PeriodStart > periodEnd && p.Status == SubscriptionPaymentStatus.Open))
+        {
+            SubscriptionPayment? payment = await payments.GetByIdAsync(snapshot.Id, subscription.OrganizationId, ct);
+            if (payment is null)
+                continue;
+
+            payment.Status = SubscriptionPaymentStatus.Canceled;
+            if (payment.InvoiceStatus == InvoiceStatus.Created)
+                invoiceNumbers.Add(payment.InvoiceNumber ?? payment.Id.ToString());
+            else
+                payment.InvoiceStatus = InvoiceStatus.NotNeeded;
+        }
+
+        if (invoiceNumbers.Count > 0)
+        {
+            Organization? organization = await organizations.GetByIdAsync(subscription.OrganizationId, tracked: false, ct);
+            await NotifySuperAdminAsync("Opzegging na verlengingsfactuur",
+                $"{organization?.Name ?? subscription.OrganizationId.ToString()} zegde op na de verlengingsfactuur. Maak een creditnota in Billit voor factuur {string.Join(", ", invoiceNumbers)}.", ct);
+        }
+    }
+
     private async Task NotifySuperAdminAsync(string subject, string body, CancellationToken ct)
     {
         string to = superAdminOptions.Value.Email;
@@ -281,7 +339,8 @@ public class BillingService(
         payment.DueDate = today.AddDays(BankTransferTermDays);
         payment.InvoiceStatus = InvoiceStatus.Pending;
         await payments.AddAsync(payment, ct);
-        await unitOfWork.SaveChangesAsync(ct);
+        if (!await unitOfWork.TrySaveChangesAsync(ct))
+            return Result<CheckoutResultDto>.Fail(new Error(ErrorCodes.Conflict, ConcurrentCheckoutMessage));
 
         logger.LogInformation("Organisatie {OrgId} sloot {Plan} ({Interval}) af per overschrijving", organization.Id, plan, interval);
         await TrySendStartedMailAsync(organization, payment, ct);
@@ -292,19 +351,27 @@ public class BillingService(
         Organization organization, BillingProfile profile, Subscription subscription, SubscriptionPlan plan,
         BillingInterval interval, DateOnly periodStart, DateOnly periodEnd, decimal priceExclVat, CancellationToken ct)
     {
-        if (string.IsNullOrEmpty(subscription.MollieCustomerId))
-        {
-            Result<string> customer = await mollie.CreateCustomerAsync(profile.Name, profile.InvoiceEmail, ct);
-            if (!customer.IsSuccess)
-                return Result<CheckoutResultDto>.Fail(customer.Errors);
-            subscription.MollieCustomerId = customer.Value;
-        }
-
+        // Eerst de (open) betaling claimen, pas daarna externe calls: een gelijktijdige checkout
+        // verliest hier en maakt geen tweede Mollie customer of betaling aan.
         SubscriptionPayment payment = SubscriptionPayment.ForPeriod(
             subscription, SubscriptionPaymentKind.First, BillingPaymentMethod.Mollie,
             plan, interval, periodStart, periodEnd, priceExclVat);
         await payments.AddAsync(payment, ct);
-        await unitOfWork.SaveChangesAsync(ct);
+        if (!await unitOfWork.TrySaveChangesAsync(ct))
+            return Result<CheckoutResultDto>.Fail(new Error(ErrorCodes.Conflict, ConcurrentCheckoutMessage));
+
+        if (string.IsNullOrEmpty(subscription.MollieCustomerId))
+        {
+            Result<string> customer = await mollie.CreateCustomerAsync(profile.Name, profile.InvoiceEmail, ct);
+            if (!customer.IsSuccess)
+            {
+                payment.Status = SubscriptionPaymentStatus.Failed;
+                await unitOfWork.SaveChangesAsync(ct);
+                return Result<CheckoutResultDto>.Fail(customer.Errors);
+            }
+            subscription.MollieCustomerId = customer.Value;
+            await unitOfWork.SaveChangesAsync(ct);
+        }
 
         Result<BillingPaymentResult> created = await mollie.CreateFirstPaymentAsync(new BillingPaymentRequest(
             Amount: payment.AmountInclVat,

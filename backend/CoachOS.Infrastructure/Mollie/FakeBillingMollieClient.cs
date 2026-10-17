@@ -41,7 +41,7 @@ public class FakeBillingMollieClient(
     public Task<Result<BillingPaymentDetails>> GetPaymentDetailsAsync(string paymentId, CancellationToken ct = default)
         => Task.FromResult(_payments.TryGetValue(paymentId, out BillingPaymentDetails? details)
             ? Result<BillingPaymentDetails>.Ok(details)
-            : Result<BillingPaymentDetails>.Fail(new Error(ErrorCodes.ExternalService, "Onbekende (fake) Mollie-betaling.")));
+            : Result<BillingPaymentDetails>.Fail(new Error(ErrorCodes.NotFound, "Onbekende (fake) Mollie-betaling.")));
 
     public Task<Result<string>> CreateSubscriptionAsync(BillingSubscriptionRequest request, CancellationToken ct = default)
     {
