@@ -10,7 +10,9 @@ using CoachOS.Domain.Interfaces;
 using CoachOS.Infrastructure.Email;
 using CoachOS.Infrastructure.Export;
 using CoachOS.Infrastructure.Identity;
+using CoachOS.Infrastructure.Invoicing;
 using CoachOS.Infrastructure.Mollie;
+using CoachOS.Infrastructure.Vat;
 using CoachOS.Infrastructure.MultiTenancy;
 using CoachOS.Infrastructure.Persistence;
 using CoachOS.Infrastructure.Repositories;
@@ -90,9 +92,19 @@ public static class DependencyInjection
                                ?? configuration[$"{MollieBillingOptions.Section}__ApiKey"]
                                ?? string.Empty;
         if (string.IsNullOrWhiteSpace(billingApiKey))
-            services.AddScoped<IBillingMollieClient, FakeBillingMollieClient>();
+        {
+            // Singleton: de fake houdt zijn betalingen in het geheugen bij.
+            services.AddSingleton<FakeBillingMollieClient>();
+            services.AddSingleton<IBillingMollieClient>(sp => sp.GetRequiredService<FakeBillingMollieClient>());
+        }
         else
+        {
             services.AddHttpClient<IBillingMollieClient, BillingMollieClient>();
+        }
+
+        // Billit-koppeling volgt zodra er API-toegang is; tot dan een fake met oplopende nummers.
+        services.AddSingleton<IInvoicingService, FakeInvoicingService>();
+        services.AddHttpClient<IVatNumberValidator, ViesVatNumberValidator>();
 
         services.AddScoped<TenantContext>();
         services.AddScoped<ITenantContext>(sp => sp.GetRequiredService<TenantContext>());

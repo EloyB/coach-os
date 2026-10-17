@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -32,119 +33,167 @@ public class BillingMollieClient(
 
     public async Task<Result<string>> CreateCustomerAsync(string name, string email, CancellationToken ct = default)
     {
-        using HttpRequestMessage request = new(HttpMethod.Post, $"{_options.ApiBaseUrl}/v2/customers");
-        request.Headers.Authorization = BearerHeader();
-        request.Content = JsonContent.Create(new { name, email });
-
-        try
-        {
-            using HttpResponseMessage response = await httpClient.SendAsync(request, ct);
-            if (!response.IsSuccessStatusCode)
-            {
-                string body = await response.Content.ReadAsStringAsync(ct);
-                logger.LogWarning("Mollie billing POST /v2/customers gaf {Status}: {Body}", (int)response.StatusCode, body);
-                return Result<string>.Fail(new Error(ErrorCodes.ExternalService, "Kon de Mollie customer niet aanmaken."));
-            }
-
-            MollieCustomerResponse? payload = await response.Content.ReadFromJsonAsync<MollieCustomerResponse>(JsonOptions, ct);
-            if (payload is null || string.IsNullOrEmpty(payload.Id))
-                return Result<string>.Fail(new Error(ErrorCodes.ExternalService, "Mollie gaf een leeg customer-antwoord."));
-
-            return Result<string>.Ok(payload.Id);
-        }
-        catch (HttpRequestException ex)
-        {
-            logger.LogError(ex, "Netwerkfout bij Mollie billing POST /v2/customers");
-            return Result<string>.Fail(new Error(ErrorCodes.ExternalService, "Kon Mollie niet bereiken."));
-        }
+        Result<MollieIdResponse> response = await SendAsync<MollieIdResponse>(
+            HttpMethod.Post, "/v2/customers", new { name, email }, "Kon de Mollie customer niet aanmaken.", ct);
+        return response.IsSuccess
+            ? Result<string>.Ok(response.Value!.Id)
+            : Result<string>.Fail(response.Errors);
     }
 
-    public async Task<Result<BillingPaymentResult>> CreatePaymentAsync(
-        BillingPaymentRequest req, CancellationToken ct = default)
-    {
-        using HttpRequestMessage request = new(HttpMethod.Post, $"{_options.ApiBaseUrl}/v2/payments");
-        request.Headers.Authorization = BearerHeader();
+    public Task<Result<BillingPaymentResult>> CreatePaymentAsync(
+        BillingPaymentRequest request, CancellationToken ct = default)
+        => CreatePaymentCoreAsync(request, sequenceType: null, ct);
 
+    public Task<Result<BillingPaymentResult>> CreateFirstPaymentAsync(
+        BillingPaymentRequest request, CancellationToken ct = default)
+    {
+        if (string.IsNullOrEmpty(request.CustomerId))
+            return Task.FromResult(Result<BillingPaymentResult>.Fail(
+                new Error(ErrorCodes.Validation, "Een eerste betaling vereist een Mollie customer.")));
+
+        return CreatePaymentCoreAsync(request, sequenceType: "first", ct);
+    }
+
+    public async Task<Result<BillingPaymentDetails>> GetPaymentDetailsAsync(string paymentId, CancellationToken ct = default)
+    {
+        Result<MolliePaymentResponse> response = await SendAsync<MolliePaymentResponse>(
+            HttpMethod.Get, $"/v2/payments/{Uri.EscapeDataString(paymentId)}", null,
+            "Kon de Mollie-betaling niet ophalen.", ct);
+        if (!response.IsSuccess)
+            return Result<BillingPaymentDetails>.Fail(response.Errors);
+
+        MolliePaymentResponse p = response.Value!;
+        DateTime? paidAtUtc = p.PaidAt?.UtcDateTime;
+        return Result<BillingPaymentDetails>.Ok(new BillingPaymentDetails(
+            p.Id,
+            p.Status ?? "open",
+            ParseAmount(p.Amount?.Value),
+            paidAtUtc,
+            p.SequenceType ?? "oneoff",
+            p.CustomerId,
+            p.SubscriptionId,
+            p.Metadata ?? new Dictionary<string, string>()));
+    }
+
+    public async Task<Result<string>> CreateSubscriptionAsync(
+        BillingSubscriptionRequest request, CancellationToken ct = default)
+    {
+        Dictionary<string, object?> payload = new()
+        {
+            ["amount"] = new { value = FormatAmount(request.Amount), currency = "EUR" },
+            ["interval"] = request.Interval,
+            ["startDate"] = request.StartDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            ["description"] = request.Description,
+            ["metadata"] = request.Metadata,
+        };
+        if (!string.IsNullOrEmpty(request.WebhookUrl)) payload["webhookUrl"] = request.WebhookUrl;
+
+        Result<MollieIdResponse> response = await SendAsync<MollieIdResponse>(
+            HttpMethod.Post, $"/v2/customers/{Uri.EscapeDataString(request.CustomerId)}/subscriptions", payload,
+            "Kon de automatische verlenging bij Mollie niet aanmaken.", ct);
+        return response.IsSuccess
+            ? Result<string>.Ok(response.Value!.Id)
+            : Result<string>.Fail(response.Errors);
+    }
+
+    public async Task<Result> CancelSubscriptionAsync(string customerId, string subscriptionId, CancellationToken ct = default)
+    {
+        Result<MollieIdResponse> response = await SendAsync<MollieIdResponse>(
+            HttpMethod.Delete,
+            $"/v2/customers/{Uri.EscapeDataString(customerId)}/subscriptions/{Uri.EscapeDataString(subscriptionId)}",
+            null, "Kon de automatische verlenging bij Mollie niet stopzetten.", ct);
+        return response.IsSuccess ? Result.Ok() : Result.Fail(response.Errors);
+    }
+
+    public async Task<Result> RefundPaymentAsync(string paymentId, decimal amount, string description, CancellationToken ct = default)
+    {
+        object payload = new { amount = new { value = FormatAmount(amount), currency = "EUR" }, description };
+        Result<MollieIdResponse> response = await SendAsync<MollieIdResponse>(
+            HttpMethod.Post, $"/v2/payments/{Uri.EscapeDataString(paymentId)}/refunds", payload,
+            "Kon de terugbetaling bij Mollie niet aanmaken.", ct);
+        return response.IsSuccess ? Result.Ok() : Result.Fail(response.Errors);
+    }
+
+    private async Task<Result<BillingPaymentResult>> CreatePaymentCoreAsync(
+        BillingPaymentRequest req, string? sequenceType, CancellationToken ct)
+    {
         Dictionary<string, object?> payload = new()
         {
             ["amount"] = new { value = FormatAmount(req.Amount), currency = req.Currency },
             ["description"] = req.Description,
             ["redirectUrl"] = req.RedirectUrl,
         };
+        if (sequenceType is not null) payload["sequenceType"] = sequenceType;
         if (!string.IsNullOrEmpty(req.WebhookUrl)) payload["webhookUrl"] = req.WebhookUrl;
         if (!string.IsNullOrEmpty(req.CustomerId)) payload["customerId"] = req.CustomerId;
         if (req.Metadata is { Count: > 0 }) payload["metadata"] = req.Metadata;
-        request.Content = JsonContent.Create(payload);
 
-        try
-        {
-            using HttpResponseMessage response = await httpClient.SendAsync(request, ct);
-            if (!response.IsSuccessStatusCode)
-            {
-                string body = await response.Content.ReadAsStringAsync(ct);
-                logger.LogWarning("Mollie billing POST /v2/payments gaf {Status}: {Body}", (int)response.StatusCode, body);
-                return Result<BillingPaymentResult>.Fail(new Error(ErrorCodes.ExternalService, "Kon de Mollie betaling niet aanmaken."));
-            }
+        Result<MolliePaymentResponse> response = await SendAsync<MolliePaymentResponse>(
+            HttpMethod.Post, "/v2/payments", payload, "Kon de Mollie-betaling niet aanmaken.", ct);
+        if (!response.IsSuccess)
+            return Result<BillingPaymentResult>.Fail(response.Errors);
 
-            MolliePaymentResponse? payload2 = await response.Content.ReadFromJsonAsync<MolliePaymentResponse>(JsonOptions, ct);
-            string? checkoutUrl = payload2?.Links?.Checkout?.Href;
-            if (payload2 is null || string.IsNullOrEmpty(payload2.Id) || string.IsNullOrEmpty(checkoutUrl))
-                return Result<BillingPaymentResult>.Fail(new Error(ErrorCodes.ExternalService, "Mollie payment-antwoord mist id of checkout URL."));
+        string? checkoutUrl = response.Value!.Links?.Checkout?.Href;
+        if (string.IsNullOrEmpty(checkoutUrl))
+            return Result<BillingPaymentResult>.Fail(new Error(ErrorCodes.ExternalService, "Mollie gaf geen checkout-URL terug."));
 
-            return Result<BillingPaymentResult>.Ok(new BillingPaymentResult(payload2.Id, payload2.Status ?? "open", checkoutUrl));
-        }
-        catch (HttpRequestException ex)
-        {
-            logger.LogError(ex, "Netwerkfout bij Mollie billing POST /v2/payments");
-            return Result<BillingPaymentResult>.Fail(new Error(ErrorCodes.ExternalService, "Kon Mollie niet bereiken."));
-        }
+        return Result<BillingPaymentResult>.Ok(
+            new BillingPaymentResult(response.Value.Id, response.Value.Status ?? "open", checkoutUrl));
     }
 
-    public async Task<Result<BillingPaymentSnapshot>> GetPaymentAsync(string paymentId, CancellationToken ct = default)
+    private async Task<Result<T>> SendAsync<T>(
+        HttpMethod method, string path, object? body, string userMessage, CancellationToken ct)
+        where T : MollieIdResponse
     {
-        using HttpRequestMessage request = new(HttpMethod.Get, $"{_options.ApiBaseUrl}/v2/payments/{paymentId}");
-        request.Headers.Authorization = BearerHeader();
+        using HttpRequestMessage request = new(method, $"{_options.ApiBaseUrl.TrimEnd('/')}{path}");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _options.ApiKey);
+        if (body is not null)
+            request.Content = JsonContent.Create(body, options: JsonOptions);
 
         try
         {
             using HttpResponseMessage response = await httpClient.SendAsync(request, ct);
             if (!response.IsSuccessStatusCode)
             {
-                string body = await response.Content.ReadAsStringAsync(ct);
-                logger.LogWarning("Mollie billing GET /v2/payments/{Id} gaf {Status}: {Body}", paymentId, (int)response.StatusCode, body);
-                return Result<BillingPaymentSnapshot>.Fail(new Error(ErrorCodes.ExternalService, "Kon Mollie payment status niet ophalen."));
+                string error = await response.Content.ReadAsStringAsync(ct);
+                logger.LogWarning("Mollie billing {Method} {Path} gaf {Status}: {Body}",
+                    method, path, (int)response.StatusCode, error);
+                return Result<T>.Fail(new Error(ErrorCodes.ExternalService, userMessage));
             }
 
-            MolliePaymentResponse? payload = await response.Content.ReadFromJsonAsync<MolliePaymentResponse>(JsonOptions, ct);
+            T? payload = await response.Content.ReadFromJsonAsync<T>(JsonOptions, ct);
             if (payload is null || string.IsNullOrEmpty(payload.Id))
-                return Result<BillingPaymentSnapshot>.Fail(new Error(ErrorCodes.ExternalService, "Mollie gaf een leeg payment-antwoord."));
+                return Result<T>.Fail(new Error(ErrorCodes.ExternalService, userMessage));
 
-            DateTime? paidAtUtc = payload.PaidAt.HasValue
-                ? DateTime.SpecifyKind(payload.PaidAt.Value.ToUniversalTime(), DateTimeKind.Utc)
-                : null;
-
-            return Result<BillingPaymentSnapshot>.Ok(new BillingPaymentSnapshot(payload.Id, payload.Status ?? "open", paidAtUtc));
+            return Result<T>.Ok(payload);
         }
-        catch (HttpRequestException ex)
+        catch (Exception ex) when (ex is HttpRequestException or JsonException or TaskCanceledException && !ct.IsCancellationRequested)
         {
-            logger.LogError(ex, "Netwerkfout bij Mollie billing GET /v2/payments/{Id}", paymentId);
-            return Result<BillingPaymentSnapshot>.Fail(new Error(ErrorCodes.ExternalService, "Kon Mollie niet bereiken."));
+            logger.LogError(ex, "Fout bij Mollie billing {Method} {Path}", method, path);
+            return Result<T>.Fail(new Error(ErrorCodes.ExternalService, "Kon Mollie niet bereiken."));
         }
     }
-
-    private AuthenticationHeaderValue BearerHeader() => new("Bearer", _options.ApiKey);
 
     private static string FormatAmount(decimal amount)
-        => amount.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
+        => amount.ToString("F2", CultureInfo.InvariantCulture);
 
-    private sealed record MollieCustomerResponse(
-        [property: JsonPropertyName("id")] string Id);
+    private static decimal ParseAmount(string? value)
+        => decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out decimal amount) ? amount : 0m;
+
+    private record MollieIdResponse([property: JsonPropertyName("id")] string Id);
 
     private sealed record MolliePaymentResponse(
-        [property: JsonPropertyName("id")] string Id,
+        string Id,
         [property: JsonPropertyName("status")] string? Status,
-        [property: JsonPropertyName("paidAt")] DateTime? PaidAt,
-        [property: JsonPropertyName("_links")] MolliePaymentLinks? Links);
+        [property: JsonPropertyName("amount")] MollieAmount? Amount,
+        [property: JsonPropertyName("paidAt")] DateTimeOffset? PaidAt,
+        [property: JsonPropertyName("sequenceType")] string? SequenceType,
+        [property: JsonPropertyName("customerId")] string? CustomerId,
+        [property: JsonPropertyName("subscriptionId")] string? SubscriptionId,
+        [property: JsonPropertyName("metadata")] Dictionary<string, string>? Metadata,
+        [property: JsonPropertyName("_links")] MolliePaymentLinks? Links) : MollieIdResponse(Id);
+
+    private sealed record MollieAmount([property: JsonPropertyName("value")] string? Value);
 
     private sealed record MolliePaymentLinks(
         [property: JsonPropertyName("checkout")] MollieLinkHref? Checkout);
