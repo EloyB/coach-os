@@ -1,6 +1,8 @@
 using CoachOS.Application.Abstractions;
 using CoachOS.Application.Auth;
 using CoachOS.Application.Auth.DTOs;
+using CoachOS.Application.Configuration;
+using CoachOS.Domain.Common;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
 using CoachOS.Domain.Models;
@@ -8,6 +10,7 @@ using CoachOS.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace CoachOS.Infrastructure.Identity;
 
@@ -16,17 +19,21 @@ public class AuthService(
     ApplicationDbContext context,
     TokenService tokenService,
     IEmailService emailService,
+    IOptions<RegistrationOptions> registrationOptions,
+    TimeProvider timeProvider,
     ILogger<AuthService> logger)
     : IAuthService
 {
     public async Task<Result<AuthResponseDto>> RegisterAsync(
-        string organizationName,
-        string firstName,
-        string lastName,
-        string email,
-        string password,
+        RegisterRequest request,
         CancellationToken cancellationToken = default)
     {
+        string organizationName = request.OrganizationName.Trim();
+        string firstName = request.FirstName.Trim();
+        string lastName = request.LastName.Trim();
+        string email = request.Email.Trim();
+        RegistrationOptions options = registrationOptions.Value;
+
         // Bij registratie van een nieuwe organisatie mag dezelfde email niet
         // opnieuw een nieuwe org aanmaken — dan groeien de tenants ongecontroleerd.
         // Wil je als bestaande user een nieuwe org starten, dan gebeurt dat via
@@ -36,6 +43,19 @@ public class AuthService(
         {
             logger.LogWarning("Registratie geweigerd: e-mail {Email} is al in gebruik", MaskEmail(email));
             return Result<AuthResponseDto>.Fail("E-mailadres is al in gebruik");
+        }
+
+        DateTime oneHourAgo = timeProvider.GetUtcNow().UtcDateTime.AddHours(-1);
+        int recentRegistrations = await context.Organizations
+            .CountAsync(o => o.CreatedAt >= oneHourAgo, cancellationToken);
+        if (recentRegistrations >= options.MaxRegistrationsPerHour)
+        {
+            logger.LogWarning(
+                "Registratie-noodrem actief: {Count} nieuwe organisaties in het afgelopen uur (limiet {Limit})",
+                recentRegistrations, options.MaxRegistrationsPerHour);
+            return Result<AuthResponseDto>.Fail(new Error(
+                ErrorCodes.TooManyRequests,
+                "Er worden momenteel uitzonderlijk veel accounts aangemaakt. Probeer het later opnieuw."));
         }
 
         await using var transaction =
@@ -67,8 +87,12 @@ public class AuthService(
                 OnboardingStartedAt = DateTime.UtcNow,
             });
 
+            // Elke nieuwe organisatie start met een gratis proef — zonder plan of betaalgegevens.
+            context.Subscriptions.Add(Subscription.StartTrial(organization.Id, timeProvider.GetBrusselsToday()));
+
             await context.SaveChangesAsync(cancellationToken);
 
+            DateTime now = timeProvider.GetUtcNow().UtcDateTime;
             ApplicationUser user = new()
             {
                 Id = Guid.NewGuid(),
@@ -76,10 +100,13 @@ public class AuthService(
                 Email = email,
                 FirstName = firstName,
                 LastName = lastName,
-                IsActive = true
+                IsActive = true,
+                EmailConfirmed = options.AutoVerifyEmail
             };
 
-            var result = await userManager.CreateAsync(user, password);
+            string? verificationCode = options.AutoVerifyEmail ? null : IssueVerificationCode(user, now);
+
+            var result = await userManager.CreateAsync(user, request.Password);
             if (!result.Succeeded)
             {
                 await transaction.RollbackAsync(cancellationToken);
@@ -96,12 +123,34 @@ public class AuthService(
                 JoinedAt = DateTime.UtcNow
             };
             context.OrganizationMemberships.Add(membership);
+
+            context.TermsAcceptances.Add(new TermsAcceptance
+            {
+                Id = Guid.NewGuid(),
+                OrganizationId = organization.Id,
+                UserId = user.Id,
+                DocumentType = LegalDocumentType.TermsOfService,
+                Version = options.TermsVersion,
+                AcceptedAt = now
+            });
+            context.TermsAcceptances.Add(new TermsAcceptance
+            {
+                Id = Guid.NewGuid(),
+                OrganizationId = organization.Id,
+                UserId = user.Id,
+                DocumentType = LegalDocumentType.DataProcessingAgreement,
+                Version = options.DataProcessingAgreementVersion,
+                AcceptedAt = now
+            });
             await context.SaveChangesAsync(cancellationToken);
 
             await transaction.CommitAsync(cancellationToken);
 
             logger.LogInformation("Nieuwe registratie: {Email}, organisatie {OrgName} ({OrgId})",
-                email, organizationName, organization.Id);
+                MaskEmail(email), organizationName, organization.Id);
+
+            if (verificationCode is not null)
+                await TrySendVerificationEmailAsync(user, verificationCode, cancellationToken);
 
             (var token, var expiresAt) = tokenService.GenerateToken(user, membership);
 
@@ -115,6 +164,7 @@ public class AuthService(
                 LastName = user.LastName,
                 OrganizationId = organization.Id,
                 Role = UserRole.Admin.ToString(),
+                EmailVerified = user.EmailConfirmed,
                 Memberships =
                 [
                     new OrganizationMembershipDto
@@ -282,6 +332,8 @@ public class AuthService(
         }
 
         user.IsActive = true;
+        // De uitnodiging kwam via dit e-mailadres binnen — daarmee is het bevestigd.
+        user.EmailConfirmed = true;
         user.InviteToken = null;
         user.InviteTokenExpiry = null;
         user.UpdatedAt = DateTime.UtcNow;
@@ -387,6 +439,176 @@ public class AuthService(
         return Result.Ok();
     }
 
+    public async Task<Result> VerifyEmailAsync(
+        Guid userId,
+        string code,
+        CancellationToken cancellationToken = default)
+    {
+        // AsNoTracking: alle schrijfacties hieronder lopen via ExecuteUpdate, dus er mag geen
+        // getrackte (en dan verouderde) kopie van de user in de context blijven hangen.
+        ApplicationUser? user = await userManager.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+        if (user is null || !user.IsActive)
+            return Result.Fail(new Error(ErrorCodes.NotFound, "Account niet gevonden"));
+
+        if (user.EmailConfirmed)
+            return Result.Ok();
+
+        DateTime now = timeProvider.GetUtcNow().UtcDateTime;
+        if (user.EmailVerificationCodeHash is null
+            || user.EmailVerificationCodeExpiry is null
+            || user.EmailVerificationCodeExpiry < now)
+        {
+            return Result.Fail(new Error(ErrorCodes.Validation, "De code is verlopen. Vraag een nieuwe code aan."));
+        }
+
+        // De poging wordt atomair in de database geteld vóór de code vergeleken wordt. Zo kunnen
+        // gelijktijdige requests samen nooit meer dan MaxAttempts codes uitproberen.
+        string currentHash = user.EmailVerificationCodeHash;
+        int claimedAttempts = await userManager.Users
+            .Where(u => u.Id == userId
+                        && u.EmailVerificationCodeHash == currentHash
+                        && u.EmailVerificationAttempts < EmailVerificationCodes.MaxAttempts)
+            .ExecuteUpdateAsync(
+                setters => setters.SetProperty(u => u.EmailVerificationAttempts, u => u.EmailVerificationAttempts + 1),
+                cancellationToken);
+        if (claimedAttempts == 0)
+            return Result.Fail(new Error(ErrorCodes.Validation, "Te veel pogingen. Vraag een nieuwe code aan."));
+
+        if (!EmailVerificationCodes.Matches(currentHash, user.Id, code))
+        {
+            logger.LogWarning("Foute verificatiecode voor {Email}", MaskEmail(user.Email!));
+            return Result.Fail(new Error(ErrorCodes.Validation, "De code is niet juist."));
+        }
+
+        await userManager.Users
+            .Where(u => u.Id == userId)
+            .ExecuteUpdateAsync(
+                setters => setters
+                    .SetProperty(u => u.EmailConfirmed, true)
+                    .SetProperty(u => u.EmailVerificationCodeHash, (string?)null)
+                    .SetProperty(u => u.EmailVerificationCodeExpiry, (DateTime?)null)
+                    .SetProperty(u => u.EmailVerificationSentAt, (DateTime?)null)
+                    .SetProperty(u => u.EmailVerificationAttempts, 0)
+                    .SetProperty(u => u.UpdatedAt, now),
+                cancellationToken);
+
+        logger.LogInformation("E-mailadres bevestigd: {Email} (UserId: {UserId})", MaskEmail(user.Email!), user.Id);
+        return Result.Ok();
+    }
+
+    public async Task<Result<bool>> ResendEmailVerificationAsync(
+        Guid userId,
+        bool onlyIfExpired = false,
+        CancellationToken cancellationToken = default)
+    {
+        // AsNoTracking: de schrijfactie hieronder loopt via ExecuteUpdate (zie VerifyEmailAsync).
+        ApplicationUser? user = await userManager.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+        if (user is null || !user.IsActive)
+            return Result<bool>.Fail(new Error(ErrorCodes.NotFound, "Account niet gevonden"));
+
+        if (user.EmailConfirmed)
+            return Result<bool>.Ok(false);
+
+        DateTime now = timeProvider.GetUtcNow().UtcDateTime;
+        bool hasValidCode = user.EmailVerificationCodeHash is not null
+                            && user.EmailVerificationCodeExpiry is not null
+                            && user.EmailVerificationCodeExpiry >= now;
+        if (onlyIfExpired && hasValidCode)
+            return Result<bool>.Ok(false);
+
+        if (user.EmailVerificationSentAt is not null
+            && now - user.EmailVerificationSentAt.Value < EmailVerificationCodes.ResendCooldown)
+        {
+            return ResendCooldownError();
+        }
+
+        if (user.EmailVerificationSendCount >= EmailVerificationCodes.MaxSends)
+            return Result<bool>.Fail(new Error(ErrorCodes.Validation, "Je hebt te veel codes aangevraagd. Neem contact op via info@coach-os.be."));
+
+        // De nieuwe code wordt atomair in de database geclaimd, met de wachttijd en het maximum
+        // als voorwaarde. Bij gelijktijdige requests slaagt er zo precies één, en enkel die
+        // verstuurt een mail; de checks hierboven geven alleen een duidelijke foutmelding.
+        string code = EmailVerificationCodes.Generate();
+        string codeHash = EmailVerificationCodes.Hash(userId, code);
+        DateTime codeExpiry = now.Add(EmailVerificationCodes.Lifetime);
+        DateTime cooldownStart = now - EmailVerificationCodes.ResendCooldown;
+        int claimed = await userManager.Users
+            .Where(u => u.Id == userId
+                        && u.IsActive
+                        && !u.EmailConfirmed
+                        && (u.EmailVerificationSentAt == null || u.EmailVerificationSentAt <= cooldownStart)
+                        && u.EmailVerificationSendCount < EmailVerificationCodes.MaxSends)
+            .ExecuteUpdateAsync(
+                setters => setters
+                    .SetProperty(u => u.EmailVerificationCodeHash, codeHash)
+                    .SetProperty(u => u.EmailVerificationCodeExpiry, codeExpiry)
+                    .SetProperty(u => u.EmailVerificationSentAt, now)
+                    .SetProperty(u => u.EmailVerificationAttempts, 0)
+                    .SetProperty(u => u.EmailVerificationSendCount, u => u.EmailVerificationSendCount + 1)
+                    .SetProperty(u => u.UpdatedAt, now),
+                cancellationToken);
+
+        // Een gelijktijdig request was ons net voor: er is net een verse code verstuurd.
+        if (claimed == 0)
+            return onlyIfExpired ? Result<bool>.Ok(false) : ResendCooldownError();
+
+        try
+        {
+            await emailService.SendEmailVerificationAsync(user.Email!, user.FirstName, code, cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "Verificatiemail versturen mislukt voor {Email}", MaskEmail(user.Email!));
+            return Result<bool>.Fail(new Error(ErrorCodes.ExternalService, "De mail kon niet verstuurd worden. Probeer het later opnieuw."));
+        }
+
+        return Result<bool>.Ok(true);
+    }
+
+    public async Task<bool> IsEmailVerifiedAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+        return await userManager.Users
+            .AsNoTracking()
+            .AnyAsync(u => u.Id == userId && u.EmailConfirmed, cancellationToken);
+    }
+
+    private static Result<bool> ResendCooldownError() =>
+        Result<bool>.Fail(new Error(ErrorCodes.Validation, "Wacht even voor je een nieuwe code aanvraagt."));
+
+    /// <summary>Zet een verse verificatiecode op de user (nog niet opgeslagen) en geeft de leesbare code terug.</summary>
+    private static string IssueVerificationCode(ApplicationUser user, DateTime now)
+    {
+        string code = EmailVerificationCodes.Generate();
+        user.EmailVerificationCodeHash = EmailVerificationCodes.Hash(user.Id, code);
+        user.EmailVerificationCodeExpiry = now.Add(EmailVerificationCodes.Lifetime);
+        user.EmailVerificationSentAt = now;
+        user.EmailVerificationAttempts = 0;
+        user.EmailVerificationSendCount++;
+        return code;
+    }
+
+    /// <summary>
+    /// Een mislukte mail mag de registratie niet terugdraaien: het account bestaat al en de
+    /// gebruiker kan vanop het verificatiescherm een nieuwe code aanvragen.
+    /// </summary>
+    private async Task TrySendVerificationEmailAsync(ApplicationUser user, string code, CancellationToken ct)
+    {
+        try
+        {
+            await emailService.SendEmailVerificationAsync(user.Email!, user.FirstName, code, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "Verificatiemail versturen mislukt voor {Email}", MaskEmail(user.Email!));
+        }
+    }
+
     private async Task<List<OrganizationMembership>> LoadActiveMembershipsAsync(Guid userId, CancellationToken ct)
     {
         return await context.OrganizationMemberships
@@ -414,6 +636,7 @@ public class AuthService(
             LastName = user.LastName,
             OrganizationId = active.OrganizationId,
             Role = active.Role.ToString(),
+            EmailVerified = user.EmailConfirmed,
             HeadTrainerClubIds = active.HeadTrainerClubs.Select(h => h.TennisClubId).ToList(),
             Memberships = all.Select(ToDto).ToList()
         });

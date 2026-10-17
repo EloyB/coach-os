@@ -55,6 +55,7 @@ export function DashboardSidebar() {
         role: response.role,
         memberships: response.memberships,
         headTrainerClubIds: response.headTrainerClubIds,
+        emailVerified: response.emailVerified,
       });
       setSwitcherOpen(false);
       router.refresh();

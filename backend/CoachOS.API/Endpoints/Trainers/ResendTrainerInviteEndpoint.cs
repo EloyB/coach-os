@@ -1,4 +1,5 @@
 using CoachOS.API.Extensions;
+using CoachOS.API.Filters;
 using CoachOS.Application.Configuration;
 using CoachOS.Application.Trainers;
 using Microsoft.Extensions.Options;
@@ -16,6 +17,7 @@ public class ResendTrainerInviteEndpoint : IEndpoint
             return result.IsSuccess ? Results.NoContent() : result.ToErrorResult();
         })
         .RequireAuthorization(policy => policy.RequireRole("Admin"))
+        .AddEndpointFilter<RequireVerifiedEmailFilter>()
         .WithTags("Trainers");
     }
 }

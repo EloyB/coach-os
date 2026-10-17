@@ -9,7 +9,7 @@ public class DeactivateTrainerEndpoint : IEndpoint
     {
         app.MapDelete("/trainers/{id:guid}", async (Guid id, ITrainerService service, HttpContext ctx, CancellationToken ct) =>
         {
-            var result = await service.DeactivateAsync(id, ctx.GetOrganizationId(), ct);
+            var result = await service.DeactivateAsync(id, ctx.GetOrganizationId(), ctx.GetUserId(), ct);
             return result.IsSuccess ? Results.NoContent() : result.ToErrorResult();
         })
         .RequireAuthorization(policy => policy.RequireRole("Admin"))

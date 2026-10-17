@@ -72,14 +72,13 @@ public class CampEnrollmentService(
             return Result<SubmitCampEnrollmentResultDto>.Fail(new Error(ErrorCodes.Validation, "De inschrijvingsdeadline is verstreken."));
 
         CampEnrollmentForm? form = await forms.GetByCampIdReadOnlyAsync(campId, ct);
-        if (form is not null)
-        {
-            Error? formError = FormResponseValidator.Validate(
-                form.Fields.Select(f => (f.Id, f.IsRequired, f.Label)),
-                request.Responses.Select(r => (r.CampFormFieldId, r.Value)));
-            if (formError is not null)
-                return Result<SubmitCampEnrollmentResultDto>.Fail(formError);
-        }
+        // Altijd valideren, ook zonder formulier: dan is de veldenset leeg en wordt elk antwoord
+        // met een onbekend veld-id (bv. uit een ander kamp) netjes geweigerd i.p.v. opgeslagen.
+        Error? formError = FormResponseValidator.Validate(
+            (form?.Fields ?? []).Select(f => (f.Id, f.IsRequired, f.Label)),
+            request.Responses.Select(r => (r.CampFormFieldId, r.Value)));
+        if (formError is not null)
+            return Result<SubmitCampEnrollmentResultDto>.Fail(formError);
 
         int groupSize = request.EnrollmentType == "group" && request.GroupMembers is not null
             ? request.GroupMembers.Count + 1
@@ -214,6 +213,107 @@ public class CampEnrollmentService(
 
         return Result<SubmitCampEnrollmentResultDto>.Ok(
             new SubmitCampEnrollmentResultDto(enrollment.Id, RequiresPayment: isPaid));
+    }
+
+    public async Task<Result<Guid>> CreateManualAsync(
+        Guid campId, Guid organizationId, CreateManualCampEnrollmentRequest request,
+        CancellationToken ct = default)
+    {
+        // GetByIdPublicAsync is niet tenant-gefilterd: controleer de organisatie expliciet.
+        Camp? camp = await camps.GetByIdPublicAsync(campId, ct);
+        if (camp is null || camp.OrganizationId != organizationId)
+            return Result<Guid>.Fail(new Error(ErrorCodes.NotFound, "Kamp niet gevonden."));
+
+        CampEnrollmentForm? form = await forms.GetByCampIdReadOnlyAsync(campId, ct);
+        // Altijd valideren, ook zonder formulier: dan is de veldenset leeg en wordt elk antwoord
+        // met een onbekend veld-id (bv. uit een ander kamp) netjes geweigerd i.p.v. opgeslagen.
+        Error? formError = FormResponseValidator.Validate(
+            (form?.Fields ?? []).Select(f => (f.Id, f.IsRequired, f.Label)),
+            request.Responses.Select(r => (r.CampFormFieldId, r.Value)));
+        if (formError is not null)
+            return Result<Guid>.Fail(formError);
+
+        string email = request.ParticipantEmail.Trim();
+        bool isPaidCamp = camp.Price > 0m;
+        CampEnrollment enrollment;
+
+        await unitOfWork.BeginTransactionAsync(IsolationLevel.Serializable, ct);
+        try
+        {
+            if (camp.MaxParticipants.HasValue
+                && await enrollments.CountActiveByCampAsync(campId, ct) + 1 > camp.MaxParticipants.Value)
+            {
+                await unitOfWork.RollbackTransactionAsync(ct);
+                return Result<Guid>.Fail(new Error(ErrorCodes.Conflict, "Dit kamp is volzet."));
+            }
+
+            if (await enrollments.IsDuplicateAsync(campId, email, ct))
+            {
+                await unitOfWork.RollbackTransactionAsync(ct);
+                return Result<Guid>.Fail(new Error(ErrorCodes.Conflict,
+                    $"{email} is al ingeschreven voor dit kamp."));
+            }
+
+            enrollment = new CampEnrollment
+            {
+                OrganizationId = organizationId,
+                CampId = campId,
+                ParticipantName = request.ParticipantName.Trim(),
+                ParticipantEmail = email,
+                ParticipantPhone = string.IsNullOrWhiteSpace(request.ParticipantPhone)
+                    ? null
+                    : request.ParticipantPhone.Trim(),
+                // Betaald kamp: pas bevestigd zodra de cash als betaald is gemarkeerd (zelfde regel
+                // als de publieke flow). Gratis kamp: meteen bevestigd.
+                Status = isPaidCamp ? EnrollmentStatus.PendingPayment : EnrollmentStatus.Confirmed,
+                EnrolledAt = DateTime.UtcNow,
+            };
+            await enrollments.AddAsync(enrollment, ct);
+
+            foreach (CampFormResponseValueDto r in request.Responses.Where(r => !string.IsNullOrWhiteSpace(r.Value)))
+                await enrollments.AddFormResponseAsync(new CampFormResponse
+                {
+                    CampEnrollmentId = enrollment.Id, CampFormFieldId = r.CampFormFieldId, Value = r.Value,
+                }, ct);
+
+            await unitOfWork.SaveChangesAsync(ct);
+
+            if (isPaidCamp)
+            {
+                // Openstaande cash-betaling (prijs × 1), zodat de beheerder ze kan afrekenen.
+                Result recorded = await paymentService.RecordCampCashPaymentAsync(enrollment.Id, organizationId, ct);
+                if (!recorded.IsSuccess)
+                {
+                    await unitOfWork.RollbackTransactionAsync(ct);
+                    return Result<Guid>.Fail(recorded.Errors);
+                }
+            }
+
+            await unitOfWork.CommitTransactionAsync(ct);
+        }
+        catch
+        {
+            await unitOfWork.RollbackTransactionAsync(ct);
+            throw;
+        }
+
+        // Mails na commit (zelfde regel als de publieke flow): gratis meteen, betaald via "betaald markeren".
+        if (!isPaidCamp)
+        {
+            await SafeSendAsync(() => emailService.SendCampEnrollmentConfirmedAsync(
+                enrollment.ParticipantEmail, enrollment.ParticipantName, camp.Name,
+                camp.StartDate, camp.EndDate, ct), enrollment.Id);
+        }
+        else if (request.Paid)
+        {
+            Result marked = await paymentService.MarkCampCashPaidAsync(campId, enrollment.Id, organizationId, ct);
+            if (!marked.IsSuccess)
+                logger.LogWarning(
+                    "Manuele kampinschrijving {Id} aangemaakt maar niet als betaald gemarkeerd: {Error}",
+                    enrollment.Id, marked.Errors.FirstOrDefault()?.Message);
+        }
+
+        return Result<Guid>.Ok(enrollment.Id);
     }
 
     public async Task<Result<CampPaymentOptionsDto>> GetPaymentOptionsAsync(

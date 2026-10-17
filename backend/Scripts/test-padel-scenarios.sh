@@ -23,7 +23,9 @@ auth=$(invoke POST "/auth/register" '{
     "firstName": "Coach",
     "lastName": "Admin",
     "email": "coach@padelclub.be",
-    "password": "Padel2026!"
+    "password": "Padel2026!",
+    "acceptTerms": true,
+    "acceptDataProcessingAgreement": true
 }')
 token=$(echo "$auth" | python3 -c "import sys,json; print(json.load(sys.stdin).get('token',''))" 2>/dev/null)
 if [ -z "$token" ]; then

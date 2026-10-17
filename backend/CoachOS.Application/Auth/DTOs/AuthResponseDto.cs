@@ -27,4 +27,10 @@ public class AuthResponseDto
     /// <see cref="Memberships"/> leeg (Option C: super admins hebben geen memberships).
     /// </summary>
     public bool IsSuperAdmin { get; set; }
+
+    /// <summary>
+    /// False zolang een zelf-geregistreerde gebruiker zijn e-mailadres nog niet bevestigd heeft.
+    /// Blokkeert het inloggen niet; de FE toont dan een herinnering.
+    /// </summary>
+    public bool EmailVerified { get; set; } = true;
 }

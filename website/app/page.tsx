@@ -1,6 +1,5 @@
 import { SiteNav } from "@/components/site/site-nav";
 import { SiteFooter } from "@/components/site/site-footer";
-import { PilotBanner } from "@/components/site/pilot-banner";
 import { HomepageJsonLd } from "@/components/site/json-ld";
 import { Hero } from "@/components/sections/hero";
 import { VoorWie } from "@/components/sections/voor-wie";
@@ -10,7 +9,6 @@ import { FeatureGrid } from "@/components/sections/feature-grid";
 import { ExcelComparison } from "@/components/sections/excel-comparison";
 import { BespaarTijd } from "@/components/sections/bespaar-tijd";
 import { Pricing } from "@/components/sections/pricing";
-import { PilotProgram } from "@/components/sections/pilot-program";
 import { Faq } from "@/components/sections/faq";
 import { FinalCta } from "@/components/sections/final-cta";
 import { PRICING_VISIBLE } from "@/content/pricing";
@@ -19,7 +17,6 @@ export default function Page() {
   return (
     <>
       <HomepageJsonLd />
-      <PilotBanner />
       <SiteNav />
       <main>
         <Hero />
@@ -30,7 +27,6 @@ export default function Page() {
         <ExcelComparison />
         <BespaarTijd />
         {PRICING_VISIBLE ? <Pricing /> : null}
-        <PilotProgram />
         <Faq />
         <FinalCta />
       </main>

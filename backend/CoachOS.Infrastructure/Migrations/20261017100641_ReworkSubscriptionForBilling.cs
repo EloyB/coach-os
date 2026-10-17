@@ -20,8 +20,7 @@ namespace CoachOS.Infrastructure.Migrations
                 name: "Interval",
                 table: "Subscriptions",
                 type: "integer",
-                nullable: false,
-                defaultValue: 0);
+                nullable: true);
 
             migrationBuilder.AddColumn<string>(
                 name: "LastCheckoutUrl",

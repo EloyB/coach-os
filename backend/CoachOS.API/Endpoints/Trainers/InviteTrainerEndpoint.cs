@@ -14,11 +14,12 @@ public class InviteTrainerEndpoint : IEndpoint
         app.MapPost("/trainers/invite", async (InviteTrainerRequest request, ITrainerService service, IOptions<AppOptions> appOptions, HttpContext ctx, CancellationToken ct) =>
         {
             string inviteBaseUrl = appOptions.Value.FrontendBaseUrl;
-            var result = await service.InviteAsync(ctx.GetOrganizationId(), request.FirstName, request.LastName, request.Email, inviteBaseUrl, ct);
+            var result = await service.InviteAsync(ctx.GetOrganizationId(), request.FirstName, request.LastName, request.Email, inviteBaseUrl, request.AsAdmin, ct);
             return result.IsSuccess ? Results.Ok(result.Value) : result.ToErrorResult();
         })
         .RequireAuthorization(policy => policy.RequireRole("Admin"))
         .AddEndpointFilter<ValidationFilter<InviteTrainerRequest>>()
+        .AddEndpointFilter<RequireVerifiedEmailFilter>()
         .WithTags("Trainers");
     }
 }

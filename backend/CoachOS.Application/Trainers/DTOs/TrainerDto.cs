@@ -6,6 +6,9 @@ public class TrainerDto
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
+
+    /// <summary>"Trainer" of "Admin" (een extra Admin heeft alle rechten op alle clubs).</summary>
+    public string Role { get; set; } = "Trainer";
     public bool IsActive { get; set; }
     public bool InvitePending { get; set; }
     public int LessonSeriesCount { get; set; }

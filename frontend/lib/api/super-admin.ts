@@ -26,9 +26,11 @@ export interface OrganizationListItemDto {
   isEarlyBird: boolean;
   adminCount: number;
   createdAt: string;
+  subscriptionStatus: "Legacy" | "Trialing" | "Active";
+  /** Laatste dag van de proef (yyyy-MM-dd); null buiten een proef. */
+  trialEndsAt: string | null;
+  /** Game/Set/Match; null zolang er geen plan is. */
   subscriptionPlan: string | null;
-  subscriptionActive: boolean;
-  subscriptionPaymentStatus: string | null;
 }
 
 export interface SubscriptionDto {
@@ -169,4 +171,13 @@ export async function markSubscriptionPaid(
     `/super-admin/organizations/${organizationId}/subscription/mark-paid`
   );
   return data;
+}
+
+export async function extendOrganizationTrial(
+  organizationId: string,
+  days: number
+): Promise<void> {
+  await apiClient.post(`/super-admin/organizations/${organizationId}/extend-trial`, {
+    days,
+  });
 }

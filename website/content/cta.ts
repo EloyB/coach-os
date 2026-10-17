@@ -1,8 +1,35 @@
 import { SITE } from "@/content/meta";
 
+/**
+ * Vooringevulde aanmeldmail: onderwerp + een kort sjabloon met de gegevens die
+ * we nodig hebben om persoonlijk op te starten. Zo moet de club zelf weinig typen.
+ */
+const MAIL_SUBJECT = "Interesse in CoachOS";
+const MAIL_BODY = [
+  "Hallo CoachOS,",
+  "",
+  "Wij zijn geïnteresseerd in jullie platform en zouden graag wat meer info hebben over hoe CoachOS voor onze club zou werken.",
+  "",
+  "Een paar gegevens om alvast mee te geven:",
+  "",
+  "- Club of school: ",
+  "- Contactpersoon: ",
+  "- Aantal trainers: ",
+  "- Aantal leerlingen (ongeveer): ",
+  "- Telefoonnummer: ",
+  "",
+  "Wanneer kunnen we even bellen of een demo inplannen?",
+  "",
+  "Alvast bedankt!",
+].join("\r\n");
+
+export const CONTACT_MAILTO = `mailto:${SITE.contactEmail}?subject=${encodeURIComponent(
+  MAIL_SUBJECT,
+)}&body=${encodeURIComponent(MAIL_BODY)}`;
+
 export const CTA_SECTION = {
   heading: "Klaar om je lessenplanning te automatiseren?",
-  sub: "Bel of mail rechtstreeks — we plannen een korte demo in en beantwoorden je vragen.",
+  sub: "Bel of mail rechtstreeks: we plannen een korte demo in en beantwoorden je vragen.",
   tiles: {
     call: {
       label: "Bel ons",
@@ -13,7 +40,7 @@ export const CTA_SECTION = {
     email: {
       label: "Stuur een e-mail",
       value: SITE.contactEmail,
-      href: `mailto:${SITE.contactEmail}`,
+      href: CONTACT_MAILTO,
       hint: "Reactie binnen één werkdag",
     },
   },

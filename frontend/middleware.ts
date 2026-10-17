@@ -64,6 +64,11 @@ export function middleware(request: NextRequest) {
     }
   }
 
+  // E-mailverificatie hoort bij een bestaand account: zonder sessie valt er niets te bevestigen.
+  if (pathname.startsWith("/verify-email") && !hasToken) {
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+
   if (pathname.startsWith("/student/") && !hasToken) {
     const loginUrl = new URL("/student-login", request.url);
     loginUrl.searchParams.set("redirect", pathname);
@@ -98,6 +103,7 @@ export const config = {
     "/student/:path*",
     "/login",
     "/register",
+    "/verify-email",
     "/invite/:path*",
     "/student-login",
     "/auth/magic",

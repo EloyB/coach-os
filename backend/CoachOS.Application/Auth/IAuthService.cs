@@ -5,12 +5,37 @@ namespace CoachOS.Application.Auth;
 
 public interface IAuthService
 {
+    /// <summary>
+    /// Maakt organisatie, admin, lidmaatschap en een gratis proef aan, legt de aanvaarding van
+    /// de voorwaarden vast en geeft meteen een ingelogde sessie terug. Geen betaalgegevens nodig.
+    /// </summary>
     Task<Result<AuthResponseDto>> RegisterAsync(
-        string organizationName,
-        string firstName,
-        string lastName,
-        string email,
-        string password,
+        RegisterRequest request,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Bevestigt het e-mailadres van de gebruiker met de code uit de verificatiemail.</summary>
+    Task<Result> VerifyEmailAsync(
+        Guid userId,
+        string code,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Stuurt een nieuwe verificatiecode (maximaal één per minuut). Met
+    /// <paramref name="onlyIfExpired"/> gebeurt dat enkel als er geen geldige code meer openstaat —
+    /// zo krijgt wie later terugkeert een verse code, zonder een nog bruikbare ongeldig te maken.
+    /// De waarde is true als er effectief een mail vertrokken is.
+    /// </summary>
+    Task<Result<bool>> ResendEmailVerificationAsync(
+        Guid userId,
+        bool onlyIfExpired = false,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// True als het e-mailadres van de gebruiker bevestigd is. Acties die mails naar derden
+    /// versturen (trainers, leerlingen) vereisen dit.
+    /// </summary>
+    Task<bool> IsEmailVerifiedAsync(
+        Guid userId,
         CancellationToken cancellationToken = default);
 
     Task<Result<AuthResponseDto>> LoginAsync(

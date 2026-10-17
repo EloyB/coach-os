@@ -21,6 +21,7 @@ public class CreateStandaloneLessonEndpoint : IEndpoint
             })
         .RequireAuthorization()
         .AddEndpointFilter<ValidationFilter<CreateStandaloneLessonRequest>>()
+        .AddEndpointFilter<RequireVerifiedEmailFilter>()
         .WithTags("StandaloneLessons");
     }
 }

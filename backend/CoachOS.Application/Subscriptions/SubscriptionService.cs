@@ -104,7 +104,11 @@ public class SubscriptionService(
             subscription.MollieCustomerId = customer.Value;
         }
 
-        SubscriptionPlanInfo info = SubscriptionPlanCatalog.Get(subscription.Plan);
+        if (subscription.Plan is not SubscriptionPlan plan)
+            return Result<SubscriptionDto>.Fail(new Error(
+                ErrorCodes.Validation, "Ken eerst een plan toe voor je een betaallink maakt."));
+
+        SubscriptionPlanInfo info = SubscriptionPlanCatalog.Get(plan);
         string intervalLabel = subscription.Interval == BillingInterval.Yearly ? "jaar" : "maand";
         var request = new BillingPaymentRequest(
             Amount: subscription.Price,
@@ -191,13 +195,13 @@ public class SubscriptionService(
 
     private SubscriptionDto ToDto(Subscription s)
     {
-        SubscriptionPlanInfo info = SubscriptionPlanCatalog.Get(s.Plan);
+        int studentLimit = s.Plan is SubscriptionPlan plan ? SubscriptionPlanCatalog.Get(plan).StudentLimit : 0;
         return new SubscriptionDto
         {
             OrganizationId = s.OrganizationId,
-            Plan = s.Plan.ToString(),
-            Interval = s.Interval.ToString(),
-            StudentLimit = info.StudentLimit,
+            Plan = s.Plan?.ToString() ?? string.Empty,
+            Interval = s.Interval?.ToString() ?? string.Empty,
+            StudentLimit = studentLimit,
             Price = s.Price,
             StartDate = s.StartDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
             EndDate = s.EndDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),

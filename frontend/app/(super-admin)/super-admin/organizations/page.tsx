@@ -4,10 +4,24 @@ import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import {
+  extendOrganizationTrial,
   listOrganizations,
   setOrganizationEarlyBird,
+  type OrganizationListItemDto,
 } from "@/lib/api/super-admin";
-import { SubscriptionBadge } from "@/components/super-admin/subscription-badge";
+
+const TRIAL_EXTENSION_DAYS = 14;
+
+function formatDate(isoDate: string): string {
+  const [year, month, day] = isoDate.split("-");
+  return `${day}/${month}/${year}`;
+}
+
+function isPast(isoDate: string): boolean {
+  const today = new Date();
+  const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  return isoDate < todayIso;
+}
 
 export default function OrganizationsPage() {
   const t = useTranslations("superAdmin");
@@ -29,6 +43,23 @@ export default function OrganizationsPage() {
     },
   });
 
+  const extendTrial = useMutation({
+    mutationFn: (id: string) => extendOrganizationTrial(id, TRIAL_EXTENSION_DAYS),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["super-admin", "organizations"] });
+    },
+  });
+
+  function subscriptionLabel(org: OrganizationListItemDto): string {
+    if (org.subscriptionStatus === "Trialing" && org.trialEndsAt) {
+      const date = formatDate(org.trialEndsAt);
+      return isPast(org.trialEndsAt)
+        ? t("subscriptionTrialExpired", { date })
+        : t("subscriptionTrialUntil", { date });
+    }
+    return org.subscriptionStatus === "Active" ? t("subscriptionActive") : t("subscriptionLegacy");
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -39,7 +70,7 @@ export default function OrganizationsPage() {
       {isLoading ? (
         <div className="text-ink-3 text-sm">{t("loading")}</div>
       ) : (
-        <div className="bg-white rounded-lg border border-rule overflow-hidden">
+        <div className="bg-white rounded-lg border border-rule overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-canvas text-ink-3 text-xs uppercase tracking-wide">
               <tr>
@@ -71,11 +102,19 @@ export default function OrganizationsPage() {
                   <td className="px-4 py-3 text-ink-2">{org.email}</td>
                   <td className="px-4 py-3 text-ink-2">{org.adminCount}</td>
                   <td className="px-4 py-3">
-                    <SubscriptionBadge
-                      plan={org.subscriptionPlan}
-                      active={org.subscriptionActive}
-                      paymentStatus={org.subscriptionPaymentStatus}
-                    />
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-ink-2">{subscriptionLabel(org)}</span>
+                      {org.subscriptionStatus === "Trialing" && (
+                        <button
+                          type="button"
+                          onClick={() => extendTrial.mutate(org.id)}
+                          disabled={extendTrial.isPending}
+                          className="px-2 py-1 text-xs font-semibold text-tennis-green border border-tennis-green/30 rounded hover:bg-tennis-green/5 cursor-pointer disabled:opacity-60"
+                        >
+                          {t("extendTrial", { days: TRIAL_EXTENSION_DAYS })}
+                        </button>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     <label className="inline-flex items-center gap-2 cursor-pointer">

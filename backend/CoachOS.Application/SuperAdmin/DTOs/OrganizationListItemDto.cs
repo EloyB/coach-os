@@ -10,12 +10,12 @@ public class OrganizationListItemDto
     public int AdminCount { get; set; }
     public DateTime CreatedAt { get; set; }
 
-    /// <summary>Plan-naam (Game/Set/Match), of null als er nog geen abonnement is.</summary>
+    /// <summary>Plan-naam (Game/Set/Match), of null zolang er geen plan is (proef of legacy).</summary>
     public string? SubscriptionPlan { get; set; }
 
-    /// <summary>Of het abonnement actief is. False wanneer er geen abonnement is.</summary>
-    public bool SubscriptionActive { get; set; }
+    /// <summary>Legacy, Trialing of Active.</summary>
+    public string SubscriptionStatus { get; set; } = string.Empty;
 
-    /// <summary>Laatst gekende Mollie-status van de abonnementsbetaling (paid, open, ...).</summary>
-    public string? SubscriptionPaymentStatus { get; set; }
+    /// <summary>Laatste dag van de proef; null buiten een proef.</summary>
+    public DateOnly? TrialEndsAt { get; set; }
 }

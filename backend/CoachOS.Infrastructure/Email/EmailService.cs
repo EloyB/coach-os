@@ -430,26 +430,76 @@ public class EmailService(
             $"Inschrijving bevestigd: {campName}", html, ct);
     }
 
-    // ── Core send method (reused by all email types) ──────────────────────────
-
-    private async Task SendAsync(
-        string toEmail, string toName, string subject, string htmlBody,
-        CancellationToken ct = default)
+    public async Task SendEmailVerificationAsync(
+        string toEmail, string firstName, string code, CancellationToken ct = default)
     {
-        using SmtpClient smtp = new(_options.SmtpHost, _options.SmtpPort)
+        string html = renderer.Render("email-verification", new Dictionary<string, string>
         {
-            EnableSsl = _options.EnableSsl,
-            Credentials = new NetworkCredential(_options.Username, _options.Password),
-            DeliveryMethod = SmtpDeliveryMethod.Network
+            ["firstName"] = firstName,
+            ["code"] = code,
+            ["validMinutes"] = ((int)Application.Auth.EmailVerificationCodes.Lifetime.TotalMinutes).ToString(),
+            ["year"] = DateTime.UtcNow.Year.ToString(),
+        });
+        // Bewust géén code in het onderwerp: SendAsync logt elk onderwerp.
+        await SendAsync(toEmail, firstName, "Je verificatiecode voor CoachOS", html, ct);
+    }
+
+    public async Task SendTrialReminderAsync(
+        string toEmail, string organizationName, int daysRemaining, DateOnly trialEndsAt,
+        string appUrl, CancellationToken ct = default)
+    {
+        (string subject, string heading, string body) = daysRemaining switch
+        {
+            // Vertrekt op de laatste proefdag, of later als de job een tijd stillag — de tekst
+            // noemt daarom de einddatum in plaats van "vandaag" of "voorbij".
+            <= 0 => (
+                "Je gratis proef van CoachOS loopt af",
+                "Je proefperiode loopt af",
+                $"Je gratis proef eindigt op {trialEndsAt:dd/MM/yyyy}. Je hoeft niets te doen: je account en al je gegevens blijven gewoon beschikbaar. We nemen binnenkort persoonlijk contact met je op om te bekijken hoe je verder wil."),
+            1 => (
+                "Nog 1 dag in je gratis proef van CoachOS",
+                "Nog 1 dag proef",
+                $"Je gratis proef loopt nog tot en met {trialEndsAt:dd/MM/yyyy}. Je hoeft niets te doen: we nemen contact met je op voor de proef afloopt, en je gegevens blijven bewaard."),
+            _ => (
+                $"Nog {daysRemaining} dagen in je gratis proef van CoachOS",
+                $"Nog {daysRemaining} dagen proef",
+                $"Je gratis proef loopt nog tot en met {trialEndsAt:dd/MM/yyyy}. Je hoeft niets te doen: we nemen contact met je op voor de proef afloopt, en je gegevens blijven bewaard."),
         };
 
-        using MailMessage message = new()
+        string html = renderer.Render("trial-reminder", new Dictionary<string, string>
+        {
+            ["organizationName"] = organizationName,
+            ["heading"] = heading,
+            ["body"] = body,
+            ["appUrl"] = $"{appUrl.TrimEnd('/')}/dashboard",
+            ["year"] = DateTime.UtcNow.Year.ToString(),
+        });
+        await SendAsync(toEmail, organizationName, subject, html, ct);
+    }
+
+    // ── Core send method (reused by all email types) ──────────────────────────
+
+    /// <summary>
+    /// Bouwt de MIME-structuur: multipart/alternative met eerst text/plain en als
+    /// laatste de HTML. Omdat de HTML-view LinkedResources heeft, maakt System.Net.Mail
+    /// daar zelf een multipart/related (HTML + cid-logo) van.
+    /// </summary>
+    internal MailMessage BuildMessage(string toEmail, string toName, string subject, string htmlBody)
+    {
+        MailMessage message = new()
         {
             From = new MailAddress(_options.FromAddress, _options.FromName),
             Subject = subject,
         };
 
         message.To.Add(new MailAddress(toEmail, toName));
+
+        // Platte-tekstvariant tegen MIME_HTML_ONLY. Volgorde telt: in
+        // multipart/alternative staat de eenvoudigste variant eerst, de HTML laatst.
+        AlternateView plainView = AlternateView.CreateAlternateViewFromString(
+            HtmlToPlainText.Convert(htmlBody), Encoding.UTF8, MediaTypeNames.Text.Plain);
+        plainView.TransferEncoding = TransferEncoding.QuotedPrintable;
+        message.AlternateViews.Add(plainView);
 
         // HTML als AlternateView zodat we het logo als inline (cid) resource kunnen
         // koppelen; message.Body/IsBodyHtml vervalt daarmee.
@@ -465,6 +515,22 @@ public class EmailService(
             htmlView.LinkedResources.Add(logo);
         }
         message.AlternateViews.Add(htmlView);
+
+        return message;
+    }
+
+    private async Task SendAsync(
+        string toEmail, string toName, string subject, string htmlBody,
+        CancellationToken ct = default)
+    {
+        using SmtpClient smtp = new(_options.SmtpHost, _options.SmtpPort)
+        {
+            EnableSsl = _options.EnableSsl,
+            Credentials = new NetworkCredential(_options.Username, _options.Password),
+            DeliveryMethod = SmtpDeliveryMethod.Network
+        };
+
+        using MailMessage message = BuildMessage(toEmail, toName, subject, htmlBody);
 
         try
         {

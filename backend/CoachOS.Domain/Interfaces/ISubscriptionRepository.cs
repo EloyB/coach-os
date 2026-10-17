@@ -3,14 +3,30 @@ using CoachOS.Domain.Entities;
 namespace CoachOS.Domain.Interfaces;
 
 /// <summary>
-/// Abonnementen worden cross-org beheerd door de superadmin, dus de implementatie
-/// negeert de tenant query filter en scopet expliciet op <c>organizationId</c>.
+/// Abonnementen worden ook cross-org gebruikt (superadmin, systeemjobs, webhooks); methodes die dat
+/// doen negeren de tenant query filter en scopen expliciet op <c>organizationId</c> of id.
 /// </summary>
 public interface ISubscriptionRepository
 {
-    /// <summary>Het abonnement van een organisatie, of null. <paramref name="tracked"/> voor mutatie.</summary>
+    /// <summary>Het abonnement van een organisatie, of null. <paramref name="tracked"/> voor mutatie. Cross-org.</summary>
     Task<Subscription?> GetByOrganizationAsync(
         Guid organizationId, bool tracked = false, CancellationToken ct = default);
 
     Task AddAsync(Subscription subscription, CancellationToken ct = default);
+
+    /// <summary>AsNoTracking read; gebruik voor toegangs- en statuschecks.</summary>
+    Task<Subscription?> GetByOrganizationReadOnlyAsync(Guid organizationId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Alle lopende proeven over álle organisaties heen, inclusief de organisatie zelf.
+    /// Enkel voor de systeemjob die proef-herinneringen verstuurt — nooit vanuit een request.
+    /// </summary>
+    Task<IReadOnlyList<Subscription>> GetAllTrialingReadOnlyAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Zet <see cref="Subscription.LastTrialReminderDay"/> atomair van <paramref name="expectedCurrent"/>
+    /// naar <paramref name="newValue"/>. Geeft false terug als een andere instantie voor was.
+    /// </summary>
+    Task<bool> TrySetLastTrialReminderDayAsync(
+        Guid subscriptionId, int? expectedCurrent, int? newValue, CancellationToken ct = default);
 }

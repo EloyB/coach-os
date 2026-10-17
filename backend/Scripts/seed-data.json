@@ -10,7 +10,9 @@
     "firstName": "Jan",
     "lastName": "Janssen",
     "email": "jan@deaces.be",
-    "password": "Demo1234!"
+    "password": "Demo1234!",
+    "acceptTerms": true,
+    "acceptDataProcessingAgreement": true
   },
   "secondOrg": {
     "admin": {
@@ -18,7 +20,9 @@
       "firstName": "Maria",
       "lastName": "Peeters",
       "email": "maria@padelbrugge.be",
-      "password": "Demo1234!"
+      "password": "Demo1234!",
+      "acceptTerms": true,
+      "acceptDataProcessingAgreement": true
     },
     "inviteExistingTrainer": {
       "firstName": "Jan",
