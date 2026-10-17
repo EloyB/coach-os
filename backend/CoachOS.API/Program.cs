@@ -23,7 +23,8 @@ try
 
     builder.Services.AddJwtAuthentication(configuration);
     builder.Services.AddCorsPolicy(configuration, isDevelopment);
-    builder.Services.AddRateLimiting();
+    builder.Services.AddForwardedHeaders(configuration);
+    builder.Services.AddRateLimiting(configuration);
     builder.Services.AddSwagger();
 
     builder.Services.AddMemoryCache();
@@ -34,6 +35,10 @@ try
     var app = builder.Build();
 
     await app.ApplyMigrationsAsync();
+
+    // Als eerste: vanaf hier is RemoteIpAddress het IP van de bezoeker i.p.v. van nginx,
+    // zodat rate limiting en logging per echt IP werken.
+    app.UseForwardedHeaders();
 
     if (isDevelopment)
     {

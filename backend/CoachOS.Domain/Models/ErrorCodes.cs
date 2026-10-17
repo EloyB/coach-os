@@ -10,6 +10,11 @@ public static class ErrorCodes
     public const string Unexpected = "unexpected";
 
     /// <summary>
+    /// Tijdelijk te veel aanvragen (bv. de noodrem op registratie). Mappet op HTTP 429.
+    /// </summary>
+    public const string TooManyRequests = "too_many_requests";
+
+    /// <summary>
     /// Externe afhankelijkheid (third-party API) faalde of antwoordde onverwacht.
     /// Mappet op HTTP 502 Bad Gateway in <c>ResultExtensions</c>.
     /// </summary>

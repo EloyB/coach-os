@@ -971,6 +971,7 @@
     "lastName": "Achternaam",
     "loginError": "Inloggen mislukt. Controleer je gegevens.",
     "registerError": "Registratie mislukt. Probeer het opnieuw.",
+    "registerTooManyRequests": "Er zijn te veel registratiepogingen. Probeer het over een uur opnieuw of mail ons via info@coach-os.be.",
     "noAccount": "Nog geen club?",
     "noAccountCta": "Probeer 30 dagen gratis",
     "hasAccount": "Al een account?",

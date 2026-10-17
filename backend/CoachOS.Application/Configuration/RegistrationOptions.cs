@@ -16,4 +16,14 @@ public class RegistrationOptions
 
     /// <summary>Versie van de verwerkersovereenkomst die bij registratie wordt vastgelegd.</summary>
     public string DataProcessingAgreementVersion { get; set; } = "concept";
+
+    /// <summary>
+    /// Noodrem: maximaal aantal nieuwe organisaties per uur, over alle IP's samen. Daarboven
+    /// weigert registratie tijdelijk, zodat een bot met veel IP's ons niet ongelimiteerd
+    /// verificatiemails laat versturen.
+    /// </summary>
+    public int MaxRegistrationsPerHour { get; set; } = 30;
+
+    /// <summary>Maximaal aantal registratiepogingen per IP-adres per uur (rate limiter).</summary>
+    public int MaxAttemptsPerIpPerHour { get; set; } = 5;
 }

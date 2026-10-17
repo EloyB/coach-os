@@ -45,6 +45,19 @@ public class AuthService(
             return Result<AuthResponseDto>.Fail("E-mailadres is al in gebruik");
         }
 
+        DateTime oneHourAgo = timeProvider.GetUtcNow().UtcDateTime.AddHours(-1);
+        int recentRegistrations = await context.Organizations
+            .CountAsync(o => o.CreatedAt >= oneHourAgo, cancellationToken);
+        if (recentRegistrations >= options.MaxRegistrationsPerHour)
+        {
+            logger.LogWarning(
+                "Registratie-noodrem actief: {Count} nieuwe organisaties in het afgelopen uur (limiet {Limit})",
+                recentRegistrations, options.MaxRegistrationsPerHour);
+            return Result<AuthResponseDto>.Fail(new Error(
+                ErrorCodes.TooManyRequests,
+                "Er worden momenteel uitzonderlijk veel accounts aangemaakt. Probeer het later opnieuw."));
+        }
+
         await using var transaction =
             await context.Database.BeginTransactionAsync(cancellationToken);
 

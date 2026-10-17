@@ -1,5 +1,7 @@
 using System.Text;
 using CoachOS.API.Auth;
+using CoachOS.Application.Configuration;
+using Microsoft.AspNetCore.HttpOverrides;
 using System.Threading.RateLimiting;
 using CoachOS.Infrastructure.Persistence;
 using LodeKennes.Extensions.Scaleway.SecretManager;
@@ -13,6 +15,13 @@ namespace CoachOS.API.Extensions;
 
 public static class ConfigurationExtensions
 {
+    private const string ForwardedHeadersSection = "ForwardedHeaders";
+
+    // Private ranges: de API is niet publiek gepubliceerd, enkel nginx op het Docker-netwerk
+    // kan hem bereiken. Overschrijfbaar via ForwardedHeaders:KnownNetworks.
+    private static readonly string[] DefaultTrustedProxyNetworks =
+        ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"];
+
     public static IConfiguration ConfigureAppConfiguration(
         this WebApplicationBuilder builder)
     {
@@ -148,11 +157,53 @@ public static class ConfigurationExtensions
         private static bool IsDevFrontendOrigin(string origin) =>
             Uri.TryCreate(origin, UriKind.Absolute, out Uri? uri) && uri.Port == 5317;
 
-        public IServiceCollection AddRateLimiting()
+        /// <summary>
+        /// De API staat achter nginx en is enkel via het Docker-netwerk bereikbaar. Zonder dit
+        /// ziet de API voor elke request het IP van nginx, en zijn alle limieten "per IP" in
+        /// werkelijkheid één gedeelde limiet voor alle bezoekers.
+        /// </summary>
+        public IServiceCollection AddForwardedHeaders(IConfiguration configuration)
         {
+            string[] trustedNetworks = configuration
+                .GetSection(ForwardedHeadersSection + ":KnownNetworks").Get<string[]>()
+                ?? DefaultTrustedProxyNetworks;
+
+            services.Configure<ForwardedHeadersOptions>(options =>
+            {
+                options.ForwardedHeaders = ForwardedHeaders.XForwardedFor;
+                // nginx voegt het bezoekers-IP achteraan toe ($proxy_add_x_forwarded_for). Enkel
+                // die laatste hop vertrouwen: wat een client zelf vooraan meestuurt, telt niet.
+                options.ForwardLimit = 1;
+                options.KnownProxies.Clear();
+                options.KnownIPNetworks.Clear();
+                foreach (string network in trustedNetworks)
+                    options.KnownIPNetworks.Add(System.Net.IPNetwork.Parse(network));
+            });
+
+            return services;
+        }
+
+        public IServiceCollection AddRateLimiting(IConfiguration configuration)
+        {
+            RegistrationOptions registration = configuration
+                .GetSection(RegistrationOptions.Section).Get<RegistrationOptions>() ?? new RegistrationOptions();
+
             services.AddRateLimiter(options =>
             {
                 options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+                // Registratie verstuurt een verificatiemail naar een vrij te kiezen adres: per IP
+                // veel strenger dan de andere auth-endpoints. Daarbovenop zit een globale noodrem
+                // in AuthService.RegisterAsync.
+                options.AddPolicy("register", context =>
+                    RateLimitPartition.GetFixedWindowLimiter(
+                        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                        _ => new FixedWindowRateLimiterOptions
+                        {
+                            PermitLimit = registration.MaxAttemptsPerIpPerHour,
+                            Window = TimeSpan.FromHours(1),
+                            QueueLimit = 0,
+                        }));
 
                 // Per IP: nu registratie publiek is, mag een bot die /auth/register bestookt
                 // het inloggen van andere klanten niet mee blokkeren.

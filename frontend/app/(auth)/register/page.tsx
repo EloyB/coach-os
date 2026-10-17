@@ -143,7 +143,9 @@ export default function RegisterPage() {
       });
       router.push(response.emailVerified === false ? "/verify-email?sent=1" : "/dashboard");
     } catch (error) {
-      setErrors(extractErrors(error, t("registerError")));
+      // 429 = rate limiter per IP of de globale registratie-noodrem; de limiter stuurt geen body mee.
+      const tooManyRequests = axios.isAxiosError(error) && error.response?.status === 429;
+      setErrors(tooManyRequests ? [t("registerTooManyRequests")] : extractErrors(error, t("registerError")));
       setIsLoading(false);
     }
   }
