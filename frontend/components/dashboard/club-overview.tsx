@@ -224,9 +224,9 @@ function AttentionRow({ item }: { item: ClubAttentionItemDto }) {
   }
 
   return (
-    <li className="space-y-0.5 px-3 py-2.5 text-[13px]">
-      <div className="flex items-baseline justify-between gap-3">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-amber-700">
+    <li className="space-y-1.5 rounded-lg border border-rule bg-paper px-3.5 py-3 text-[13px]">
+      <div className="flex items-center justify-between gap-3">
+        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10.5px] font-semibold text-amber-800">
           {title}
         </span>
         {meta && (
@@ -262,7 +262,7 @@ function AttentionTab({ items }: { items: ClubAttentionItemDto[] }) {
     );
 
   return (
-    <ul className="divide-y divide-rule rounded-lg border border-rule">
+    <ul className="space-y-2.5">
       {items.map((item, i) => (
         <AttentionRow key={`${item.type}-${item.seriesId}-${i}`} item={item} />
       ))}
