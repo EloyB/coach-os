@@ -114,7 +114,8 @@ function SeriesLink({
   return (
     <Link
       href={`/dashboard/lessons/${seriesId}`}
-      className="font-medium text-ink hover:underline"
+      // after:inset-0 rekt de link uit over de hele (relatief gepositioneerde) card.
+      className="font-medium text-ink after:absolute after:inset-0 after:rounded-lg focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ink"
     >
       {children}
     </Link>
@@ -136,7 +137,7 @@ function OccupancyTab({ series }: { series: ClubSeriesDto[] }) {
       {series.map((s) => (
         <li
           key={s.id}
-          className="space-y-1.5 rounded-lg border border-rule bg-paper px-3.5 py-3 text-[13px]"
+          className="relative space-y-1.5 rounded-lg border border-rule bg-paper px-3.5 py-3 text-[13px] transition-colors hover:border-ink/40 hover:bg-canvas/60"
         >
           <div className="flex items-baseline justify-between gap-3">
             <SeriesLink seriesId={s.id}>
@@ -227,7 +228,13 @@ function AttentionRow({ item }: { item: ClubAttentionItemDto }) {
   }
 
   return (
-    <li className="space-y-1.5 rounded-lg border border-rule bg-paper px-3.5 py-3 text-[13px]">
+    <li
+      className={cn(
+        "relative space-y-1.5 rounded-lg border border-rule bg-paper px-3.5 py-3 text-[13px]",
+        item.seriesId &&
+          "transition-colors hover:border-ink/40 hover:bg-canvas/60",
+      )}
+    >
       <div className="flex items-center justify-between gap-3">
         <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10.5px] font-semibold text-amber-800">
           {title}
