@@ -203,21 +203,7 @@ function AdminDashboard() {
 
   return (
     <>
-      {/* Page header */}
-      <div className="flex items-center justify-between mb-3.5">
-        <div>
-          <h1 className="text-lg font-bold text-ink tracking-tight">
-            {t("title")}
-          </h1>
-        </div>
-        <Link
-          href="/dashboard/lessons/new"
-          className="inline-flex items-center gap-1.5 px-3 py-[7px] bg-ink text-white text-xs font-semibold rounded-md"
-        >
-          <Plus size={12} />
-          {t("newLesson")}
-        </Link>
-      </div>
+      <h1 className="sr-only">{t("title")}</h1>
 
       {/* Welkomstmodal voor nieuwe admins; de stappen zelf staan in de sidenav. */}
       <WelcomeModal shouldShow={isAdmin && (onboarding?.shouldShow ?? false)} />
