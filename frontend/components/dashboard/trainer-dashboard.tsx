@@ -23,6 +23,11 @@ import { ChevronLeft, ChevronRight, MapPin, Tent, Users } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Mono } from "@/components/ui/mono";
 import { SlashLabel } from "@/components/ui/slash-label";
+import {
+  ClubOverviewCard,
+  ClubOverviewDialog,
+  useClubOverview,
+} from "@/components/dashboard/club-overview";
 import { TrainerLessonDialog } from "@/components/dashboard/trainer-lesson-dialog";
 import { TennisBallEmptyIcon } from "@/components/ui/tennis-ball-icon";
 import {
@@ -1061,19 +1066,33 @@ function TrainerDashboardContent({
   const todayLoading = isLoading || campsLoading;
 
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
+  const [clubOverviewOpen, setClubOverviewOpen] = useState(false);
+  const { data: clubOverview, isError: clubOverviewError } =
+    useClubOverview(isHeadTrainer);
 
   return (
     // min-h-full: de kalender neemt de volledige beschikbare hoogte van de pagina in.
     <div className="flex min-h-full flex-col" data-variant={variant}>
       <h1 className="sr-only">{t("title")}</h1>
 
-      <div className="mb-[18px] grid grid-cols-1 gap-[18px] md:grid-cols-2 xl:grid-cols-3">
+      <div
+        className={cn(
+          "mb-[18px] grid grid-cols-1 gap-[18px] md:grid-cols-2",
+          isHeadTrainer ? "xl:grid-cols-4" : "xl:grid-cols-3",
+        )}
+      >
         <NextLessonCard
           overview={overview}
           now={now}
           onSelect={setSelectedLessonId}
         />
         <HoursCard overview={overview} />
+        {isHeadTrainer && (
+          <ClubOverviewCard
+            overview={clubOverview}
+            onOpen={() => setClubOverviewOpen(true)}
+          />
+        )}
       </div>
 
       {isHeadTrainer && (
@@ -1108,6 +1127,14 @@ function TrainerDashboardContent({
         />
       </div>
 
+      {isHeadTrainer && (
+        <ClubOverviewDialog
+          overview={clubOverview}
+          isError={clubOverviewError}
+          open={clubOverviewOpen}
+          onClose={() => setClubOverviewOpen(false)}
+        />
+      )}
       <TrainerLessonDialog
         lessonId={selectedLessonId}
         onClose={() => setSelectedLessonId(null)}

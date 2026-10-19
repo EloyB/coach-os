@@ -46,6 +46,18 @@ public class LessonSerieRepository(ApplicationDbContext context) : ILessonSerieR
         return await query.OrderBy(ls => ls.StartDate).ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<LessonSerie>> GetByClubsAsync(
+        Guid organizationId, IReadOnlyList<Guid> clubIds, CancellationToken ct = default)
+    {
+        List<Guid> clubs = clubIds.ToList();
+        return await context.LessonSeries
+            .AsNoTracking()
+            .Include(ls => ls.TennisClub)
+            .Where(ls => ls.OrganizationId == organizationId && clubs.Contains(ls.TennisClubId))
+            .OrderBy(ls => ls.StartDate)
+            .ToListAsync(ct);
+    }
+
     public async Task AddAsync(LessonSerie series, CancellationToken ct = default)
     {
         await context.LessonSeries.AddAsync(series, ct);

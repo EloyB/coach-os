@@ -180,3 +180,48 @@ export async function getClubLessons(from: string, to: string): Promise<MyLesson
   });
   return data;
 }
+
+export interface ClubSeriesDto {
+  id: string;
+  name: string;
+  tennisClubName: string | null;
+  enrolled: number;
+  maxRegistrations: number | null;
+  startDate: string;
+  endDate: string;
+  trainerNames: string[];
+}
+
+export type ClubAttentionType =
+  | "series_underbooked"
+  | "confirmation_pending"
+  | "planning_stalled"
+  | "lesson_without_trainer";
+
+export interface ClubAttentionItemDto {
+  type: ClubAttentionType;
+  seriesId: string | null;
+  seriesName: string | null;
+  tennisClubName: string | null;
+  /** Spelers die nog niet bevestigd hebben (confirmation_pending, per reeks gegroepeerd). */
+  studentNames: string[];
+  /** Uren tot de eerstvolgende bevestigingslink verloopt; negatief als verlopen. */
+  hoursRemaining: number | null;
+  enrolled: number | null;
+  maxRegistrations: number | null;
+  date: string | null;
+}
+
+export interface ClubOverviewDto {
+  activeSeriesCount: number;
+  averageOccupancyPercent: number | null;
+  attentionCount: number;
+  series: ClubSeriesDto[];
+  attention: ClubAttentionItemDto[];
+}
+
+/** Bezetting en aandachtspunten van de club(s) van de hoofdtrainer (403 voor andere gebruikers). */
+export async function getClubOverview(): Promise<ClubOverviewDto> {
+  const { data } = await apiClient.get<ClubOverviewDto>("/dashboard/club-overview");
+  return data;
+}
