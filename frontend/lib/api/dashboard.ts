@@ -175,6 +175,14 @@ export async function getMyOverview(): Promise<MyOverviewDto> {
   return data;
 }
 
+/** Alle ingeplande lessen van de organisatie, voor de agenda op het admin-dashboard (403 voor niet-admins). */
+export async function getOrganizationLessons(from: string, to: string): Promise<MyLessonDto[]> {
+  const { data } = await apiClient.get<MyLessonDto[]>("/dashboard/organization-lessons", {
+    params: { from, to },
+  });
+  return data;
+}
+
 /** Lessen van alle trainers in de club(s) waar de gebruiker hoofdtrainer is (403 voor andere gebruikers). */
 export async function getClubLessons(from: string, to: string): Promise<MyLessonDto[]> {
   const { data } = await apiClient.get<MyLessonDto[]>("/dashboard/club-lessons", {

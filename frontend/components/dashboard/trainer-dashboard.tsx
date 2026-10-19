@@ -33,6 +33,7 @@ import { TennisBallEmptyIcon } from "@/components/ui/tennis-ball-icon";
 import {
   getClubLessons,
   getMyCampDays,
+  getOrganizationLessons,
   getMyLessons,
   getMyOverview,
   type MyCampDayDto,
@@ -132,35 +133,47 @@ function isOwnLesson(lesson: MyLessonDto, userId: string): boolean {
   return !lesson.trainerId || lesson.trainerId === userId;
 }
 
+/** Welke lessen de agenda toont: alleen de eigen lessen, de hele club (hoofdtrainer) of de hele organisatie (admin). */
+export type AgendaSource = "mine" | "club" | "organization";
+
 /**
  * Lessen voor een datumbereik. In clubmodus (hoofdtrainer) komen de lessen van alle trainers in de
- * eigen club(s) erbij; eigen lessen in een andere club blijven zichtbaar.
+ * eigen club(s) erbij; eigen lessen in een andere club blijven zichtbaar. In organisatiemodus (admin)
+ * komen alle ingeplande lessen van de organisatie.
  */
-function useAgendaLessons(from: string, to: string, showClub: boolean) {
+function useAgendaLessons(from: string, to: string, source: AgendaSource) {
   const mine = useQuery({
     queryKey: ["dashboard", "my-lessons", from, to],
     queryFn: () => getMyLessons(from, to),
+    enabled: source !== "organization",
   });
   const club = useQuery({
     queryKey: ["dashboard", "club-lessons", from, to],
     queryFn: () => getClubLessons(from, to),
-    enabled: showClub,
+    enabled: source === "club",
+  });
+  const organization = useQuery({
+    queryKey: ["dashboard", "organization-lessons", from, to],
+    queryFn: () => getOrganizationLessons(from, to),
+    enabled: source === "organization",
   });
 
   const lessons = useMemo(() => {
-    if (!showClub) return mine.data;
+    if (source === "organization") return organization.data;
+    if (source === "mine") return mine.data;
     if (!club.data) return undefined;
     const clubIds = new Set(club.data.map((l) => l.id));
     return [
       ...club.data,
       ...(mine.data ?? []).filter((l) => !clubIds.has(l.id)),
     ];
-  }, [showClub, mine.data, club.data]);
+  }, [source, mine.data, club.data, organization.data]);
 
+  const active = source === "organization" ? [organization] : source === "club" ? [mine, club] : [mine];
   return {
     lessons,
-    isLoading: mine.isLoading || (showClub && club.isLoading),
-    isError: mine.isError || (showClub && club.isError),
+    isLoading: active.some((q) => q.isLoading),
+    isError: active.some((q) => q.isError),
   };
 }
 
@@ -682,7 +695,7 @@ function DayCard({
 
 function MonthCalendar({
   today,
-  showClub,
+  source,
   userId,
   styleOf,
   selectedKey,
@@ -690,7 +703,7 @@ function MonthCalendar({
   onSelect,
 }: {
   today: Date;
-  showClub: boolean;
+  source: AgendaSource;
   userId: string;
   styleOf: StyleOf;
   /** De geselecteerde dag (yyyy-MM-dd): die toont de kaart naast de kalender. */
@@ -709,11 +722,12 @@ function MonthCalendar({
   const from = format(gridStart, ISO_DATE);
   const to = format(gridEnd, ISO_DATE);
 
-  const { lessons, isLoading, isError } = useAgendaLessons(from, to, showClub);
+  const { lessons, isLoading, isError } = useAgendaLessons(from, to, source);
 
   const { data: campDays } = useQuery({
     queryKey: ["dashboard", "my-camp-days", from, to],
     queryFn: () => getMyCampDays(from, to),
+    enabled: source !== "organization",
   });
 
   const itemsByDay = new Map<string, AgendaItem[]>();
@@ -909,7 +923,7 @@ function MonthCalendar({
         })}
       </div>
 
-      {showClub && (
+      {source !== "mine" && (
         <CalendarLegend
           lessons={lessons ?? []}
           hasCamp={(campDays ?? []).length > 0}
@@ -976,6 +990,93 @@ function CalendarLegend({
   );
 }
 
+/**
+ * De agenda: de lessen van de geselecteerde dag naast een maandkalender, met een kleur per trainer
+ * zodra er lessen van anderen in staan. Gedeeld door het trainers-, hoofdtrainers- en admin-dashboard.
+ */
+export function LessonAgenda({
+  today,
+  source,
+  userId,
+  onSelectLesson,
+  className,
+}: {
+  today: Date;
+  source: AgendaSource;
+  userId: string;
+  onSelectLesson: (lessonId: string) => void;
+  className?: string;
+}) {
+  const todayKey = format(today, ISO_DATE);
+  const styleOf = useLessonStyles(userId, source !== "mine");
+
+  // De geselecteerde dag (standaard vandaag) bepaalt wat de kaart naast de kalender toont.
+  const [selectedKey, setSelectedKey] = useState(todayKey);
+  const selectedDay = parse(selectedKey, ISO_DATE, today);
+  const isTodaySelected = selectedKey === todayKey;
+  const dayCardRef = useRef<HTMLDivElement>(null);
+
+  function selectDay(dayKey: string) {
+    setSelectedKey(dayKey);
+    // Onder de brede layout staat de kaart boven de kalender (gestapeld): breng ze dan in beeld.
+    if (!window.matchMedia("(min-width: 1280px)").matches) {
+      dayCardRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }
+  }
+
+  const { lessons: todayLessons, isLoading } = useAgendaLessons(
+    selectedKey,
+    selectedKey,
+    source,
+  );
+
+  const { data: todayCampDays, isLoading: campsLoading } = useQuery({
+    queryKey: ["dashboard", "my-camp-days", selectedKey, selectedKey],
+    queryFn: () => getMyCampDays(selectedKey, selectedKey),
+    enabled: source !== "organization",
+  });
+
+  const todayItems = buildAgenda(todayLessons, todayCampDays);
+  const todayLoading = isLoading || campsLoading;
+
+  return (
+      <div
+      className={cn(
+        "grid flex-1 grid-cols-1 gap-[18px] xl:min-h-0 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.8fr)] xl:grid-rows-[minmax(0,1fr)]",
+        className,
+      )}
+    >
+        <div
+          ref={dayCardRef}
+          className="self-start scroll-mt-4 xl:flex xl:max-h-full xl:min-h-0 xl:flex-col"
+        >
+          <DayCard
+            day={selectedDay}
+            isToday={isTodaySelected}
+            items={todayItems}
+            isLoading={todayLoading}
+            userId={userId}
+            styleOf={styleOf}
+            onSelect={onSelectLesson}
+            onBackToToday={() => selectDay(todayKey)}
+          />
+        </div>
+        <MonthCalendar
+          today={today}
+          source={source}
+          userId={userId}
+          styleOf={styleOf}
+          selectedKey={selectedKey}
+          onSelectDay={selectDay}
+          onSelect={onSelectLesson}
+        />
+      </div>
+  );
+}
+
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 
 export type TrainerDashboardVariant = "trainer" | "head-trainer";
@@ -1005,7 +1106,6 @@ function TrainerDashboardContent({
   variant: TrainerDashboardVariant;
 }) {
   const t = useTranslations("dashboard");
-  const todayKey = format(today, ISO_DATE);
 
   // Tikt elke minuut zodat afteltijden ("over 2u 15m") bijblijven.
   const [now, setNow] = useState(() => new Date());
@@ -1027,43 +1127,11 @@ function TrainerDashboardContent({
   const [scope, setScope] = useState<AgendaScope>(() =>
     isHeadTrainer ? readStoredScope() : "mine",
   );
-  const showClub = isHeadTrainer && scope === "club";
-  const styleOf = useLessonStyles(userId, showClub);
+  const source: AgendaSource = isHeadTrainer && scope === "club" ? "club" : "mine";
   function changeScope(next: AgendaScope) {
     setScope(next);
     storeScope(next);
   }
-
-  // De geselecteerde dag (standaard vandaag) bepaalt wat de kaart naast de kalender toont.
-  const [selectedKey, setSelectedKey] = useState(todayKey);
-  const selectedDay = parse(selectedKey, ISO_DATE, today);
-  const isTodaySelected = selectedKey === todayKey;
-  const dayCardRef = useRef<HTMLDivElement>(null);
-
-  function selectDay(dayKey: string) {
-    setSelectedKey(dayKey);
-    // Onder de brede layout staat de kaart boven de kalender (gestapeld): breng ze dan in beeld.
-    if (!window.matchMedia("(min-width: 1280px)").matches) {
-      dayCardRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    }
-  }
-
-  const { lessons: todayLessons, isLoading } = useAgendaLessons(
-    selectedKey,
-    selectedKey,
-    showClub,
-  );
-
-  const { data: todayCampDays, isLoading: campsLoading } = useQuery({
-    queryKey: ["dashboard", "my-camp-days", selectedKey, selectedKey],
-    queryFn: () => getMyCampDays(selectedKey, selectedKey),
-  });
-
-  const todayItems = buildAgenda(todayLessons, todayCampDays);
-  const todayLoading = isLoading || campsLoading;
 
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
   const [clubOverviewOpen, setClubOverviewOpen] = useState(false);
@@ -1107,32 +1175,12 @@ function TrainerDashboardContent({
         />
       )}
 
-      <div className="grid flex-1 grid-cols-1 gap-[18px] xl:min-h-0 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.8fr)] xl:grid-rows-[minmax(0,1fr)]">
-        <div
-          ref={dayCardRef}
-          className="self-start scroll-mt-4 xl:flex xl:max-h-full xl:min-h-0 xl:flex-col"
-        >
-          <DayCard
-            day={selectedDay}
-            isToday={isTodaySelected}
-            items={todayItems}
-            isLoading={todayLoading}
-            userId={userId}
-            styleOf={styleOf}
-            onSelect={setSelectedLessonId}
-            onBackToToday={() => selectDay(todayKey)}
-          />
-        </div>
-        <MonthCalendar
-          today={today}
-          showClub={showClub}
-          userId={userId}
-          styleOf={styleOf}
-          selectedKey={selectedKey}
-          onSelectDay={selectDay}
-          onSelect={setSelectedLessonId}
-        />
-      </div>
+      <LessonAgenda
+        today={today}
+        source={source}
+        userId={userId}
+        onSelectLesson={setSelectedLessonId}
+      />
 
       {isHeadTrainer && (
         <ClubOverviewDialog

@@ -178,6 +178,41 @@ public class LessonRepository(ApplicationDbContext context, TimeProvider timePro
             .ToListAsync(ct);
     }
 
+    public async Task<List<Lesson>> GetByOrganizationAndDateRangeAsync(
+        Guid organizationId, DateOnly from, DateOnly to, CancellationToken ct = default)
+    {
+        return await context.Lessons
+            .AsNoTracking()
+            .Include(l => l.LessonSerie)
+                .ThenInclude(s => s!.TennisClub)
+            .Include(l => l.TennisClub)
+            .Where(l => l.OrganizationId == organizationId
+                && l.Date >= from && l.Date <= to
+                && !l.IsCancelled
+                && (l.LessonSerieId == null
+                    || l.LessonSerie!.PlanningStatus == PlanningStatus.AwaitingConfirmation
+                    || l.LessonSerie.PlanningStatus == PlanningStatus.Scheduled))
+            .OrderBy(l => l.Date)
+            .ThenBy(l => l.StartTime)
+            .ToListAsync(ct);
+    }
+
+    public async Task<Lesson?> GetOfficialByIdAsync(
+        Guid lessonId, Guid organizationId, CancellationToken ct = default)
+    {
+        return await context.Lessons
+            .AsNoTracking()
+            .Include(l => l.LessonSerie)
+                .ThenInclude(s => s!.TennisClub)
+            .Include(l => l.TennisClub)
+            .FirstOrDefaultAsync(l => l.Id == lessonId
+                && l.OrganizationId == organizationId
+                && !l.IsCancelled
+                && (l.LessonSerieId == null
+                    || l.LessonSerie!.PlanningStatus == PlanningStatus.AwaitingConfirmation
+                    || l.LessonSerie.PlanningStatus == PlanningStatus.Scheduled), ct);
+    }
+
     public async Task<Lesson?> GetForTrainerAsync(
         Guid lessonId, Guid trainerId, IReadOnlyList<Guid> headTrainerClubIds, Guid organizationId,
         CancellationToken ct = default)

@@ -39,6 +39,20 @@ public interface ILessonRepository
         IReadOnlyList<Guid> clubIds, Guid organizationId, DateOnly from, DateOnly to, CancellationToken ct = default);
 
     /// <summary>
+    /// Niet-geannuleerde, officieel ingeplande lessen (zelfde regel als
+    /// <see cref="GetByTrainerAndDateRangeAsync"/>) van alle trainers en clubs van de organisatie, binnen een
+    /// datumbereik (inclusief), op datum + starttijd gesorteerd. Voor het admin-dashboard.
+    /// </summary>
+    Task<List<Lesson>> GetByOrganizationAndDateRangeAsync(
+        Guid organizationId, DateOnly from, DateOnly to, CancellationToken ct = default);
+
+    /// <summary>
+    /// Eén niet-geannuleerde, officieel ingeplande les van de organisatie, ongeacht de trainer. Inclusief reeks
+    /// en club. Null als de les niet bestaat, geannuleerd of nog niet ingepland is. Voor het admin-dashboard.
+    /// </summary>
+    Task<Lesson?> GetOfficialByIdAsync(Guid lessonId, Guid organizationId, CancellationToken ct = default);
+
+    /// <summary>
     /// Eén niet-geannuleerde, officieel ingeplande les (zelfde regel als
     /// <see cref="GetByTrainerAndDateRangeAsync"/>) die de gebruiker mag zien: de eigen les van
     /// <paramref name="trainerId"/>, of een les in een van de <paramref name="headTrainerClubIds"/>.
