@@ -58,6 +58,23 @@ public class AssignmentConfirmationTokenRepository(ApplicationDbContext context)
             .ToListAsync(ct);
     }
 
+    public async Task<List<AssignmentConfirmationToken>> GetPendingByClubsAsync(
+        Guid organizationId, IReadOnlyList<Guid> clubIds, CancellationToken ct = default)
+    {
+        List<Guid> clubs = clubIds.ToList();
+        return await context.AssignmentConfirmationTokens
+            .AsNoTracking()
+            .Include(t => t.Enrollment)
+            .Include(t => t.ScheduleAssignment)
+                .ThenInclude(a => a.LessonSerie)
+                    .ThenInclude(ls => ls.TennisClub)
+            .Where(t => t.OrganizationId == organizationId
+                && t.Response == ConfirmationResponse.Pending
+                && clubs.Contains(t.ScheduleAssignment.LessonSerie.TennisClubId))
+            .OrderBy(t => t.ExpiresAt)
+            .ToListAsync(ct);
+    }
+
     public async Task AddRangeAsync(
         IEnumerable<AssignmentConfirmationToken> tokens, CancellationToken ct = default)
     {

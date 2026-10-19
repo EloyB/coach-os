@@ -92,6 +92,10 @@ public class DashboardService(
 
     /// <summary>Maximale bereikgrootte: een maandkalender (6 weken) past er ruim in.</summary>
     private const int MaxMyLessonsRangeDays = 62;
+    private const int ClubOverviewLookaheadDays = 28;
+    private const int StalledPlanningWindowDays = 14;
+    private const int MaxLessonsWithoutTrainer = 10;
+    private const double UnderbookedRatio = 0.6;
 
     public async Task<Result<List<MyLessonDto>>> GetMyLessonsAsync(
         Guid organizationId, Guid trainerId, DateOnly from, DateOnly to, CancellationToken ct = default)
@@ -279,6 +283,123 @@ public class DashboardService(
         }).ToList();
 
         return Result<List<MyLessonDto>>.Ok(dtos);
+    }
+
+    public async Task<Result<ClubOverviewDto>> GetMyClubOverviewAsync(
+        Guid organizationId, IReadOnlyList<Guid> headTrainerClubIds, CancellationToken ct = default)
+    {
+        if (headTrainerClubIds.Count == 0)
+            return Result<ClubOverviewDto>.Fail(new Error(ErrorCodes.Forbidden,
+                "Enkel een hoofdtrainer kan het cluboverzicht bekijken."));
+
+        DateOnly today = timeProvider.GetBrusselsToday();
+        DateTime now = timeProvider.GetUtcNow().UtcDateTime;
+
+        List<LessonSerieEntity> series = (await lessonSeriesRepo.GetByClubsAsync(organizationId, headTrainerClubIds, ct))
+            .Where(s => s.IsActive && s.EndDate >= today)
+            .ToList();
+        Dictionary<Guid, int> enrolledBySeries = series.Count > 0
+            ? await enrollmentRepo.CountActiveBySeriesIdsAsync(series.Select(s => s.Id).ToList(), ct)
+            : [];
+
+        // Trainers per reeks en lessen zonder trainer: kijk naar de komende 4 weken.
+        List<Lesson> upcoming = await lessonRepo.GetByClubsAndDateRangeAsync(
+            headTrainerClubIds, organizationId, today, today.AddDays(ClubOverviewLookaheadDays), ct);
+        Dictionary<Guid, string> trainerNames = await userLookup.GetUserNamesByIdsAsync(
+            upcoming.Where(l => l.TrainerId.HasValue).Select(l => l.TrainerId!.Value).Distinct().ToList(), ct);
+
+        List<ClubSeriesDto> seriesDtos = series.Select(s => new ClubSeriesDto
+        {
+            Id = s.Id,
+            Name = s.Name,
+            TennisClubName = s.TennisClub?.Name,
+            Enrolled = enrolledBySeries.GetValueOrDefault(s.Id, 0),
+            MaxRegistrations = s.MaxRegistrations is > 0 ? s.MaxRegistrations : null,
+            StartDate = s.StartDate.ToString("yyyy-MM-dd"),
+            EndDate = s.EndDate.ToString("yyyy-MM-dd"),
+            TrainerNames = upcoming
+                .Where(l => l.LessonSerieId == s.Id && l.TrainerId.HasValue)
+                .Select(l => trainerNames.GetValueOrDefault(l.TrainerId!.Value))
+                .OfType<string>()
+                .Distinct()
+                .Order()
+                .ToList(),
+        }).ToList();
+
+        List<ClubAttentionItemDto> attention = [];
+
+        foreach (LessonSerieEntity s in series)
+        {
+            int enrolled = enrolledBySeries.GetValueOrDefault(s.Id, 0);
+            if (s.MaxRegistrations is > 0 && (double)enrolled / s.MaxRegistrations.Value < UnderbookedRatio)
+            {
+                attention.Add(new ClubAttentionItemDto
+                {
+                    Type = "series_underbooked", SeriesId = s.Id, SeriesName = s.Name,
+                    TennisClubName = s.TennisClub?.Name, Enrolled = enrolled, MaxRegistrations = s.MaxRegistrations,
+                });
+            }
+
+            bool unplanned = s.PlanningStatus is PlanningStatus.Enrollment or PlanningStatus.Planning;
+            if (unplanned && enrolled > 0 && s.StartDate <= today.AddDays(StalledPlanningWindowDays))
+            {
+                attention.Add(new ClubAttentionItemDto
+                {
+                    Type = "planning_stalled", SeriesId = s.Id, SeriesName = s.Name,
+                    TennisClubName = s.TennisClub?.Name, Date = s.StartDate.ToString("yyyy-MM-dd"),
+                });
+            }
+        }
+
+        List<AssignmentConfirmationToken> pending =
+            await confirmationTokenRepo.GetPendingByClubsAsync(organizationId, headTrainerClubIds, ct);
+        // Eén aandachtspunt per reeks (niet per speler), anders loopt de lijst snel vol.
+        foreach (IGrouping<Guid, AssignmentConfirmationToken> perSeries in pending
+                     .Where(t => t.ScheduleAssignment?.LessonSerie is not null)
+                     .GroupBy(t => t.ScheduleAssignment.LessonSerieId))
+        {
+            LessonSerieEntity tokenSeries = perSeries.First().ScheduleAssignment.LessonSerie;
+            attention.Add(new ClubAttentionItemDto
+            {
+                Type = "confirmation_pending",
+                SeriesId = tokenSeries.Id,
+                SeriesName = tokenSeries.Name,
+                TennisClubName = tokenSeries.TennisClub?.Name,
+                StudentNames = perSeries
+                    .Select(t => t.Enrollment?.StudentName)
+                    .OfType<string>()
+                    .Distinct()
+                    .Order()
+                    .ToList(),
+                HoursRemaining = (int)Math.Floor((perSeries.Min(t => t.ExpiresAt) - now).TotalHours),
+            });
+        }
+
+        foreach (Lesson lesson in upcoming.Where(l => !l.TrainerId.HasValue).Take(MaxLessonsWithoutTrainer))
+        {
+            attention.Add(new ClubAttentionItemDto
+            {
+                Type = "lesson_without_trainer",
+                SeriesId = lesson.LessonSerieId,
+                SeriesName = lesson.LessonSerie?.Name,
+                TennisClubName = lesson.LessonSerie?.TennisClub?.Name ?? lesson.TennisClub?.Name,
+                Date = lesson.Date.ToString("yyyy-MM-dd"),
+            });
+        }
+
+        List<ClubSeriesDto> withMax = seriesDtos.Where(s => s.MaxRegistrations.HasValue).ToList();
+        int? averageOccupancy = withMax.Count == 0
+            ? null
+            : (int)Math.Round(withMax.Average(s => Math.Min(1.0, (double)s.Enrolled / s.MaxRegistrations!.Value)) * 100);
+
+        return Result<ClubOverviewDto>.Ok(new ClubOverviewDto
+        {
+            ActiveSeriesCount = series.Count,
+            AverageOccupancyPercent = averageOccupancy,
+            AttentionCount = attention.Count,
+            Series = seriesDtos,
+            Attention = attention,
+        });
     }
 
     public async Task<Result<MyLessonDetailDto>> GetMyLessonAsync(
