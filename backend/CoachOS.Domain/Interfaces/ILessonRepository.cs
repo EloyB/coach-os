@@ -30,12 +30,24 @@ public interface ILessonRepository
         Guid trainerId, Guid organizationId, DateOnly from, DateOnly to, CancellationToken ct = default);
 
     /// <summary>
-    /// Eén niet-geannuleerde, officieel ingeplande les van de gegeven trainer (zelfde regel als
-    /// <see cref="GetByTrainerAndDateRangeAsync"/>), inclusief reeks en club. Geeft null terug als de
-    /// les niet bestaat, geannuleerd is, nog niet ingepland is of van een andere trainer is.
+    /// Niet-geannuleerde, officieel ingeplande lessen (zelfde regel als
+    /// <see cref="GetByTrainerAndDateRangeAsync"/>) van alle trainers in de opgegeven clubs, binnen een
+    /// datumbereik (inclusief), op datum + starttijd gesorteerd. De club van een reeksles is die van de
+    /// reeks, die van een losse les is de eigen club. Voor het hoofdtrainer-dashboard.
+    /// </summary>
+    Task<List<Lesson>> GetByClubsAndDateRangeAsync(
+        IReadOnlyList<Guid> clubIds, Guid organizationId, DateOnly from, DateOnly to, CancellationToken ct = default);
+
+    /// <summary>
+    /// Eén niet-geannuleerde, officieel ingeplande les (zelfde regel als
+    /// <see cref="GetByTrainerAndDateRangeAsync"/>) die de gebruiker mag zien: de eigen les van
+    /// <paramref name="trainerId"/>, of een les in een van de <paramref name="headTrainerClubIds"/>.
+    /// Inclusief reeks en club. Geeft null terug als de les niet bestaat, geannuleerd of nog niet ingepland is,
+    /// of niet zichtbaar is voor deze gebruiker.
     /// </summary>
     Task<Lesson?> GetForTrainerAsync(
-        Guid lessonId, Guid trainerId, Guid organizationId, CancellationToken ct = default);
+        Guid lessonId, Guid trainerId, IReadOnlyList<Guid> headTrainerClubIds, Guid organizationId,
+        CancellationToken ct = default);
 
     Task<int> CountByOrganizationAndDateRangeAsync(Guid organizationId, DateOnly from, DateOnly to, CancellationToken ct = default);
     Task<Dictionary<string, int>> CountByOrganizationWeeksAsync(Guid organizationId, int weeks, CancellationToken ct = default);

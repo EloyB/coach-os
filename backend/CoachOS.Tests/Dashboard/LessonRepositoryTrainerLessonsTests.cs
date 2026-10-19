@@ -124,7 +124,7 @@ public class LessonRepositoryTrainerLessonsTests
     {
         Lesson lesson = await AddSeriesLessonAsync(status);
 
-        Lesson? result = await _sut.GetForTrainerAsync(lesson.Id, TrainerId, OrgId);
+        Lesson? result = await _sut.GetForTrainerAsync(lesson.Id, TrainerId, [], OrgId);
 
         (result is not null).Should().Be(visible);
     }
@@ -134,7 +134,7 @@ public class LessonRepositoryTrainerLessonsTests
     {
         Lesson lesson = await AddStandaloneAsync();
 
-        (await _sut.GetForTrainerAsync(lesson.Id, TrainerId, OrgId)).Should().NotBeNull();
-        (await _sut.GetForTrainerAsync(lesson.Id, Guid.NewGuid(), OrgId)).Should().BeNull();
+        (await _sut.GetForTrainerAsync(lesson.Id, TrainerId, [], OrgId)).Should().NotBeNull();
+        (await _sut.GetForTrainerAsync(lesson.Id, Guid.NewGuid(), [], OrgId)).Should().BeNull();
     }
 }

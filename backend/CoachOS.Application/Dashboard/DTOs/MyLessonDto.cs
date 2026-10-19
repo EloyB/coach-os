@@ -5,6 +5,12 @@ public class MyLessonDto
 {
     public Guid Id { get; set; }
 
+    /// <summary>De trainer van deze les (nodig om eigen lessen van clublessen te onderscheiden).</summary>
+    public Guid? TrainerId { get; set; }
+
+    /// <summary>Naam van de trainer; enkel ingevuld bij clublessen (hoofdtrainer-dashboard).</summary>
+    public string? TrainerName { get; set; }
+
     /// <summary>Null voor losse lessen.</summary>
     public Guid? SeriesId { get; set; }
 
@@ -25,6 +31,8 @@ public class MyLessonDto
 public class MyLessonDetailDto
 {
     public Guid Id { get; set; }
+    public Guid? TrainerId { get; set; }
+    public string? TrainerName { get; set; }
     public Guid? SeriesId { get; set; }
     public string? SeriesName { get; set; }
     public string Date { get; set; } = string.Empty;

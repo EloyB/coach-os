@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -26,6 +26,7 @@ import { SlashLabel } from "@/components/ui/slash-label";
 import { TrainerLessonDialog } from "@/components/dashboard/trainer-lesson-dialog";
 import { TennisBallEmptyIcon } from "@/components/ui/tennis-ball-icon";
 import {
+  getClubLessons,
   getMyCampDays,
   getMyLessons,
   getMyOverview,
@@ -34,6 +35,8 @@ import {
   type MyOverviewDto,
 } from "@/lib/api/dashboard";
 import { useClientValue } from "@/lib/hooks/use-client-value";
+import { getOrganizationTrainers } from "@/lib/api/lessonSeries";
+import { getAuthUser } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
 const ISO_DATE = "yyyy-MM-dd";
@@ -94,6 +97,215 @@ function buildAgenda(
   ];
   return items.sort((a, b) =>
     `${a.date} ${a.startTime}`.localeCompare(`${b.date} ${b.startTime}`),
+  );
+}
+
+// ─── Welke lessen tonen we? (mijn lessen / hele club) ────────────────────────
+
+export type AgendaScope = "mine" | "club";
+
+const SCOPE_STORAGE_KEY = "coachos.dashboard.agenda-scope";
+
+function readStoredScope(): AgendaScope {
+  try {
+    return localStorage.getItem(SCOPE_STORAGE_KEY) === "club" ? "club" : "mine";
+  } catch {
+    return "mine";
+  }
+}
+
+function storeScope(scope: AgendaScope) {
+  try {
+    localStorage.setItem(SCOPE_STORAGE_KEY, scope);
+  } catch {
+    // Opslaan is een gemak, geen vereiste.
+  }
+}
+
+/** Een les zonder trainer of van de ingelogde gebruiker zelf telt als "mijn les". */
+function isOwnLesson(lesson: MyLessonDto, userId: string): boolean {
+  return !lesson.trainerId || lesson.trainerId === userId;
+}
+
+/**
+ * Lessen voor een datumbereik. In clubmodus (hoofdtrainer) komen de lessen van alle trainers in de
+ * eigen club(s) erbij; eigen lessen in een andere club blijven zichtbaar.
+ */
+function useAgendaLessons(from: string, to: string, showClub: boolean) {
+  const mine = useQuery({
+    queryKey: ["dashboard", "my-lessons", from, to],
+    queryFn: () => getMyLessons(from, to),
+  });
+  const club = useQuery({
+    queryKey: ["dashboard", "club-lessons", from, to],
+    queryFn: () => getClubLessons(from, to),
+    enabled: showClub,
+  });
+
+  const lessons = useMemo(() => {
+    if (!showClub) return mine.data;
+    if (!club.data) return undefined;
+    const clubIds = new Set(club.data.map((l) => l.id));
+    return [
+      ...club.data,
+      ...(mine.data ?? []).filter((l) => !clubIds.has(l.id)),
+    ];
+  }, [showClub, mine.data, club.data]);
+
+  return {
+    lessons,
+    isLoading: mine.isLoading || (showClub && club.isLoading),
+    isError: mine.isError || (showClub && club.isError),
+  };
+}
+
+// ─── Kleur per trainer ───────────────────────────────────────────────────────
+
+interface LessonStyle {
+  chip: string;
+  dot: string;
+  block: string;
+  blockText: string;
+}
+
+/** Eigen lessen: altijd groen. */
+const OWN_STYLE: LessonStyle = {
+  chip: "bg-tennis-green/10 text-tennis-green hover:bg-tennis-green/20",
+  dot: "bg-tennis-green",
+  block: "bg-tennis-green/10",
+  blockText: "text-tennis-green",
+};
+
+/**
+ * Kleuren voor andere trainers. Bewust zonder groen (eigen lessen) en amber/oranje (kampdagen).
+ * Klassen staan voluit uitgeschreven zodat Tailwind ze meeneemt.
+ */
+const OTHER_STYLES: LessonStyle[] = [
+  {
+    chip: "bg-violet-100 text-violet-800 hover:bg-violet-200",
+    dot: "bg-violet-500",
+    block: "bg-violet-100",
+    blockText: "text-violet-700",
+  },
+  {
+    chip: "bg-blue-100 text-blue-800 hover:bg-blue-200",
+    dot: "bg-blue-500",
+    block: "bg-blue-100",
+    blockText: "text-blue-700",
+  },
+  {
+    chip: "bg-pink-100 text-pink-800 hover:bg-pink-200",
+    dot: "bg-pink-500",
+    block: "bg-pink-100",
+    blockText: "text-pink-700",
+  },
+  {
+    chip: "bg-teal-100 text-teal-800 hover:bg-teal-200",
+    dot: "bg-teal-500",
+    block: "bg-teal-100",
+    blockText: "text-teal-700",
+  },
+  {
+    chip: "bg-red-100 text-red-800 hover:bg-red-200",
+    dot: "bg-red-500",
+    block: "bg-red-100",
+    blockText: "text-red-700",
+  },
+  {
+    chip: "bg-indigo-100 text-indigo-800 hover:bg-indigo-200",
+    dot: "bg-indigo-500",
+    block: "bg-indigo-100",
+    blockText: "text-indigo-700",
+  },
+  {
+    chip: "bg-cyan-100 text-cyan-800 hover:bg-cyan-200",
+    dot: "bg-cyan-500",
+    block: "bg-cyan-100",
+    blockText: "text-cyan-700",
+  },
+];
+
+function hashString(value: string): number {
+  let hash = 0;
+  for (let i = 0; i < value.length; i++) {
+    hash = ((hash << 5) - hash + value.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash);
+}
+
+type StyleOf = (lesson: MyLessonDto) => LessonStyle;
+
+/**
+ * Geeft elke andere trainer een vaste kleur. De kleur volgt de positie van de trainer in de
+ * (op id gesorteerde) lijst van trainers van de organisatie: stabiel tussen maanden en
+ * gegarandeerd verschillend zolang er niet meer trainers zijn dan kleuren.
+ */
+function useLessonStyles(userId: string, enabled: boolean): StyleOf {
+  const { data: members } = useQuery({
+    queryKey: ["lessonseries", "members"],
+    queryFn: getOrganizationTrainers,
+    enabled,
+    staleTime: 5 * 60_000,
+  });
+
+  return useMemo(() => {
+    const index = new Map(
+      (members ?? [])
+        .map((m) => m.id)
+        .filter((id) => id !== userId)
+        .sort()
+        .map((id, i) => [id, i] as const),
+    );
+    return (lesson: MyLessonDto): LessonStyle => {
+      if (isOwnLesson(lesson, userId)) return OWN_STYLE;
+      const id = lesson.trainerId ?? "";
+      const position = index.get(id) ?? hashString(id);
+      return OTHER_STYLES[position % OTHER_STYLES.length];
+    };
+  }, [members, userId]);
+}
+
+function AgendaScopeToggle({
+  scope,
+  clubCount,
+  onChange,
+}: {
+  scope: AgendaScope;
+  clubCount: number;
+  onChange: (scope: AgendaScope) => void;
+}) {
+  const t = useTranslations("dashboard");
+  const option = (value: AgendaScope, label: string) => (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={scope === value}
+      onClick={() => onChange(value)}
+      className={cn(
+        "rounded-md px-3 py-1 text-[11.5px] font-semibold transition-colors",
+        scope === value
+          ? "bg-ink text-white"
+          : "text-ink-3 hover:text-ink hover:bg-canvas",
+      )}
+    >
+      {label}
+    </button>
+  );
+
+  return (
+    <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+      <SlashLabel>{t("trainerScopeLabel")}</SlashLabel>
+      <div className="flex items-center gap-4">
+        <div
+          role="radiogroup"
+          aria-label={t("trainerScopeAria")}
+          className="inline-flex gap-0.5 rounded-lg border border-rule bg-paper p-0.5"
+        >
+          {option("mine", t("trainerScopeMine"))}
+          {option("club", t("trainerScopeClub", { count: clubCount }))}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -287,27 +499,53 @@ function HoursCard({ overview }: { overview: MyOverviewDto | undefined }) {
 
 // ─── Lessen van vandaag ───────────────────────────────────────────────────────
 
-function TodayCard({
+function DayCard({
+  day,
+  isToday,
   items,
   isLoading,
+  userId,
+  styleOf,
   onSelect,
+  onBackToToday,
 }: {
+  /** De geselecteerde dag (standaard vandaag). */
+  day: Date;
+  isToday: boolean;
   items: AgendaItem[];
   isLoading: boolean;
+  userId: string;
+  styleOf: StyleOf;
   onSelect: (lessonId: string) => void;
+  onBackToToday: () => void;
 }) {
   const t = useTranslations("dashboard");
   const titleOf = useLessonTitle();
 
   return (
     <div className="bg-paper border border-rule rounded-xl overflow-hidden">
-      <div className="px-[18px] py-3.5 border-b border-rule flex items-center justify-between">
+      <div className="px-[18px] py-3.5 border-b border-rule flex items-center justify-between gap-3">
         <h2 className="text-[13px] font-bold text-ink">
-          {t("trainerTodayTitle")}
+          {isToday
+            ? t("trainerTodayTitle")
+            : t("trainerDayTitle", {
+                date: capitalize(format(day, "EEEE d MMMM", { locale: nl })),
+              })}
         </h2>
-        {items.length > 0 && (
-          <Mono className="text-[11px] text-ink-3">{items.length}</Mono>
-        )}
+        <div className="flex shrink-0 items-center gap-2.5">
+          {!isToday && (
+            <button
+              type="button"
+              onClick={onBackToToday}
+              className="rounded-md border border-rule px-2.5 h-7 text-[11px] font-medium text-ink-3 hover:text-ink hover:bg-canvas transition-colors"
+            >
+              {t("trainerBackToToday")}
+            </button>
+          )}
+          {items.length > 0 && (
+            <Mono className="text-[11px] text-ink-3">{items.length}</Mono>
+          )}
+        </div>
       </div>
 
       {isLoading && (
@@ -324,10 +562,10 @@ function TodayCard({
             <TennisBallEmptyIcon className="w-7 h-7" />
           </div>
           <p className="text-ink font-semibold text-sm mb-1">
-            {t("trainerTodayEmptyTitle")}
+            {isToday ? t("trainerTodayEmptyTitle") : t("trainerDayEmptyTitle")}
           </p>
           <p className="text-ink-3 text-xs max-w-60 leading-relaxed">
-            {t("trainerTodayEmptyDesc")}
+            {isToday ? t("trainerTodayEmptyDesc") : t("trainerDayEmptyDesc")}
           </p>
         </div>
       )}
@@ -342,8 +580,18 @@ function TodayCard({
                   onClick={() => onSelect(item.lesson.id)}
                   className="flex w-full items-start gap-3.5 px-[18px] py-3.5 text-left hover:bg-canvas/60 transition-colors"
                 >
-                  <div className="shrink-0 w-[62px] rounded-lg bg-tennis-green/10 py-1.5 text-center">
-                    <Mono className="block text-[12.5px] font-bold text-tennis-green">
+                  <div
+                    className={cn(
+                      "shrink-0 w-[62px] rounded-lg py-1.5 text-center",
+                      styleOf(item.lesson).block,
+                    )}
+                  >
+                    <Mono
+                      className={cn(
+                        "block text-[12.5px] font-bold",
+                        styleOf(item.lesson).blockText,
+                      )}
+                    >
                       {item.lesson.startTime}
                     </Mono>
                     <Mono className="block text-[10px] text-ink-3">
@@ -372,6 +620,14 @@ function TodayCard({
                           })}
                         </span>
                       )}
+                      {!isOwnLesson(item.lesson, userId) &&
+                        item.lesson.trainerName && (
+                          <span>
+                            {t("trainerWithTrainer", {
+                              name: item.lesson.trainerName,
+                            })}
+                          </span>
+                        )}
                     </p>
                   </div>
                 </button>
@@ -421,9 +677,20 @@ function TodayCard({
 
 function MonthCalendar({
   today,
+  showClub,
+  userId,
+  styleOf,
+  selectedKey,
+  onSelectDay,
   onSelect,
 }: {
   today: Date;
+  showClub: boolean;
+  userId: string;
+  styleOf: StyleOf;
+  /** De geselecteerde dag (yyyy-MM-dd): die toont de kaart naast de kalender. */
+  selectedKey: string;
+  onSelectDay: (dayKey: string) => void;
   onSelect: (lessonId: string) => void;
 }) {
   const t = useTranslations("dashboard");
@@ -437,14 +704,7 @@ function MonthCalendar({
   const from = format(gridStart, ISO_DATE);
   const to = format(gridEnd, ISO_DATE);
 
-  const {
-    data: lessons,
-    isLoading,
-    isError,
-  } = useQuery({
-    queryKey: ["dashboard", "my-lessons", from, to],
-    queryFn: () => getMyLessons(from, to),
-  });
+  const { lessons, isLoading, isError } = useAgendaLessons(from, to, showClub);
 
   const { data: campDays } = useQuery({
     queryKey: ["dashboard", "my-camp-days", from, to],
@@ -471,7 +731,10 @@ function MonthCalendar({
         <div className="flex items-center gap-1">
           <button
             type="button"
-            onClick={() => setMonth(startOfMonth(today))}
+            onClick={() => {
+              setMonth(startOfMonth(today));
+              onSelectDay(format(today, ISO_DATE));
+            }}
             className="px-2.5 h-7 rounded-md border border-rule text-[11px] font-medium text-ink-3 hover:text-ink hover:bg-canvas transition-colors"
           >
             {t("trainerCalendarToday")}
@@ -523,20 +786,34 @@ function MonthCalendar({
           const dayItems = itemsByDay.get(key) ?? [];
           const inMonth = isSameMonth(day, month);
           const isToday = isSameDay(day, today);
+          const isSelected = key === selectedKey;
           const visible = dayItems.slice(0, MAX_CHIPS_PER_DAY);
           const extra = dayItems.length - visible.length;
+          const dayLabel = format(day, "EEEE d MMMM", { locale: nl });
 
           return (
+            // Een klik op de dag selecteert hem; de nummerknop is het toetsenbord-/schermlezerpad.
             <div
               key={key}
+              onClick={() => onSelectDay(key)}
               className={cn(
-                "min-h-[64px] sm:min-h-[92px] p-1.5 border-rule",
+                "min-h-[64px] sm:min-h-[92px] p-1.5 border-rule cursor-pointer transition-colors",
                 i % 7 !== 0 && "border-l",
                 i >= 7 && "border-t",
                 !inMonth && "bg-canvas/40",
+                isSelected
+                  ? "bg-tennis-green/[0.06] ring-2 ring-inset ring-tennis-green/50"
+                  : "hover:bg-canvas/60",
               )}
             >
-              <span
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelectDay(key);
+                }}
+                aria-label={t("trainerCalendarSelectDay", { date: dayLabel })}
+                aria-pressed={isSelected}
                 className={cn(
                   "inline-grid place-items-center h-6 min-w-6 rounded-full px-1 text-[11.5px] font-mono",
                   isToday
@@ -547,7 +824,7 @@ function MonthCalendar({
                 )}
               >
                 {format(day, "d")}
-              </span>
+              </button>
 
               {/* Desktop: chips per les of kampdag */}
               <div className="hidden sm:block mt-1 space-y-0.5">
@@ -556,9 +833,20 @@ function MonthCalendar({
                     <button
                       key={item.key}
                       type="button"
-                      onClick={() => onSelect(item.lesson.id)}
-                      title={`${item.lesson.startTime} – ${item.lesson.endTime} · ${titleOf(item.lesson)}`}
-                      className="block w-full truncate rounded bg-tennis-green/10 px-1.5 py-0.5 text-left text-[10.5px] leading-tight text-tennis-green hover:bg-tennis-green/20 transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelect(item.lesson.id);
+                      }}
+                      title={`${item.lesson.startTime} – ${item.lesson.endTime} · ${titleOf(item.lesson)}${
+                        item.lesson.trainerName &&
+                        !isOwnLesson(item.lesson, userId)
+                          ? ` · ${item.lesson.trainerName}`
+                          : ""
+                      }`}
+                      className={cn(
+                        "block w-full truncate rounded px-1.5 py-0.5 text-left text-[10.5px] leading-tight transition-colors",
+                        styleOf(item.lesson).chip,
+                      )}
                     >
                       <span className="font-mono font-semibold">
                         {item.lesson.startTime}
@@ -569,6 +857,7 @@ function MonthCalendar({
                     <Link
                       key={item.key}
                       href={`/dashboard/camps/${item.camp.campId}`}
+                      onClick={(e) => e.stopPropagation()}
                       title={`${item.camp.startTime} – ${item.camp.endTime} · ${item.camp.campName}`}
                       className="block w-full truncate rounded bg-amber-50 px-1.5 py-0.5 text-left text-[10.5px] leading-tight text-amber-800 hover:bg-amber-100 transition-colors"
                     >
@@ -580,9 +869,16 @@ function MonthCalendar({
                   ),
                 )}
                 {extra > 0 && (
-                  <p className="px-1.5 text-[10px] text-ink-3">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSelectDay(key);
+                    }}
+                    className="px-1.5 text-[10px] font-medium text-ink-3 hover:text-tennis-green hover:underline"
+                  >
                     {t("trainerCalendarMore", { count: extra })}
-                  </p>
+                  </button>
                 )}
               </div>
 
@@ -596,7 +892,7 @@ function MonthCalendar({
                       className={cn(
                         "h-1.5 w-1.5 rounded-full",
                         item.kind === "lesson"
-                          ? "bg-tennis-green"
+                          ? styleOf(item.lesson).dot
                           : "bg-amber-500",
                       )}
                     />
@@ -607,23 +903,102 @@ function MonthCalendar({
           );
         })}
       </div>
+
+      {showClub && (
+        <CalendarLegend
+          lessons={lessons ?? []}
+          hasCamp={(campDays ?? []).length > 0}
+          userId={userId}
+          styleOf={styleOf}
+        />
+      )}
+    </div>
+  );
+}
+
+/** Legenda onder de agenda: eigen lessen, elke andere trainer in beeld, en kampdagen. */
+function CalendarLegend({
+  lessons,
+  hasCamp,
+  userId,
+  styleOf,
+}: {
+  lessons: MyLessonDto[];
+  hasCamp: boolean;
+  userId: string;
+  styleOf: StyleOf;
+}) {
+  const t = useTranslations("dashboard");
+
+  const others = new Map<string, MyLessonDto>();
+  for (const lesson of lessons) {
+    if (
+      !isOwnLesson(lesson, userId) &&
+      lesson.trainerId &&
+      !others.has(lesson.trainerId)
+    ) {
+      others.set(lesson.trainerId, lesson);
+    }
+  }
+  const sortedOthers = [...others.values()].sort((a, b) =>
+    (a.trainerName ?? "").localeCompare(b.trainerName ?? ""),
+  );
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-rule px-[18px] py-2.5 text-[11px] text-ink-3">
+      <span className="inline-flex items-center gap-1.5">
+        <span className={cn("h-2.5 w-2.5 rounded-full", OWN_STYLE.dot)} />
+        {t("trainerLegendMine")}
+      </span>
+      {sortedOthers.map((lesson) => (
+        <span
+          key={lesson.trainerId}
+          className="inline-flex items-center gap-1.5"
+        >
+          <span
+            className={cn("h-2.5 w-2.5 rounded-full", styleOf(lesson).dot)}
+          />
+          {lesson.trainerName}
+        </span>
+      ))}
+      {hasCamp && (
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-full bg-amber-500" />
+          {t("trainerCampLabel")}
+        </span>
+      )}
     </div>
   );
 }
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 
-export function TrainerDashboard() {
+export type TrainerDashboardVariant = "trainer" | "head-trainer";
+
+export function TrainerDashboard({
+  variant = "trainer",
+}: {
+  variant?: TrainerDashboardVariant;
+}) {
   // De datum (als yyyy-MM-dd) bestaat enkel client-side.
   const todayKey = useClientValue(() => format(new Date(), ISO_DATE));
 
   if (!todayKey) return null;
   return (
-    <TrainerDashboardContent today={parse(todayKey, ISO_DATE, new Date())} />
+    <TrainerDashboardContent
+      today={parse(todayKey, ISO_DATE, new Date())}
+      variant={variant}
+    />
   );
 }
 
-function TrainerDashboardContent({ today }: { today: Date }) {
+function TrainerDashboardContent({
+  today,
+  variant,
+}: {
+  today: Date;
+  variant: TrainerDashboardVariant;
+}) {
   const t = useTranslations("dashboard");
   const todayKey = format(today, ISO_DATE);
 
@@ -639,14 +1014,47 @@ function TrainerDashboardContent({ today }: { today: Date }) {
     queryFn: getMyOverview,
   });
 
-  const { data: todayLessons, isLoading } = useQuery({
-    queryKey: ["dashboard", "my-lessons", todayKey, todayKey],
-    queryFn: () => getMyLessons(todayKey, todayKey),
-  });
+  // Alleen een hoofdtrainer kiest tussen "mijn lessen" en "hele club"; de keuze wordt onthouden.
+  const isHeadTrainer = variant === "head-trainer";
+  const userId = useClientValue(() => getAuthUser()?.userId ?? "") ?? "";
+  const clubCount =
+    useClientValue(() => getAuthUser()?.headTrainerClubIds?.length ?? 0) ?? 0;
+  const [scope, setScope] = useState<AgendaScope>(() =>
+    isHeadTrainer ? readStoredScope() : "mine",
+  );
+  const showClub = isHeadTrainer && scope === "club";
+  const styleOf = useLessonStyles(userId, showClub);
+  function changeScope(next: AgendaScope) {
+    setScope(next);
+    storeScope(next);
+  }
+
+  // De geselecteerde dag (standaard vandaag) bepaalt wat de kaart naast de kalender toont.
+  const [selectedKey, setSelectedKey] = useState(todayKey);
+  const selectedDay = parse(selectedKey, ISO_DATE, today);
+  const isTodaySelected = selectedKey === todayKey;
+  const dayCardRef = useRef<HTMLDivElement>(null);
+
+  function selectDay(dayKey: string) {
+    setSelectedKey(dayKey);
+    // Onder de brede layout staat de kaart boven de kalender (gestapeld): breng ze dan in beeld.
+    if (!window.matchMedia("(min-width: 1280px)").matches) {
+      dayCardRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }
+  }
+
+  const { lessons: todayLessons, isLoading } = useAgendaLessons(
+    selectedKey,
+    selectedKey,
+    showClub,
+  );
 
   const { data: todayCampDays, isLoading: campsLoading } = useQuery({
-    queryKey: ["dashboard", "my-camp-days", todayKey, todayKey],
-    queryFn: () => getMyCampDays(todayKey, todayKey),
+    queryKey: ["dashboard", "my-camp-days", selectedKey, selectedKey],
+    queryFn: () => getMyCampDays(selectedKey, selectedKey),
   });
 
   const todayItems = buildAgenda(todayLessons, todayCampDays);
@@ -656,7 +1064,7 @@ function TrainerDashboardContent({ today }: { today: Date }) {
 
   return (
     // min-h-full: de kalender neemt de volledige beschikbare hoogte van de pagina in.
-    <div className="flex min-h-full flex-col">
+    <div className="flex min-h-full flex-col" data-variant={variant}>
       <h1 className="sr-only">{t("title")}</h1>
 
       <div className="mb-[18px] grid grid-cols-1 gap-[18px] md:grid-cols-2 xl:grid-cols-3">
@@ -668,15 +1076,36 @@ function TrainerDashboardContent({ today }: { today: Date }) {
         <HoursCard overview={overview} />
       </div>
 
+      {isHeadTrainer && (
+        <AgendaScopeToggle
+          scope={scope}
+          clubCount={clubCount}
+          onChange={changeScope}
+        />
+      )}
+
       <div className="grid flex-1 grid-cols-1 gap-[18px] xl:grid-cols-[minmax(0,1fr)_minmax(0,1.8fr)]">
-        <div className="self-start">
-          <TodayCard
+        <div ref={dayCardRef} className="self-start scroll-mt-4">
+          <DayCard
+            day={selectedDay}
+            isToday={isTodaySelected}
             items={todayItems}
             isLoading={todayLoading}
+            userId={userId}
+            styleOf={styleOf}
             onSelect={setSelectedLessonId}
+            onBackToToday={() => selectDay(todayKey)}
           />
         </div>
-        <MonthCalendar today={today} onSelect={setSelectedLessonId} />
+        <MonthCalendar
+          today={today}
+          showClub={showClub}
+          userId={userId}
+          styleOf={styleOf}
+          selectedKey={selectedKey}
+          onSelectDay={selectDay}
+          onSelect={setSelectedLessonId}
+        />
       </div>
 
       <TrainerLessonDialog

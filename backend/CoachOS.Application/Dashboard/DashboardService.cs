@@ -222,6 +222,7 @@ public class DashboardService(
     private static MyLessonDto MapMyLesson(Lesson l, int? enrolledCount) => new()
     {
         Id = l.Id,
+        TrainerId = l.TrainerId,
         SeriesId = l.LessonSerieId,
         SeriesName = l.LessonSerie?.Name,
         Date = l.Date.ToString("yyyy-MM-dd"),
@@ -233,10 +234,59 @@ public class DashboardService(
         EnrolledCount = enrolledCount,
     };
 
-    public async Task<Result<MyLessonDetailDto>> GetMyLessonAsync(
-        Guid organizationId, Guid trainerId, Guid lessonId, CancellationToken ct = default)
+    public async Task<Result<List<MyLessonDto>>> GetMyClubLessonsAsync(
+        Guid organizationId, IReadOnlyList<Guid> headTrainerClubIds, DateOnly from, DateOnly to,
+        CancellationToken ct = default)
     {
-        Lesson? lesson = await lessonRepo.GetForTrainerAsync(lessonId, trainerId, organizationId, ct);
+        if (headTrainerClubIds.Count == 0)
+            return Result<List<MyLessonDto>>.Fail(new Error(ErrorCodes.Forbidden,
+                "Enkel een hoofdtrainer kan de lessen van de club bekijken."));
+
+        if (to < from)
+            return Result<List<MyLessonDto>>.Fail(
+                new Error(ErrorCodes.Validation, "De einddatum mag niet voor de begindatum liggen."));
+
+        if (to.DayNumber - from.DayNumber > MaxMyLessonsRangeDays)
+            return Result<List<MyLessonDto>>.Fail(
+                new Error(ErrorCodes.Validation, $"Het datumbereik mag maximaal {MaxMyLessonsRangeDays} dagen zijn."));
+
+        List<Lesson> lessons =
+            await lessonRepo.GetByClubsAndDateRangeAsync(headTrainerClubIds, organizationId, from, to, ct);
+
+        List<Guid> seriesIds = lessons
+            .Where(l => l.LessonSerieId.HasValue)
+            .Select(l => l.LessonSerieId!.Value)
+            .Distinct()
+            .ToList();
+        Dictionary<Guid, int> enrollmentCounts = seriesIds.Count > 0
+            ? await enrollmentRepo.CountActiveBySeriesIdsAsync(seriesIds, ct)
+            : [];
+
+        List<Guid> trainerIds = lessons
+            .Where(l => l.TrainerId.HasValue)
+            .Select(l => l.TrainerId!.Value)
+            .Distinct()
+            .ToList();
+        Dictionary<Guid, string> trainerNames = await userLookup.GetUserNamesByIdsAsync(trainerIds, ct);
+
+        List<MyLessonDto> dtos = lessons.Select(l =>
+        {
+            MyLessonDto dto = MapMyLesson(
+                l,
+                l.LessonSerieId.HasValue ? enrollmentCounts.GetValueOrDefault(l.LessonSerieId.Value, 0) : null);
+            dto.TrainerName = l.TrainerId.HasValue ? trainerNames.GetValueOrDefault(l.TrainerId.Value) : null;
+            return dto;
+        }).ToList();
+
+        return Result<List<MyLessonDto>>.Ok(dtos);
+    }
+
+    public async Task<Result<MyLessonDetailDto>> GetMyLessonAsync(
+        Guid organizationId, Guid trainerId, Guid lessonId, IReadOnlyList<Guid> headTrainerClubIds,
+        CancellationToken ct = default)
+    {
+        Lesson? lesson = await lessonRepo.GetForTrainerAsync(
+            lessonId, trainerId, headTrainerClubIds, organizationId, ct);
         if (lesson is null)
             return Result<MyLessonDetailDto>.Fail(new Error(ErrorCodes.NotFound, "Les niet gevonden."));
 
@@ -288,9 +338,15 @@ public class DashboardService(
 
         TennisClub? club = lesson.LessonSerie?.TennisClub ?? lesson.TennisClub;
 
+        string? trainerName = lesson.TrainerId.HasValue
+            ? await userLookup.GetUserNameByIdAsync(lesson.TrainerId.Value, ct)
+            : null;
+
         MyLessonDetailDto dto = new()
         {
             Id = lesson.Id,
+            TrainerId = lesson.TrainerId,
+            TrainerName = trainerName,
             SeriesId = lesson.LessonSerieId,
             SeriesName = lesson.LessonSerie?.Name,
             Date = lesson.Date.ToString("yyyy-MM-dd"),
