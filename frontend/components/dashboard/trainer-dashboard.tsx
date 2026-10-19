@@ -528,7 +528,7 @@ function DayCard({
   const titleOf = useLessonTitle();
 
   return (
-    <div className="bg-paper border border-rule rounded-xl overflow-hidden">
+    <div className="bg-paper border border-rule rounded-xl overflow-hidden xl:flex xl:min-h-0 xl:flex-col">
       <div className="px-[18px] py-3.5 border-b border-rule flex items-center justify-between gap-3">
         <h2 className="text-[13px] font-bold text-ink">
           {isToday
@@ -576,7 +576,7 @@ function DayCard({
       )}
 
       {!isLoading && items.length > 0 && (
-        <ul className="divide-y divide-rule">
+        <ul className="divide-y divide-rule xl:min-h-0 xl:overflow-y-auto">
           {items.map((item) =>
             item.kind === "lesson" ? (
               <li key={item.key}>
@@ -728,7 +728,7 @@ function MonthCalendar({
     .map((d) => capitalize(format(d, "EEEEEE", { locale: nl })));
 
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-xl border border-rule bg-paper">
+    <div className="flex h-full flex-col overflow-hidden rounded-xl border border-rule bg-paper xl:min-h-0">
       <div className="px-[18px] py-3.5 border-b border-rule flex items-center justify-between gap-3">
         <h2 className="text-[13px] font-bold text-ink">
           {capitalize(format(month, "LLLL yyyy", { locale: nl }))}
@@ -782,7 +782,7 @@ function MonthCalendar({
 
       <div
         className={cn(
-          "grid flex-1 grid-cols-[repeat(7,minmax(0,1fr))] auto-rows-fr",
+          "grid flex-1 grid-cols-[repeat(7,minmax(0,1fr))] auto-rows-fr xl:min-h-0 xl:auto-rows-[minmax(0,1fr)]",
           isLoading && "opacity-60",
         )}
       >
@@ -802,7 +802,7 @@ function MonthCalendar({
               key={key}
               onClick={() => onSelectDay(key)}
               className={cn(
-                "min-h-[64px] sm:min-h-[92px] p-1.5 border-rule cursor-pointer transition-colors",
+                "min-h-[64px] sm:min-h-[92px] xl:min-h-0 xl:overflow-hidden p-1.5 border-rule cursor-pointer transition-colors",
                 i % 7 !== 0 && "border-l",
                 i >= 7 && "border-t",
                 !inMonth && "bg-canvas/40",
@@ -1071,8 +1071,12 @@ function TrainerDashboardContent({
     useClubOverview(isHeadTrainer);
 
   return (
-    // min-h-full: de kalender neemt de volledige beschikbare hoogte van de pagina in.
-    <div className="flex min-h-full flex-col" data-variant={variant}>
+    // Op groot scherm scrolt de pagina niet: alles past in de hoogte van de container en de
+    // kalender krimpt mee. Op kleinere schermen groeit de pagina gewoon mee.
+    <div
+      className="flex min-h-full flex-col xl:h-full xl:overflow-hidden"
+      data-variant={variant}
+    >
       <h1 className="sr-only">{t("title")}</h1>
 
       <div
@@ -1103,8 +1107,11 @@ function TrainerDashboardContent({
         />
       )}
 
-      <div className="grid flex-1 grid-cols-1 gap-[18px] xl:grid-cols-[minmax(0,1fr)_minmax(0,1.8fr)]">
-        <div ref={dayCardRef} className="self-start scroll-mt-4">
+      <div className="grid flex-1 grid-cols-1 gap-[18px] xl:min-h-0 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.8fr)] xl:grid-rows-[minmax(0,1fr)]">
+        <div
+          ref={dayCardRef}
+          className="self-start scroll-mt-4 xl:flex xl:max-h-full xl:min-h-0 xl:flex-col"
+        >
           <DayCard
             day={selectedDay}
             isToday={isTodaySelected}
