@@ -74,7 +74,7 @@
     "clubOverviewSeries": "{count, plural, one {# actieve reeks} other {# actieve reeksen}}",
     "clubOverviewOccupancy": "{percent}% bezet",
     "clubOverviewAttention": "{count, plural, one {# aandachtspunt} other {# aandachtspunten}}",
-    "clubOverviewAllGood": "Geen aandachtspunten",
+    "clubOverviewViewOverview": "Bekijk overzicht",
     "clubOverviewOpen": "Open cluboverzicht",
     "clubOverviewDialogTitle": "Overzicht club",
     "clubOverviewDialogDescription": "Bezetting en aandachtspunten van je club.",

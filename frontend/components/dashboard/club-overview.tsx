@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { format, parseISO } from "date-fns";
 import { nl } from "date-fns/locale";
+import { ArrowRight } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Mono } from "@/components/ui/mono";
 import { OccupancyBar } from "@/components/ui/occupancy-bar";
@@ -63,7 +64,7 @@ export function ClubOverviewCard({
       aria-label={t("clubOverviewOpen")}
       className={cn(
         shell,
-        "text-left transition-colors hover:border-ink/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink",
+        "group cursor-pointer text-left transition-colors hover:border-ink/40 hover:bg-canvas/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink",
       )}
     >
       <p className="text-[10.5px] font-medium uppercase tracking-[0.05em] text-ink-3">
@@ -81,7 +82,7 @@ export function ClubOverviewCard({
       </p>
       <span
         className={cn(
-          "mt-3 inline-flex rounded-full px-2 py-0.5 text-[10.5px] font-semibold",
+          "mt-3 flex items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-[11.5px] font-semibold",
           hasAttention
             ? "bg-amber-50 text-amber-700"
             : "bg-tennis-green/10 text-tennis-green",
@@ -89,7 +90,12 @@ export function ClubOverviewCard({
       >
         {hasAttention
           ? t("clubOverviewAttention", { count: overview.attentionCount })
-          : t("clubOverviewAllGood")}
+          : t("clubOverviewViewOverview")}
+        <ArrowRight
+          size={14}
+          aria-hidden
+          className="shrink-0 transition-transform group-hover:translate-x-0.5"
+        />
       </span>
     </button>
   );
