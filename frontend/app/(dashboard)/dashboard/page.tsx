@@ -8,7 +8,6 @@ import { TennisBallEmptyIcon } from "@/components/ui/tennis-ball-icon";
 import { StatStrip } from "@/components/ui/stat-strip";
 import { SlashLabel } from "@/components/ui/slash-label";
 import { Mono } from "@/components/ui/mono";
-import { Sparkline } from "@/components/ui/sparkline";
 import {
   getDashboardSummary,
   getDashboardInbox,
@@ -230,11 +229,42 @@ function AdminDashboard() {
         <StatStrip items={statItems} className="mb-3.5" />
       )}
 
+      {/* Weekcijfers */}
+      <div className="mb-3.5 grid grid-cols-1 gap-3.5 sm:grid-cols-3">
+        {[
+          {
+            label: t("sparkLessons"),
+            val: String(lessonsData.length > 0 ? lastLessons : (summary?.lessonsThisWeekCount ?? 0)),
+            sub: t("sparkLessonsVsPrev"),
+          },
+          {
+            label: t("sparkOccupancy"),
+            val: occupancyData.length > 0 ? `${lastOccupancy}%` : "\u2014",
+            sub: t("sparkOccupancyPct"),
+          },
+          {
+            label: t("sparkOutstanding"),
+            val: outstandingData.length > 0 ? `\u20AC${lastOutstandingEur}` : "\u2014",
+            sub: t("sparkOutstandingLabel"),
+          },
+        ].map((card) => (
+          <div key={card.label} className="bg-paper border border-rule rounded-xl p-3.5">
+            <p className="text-[10.5px] text-ink-3 font-medium uppercase tracking-[0.05em]">
+              {card.label}
+            </p>
+            <p className="text-[22px] font-bold text-ink tracking-tight mt-1 tabular-nums">
+              {card.val}
+            </p>
+            <p className="text-[10.5px] text-ink-3 mt-0.5">{card.sub}</p>
+          </div>
+        ))}
+      </div>
+
       {/* Priority row — inbox items */}
       <InboxSection inbox={inbox} />
 
-      {/* Two-column: today schedule + sparklines */}
-      <div className="grid grid-cols-1 xl:grid-cols-[1.6fr_1fr] gap-[18px]">
+      {/* Komende lessen */}
+      <div>
         {/* Today schedule */}
         <div className="bg-paper border border-rule rounded-xl overflow-hidden">
           <div className="px-[18px] py-3.5 border-b border-rule flex items-center justify-between">
@@ -302,49 +332,6 @@ function AdminDashboard() {
               ))}
             </div>
           )}
-        </div>
-
-        {/* Week sparklines */}
-        <div className="flex flex-col gap-2.5">
-          {[
-            {
-              label: t("sparkLessons"),
-              val: lessonsData.length > 0 ? String(lastLessons) : String(summary?.lessonsThisWeekCount ?? 0),
-              sub: t("sparkLessonsVsPrev"),
-              data: lessonsData.length >= 2 ? lessonsData : [24, 28, 30, 26, 32, 35, summary?.lessonsThisWeekCount ?? 38],
-              color: "#2D5016",
-            },
-            {
-              label: t("sparkOccupancy"),
-              val: occupancyData.length > 0 ? `${lastOccupancy}%` : "\u2014",
-              sub: t("sparkOccupancyPct"),
-              data: occupancyData.length >= 2 ? occupancyData : [60, 65, 70, 72, 75, 78, 80],
-              color: "#2D5016",
-            },
-            {
-              label: t("sparkOutstanding"),
-              val: outstandingData.length > 0 ? `\u20AC${lastOutstandingEur}` : "\u2014",
-              sub: t("sparkOutstandingLabel"),
-              data: outstandingData.length >= 2 ? outstandingData : [0],
-              color: "#2D5016",
-            },
-          ].map((s, i) => (
-            <div
-              key={i}
-              className="bg-paper border border-rule rounded-xl p-3.5 flex items-center gap-3.5"
-            >
-              <div className="flex-1">
-                <p className="text-[10.5px] text-ink-3 font-medium uppercase tracking-[0.05em]">
-                  {s.label}
-                </p>
-                <p className="text-[22px] font-bold text-ink tracking-tight mt-1 tabular-nums">
-                  {s.val}
-                </p>
-                <p className="text-[10.5px] text-ink-3 mt-0.5">{s.sub}</p>
-              </div>
-              <Sparkline data={s.data} color={s.color} />
-            </div>
-          ))}
         </div>
       </div>
     </>
