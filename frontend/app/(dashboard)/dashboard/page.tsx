@@ -16,7 +16,6 @@ import {
 } from "@/lib/api/dashboard";
 import type { InboxItemDto, InboxResponse } from "@/lib/api/dashboard";
 import { useTranslations } from "next-intl";
-import { OnboardingChecklist } from "@/components/dashboard/onboarding/onboarding-checklist";
 import { WelcomeModal } from "@/components/dashboard/onboarding/welcome-modal";
 import { getAuthUser, isHeadTrainerViewer } from "@/lib/auth";
 import { getOnboardingState } from "@/lib/api/onboarding";
@@ -221,8 +220,7 @@ function AdminDashboard() {
         </Link>
       </div>
 
-      {/* First-time admin onboarding — auto-hides voor non-admins en bestaande orgs. */}
-      <OnboardingChecklist enabled={isAdmin} />
+      {/* Welkomstmodal voor nieuwe admins; de stappen zelf staan in de sidenav. */}
       <WelcomeModal shouldShow={isAdmin && (onboarding?.shouldShow ?? false)} />
 
       {/* Dark hero stat strip */}
