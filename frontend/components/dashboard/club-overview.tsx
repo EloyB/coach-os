@@ -132,9 +132,12 @@ function OccupancyTab({ series }: { series: ClubSeriesDto[] }) {
     );
 
   return (
-    <ul className="divide-y divide-rule rounded-lg border border-rule">
+    <ul className="space-y-2.5">
       {series.map((s) => (
-        <li key={s.id} className="space-y-1.5 px-3 py-2.5 text-[13px]">
+        <li
+          key={s.id}
+          className="space-y-1.5 rounded-lg border border-rule bg-paper px-3.5 py-3 text-[13px]"
+        >
           <div className="flex items-baseline justify-between gap-3">
             <SeriesLink seriesId={s.id}>
               <span className="truncate">{s.name}</span>
