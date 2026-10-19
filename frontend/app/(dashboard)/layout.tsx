@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { InboxBell } from "@/components/dashboard/inbox-bell";
 import { DashboardSidebar } from "@/components/layouts/dashboard-sidebar";
 import { MobileBottomNav } from "@/components/layouts/dashboard-bottom-nav";
 import { SlashLabel } from "@/components/ui/slash-label";
@@ -50,8 +51,9 @@ export default function DashboardLayout({
 
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Topbar */}
-        <header className="bg-paper border-b border-rule px-7 py-3.5 flex items-center shrink-0">
+        <header className="bg-paper border-b border-rule px-7 py-3.5 flex items-center justify-between shrink-0">
           <SlashLabel>{formatDayHeader()}</SlashLabel>
+          {user.role === "Admin" && <InboxBell />}
         </header>
 
         <AccountBanners user={user} />

@@ -40,6 +40,8 @@ export interface InboxItemDto {
 
 export interface InboxResponse {
   items: InboxItemDto[];
+  /** Totaal aantal openstaande items, ook als `items` door de limiet korter is. */
+  totalCount: number;
   updatedAt: string;
 }
 

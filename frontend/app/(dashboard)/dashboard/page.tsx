@@ -6,14 +6,11 @@ import { useQuery } from "@tanstack/react-query";
 import { Plus, Clock, Calendar } from "lucide-react";
 import { TennisBallEmptyIcon } from "@/components/ui/tennis-ball-icon";
 import { StatStrip } from "@/components/ui/stat-strip";
-import { SlashLabel } from "@/components/ui/slash-label";
 import { Mono } from "@/components/ui/mono";
 import {
   getDashboardSummary,
-  getDashboardInbox,
   getDashboardMetrics,
 } from "@/lib/api/dashboard";
-import type { InboxItemDto, InboxResponse } from "@/lib/api/dashboard";
 import { useTranslations } from "next-intl";
 import { WelcomeModal } from "@/components/dashboard/onboarding/welcome-modal";
 import { getAuthUser, isHeadTrainerViewer } from "@/lib/auth";
@@ -29,107 +26,6 @@ function formatDate(dateStr: string): string {
 
 function formatTime(timeStr: string): string {
   return timeStr.substring(0, 5);
-}
-
-function severityDotColor(severity: string): string {
-  switch (severity) {
-    case "urgent":
-      return "bg-red-500";
-    case "warn":
-      return "bg-amber-400";
-    default:
-      return "bg-blue-300";
-  }
-}
-
-function inboxItemHref(item: InboxItemDto): string {
-  if (item.type === "confirmation_pending") {
-    return `/dashboard/lessons/${item.refId}/planning`;
-  }
-  if (item.type === "series_underbooked") {
-    return `/dashboard/lessons/${item.refId}#enrollments`;
-  }
-  if (item.refType === "Student") return `/dashboard/lessons/${item.refId}`;
-  return `/dashboard/lessons/${item.refId}`;
-}
-
-function InboxItem({ item }: { item: InboxItemDto }) {
-  const t = useTranslations("dashboard");
-
-  return (
-    <div className="flex items-center justify-between px-4 py-3 bg-paper border border-rule rounded-lg">
-      <div className="min-w-0 flex-1">
-        <p className="text-[12.5px] font-semibold text-ink truncate flex items-center gap-2">
-          <span
-            aria-hidden
-            className={`inline-block w-2 h-2 rounded-full shrink-0 ${severityDotColor(item.severity)}`}
-          />
-          <span className="truncate">{item.title}</span>
-        </p>
-        <p className="text-[11px] text-ink-3 truncate mt-0.5">{item.body}</p>
-        {item.meta && (
-          <Mono className="text-[10px] text-ink-3 mt-1 block">{item.meta}</Mono>
-        )}
-      </div>
-      <Link
-        href={inboxItemHref(item)}
-        className="ml-3 shrink-0 px-3 py-1.5 text-[10.5px] text-white font-semibold bg-ink rounded hover:bg-ink/90 transition-colors"
-      >
-        {t("inboxResolve")}
-      </Link>
-    </div>
-  );
-}
-
-const INBOX_COLLAPSED_COUNT = 3;
-
-function InboxSection({ inbox }: { inbox: InboxResponse | undefined }) {
-  const t = useTranslations("dashboard");
-  const [expanded, setExpanded] = useState(false);
-
-  const items = inbox?.items ?? [];
-  const hasItems = items.length > 0;
-  const hasMore = items.length > INBOX_COLLAPSED_COUNT;
-  const visibleItems = expanded ? items : items.slice(0, INBOX_COLLAPSED_COUNT);
-
-  return (
-    <div className="bg-paper border border-rule rounded-xl p-[18px] mb-[18px]">
-      <div className="flex items-center justify-between mb-3">
-        <div>
-          <SlashLabel>{t("priorityLabel")}</SlashLabel>
-          <p className="text-sm font-bold text-ink mt-0.5">
-            {hasItems
-              ? `${items.length} dingen om nu aan te pakken`
-              : t("priorityEmpty")}
-          </p>
-        </div>
-      </div>
-      {hasItems ? (
-        <>
-          <div className="space-y-2">
-            {visibleItems.map((item, idx) => (
-              <InboxItem key={`${item.refType}-${item.refId}-${idx}`} item={item} />
-            ))}
-          </div>
-          {hasMore && (
-            <button
-              type="button"
-              onClick={() => setExpanded((v) => !v)}
-              className="mt-2.5 text-[11px] text-ink-3 font-medium hover:text-ink transition-colors cursor-pointer"
-            >
-              {expanded
-                ? "Minder tonen"
-                : `+ ${items.length - INBOX_COLLAPSED_COUNT} meer tonen`}
-            </button>
-          )}
-        </>
-      ) : (
-        <div className="text-[12.5px] text-ink-3 text-center py-4 border border-dashed border-rule rounded-lg">
-          {t("priorityEmptyDesc")}
-        </div>
-      )}
-    </div>
-  );
 }
 
 function AdminDashboard() {
@@ -153,11 +49,6 @@ function AdminDashboard() {
   const { data: summary, isLoading } = useQuery({
     queryKey: ["dashboard"],
     queryFn: getDashboardSummary,
-  });
-
-  const { data: inbox } = useQuery({
-    queryKey: ["dashboard", "inbox"],
-    queryFn: () => getDashboardInbox(),
   });
 
   const { data: metrics } = useQuery({
@@ -198,8 +89,6 @@ function AdminDashboard() {
   const lastOccupancy = occupancyData.length > 0 ? occupancyData[occupancyData.length - 1] : 0;
   const lastOutstandingCents = outstandingData.length > 0 ? outstandingData[outstandingData.length - 1] : 0;
   const lastOutstandingEur = (lastOutstandingCents / 100).toFixed(0);
-
-  const hasInboxItems = inbox?.items && inbox.items.length > 0;
 
   return (
     <>
@@ -245,9 +134,6 @@ function AdminDashboard() {
           </div>
         ))}
       </div>
-
-      {/* Priority row — inbox items */}
-      <InboxSection inbox={inbox} />
 
       {/* Komende lessen */}
       <div>

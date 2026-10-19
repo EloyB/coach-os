@@ -582,6 +582,7 @@ public class DashboardService(
         InboxDto inbox = new()
         {
             Items = sorted,
+            TotalCount = items.Count,
             UpdatedAt = now,
         };
 
