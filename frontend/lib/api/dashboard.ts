@@ -40,6 +40,8 @@ export interface InboxItemDto {
 
 export interface InboxResponse {
   items: InboxItemDto[];
+  /** Totaal aantal openstaande items, ook als `items` door de limiet korter is. */
+  totalCount: number;
   updatedAt: string;
 }
 
@@ -150,6 +152,14 @@ export interface MyCampDayDto {
   tennisClubName: string | null;
 }
 
+/** Alle kampdagen van de organisatie in een datumbereik, voor de agenda op het admin-dashboard (403 voor niet-admins). */
+export async function getOrganizationCampDays(from: string, to: string): Promise<MyCampDayDto[]> {
+  const { data } = await apiClient.get<MyCampDayDto[]>("/dashboard/organization-camp-days", {
+    params: { from, to },
+  });
+  return data;
+}
+
 export async function getMyCampDays(from: string, to: string): Promise<MyCampDayDto[]> {
   const { data } = await apiClient.get<MyCampDayDto[]>("/dashboard/my-camp-days", {
     params: { from, to },
@@ -170,6 +180,14 @@ export interface MyOverviewDto {
 
 export async function getMyOverview(): Promise<MyOverviewDto> {
   const { data } = await apiClient.get<MyOverviewDto>("/dashboard/my-overview");
+  return data;
+}
+
+/** Alle ingeplande lessen van de organisatie, voor de agenda op het admin-dashboard (403 voor niet-admins). */
+export async function getOrganizationLessons(from: string, to: string): Promise<MyLessonDto[]> {
+  const { data } = await apiClient.get<MyLessonDto[]>("/dashboard/organization-lessons", {
+    params: { from, to },
+  });
   return data;
 }
 

@@ -149,6 +149,26 @@ public class DashboardService(
         return Result<List<MyCampDayDto>>.Ok(days.Select(MapCampDay).ToList());
     }
 
+    public async Task<Result<List<MyCampDayDto>>> GetOrganizationCampDaysAsync(
+        Guid organizationId, DateOnly from, DateOnly to, CancellationToken ct = default)
+    {
+        Error? rangeError = ValidateLessonRange(from, to);
+        if (rangeError is not null)
+            return Result<List<MyCampDayDto>>.Fail(rangeError);
+
+        IReadOnlyList<CampDay> days = await campRepo.GetDaysByOrganizationAsync(organizationId, from, to, ct);
+
+        return Result<List<MyCampDayDto>>.Ok(days.Select(d => new MyCampDayDto
+        {
+            CampId = d.CampId,
+            CampName = d.Camp.Name,
+            Date = d.Date.ToString("yyyy-MM-dd"),
+            StartTime = d.StartTime.ToString("HH:mm"),
+            EndTime = d.EndTime.ToString("HH:mm"),
+            TennisClubName = d.Camp.TennisClub?.Name,
+        }).ToList());
+    }
+
     private static MyCampDayDto MapCampDay(CampDayTrainer a) => new()
     {
         CampId = a.CampDay.CampId,
@@ -246,17 +266,42 @@ public class DashboardService(
             return Result<List<MyLessonDto>>.Fail(new Error(ErrorCodes.Forbidden,
                 "Enkel een hoofdtrainer kan de lessen van de club bekijken."));
 
-        if (to < from)
-            return Result<List<MyLessonDto>>.Fail(
-                new Error(ErrorCodes.Validation, "De einddatum mag niet voor de begindatum liggen."));
-
-        if (to.DayNumber - from.DayNumber > MaxMyLessonsRangeDays)
-            return Result<List<MyLessonDto>>.Fail(
-                new Error(ErrorCodes.Validation, $"Het datumbereik mag maximaal {MaxMyLessonsRangeDays} dagen zijn."));
+        Error? rangeError = ValidateLessonRange(from, to);
+        if (rangeError is not null)
+            return Result<List<MyLessonDto>>.Fail(rangeError);
 
         List<Lesson> lessons =
             await lessonRepo.GetByClubsAndDateRangeAsync(headTrainerClubIds, organizationId, from, to, ct);
 
+        return Result<List<MyLessonDto>>.Ok(await MapLessonsWithTrainersAsync(lessons, ct));
+    }
+
+    public async Task<Result<List<MyLessonDto>>> GetOrganizationLessonsAsync(
+        Guid organizationId, DateOnly from, DateOnly to, CancellationToken ct = default)
+    {
+        Error? rangeError = ValidateLessonRange(from, to);
+        if (rangeError is not null)
+            return Result<List<MyLessonDto>>.Fail(rangeError);
+
+        List<Lesson> lessons = await lessonRepo.GetByOrganizationAndDateRangeAsync(organizationId, from, to, ct);
+
+        return Result<List<MyLessonDto>>.Ok(await MapLessonsWithTrainersAsync(lessons, ct));
+    }
+
+    private static Error? ValidateLessonRange(DateOnly from, DateOnly to)
+    {
+        if (to < from)
+            return new Error(ErrorCodes.Validation, "De einddatum mag niet voor de begindatum liggen.");
+
+        if (to.DayNumber - from.DayNumber > MaxMyLessonsRangeDays)
+            return new Error(ErrorCodes.Validation, $"Het datumbereik mag maximaal {MaxMyLessonsRangeDays} dagen zijn.");
+
+        return null;
+    }
+
+    /// <summary>Mapt lessen van meerdere trainers naar DTO's, met aantal inschrijvingen en trainernaam.</summary>
+    private async Task<List<MyLessonDto>> MapLessonsWithTrainersAsync(List<Lesson> lessons, CancellationToken ct)
+    {
         List<Guid> seriesIds = lessons
             .Where(l => l.LessonSerieId.HasValue)
             .Select(l => l.LessonSerieId!.Value)
@@ -273,7 +318,7 @@ public class DashboardService(
             .ToList();
         Dictionary<Guid, string> trainerNames = await userLookup.GetUserNamesByIdsAsync(trainerIds, ct);
 
-        List<MyLessonDto> dtos = lessons.Select(l =>
+        return lessons.Select(l =>
         {
             MyLessonDto dto = MapMyLesson(
                 l,
@@ -281,8 +326,6 @@ public class DashboardService(
             dto.TrainerName = l.TrainerId.HasValue ? trainerNames.GetValueOrDefault(l.TrainerId.Value) : null;
             return dto;
         }).ToList();
-
-        return Result<List<MyLessonDto>>.Ok(dtos);
     }
 
     public async Task<Result<ClubOverviewDto>> GetMyClubOverviewAsync(
@@ -411,6 +454,22 @@ public class DashboardService(
         if (lesson is null)
             return Result<MyLessonDetailDto>.Fail(new Error(ErrorCodes.NotFound, "Les niet gevonden."));
 
+        return Result<MyLessonDetailDto>.Ok(await BuildLessonDetailAsync(lesson, organizationId, ct));
+    }
+
+    public async Task<Result<MyLessonDetailDto>> GetOrganizationLessonAsync(
+        Guid organizationId, Guid lessonId, CancellationToken ct = default)
+    {
+        Lesson? lesson = await lessonRepo.GetOfficialByIdAsync(lessonId, organizationId, ct);
+        if (lesson is null)
+            return Result<MyLessonDetailDto>.Fail(new Error(ErrorCodes.NotFound, "Les niet gevonden."));
+
+        return Result<MyLessonDetailDto>.Ok(await BuildLessonDetailAsync(lesson, organizationId, ct));
+    }
+
+    private async Task<MyLessonDetailDto> BuildLessonDetailAsync(
+        Lesson lesson, Guid organizationId, CancellationToken ct)
+    {
         List<MyLessonParticipantDto> participants;
 
         if (lesson.LessonSerieId is null)
@@ -483,7 +542,7 @@ public class DashboardService(
             Participants = participants,
         };
 
-        return Result<MyLessonDetailDto>.Ok(dto);
+        return dto;
     }
 
     /// <summary>De spelers achter een toewijzing: de inschrijving zelf, of alle leden van de groep.</summary>
@@ -582,6 +641,7 @@ public class DashboardService(
         InboxDto inbox = new()
         {
             Items = sorted,
+            TotalCount = items.Count,
             UpdatedAt = now,
         };
 

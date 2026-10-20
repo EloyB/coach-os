@@ -8,6 +8,8 @@ import { LogOut, ChevronRight, Check } from "lucide-react";
 import { CourtLines } from "@/components/ui/court-lines";
 import { LogoMark } from "@/components/ui/logo-mark";
 import { Mono } from "@/components/ui/mono";
+import { TrialSidebarCard } from "@/components/dashboard/trial-sidebar-card";
+import { OnboardingSidebarCard } from "@/components/dashboard/onboarding/onboarding-sidebar-card";
 import { navItems } from "@/lib/nav-items";
 import { switchOrganization } from "@/lib/api/auth";
 import { getAuthUser, setAuthUser, setToken, clearAuth, type AuthUser } from "@/lib/auth";
@@ -195,6 +197,12 @@ export function DashboardSidebar() {
           );
         })}
       </nav>
+
+      {/* Status van de gratis proef (enkel voor admins) */}
+      <TrialSidebarCard user={user} />
+
+      {/* Eerstvolgende onboardingstap (enkel voor admins) */}
+      <OnboardingSidebarCard enabled={role === "Admin"} />
 
       {/* Profile */}
       <div className="relative z-10 mx-2.5 mb-2.5 px-3 py-2.5 bg-black/[.18] rounded-lg flex items-center gap-2.5">
