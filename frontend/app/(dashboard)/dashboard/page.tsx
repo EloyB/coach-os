@@ -135,8 +135,9 @@ function AdminDashboard() {
       {todayKey && (
         <LessonAgenda
           today={parse(todayKey, "yyyy-MM-dd", new Date())}
-          source="organization"
           userId={userId}
+          allSource="organization"
+          allLabel={t("trainerScopeOrganization")}
           onSelectLesson={setSelectedLessonId}
           className="xl:min-h-[560px]"
         />

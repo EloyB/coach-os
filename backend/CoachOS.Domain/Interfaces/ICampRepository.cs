@@ -8,6 +8,13 @@ public interface ICampRepository
     Task<IReadOnlyList<Camp>> GetByOrganizationAsync(Guid organizationId, CancellationToken ct = default);
 
     /// <summary>
+    /// Alle kampdagen van de organisatie binnen een datumbereik (inclusief), enkel actieve kampen, met kamp en
+    /// club. Op datum + starttijd gesorteerd. Voor het admin-dashboard.
+    /// </summary>
+    Task<IReadOnlyList<CampDay>> GetDaysByOrganizationAsync(
+        Guid organizationId, DateOnly from, DateOnly to, CancellationToken ct = default);
+
+    /// <summary>
     /// Kampdag-toewijzingen van <paramref name="trainerId"/> binnen een datumbereik (inclusief), enkel
     /// actieve kampen, met kampdag, kamp en club. Op datum + starttijd gesorteerd.
     /// </summary>

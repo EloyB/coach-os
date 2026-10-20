@@ -115,6 +115,7 @@
     "trainerScopeAria": "Welke lessen toon je in de agenda?",
     "trainerScopeMine": "Mijn lessen",
     "trainerScopeClub": "{count, plural, one {Mijn club} other {Mijn clubs}}",
+    "trainerScopeOrganization": "Alle lessen",
     "trainerLegendMine": "Mijn lessen",
     "trainerLegendOthers": "Andere trainers",
     "trainerWithTrainer": "met {name}",

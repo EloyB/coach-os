@@ -13,6 +13,8 @@ public interface IDashboardService
         Guid organizationId, Guid trainerId, CancellationToken ct = default);
     Task<Result<List<MyCampDayDto>>> GetMyCampDaysAsync(
         Guid organizationId, Guid trainerId, DateOnly from, DateOnly to, CancellationToken ct = default);
+    Task<Result<List<MyCampDayDto>>> GetOrganizationCampDaysAsync(
+        Guid organizationId, DateOnly from, DateOnly to, CancellationToken ct = default);
     Task<Result<List<MyLessonDto>>> GetMyClubLessonsAsync(
         Guid organizationId, IReadOnlyList<Guid> headTrainerClubIds, DateOnly from, DateOnly to, CancellationToken ct = default);
     Task<Result<ClubOverviewDto>> GetMyClubOverviewAsync(

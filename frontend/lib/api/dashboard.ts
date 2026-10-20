@@ -152,6 +152,14 @@ export interface MyCampDayDto {
   tennisClubName: string | null;
 }
 
+/** Alle kampdagen van de organisatie in een datumbereik, voor de agenda op het admin-dashboard (403 voor niet-admins). */
+export async function getOrganizationCampDays(from: string, to: string): Promise<MyCampDayDto[]> {
+  const { data } = await apiClient.get<MyCampDayDto[]>("/dashboard/organization-camp-days", {
+    params: { from, to },
+  });
+  return data;
+}
+
 export async function getMyCampDays(from: string, to: string): Promise<MyCampDayDto[]> {
   const { data } = await apiClient.get<MyCampDayDto[]>("/dashboard/my-camp-days", {
     params: { from, to },

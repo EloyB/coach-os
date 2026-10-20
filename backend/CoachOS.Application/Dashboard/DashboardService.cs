@@ -149,6 +149,26 @@ public class DashboardService(
         return Result<List<MyCampDayDto>>.Ok(days.Select(MapCampDay).ToList());
     }
 
+    public async Task<Result<List<MyCampDayDto>>> GetOrganizationCampDaysAsync(
+        Guid organizationId, DateOnly from, DateOnly to, CancellationToken ct = default)
+    {
+        Error? rangeError = ValidateLessonRange(from, to);
+        if (rangeError is not null)
+            return Result<List<MyCampDayDto>>.Fail(rangeError);
+
+        IReadOnlyList<CampDay> days = await campRepo.GetDaysByOrganizationAsync(organizationId, from, to, ct);
+
+        return Result<List<MyCampDayDto>>.Ok(days.Select(d => new MyCampDayDto
+        {
+            CampId = d.CampId,
+            CampName = d.Camp.Name,
+            Date = d.Date.ToString("yyyy-MM-dd"),
+            StartTime = d.StartTime.ToString("HH:mm"),
+            EndTime = d.EndTime.ToString("HH:mm"),
+            TennisClubName = d.Camp.TennisClub?.Name,
+        }).ToList());
+    }
+
     private static MyCampDayDto MapCampDay(CampDayTrainer a) => new()
     {
         CampId = a.CampDay.CampId,

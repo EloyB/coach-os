@@ -33,6 +33,7 @@ import { TennisBallEmptyIcon } from "@/components/ui/tennis-ball-icon";
 import {
   getClubLessons,
   getMyCampDays,
+  getOrganizationCampDays,
   getOrganizationLessons,
   getMyLessons,
   getMyOverview,
@@ -108,13 +109,15 @@ function buildAgenda(
 
 // ─── Welke lessen tonen we? (mijn lessen / hele club) ────────────────────────
 
-export type AgendaScope = "mine" | "club";
+export type AgendaScope = "mine" | "all";
 
 const SCOPE_STORAGE_KEY = "coachos.dashboard.agenda-scope";
 
 function readStoredScope(): AgendaScope {
   try {
-    return localStorage.getItem(SCOPE_STORAGE_KEY) === "club" ? "club" : "mine";
+    // "club" is de waarde uit een eerdere versie.
+    const stored = localStorage.getItem(SCOPE_STORAGE_KEY);
+    return stored === "all" || stored === "club" ? "all" : "mine";
   } catch {
     return "mine";
   }
@@ -175,6 +178,16 @@ function useAgendaLessons(from: string, to: string, source: AgendaSource) {
     isLoading: active.some((q) => q.isLoading),
     isError: active.some((q) => q.isError),
   };
+}
+
+/** Kampdagen voor een datumbereik: de eigen kampdagen, of bij de organisatiebrede agenda alle kampdagen. */
+function useAgendaCampDays(from: string, to: string, source: AgendaSource) {
+  const organization = source === "organization";
+  return useQuery({
+    queryKey: ["dashboard", organization ? "organization-camp-days" : "my-camp-days", from, to],
+    queryFn: () =>
+      organization ? getOrganizationCampDays(from, to) : getMyCampDays(from, to),
+  });
 }
 
 // ─── Kleur per trainer ───────────────────────────────────────────────────────
@@ -285,11 +298,11 @@ function useLessonStyles(userId: string, enabled: boolean): StyleOf {
 
 function AgendaScopeToggle({
   scope,
-  clubCount,
+  allLabel,
   onChange,
 }: {
   scope: AgendaScope;
-  clubCount: number;
+  allLabel: string;
   onChange: (scope: AgendaScope) => void;
 }) {
   const t = useTranslations("dashboard");
@@ -320,7 +333,7 @@ function AgendaScopeToggle({
           className="inline-flex gap-0.5 rounded-lg border border-rule bg-paper p-0.5"
         >
           {option("mine", t("trainerScopeMine"))}
-          {option("club", t("trainerScopeClub", { count: clubCount }))}
+          {option("all", allLabel)}
         </div>
       </div>
     </div>
@@ -724,11 +737,7 @@ function MonthCalendar({
 
   const { lessons, isLoading, isError } = useAgendaLessons(from, to, source);
 
-  const { data: campDays } = useQuery({
-    queryKey: ["dashboard", "my-camp-days", from, to],
-    queryFn: () => getMyCampDays(from, to),
-    enabled: source !== "organization",
-  });
+  const { data: campDays } = useAgendaCampDays(from, to, source);
 
   const itemsByDay = new Map<string, AgendaItem[]>();
   for (const item of buildAgenda(lessons, campDays)) {
@@ -996,18 +1005,34 @@ function CalendarLegend({
  */
 export function LessonAgenda({
   today,
-  source,
   userId,
+  allSource,
+  allLabel = "",
   onSelectLesson,
   className,
 }: {
   today: Date;
-  source: AgendaSource;
   userId: string;
+  /**
+   * Wat "alle lessen" betekent voor deze gebruiker: de hele club (hoofdtrainer) of de hele organisatie
+   * (admin). Zonder waarde (gewone trainer) toont de agenda enkel eigen lessen en is er geen keuze.
+   */
+  allSource?: Exclude<AgendaSource, "mine">;
+  allLabel?: string;
   onSelectLesson: (lessonId: string) => void;
   className?: string;
 }) {
   const todayKey = format(today, ISO_DATE);
+
+  // De keuze tussen "mijn lessen" en "alle lessen" wordt onthouden.
+  const [scope, setScope] = useState<AgendaScope>(() =>
+    allSource ? readStoredScope() : "mine",
+  );
+  const source: AgendaSource = allSource && scope === "all" ? allSource : "mine";
+  function changeScope(next: AgendaScope) {
+    setScope(next);
+    storeScope(next);
+  }
   const styleOf = useLessonStyles(userId, source !== "mine");
 
   // De geselecteerde dag (standaard vandaag) bepaalt wat de kaart naast de kalender toont.
@@ -1033,22 +1058,26 @@ export function LessonAgenda({
     source,
   );
 
-  const { data: todayCampDays, isLoading: campsLoading } = useQuery({
-    queryKey: ["dashboard", "my-camp-days", selectedKey, selectedKey],
-    queryFn: () => getMyCampDays(selectedKey, selectedKey),
-    enabled: source !== "organization",
-  });
+  const { data: todayCampDays, isLoading: campsLoading } = useAgendaCampDays(
+    selectedKey,
+    selectedKey,
+    source,
+  );
 
   const todayItems = buildAgenda(todayLessons, todayCampDays);
   const todayLoading = isLoading || campsLoading;
 
   return (
-      <div
-      className={cn(
-        "grid flex-1 grid-cols-1 gap-[18px] xl:min-h-0 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.8fr)] xl:grid-rows-[minmax(0,1fr)]",
-        className,
+    <div className={cn("flex flex-1 flex-col xl:min-h-0", className)}>
+      {allSource && (
+        <AgendaScopeToggle
+          scope={scope}
+          allLabel={allLabel}
+          onChange={changeScope}
+        />
       )}
-    >
+
+      <div className="grid flex-1 grid-cols-1 gap-[18px] xl:min-h-0 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.8fr)] xl:grid-rows-[minmax(0,1fr)]">
         <div
           ref={dayCardRef}
           className="self-start scroll-mt-4 xl:flex xl:max-h-full xl:min-h-0 xl:flex-col"
@@ -1074,6 +1103,7 @@ export function LessonAgenda({
           onSelect={onSelectLesson}
         />
       </div>
+    </div>
   );
 }
 
@@ -1124,14 +1154,6 @@ function TrainerDashboardContent({
   const userId = useClientValue(() => getAuthUser()?.userId ?? "") ?? "";
   const clubCount =
     useClientValue(() => getAuthUser()?.headTrainerClubIds?.length ?? 0) ?? 0;
-  const [scope, setScope] = useState<AgendaScope>(() =>
-    isHeadTrainer ? readStoredScope() : "mine",
-  );
-  const source: AgendaSource = isHeadTrainer && scope === "club" ? "club" : "mine";
-  function changeScope(next: AgendaScope) {
-    setScope(next);
-    storeScope(next);
-  }
 
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
   const [clubOverviewOpen, setClubOverviewOpen] = useState(false);
@@ -1167,18 +1189,11 @@ function TrainerDashboardContent({
         )}
       </div>
 
-      {isHeadTrainer && (
-        <AgendaScopeToggle
-          scope={scope}
-          clubCount={clubCount}
-          onChange={changeScope}
-        />
-      )}
-
       <LessonAgenda
         today={today}
-        source={source}
         userId={userId}
+        allSource={isHeadTrainer ? "club" : undefined}
+        allLabel={t("trainerScopeClub", { count: clubCount })}
         onSelectLesson={setSelectedLessonId}
       />
 

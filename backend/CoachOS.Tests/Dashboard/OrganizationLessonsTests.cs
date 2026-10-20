@@ -173,3 +173,66 @@ public class OrganizationLessonsServiceTests
         result.Errors[0].Code.Should().Be(ErrorCodes.NotFound);
     }
 }
+
+[TestFixture]
+public class OrganizationCampDaysTests
+{
+    private static readonly Guid OrgId = Guid.NewGuid();
+    private static readonly DateOnly From = new(2026, 10, 1);
+
+    private sealed class NoTenantContext : ITenantContext
+    {
+        public Guid OrganizationId => Guid.Empty;
+        public Guid UserId => Guid.Empty;
+        public bool IsAuthenticated => false;
+    }
+
+    private static DbContextOptions<ApplicationDbContext> NewOptions() =>
+        new DbContextOptionsBuilder<ApplicationDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options;
+
+    [Test]
+    public async Task GetDaysByOrganization_ReturnsActiveCampDaysInRange_OfThatOrganizationOnly()
+    {
+        using ApplicationDbContext db = new(NewOptions(), new NoTenantContext());
+        TennisClub club = new() { Id = Guid.NewGuid(), OrganizationId = OrgId, Name = "Club" };
+        Camp Camp(Guid orgId, bool active) => new()
+        {
+            Id = Guid.NewGuid(), OrganizationId = orgId, Name = "Kamp", IsActive = active,
+            TennisClubId = club.Id, TennisClub = club,
+        };
+        CampDay Day(Camp camp, DateOnly date) => new()
+        {
+            Id = Guid.NewGuid(), OrganizationId = camp.OrganizationId, Camp = camp, CampId = camp.Id, Date = date,
+            StartTime = new TimeOnly(9, 0), EndTime = new TimeOnly(16, 0),
+        };
+        Camp mine = Camp(OrgId, true);
+        CampDay inRange = Day(mine, new DateOnly(2026, 10, 10));
+        db.CampDays.AddRange(
+            inRange,
+            Day(mine, new DateOnly(2026, 12, 10)),
+            Day(Camp(OrgId, false), new DateOnly(2026, 10, 10)),
+            Day(Camp(Guid.NewGuid(), true), new DateOnly(2026, 10, 10)));
+        await db.SaveChangesAsync();
+
+        IReadOnlyList<CampDay> result =
+            await new CampRepository(db).GetDaysByOrganizationAsync(OrgId, From, From.AddDays(30));
+
+        result.Select(d => d.Id).Should().Equal(inRange.Id);
+    }
+
+    [Test]
+    public async Task GetOrganizationCampDays_InvalidRange_ReturnsValidationError()
+    {
+        Mock<ICampRepository> camps = new();
+        DashboardService sut = new(
+            Mock.Of<ILessonSerieRepository>(), Mock.Of<ILessonRepository>(), Mock.Of<IEnrollmentRepository>(),
+            Mock.Of<ITennisClubRepository>(), Mock.Of<IUserLookupService>(),
+            Mock.Of<IAssignmentConfirmationTokenRepository>(), Mock.Of<IScheduleAssignmentRepository>(),
+            Mock.Of<ILessonInvitationRepository>(), camps.Object, TimeProvider.System);
+
+        Result<List<MyCampDayDto>> result = await sut.GetOrganizationCampDaysAsync(OrgId, From.AddDays(5), From);
+
+        result.Errors[0].Code.Should().Be(ErrorCodes.Validation);
+        camps.VerifyNoOtherCalls();
+    }
+}
