@@ -10,6 +10,9 @@ public class OrganizationListItemDto
     public int AdminCount { get; set; }
     public DateTime CreatedAt { get; set; }
 
+    /// <summary>Plan-naam (Game/Set/Match), of null zolang er geen plan is (proef of legacy).</summary>
+    public string? SubscriptionPlan { get; set; }
+
     /// <summary>Legacy, Trialing of Active.</summary>
     public string SubscriptionStatus { get; set; } = string.Empty;
 

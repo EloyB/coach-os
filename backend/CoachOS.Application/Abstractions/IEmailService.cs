@@ -174,4 +174,40 @@ public interface IEmailService
         DateOnly trialEndsAt,
         string appUrl,
         CancellationToken ct = default);
+
+    /// <summary>Bevestiging dat een betaald abonnement is afgesloten (Mollie of overschrijving).</summary>
+    Task SendSubscriptionStartedAsync(
+        string toEmail,
+        string organizationName,
+        string planName,
+        string intervalLabel,
+        decimal amountInclVat,
+        DateOnly periodStart,
+        bool bankTransfer,
+        DateOnly? dueDate,
+        string manageUrl,
+        CancellationToken ct = default);
+
+    /// <summary>Een automatische verlenging is mislukt; bevat een link om alsnog te betalen.</summary>
+    Task SendSubscriptionPaymentFailedAsync(
+        string toEmail,
+        string organizationName,
+        decimal amountInclVat,
+        string paymentUrl,
+        CancellationToken ct = default);
+
+    /// <summary>Uitnodiging aan een bestaande (legacy) klant om een abonnement te kiezen.</summary>
+    Task SendSubscriptionInvitationAsync(
+        string toEmail,
+        string organizationName,
+        string subscribeUrl,
+        CancellationToken ct = default);
+
+    /// <summary>Interne melding aan de superadmin over de facturatie (vrije tekst).</summary>
+    Task SendBillingSuperAdminNoticeAsync(
+        string toEmail,
+        string subject,
+        string body,
+        string? link,
+        CancellationToken ct = default);
 }

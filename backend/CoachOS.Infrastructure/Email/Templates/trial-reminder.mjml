@@ -26,7 +26,7 @@
           {{body}}
         </mj-text>
         <mj-button background-color="#2D5016" color="#FFFFFF" border-radius="8px" font-weight="600" font-size="15px" padding="32px 0" inner-padding="14px 28px" href="{{appUrl}}">
-          Naar CoachOS
+          Abonnement kiezen
         </mj-button>
         <mj-text mj-class="fine">
           Vragen over je proef of over de prijzen? Antwoord gerust op deze mail of schrijf naar

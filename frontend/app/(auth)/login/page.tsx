@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useState } from "react";
+import { safeRedirectPath } from "@/lib/redirect";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -62,7 +63,7 @@ function LoginForm() {
   const t = useTranslations("auth");
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get("redirect");
+  const redirectTo = safeRedirectPath(searchParams.get("redirect"));
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
 

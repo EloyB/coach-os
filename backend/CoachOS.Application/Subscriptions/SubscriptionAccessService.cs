@@ -23,12 +23,20 @@ public class SubscriptionAccessService(
         if (subscription is null || subscription.Status != SubscriptionStatus.Trialing || subscription.TrialEndsAt is null)
         {
             SubscriptionStatus status = subscription?.Status ?? SubscriptionStatus.Legacy;
+
+            // Locked: proef stopgezet na opzegging; altijd enkel-lezen tot er een plan gekozen is.
+            SubscriptionAccessLevel level = status == SubscriptionStatus.Locked
+                ? SubscriptionAccessLevel.ReadOnly
+                : SubscriptionAccessLevel.Full;
+
             return Result<SubscriptionStatusDto>.Ok(new SubscriptionStatusDto(
                 Status: status.ToString(),
-                AccessLevel: SubscriptionAccessLevel.Full.ToString(),
+                AccessLevel: level.ToString(),
                 TrialEndsAt: null,
                 TrialDaysRemaining: null,
-                IsTrialExpired: false));
+                IsTrialExpired: false,
+                CurrentPeriodEnd: subscription?.CurrentPeriodEnd,
+                CancelAt: subscription?.CancelAt));
         }
 
         DateOnly today = timeProvider.GetBrusselsToday();

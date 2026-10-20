@@ -15,15 +15,27 @@ public class SubscriptionConfiguration : IEntityTypeConfiguration<Subscription>
             .IsRequired()
             .HasDefaultValue(SubscriptionStatus.Legacy);
 
-        builder.Property(s => s.MonthlyPrice)
+        builder.Property(s => s.Price)
             .IsRequired()
             .HasPrecision(10, 2);
+
+        builder.Property(s => s.MollieCustomerId)
+            .HasMaxLength(100);
 
         builder.Property(s => s.MollieSubscriptionId)
             .HasMaxLength(100);
 
-        builder.Property(s => s.MollieCustomerId)
-            .HasMaxLength(100);
+        builder.Property(s => s.ConcurrencyStamp).IsConcurrencyToken();
+
+        builder.Property(s => s.OverageMarginPercent)
+            .HasPrecision(5, 2);
+
+        builder.Property(s => s.OveragePricePerStudent)
+            .HasPrecision(10, 2);
+
+        builder.HasIndex(s => s.MollieSubscriptionId)
+            .IsUnique()
+            .HasFilter("\"MollieSubscriptionId\" IS NOT NULL");
 
         builder.HasOne(s => s.Organization)
             .WithOne(o => o.Subscription)

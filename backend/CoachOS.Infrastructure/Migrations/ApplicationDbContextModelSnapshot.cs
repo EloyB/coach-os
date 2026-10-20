@@ -67,6 +67,66 @@ namespace CoachOS.Infrastructure.Migrations
                     b.ToTable("AssignmentConfirmationTokens");
                 });
 
+            modelBuilder.Entity("CoachOS.Domain.Entities.BillingProfile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("City")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Country")
+                        .IsRequired()
+                        .HasMaxLength(2)
+                        .HasColumnType("character varying(2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("InvoiceEmail")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PostalCode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Street")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("VatNumber")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<bool?>("VatVerified")
+                        .HasColumnType("boolean");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId")
+                        .IsUnique();
+
+                    b.ToTable("BillingProfiles");
+                });
+
             modelBuilder.Entity("CoachOS.Domain.Entities.Camp", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1482,13 +1542,32 @@ namespace CoachOS.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<DateOnly?>("CancelAt")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly?>("CurrentPeriodEnd")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly?>("CurrentPeriodStart")
+                        .HasColumnType("date");
 
                     b.Property<DateOnly?>("EndDate")
                         .HasColumnType("date");
 
+                    b.Property<int?>("Interval")
+                        .HasColumnType("integer");
+
                     b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeal")
                         .HasColumnType("boolean");
 
                     b.Property<int?>("LastTrialReminderDay")
@@ -1502,15 +1581,26 @@ namespace CoachOS.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
-                    b.Property<decimal>("MonthlyPrice")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("numeric(10,2)");
-
                     b.Property<Guid>("OrganizationId")
                         .HasColumnType("uuid");
 
+                    b.Property<decimal?>("OverageMarginPercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<decimal?>("OveragePricePerStudent")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)");
+
+                    b.Property<int?>("PaymentMethod")
+                        .HasColumnType("integer");
+
                     b.Property<int?>("Plan")
                         .HasColumnType("integer");
+
+                    b.Property<decimal>("Price")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)");
 
                     b.Property<DateOnly>("StartDate")
                         .HasColumnType("date");
@@ -1520,6 +1610,9 @@ namespace CoachOS.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasDefaultValue(1);
 
+                    b.Property<int?>("StudentLimit")
+                        .HasColumnType("integer");
+
                     b.Property<DateOnly?>("TrialEndsAt")
                         .HasColumnType("date");
 
@@ -1528,10 +1621,123 @@ namespace CoachOS.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("MollieSubscriptionId")
+                        .IsUnique()
+                        .HasFilter("\"MollieSubscriptionId\" IS NOT NULL");
+
                     b.HasIndex("OrganizationId")
                         .IsUnique();
 
                     b.ToTable("Subscriptions");
+                });
+
+            modelBuilder.Entity("CoachOS.Domain.Entities.SubscriptionPayment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("AmountExclVat")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)");
+
+                    b.Property<decimal>("AmountInclVat")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)");
+
+                    b.Property<string>("CheckoutUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly?>("DueDate")
+                        .HasColumnType("date");
+
+                    b.Property<int>("Interval")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("InvoiceAttempts")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("InvoiceId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("InvoiceLastError")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTime?>("InvoiceNextAttemptAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("InvoiceNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("InvoicePdfUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<int>("InvoiceStatus")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Method")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("MolliePaymentId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("PaidAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly>("PeriodEnd")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly>("PeriodStart")
+                        .HasColumnType("date");
+
+                    b.Property<int>("Plan")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("SubscriptionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("VatRate")
+                        .HasPrecision(5, 4)
+                        .HasColumnType("numeric(5,4)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InvoiceStatus");
+
+                    b.HasIndex("MolliePaymentId")
+                        .IsUnique()
+                        .HasFilter("\"MolliePaymentId\" IS NOT NULL");
+
+                    b.HasIndex("OrganizationId");
+
+                    b.HasIndex("SubscriptionId", "PeriodStart");
+
+                    b.ToTable("SubscriptionPayments");
                 });
 
             modelBuilder.Entity("CoachOS.Domain.Entities.TennisClub", b =>
@@ -2003,6 +2209,17 @@ namespace CoachOS.Infrastructure.Migrations
                     b.Navigation("Organization");
 
                     b.Navigation("ScheduleAssignment");
+                });
+
+            modelBuilder.Entity("CoachOS.Domain.Entities.BillingProfile", b =>
+                {
+                    b.HasOne("CoachOS.Domain.Entities.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Organization");
                 });
 
             modelBuilder.Entity("CoachOS.Domain.Entities.Camp", b =>
@@ -2489,6 +2706,23 @@ namespace CoachOS.Infrastructure.Migrations
                     b.Navigation("Organization");
                 });
 
+            modelBuilder.Entity("CoachOS.Domain.Entities.SubscriptionPayment", b =>
+                {
+                    b.HasOne("CoachOS.Domain.Entities.Organization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CoachOS.Domain.Entities.Subscription", "Subscription")
+                        .WithMany("Payments")
+                        .HasForeignKey("SubscriptionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Subscription");
+                });
+
             modelBuilder.Entity("CoachOS.Domain.Entities.TennisClub", b =>
                 {
                     b.HasOne("CoachOS.Domain.Entities.Organization", "Organization")
@@ -2712,6 +2946,11 @@ namespace CoachOS.Infrastructure.Migrations
             modelBuilder.Entity("CoachOS.Domain.Entities.OrganizationMembership", b =>
                 {
                     b.Navigation("HeadTrainerClubs");
+                });
+
+            modelBuilder.Entity("CoachOS.Domain.Entities.Subscription", b =>
+                {
+                    b.Navigation("Payments");
                 });
 
             modelBuilder.Entity("CoachOS.Domain.Entities.WeeklyTemplateEntry", b =>
