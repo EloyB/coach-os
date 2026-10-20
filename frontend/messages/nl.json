@@ -1391,10 +1391,11 @@
     "possibleDuplicate": "mogelijk dubbel"
   },
   "subscription": {
-    "trialChip": "Proef · {days, plural, =0 {laatste dag} one {nog # dag} other {nog # dagen}}",
-    "trialBody": "Je gratis proef loopt tot en met {date}. Je hoeft niets te doen — we nemen contact met je op voor hij afloopt.",
-    "trialExpiredChip": "Proef afgelopen",
-    "trialExpiredBody": "Je proefperiode is voorbij. Je kan gewoon verder werken; we nemen binnenkort contact met je op.",
+    "trialCardLabel": "Gratis proef",
+    "trialCardDays": "{days, plural, =0 {Laatste dag} one {Nog # dag} other {Nog # dagen}}",
+    "trialCardUntil": "Tot en met {date}",
+    "trialCardExpired": "Proef afgelopen",
+    "trialCardExpiredHint": "We nemen binnenkort contact met je op.",
     "readOnlyChip": "Enkel lezen",
     "readOnlyAdminBody": "Je proefperiode is voorbij en je account staat op enkel-lezen. Neem contact op via info@coach-os.be om verder te gaan.",
     "readOnlyTrainerBody": "Dit account staat tijdelijk op enkel-lezen. Neem contact op met je beheerder.",
