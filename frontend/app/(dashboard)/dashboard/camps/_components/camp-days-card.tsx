@@ -80,57 +80,70 @@ export function CampDaysCard({ camp }: CampDaysCardProps) {
     setDays(detailToDays(camp));
   }
 
-  return (
-    <div className="space-y-3">
-      <CampDaysEditor
-        days={days}
-        onChange={(next) => {
-          setSavedOk(false);
-          setDays(next);
-        }}
-        trainers={assignableTrainers}
-      />
+  const status = hasOverlap
+    ? { text: t("shiftsOverlapBlock"), tone: "text-red-600" }
+    : isDirty
+      ? { text: t("daysUnsaved"), tone: "text-amber-700" }
+      : { text: t("daysAllSaved"), tone: "text-gray-400" };
 
-      {hasOverlap && (
-        <p className="text-xs font-medium text-red-600">
-          {t("shiftsOverlapBlock")}
-        </p>
-      )}
-
+  const footer = (
+    <div className="sticky bottom-0 z-10 border-t border-gray-100 bg-white/95 px-6 py-3 backdrop-blur">
       {errorMessages.length > 0 && (
-        <div className="bg-red-50 border border-red-100 rounded-xl p-4 text-sm text-red-600 space-y-1">
+        <div className="mb-2 space-y-0.5 text-xs text-red-600">
           {errorMessages.map((msg, i) => (
             <p key={i}>{msg}</p>
           ))}
         </div>
       )}
-
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={mutation.isPending || !isDirty || hasOverlap}
-          className="px-5 py-2.5 bg-tennis-green text-white text-sm font-semibold rounded-lg hover:bg-tennis-green/90 transition-colors disabled:opacity-60"
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p
+          role="status"
+          className={`inline-flex items-center gap-1.5 text-xs font-medium ${
+            savedOk && !isDirty ? "text-tennis-green" : status.tone
+          }`}
         >
-          {mutation.isPending ? t("saving") : t("save")}
-        </button>
+          {savedOk && !isDirty ? (
+            <>
+              <CheckCircle2 size={14} />
+              {t("daysSaved")}
+            </>
+          ) : (
+            status.text
+          )}
+        </p>
         {isDirty && (
-          <button
-            type="button"
-            onClick={handleReset}
-            disabled={mutation.isPending}
-            className="px-4 py-2.5 text-sm font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            {t("cancel")}
-          </button>
-        )}
-        {savedOk && !isDirty && (
-          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-tennis-green">
-            <CheckCircle2 size={14} />
-            {t("daysSaved")}
-          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleReset}
+              disabled={mutation.isPending}
+              className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
+            >
+              {t("cancel")}
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={mutation.isPending || hasOverlap}
+              className="rounded-lg bg-tennis-green px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-tennis-green/90 disabled:opacity-60"
+            >
+              {mutation.isPending ? t("saving") : t("save")}
+            </button>
+          </div>
         )}
       </div>
     </div>
+  );
+
+  return (
+    <CampDaysEditor
+      days={days}
+      onChange={(next) => {
+        setSavedOk(false);
+        setDays(next);
+      }}
+      trainers={assignableTrainers}
+      footer={footer}
+    />
   );
 }

@@ -824,6 +824,8 @@
     "shiftOverlapsOther": "Overlapt met een andere shift van deze trainer.",
     "shiftEndBeforeStart": "Het einde moet na het begin liggen.",
     "shiftOutsideCampHours": "De shift moet binnen de kampuren van die dag vallen.",
+    "daysUnsaved": "Niet-opgeslagen wijzigingen",
+    "daysAllSaved": "Alle wijzigingen opgeslagen",
     "shiftsOverlapBlock": "Los de overlappende shiften op voordat je verdergaat.",
     "editTrainerTimes": "Uren aanpassen",
     "trainerTimesDone": "Klaar",

@@ -25,6 +25,8 @@ interface CampDaysEditorProps {
   days: CampDayDraft[];
   onChange: (days: CampDayDraft[]) => void;
   trainers: TrainerDto[];
+  /** Optionele voettekst onderaan de kaart (bv. een opslaan-balk die in beeld blijft plakken). */
+  footer?: React.ReactNode;
 }
 
 /** Dialog-state om een trainer (of een extra shift van een trainer) aan een dag toe te voegen. */
@@ -68,7 +70,12 @@ function formatHours(hours: number): string {
 const TIME_INPUT_CLS =
   "border border-gray-200 rounded-lg px-2 py-1 text-sm bg-white appearance-none min-w-0 focus:outline-none focus:ring-2 focus:ring-tennis-green/30 focus:border-tennis-green";
 
-export function CampDaysEditor({ days, onChange, trainers }: CampDaysEditorProps) {
+export function CampDaysEditor({
+  days,
+  onChange,
+  trainers,
+  footer,
+}: CampDaysEditorProps) {
   const t = useTranslations("camps");
   // Welke shift staat in uren-bewerkmodus (key = `${date}:${index in day.trainers}`).
   const [editingShift, setEditingShift] = useState<string | null>(null);
@@ -172,7 +179,9 @@ export function CampDaysEditor({ days, onChange, trainers }: CampDaysEditorProps
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm shadow-gray-100 overflow-hidden">
+    // overflow-clip (niet -hidden): knipt de hoeken af zonder een scrollcontainer te maken, zodat de
+    // plakkende voettekst aan de pagina blijft kleven.
+    <div className="bg-white rounded-xl shadow-sm shadow-gray-100 overflow-clip">
       <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2.5">
         <div className="w-6 h-6 shrink-0 rounded-md bg-tennis-green/10 flex items-center justify-center">
           <Clock size={13} className="text-tennis-green" />
@@ -407,6 +416,8 @@ export function CampDaysEditor({ days, onChange, trainers }: CampDaysEditorProps
           );
         })}
       </div>
+
+      {footer}
 
       {dialog &&
         (() => {
