@@ -93,7 +93,8 @@ function AdminDashboard() {
   ];
 
   return (
-    <div className="flex min-h-full flex-col">
+    // Op groot scherm scrolt de pagina niet: de agenda krimpt mee met de overgebleven ruimte.
+    <div className="flex min-h-full flex-col xl:h-full xl:overflow-hidden">
       <h1 className="sr-only">{t("title")}</h1>
 
       {/* Welkomstmodal voor nieuwe admins; de stappen zelf staan in de sidenav. */}
@@ -142,7 +143,6 @@ function AdminDashboard() {
           allSource="organization"
           allLabel={t("trainerScopeOrganization")}
           onSelectLesson={setSelectedLessonId}
-          className="xl:min-h-[560px]"
         />
       )}
       <TrainerLessonDialog
