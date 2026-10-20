@@ -2,12 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import Link from "next/link";
 import { format, parse } from "date-fns";
+import { ArrowRight, BookOpen, Ticket, UserPlus } from "lucide-react";
 import { StatStrip } from "@/components/ui/stat-strip";
-import {
-  getDashboardSummary,
-  getDashboardMetrics,
-} from "@/lib/api/dashboard";
+import { getDashboardSummary } from "@/lib/api/dashboard";
 import { useTranslations } from "next-intl";
 import { WelcomeModal } from "@/components/dashboard/onboarding/welcome-modal";
 import { getAuthUser, isHeadTrainerViewer } from "@/lib/auth";
@@ -47,11 +46,6 @@ function AdminDashboard() {
     queryFn: getDashboardSummary,
   });
 
-  const { data: metrics } = useQuery({
-    queryKey: ["dashboard", "metrics"],
-    queryFn: () => getDashboardMetrics(),
-  });
-
   const statItems = [
     {
       value: String(summary?.lessonsTodayCount ?? 0),
@@ -77,14 +71,26 @@ function AdminDashboard() {
     },
   ];
 
-  const lessonsData = metrics?.lessons?.map((m) => m.value) ?? [];
-  const occupancyData = metrics?.occupancyPct?.map((m) => m.value) ?? [];
-  const outstandingData = metrics?.outstandingCents?.map((m) => m.value) ?? [];
-
-  const lastLessons = lessonsData.length > 0 ? lessonsData[lessonsData.length - 1] : 0;
-  const lastOccupancy = occupancyData.length > 0 ? occupancyData[occupancyData.length - 1] : 0;
-  const lastOutstandingCents = outstandingData.length > 0 ? outstandingData[outstandingData.length - 1] : 0;
-  const lastOutstandingEur = (lastOutstandingCents / 100).toFixed(0);
+  const actions = [
+    {
+      href: "/dashboard/lessons/new",
+      icon: BookOpen,
+      title: t("actionNewSeriesTitle"),
+      description: t("actionNewSeriesDesc"),
+    },
+    {
+      href: "/dashboard/standalone-lessons/new",
+      icon: Ticket,
+      title: t("actionNewLessonTitle"),
+      description: t("actionNewLessonDesc"),
+    },
+    {
+      href: "/dashboard/trainers?invite=1",
+      icon: UserPlus,
+      title: t("actionInviteTrainerTitle"),
+      description: t("actionInviteTrainerDesc"),
+    },
+  ];
 
   return (
     <div className="flex min-h-full flex-col">
@@ -100,34 +106,31 @@ function AdminDashboard() {
         <StatStrip items={statItems} className="mb-3.5" />
       )}
 
-      {/* Weekcijfers */}
+      {/* Snelle acties */}
       <div className="mb-3.5 grid grid-cols-1 gap-3.5 sm:grid-cols-3">
-        {[
-          {
-            label: t("sparkLessons"),
-            val: String(lessonsData.length > 0 ? lastLessons : (summary?.lessonsThisWeekCount ?? 0)),
-            sub: t("sparkLessonsVsPrev"),
-          },
-          {
-            label: t("sparkOccupancy"),
-            val: occupancyData.length > 0 ? `${lastOccupancy}%` : "\u2014",
-            sub: t("sparkOccupancyPct"),
-          },
-          {
-            label: t("sparkOutstanding"),
-            val: outstandingData.length > 0 ? `\u20AC${lastOutstandingEur}` : "\u2014",
-            sub: t("sparkOutstandingLabel"),
-          },
-        ].map((card) => (
-          <div key={card.label} className="bg-paper border border-rule rounded-xl p-3.5">
-            <p className="text-[10.5px] text-ink-3 font-medium uppercase tracking-[0.05em]">
-              {card.label}
-            </p>
-            <p className="text-[22px] font-bold text-ink tracking-tight mt-1 tabular-nums">
-              {card.val}
-            </p>
-            <p className="text-[10.5px] text-ink-3 mt-0.5">{card.sub}</p>
-          </div>
+        {actions.map(({ href, icon: Icon, title, description }) => (
+          <Link
+            key={href}
+            href={href}
+            className="group flex items-center gap-3.5 rounded-xl border border-rule bg-paper p-3.5 transition-colors hover:border-ink/40 hover:bg-canvas/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+          >
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-tennis-green/10 text-tennis-green">
+              <Icon size={18} aria-hidden />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[13px] font-semibold text-ink">
+                {title}
+              </span>
+              <span className="mt-0.5 block text-[11px] text-ink-3">
+                {description}
+              </span>
+            </span>
+            <ArrowRight
+              size={15}
+              aria-hidden
+              className="shrink-0 text-ink-3 transition-transform group-hover:translate-x-0.5"
+            />
+          </Link>
         ))}
       </div>
 
