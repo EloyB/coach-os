@@ -8,6 +8,7 @@ import { CampDaysEditor } from "../new/_components/camp-days-editor";
 import {
   buildCampRequest,
   detailToDays,
+  hasOverlappingShifts,
   toDateOnly,
   type CampDayDraft,
 } from "../new/_types";
@@ -35,6 +36,7 @@ export function CampDaysCard({ camp }: CampDaysCardProps) {
   const assignableTrainers = trainers.filter(isAssignableTrainer);
 
   const isDirty = JSON.stringify(days) !== JSON.stringify(initialDays);
+  const hasOverlap = hasOverlappingShifts(days);
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -89,6 +91,12 @@ export function CampDaysCard({ camp }: CampDaysCardProps) {
         trainers={assignableTrainers}
       />
 
+      {hasOverlap && (
+        <p className="text-xs font-medium text-red-600">
+          {t("shiftsOverlapBlock")}
+        </p>
+      )}
+
       {errorMessages.length > 0 && (
         <div className="bg-red-50 border border-red-100 rounded-xl p-4 text-sm text-red-600 space-y-1">
           {errorMessages.map((msg, i) => (
@@ -101,7 +109,7 @@ export function CampDaysCard({ camp }: CampDaysCardProps) {
         <button
           type="button"
           onClick={handleSave}
-          disabled={mutation.isPending || !isDirty}
+          disabled={mutation.isPending || !isDirty || hasOverlap}
           className="px-5 py-2.5 bg-tennis-green text-white text-sm font-semibold rounded-lg hover:bg-tennis-green/90 transition-colors disabled:opacity-60"
         >
           {mutation.isPending ? t("saving") : t("save")}

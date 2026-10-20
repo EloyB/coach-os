@@ -52,6 +52,11 @@ public class CreateCampRequestValidator : AbstractValidator<CreateCampRequest>
                     && string.Compare(trainer.EndTime, trainer.StartTime, StringComparison.Ordinal) > 0)
                 .WithMessage("Trainer-uren moeten binnen de kampuren van die dag vallen")
                 .When(d => BeValidTime(d.StartTime) && BeValidTime(d.EndTime));
+
+            day.RuleFor(d => d.Trainers)
+                .Must(trainers => !CampShiftRules.HasOverlappingShifts(trainers))
+                .WithMessage(CampShiftRules.OverlapMessage)
+                .When(d => d.Trainers.All(t => BeValidTime(t.StartTime) && BeValidTime(t.EndTime)));
         });
     }
 

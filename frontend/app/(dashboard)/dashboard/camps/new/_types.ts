@@ -127,3 +127,43 @@ export function formatDayHeading(iso: string): string {
     month: "long",
   }).format(date);
 }
+
+// ─── Shiften van een trainer op een dag ──────────────────────────────────────
+
+/** Eén shift van een trainer: een tijdvenster binnen een kampdag. */
+export type CampShift = Pick<CampTrainerDraft, "startTime" | "endTime">;
+
+/** Twee shiften overlappen als de ene begint voor de andere eindigt; aansluitende shiften zijn oké. */
+export function shiftsOverlap(a: CampShift, b: CampShift): boolean {
+  return a.startTime < b.endTime && b.startTime < a.endTime;
+}
+
+/**
+ * Indexen (in `day.trainers`) van shiften die overlappen met een andere shift van dezelfde trainer
+ * op die dag.
+ */
+export function findOverlappingShiftIndexes(day: CampDayDraft): Set<number> {
+  const result = new Set<number>();
+  day.trainers.forEach((a, i) => {
+    day.trainers.forEach((b, j) => {
+      if (i < j && a.trainerId === b.trainerId && shiftsOverlap(a, b)) {
+        result.add(i);
+        result.add(j);
+      }
+    });
+  });
+  return result;
+}
+
+export function hasOverlappingShifts(days: CampDayDraft[]): boolean {
+  return days.some((d) => findOverlappingShiftIndexes(d).size > 0);
+}
+
+/** Duur van een shift in uren (HH:mm-strings). */
+export function shiftHours(shift: CampShift): number {
+  const toMinutes = (time: string) => {
+    const [h, m] = time.split(":").map(Number);
+    return (h ?? 0) * 60 + (m ?? 0);
+  };
+  return Math.max(0, toMinutes(shift.endTime) - toMinutes(shift.startTime)) / 60;
+}
