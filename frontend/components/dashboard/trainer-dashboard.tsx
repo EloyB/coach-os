@@ -313,7 +313,7 @@ function AgendaScopeToggle({
       aria-checked={scope === value}
       onClick={() => onChange(value)}
       className={cn(
-        "rounded-md px-3 py-1 text-[11.5px] font-semibold transition-colors",
+        "rounded-md px-2.5 py-[3px] text-[11px] font-semibold transition-colors",
         scope === value
           ? "bg-ink text-white"
           : "text-ink-3 hover:text-ink hover:bg-canvas",
@@ -324,18 +324,13 @@ function AgendaScopeToggle({
   );
 
   return (
-    <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-      <SlashLabel>{t("trainerScopeLabel")}</SlashLabel>
-      <div className="flex items-center gap-4">
-        <div
-          role="radiogroup"
-          aria-label={t("trainerScopeAria")}
-          className="inline-flex gap-0.5 rounded-lg border border-rule bg-paper p-0.5"
-        >
-          {option("mine", t("trainerScopeMine"))}
-          {option("all", allLabel)}
-        </div>
-      </div>
+    <div
+      role="radiogroup"
+      aria-label={t("trainerScopeAria")}
+      className="inline-flex gap-0.5 rounded-lg border border-rule bg-paper p-0.5"
+    >
+      {option("mine", t("trainerScopeMine"))}
+      {option("all", allLabel)}
     </div>
   );
 }
@@ -714,6 +709,7 @@ function MonthCalendar({
   selectedKey,
   onSelectDay,
   onSelect,
+  headerAction,
 }: {
   today: Date;
   source: AgendaSource;
@@ -723,6 +719,8 @@ function MonthCalendar({
   selectedKey: string;
   onSelectDay: (dayKey: string) => void;
   onSelect: (lessonId: string) => void;
+  /** Extra bediening in de kop van de kalender, naast de knop "Vandaag". */
+  headerAction?: React.ReactNode;
 }) {
   const t = useTranslations("dashboard");
   const titleOf = useLessonTitle();
@@ -756,7 +754,8 @@ function MonthCalendar({
         <h2 className="text-[13px] font-bold text-ink">
           {capitalize(format(month, "LLLL yyyy", { locale: nl }))}
         </h2>
-        <div className="flex items-center gap-1">
+        <div className="flex flex-wrap items-center justify-end gap-1">
+          {headerAction && <div className="mr-2">{headerAction}</div>}
           <button
             type="button"
             onClick={() => {
@@ -1069,14 +1068,6 @@ export function LessonAgenda({
 
   return (
     <div className={cn("flex flex-1 flex-col xl:min-h-0", className)}>
-      {allSource && (
-        <AgendaScopeToggle
-          scope={scope}
-          allLabel={allLabel}
-          onChange={changeScope}
-        />
-      )}
-
       <div className="grid flex-1 grid-cols-1 gap-[18px] xl:min-h-0 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.8fr)] xl:grid-rows-[minmax(0,1fr)]">
         <div
           ref={dayCardRef}
@@ -1101,6 +1092,15 @@ export function LessonAgenda({
           selectedKey={selectedKey}
           onSelectDay={selectDay}
           onSelect={onSelectLesson}
+          headerAction={
+            allSource ? (
+              <AgendaScopeToggle
+                scope={scope}
+                allLabel={allLabel}
+                onChange={changeScope}
+              />
+            ) : undefined
+          }
         />
       </div>
     </div>

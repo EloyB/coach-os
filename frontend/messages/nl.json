@@ -111,7 +111,6 @@
     "trainerHoursMonth": "Deze maand: {hours}u",
     "trainerHoursHint": "Lessen en kampdagen",
     "trainerCampLabel": "Kamp",
-    "trainerScopeLabel": "/agenda",
     "trainerScopeAria": "Welke lessen toon je in de agenda?",
     "trainerScopeMine": "Mijn lessen",
     "trainerScopeClub": "{count, plural, one {Mijn club} other {Mijn clubs}}",
