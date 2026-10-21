@@ -17,7 +17,11 @@ interface CampPriceSelectProps {
  * Keuze van het tarief voor één deelnemer (hoofdprijs of een van de prijsopties van het kamp).
  * Rendert niets zolang het kamp geen prijsopties heeft.
  */
-export function CampPriceSelect({ campId, value, onChange }: CampPriceSelectProps) {
+export function CampPriceSelect({
+  campId,
+  value,
+  onChange,
+}: CampPriceSelectProps) {
   const t = useTranslations("campEnrollmentsTable");
   const id = useId();
   const { data: camp } = useQuery({
