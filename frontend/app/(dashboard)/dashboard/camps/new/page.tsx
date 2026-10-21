@@ -25,7 +25,7 @@ export default function NewCampPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className={step === 2 ? "w-full" : "max-w-2xl mx-auto"}>
       {/* Back */}
       <Link
         href="/dashboard/camps"
