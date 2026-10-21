@@ -50,6 +50,7 @@ public class ApplicationDbContext(
     public DbSet<MollieConnection> MollieConnections { get; set; } = null!;
     public DbSet<OAuthState> OAuthStates { get; set; } = null!;
     public DbSet<Camp> Camps { get; set; } = null!;
+    public DbSet<CampPrice> CampPrices { get; set; } = null!;
     public DbSet<CampDay> CampDays { get; set; } = null!;
     public DbSet<CampDayTrainer> CampDayTrainers { get; set; } = null!;
     public DbSet<CampEnrollment> CampEnrollments { get; set; } = null!;
@@ -96,6 +97,7 @@ public class ApplicationDbContext(
         builder.ApplyConfiguration(new MollieConnectionConfiguration());
         builder.ApplyConfiguration(new OAuthStateConfiguration());
         builder.ApplyConfiguration(new CampConfiguration());
+        builder.ApplyConfiguration(new CampPriceConfiguration());
         builder.ApplyConfiguration(new CampDayConfiguration());
         builder.ApplyConfiguration(new CampDayTrainerConfiguration());
         builder.ApplyConfiguration(new CampEnrollmentConfiguration());
@@ -152,6 +154,8 @@ public class ApplicationDbContext(
         builder.Entity<OAuthState>().HasQueryFilter(e =>
             _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
         builder.Entity<Camp>().HasQueryFilter(e =>
+            _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
+        builder.Entity<CampPrice>().HasQueryFilter(e =>
             _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
         builder.Entity<CampDay>().HasQueryFilter(e =>
             _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);

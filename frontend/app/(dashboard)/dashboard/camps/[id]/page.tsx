@@ -69,6 +69,11 @@ function InfoCard({ camp }: { camp: CampDetailDto }) {
       <Chip icon={<Euro size={11} className="text-tennis-green" />}>
         {camp.price > 0 ? `€${camp.price}` : t("priceFree")}
       </Chip>
+      {camp.prices.map((p) => (
+        <Chip key={p.id} icon={<Euro size={11} className="text-tennis-green" />}>
+          {p.label}: €{p.amount}
+        </Chip>
+      ))}
       <Chip icon={<CalendarDays size={11} className="text-tennis-green" />}>
         {formatDateNL(camp.startDate)} - {formatDateNL(camp.endDate)}
       </Chip>

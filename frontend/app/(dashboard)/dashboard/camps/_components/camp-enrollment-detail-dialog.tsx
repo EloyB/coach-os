@@ -135,6 +135,12 @@ export function CampEnrollmentDetailDialog({
               label={t("enrolledAt")}
               value={new Date(enrollment.enrolledAt).toLocaleDateString("nl-BE")}
             />
+            {enrollment.campPriceLabel && (
+              <DetailRow
+                label={t("priceLabel")}
+                value={enrollment.campPriceLabel}
+              />
+            )}
             {enrollment.groupName && (
               <DetailRow
                 label={t("group")}

@@ -7,4 +7,5 @@ public record CampEnrollmentDto(
     string Status, DateTime EnrolledAt, string? GroupName,
     Guid? EnrollmentGroupId, bool IsGroupLeader,
     List<CampEnrollmentResponseItemDto> FormResponses,
-    string? PaymentMethod, string? PaymentStatus);
+    string? PaymentMethod, string? PaymentStatus,
+    Guid? CampPriceId = null, string? CampPriceLabel = null);

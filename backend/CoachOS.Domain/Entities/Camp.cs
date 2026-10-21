@@ -39,6 +39,7 @@ public class Camp : BaseEntity
     // Navigation
     public Organization Organization { get; set; } = null!;
     public TennisClub TennisClub { get; set; } = null!;
+    public ICollection<CampPrice> Prices { get; set; } = new List<CampPrice>();
     public ICollection<CampDay> Days { get; set; } = new List<CampDay>();
     public ICollection<CampEnrollment> Enrollments { get; set; } = new List<CampEnrollment>();
     public CampEnrollmentForm? EnrollmentForm { get; set; }

@@ -22,6 +22,11 @@ public class CreateCampRequestValidator : AbstractValidator<CreateCampRequest>
         RuleFor(x => x.Price)
             .GreaterThanOrEqualTo(0m).WithMessage("Prijs mag niet negatief zijn");
 
+        RuleFor(x => x.Prices)
+            .Must(p => p is null || p.Count <= SaveCampPriceRequestValidator.MaxPrices)
+            .WithMessage($"Een kamp heeft maximaal {SaveCampPriceRequestValidator.MaxPrices} prijsopties");
+        RuleForEach(x => x.Prices).SetValidator(new SaveCampPriceRequestValidator());
+
         RuleFor(x => x.StartDate)
             .Must(BeValidDate).WithMessage("Ongeldige startdatum (yyyy-MM-dd)");
 

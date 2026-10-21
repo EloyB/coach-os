@@ -10,6 +10,7 @@ import {
   detailToDays,
   hasOverlappingShifts,
   toDateOnly,
+  detailToPrices,
   type CampDayDraft,
 } from "../new/_types";
 import { getTrainers, isAssignableTrainer } from "@/lib/api/trainers";
@@ -52,6 +53,7 @@ export function CampDaysCard({ camp }: CampDaysCardProps) {
             startDate: toDateOnly(camp.startDate),
             endDate: toDateOnly(camp.endDate),
             registrationDeadline: toDateOnly(camp.registrationDeadline),
+            prices: detailToPrices(camp),
           },
           days,
         ),

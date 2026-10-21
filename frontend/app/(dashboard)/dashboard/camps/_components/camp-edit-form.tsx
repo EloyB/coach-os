@@ -14,6 +14,7 @@ import {
   buildCampRequest,
   buildDays,
   detailToDays,
+  detailToPrices,
   toDateOnly,
   type CampDayDraft,
 } from "../new/_types";
@@ -57,6 +58,7 @@ export function CampEditForm({ camp, onCancel, onSaved }: CampEditFormProps) {
       startDate: camp.startDate,
       endDate: camp.endDate,
       registrationDeadline: toDateOnly(camp.registrationDeadline),
+      prices: detailToPrices(camp),
     },
   });
 
@@ -74,6 +76,7 @@ export function CampEditForm({ camp, onCancel, onSaved }: CampEditFormProps) {
             startDate: values.startDate,
             endDate: values.endDate,
             registrationDeadline: values.registrationDeadline,
+            prices: values.prices,
           },
           days,
         ),

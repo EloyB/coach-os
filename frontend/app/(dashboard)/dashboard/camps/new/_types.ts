@@ -12,6 +12,15 @@ export type CampStep1Data = {
   startDate: string; // yyyy-MM-dd
   endDate: string; // yyyy-MM-dd
   registrationDeadline: string; // yyyy-MM-dd
+  prices: CampPriceDraft[];
+};
+
+/** Prijsoptie in het formulier; `amount` is NaN zolang het veld leeg is. */
+export type CampPriceDraft = {
+  id?: string;
+  label: string;
+  description: string;
+  amount: number;
 };
 
 export type CampTrainerDraft = {
@@ -60,6 +69,16 @@ export function buildDays(
   return result;
 }
 
+/** Map the price options of an existing camp into form drafts. */
+export function detailToPrices(detail: CampDetailDto): CampPriceDraft[] {
+  return detail.prices.map((p) => ({
+    id: p.id,
+    label: p.label,
+    description: p.description ?? "",
+    amount: p.amount,
+  }));
+}
+
 /** Map an existing camp detail into editable day drafts. */
 export function detailToDays(detail: CampDetailDto): CampDayDraft[] {
   return detail.days.map((d) => ({
@@ -106,6 +125,12 @@ export function buildCampRequest(
     // would shift the date by the UTC offset and land on the wrong day in CET).
     registrationDeadline: step1.registrationDeadline + "T00:00:00Z",
     maxParticipants: step1.maxParticipants,
+    prices: step1.prices.map((p) => ({
+      id: p.id,
+      label: p.label.trim(),
+      description: p.description.trim() || undefined,
+      amount: p.amount,
+    })),
     days: days.map((d) => ({
       date: d.date,
       startTime: d.startTime,
