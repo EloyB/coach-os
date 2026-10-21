@@ -42,6 +42,8 @@ public class CampServiceTests
         // Standaard bestaat elk gevraagd kamp (zonder prijsopties); tests overschrijven dit waar nodig.
         _camps.Setup(r => r.GetByIdWithDetailsAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Guid id, Guid org, CancellationToken _) => new Camp { Id = id, OrganizationId = org });
+        _enrollments.Setup(r => r.GetByCampWithResponsesAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
         _sut = new CampService(_camps.Object, _enrollments.Object, _forms.Object, _clubs.Object,
             _users.Object, _payments.Object,
             _unitOfWork.Object, _paymentService.Object);
@@ -775,6 +777,30 @@ public class CampServiceTests
         keep.SortOrder.Should().Be(1);
         existing.Prices.Single(p => p.Label == "Nieuw").SortOrder.Should().Be(0);
         _camps.Verify(r => r.RemovePrices(It.Is<IEnumerable<CampPrice>>(x => x.Single().Id == drop.Id)), Times.Once);
+    }
+
+    [Test]
+    public async Task UpdateAsync_MainPriceChanged_RecalculatesPendingCashPayment()
+    {
+        Happy();
+        Guid campId = Guid.NewGuid();
+        Camp existing = new()
+        {
+            Id = campId, OrganizationId = _orgId, TennisClubId = _clubId, Price = 80m,
+            StartDate = new DateOnly(2026, 5, 1), EndDate = new DateOnly(2026, 5, 1),
+        };
+        CampEnrollment solo = new() { Id = Guid.NewGuid(), CampId = campId, Status = Domain.Enums.EnrollmentStatus.Confirmed };
+        Payment pending = new() { Amount = 80m, Status = Domain.Enums.PaymentStatus.Pending, Method = Domain.Enums.PaymentMethod.Cash };
+        _camps.Setup(r => r.GetByIdWithDetailsAsync(campId, _orgId, It.IsAny<CancellationToken>())).ReturnsAsync(existing);
+        _enrollments.Setup(r => r.GetByCampWithResponsesAsync(campId, _orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([solo]);
+        _payments.Setup(p => p.GetLatestTrackedByCampEnrollmentIdAsync(solo.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pending);
+
+        Result result = await _sut.UpdateAsync(campId, _orgId, UpdateWithPrices([]), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        pending.Amount.Should().Be(100m);
     }
 
     [Test]

@@ -50,6 +50,8 @@ export function CampDaysCard({ camp }: CampDaysCardProps) {
           },
           daysToSave,
         ),
+        // Volledig tijdstip bewaren: buildCampRequest kapt de deadline af op middernacht.
+        registrationDeadline: camp.registrationDeadline,
         prices: undefined,
         isActive: camp.isActive,
       }),

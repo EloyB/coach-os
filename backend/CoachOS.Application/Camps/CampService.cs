@@ -76,6 +76,7 @@ public class CampService(
         camp.Description = request.Description;
         camp.TennisClubId = request.TennisClubId;
         camp.Level = request.Level.HasValue ? (LessonLevel)request.Level.Value : null;
+        decimal previousPrice = camp.Price;
         camp.Price = request.Price;
         camp.StartDate = ParseDate(request.StartDate);
         camp.EndDate = ParseDate(request.EndDate);
@@ -90,11 +91,18 @@ public class CampService(
         foreach (CampDay day in BuildDays(organizationId, request.Days))
             camp.Days.Add(day);
 
+        bool pricesChanged = previousPrice != request.Price;
         if (request.Prices is not null)
         {
+            Dictionary<Guid, decimal> previousAmounts = camp.Prices.ToDictionary(p => p.Id, p => p.Amount);
             Error? priceError = await SyncPricesAsync(camp, organizationId, request.Prices, ct);
             if (priceError is not null) return Result.Fail(priceError);
+            pricesChanged |= camp.Prices.Any(p => previousAmounts.TryGetValue(p.Id, out decimal old) && old != p.Amount);
         }
+
+        // Openstaande cash-betalingen volgen een gewijzigde hoofdprijs of tariefbedrag.
+        if (pricesChanged)
+            await SyncAllPendingCashAmountsAsync(camp, organizationId, ct);
 
         await unitOfWork.SaveChangesAsync(ct);
         return Result.Ok();
@@ -468,6 +476,24 @@ public class CampService(
             return;
 
         payment.Amount = CampPricing.Total(camp, participants);
+    }
+
+    /// <summary>Herberekent de openstaande cash-betalingen van alle actieve betalers van het kamp.</summary>
+    private async Task SyncAllPendingCashAmountsAsync(Camp camp, Guid organizationId, CancellationToken ct)
+    {
+        List<CampEnrollment> all = await enrollments.GetByCampWithResponsesAsync(camp.Id, organizationId, ct);
+        List<CampEnrollment> active = all.Where(e => e.Status != EnrollmentStatus.Cancelled).ToList();
+
+        foreach (CampEnrollment solo in active.Where(e => e.CampEnrollmentGroupId is null))
+            await SyncPendingCashAmountAsync(solo.Id, camp, [solo], ct);
+
+        foreach (Guid groupId in active.Where(e => e.CampEnrollmentGroupId is not null)
+                     .Select(e => e.CampEnrollmentGroupId!.Value).Distinct())
+        {
+            CampEnrollmentGroup? group = await enrollments.GetGroupWithMembersAsync(groupId, organizationId, ct);
+            if (group is not null)
+                await SyncPendingCashAmountAsync(group.LeaderEnrollmentId, camp, group.Members, ct);
+        }
     }
 
     /// <summary>
