@@ -67,7 +67,7 @@ export function CampPriceDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="grid grid-cols-[minmax(0,1fr)_7.5rem] gap-3">
+          <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 {t("priceOptionLabel")}
@@ -85,7 +85,7 @@ export function CampPriceDialog({
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 {t("priceOptionAmount")}
               </label>
-              <div className="relative">
+              <div className="relative sm:w-40">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 pointer-events-none">
                   €
                 </span>
