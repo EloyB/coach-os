@@ -40,14 +40,18 @@ export type CampDayDraft = {
 
 // ─── Day builders / mergers ───────────────────────────────────────────────────
 
+export type DateRange = { start: string; end: string };
+
 /**
- * Build one CampDayDraft per date in [start, end]. Existing days (matched by
- * date) keep their times + trainers so adjusting the range never wipes data.
+ * Build the day list for [start, end]. Existing days (matched by date) keep their times + trainers.
+ * Dates that were already inside `previousRange` but have no day are days the admin deliberately
+ * dropped: they stay dropped. Only dates that are new to the range get a default day.
  */
 export function buildDays(
   start: string,
   end: string,
   existing: CampDayDraft[],
+  previousRange?: DateRange | null,
 ): CampDayDraft[] {
   if (!start || !end || end < start) return [];
   const byDate = new Map(existing.map((d) => [d.date, d]));
@@ -56,14 +60,19 @@ export function buildDays(
   const last = new Date(end + "T00:00:00");
   while (cur <= last) {
     const iso = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, "0")}-${String(cur.getDate()).padStart(2, "0")}`;
-    result.push(
-      byDate.get(iso) ?? {
+    const kept = byDate.get(iso);
+    const wasDropped =
+      previousRange != null &&
+      iso >= previousRange.start &&
+      iso <= previousRange.end;
+    if (kept) result.push(kept);
+    else if (!wasDropped)
+      result.push({
         date: iso,
         startTime: "09:00",
         endTime: "16:00",
         trainers: [],
-      },
-    );
+      });
     cur.setDate(cur.getDate() + 1);
   }
   return result;
@@ -190,5 +199,7 @@ export function shiftHours(shift: CampShift): number {
     const [h, m] = time.split(":").map(Number);
     return (h ?? 0) * 60 + (m ?? 0);
   };
-  return Math.max(0, toMinutes(shift.endTime) - toMinutes(shift.startTime)) / 60;
+  return (
+    Math.max(0, toMinutes(shift.endTime) - toMinutes(shift.startTime)) / 60
+  );
 }

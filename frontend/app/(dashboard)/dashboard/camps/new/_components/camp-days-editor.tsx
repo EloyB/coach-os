@@ -17,6 +17,9 @@ interface CampDaysEditorProps {
   days: CampDayDraft[];
   onChange: (days: CampDayDraft[]) => void;
   trainers: TrainerDto[];
+  /** Kampperiode: data hierin zonder kampdag tonen als "geen kampdag" en kunnen toegevoegd worden. */
+  rangeStart?: string;
+  rangeEnd?: string;
   /**
    * Bewaart de dagen vanuit de dag-dialog en geeft foutmeldingen terug (leeg = gelukt).
    * Zonder deze prop past de dialog de wijzigingen enkel lokaal toe.
@@ -41,6 +44,8 @@ export function CampDaysEditor({
   days,
   onChange,
   trainers,
+  rangeStart,
+  rangeEnd,
   onSaveDays,
   footer,
 }: CampDaysEditorProps) {
@@ -48,24 +53,48 @@ export function CampDaysEditor({
   const [weekIndex, setWeekIndex] = useState(0);
   const [openDate, setOpenDate] = useState<string | null>(null);
 
-  // Alle weken (als maandag) die de kampdagen bestrijken.
+  // Alle weken (als maandag) die de kampperiode en de kampdagen bestrijken.
   const weeks = useMemo(() => {
-    if (days.length === 0) return [] as Date[];
-    const sorted = days.map((d) => d.date).sort();
+    const dates = days.map((d) => d.date);
+    if (rangeStart) dates.push(rangeStart);
+    if (rangeEnd) dates.push(rangeEnd);
+    if (dates.length === 0) return [] as Date[];
+    dates.sort();
     const result: Date[] = [];
-    const cur = mondayOf(sorted[0]);
-    const last = mondayOf(sorted[sorted.length - 1]);
+    const cur = mondayOf(dates[0]);
+    const last = mondayOf(dates[dates.length - 1]);
     while (cur <= last) {
       result.push(new Date(cur));
       cur.setDate(cur.getDate() + 7);
     }
     return result;
-  }, [days]);
+  }, [days, rangeStart, rangeEnd]);
 
   const safeIndex = Math.min(weekIndex, Math.max(weeks.length - 1, 0));
   const monday = weeks[safeIndex];
   const dayByDate = new Map(days.map((d) => [d.date, d]));
-  const openDay = openDate ? dayByDate.get(openDate) : undefined;
+  // Een nieuw toe te voegen dag bestaat pas in `days` nadat de dialog is opgeslagen.
+  const openDay = openDate
+    ? (dayByDate.get(openDate) ?? {
+        date: openDate,
+        startTime: "09:00",
+        endTime: "16:00",
+        trainers: [],
+      })
+    : undefined;
+  const openDayExists = openDate ? dayByDate.has(openDate) : false;
+  const isInRange = (date: string) =>
+    !rangeStart || !rangeEnd || (date >= rangeStart && date <= rangeEnd);
+
+  /** Bewaar (indien mogelijk) en pas de dagen toe; geeft foutmeldingen terug (leeg = gelukt). */
+  async function commit(next: CampDayDraft[]): Promise<string[]> {
+    const errors = onSaveDays ? await onSaveDays(next) : [];
+    if (errors.length === 0) {
+      onChange(next);
+      setOpenDate(null);
+    }
+    return errors;
+  }
 
   const trainerName = (day: CampDayDraft, trainerId: string): string => {
     const tr = trainers.find((x) => x.id === trainerId);
@@ -76,24 +105,17 @@ export function CampDaysEditor({
     );
   };
 
-  // Zichtbaar uurbereik over het hele kamp, zodat de rasterhoogte bij het bladeren gelijk blijft.
-  let calStartHour: number | undefined;
-  let calEndHour: number | undefined;
-  if (days.length > 0) {
-    let minMin = Infinity;
-    let maxMin = -Infinity;
-    for (const d of days) {
-      for (const [start, end] of [
-        [d.startTime, d.endTime],
-        ...d.trainers.map((tr) => [tr.startTime, tr.endTime]),
-      ]) {
-        minMin = Math.min(minMin, parseTime(start));
-        maxMin = Math.max(maxMin, parseTime(end));
-      }
-    }
-    calStartHour = Math.max(0, Math.floor(minMin / 60) - 1) + 0.5;
-    calEndHour = Math.min(24, Math.ceil(maxMin / 60) + 1);
+  // Zichtbaar uurbereik over het hele kamp (en de standaarduren voor nieuwe dagen), zodat de
+  // rasterhoogte bij het bladeren gelijk blijft.
+  const hourRanges: [string, string][] = [["09:00", "16:00"]];
+  for (const d of days) {
+    hourRanges.push([d.startTime, d.endTime]);
+    d.trainers.forEach((tr) => hourRanges.push([tr.startTime, tr.endTime]));
   }
+  const minMin = Math.min(...hourRanges.map(([start]) => parseTime(start)));
+  const maxMin = Math.max(...hourRanges.map(([, end]) => parseTime(end)));
+  const calStartHour = Math.max(0, Math.floor(minMin / 60) - 1) + 0.5;
+  const calEndHour = Math.min(24, Math.ceil(maxMin / 60) + 1);
 
   const weekDates = monday
     ? Array.from({ length: 7 }, (_, i) => {
@@ -158,16 +180,33 @@ export function CampDaysEditor({
       </div>
 
       <div className="p-6">
-        {days.length === 0 || !monday ? (
+        {!monday ? (
           <p className="text-xs text-gray-400 py-2">{t("noDays")}</p>
         ) : (
           <>
             {/* Mobiel: lijst met de kampdagen van deze week */}
             <div className="sm:hidden space-y-2">
-              {weekDates
-                .map((date) => dayByDate.get(date))
-                .filter((d): d is CampDayDraft => d !== undefined)
-                .map((day) => (
+              {weekDates.map((date) => {
+                const day = dayByDate.get(date);
+                if (!day) {
+                  if (!isInRange(date)) return null;
+                  return (
+                    <button
+                      key={date}
+                      type="button"
+                      onClick={() => setOpenDate(date)}
+                      className="w-full rounded-xl border border-dashed border-gray-300 p-3 text-left text-gray-400 hover:border-tennis-green/50"
+                    >
+                      <p className="text-sm font-medium first-letter:uppercase">
+                        {formatDayHeading(date)}
+                      </p>
+                      <p className="text-xs">
+                        {t("noCampDay")} · {t("addCampDayShort")}
+                      </p>
+                    </button>
+                  );
+                }
+                return (
                   <button
                     key={day.date}
                     type="button"
@@ -192,7 +231,8 @@ export function CampDaysEditor({
                           ].join(", ")}
                     </p>
                   </button>
-                ))}
+                );
+              })}
             </div>
 
             {/* Desktop: kalender-raster, klik een kampdag of shift om de trainers in te stellen */}
@@ -206,7 +246,37 @@ export function CampDaysEditor({
                 renderDayOverlay={(dayIndex) => {
                   const date = weekDates[dayIndex];
                   const day = dayByDate.get(date);
-                  if (!day) return null;
+                  if (!day) {
+                    if (!isInRange(date)) return null;
+                    const offPos = getSlotPosition(
+                      {
+                        id: date,
+                        dayOfWeek: dayIndex,
+                        startTime: "09:00",
+                        endTime: "16:00",
+                        trainerId: null,
+                      },
+                      calStartHour,
+                    );
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => setOpenDate(date)}
+                        aria-label={t("addCampDay", {
+                          date: formatDayHeading(date),
+                        })}
+                        className="absolute inset-x-px z-10 flex cursor-pointer flex-col items-start justify-start rounded-md border border-dashed border-gray-300 px-1.5 py-1 text-left text-gray-400 transition-colors hover:border-tennis-green/50 hover:bg-tennis-green/5 hover:text-tennis-green"
+                        style={{ top: offPos.top, height: offPos.height }}
+                      >
+                        <span className="text-[11px] font-medium">
+                          {t("noCampDay")}
+                        </span>
+                        <span className="text-[10px]">
+                          {t("addCampDayShort")}
+                        </span>
+                      </button>
+                    );
+                  }
                   const pos = getSlotPosition(
                     {
                       id: date,
@@ -252,17 +322,17 @@ export function CampDaysEditor({
           day={openDay}
           trainers={trainers}
           saveLabel={onSaveDays ? t("save") : t("dayDialogApply")}
+          isNew={!openDayExists}
+          canRemove={openDayExists && days.length > 1}
           onSave={async (updated) => {
-            const next = days.map((d) =>
-              d.date === updated.date ? updated : d,
-            );
-            const errors = onSaveDays ? await onSaveDays(next) : [];
-            if (errors.length === 0) {
-              onChange(next);
-              setOpenDate(null);
-            }
-            return errors;
+            const next = openDayExists
+              ? days.map((d) => (d.date === updated.date ? updated : d))
+              : [...days, updated].sort((a, b) => a.date.localeCompare(b.date));
+            return commit(next);
           }}
+          onRemove={async () =>
+            commit(days.filter((d) => d.date !== openDay.date))
+          }
           onClose={() => setOpenDate(null)}
         />
       )}

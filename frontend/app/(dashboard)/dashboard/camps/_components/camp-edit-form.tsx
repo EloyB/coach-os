@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
@@ -17,6 +17,7 @@ import {
   detailToPrices,
   toDateOnly,
   type CampDayDraft,
+  type DateRange,
 } from "../new/_types";
 import { getTennisClubs } from "@/lib/api/tennisClubs";
 import { updateCamp, type CampDetailDto } from "@/lib/api/camps";
@@ -33,6 +34,11 @@ export function CampEditForm({ camp, onCancel, onSaved }: CampEditFormProps) {
   const queryClient = useQueryClient();
   const [errorMessages, setErrorMessages] = useState<string[]>([]);
   const [days, setDays] = useState<CampDayDraft[]>(detailToDays(camp));
+  // Laatst gebruikte periode: dagen die daarin ontbreken zijn bewust geschrapt en blijven weg.
+  const daysRangeRef = useRef<DateRange>({
+    start: toDateOnly(camp.startDate),
+    end: toDateOnly(camp.endDate),
+  });
 
   const { data: clubs = [], isLoading: clubsLoading } = useQuery({
     queryKey: ["tennisClubs"],
@@ -95,7 +101,9 @@ export function CampEditForm({ camp, onCancel, onSaved }: CampEditFormProps) {
   });
 
   function regenerateDays(startDate: string, endDate: string) {
-    setDays((prev) => buildDays(startDate, endDate, prev));
+    const previousRange = daysRangeRef.current;
+    daysRangeRef.current = { start: startDate, end: endDate };
+    setDays((prev) => buildDays(startDate, endDate, prev, previousRange));
   }
 
   return (

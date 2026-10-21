@@ -76,6 +76,8 @@ export function CampDaysCard({ camp }: CampDaysCardProps) {
       onChange={setDays}
       trainers={assignableTrainers}
       onSaveDays={saveDays}
+      rangeStart={toDateOnly(camp.startDate)}
+      rangeEnd={toDateOnly(camp.endDate)}
     />
   );
 }

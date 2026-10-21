@@ -58,6 +58,12 @@ interface CampDayDialogProps {
   day: CampDayDraft;
   trainers: TrainerDto[];
   saveLabel: string;
+  /** Dag die nog niet bestaat en met deze dialog wordt toegevoegd. */
+  isNew: boolean;
+  /** Mag de dag geschrapt worden (niet de laatste kampdag)? */
+  canRemove: boolean;
+  /** Schrapt de dag uit het kamp; geeft foutmeldingen terug (leeg = gelukt). */
+  onRemove: () => Promise<string[]>;
   /** Bewaart de bewerkte dag; geeft foutmeldingen terug (leeg = gelukt). */
   onSave: (day: CampDayDraft) => Promise<string[]>;
   onClose: () => void;
@@ -68,6 +74,9 @@ export function CampDayDialog({
   day: initialDay,
   trainers,
   saveLabel,
+  isNew,
+  canRemove,
+  onRemove,
   onSave,
   onClose,
 }: CampDayDialogProps) {
@@ -78,6 +87,7 @@ export function CampDayDialog({
   const onChange = setDay;
   const [saving, setSaving] = useState(false);
   const [saveErrors, setSaveErrors] = useState<string[]>([]);
+  const [confirmRemove, setConfirmRemove] = useState(false);
   const [editingShift, setEditingShift] = useState<number | null>(null);
   const [form, setForm] = useState({
     trainerId: "",
@@ -424,6 +434,11 @@ export function CampDayDialog({
             )}
           </div>
 
+          {overlapping.size > 0 && (
+            <p className="text-xs font-medium text-red-600">
+              {t("shiftsOverlapBlock")}
+            </p>
+          )}
           {saveErrors.length > 0 && (
             <div className="space-y-0.5 text-xs text-red-600">
               {saveErrors.map((msg, i) => (
@@ -434,9 +449,44 @@ export function CampDayDialog({
         </div>
 
         <div className="flex items-center justify-between gap-3 border-t border-gray-100 px-6 py-3">
-          <p className="text-xs font-medium text-red-600">
-            {overlapping.size > 0 ? t("shiftsOverlapBlock") : ""}
-          </p>
+          {canRemove && !isNew ? (
+            confirmRemove ? (
+              <div className="flex items-center gap-2 text-xs">
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={async () => {
+                    setSaving(true);
+                    setSaveErrors([]);
+                    const errors = await onRemove();
+                    setSaving(false);
+                    setSaveErrors(errors);
+                    setConfirmRemove(false);
+                  }}
+                  className="font-semibold text-red-600 hover:underline disabled:opacity-60"
+                >
+                  {t("removeDayConfirm")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmRemove(false)}
+                  className="text-gray-500 hover:underline"
+                >
+                  {t("cancel")}
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirmRemove(true)}
+                className="text-sm font-medium text-red-600 hover:underline"
+              >
+                {t("removeDay")}
+              </button>
+            )
+          ) : (
+            <span />
+          )}
           <div className="flex items-center gap-2">
             <button
               type="button"

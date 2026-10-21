@@ -11,12 +11,15 @@ import {
   hasOverlappingShifts,
   type CampDayDraft,
   type CampStep1Data,
+  type DateRange,
 } from "../_types";
 
 interface Step2Props {
   step1Data: CampStep1Data;
   days: CampDayDraft[];
   onChange: (days: CampDayDraft[]) => void;
+  daysRange: DateRange | null;
+  onRangeChange: (range: DateRange) => void;
   onBack: () => void;
   onNext: () => void;
 }
@@ -25,6 +28,8 @@ export function Step2Days({
   step1Data,
   days,
   onChange,
+  daysRange,
+  onRangeChange,
   onBack,
   onNext,
 }: Step2Props) {
@@ -37,7 +42,10 @@ export function Step2Days({
 
   // Generate (or re-merge) the day list whenever the camp date range is known.
   useEffect(() => {
-    onChange(buildDays(step1Data.startDate, step1Data.endDate, days));
+    onChange(
+      buildDays(step1Data.startDate, step1Data.endDate, days, daysRange),
+    );
+    onRangeChange({ start: step1Data.startDate, end: step1Data.endDate });
     // `days` is intentionally omitted from the deps: it is the parent state we
     // are writing into, read at call-time only to preserve existing day data.
     // Including it would re-run on every onChange and loop indefinitely.
@@ -48,7 +56,13 @@ export function Step2Days({
 
   return (
     <div>
-      <CampDaysEditor days={days} onChange={onChange} trainers={trainers} />
+      <CampDaysEditor
+        days={days}
+        onChange={onChange}
+        trainers={trainers}
+        rangeStart={step1Data.startDate}
+        rangeEnd={step1Data.endDate}
+      />
 
       {hasOverlap && (
         <p className="mt-3 text-xs font-medium text-red-600">
