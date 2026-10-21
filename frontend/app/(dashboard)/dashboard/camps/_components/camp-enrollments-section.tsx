@@ -618,6 +618,8 @@ function PersonRow({
         onConfirm={() => cancelMutation.mutate()}
       />
       <CampEnrollmentDetailDialog
+        campId={campId}
+        canEditPrice={canEdit && !isCancelled}
         enrollment={shown}
         markPaidLabel={markPaidLabel}
         open={detailOpen}
