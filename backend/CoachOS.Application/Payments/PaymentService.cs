@@ -208,16 +208,16 @@ public class PaymentService(
                 new Error(ErrorCodes.NotFound, "Kamp niet gevonden."));
         }
 
-        if (camp.Price <= 0m)
+        // Groepsinschrijving = leider + leden; solo = 1. De leider draagt de betaling.
+        // Group.Members bevat ook de leider (de submit-flow zet diens CampEnrollmentGroupId).
+        // Gratis = het gekozen tarief telt op tot 0 (niet enkel de hoofdprijs).
+        decimal amount = CampAmount(camp, enrollment);
+        if (amount <= 0m)
         {
             return Result<CreatePaymentResultDto>.Fail(new Error(
                 ErrorCodes.Validation,
                 "Dit kamp is gratis; online betaling is niet nodig."));
         }
-
-        // Groepsinschrijving = leider + leden; solo = 1. De leider draagt de betaling.
-        // Group.Members bevat ook de leider (de submit-flow zet diens CampEnrollmentGroupId).
-        decimal amount = CampAmount(camp, enrollment);
 
         OrganizationSettingsEntity? settings = await orgSettings
             .GetByOrganizationReadOnlyAsync(enrollment.OrganizationId, ct);
@@ -549,8 +549,7 @@ public class PaymentService(
             enrollment.CampEnrollmentGroupId.HasValue && enrollment.Group is not null
                 ? enrollment.Group.Members
                 : [enrollment];
-        decimal total = CampPricing.Total(camp, participants);
-        return total > 0m ? total : CampPricing.UnitPrice(camp, enrollment);
+        return CampPricing.Total(camp, participants);
     }
 
     public async Task<Result> RecordCampCashPaymentAsync(
@@ -569,12 +568,11 @@ public class PaymentService(
         if (camp is null)
             return Result.Fail(new Error(ErrorCodes.NotFound, "Kamp niet gevonden."));
 
-        if (camp.Price <= 0m)
-            return Result.Fail(new Error(
-                ErrorCodes.Validation, "Dit kamp is gratis; een betaling is niet nodig."));
-
         // Zelfde berekening als de online flow: groep = leider + leden, solo = 1.
         decimal amount = CampAmount(camp, enrollment);
+        if (amount <= 0m)
+            return Result.Fail(new Error(
+                ErrorCodes.Validation, "Dit kamp is gratis; een betaling is niet nodig."));
 
         OrganizationSettingsEntity? settings = await orgSettings
             .GetByOrganizationReadOnlyAsync(enrollment.OrganizationId, ct);

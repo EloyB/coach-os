@@ -239,7 +239,8 @@ public class CampEnrollmentService(
             return Result<Guid>.Fail(new Error(ErrorCodes.NotFound, "Prijsoptie niet gevonden."));
 
         string email = request.ParticipantEmail.Trim();
-        bool isPaidCamp = camp.Price > 0m;
+        // Betalend = het gekozen tarief (of de hoofdprijs) is meer dan 0.
+        bool isPaidCamp = CampPricing.UnitPrice(camp, new CampEnrollment { CampPriceId = request.CampPriceId }) > 0m;
         CampEnrollment enrollment;
 
         await unitOfWork.BeginTransactionAsync(IsolationLevel.Serializable, ct);
