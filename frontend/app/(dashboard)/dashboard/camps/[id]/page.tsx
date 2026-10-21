@@ -40,6 +40,7 @@ import { getAuthUser } from "@/lib/auth";
 import { CampFormBuilder } from "../_components/camp-form-builder";
 import { CampEditForm } from "../_components/camp-edit-form";
 import { CampDaysCard } from "../_components/camp-days-card";
+import { CampPricesCard } from "../_components/camp-prices-card";
 import { CampDaysReadOnlyCard } from "../_components/camp-days-readonly-card";
 import { CampEnrollmentsSection } from "../_components/camp-enrollments-section";
 
@@ -69,11 +70,6 @@ function InfoCard({ camp }: { camp: CampDetailDto }) {
       <Chip icon={<Euro size={11} className="text-tennis-green" />}>
         {camp.price > 0 ? `€${camp.price}` : t("priceFree")}
       </Chip>
-      {camp.prices.map((p) => (
-        <Chip key={p.id} icon={<Euro size={11} className="text-tennis-green" />}>
-          {p.label}: €{p.amount}
-        </Chip>
-      ))}
       <Chip icon={<CalendarDays size={11} className="text-tennis-green" />}>
         {formatDateNL(camp.startDate)} - {formatDateNL(camp.endDate)}
       </Chip>
@@ -240,6 +236,12 @@ export default function CampDetailPage({
           ) : (
             <CampDaysReadOnlyCard camp={camp} />
           )}
+
+          {/* ── Section 2b: Price options ── */}
+          <CampPricesCard
+            camp={camp}
+            canEdit={isAdmin}
+          />
 
           {/* ── Section 3: Form builder (admin only) ── */}
           {isAdmin && <CampFormBuilder campId={id} />}

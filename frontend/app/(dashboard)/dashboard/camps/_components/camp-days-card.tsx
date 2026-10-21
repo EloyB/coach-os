@@ -57,6 +57,7 @@ export function CampDaysCard({ camp }: CampDaysCardProps) {
           },
           days,
         ),
+        prices: undefined,
         isActive: camp.isActive,
       }),
     onSuccess: () => {

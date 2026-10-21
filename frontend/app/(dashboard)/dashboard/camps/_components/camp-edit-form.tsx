@@ -80,6 +80,8 @@ export function CampEditForm({ camp, onCancel, onSaved }: CampEditFormProps) {
           },
           days,
         ),
+        // Prijsopties worden in hun eigen kaart beheerd; niet meesturen laat ze ongemoeid.
+        prices: undefined,
         isActive: camp.isActive,
       }),
     onSuccess: () => {
@@ -105,6 +107,7 @@ export function CampEditForm({ camp, onCancel, onSaved }: CampEditFormProps) {
       className="mt-5 space-y-5"
     >
       <CampBasisFields
+        showPrices={false}
         register={register}
         control={control}
         errors={errors}
