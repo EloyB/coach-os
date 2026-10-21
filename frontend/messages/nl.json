@@ -824,7 +824,7 @@
     "dayDialogSaveHint": "Wijzigingen worden pas bewaard met Opslaan onderaan de kaart.",
     "weekPrevious": "Vorige week",
     "weekNext": "Volgende week",
-    "weekRange": "{from} – {to}",
+    "weekOf": "Week {current} van {total}",
     "daysDescription": "Klik op een kampdag om de kampuren en de trainers in te stellen.",
     "daysSaved": "Dagen en trainers opgeslagen.",
     "cancel": "Annuleren",
