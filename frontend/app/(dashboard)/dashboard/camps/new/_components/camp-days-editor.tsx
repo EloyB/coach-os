@@ -218,7 +218,7 @@ export function CampDaysEditor({
                       type="button"
                       onClick={() => setOpenDate(date)}
                       aria-label={formatDayHeading(date)}
-                      className="absolute inset-x-px z-10 flex flex-col items-start justify-start overflow-hidden rounded-r-md border-l-[3px] border-tennis-green bg-tennis-green/10 px-1.5 py-1 text-left transition-all hover:shadow-md hover:brightness-95"
+                      className="absolute inset-x-px z-10 cursor-pointer flex flex-col items-start justify-start overflow-hidden rounded-r-md border-l-[3px] border-tennis-green bg-tennis-green/10 px-1.5 py-1 text-left transition-all hover:shadow-md hover:brightness-95"
                       style={{ top: pos.top, height: pos.height }}
                     >
                       <div className="text-[11px] font-semibold text-tennis-green">
