@@ -17,6 +17,11 @@ interface CampDaysEditorProps {
   days: CampDayDraft[];
   onChange: (days: CampDayDraft[]) => void;
   trainers: TrainerDto[];
+  /**
+   * Bewaart de dagen vanuit de dag-dialog en geeft foutmeldingen terug (leeg = gelukt).
+   * Zonder deze prop past de dialog de wijzigingen enkel lokaal toe.
+   */
+  onSaveDays?: (days: CampDayDraft[]) => Promise<string[]>;
   /** Optionele voettekst onderaan de kaart (bv. een opslaan-balk die in beeld blijft plakken). */
   footer?: React.ReactNode;
 }
@@ -36,6 +41,7 @@ export function CampDaysEditor({
   days,
   onChange,
   trainers,
+  onSaveDays,
   footer,
 }: CampDaysEditorProps) {
   const t = useTranslations("camps");
@@ -245,9 +251,18 @@ export function CampDaysEditor({
           key={openDay.date}
           day={openDay}
           trainers={trainers}
-          onChange={(updated) =>
-            onChange(days.map((d) => (d.date === updated.date ? updated : d)))
-          }
+          saveLabel={onSaveDays ? t("save") : t("dayDialogApply")}
+          onSave={async (updated) => {
+            const next = days.map((d) =>
+              d.date === updated.date ? updated : d,
+            );
+            const errors = onSaveDays ? await onSaveDays(next) : [];
+            if (errors.length === 0) {
+              onChange(next);
+              setOpenDate(null);
+            }
+            return errors;
+          }}
           onClose={() => setOpenDate(null)}
         />
       )}

@@ -821,7 +821,7 @@
     "fieldIsActiveHint": "Concepten zijn niet zichtbaar voor inschrijvers.",
     "daysTitle": "Dagen & trainers",
     "dayDialogDescription": "Stel de kampuren in en kies welke trainers die dag werken.",
-    "dayDialogSaveHint": "Wijzigingen worden pas bewaard met Opslaan onderaan de kaart.",
+    "dayDialogApply": "Toepassen",
     "weekPrevious": "Vorige week",
     "weekNext": "Volgende week",
     "trainersPresent": "{count, plural, =0 {Geen trainers} one {# trainer aanwezig} other {# trainers aanwezig}}",

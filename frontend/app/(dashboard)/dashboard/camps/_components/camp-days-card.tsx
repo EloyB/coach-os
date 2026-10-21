@@ -40,7 +40,7 @@ export function CampDaysCard({ camp }: CampDaysCardProps) {
   const hasOverlap = hasOverlappingShifts(days);
 
   const mutation = useMutation({
-    mutationFn: () =>
+    mutationFn: (daysToSave: CampDayDraft[]) =>
       updateCamp(camp.id, {
         ...buildCampRequest(
           {
@@ -55,7 +55,7 @@ export function CampDaysCard({ camp }: CampDaysCardProps) {
             registrationDeadline: toDateOnly(camp.registrationDeadline),
             prices: detailToPrices(camp),
           },
-          days,
+          daysToSave,
         ),
         prices: undefined,
         isActive: camp.isActive,
@@ -74,7 +74,20 @@ export function CampDaysCard({ camp }: CampDaysCardProps) {
   function handleSave() {
     setErrorMessages([]);
     setSavedOk(false);
-    mutation.mutate();
+    mutation.mutate(days);
+  }
+
+  /** Opslaan vanuit de dag-dialog: geeft foutmeldingen terug (leeg = gelukt). */
+  async function saveDays(next: CampDayDraft[]): Promise<string[]> {
+    setErrorMessages([]);
+    setSavedOk(false);
+    try {
+      await mutation.mutateAsync(next);
+      setDays(next);
+      return [];
+    } catch (error) {
+      return getAxiosErrorMessages(error, t("saveError"));
+    }
   }
 
   function handleReset() {
@@ -146,6 +159,7 @@ export function CampDaysCard({ camp }: CampDaysCardProps) {
         setDays(next);
       }}
       trainers={assignableTrainers}
+      onSaveDays={saveDays}
       footer={footer}
     />
   );

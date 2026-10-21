@@ -57,19 +57,27 @@ function formatHours(hours: number): string {
 interface CampDayDialogProps {
   day: CampDayDraft;
   trainers: TrainerDto[];
-  onChange: (day: CampDayDraft) => void;
+  saveLabel: string;
+  /** Bewaart de bewerkte dag; geeft foutmeldingen terug (leeg = gelukt). */
+  onSave: (day: CampDayDraft) => Promise<string[]>;
   onClose: () => void;
 }
 
 /** Dialog om de kampuren en de trainers (met hun shiften) van één kampdag in te stellen. */
 export function CampDayDialog({
-  day,
+  day: initialDay,
   trainers,
-  onChange,
+  saveLabel,
+  onSave,
   onClose,
 }: CampDayDialogProps) {
   const t = useTranslations("camps");
   const assignable = trainers.filter(isAssignableTrainer);
+  // Werkkopie: wijzigingen gaan pas naar het kamp met de opslaan-knop in de footer.
+  const [day, setDay] = useState(initialDay);
+  const onChange = setDay;
+  const [saving, setSaving] = useState(false);
+  const [saveErrors, setSaveErrors] = useState<string[]>([]);
   const [editingShift, setEditingShift] = useState<number | null>(null);
   const [form, setForm] = useState({
     trainerId: "",
@@ -416,7 +424,43 @@ export function CampDayDialog({
             )}
           </div>
 
-          <p className="text-[11px] text-gray-400">{t("dayDialogSaveHint")}</p>
+          {saveErrors.length > 0 && (
+            <div className="space-y-0.5 text-xs text-red-600">
+              {saveErrors.map((msg, i) => (
+                <p key={i}>{msg}</p>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center justify-between gap-3 border-t border-gray-100 px-6 py-3">
+          <p className="text-xs font-medium text-red-600">
+            {overlapping.size > 0 ? t("shiftsOverlapBlock") : ""}
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={saving}
+              className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+            >
+              {t("cancel")}
+            </button>
+            <button
+              type="button"
+              disabled={saving || overlapping.size > 0}
+              onClick={async () => {
+                setSaving(true);
+                setSaveErrors([]);
+                const errors = await onSave(day);
+                setSaving(false);
+                setSaveErrors(errors);
+              }}
+              className="rounded-lg bg-tennis-green px-5 py-2 text-sm font-semibold text-white hover:bg-tennis-green/90 disabled:opacity-60"
+            >
+              {saving ? t("saving") : saveLabel}
+            </button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
