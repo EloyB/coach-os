@@ -6,9 +6,7 @@ import { ChevronLeft, ChevronRight, Clock } from "lucide-react";
 import {
   CalendarGrid,
   getSlotPosition,
-  getTrainerColor,
   parseTime,
-  type CalendarSlot,
 } from "@/components/calendar/calendar-grid";
 import type { TrainerDto } from "@/lib/api/trainers";
 import { formatDateShort } from "@/lib/date-utils";
@@ -98,26 +96,6 @@ export function CampDaysEditor({
         return toIso(d);
       })
     : [];
-
-  // Elke shift is een blok in het raster; de kampuren van een dag staan als achtergrond.
-  const slots: CalendarSlot[] = weekDates.flatMap((date, dayOfWeek) => {
-    const day = dayByDate.get(date);
-    if (!day) return [];
-    return day.trainers.map((tr, index) => ({
-      id: `${date}:${index}`,
-      dayOfWeek,
-      startTime: tr.startTime,
-      endTime: tr.endTime,
-      trainerId: tr.trainerId,
-      trainerName: trainerName(day, tr.trainerId),
-    }));
-  });
-
-  const legendTrainerIds = [
-    ...new Set(days.flatMap((d) => d.trainers.map((tr) => tr.trainerId))),
-  ];
-  const firstDayWithTrainer = (id: string) =>
-    days.find((d) => d.trainers.some((tr) => tr.trainerId === id));
 
   const rangeLabel = monday
     ? `${formatDateShort(weekDates[0])} – ${formatDateShort(weekDates[6])}`
@@ -214,12 +192,11 @@ export function CampDaysEditor({
             {/* Desktop: kalender-raster, klik een kampdag of shift om de trainers in te stellen */}
             <div className="hidden sm:block">
               <CalendarGrid
-                slots={slots}
+                slots={[]}
                 readOnly
                 dayDates={weekDates.map(formatDateShort)}
                 startHour={calStartHour}
                 endHour={calEndHour}
-                onSlotClick={(slot) => setOpenDate(slot.id.split(":")[0])}
                 renderDayOverlay={(dayIndex) => {
                   const date = weekDates[dayIndex];
                   const day = dayByDate.get(date);
@@ -234,44 +211,29 @@ export function CampDaysEditor({
                     },
                     calStartHour,
                   );
+                  const count = new Set(day.trainers.map((tr) => tr.trainerId))
+                    .size;
                   return (
                     <button
                       type="button"
                       onClick={() => setOpenDate(date)}
                       aria-label={formatDayHeading(date)}
-                      className="absolute inset-x-0 border-y border-tennis-green/25 bg-tennis-green/5 text-left transition-colors hover:bg-tennis-green/10"
-                      style={{ top: pos.top, height: pos.height + 2 }}
+                      className="absolute inset-x-px z-10 overflow-hidden rounded-r-md border-l-[3px] border-tennis-green bg-tennis-green/10 px-1.5 py-1 text-left transition-all hover:shadow-md hover:brightness-95"
+                      style={{ top: pos.top, height: pos.height }}
                     >
-                      {day.trainers.length === 0 && (
-                        <span className="block px-2 pt-1 text-[10px] text-gray-400">
-                          {t("noTrainersOnDay")}
-                        </span>
-                      )}
+                      <div className="text-[11px] font-semibold text-tennis-green">
+                        {day.startTime} — {day.endTime}
+                      </div>
+                      <div
+                        className={`text-[10px] ${count === 0 ? "italic text-gray-400" : "text-ink-2"}`}
+                      >
+                        {t("trainersPresent", { count })}
+                      </div>
                     </button>
                   );
                 }}
               />
             </div>
-
-            {legendTrainerIds.length > 0 && (
-              <div className="mt-3 flex flex-wrap items-center gap-4 px-1">
-                {legendTrainerIds.map((id) => {
-                  const day = firstDayWithTrainer(id);
-                  return (
-                    <div
-                      key={id}
-                      className="flex items-center gap-1.5 text-xs text-gray-500"
-                    >
-                      <div
-                        className="h-3 w-3 rounded-full"
-                        style={{ backgroundColor: getTrainerColor(id).border }}
-                      />
-                      {day ? trainerName(day, id) : id}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
           </>
         )}
       </div>
