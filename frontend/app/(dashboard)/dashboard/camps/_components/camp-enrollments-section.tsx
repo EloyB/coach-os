@@ -9,7 +9,6 @@ import {
   ChevronDown,
   ChevronRight,
   Copy,
-  Download,
   Euro,
   Eye,
   MoreVertical,
@@ -38,14 +37,12 @@ import {
 import {
   cancelCampEnrollment,
   cancelCampEnrollmentGroup,
-  exportCamp,
   getCampEnrollments,
   markCampEnrollmentCashPaid,
   type CampEnrollmentDto,
 } from "@/lib/api/camps";
 import { enrollmentDisplayStatus } from "@/lib/status-styles";
 import { getAxiosErrorMessages } from "@/lib/utils/api-errors";
-import { downloadBlob } from "@/lib/download";
 import { canEditEnrollment, isEnrollmentManager } from "@/lib/auth";
 import { CampAddMemberDialog } from "./camp-add-member-dialog";
 import { CampEditEnrollmentDialog } from "./camp-edit-enrollment-dialog";
@@ -1153,13 +1150,7 @@ function EnrollmentsTable({
 
 // ─── Sectie (fetch + kop + tabel) ────────────────────────────────────────────
 
-export function CampEnrollmentsSection({
-  campId,
-  campName,
-}: {
-  campId: string;
-  campName: string;
-}) {
+export function CampEnrollmentsSection({ campId }: { campId: string }) {
   const t = useTranslations("campEnrollmentsTable");
   const [copied, setCopied] = useState(false);
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
@@ -1169,17 +1160,6 @@ export function CampEnrollmentsSection({
   const { data: enrollments = [], isLoading } = useQuery({
     queryKey: ["campEnrollments", campId],
     queryFn: () => getCampEnrollments(campId),
-  });
-
-  const exportMutation = useMutation({
-    mutationFn: () => exportCamp(campId),
-    onSuccess: (blob) => {
-      downloadBlob(blob, `${campName}-kamp.xlsx`);
-      toast.success(t("exportSuccess"));
-    },
-    onError: () => {
-      toast.error(t("exportError"));
-    },
   });
 
   const activeCount = enrollments.filter(
@@ -1219,15 +1199,6 @@ export function CampEnrollmentsSection({
               {t("manualAdd")}
             </button>
           )}
-          <button
-            type="button"
-            onClick={() => exportMutation.mutate()}
-            disabled={exportMutation.isPending}
-            className="hidden items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 sm:flex"
-          >
-            <Download size={12} />
-            {exportMutation.isPending ? t("exporting") : t("exportAction")}
-          </button>
           <button
             type="button"
             onClick={handleCopyLink}
@@ -1271,18 +1242,6 @@ export function CampEnrollmentsSection({
                   {t("manualAdd")}
                 </button>
               )}
-              <button
-                type="button"
-                disabled={exportMutation.isPending}
-                onClick={() => {
-                  setHeaderMenuOpen(false);
-                  exportMutation.mutate();
-                }}
-                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-              >
-                <Download size={14} />
-                {exportMutation.isPending ? t("exporting") : t("exportAction")}
-              </button>
               <button
                 type="button"
                 onClick={handleCopyLink}
