@@ -379,6 +379,12 @@ public class CampService(
         if (request.CampPriceId is { } priceId && camp.Prices.All(p => p.Id != priceId))
             return Result<Guid>.Fail(new Error(ErrorCodes.NotFound, "Prijsoptie niet gevonden."));
 
+        // Een groep zonder betaling (bevestigd, gratis) kan geen lid met een betaald tarief krijgen.
+        if (payment is null && leader.Status == EnrollmentStatus.Confirmed
+            && CampPricing.UnitPrice(camp, new CampEnrollment { CampPriceId = request.CampPriceId }) > 0m)
+            return Result<Guid>.Fail(new Error(ErrorCodes.Conflict,
+                "Deze groep is bevestigd zonder betaling; een lid met een betaald tarief kan niet toegevoegd worden."));
+
         string email = request.ParticipantEmail.Trim();
 
         await unitOfWork.BeginTransactionAsync(IsolationLevel.Serializable, ct);
@@ -520,10 +526,22 @@ public class CampService(
             return new Error(ErrorCodes.Conflict,
                 "De betaling is al betaald of loopt online; het tarief kan niet meer gewijzigd worden.");
 
+        // Een bevestigde inschrijving zonder betaling (gratis) kan geen betaald tarief krijgen: er zou
+        // niets te betalen of te registreren zijn terwijl de deelnemer bevestigd blijft.
+        CampEnrollment payer = group?.Members.FirstOrDefault(m => m.Id == payerId) ?? enrollment;
+        Guid? previousPriceId = enrollment.CampPriceId;
         enrollment.CampPriceId = newPriceId;
+        IEnumerable<CampEnrollment> participants = group?.Members ?? [enrollment];
+        if (payment is null && payer.Status == EnrollmentStatus.Confirmed
+            && CampPricing.Total(camp, participants) > 0m)
+        {
+            enrollment.CampPriceId = previousPriceId;
+            return new Error(ErrorCodes.Conflict,
+                "Deze inschrijving is bevestigd zonder betaling; een betaald tarief kan niet meer gekozen worden.");
+        }
 
         if (payment is not null && payment.Status == PaymentStatus.Pending && payment.Method == PaymentMethod.Cash)
-            payment.Amount = CampPricing.Total(camp, group?.Members ?? [enrollment]);
+            payment.Amount = CampPricing.Total(camp, participants);
         return null;
     }
 

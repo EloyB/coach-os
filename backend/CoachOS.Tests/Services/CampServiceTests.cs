@@ -582,6 +582,42 @@ public class CampServiceTests
     }
 
     [Test]
+    public async Task UpdateEnrollmentAsync_ConfirmedWithoutPayment_PaidOption_ReturnsConflict()
+    {
+        (Guid campId, CampEnrollment e) = ArrangeEditable(Domain.Enums.EnrollmentStatus.Confirmed);
+        CampPrice paid = new() { Id = Guid.NewGuid(), Label = "Leden", Amount = 90m };
+        _camps.Setup(r => r.GetByIdWithDetailsAsync(campId, _orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Camp { Id = campId, OrganizationId = _orgId, Price = 0m, Prices = { paid } });
+
+        Result result = await _sut.UpdateEnrollmentAsync(
+            campId, e.Id, _orgId, UpdateRequest() with { CampPriceId = paid.Id });
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.Conflict);
+        e.CampPriceId.Should().BeNull();
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task AddGroupMemberAsync_ConfirmedGroupWithoutPayment_PaidOption_ReturnsConflict()
+    {
+        Camp camp = ArrangeCampWithGroup(out CampEnrollmentGroup group, out CampEnrollment leader, out _, price: 0m);
+        leader.Status = Domain.Enums.EnrollmentStatus.Confirmed;
+        CampPrice paid = new() { Id = Guid.NewGuid(), Label = "Leden", Amount = 90m };
+        camp.Prices.Add(paid);
+
+        Result<Guid> result = await _sut.AddGroupMemberAsync(camp.Id, group.Id, _orgId,
+            new AddCampGroupMemberRequest
+            {
+                ParticipantName = "Lisa", ParticipantEmail = "lisa@test.com", CampPriceId = paid.Id,
+            });
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.Conflict);
+        _enrollments.Verify(r => r.AddAsync(It.IsAny<CampEnrollment>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
     public async Task UpdateEnrollmentAsync_WrongCamp_ReturnsNotFound()
     {
         (Guid campId, CampEnrollment e) = ArrangeEditable();
