@@ -14,7 +14,8 @@ public record EnrollmentUnit(
     List<string> StudentNames,
     int Size,
     bool IsOpenToGrouping,
-    Dictionary<Guid, SlotPreference> Preferences);
+    Dictionary<Guid, SlotPreference> Preferences,
+    string? AgeCategory = null);
 
 public record SlotInfo(
     Guid WeeklyTemplateEntryId,
