@@ -14,4 +14,5 @@ public record CreateCampRequest(
     string EndDate,
     DateTime RegistrationDeadline,
     int? MaxParticipants,
-    List<CreateCampDayRequest> Days);
+    List<CreateCampDayRequest> Days,
+    List<SaveCampPriceRequest>? Prices = null);

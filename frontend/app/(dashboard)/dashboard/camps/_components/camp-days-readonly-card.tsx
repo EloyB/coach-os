@@ -5,6 +5,27 @@ import { Clock } from "lucide-react";
 import { formatDayHeading } from "../new/_types";
 import type { CampDetailDto } from "@/lib/api/camps";
 
+/** Groepeert de shiften per trainer (een trainer kan meerdere shiften op één dag hebben). */
+function groupShifts(trainers: CampDetailDto["days"][number]["trainers"]) {
+  const groups = new Map<
+    string,
+    { trainerId: string; trainerName: string; shifts: { startTime: string; endTime: string }[] }
+  >();
+  for (const tr of trainers) {
+    const group = groups.get(tr.trainerId) ?? {
+      trainerId: tr.trainerId,
+      trainerName: tr.trainerName,
+      shifts: [],
+    };
+    group.shifts.push({ startTime: tr.startTime, endTime: tr.endTime });
+    groups.set(tr.trainerId, group);
+  }
+  return [...groups.values()].map((g) => ({
+    ...g,
+    shifts: g.shifts.sort((a, b) => a.startTime.localeCompare(b.startTime)),
+  }));
+}
+
 interface CampDaysReadOnlyCardProps {
   camp: CampDetailDto;
 }
@@ -58,16 +79,18 @@ export function CampDaysReadOnlyCard({ camp }: CampDaysReadOnlyCardProps) {
               </p>
             ) : (
               <div className="space-y-1.5">
-                {day.trainers.map((tr) => (
+                {groupShifts(day.trainers).map((group) => (
                   <div
-                    key={tr.trainerId}
+                    key={group.trainerId}
                     className="flex items-center justify-between gap-3"
                   >
                     <span className="text-[13px] font-semibold text-gray-900">
-                      {tr.trainerName}
+                      {group.trainerName}
                     </span>
                     <span className="text-xs text-gray-500 tabular-nums">
-                      {tr.startTime}-{tr.endTime}
+                      {group.shifts
+                        .map((s) => `${s.startTime}-${s.endTime}`)
+                        .join(" · ")}
                     </span>
                   </div>
                 ))}

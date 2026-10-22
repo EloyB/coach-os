@@ -39,6 +39,11 @@ public class CampServiceTests
         _payments = new Mock<IPaymentRepository>();
         _paymentService = new Mock<IPaymentService>();
         _unitOfWork = new Mock<IUnitOfWork>();
+        // Standaard bestaat elk gevraagd kamp (zonder prijsopties); tests overschrijven dit waar nodig.
+        _camps.Setup(r => r.GetByIdWithDetailsAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid id, Guid org, CancellationToken _) => new Camp { Id = id, OrganizationId = org });
+        _enrollments.Setup(r => r.GetByCampWithResponsesAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
         _sut = new CampService(_camps.Object, _enrollments.Object, _forms.Object, _clubs.Object,
             _users.Object, _payments.Object,
             _unitOfWork.Object, _paymentService.Object);
@@ -577,6 +582,42 @@ public class CampServiceTests
     }
 
     [Test]
+    public async Task UpdateEnrollmentAsync_ConfirmedWithoutPayment_PaidOption_ReturnsConflict()
+    {
+        (Guid campId, CampEnrollment e) = ArrangeEditable(Domain.Enums.EnrollmentStatus.Confirmed);
+        CampPrice paid = new() { Id = Guid.NewGuid(), Label = "Leden", Amount = 90m };
+        _camps.Setup(r => r.GetByIdWithDetailsAsync(campId, _orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Camp { Id = campId, OrganizationId = _orgId, Price = 0m, Prices = { paid } });
+
+        Result result = await _sut.UpdateEnrollmentAsync(
+            campId, e.Id, _orgId, UpdateRequest() with { CampPriceId = paid.Id });
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.Conflict);
+        e.CampPriceId.Should().BeNull();
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task AddGroupMemberAsync_ConfirmedGroupWithoutPayment_PaidOption_ReturnsConflict()
+    {
+        Camp camp = ArrangeCampWithGroup(out CampEnrollmentGroup group, out CampEnrollment leader, out _, price: 0m);
+        leader.Status = Domain.Enums.EnrollmentStatus.Confirmed;
+        CampPrice paid = new() { Id = Guid.NewGuid(), Label = "Leden", Amount = 90m };
+        camp.Prices.Add(paid);
+
+        Result<Guid> result = await _sut.AddGroupMemberAsync(camp.Id, group.Id, _orgId,
+            new AddCampGroupMemberRequest
+            {
+                ParticipantName = "Lisa", ParticipantEmail = "lisa@test.com", CampPriceId = paid.Id,
+            });
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.Conflict);
+        _enrollments.Verify(r => r.AddAsync(It.IsAny<CampEnrollment>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
     public async Task UpdateEnrollmentAsync_WrongCamp_ReturnsNotFound()
     {
         (Guid campId, CampEnrollment e) = ArrangeEditable();
@@ -717,5 +758,257 @@ public class CampServiceTests
 
         result.IsSuccess.Should().BeFalse();
         result.Errors[0].Code.Should().Be(ErrorCodes.Validation);
+    }
+
+    // ── Prijsopties ──────────────────────────────────────────────────────────
+
+    private UpdateCampRequest UpdateWithPrices(List<SaveCampPriceRequest> prices) => new(
+        "Kamp", null, _clubId, null, 100m, "2026-05-01", "2026-05-01",
+        new DateTime(2026, 4, 20, 0, 0, 0, DateTimeKind.Utc), 25, true,
+        new List<CreateCampDayRequest> { new("2026-05-01", "10:00", "15:00", new List<CreateCampDayTrainerRequest>()) },
+        prices);
+
+    [Test]
+    public async Task CreateAsync_WithPrices_StoresThemInOrder()
+    {
+        Happy();
+        CreateCampRequest request = Request() with
+        {
+            Prices = [new(null, "Leden", "Voor leden", 90m), new(null, "Niet-leden", null, 120m)],
+        };
+
+        Result<Guid> result = await _sut.CreateAsync(_orgId, request, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        _camps.Verify(r => r.AddAsync(
+            It.Is<Camp>(c => c.Prices.Count == 2
+                && c.Prices.Single(p => p.Label == "Leden").SortOrder == 0
+                && c.Prices.Single(p => p.Label == "Niet-leden").SortOrder == 1
+                && c.Prices.All(p => p.OrganizationId == _orgId)),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task UpdateAsync_Prices_UpdatesAddsAndRemoves()
+    {
+        Happy();
+        Guid campId = Guid.NewGuid();
+        CampPrice keep = new() { Id = Guid.NewGuid(), Label = "Oud", Amount = 80m, SortOrder = 0 };
+        CampPrice drop = new() { Id = Guid.NewGuid(), Label = "Weg", Amount = 70m, SortOrder = 1 };
+        Camp existing = new()
+        {
+            Id = campId, OrganizationId = _orgId, TennisClubId = _clubId,
+            StartDate = new DateOnly(2026, 5, 1), EndDate = new DateOnly(2026, 5, 1),
+            Prices = { keep, drop },
+        };
+        _camps.Setup(r => r.GetByIdWithDetailsAsync(campId, _orgId, It.IsAny<CancellationToken>())).ReturnsAsync(existing);
+
+        Result result = await _sut.UpdateAsync(campId, _orgId, UpdateWithPrices(
+            [new(null, "Nieuw", "Uitleg", 60m), new(keep.Id, "  Leden ", null, 85m)]), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        existing.Prices.Should().HaveCount(2);
+        keep.Label.Should().Be("Leden");
+        keep.Amount.Should().Be(85m);
+        keep.SortOrder.Should().Be(1);
+        existing.Prices.Single(p => p.Label == "Nieuw").SortOrder.Should().Be(0);
+        _camps.Verify(r => r.RemovePrices(It.Is<IEnumerable<CampPrice>>(x => x.Single().Id == drop.Id)), Times.Once);
+    }
+
+    [Test]
+    public async Task UpdateAsync_MainPriceChanged_RecalculatesPendingCashPayment()
+    {
+        Happy();
+        Guid campId = Guid.NewGuid();
+        Camp existing = new()
+        {
+            Id = campId, OrganizationId = _orgId, TennisClubId = _clubId, Price = 80m,
+            StartDate = new DateOnly(2026, 5, 1), EndDate = new DateOnly(2026, 5, 1),
+        };
+        CampEnrollment solo = new() { Id = Guid.NewGuid(), CampId = campId, Status = Domain.Enums.EnrollmentStatus.Confirmed };
+        Payment pending = new() { Amount = 80m, Status = Domain.Enums.PaymentStatus.Pending, Method = Domain.Enums.PaymentMethod.Cash };
+        _camps.Setup(r => r.GetByIdWithDetailsAsync(campId, _orgId, It.IsAny<CancellationToken>())).ReturnsAsync(existing);
+        _enrollments.Setup(r => r.GetByCampWithResponsesAsync(campId, _orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([solo]);
+        _payments.Setup(p => p.GetLatestTrackedByCampEnrollmentIdAsync(solo.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pending);
+
+        Result result = await _sut.UpdateAsync(campId, _orgId, UpdateWithPrices([]), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        pending.Amount.Should().Be(100m);
+    }
+
+    [Test]
+    public async Task UpdateAsync_RemovingPriceInUse_ReturnsConflict()
+    {
+        Happy();
+        Guid campId = Guid.NewGuid();
+        CampPrice inUse = new() { Id = Guid.NewGuid(), Label = "Leden", Amount = 80m };
+        Camp existing = new()
+        {
+            Id = campId, OrganizationId = _orgId, TennisClubId = _clubId,
+            StartDate = new DateOnly(2026, 5, 1), EndDate = new DateOnly(2026, 5, 1),
+            Prices = { inUse },
+        };
+        _camps.Setup(r => r.GetByIdWithDetailsAsync(campId, _orgId, It.IsAny<CancellationToken>())).ReturnsAsync(existing);
+        _enrollments.Setup(r => r.AnyUsingPricesAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        Result result = await _sut.UpdateAsync(campId, _orgId, UpdateWithPrices([]), CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.Conflict);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task UpdateAsync_NullPrices_LeavesExistingPricesUntouched()
+    {
+        Happy();
+        Guid campId = Guid.NewGuid();
+        Camp existing = new()
+        {
+            Id = campId, OrganizationId = _orgId, TennisClubId = _clubId,
+            StartDate = new DateOnly(2026, 5, 1), EndDate = new DateOnly(2026, 5, 1),
+            Prices = { new CampPrice { Id = Guid.NewGuid(), Label = "Leden", Amount = 80m } },
+        };
+        _camps.Setup(r => r.GetByIdWithDetailsAsync(campId, _orgId, It.IsAny<CancellationToken>())).ReturnsAsync(existing);
+
+        Result result = await _sut.UpdateAsync(campId, _orgId, UpdateWithPrices([]) with { Prices = null }, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        existing.Prices.Should().HaveCount(1);
+    }
+
+    private (Camp Camp, CampPrice Option, CampEnrollment Enrollment) ArrangeSoloWithOption()
+    {
+        Camp camp = new() { Id = Guid.NewGuid(), OrganizationId = _orgId, Name = "Kamp", Price = 100m };
+        CampPrice option = new() { Id = Guid.NewGuid(), CampId = camp.Id, Label = "Leden", Amount = 80m };
+        camp.Prices.Add(option);
+        CampEnrollment e = new()
+        {
+            Id = Guid.NewGuid(), OrganizationId = _orgId, CampId = camp.Id,
+            ParticipantName = "Emma", ParticipantEmail = "emma@test.com",
+            Status = Domain.Enums.EnrollmentStatus.PendingPayment,
+        };
+        _camps.Setup(r => r.GetByIdWithDetailsAsync(camp.Id, _orgId, It.IsAny<CancellationToken>())).ReturnsAsync(camp);
+        _enrollments.Setup(r => r.GetByIdWithResponsesAsync(e.Id, _orgId, It.IsAny<CancellationToken>())).ReturnsAsync(e);
+        return (camp, option, e);
+    }
+
+    [Test]
+    public async Task UpdateEnrollmentAsync_ChoosingPrice_SetsPriceAndUpdatesPendingCashAmount()
+    {
+        (Camp camp, CampPrice option, CampEnrollment e) = ArrangeSoloWithOption();
+        Payment cash = new()
+        {
+            Status = Domain.Enums.PaymentStatus.Pending, Method = Domain.Enums.PaymentMethod.Cash, Amount = 100m,
+        };
+        _payments.Setup(p => p.GetLatestTrackedByCampEnrollmentIdAsync(e.Id, It.IsAny<CancellationToken>())).ReturnsAsync(cash);
+
+        UpdateCampEnrollmentRequest request = UpdateRequest() with { CampPriceId = option.Id };
+        Result result = await _sut.UpdateEnrollmentAsync(camp.Id, e.Id, _orgId, request);
+
+        result.IsSuccess.Should().BeTrue();
+        e.CampPriceId.Should().Be(option.Id);
+        cash.Amount.Should().Be(80m);
+    }
+
+    [Test]
+    public async Task UpdateEnrollmentAsync_BackToMainPrice_RestoresMainAmount()
+    {
+        (Camp camp, CampPrice option, CampEnrollment e) = ArrangeSoloWithOption();
+        e.CampPriceId = option.Id;
+        Payment cash = new()
+        {
+            Status = Domain.Enums.PaymentStatus.Pending, Method = Domain.Enums.PaymentMethod.Cash, Amount = 80m,
+        };
+        _payments.Setup(p => p.GetLatestTrackedByCampEnrollmentIdAsync(e.Id, It.IsAny<CancellationToken>())).ReturnsAsync(cash);
+
+        Result result = await _sut.UpdateEnrollmentAsync(camp.Id, e.Id, _orgId, UpdateRequest());
+
+        result.IsSuccess.Should().BeTrue();
+        e.CampPriceId.Should().BeNull();
+        cash.Amount.Should().Be(100m);
+    }
+
+    [Test]
+    public async Task UpdateEnrollmentAsync_UnknownPrice_ReturnsNotFound()
+    {
+        (Camp camp, _, CampEnrollment e) = ArrangeSoloWithOption();
+
+        Result result = await _sut.UpdateEnrollmentAsync(
+            camp.Id, e.Id, _orgId, UpdateRequest() with { CampPriceId = Guid.NewGuid() });
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.NotFound);
+        e.CampPriceId.Should().BeNull();
+    }
+
+    [Test]
+    public async Task UpdateEnrollmentAsync_ChangingPriceAfterPayment_ReturnsConflict()
+    {
+        (Camp camp, CampPrice option, CampEnrollment e) = ArrangeSoloWithOption();
+        _payments.Setup(p => p.GetLatestTrackedByCampEnrollmentIdAsync(e.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Payment { Status = Domain.Enums.PaymentStatus.Paid, Method = Domain.Enums.PaymentMethod.Cash, Amount = 100m });
+
+        Result result = await _sut.UpdateEnrollmentAsync(
+            camp.Id, e.Id, _orgId, UpdateRequest() with { CampPriceId = option.Id });
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.Conflict);
+        e.CampPriceId.Should().BeNull();
+    }
+
+    [Test]
+    public async Task UpdateEnrollmentAsync_GroupMemberPrice_UpdatesLeadersPendingCashSum()
+    {
+        Camp camp = ArrangeCampWithGroup(out CampEnrollmentGroup group, out CampEnrollment leader, out CampEnrollment member, price: 100m);
+        CampPrice option = new() { Id = Guid.NewGuid(), CampId = camp.Id, Label = "Tweede kind", Amount = 70m };
+        camp.Prices.Add(option);
+        _enrollments.Setup(r => r.GetByIdWithResponsesAsync(member.Id, _orgId, It.IsAny<CancellationToken>())).ReturnsAsync(member);
+        Payment cash = new()
+        {
+            Status = Domain.Enums.PaymentStatus.Pending, Method = Domain.Enums.PaymentMethod.Cash, Amount = 200m,
+        };
+        _payments.Setup(p => p.GetLatestTrackedByCampEnrollmentIdAsync(leader.Id, It.IsAny<CancellationToken>())).ReturnsAsync(cash);
+
+        Result result = await _sut.UpdateEnrollmentAsync(
+            camp.Id, member.Id, _orgId, UpdateRequest() with { CampPriceId = option.Id });
+
+        result.IsSuccess.Should().BeTrue();
+        cash.Amount.Should().Be(170m); // leider 100 + lid 70
+    }
+
+    [Test]
+    public async Task AddGroupMemberAsync_WithPrice_UsesThatPriceInGroupAmount()
+    {
+        Camp camp = ArrangeCampWithGroup(out CampEnrollmentGroup group, out CampEnrollment leader, out _, price: 100m);
+        CampPrice option = new() { Id = Guid.NewGuid(), CampId = camp.Id, Label = "Tweede kind", Amount = 70m };
+        camp.Prices.Add(option);
+        Payment cash = new()
+        {
+            Status = Domain.Enums.PaymentStatus.Pending, Method = Domain.Enums.PaymentMethod.Cash, Amount = 200m,
+        };
+        _payments.Setup(p => p.GetLatestTrackedByCampEnrollmentIdAsync(leader.Id, It.IsAny<CancellationToken>())).ReturnsAsync(cash);
+
+        Result<Guid> result = await _sut.AddGroupMemberAsync(
+            camp.Id, group.Id, _orgId, MemberRequest() with { CampPriceId = option.Id });
+
+        result.IsSuccess.Should().BeTrue();
+        cash.Amount.Should().Be(270m); // 2 bestaande leden x 100 + nieuw lid 70
+    }
+
+    [Test]
+    public async Task AddGroupMemberAsync_UnknownPrice_ReturnsNotFound()
+    {
+        Camp camp = ArrangeCampWithGroup(out CampEnrollmentGroup group, out _, out _);
+
+        Result<Guid> result = await _sut.AddGroupMemberAsync(
+            camp.Id, group.Id, _orgId, MemberRequest() with { CampPriceId = Guid.NewGuid() });
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.NotFound);
     }
 }

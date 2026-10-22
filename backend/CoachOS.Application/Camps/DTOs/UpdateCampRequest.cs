@@ -11,4 +11,5 @@ public record UpdateCampRequest(
     DateTime RegistrationDeadline,
     int? MaxParticipants,
     bool IsActive,
-    List<CreateCampDayRequest> Days);
+    List<CreateCampDayRequest> Days,
+    List<SaveCampPriceRequest>? Prices = null);

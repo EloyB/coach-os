@@ -1,4 +1,5 @@
 using CoachOS.Application.Abstractions;
+using CoachOS.Application.Camps;
 using CoachOS.Application.Configuration;
 using CoachOS.Application.MollieConnect;
 using CoachOS.Application.Payments.DTOs;
@@ -207,17 +208,16 @@ public class PaymentService(
                 new Error(ErrorCodes.NotFound, "Kamp niet gevonden."));
         }
 
-        if (camp.Price <= 0m)
+        // Groepsinschrijving = leider + leden; solo = 1. De leider draagt de betaling.
+        // Group.Members bevat ook de leider (de submit-flow zet diens CampEnrollmentGroupId).
+        // Gratis = het gekozen tarief telt op tot 0 (niet enkel de hoofdprijs).
+        decimal amount = CampAmount(camp, enrollment);
+        if (amount <= 0m)
         {
             return Result<CreatePaymentResultDto>.Fail(new Error(
                 ErrorCodes.Validation,
                 "Dit kamp is gratis; online betaling is niet nodig."));
         }
-
-        // Groepsinschrijving = leider + leden; solo = 1. De leider draagt de betaling.
-        // Group.Members includes the leader (the submit flow sets the leader's CampEnrollmentGroupId), so Count = total participants.
-        int participantCount = CountActiveCampParticipants(enrollment);
-        decimal amount = camp.Price * participantCount;
 
         OrganizationSettingsEntity? settings = await orgSettings
             .GetByOrganizationReadOnlyAsync(enrollment.OrganizationId, ct);
@@ -540,15 +540,16 @@ public class PaymentService(
     }
 
     /// <summary>
-    /// Betalende deelnemers: de groep (leider + leden) zonder geannuleerde leden, of 1 voor
-    /// een solo-inschrijving. Een geannuleerd lid mag niet meer meegerekend worden.
+    /// Te betalen bedrag: som van het tarief van alle betalende deelnemers, de groep (leider + leden)
+    /// zonder geannuleerde leden, of de solo-inschrijving zelf. Een geannuleerd lid telt niet meer mee.
     /// </summary>
-    private static int CountActiveCampParticipants(CampEnrollmentEntity enrollment)
+    private static decimal CampAmount(CampEntity camp, CampEnrollmentEntity enrollment)
     {
-        int count = enrollment.CampEnrollmentGroupId.HasValue && enrollment.Group is not null
-            ? enrollment.Group.Members.Count(m => m.Status != EnrollmentStatus.Cancelled)
-            : 1;
-        return Math.Max(count, 1);
+        IEnumerable<CampEnrollmentEntity> participants =
+            enrollment.CampEnrollmentGroupId.HasValue && enrollment.Group is not null
+                ? enrollment.Group.Members
+                : [enrollment];
+        return CampPricing.Total(camp, participants);
     }
 
     public async Task<Result> RecordCampCashPaymentAsync(
@@ -567,13 +568,11 @@ public class PaymentService(
         if (camp is null)
             return Result.Fail(new Error(ErrorCodes.NotFound, "Kamp niet gevonden."));
 
-        if (camp.Price <= 0m)
+        // Zelfde berekening als de online flow: groep = leider + leden, solo = 1.
+        decimal amount = CampAmount(camp, enrollment);
+        if (amount <= 0m)
             return Result.Fail(new Error(
                 ErrorCodes.Validation, "Dit kamp is gratis; een betaling is niet nodig."));
-
-        // Zelfde deelnemertelling als de online flow: groep = leider + leden, solo = 1.
-        int participantCount = CountActiveCampParticipants(enrollment);
-        decimal amount = camp.Price * participantCount;
 
         OrganizationSettingsEntity? settings = await orgSettings
             .GetByOrganizationReadOnlyAsync(enrollment.OrganizationId, ct);
