@@ -87,10 +87,18 @@ public interface IPaymentRepository
         IEnumerable<Guid> campEnrollmentIds, CancellationToken ct = default);
 
     /// <summary>
-    /// Meest recente betaalmethode + status per reeks-inschrijving, in één query
-    /// (vermijdt N+1 in het inschrijvingen-overzicht). Inschrijvingen zonder betaling
-    /// komen niet in de dictionary voor.
+    /// Meest recente payment per kamp-inschrijving, in één query (vermijdt N+1 in het
+    /// admin-overzicht). Volledige rij zodat de admin ook bedrag, betaaldatum en Mollie-ID
+    /// ziet. Inschrijvingen zonder betaling komen niet in de dictionary voor.
     /// </summary>
-    Task<Dictionary<Guid, (PaymentMethod? Method, PaymentStatus Status)>> GetLatestMethodAndStatusByEnrollmentIdsAsync(
+    Task<Dictionary<Guid, Payment>> GetLatestByCampEnrollmentIdsAsync(
+        IEnumerable<Guid> campEnrollmentIds, CancellationToken ct = default);
+
+    /// <summary>
+    /// Meest recente payment per reeks-inschrijving, in één query (vermijdt N+1 in het
+    /// inschrijvingen-overzicht). Volledige rij zodat de admin ook bedrag, betaaldatum en
+    /// Mollie-ID ziet. Inschrijvingen zonder betaling komen niet in de dictionary voor.
+    /// </summary>
+    Task<Dictionary<Guid, Payment>> GetLatestByEnrollmentIdsAsync(
         IEnumerable<Guid> enrollmentIds, CancellationToken ct = default);
 }

@@ -185,20 +185,20 @@ public class CampService(
 
         List<CampEnrollment> rows = await enrollments.GetByCampWithResponsesAsync(campId, organizationId, ct);
 
-        Dictionary<Guid, (PaymentMethod? Method, PaymentStatus Status)> paymentInfo =
-            await payments.GetLatestMethodAndStatusByCampEnrollmentIdsAsync(rows.Select(e => e.Id), ct);
+        Dictionary<Guid, Payment> latestPayments =
+            await payments.GetLatestByCampEnrollmentIdsAsync(rows.Select(e => e.Id), ct);
 
         List<CampEnrollmentDto> dtos = rows.Select(e =>
         {
-            (PaymentMethod? Method, PaymentStatus Status)? info =
-                paymentInfo.TryGetValue(e.Id, out (PaymentMethod? Method, PaymentStatus Status) p) ? p : null;
+            Payment? payment = latestPayments.GetValueOrDefault(e.Id);
             return new CampEnrollmentDto(
                 e.Id, e.ParticipantName, e.ParticipantEmail, e.ParticipantPhone,
                 e.Status.ToString(), e.EnrolledAt, e.Group?.Name,
                 e.CampEnrollmentGroupId, e.Group?.LeaderEnrollmentId == e.Id,
                 e.FormResponses.Select(r => new CampEnrollmentResponseItemDto(
                     r.CampFormFieldId, r.CampFormField?.Label ?? string.Empty, r.Value)).ToList(),
-                info?.Method?.ToString(), info?.Status.ToString());
+                payment?.Method?.ToString(), payment?.Status.ToString(),
+                payment?.Amount, payment?.PaidAt, payment?.MolliePaymentId);
         }).ToList();
         return Result<List<CampEnrollmentDto>>.Ok(dtos);
     }
