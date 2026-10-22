@@ -120,7 +120,7 @@ public class EnrollmentService(
 
         // Eigen betaalmethode + status per inschrijving. Bij per-lid cash-betalingen
         // heeft elk lid een eigen betaling; bij een online-groep enkel de leider.
-        var paymentByEnrollment = await paymentRepo.GetLatestMethodAndStatusByEnrollmentIdsAsync(
+        var paymentByEnrollment = await paymentRepo.GetLatestByEnrollmentIdsAsync(
             enrollments.Select(e => e.Id), ct);
 
         var dtos = enrollments.Select(e => new LessonSerieEnrollmentDto
@@ -147,12 +147,11 @@ public class EnrollmentService(
                 && groupsById.GetValueOrDefault(e.EnrollmentGroupId.Value)?.LeaderEnrollmentId == e.Id,
             IsOpenToGrouping = e.IsOpenToGrouping,
             SelectedPriceOptionId = e.SelectedPriceOptionId,
-            PaymentMethod = paymentByEnrollment.TryGetValue(e.Id, out var pm)
-                ? pm.Method?.ToString()
-                : null,
-            PaymentStatus = paymentByEnrollment.TryGetValue(e.Id, out var ps)
-                ? ps.Status.ToString()
-                : null,
+            PaymentMethod = paymentByEnrollment.GetValueOrDefault(e.Id)?.Method?.ToString(),
+            PaymentStatus = paymentByEnrollment.GetValueOrDefault(e.Id)?.Status.ToString(),
+            PaymentAmount = paymentByEnrollment.GetValueOrDefault(e.Id)?.Amount,
+            PaidAt = paymentByEnrollment.GetValueOrDefault(e.Id)?.PaidAt,
+            MolliePaymentId = paymentByEnrollment.GetValueOrDefault(e.Id)?.MolliePaymentId,
             FormResponses = e.FormResponses
                 .OrderBy(r => r.FormField.Order)
                 .Select(r => new EnrollmentResponseItemDto
