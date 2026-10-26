@@ -139,15 +139,22 @@ public class PaymentService(
             return Result<CreatePaymentResultDto>.Fail(profileResult.Errors);
         }
 
+        // Namen in de Mollie-omschrijving en -metadata, zodat de club in het Mollie-dashboard
+        // ziet voor wie er betaald werd. Betaler eerst, dan de overige leden.
+        string participantNames = JoinParticipantNames(
+            enrollment.StudentName, participants.Where(p => p.Id != enrollment.Id).Select(p => p.StudentName));
+
         string redirectUrl = BuildRedirectUrl(enrollmentId);
         string? webhookUrl = BuildWebhookUrl();
 
         MolliePaymentRequest paymentRequest = new(
             Amount: amount,
             Currency: currency,
-            Description: participantCount > 1
-                ? $"Inschrijving {series.Name} ({participantCount} deelnemers)"
-                : $"Inschrijving {series.Name}",
+            Description: BuildMollieDescription(
+                participantCount > 1
+                    ? $"Inschrijving {series.Name} ({participantCount} deelnemers)"
+                    : $"Inschrijving {series.Name}",
+                participantNames),
             RedirectUrl: redirectUrl,
             WebhookUrl: webhookUrl,
             ApplicationFee: applicationFee,
@@ -157,6 +164,7 @@ public class PaymentService(
                 ["enrollmentId"] = enrollmentId.ToString(),
                 ["organizationId"] = enrollment.OrganizationId.ToString(),
                 ["lessonSerieId"] = series.Id.ToString(),
+                ["participants"] = TruncateForMollie(participantNames, MollieParticipantsMetadataMaxLength),
             },
             ProfileId: profileResult.Value,
             Testmode: _mollie.UseTestMode ? true : null);
@@ -211,6 +219,7 @@ public class PaymentService(
         // Groepsinschrijving = leider + leden; solo = 1. De leider draagt de betaling.
         // Group.Members bevat ook de leider (de submit-flow zet diens CampEnrollmentGroupId).
         // Gratis = het gekozen tarief telt op tot 0 (niet enkel de hoofdprijs).
+        int participantCount = CountActiveCampParticipants(enrollment);
         decimal amount = CampAmount(camp, enrollment);
         if (amount <= 0m)
         {
@@ -239,13 +248,22 @@ public class PaymentService(
             return Result<CreatePaymentResultDto>.Fail(profileResult.Errors);
         }
 
+        // Betaler eerst, dan de overige groepsleden (Group.Members bevat de leider zelf).
+        string participantNames = JoinParticipantNames(
+            enrollment.ParticipantName,
+            enrollment.Group?.Members.Where(m => m.Id != enrollment.Id).Select(m => m.ParticipantName) ?? []);
+
         string redirectUrl = BuildCampRedirectUrl(campEnrollmentId);
         string? webhookUrl = BuildWebhookUrl();
 
         MolliePaymentRequest paymentRequest = new(
             Amount: amount,
             Currency: currency,
-            Description: $"Inschrijving {camp.Name}",
+            Description: BuildMollieDescription(
+                participantCount > 1
+                    ? $"Inschrijving {camp.Name} ({participantCount} deelnemers)"
+                    : $"Inschrijving {camp.Name}",
+                participantNames),
             RedirectUrl: redirectUrl,
             WebhookUrl: webhookUrl,
             ApplicationFee: applicationFee,
@@ -255,6 +273,7 @@ public class PaymentService(
                 ["campEnrollmentId"] = campEnrollmentId.ToString(),
                 ["organizationId"] = enrollment.OrganizationId.ToString(),
                 ["campId"] = camp.Id.ToString(),
+                ["participants"] = TruncateForMollie(participantNames, MollieParticipantsMetadataMaxLength),
             },
             ProfileId: profileResult.Value,
             Testmode: _mollie.UseTestMode ? true : null);
@@ -544,13 +563,15 @@ public class PaymentService(
     /// zonder geannuleerde leden, of de solo-inschrijving zelf. Een geannuleerd lid telt niet meer mee.
     /// </summary>
     private static decimal CampAmount(CampEntity camp, CampEnrollmentEntity enrollment)
-    {
-        IEnumerable<CampEnrollmentEntity> participants =
-            enrollment.CampEnrollmentGroupId.HasValue && enrollment.Group is not null
-                ? enrollment.Group.Members
-                : [enrollment];
-        return CampPricing.Total(camp, participants);
-    }
+        => CampPricing.Total(camp, CampParticipants(enrollment));
+
+    private static int CountActiveCampParticipants(CampEnrollmentEntity enrollment)
+        => CampParticipants(enrollment).Count(p => p.Status != EnrollmentStatus.Cancelled);
+
+    private static IEnumerable<CampEnrollmentEntity> CampParticipants(CampEnrollmentEntity enrollment)
+        => enrollment.CampEnrollmentGroupId.HasValue && enrollment.Group is not null
+            ? enrollment.Group.Members
+            : [enrollment];
 
     public async Task<Result> RecordCampCashPaymentAsync(
         Guid campEnrollmentId, Guid organizationId, CancellationToken ct = default)
@@ -636,6 +657,19 @@ public class PaymentService(
 
         return Result.Ok();
     }
+
+    // Mollie weigert omschrijvingen > 255 tekens en metadata > 1 KB (JSON).
+    private const int MollieDescriptionMaxLength = 255;
+    private const int MollieParticipantsMetadataMaxLength = 600;
+
+    private static string JoinParticipantNames(string payerName, IEnumerable<string> otherNames)
+        => string.Join(", ", otherNames.OrderBy(n => n, StringComparer.CurrentCultureIgnoreCase).Prepend(payerName));
+
+    private static string BuildMollieDescription(string prefix, string participantNames)
+        => TruncateForMollie($"{prefix} – {participantNames}", MollieDescriptionMaxLength);
+
+    private static string TruncateForMollie(string value, int maxLength)
+        => value.Length <= maxLength ? value : value[..(maxLength - 1)] + "…";
 
     private string BuildRedirectUrl(Guid enrollmentId)
     {

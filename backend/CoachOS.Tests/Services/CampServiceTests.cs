@@ -3,6 +3,7 @@ using CoachOS.Application.Camps;
 using CoachOS.Application.Camps.DTOs;
 using CoachOS.Application.Payments;
 using CoachOS.Domain.Entities;
+using CoachOS.Domain.Enums;
 using CoachOS.Domain.Interfaces;
 using CoachOS.Domain.Models;
 using FluentAssertions;
@@ -176,7 +177,7 @@ public class CampServiceTests
         _camps.Setup(r => r.ExistsAsync(campId, _orgId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
         _enrollments.Setup(r => r.GetByCampWithResponsesAsync(campId, _orgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync([leader, member, solo]);
-        _payments.Setup(r => r.GetLatestMethodAndStatusByCampEnrollmentIdsAsync(
+        _payments.Setup(r => r.GetLatestByCampEnrollmentIdsAsync(
                 It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
 
@@ -192,6 +193,50 @@ public class CampServiceTests
         CampEnrollmentDto soloDto = result.Value!.Single(d => d.Id == solo.Id);
         soloDto.IsGroupLeader.Should().BeFalse();
         soloDto.EnrollmentGroupId.Should().BeNull();
+    }
+
+    [Test]
+    public async Task GetEnrollmentsAsync_IncludesLatestPaymentWithMollieId()
+    {
+        Guid campId = Guid.NewGuid();
+        Guid paidId = Guid.NewGuid();
+        Guid unpaidId = Guid.NewGuid();
+        DateTime paidAt = new(2026, 9, 5, 12, 54, 24, DateTimeKind.Utc);
+
+        _camps.Setup(r => r.ExistsAsync(campId, _orgId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _enrollments.Setup(r => r.GetByCampWithResponsesAsync(campId, _orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(
+            [
+                new() { Id = paidId, OrganizationId = _orgId, CampId = campId, ParticipantName = "Betaald" },
+                new() { Id = unpaidId, OrganizationId = _orgId, CampId = campId, ParticipantName = "Open" },
+            ]);
+        _payments.Setup(r => r.GetLatestByCampEnrollmentIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<Guid, Payment>
+            {
+                [paidId] = new()
+                {
+                    CampEnrollmentId = paidId,
+                    Amount = 240m,
+                    Status = PaymentStatus.Paid,
+                    Method = PaymentMethod.Online,
+                    PaidAt = paidAt,
+                    MolliePaymentId = "tr_camp123",
+                },
+            });
+
+        Result<List<CampEnrollmentDto>> result = await _sut.GetEnrollmentsAsync(campId, _orgId);
+
+        result.IsSuccess.Should().BeTrue();
+        CampEnrollmentDto paid = result.Value!.Single(e => e.Id == paidId);
+        paid.PaymentStatus.Should().Be("Paid");
+        paid.PaymentMethod.Should().Be("Online");
+        paid.PaymentAmount.Should().Be(240m);
+        paid.PaidAt.Should().Be(paidAt);
+        paid.MolliePaymentId.Should().Be("tr_camp123");
+
+        CampEnrollmentDto unpaid = result.Value!.Single(e => e.Id == unpaidId);
+        unpaid.PaymentStatus.Should().BeNull();
+        unpaid.MolliePaymentId.Should().BeNull();
     }
 
     // ── Cancel ───────────────────────────────────────────────────────────────

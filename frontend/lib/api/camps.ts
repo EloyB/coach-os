@@ -173,6 +173,11 @@ export interface CampEnrollmentDto {
   isGroupLeader: boolean;
   paymentMethod: string | null;
   paymentStatus: string | null;
+  /** Bedrag van de eigen (laatste) betaling; bij een online-groep het groepstotaal. */
+  paymentAmount: number | null;
+  paidAt: string | null;
+  /** Mollie-referentie (tr_...) om de betaling in het Mollie-dashboard terug te vinden. */
+  molliePaymentId: string | null;
   formResponses: { fieldId: string; fieldLabel: string; value: string }[];
   campPriceId: string | null;
   campPriceLabel: string | null;

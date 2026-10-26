@@ -417,7 +417,11 @@
     "prefMixed": "Gemengd",
     "contactEmail": "E-mail",
     "contactCall": "Bellen",
-    "contactWhatsapp": "WhatsApp"
+    "contactWhatsapp": "WhatsApp",
+    "paymentAmount": "Bedrag",
+    "paymentPaidAt": "Betaald op",
+    "paymentMollieId": "Mollie-referentie",
+    "paymentCopyMollieId": "Mollie-referentie kopiëren"
   },
   "formBuilder": {
     "title": "Inschrijfformulier",
@@ -1436,7 +1440,11 @@
     "manualSubmit": "Inschrijven",
     "manualSuccess": "Deelnemer ingeschreven",
     "manualError": "Kon de inschrijving niet toevoegen.",
-    "possibleDuplicate": "mogelijk dubbel"
+    "possibleDuplicate": "mogelijk dubbel",
+    "paymentAmount": "Bedrag",
+    "paymentPaidAt": "Betaald op",
+    "paymentMollieId": "Mollie-referentie",
+    "paymentCopyMollieId": "Mollie-referentie kopiëren"
   },
   "subscription": {
     "trialCardLabel": "Gratis proef",

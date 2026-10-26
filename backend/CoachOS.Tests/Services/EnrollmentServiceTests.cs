@@ -45,9 +45,9 @@ public class EnrollmentServiceTests
         _enrollmentGroupRepo = new Mock<IEnrollmentGroupRepository>();
         _paymentRepo = new Mock<IPaymentRepository>();
         _paymentRepo
-            .Setup(r => r.GetLatestMethodAndStatusByEnrollmentIdsAsync(
+            .Setup(r => r.GetLatestByEnrollmentIdsAsync(
                 It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Dictionary<Guid, (PaymentMethod? Method, PaymentStatus Status)>());
+            .ReturnsAsync(new Dictionary<Guid, Payment>());
         _timeSlotPreferenceRepo = new Mock<ITimeSlotPreferenceRepository>();
         _orgSettingsRepo = new Mock<IOrganizationSettingsRepository>();
         _userLookup = new Mock<IUserLookupService>();
@@ -272,6 +272,56 @@ public class EnrollmentServiceTests
         result.Value![0].StudentName.Should().Be("Piet Janssen");
         result.Value![0].IsGroupLeader.Should().BeFalse();
         result.Value![0].EnrollmentGroupId.Should().BeNull();
+    }
+
+    [Test]
+    public async Task GetSeriesEnrollments_IncludesLatestPaymentWithMollieId()
+    {
+        Guid enrollmentId = Guid.NewGuid();
+        DateTime paidAt = new(2026, 9, 5, 12, 54, 24, DateTimeKind.Utc);
+
+        _enrollmentRepo
+            .Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Enrollment>
+            {
+                new()
+                {
+                    Id = enrollmentId,
+                    OrganizationId = OrgId,
+                    LessonSerieId = SeriesId,
+                    StudentName = "Piet Janssen",
+                    Status = EnrollmentStatus.Confirmed,
+                    EnrolledAt = DateTime.UtcNow,
+                    FormResponses = new List<FormResponse>(),
+                },
+            });
+        _enrollmentGroupRepo
+            .Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<EnrollmentGroup>());
+        _paymentRepo
+            .Setup(r => r.GetLatestByEnrollmentIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<Guid, Payment>
+            {
+                [enrollmentId] = new()
+                {
+                    EnrollmentId = enrollmentId,
+                    Amount = 780m,
+                    Status = PaymentStatus.Paid,
+                    Method = PaymentMethod.Online,
+                    PaidAt = paidAt,
+                    MolliePaymentId = "tr_abc123",
+                },
+            });
+
+        var result = await _service.GetSeriesEnrollmentsAsync(SeriesId, OrgId);
+
+        result.IsSuccess.Should().BeTrue();
+        var dto = result.Value!.Single();
+        dto.PaymentStatus.Should().Be("Paid");
+        dto.PaymentMethod.Should().Be("Online");
+        dto.PaymentAmount.Should().Be(780m);
+        dto.PaidAt.Should().Be(paidAt);
+        dto.MolliePaymentId.Should().Be("tr_abc123");
     }
 
     // ── SaveFormAsync ────────────────────────────────────────────────────────

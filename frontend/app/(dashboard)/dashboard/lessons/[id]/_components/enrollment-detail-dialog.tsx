@@ -19,6 +19,7 @@ import { getPublicTimeSlots } from "@/lib/api/timeSlots";
 import { collapseParallelPrefs, MIXED_PREF } from "@/lib/preferences";
 import { canEditEnrollment, isHeadTrainerViewer } from "@/lib/auth";
 import type { TimeSlotDto } from "@/lib/api/timeSlots";
+import { MolliePaymentId } from "@/components/dashboard/mollie-payment-id";
 
 const DAY_NAMES_SHORT = ["Ma", "Di", "Wo", "Do", "Vr", "Za", "Zo"];
 
@@ -254,6 +255,36 @@ export function EnrollmentDetailDialog({
                           : enrollment.paymentMethod
                   }
                 />
+              )}
+              {enrollment.paymentAmount != null && (
+                <DetailRow
+                  label={t("paymentAmount")}
+                  value={new Intl.NumberFormat("nl-BE", { style: "currency", currency: "EUR" }).format(
+                    enrollment.paymentAmount,
+                  )}
+                />
+              )}
+              {enrollment.paidAt && (
+                <DetailRow
+                  label={t("paymentPaidAt")}
+                  value={new Date(enrollment.paidAt).toLocaleString("nl-BE", {
+                    dateStyle: "short",
+                    timeStyle: "short",
+                  })}
+                />
+              )}
+              {enrollment.molliePaymentId && (
+                <div>
+                  <dt className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                    {t("paymentMollieId")}
+                  </dt>
+                  <dd className="mt-0.5 text-sm text-gray-800">
+                    <MolliePaymentId
+                      id={enrollment.molliePaymentId}
+                      copyLabel={t("paymentCopyMollieId")}
+                    />
+                  </dd>
+                </div>
               )}
               <DetailRow
                 label={t("openToGrouping")}

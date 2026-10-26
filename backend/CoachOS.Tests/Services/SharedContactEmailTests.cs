@@ -48,9 +48,9 @@ public class SharedContactEmailTests
         _enrollmentGroupRepo = new Mock<IEnrollmentGroupRepository>();
         _paymentRepo = new Mock<IPaymentRepository>();
         _paymentRepo
-            .Setup(r => r.GetLatestMethodAndStatusByEnrollmentIdsAsync(
+            .Setup(r => r.GetLatestByEnrollmentIdsAsync(
                 It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Dictionary<Guid, (PaymentMethod? Method, PaymentStatus Status)>());
+            .ReturnsAsync(new Dictionary<Guid, Payment>());
         _timeSlotPreferenceRepo = new Mock<ITimeSlotPreferenceRepository>();
         _orgSettingsRepo = new Mock<IOrganizationSettingsRepository>();
         _userLookup = new Mock<IUserLookupService>();

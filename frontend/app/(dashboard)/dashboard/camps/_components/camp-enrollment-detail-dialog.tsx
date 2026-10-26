@@ -15,6 +15,7 @@ import { btnPrimary } from "@/lib/styles";
 import { enrollmentDisplayStatus } from "@/lib/status-styles";
 import { updateCampEnrollment, type CampEnrollmentDto } from "@/lib/api/camps";
 import { getAxiosErrorMessages } from "@/lib/utils/api-errors";
+import { MolliePaymentId } from "@/components/dashboard/mollie-payment-id";
 import { CampPriceSelect } from "./camp-price-select";
 
 function DetailRow({
@@ -188,6 +189,34 @@ export function CampEnrollmentDetailDialog({
             )}
             {methodLabel && (
               <DetailRow label={t("paymentMethod")} value={methodLabel} />
+            )}
+            {enrollment.paymentAmount != null && (
+              <DetailRow
+                label={t("paymentAmount")}
+                value={new Intl.NumberFormat("nl-BE", { style: "currency", currency: "EUR" }).format(
+                  enrollment.paymentAmount,
+                )}
+              />
+            )}
+            {enrollment.paidAt && (
+              <DetailRow
+                label={t("paymentPaidAt")}
+                value={new Date(enrollment.paidAt).toLocaleString("nl-BE", {
+                  dateStyle: "short",
+                  timeStyle: "short",
+                })}
+              />
+            )}
+            {enrollment.molliePaymentId && (
+              <div className="flex items-center gap-3 text-sm">
+                <dt className="w-32 shrink-0 text-gray-400">{t("paymentMollieId")}</dt>
+                <dd className="min-w-0 font-medium text-gray-900">
+                  <MolliePaymentId
+                    id={enrollment.molliePaymentId}
+                    copyLabel={t("paymentCopyMollieId")}
+                  />
+                </dd>
+              </div>
             )}
           </dl>
 

@@ -48,5 +48,14 @@ public class LessonSerieEnrollmentDto
     /// </summary>
     public string? PaymentStatus { get; set; }
 
+    /// <summary>Bedrag van de eigen (laatste) betaling; bij een online-groep het groepstotaal.</summary>
+    public decimal? PaymentAmount { get; set; }
+
+    /// <summary>Tijdstip waarop de eigen (laatste) betaling betaald werd, of null.</summary>
+    public DateTime? PaidAt { get; set; }
+
+    /// <summary>Mollie-referentie (tr_...) om de betaling in het Mollie-dashboard terug te vinden.</summary>
+    public string? MolliePaymentId { get; set; }
+
     public List<EnrollmentResponseItemDto> FormResponses { get; set; } = new();
 }
