@@ -16,6 +16,22 @@ export interface CampDayDto {
   trainers: CampDayTrainerDto[];
 }
 
+/** Extra tarief naast de hoofdprijs; publiek ter referentie, de beheerder kiest per inschrijving. */
+export interface CampPriceDto {
+  id: string;
+  label: string;
+  description: string | null;
+  amount: number;
+}
+
+export interface SaveCampPriceRequest {
+  /** Gevuld = bestaand tarief bijwerken, leeg = nieuw tarief. */
+  id?: string;
+  label: string;
+  description?: string;
+  amount: number;
+}
+
 export interface CampDto {
   id: string;
   name: string;
@@ -46,6 +62,7 @@ export interface CampDetailDto {
   participantCount: number;
   isActive: boolean;
   days: CampDayDto[];
+  prices: CampPriceDto[];
 }
 
 export interface PublicCampDto {
@@ -61,6 +78,7 @@ export interface PublicCampDto {
   maxParticipants: number | null;
   participantCount: number;
   days: CampDayDto[];
+  prices: CampPriceDto[];
 }
 
 export interface CreateCampDayTrainerRequest {
@@ -87,6 +105,8 @@ export interface CreateCampRequest {
   registrationDeadline: string;
   maxParticipants?: number | null;
   days: CreateCampDayRequest[];
+  /** Weglaten laat de bestaande prijsopties ongemoeid. */
+  prices?: SaveCampPriceRequest[];
 }
 
 export type UpdateCampRequest = CreateCampRequest & { isActive: boolean };
@@ -159,6 +179,8 @@ export interface CampEnrollmentDto {
   /** Mollie-referentie (tr_...) om de betaling in het Mollie-dashboard terug te vinden. */
   molliePaymentId: string | null;
   formResponses: { fieldId: string; fieldLabel: string; value: string }[];
+  campPriceId: string | null;
+  campPriceLabel: string | null;
 }
 
 // ── Admin ──
@@ -198,6 +220,8 @@ export interface CreateManualCampEnrollmentRequest {
   participantPhone: string | null;
   /** true = cash al ontvangen (bevestigd); false = nog te betalen. Enkel relevant voor betaalde kampen. */
   paid: boolean;
+  /** Gekozen tarief; null = hoofdprijs. */
+  campPriceId?: string | null;
   responses: { campFormFieldId: string; value: string }[];
 }
 export async function createManualCampEnrollment(
@@ -214,6 +238,8 @@ export interface AddCampGroupMemberRequest {
   participantName: string;
   participantEmail: string;
   participantPhone: string | null;
+  /** Gekozen tarief; null = hoofdprijs. */
+  campPriceId?: string | null;
   responses: { campFormFieldId: string; value: string }[];
 }
 export async function addCampGroupMember(
@@ -231,6 +257,8 @@ export interface UpdateCampEnrollmentRequest {
   participantName: string;
   participantEmail: string;
   participantPhone: string | null;
+  /** Gekozen tarief; null = hoofdprijs. */
+  campPriceId?: string | null;
   responses: { campFormFieldId: string; value: string }[];
 }
 export async function updateCampEnrollment(

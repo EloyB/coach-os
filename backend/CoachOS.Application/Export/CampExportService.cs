@@ -136,6 +136,7 @@ public class CampExportService(
                     .Select(t => new CampDayTrainerRow(
                         trainerNames.GetValueOrDefault(t.TrainerId, "Onbekend"), t.StartTime, t.EndTime))
                     .OrderBy(t => t.Name)
+                    .ThenBy(t => t.StartTime)
                     .ToList()))
             .ToList();
 }

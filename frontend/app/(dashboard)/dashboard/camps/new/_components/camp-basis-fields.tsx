@@ -17,6 +17,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
+import {
+  campPricesSchema,
+  CampPricesEditor,
+  type CampPricesFormValues,
+} from "./camp-prices-editor";
 import { FieldError } from "@/components/forms/field-error";
 import { inputClass } from "@/lib/styles";
 import type { TennisClubDto } from "@/lib/api/tennisClubs";
@@ -47,6 +52,7 @@ export const campBasisSchema = z
     startDate: z.string().min(1, "Startdatum is verplicht"),
     endDate: z.string().min(1, "Einddatum is verplicht"),
     registrationDeadline: z.string().min(1, "Inschrijfdeadline is verplicht"),
+    prices: campPricesSchema,
   })
   .refine((d) => !d.startDate || !d.endDate || d.endDate >= d.startDate, {
     message: "Einddatum moet op of na de startdatum zijn",
@@ -90,6 +96,8 @@ interface CampBasisFieldsProps {
   onDateRangeChange?: (startDate: string, endDate: string) => void;
   /** Current form values for the date range, so we can report both on change. */
   getDates: () => { startDate: string; endDate: string };
+  /** Toon de prijsopties-editor (aan in de wizard; op de detailpagina een eigen kaart). */
+  showPrices?: boolean;
 }
 
 export function CampBasisFields({
@@ -100,6 +108,7 @@ export function CampBasisFields({
   clubsLoading = false,
   onDateRangeChange,
   getDates,
+  showPrices = true,
 }: CampBasisFieldsProps) {
   const t = useTranslations("camps");
   // Reactive start-date value so the end-date picker disables earlier dates as
@@ -212,7 +221,9 @@ export function CampBasisFields({
               className={inputClass + " pl-7"}
             />
           </div>
-          <p className="text-[11px] text-gray-400 mt-1">{t("fieldPriceHint")}</p>
+          <p className="text-[11px] text-gray-400 mt-1">
+            {t("fieldPriceHint")}
+          </p>
           <FieldError message={errors.price?.message} />
         </div>
 
@@ -235,6 +246,22 @@ export function CampBasisFields({
           <FieldError message={errors.maxParticipants?.message} />
         </div>
       </div>
+
+      {showPrices && (
+        <div>
+          <Label>{t("pricesTitle")}</Label>
+          <p className="text-[11px] text-gray-400 -mt-1 mb-2.5">
+            {t("pricesHint")}
+          </p>
+          <CampPricesEditor
+            register={
+              register as unknown as UseFormRegister<CampPricesFormValues>
+            }
+            control={control as unknown as Control<CampPricesFormValues>}
+            errors={errors as unknown as FieldErrors<CampPricesFormValues>}
+          />
+        </div>
+      )}
 
       {/* Startdatum + Einddatum */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

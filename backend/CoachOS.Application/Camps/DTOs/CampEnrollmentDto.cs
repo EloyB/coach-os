@@ -9,4 +9,5 @@ public record CampEnrollmentDto(
     Guid? EnrollmentGroupId, bool IsGroupLeader,
     List<CampEnrollmentResponseItemDto> FormResponses,
     string? PaymentMethod, string? PaymentStatus,
-    decimal? PaymentAmount, DateTime? PaidAt, string? MolliePaymentId);
+    decimal? PaymentAmount, DateTime? PaidAt, string? MolliePaymentId,
+    Guid? CampPriceId = null, string? CampPriceLabel = null);

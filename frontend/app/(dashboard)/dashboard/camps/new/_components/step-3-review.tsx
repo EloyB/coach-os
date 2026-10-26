@@ -96,11 +96,21 @@ export function Step3Review({ step1Data, days, onBack }: Step3Props) {
           <Chip icon={<Euro size={11} className="text-tennis-green" />}>
             {step1Data.price > 0 ? `€${step1Data.price}` : t("priceFree")}
           </Chip>
+          {step1Data.prices.map((p, i) => (
+            <Chip
+              key={i}
+              icon={<Euro size={11} className="text-tennis-green" />}
+            >
+              {p.label}: €{p.amount}
+            </Chip>
+          ))}
           <Chip icon={<CalendarDays size={11} className="text-tennis-green" />}>
             {formatDateNL(step1Data.startDate)} -{" "}
             {formatDateNL(step1Data.endDate)}
           </Chip>
-          <Chip icon={<GraduationCap size={11} className="text-tennis-green" />}>
+          <Chip
+            icon={<GraduationCap size={11} className="text-tennis-green" />}
+          >
             {levelLabel}
           </Chip>
           {clubName && (
