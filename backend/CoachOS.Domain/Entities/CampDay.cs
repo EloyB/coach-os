@@ -13,5 +13,6 @@ public class CampDay : BaseEntity
 
     // Navigation
     public Camp Camp { get; set; } = null!;
+    public ICollection<CampDayPart> Parts { get; set; } = new List<CampDayPart>();
     public ICollection<CampDayTrainer> TrainerAssignments { get; set; } = new List<CampDayTrainer>();
 }

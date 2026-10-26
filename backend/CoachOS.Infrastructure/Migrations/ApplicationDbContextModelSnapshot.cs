@@ -160,6 +160,47 @@ namespace CoachOS.Infrastructure.Migrations
                     b.ToTable("CampDays");
                 });
 
+            modelBuilder.Entity("CoachOS.Domain.Entities.CampDayPart", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CampDayId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<TimeOnly>("EndTime")
+                        .HasColumnType("time without time zone");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<TimeOnly>("StartTime")
+                        .HasColumnType("time without time zone");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CampDayId");
+
+                    b.HasIndex("OrganizationId");
+
+                    b.ToTable("CampDayParts");
+                });
+
             modelBuilder.Entity("CoachOS.Domain.Entities.CampDayTrainer", b =>
                 {
                     b.Property<Guid>("Id")
@@ -208,6 +249,9 @@ namespace CoachOS.Infrastructure.Migrations
                     b.Property<Guid>("CampId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("CampPackageId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid?>("CampPriceId")
                         .HasColumnType("uuid");
 
@@ -249,6 +293,8 @@ namespace CoachOS.Infrastructure.Migrations
                     b.HasIndex("CampEnrollmentGroupId");
 
                     b.HasIndex("CampId");
+
+                    b.HasIndex("CampPackageId");
 
                     b.HasIndex("CampPriceId");
 
@@ -400,15 +446,11 @@ namespace CoachOS.Infrastructure.Migrations
                     b.ToTable("CampFormResponses");
                 });
 
-            modelBuilder.Entity("CoachOS.Domain.Entities.CampPrice", b =>
+            modelBuilder.Entity("CoachOS.Domain.Entities.CampPackage", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
-
-                    b.Property<decimal>("Amount")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("numeric(10,2)");
 
                     b.Property<Guid>("CampId")
                         .HasColumnType("uuid");
@@ -419,6 +461,87 @@ namespace CoachOS.Infrastructure.Migrations
                     b.Property<string>("Description")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Price")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId");
+
+                    b.HasIndex("CampId", "SortOrder");
+
+                    b.ToTable("CampPackages");
+                });
+
+            modelBuilder.Entity("CoachOS.Domain.Entities.CampPackageSlot", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CampPackageId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("PartOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId");
+
+                    b.HasIndex("CampPackageId", "Date", "PartOrder")
+                        .IsUnique();
+
+                    b.ToTable("CampPackageSlots");
+                });
+
+            modelBuilder.Entity("CoachOS.Domain.Entities.CampPrice", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CampId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<decimal>("Discount")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)");
 
                     b.Property<string>("Label")
                         .IsRequired()
@@ -2083,6 +2206,17 @@ namespace CoachOS.Infrastructure.Migrations
                     b.Navigation("Camp");
                 });
 
+            modelBuilder.Entity("CoachOS.Domain.Entities.CampDayPart", b =>
+                {
+                    b.HasOne("CoachOS.Domain.Entities.CampDay", "CampDay")
+                        .WithMany("Parts")
+                        .HasForeignKey("CampDayId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CampDay");
+                });
+
             modelBuilder.Entity("CoachOS.Domain.Entities.CampDayTrainer", b =>
                 {
                     b.HasOne("CoachOS.Domain.Entities.CampDay", "CampDay")
@@ -2107,6 +2241,11 @@ namespace CoachOS.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("CoachOS.Domain.Entities.CampPackage", "Package")
+                        .WithMany()
+                        .HasForeignKey("CampPackageId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("CoachOS.Domain.Entities.CampPrice", "Price")
                         .WithMany()
                         .HasForeignKey("CampPriceId")
@@ -2115,6 +2254,8 @@ namespace CoachOS.Infrastructure.Migrations
                     b.Navigation("Camp");
 
                     b.Navigation("Group");
+
+                    b.Navigation("Package");
 
                     b.Navigation("Price");
                 });
@@ -2177,6 +2318,28 @@ namespace CoachOS.Infrastructure.Migrations
                     b.Navigation("CampEnrollment");
 
                     b.Navigation("CampFormField");
+                });
+
+            modelBuilder.Entity("CoachOS.Domain.Entities.CampPackage", b =>
+                {
+                    b.HasOne("CoachOS.Domain.Entities.Camp", "Camp")
+                        .WithMany("Packages")
+                        .HasForeignKey("CampId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Camp");
+                });
+
+            modelBuilder.Entity("CoachOS.Domain.Entities.CampPackageSlot", b =>
+                {
+                    b.HasOne("CoachOS.Domain.Entities.CampPackage", "CampPackage")
+                        .WithMany("Slots")
+                        .HasForeignKey("CampPackageId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CampPackage");
                 });
 
             modelBuilder.Entity("CoachOS.Domain.Entities.CampPrice", b =>
@@ -2700,11 +2863,15 @@ namespace CoachOS.Infrastructure.Migrations
 
                     b.Navigation("Enrollments");
 
+                    b.Navigation("Packages");
+
                     b.Navigation("Prices");
                 });
 
             modelBuilder.Entity("CoachOS.Domain.Entities.CampDay", b =>
                 {
+                    b.Navigation("Parts");
+
                     b.Navigation("TrainerAssignments");
                 });
 
@@ -2728,6 +2895,11 @@ namespace CoachOS.Infrastructure.Migrations
             modelBuilder.Entity("CoachOS.Domain.Entities.CampFormField", b =>
                 {
                     b.Navigation("Responses");
+                });
+
+            modelBuilder.Entity("CoachOS.Domain.Entities.CampPackage", b =>
+                {
+                    b.Navigation("Slots");
                 });
 
             modelBuilder.Entity("CoachOS.Domain.Entities.Enrollment", b =>

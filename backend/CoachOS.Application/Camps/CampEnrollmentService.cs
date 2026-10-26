@@ -44,7 +44,7 @@ public class CampEnrollmentService(
             camp.RegistrationDeadline, camp.TennisClub?.Name ?? string.Empty,
             camp.MaxParticipants, participants, days,
             camp.Prices.OrderBy(p => p.SortOrder)
-                .Select(p => new CampPriceDto(p.Id, p.Label, p.Description, p.Amount)).ToList()));
+                .Select(p => new CampPriceDto(p.Id, p.Label, p.Description, p.Discount)).ToList()));
     }
 
     public async Task<Result<CampEnrollmentFormDto?>> GetPublicFormAsync(Guid campId, CancellationToken ct = default)

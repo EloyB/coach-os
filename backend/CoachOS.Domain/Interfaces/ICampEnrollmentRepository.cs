@@ -38,6 +38,12 @@ public interface ICampEnrollmentRepository
     /// <summary>Of minstens één inschrijving (ook geannuleerd) een van deze tarieven gekozen heeft.</summary>
     Task<bool> AnyUsingPricesAsync(IEnumerable<Guid> priceIds, CancellationToken ct = default);
 
+    /// <summary>Of minstens één inschrijving (ook geannuleerd) een van deze pakketten gekozen heeft.</summary>
+    Task<bool> AnyUsingPackagesAsync(IEnumerable<Guid> packageIds, CancellationToken ct = default);
+
+    /// <summary>Actieve inschrijvingen van een kamp (read-only), voor de limiet per dagdeel.</summary>
+    Task<List<CampEnrollment>> GetActiveByCampAsync(Guid campId, CancellationToken ct = default);
+
     Task AddAsync(CampEnrollment enrollment, CancellationToken ct = default);
     Task AddGroupAsync(CampEnrollmentGroup group, CancellationToken ct = default);
     Task AddFormResponseAsync(CampFormResponse response, CancellationToken ct = default);

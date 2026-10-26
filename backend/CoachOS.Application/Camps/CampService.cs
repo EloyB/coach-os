@@ -94,10 +94,10 @@ public class CampService(
         bool pricesChanged = previousPrice != request.Price;
         if (request.Prices is not null)
         {
-            Dictionary<Guid, decimal> previousAmounts = camp.Prices.ToDictionary(p => p.Id, p => p.Amount);
+            Dictionary<Guid, decimal> previousAmounts = camp.Prices.ToDictionary(p => p.Id, p => p.Discount);
             Error? priceError = await SyncPricesAsync(camp, organizationId, request.Prices, ct);
             if (priceError is not null) return Result.Fail(priceError);
-            pricesChanged |= camp.Prices.Any(p => previousAmounts.TryGetValue(p.Id, out decimal old) && old != p.Amount);
+            pricesChanged |= camp.Prices.Any(p => previousAmounts.TryGetValue(p.Id, out decimal old) && old != p.Discount);
         }
 
         // Openstaande cash-betalingen volgen een gewijzigde hoofdprijs of tariefbedrag.
@@ -632,14 +632,14 @@ public class CampService(
 
     private static List<CampPriceDto> MapPrices(Camp camp)
         => camp.Prices.OrderBy(p => p.SortOrder)
-            .Select(p => new CampPriceDto(p.Id, p.Label, p.Description, p.Amount)).ToList();
+            .Select(p => new CampPriceDto(p.Id, p.Label, p.Description, p.Discount)).ToList();
 
     private static CampPrice NewPrice(Guid organizationId, SaveCampPriceRequest p, int order) => new()
     {
         OrganizationId = organizationId,
         Label = p.Label.Trim(),
         Description = string.IsNullOrWhiteSpace(p.Description) ? null : p.Description.Trim(),
-        Amount = p.Amount,
+        Discount = p.Discount,
         SortOrder = order,
     };
 
@@ -675,7 +675,7 @@ public class CampService(
             {
                 existing.Label = dto.Label.Trim();
                 existing.Description = string.IsNullOrWhiteSpace(dto.Description) ? null : dto.Description.Trim();
-                existing.Amount = dto.Amount;
+                existing.Discount = dto.Discount;
                 existing.SortOrder = order;
             }
             order++;

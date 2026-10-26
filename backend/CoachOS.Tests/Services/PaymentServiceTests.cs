@@ -680,7 +680,7 @@ public class PaymentServiceTests
     {
         Guid campEnrollmentId = Guid.NewGuid();
         Guid campId = Guid.NewGuid();
-        CampPrice free = new() { Id = Guid.NewGuid(), Label = "Gratis", Amount = 0m };
+        CampPrice free = new() { Id = Guid.NewGuid(), Label = "Gratis", Discount = 100m };
         _campEnrollments.Setup(c => c.GetByIdWithGroupAsync(campEnrollmentId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new CampEnrollment
             {
@@ -697,18 +697,18 @@ public class PaymentServiceTests
     }
 
     [Test]
-    public async Task RecordCampCash_PaidOptionOnFreeMainPrice_ChargesOptionAmount()
+    public async Task RecordCampCash_PaidPackageOnFreeMainPrice_ChargesPackagePrice()
     {
         Guid campEnrollmentId = Guid.NewGuid();
         Guid campId = Guid.NewGuid();
-        CampPrice option = new() { Id = Guid.NewGuid(), Label = "Leden", Amount = 90m };
+        CampPackage package = new() { Id = Guid.NewGuid(), Name = "Ochtenden", Price = 90m };
         _campEnrollments.Setup(c => c.GetByIdWithGroupAsync(campEnrollmentId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new CampEnrollment
             {
-                Id = campEnrollmentId, OrganizationId = OrgId, CampId = campId, CampPriceId = option.Id,
+                Id = campEnrollmentId, OrganizationId = OrgId, CampId = campId, CampPackageId = package.Id,
             });
         _camps.Setup(c => c.GetByIdPublicAsync(campId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Camp { Id = campId, OrganizationId = OrgId, Name = "Kamp", Price = 0m, Prices = { option } });
+            .ReturnsAsync(new Camp { Id = campId, OrganizationId = OrgId, Name = "Kamp", Price = 0m, Packages = { package } });
         Payment? saved = null;
         _payments.Setup(p => p.AddAsync(It.IsAny<Payment>(), It.IsAny<CancellationToken>()))
             .Callback<Payment, CancellationToken>((p, _) => saved = p)

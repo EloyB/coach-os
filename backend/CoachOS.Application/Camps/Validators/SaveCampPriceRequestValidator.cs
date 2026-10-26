@@ -15,7 +15,7 @@ public class SaveCampPriceRequestValidator : AbstractValidator<SaveCampPriceRequ
             .MaximumLength(120).WithMessage("Naam van de prijsoptie mag maximaal 120 karakters zijn");
         RuleFor(p => p.Description)
             .MaximumLength(500).WithMessage("Uitleg van de prijsoptie mag maximaal 500 karakters zijn");
-        RuleFor(p => p.Amount)
-            .GreaterThanOrEqualTo(0m).WithMessage("Bedrag van de prijsoptie mag niet negatief zijn");
+        RuleFor(p => p.Discount)
+            .GreaterThanOrEqualTo(0m).WithMessage("Korting van de prijsoptie mag niet negatief zijn");
     }
 }

@@ -47,7 +47,9 @@ public class CampRepository(ApplicationDbContext db) : ICampRepository
     public async Task<Camp?> GetByIdWithDetailsAsync(Guid id, Guid organizationId, CancellationToken ct = default)
         => await db.Camps
             .Include(c => c.Days).ThenInclude(d => d.TrainerAssignments)
+            .Include(c => c.Days).ThenInclude(d => d.Parts)
             .Include(c => c.Prices)
+            .Include(c => c.Packages).ThenInclude(p => p.Slots)
             .Include(c => c.EnrollmentForm!).ThenInclude(f => f.Fields)
             .Include(c => c.TennisClub)
             .FirstOrDefaultAsync(c => c.Id == id && c.OrganizationId == organizationId && c.IsActive, ct);
@@ -57,7 +59,9 @@ public class CampRepository(ApplicationDbContext db) : ICampRepository
             .AsNoTracking()
             .IgnoreQueryFilters()
             .Include(c => c.Days).ThenInclude(d => d.TrainerAssignments)
+            .Include(c => c.Days).ThenInclude(d => d.Parts)
             .Include(c => c.Prices)
+            .Include(c => c.Packages).ThenInclude(p => p.Slots)
             .Include(c => c.TennisClub)
             .FirstOrDefaultAsync(c => c.Id == id && c.IsActive, ct);
 
@@ -71,10 +75,20 @@ public class CampRepository(ApplicationDbContext db) : ICampRepository
 
     public void RemovePrices(IEnumerable<CampPrice> prices) => db.CampPrices.RemoveRange(prices);
 
+    public void RemovePackages(IEnumerable<CampPackage> packages)
+    {
+        List<CampPackage> list = packages.ToList();
+        db.CampPackageSlots.RemoveRange(list.SelectMany(p => p.Slots));
+        db.CampPackages.RemoveRange(list);
+    }
+
+    public void RemovePackageSlots(IEnumerable<CampPackageSlot> slots) => db.CampPackageSlots.RemoveRange(slots);
+
     public void RemoveDays(IEnumerable<CampDay> days)
     {
         List<CampDay> dayList = days.ToList();
         db.CampDayTrainers.RemoveRange(dayList.SelectMany(d => d.TrainerAssignments));
+        db.CampDayParts.RemoveRange(dayList.SelectMany(d => d.Parts));
         db.CampDays.RemoveRange(dayList);
     }
 }

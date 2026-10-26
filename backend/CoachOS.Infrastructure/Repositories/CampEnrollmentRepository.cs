@@ -104,6 +104,7 @@ public class CampEnrollmentRepository(ApplicationDbContext context) : ICampEnrol
                 .ThenInclude(r => r.CampFormField)
             .Include(e => e.Group)
             .Include(e => e.Price)
+            .Include(e => e.Package)
             .Where(e => e.CampId == campId && e.OrganizationId == organizationId)
             .OrderByDescending(e => e.EnrolledAt)
             .ToListAsync(ct);
@@ -122,6 +123,23 @@ public class CampEnrollmentRepository(ApplicationDbContext context) : ICampEnrol
         List<Guid> ids = priceIds.ToList();
         return ids.Count > 0
             && await context.CampEnrollments.AnyAsync(e => e.CampPriceId != null && ids.Contains(e.CampPriceId.Value), ct);
+    }
+
+    public async Task<bool> AnyUsingPackagesAsync(IEnumerable<Guid> packageIds, CancellationToken ct = default)
+    {
+        List<Guid> ids = packageIds.ToList();
+        return ids.Count > 0
+            && await context.CampEnrollments.AnyAsync(e => e.CampPackageId != null && ids.Contains(e.CampPackageId.Value), ct);
+    }
+
+    public async Task<List<CampEnrollment>> GetActiveByCampAsync(Guid campId, CancellationToken ct = default)
+    {
+        return await context.CampEnrollments
+            .AsNoTracking()
+            .Where(e =>
+                e.CampId == campId &&
+                (e.Status == EnrollmentStatus.Pending || e.Status == EnrollmentStatus.Confirmed || e.Status == EnrollmentStatus.PendingPayment))
+            .ToListAsync(ct);
     }
 
     public async Task AddAsync(CampEnrollment enrollment, CancellationToken ct = default)

@@ -52,6 +52,9 @@ public class ApplicationDbContext(
     public DbSet<Camp> Camps { get; set; } = null!;
     public DbSet<CampPrice> CampPrices { get; set; } = null!;
     public DbSet<CampDay> CampDays { get; set; } = null!;
+    public DbSet<CampDayPart> CampDayParts { get; set; } = null!;
+    public DbSet<CampPackage> CampPackages { get; set; } = null!;
+    public DbSet<CampPackageSlot> CampPackageSlots { get; set; } = null!;
     public DbSet<CampDayTrainer> CampDayTrainers { get; set; } = null!;
     public DbSet<CampEnrollment> CampEnrollments { get; set; } = null!;
     public DbSet<CampEnrollmentGroup> CampEnrollmentGroups { get; set; } = null!;
@@ -99,6 +102,9 @@ public class ApplicationDbContext(
         builder.ApplyConfiguration(new CampConfiguration());
         builder.ApplyConfiguration(new CampPriceConfiguration());
         builder.ApplyConfiguration(new CampDayConfiguration());
+        builder.ApplyConfiguration(new CampDayPartConfiguration());
+        builder.ApplyConfiguration(new CampPackageConfiguration());
+        builder.ApplyConfiguration(new CampPackageSlotConfiguration());
         builder.ApplyConfiguration(new CampDayTrainerConfiguration());
         builder.ApplyConfiguration(new CampEnrollmentConfiguration());
         builder.ApplyConfiguration(new CampEnrollmentGroupConfiguration());
@@ -158,6 +164,12 @@ public class ApplicationDbContext(
         builder.Entity<CampPrice>().HasQueryFilter(e =>
             _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
         builder.Entity<CampDay>().HasQueryFilter(e =>
+            _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
+        builder.Entity<CampDayPart>().HasQueryFilter(e =>
+            _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
+        builder.Entity<CampPackage>().HasQueryFilter(e =>
+            _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
+        builder.Entity<CampPackageSlot>().HasQueryFilter(e =>
             _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
         builder.Entity<CampDayTrainer>().HasQueryFilter(e =>
             _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
