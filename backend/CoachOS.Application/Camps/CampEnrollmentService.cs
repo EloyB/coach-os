@@ -36,7 +36,7 @@ public class CampEnrollmentService(
         int participants = await enrollments.CountActiveByCampAsync(campId, ct);
         List<CampDayDto> days = camp.Days.OrderBy(d => d.Date).Select(d => new CampDayDto(
             d.Id, d.Date.ToString(DateFormat), d.StartTime.ToString("HH\\:mm"), d.EndTime.ToString("HH\\:mm"),
-            new List<CampDayTrainerDto>())).ToList();
+            new List<CampDayTrainerDto>(), CampService.MapParts(d))).ToList();
 
         return Result<PublicCampDto>.Ok(new PublicCampDto(
             camp.Id, camp.Name, camp.Description, camp.Level.HasValue ? (int)camp.Level.Value : null,
@@ -44,7 +44,8 @@ public class CampEnrollmentService(
             camp.RegistrationDeadline, camp.TennisClub?.Name ?? string.Empty,
             camp.MaxParticipants, participants, days,
             camp.Prices.OrderBy(p => p.SortOrder)
-                .Select(p => new CampPriceDto(p.Id, p.Label, p.Description, p.Discount)).ToList()));
+                .Select(p => new CampPriceDto(p.Id, p.Label, p.Description, p.Discount)).ToList(),
+            CampService.MapPackages(camp)));
     }
 
     public async Task<Result<CampEnrollmentFormDto?>> GetPublicFormAsync(Guid campId, CancellationToken ct = default)

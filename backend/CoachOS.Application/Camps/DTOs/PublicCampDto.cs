@@ -4,4 +4,4 @@ public record PublicCampDto(
     Guid Id, string Name, string? Description, int? Level, decimal Price,
     string StartDate, string EndDate, DateTime RegistrationDeadline,
     string TennisClubName, int? MaxParticipants, int ParticipantCount, List<CampDayDto> Days,
-    List<CampPriceDto> Prices);
+    List<CampPriceDto> Prices, List<CampPackageDto> Packages);

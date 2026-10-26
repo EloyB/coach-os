@@ -926,6 +926,202 @@ public class CampServiceTests
         existing.Prices.Should().HaveCount(1);
     }
 
+    // ── Dagdelen en pakketten ─────────────────────────────────────────────────
+
+    private static List<CreateCampDayPartRequest> Parts() => new()
+    {
+        new("Ochtend", "09:00", "12:00"),
+        new("Namiddag", "13:00", "16:00"),
+    };
+
+    private UpdateCampRequest UpdateWithPackages(List<SaveCampPackageRequest> packages, string dayDate = "2026-05-01") => new(
+        "Kamp", null, _clubId, null, 100m, "2026-05-01", "2026-05-02",
+        new DateTime(2026, 4, 20, 0, 0, 0, DateTimeKind.Utc), 25, true,
+        new List<CreateCampDayRequest>
+        {
+            new(dayDate, "10:00", "15:00", new List<CreateCampDayTrainerRequest>(), Parts()),
+        },
+        null, packages);
+
+    private Camp ExistingCamp(Guid campId, params CampPackage[] packages)
+    {
+        Camp camp = new()
+        {
+            Id = campId, OrganizationId = _orgId, TennisClubId = _clubId, Price = 100m,
+            StartDate = new DateOnly(2026, 5, 1), EndDate = new DateOnly(2026, 5, 2),
+        };
+        foreach (CampPackage p in packages) camp.Packages.Add(p);
+        _camps.Setup(r => r.GetByIdWithDetailsAsync(campId, _orgId, It.IsAny<CancellationToken>())).ReturnsAsync(camp);
+        return camp;
+    }
+
+    [Test]
+    public async Task CreateAsync_WithPartsAndPackages_PersistsThemAndDerivesDayTimes()
+    {
+        Happy();
+        CreateCampRequest request = Request() with
+        {
+            Days = new List<CreateCampDayRequest>
+            {
+                new("2026-04-14", "10:00", "11:00", new List<CreateCampDayTrainerRequest>(), Parts()),
+            },
+            Packages = [new(null, "Ochtenden", "Enkel 's ochtends", 60m, [new("2026-04-14", 0)])],
+        };
+
+        Result<Guid> result = await _sut.CreateAsync(_orgId, request, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        _camps.Verify(r => r.AddAsync(
+            It.Is<Camp>(c =>
+                c.Days.Single().Parts.Count == 2
+                && c.Days.Single().Parts.OrderBy(p => p.Order).First().Name == "Ochtend"
+                && c.Days.Single().Parts.All(p => p.OrganizationId == _orgId)
+                && c.Days.Single().StartTime == new TimeOnly(9, 0)
+                && c.Days.Single().EndTime == new TimeOnly(16, 0)
+                && c.Packages.Single().Name == "Ochtenden"
+                && c.Packages.Single().Price == 60m
+                && c.Packages.Single().OrganizationId == _orgId
+                && c.Packages.Single().Slots.Single().PartOrder == 0),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task CreateAsync_PackageSlotWithoutMatchingPart_ReturnsValidationError()
+    {
+        Happy();
+        CreateCampRequest request = Request() with
+        {
+            Days = new List<CreateCampDayRequest>
+            {
+                new("2026-04-14", "09:00", "16:00", new List<CreateCampDayTrainerRequest>(), Parts()),
+            },
+            Packages = [new(null, "Woensdag", null, 60m, [new("2026-04-15", 0)])],
+        };
+
+        Result<Guid> result = await _sut.CreateAsync(_orgId, request, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.Validation);
+        _camps.Verify(r => r.AddAsync(It.IsAny<Camp>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task UpdateAsync_PackageSlotPointsToRemovedPart_ReturnsValidationError()
+    {
+        Happy();
+        Guid campId = Guid.NewGuid();
+        CampPackage existing = new()
+        {
+            Id = Guid.NewGuid(), Name = "Dag 2", Price = 50m,
+            Slots = { new CampPackageSlot { Date = new DateOnly(2026, 5, 2), PartOrder = 0 } },
+        };
+        ExistingCamp(campId, existing);
+
+        // De nieuwe dagen bevatten enkel 2026-05-01: het slot van 2026-05-02 bestaat niet meer.
+        Result result = await _sut.UpdateAsync(campId, _orgId, UpdateWithPackages(
+            [new(existing.Id, "Dag 2", null, 50m, [new("2026-05-02", 0)])]), CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.Validation);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task UpdateAsync_NullPackagesButDaysDropAUsedSlot_ReturnsValidationError()
+    {
+        Happy();
+        Guid campId = Guid.NewGuid();
+        CampPackage existing = new()
+        {
+            Id = Guid.NewGuid(), Name = "Dag 2", Price = 50m,
+            Slots = { new CampPackageSlot { Date = new DateOnly(2026, 5, 2), PartOrder = 0 } },
+        };
+        ExistingCamp(campId, existing);
+
+        // Pakketten niet meegestuurd (null = ongewijzigd), maar de nieuwe dagen laten 2026-05-02 vallen.
+        Result result = await _sut.UpdateAsync(
+            campId, _orgId, UpdateWithPackages([]) with { Packages = null }, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.Validation);
+    }
+
+    [Test]
+    public async Task UpdateAsync_RemovingPackageInUse_ReturnsConflict()
+    {
+        Happy();
+        Guid campId = Guid.NewGuid();
+        CampPackage inUse = new() { Id = Guid.NewGuid(), Name = "Ochtenden", Price = 60m };
+        ExistingCamp(campId, inUse);
+        _enrollments.Setup(r => r.AnyUsingPackagesAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        Result result = await _sut.UpdateAsync(campId, _orgId, UpdateWithPackages([]), CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.Conflict);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task UpdateAsync_Packages_UpdatesAddsAndRemoves()
+    {
+        Happy();
+        Guid campId = Guid.NewGuid();
+        CampPackage keep = new()
+        {
+            Id = Guid.NewGuid(), Name = "Oud", Price = 50m, SortOrder = 0,
+            Slots = { new CampPackageSlot { Date = new DateOnly(2026, 5, 1), PartOrder = 0 } },
+        };
+        CampPackage drop = new() { Id = Guid.NewGuid(), Name = "Weg", Price = 70m, SortOrder = 1 };
+        Camp existing = ExistingCamp(campId, keep, drop);
+
+        Result result = await _sut.UpdateAsync(campId, _orgId, UpdateWithPackages(
+        [
+            new(null, "Nieuw", null, 90m, [new("2026-05-01", 0), new("2026-05-01", 1)]),
+            new(keep.Id, " Ochtenden ", "Uitleg", 65m, [new("2026-05-01", 1)]),
+        ]), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        existing.Packages.Should().HaveCount(2);
+        keep.Name.Should().Be("Ochtenden");
+        keep.Price.Should().Be(65m);
+        keep.SortOrder.Should().Be(1);
+        keep.Slots.Should().ContainSingle().Which.PartOrder.Should().Be(1);
+        existing.Packages.Single(p => p.Name == "Nieuw").Slots.Should().HaveCount(2);
+        _camps.Verify(r => r.RemovePackages(It.Is<IEnumerable<CampPackage>>(x => x.Single().Id == drop.Id)), Times.Once);
+        _camps.Verify(r => r.RemovePackageSlots(It.IsAny<IEnumerable<CampPackageSlot>>()), Times.Once);
+    }
+
+    [Test]
+    public async Task UpdateAsync_ChangingPackagePrice_RecalculatesPendingCashPayment()
+    {
+        Happy();
+        Guid campId = Guid.NewGuid();
+        CampPackage package = new()
+        {
+            Id = Guid.NewGuid(), Name = "Ochtenden", Price = 50m,
+            Slots = { new CampPackageSlot { Date = new DateOnly(2026, 5, 1), PartOrder = 0 } },
+        };
+        ExistingCamp(campId, package);
+        CampEnrollment solo = new()
+        {
+            Id = Guid.NewGuid(), CampId = campId, CampPackageId = package.Id,
+            Status = Domain.Enums.EnrollmentStatus.Confirmed,
+        };
+        Payment pending = new() { Amount = 50m, Status = Domain.Enums.PaymentStatus.Pending, Method = Domain.Enums.PaymentMethod.Cash };
+        _enrollments.Setup(r => r.GetByCampWithResponsesAsync(campId, _orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([solo]);
+        _payments.Setup(p => p.GetLatestTrackedByCampEnrollmentIdAsync(solo.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pending);
+
+        Result result = await _sut.UpdateAsync(campId, _orgId, UpdateWithPackages(
+            [new(package.Id, "Ochtenden", null, 65m, [new("2026-05-01", 0)])]), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        pending.Amount.Should().Be(65m);
+    }
+
     private (Camp Camp, CampPrice Option, CampEnrollment Enrollment) ArrangeSoloWithOption()
     {
         Camp camp = new() { Id = Guid.NewGuid(), OrganizationId = _orgId, Name = "Kamp", Price = 100m };

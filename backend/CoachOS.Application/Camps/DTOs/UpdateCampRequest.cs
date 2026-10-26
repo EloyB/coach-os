@@ -12,4 +12,5 @@ public record UpdateCampRequest(
     int? MaxParticipants,
     bool IsActive,
     List<CreateCampDayRequest> Days,
-    List<SaveCampPriceRequest>? Prices = null);
+    List<SaveCampPriceRequest>? Prices = null,
+    List<SaveCampPackageRequest>? Packages = null);

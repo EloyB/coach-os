@@ -50,13 +50,16 @@ public class CampService(
             camp.Level.HasValue ? (int)camp.Level.Value : null, camp.Price,
             camp.StartDate.ToString(DateFormat), camp.EndDate.ToString(DateFormat),
             DateTime.SpecifyKind(camp.RegistrationDeadline, DateTimeKind.Utc),
-            camp.MaxParticipants, participants, camp.IsActive, days, MapPrices(camp)));
+            camp.MaxParticipants, participants, camp.IsActive, days, MapPrices(camp), MapPackages(camp)));
     }
 
     public async Task<Result<Guid>> CreateAsync(Guid organizationId, CreateCampRequest request, CancellationToken ct = default)
     {
         Error? validation = await ValidateClubAndTrainersAsync(organizationId, request.TennisClubId, request.Days, ct);
         if (validation is not null) return Result<Guid>.Fail(validation);
+
+        Error? slotError = ValidatePackageSlots(request.Days, request.Packages);
+        if (slotError is not null) return Result<Guid>.Fail(slotError);
 
         Camp camp = BuildCamp(organizationId, request);
         await camps.AddAsync(camp, ct);
@@ -71,6 +74,14 @@ public class CampService(
 
         Error? validation = await ValidateClubAndTrainersAsync(organizationId, request.TennisClubId, request.Days, ct);
         if (validation is not null) return Result.Fail(validation);
+
+        // Zonder meegestuurde pakketten blijven de bestaande staan: hun dagdelen moeten in de nieuwe dagen passen.
+        List<SaveCampPackageRequest>? packagesToCheck = request.Packages ?? camp.Packages
+            .Select(p => new SaveCampPackageRequest(p.Id, p.Name, p.Description, p.Price,
+                p.Slots.Select(s => new CampPackageSlotDto(s.Date.ToString(DateFormat), s.PartOrder)).ToList()))
+            .ToList();
+        Error? slotError = ValidatePackageSlots(request.Days, packagesToCheck);
+        if (slotError is not null) return Result.Fail(slotError);
 
         camp.Name = request.Name;
         camp.Description = request.Description;
@@ -100,7 +111,16 @@ public class CampService(
             pricesChanged |= camp.Prices.Any(p => previousAmounts.TryGetValue(p.Id, out decimal old) && old != p.Discount);
         }
 
-        // Openstaande cash-betalingen volgen een gewijzigde hoofdprijs of tariefbedrag.
+        if (request.Packages is not null)
+        {
+            Dictionary<Guid, decimal> previousPackagePrices = camp.Packages.ToDictionary(p => p.Id, p => p.Price);
+            Error? packageError = await SyncPackagesAsync(camp, organizationId, request.Packages, ct);
+            if (packageError is not null) return Result.Fail(packageError);
+            pricesChanged |= camp.Packages.Any(p =>
+                previousPackagePrices.TryGetValue(p.Id, out decimal old) && old != p.Price);
+        }
+
+        // Openstaande cash-betalingen volgen een gewijzigde hoofdprijs, pakketprijs of tariefkorting.
         if (pricesChanged)
             await SyncAllPendingCashAmountsAsync(camp, organizationId, ct);
 
@@ -582,6 +602,9 @@ public class CampService(
         int order = 0;
         foreach (SaveCampPriceRequest p in request.Prices ?? [])
             camp.Prices.Add(NewPrice(organizationId, p, order++));
+        order = 0;
+        foreach (SaveCampPackageRequest p in request.Packages ?? [])
+            camp.Packages.Add(NewPackage(organizationId, p, order++));
         return camp;
     }
 
@@ -597,6 +620,24 @@ public class CampService(
                 StartTime = TimeOnly.ParseExact(d.StartTime, "HH:mm"),
                 EndTime = TimeOnly.ParseExact(d.EndTime, "HH:mm"),
             };
+            int partOrder = 0;
+            foreach (CreateCampDayPartRequest part in d.Parts ?? [])
+            {
+                day.Parts.Add(new CampDayPart
+                {
+                    OrganizationId = organizationId,
+                    Order = partOrder++,
+                    Name = part.Name.Trim(),
+                    StartTime = TimeOnly.ParseExact(part.StartTime, "HH:mm"),
+                    EndTime = TimeOnly.ParseExact(part.EndTime, "HH:mm"),
+                });
+            }
+            // Met dagdelen zijn de kampuren van de dag de omhullende van de dagdelen.
+            if (day.Parts.Count > 0)
+            {
+                day.StartTime = day.Parts.Min(x => x.StartTime);
+                day.EndTime = day.Parts.Max(x => x.EndTime);
+            }
             foreach (CreateCampDayTrainerRequest t in d.Trainers)
             {
                 day.TrainerAssignments.Add(new CampDayTrainer
@@ -627,12 +668,116 @@ public class CampService(
             d.Id, d.Date.ToString(DateFormat), d.StartTime.ToString("HH\\:mm"), d.EndTime.ToString("HH\\:mm"),
             d.TrainerAssignments.Select(t => new CampDayTrainerDto(
                 t.TrainerId, names.GetValueOrDefault(t.TrainerId, string.Empty),
-                t.StartTime.ToString("HH\\:mm"), t.EndTime.ToString("HH\\:mm"))).ToList())).ToList();
+                t.StartTime.ToString("HH\\:mm"), t.EndTime.ToString("HH\\:mm"))).ToList(),
+            MapParts(d))).ToList();
     }
 
     private static List<CampPriceDto> MapPrices(Camp camp)
         => camp.Prices.OrderBy(p => p.SortOrder)
             .Select(p => new CampPriceDto(p.Id, p.Label, p.Description, p.Discount)).ToList();
+
+    internal static List<CampDayPartDto> MapParts(CampDay day)
+        => day.Parts.OrderBy(x => x.Order)
+            .Select(x => new CampDayPartDto(
+                x.Order, x.Name, x.StartTime.ToString("HH\\:mm"), x.EndTime.ToString("HH\\:mm"))).ToList();
+
+    internal static List<CampPackageDto> MapPackages(Camp camp, Func<CampPackage, bool>? isFull = null)
+        => camp.Packages.OrderBy(p => p.SortOrder)
+            .Select(p => new CampPackageDto(
+                p.Id, p.Name, p.Description, p.Price,
+                p.Slots.OrderBy(s => s.Date).ThenBy(s => s.PartOrder)
+                    .Select(s => new CampPackageSlotDto(s.Date.ToString(DateFormat), s.PartOrder)).ToList(),
+                isFull?.Invoke(p) ?? false)).ToList();
+
+    private static CampPackage NewPackage(Guid organizationId, SaveCampPackageRequest p, int order)
+    {
+        CampPackage package = new()
+        {
+            OrganizationId = organizationId,
+            Name = p.Name.Trim(),
+            Description = string.IsNullOrWhiteSpace(p.Description) ? null : p.Description.Trim(),
+            Price = p.Price,
+            SortOrder = order,
+        };
+        foreach (CampPackageSlotDto slot in p.Slots)
+            package.Slots.Add(NewSlot(organizationId, slot));
+        return package;
+    }
+
+    private static CampPackageSlot NewSlot(Guid organizationId, CampPackageSlotDto slot) => new()
+    {
+        OrganizationId = organizationId,
+        Date = ParseDate(slot.Date),
+        PartOrder = slot.PartOrder,
+    };
+
+    /// <summary>Elk slot van elk pakket moet wijzen naar een dagdeel (datum + positie) van de aangeleverde dagen.</summary>
+    private static Error? ValidatePackageSlots(List<CreateCampDayRequest> days, List<SaveCampPackageRequest>? packages)
+    {
+        if (packages is null || packages.Count == 0) return null;
+
+        HashSet<(DateOnly Date, int Order)> existing = days
+            .SelectMany(d => Enumerable.Range(0, d.Parts?.Count ?? 0).Select(i => (ParseDate(d.Date), i)))
+            .ToHashSet();
+        bool missing = packages.SelectMany(p => p.Slots).Any(s => !existing.Contains((ParseDate(s.Date), s.PartOrder)));
+        return missing
+            ? new Error(ErrorCodes.Validation, "Een pakket verwijst naar een dagdeel dat niet meer bestaat.")
+            : null;
+    }
+
+    /// <summary>
+    /// Brengt de pakketten van het kamp in lijn met de aangeleverde lijst: bestaande (op Id) worden bijgewerkt
+    /// (dagdelen via diff), nieuwe toegevoegd, ontbrekende verwijderd. Een pakket dat een inschrijving gekozen
+    /// heeft kan niet verwijderd worden.
+    /// </summary>
+    private async Task<Error?> SyncPackagesAsync(
+        Camp camp, Guid organizationId, List<SaveCampPackageRequest> incoming, CancellationToken ct)
+    {
+        List<Guid> incomingIds = incoming.Where(p => p.Id.HasValue).Select(p => p.Id!.Value).ToList();
+        if (incomingIds.Any(id => camp.Packages.All(p => p.Id != id)))
+            return new Error(ErrorCodes.NotFound, "Pakket niet gevonden.");
+
+        List<CampPackage> removed = camp.Packages.Where(p => !incomingIds.Contains(p.Id)).ToList();
+        if (await enrollments.AnyUsingPackagesAsync(removed.Select(p => p.Id), ct))
+            return new Error(ErrorCodes.Conflict,
+                "Een pakket dat bij een inschrijving gekozen is kan niet verwijderd worden.");
+
+        if (removed.Count > 0)
+        {
+            camps.RemovePackages(removed);
+            foreach (CampPackage p in removed) camp.Packages.Remove(p);
+        }
+
+        int order = 0;
+        foreach (SaveCampPackageRequest dto in incoming)
+        {
+            CampPackage? existing = dto.Id.HasValue ? camp.Packages.FirstOrDefault(p => p.Id == dto.Id.Value) : null;
+            if (existing is null)
+            {
+                camp.Packages.Add(NewPackage(organizationId, dto, order));
+            }
+            else
+            {
+                existing.Name = dto.Name.Trim();
+                existing.Description = string.IsNullOrWhiteSpace(dto.Description) ? null : dto.Description.Trim();
+                existing.Price = dto.Price;
+                existing.SortOrder = order;
+
+                HashSet<(DateOnly, int)> wanted = dto.Slots.Select(s => (ParseDate(s.Date), s.PartOrder)).ToHashSet();
+                List<CampPackageSlot> dropped = existing.Slots.Where(s => !wanted.Contains((s.Date, s.PartOrder))).ToList();
+                if (dropped.Count > 0)
+                {
+                    camps.RemovePackageSlots(dropped);
+                    foreach (CampPackageSlot s in dropped) existing.Slots.Remove(s);
+                }
+                HashSet<(DateOnly, int)> kept = existing.Slots.Select(s => (s.Date, s.PartOrder)).ToHashSet();
+                foreach (CampPackageSlotDto slot in dto.Slots.Where(s => !kept.Contains((ParseDate(s.Date), s.PartOrder))))
+                    existing.Slots.Add(NewSlot(organizationId, slot));
+            }
+            order++;
+        }
+        return null;
+    }
 
     private static CampPrice NewPrice(Guid organizationId, SaveCampPriceRequest p, int order) => new()
     {
