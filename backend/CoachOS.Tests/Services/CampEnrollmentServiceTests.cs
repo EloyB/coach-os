@@ -234,6 +234,176 @@ public class CampEnrollmentServiceTests
         _payments.Verify(p => p.CreatePaymentForCampEnrollmentAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
+    // ── Pakketten ────────────────────────────────────────────────────────────
+
+    private static readonly DateOnly PackageDay = new(2026, 4, 14);
+
+    /// <summary>Kamp met één dag (ochtend + namiddag) en drie pakketten; ochtend en namiddag kosten 60 en 40.</summary>
+    private Camp BuildPackageCamp(decimal mainPrice, int? max, out CampPackage morning, out CampPackage afternoon, out CampPackage both)
+    {
+        Camp camp = BuildCamp(mainPrice);
+        camp.MaxParticipants = max;
+        CampDay day = new() { Id = Guid.NewGuid(), Date = PackageDay };
+        day.Parts.Add(new CampDayPart { Order = 0, Name = "Ochtend" });
+        day.Parts.Add(new CampDayPart { Order = 1, Name = "Namiddag" });
+        camp.Days.Add(day);
+        morning = NewPackage("Ochtend", 60m, 0);
+        afternoon = NewPackage("Namiddag", 40m, 1);
+        both = NewPackage("Hele dag", 90m, 0, 1);
+        camp.Packages.Add(morning);
+        camp.Packages.Add(afternoon);
+        camp.Packages.Add(both);
+        return camp;
+    }
+
+    private static CampPackage NewPackage(string name, decimal price, params int[] parts)
+    {
+        CampPackage package = new() { Id = Guid.NewGuid(), Name = name, Price = price };
+        foreach (int part in parts)
+            package.Slots.Add(new CampPackageSlot { Date = PackageDay, PartOrder = part });
+        return package;
+    }
+
+    private void ArrangePackageCamp(Camp camp, params CampEnrollment[] active)
+    {
+        _camps.Setup(r => r.GetByIdPublicAsync(_campId, It.IsAny<CancellationToken>())).ReturnsAsync(camp);
+        _forms.Setup(r => r.GetByCampIdReadOnlyAsync(_campId, It.IsAny<CancellationToken>())).ReturnsAsync((CampEnrollmentForm?)null);
+        _enrollments.Setup(r => r.CountActiveByCampAsync(_campId, It.IsAny<CancellationToken>())).ReturnsAsync(active.Length);
+        _enrollments.Setup(r => r.GetActiveByCampAsync(_campId, It.IsAny<CancellationToken>())).ReturnsAsync(active.ToList());
+        _enrollments.Setup(r => r.IsDuplicateAsync(_campId, It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
+    }
+
+    [Test]
+    public async Task Submit_SoloWithPackage_StoresPackageAndRequiresPaymentEvenWhenMainPriceIsFree()
+    {
+        Camp camp = BuildPackageCamp(0m, 20, out CampPackage morning, out _, out _);
+        ArrangePackageCamp(camp);
+
+        Result<SubmitCampEnrollmentResultDto> result = await _sut.SubmitAsync(
+            _campId, Req() with { CampPackageId = morning.Id }, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.RequiresPayment.Should().BeTrue();
+        _enrollments.Verify(r => r.AddAsync(
+            It.Is<CampEnrollment>(e => e.CampPackageId == morning.Id && e.Status == EnrollmentStatus.PendingPayment),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task Submit_PackagePriceZeroOnPaidCamp_ConfirmsImmediately()
+    {
+        Camp camp = BuildPackageCamp(120m, 20, out CampPackage morning, out _, out _);
+        morning.Price = 0m;
+        ArrangePackageCamp(camp);
+
+        Result<SubmitCampEnrollmentResultDto> result = await _sut.SubmitAsync(
+            _campId, Req() with { CampPackageId = morning.Id }, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.RequiresPayment.Should().BeFalse();
+        _enrollments.Verify(r => r.AddAsync(
+            It.Is<CampEnrollment>(e => e.Status == EnrollmentStatus.Confirmed), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task Submit_CampWithPackagesButNoneChosen_ReturnsValidation()
+    {
+        Camp camp = BuildPackageCamp(120m, 20, out _, out _, out _);
+        ArrangePackageCamp(camp);
+
+        Result<SubmitCampEnrollmentResultDto> result = await _sut.SubmitAsync(_campId, Req(), CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.Validation);
+        _enrollments.Verify(r => r.AddAsync(It.IsAny<CampEnrollment>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task Submit_PackageOfAnotherCamp_ReturnsValidation()
+    {
+        Camp camp = BuildPackageCamp(120m, 20, out _, out _, out _);
+        ArrangePackageCamp(camp);
+
+        Result<SubmitCampEnrollmentResultDto> result = await _sut.SubmitAsync(
+            _campId, Req() with { CampPackageId = Guid.NewGuid() }, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.Validation);
+    }
+
+    [Test]
+    public async Task Submit_CampWithoutPackages_IgnoresAPackageId()
+    {
+        Happy(120m);
+
+        Result<SubmitCampEnrollmentResultDto> result = await _sut.SubmitAsync(
+            _campId, Req() with { CampPackageId = Guid.NewGuid() }, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        _enrollments.Verify(r => r.AddAsync(
+            It.Is<CampEnrollment>(e => e.CampPackageId == null), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task Submit_GroupWithDifferentPackages_StoresEachChildsPackage()
+    {
+        Camp camp = BuildPackageCamp(0m, 20, out CampPackage morning, out _, out CampPackage both);
+        ArrangePackageCamp(camp);
+        SubmitCampEnrollmentRequest req = Req() with
+        {
+            EnrollmentType = "group", CampPackageId = morning.Id,
+            GroupMembers = new List<CampGroupMemberDto>
+            {
+                new() { ParticipantName = "Lars", ParticipantEmail = "lars@example.com", CampPackageId = both.Id },
+            },
+        };
+
+        Result<SubmitCampEnrollmentResultDto> result = await _sut.SubmitAsync(_campId, req, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        _enrollments.Verify(r => r.AddAsync(It.Is<CampEnrollment>(e => e.ParticipantName == "Emma" && e.CampPackageId == morning.Id),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _enrollments.Verify(r => r.AddAsync(It.Is<CampEnrollment>(e => e.ParticipantName == "Lars" && e.CampPackageId == both.Id),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task Submit_GroupWhereOneMembersPartIsFull_ReturnsConflictAndStoresNothing()
+    {
+        Camp camp = BuildPackageCamp(0m, 1, out CampPackage morning, out CampPackage afternoon, out _);
+        // Eén bestaande deelnemer bezet de enige plek van de ochtend.
+        ArrangePackageCamp(camp, new CampEnrollment { Id = Guid.NewGuid(), CampPackageId = morning.Id, Status = EnrollmentStatus.Confirmed });
+        SubmitCampEnrollmentRequest req = Req() with
+        {
+            EnrollmentType = "group", CampPackageId = afternoon.Id,
+            GroupMembers = new List<CampGroupMemberDto>
+            {
+                new() { ParticipantName = "Lars", ParticipantEmail = "lars@example.com", CampPackageId = morning.Id },
+            },
+        };
+
+        Result<SubmitCampEnrollmentResultDto> result = await _sut.SubmitAsync(_campId, req, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.Conflict);
+        _enrollments.Verify(r => r.AddAsync(It.IsAny<CampEnrollment>(), It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.RollbackTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task GetPublicCamp_MarksPackageFullWhenOneOfItsPartsIsAtTheLimit()
+    {
+        Camp camp = BuildPackageCamp(0m, 1, out CampPackage morning, out CampPackage afternoon, out CampPackage both);
+        ArrangePackageCamp(camp, new CampEnrollment { Id = Guid.NewGuid(), CampPackageId = morning.Id, Status = EnrollmentStatus.Confirmed });
+
+        Result<PublicCampDto> result = await _sut.GetPublicCampAsync(_campId, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Packages.Single(p => p.Id == morning.Id).IsFull.Should().BeTrue();
+        result.Value.Packages.Single(p => p.Id == both.Id).IsFull.Should().BeTrue();
+        result.Value.Packages.Single(p => p.Id == afternoon.Id).IsFull.Should().BeFalse();
+    }
+
     // ── CreateManualAsync ────────────────────────────────────────────────────
 
     private static CreateManualCampEnrollmentRequest ManualReq(bool paid = false) => new()

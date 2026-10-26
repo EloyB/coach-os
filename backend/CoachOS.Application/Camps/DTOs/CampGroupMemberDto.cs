@@ -5,5 +5,7 @@ public record CampGroupMemberDto
     public string ParticipantName { get; init; } = string.Empty;
     public string ParticipantEmail { get; init; } = string.Empty;
     public string? ParticipantPhone { get; init; }
+    /// <summary>Gekozen pakket van dit lid; verplicht als het kamp pakketten heeft.</summary>
+    public Guid? CampPackageId { get; init; }
     public List<CampFormResponseValueDto>? Responses { get; init; }
 }
