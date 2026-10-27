@@ -4,7 +4,7 @@ export const ANONIEME_INSCHRIJVING_AVG: BlogPost = {
   slug: "anonieme-inschrijving-avg",
   title: "Anonieme inschrijving: AVG-conform leerlingen onboarden",
   metaTitle:
-    "Anonieme inschrijving: AVG-conform leerlingen onboarden · CoachOS",
+    "Anonieme inschrijving: AVG-conform leerlingen onboarden",
   metaDescription:
     "Hoe een sportclub leerlingen inschrijft zonder accounts en AVG-conform werkt: minimale data, magic-link bevestiging, duidelijke bewaartermijnen.",
   publishedAt: "2026-05-07",

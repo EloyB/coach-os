@@ -3,7 +3,7 @@ import type { BlogPost } from "@/content/blog/types";
 export const HOE_PLAN_JE_LESSEIZOEN_TENNISCLUB: BlogPost = {
   slug: "hoe-plan-je-lesseizoen-tennisclub",
   title: "Hoe plan je een lesseizoen voor je tennisclub",
-  metaTitle: "Hoe plan je een lesseizoen voor je tennisclub · CoachOS",
+  metaTitle: "Hoe plan je een lesseizoen voor je tennisclub",
   metaDescription:
     "Praktische gids om een lesseizoen op te zetten voor je tennisclub: kalender, niveaus, inschrijvingen en planning — zonder Excel en zonder oneindig veel mails.",
   publishedAt: "2026-05-07",

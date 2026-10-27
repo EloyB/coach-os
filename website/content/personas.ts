@@ -7,7 +7,7 @@ export interface Persona {
   slug: PersonaSlug;
   /** Short label for breadcrumbs and internal nav. */
   navLabel: string;
-  /** SEO meta title — keep under ~60 chars. */
+  /** SEO meta title zonder merknaam: de titeltemplate in de root layout voegt " · CoachOS" toe. */
   metaTitle: string;
   /** SEO meta description — ~155 chars, primary keyword up front. */
   metaDescription: string;
@@ -39,7 +39,7 @@ export interface PersonaItem {
 export const TENNIS_CLUBS_PERSONA: Persona = {
   slug: "voor-tennisclubs",
   navLabel: "Tennisclubs",
-  metaTitle: "Lessenplanning voor tennisclubs · CoachOS",
+  metaTitle: "Lessenplanning voor tennisclubs",
   metaDescription:
     "Software voor lessenplanning bij tennis- en padelclubs. Lessenreeksen, anonieme inschrijvingen en automatische groepering, geen Excel meer.",
   kicker: "VOOR TENNISCLUBS",
@@ -104,7 +104,7 @@ export const TENNIS_CLUBS_PERSONA: Persona = {
 export const PADEL_CLUBS_PERSONA: Persona = {
   slug: "voor-padelclubs",
   navLabel: "Padelclubs",
-  metaTitle: "Lessenplanning voor padelclubs · CoachOS",
+  metaTitle: "Lessenplanning voor padelclubs",
   metaDescription:
     "Software voor padelclubs — beheer lessenreeksen, verzamel inschrijvingen op de gsm en plan automatisch op niveau. Zonder accounts voor spelers.",
   kicker: "VOOR PADELCLUBS",
@@ -165,7 +165,7 @@ export const PADEL_CLUBS_PERSONA: Persona = {
 export const TRAINERS_PERSONA: Persona = {
   slug: "voor-trainers",
   navLabel: "Trainers",
-  metaTitle: "Lessenplanning voor trainers · CoachOS",
+  metaTitle: "Lessenplanning voor trainers",
   metaDescription:
     "Voor zelfstandige tennis- en padeltrainers: automatiseer inschrijvingen, planning en bevestigingen. Eén tool, geen Excel, 30 dagen gratis proberen.",
   kicker: "VOOR TRAINERS",

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { CreditCard, MapPin, ShieldCheck } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { pageMetadata } from "@/lib/seo";
 import { Mono } from "@/components/ui/mono";
 import { SiteNav } from "@/components/site/site-nav";
 import { SiteFooter } from "@/components/site/site-footer";
@@ -21,29 +22,14 @@ import {
 const SITE_URL = "https://coach-os.be";
 const PAGE_URL = `${SITE_URL}/prijzen`;
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
+  path: "/prijzen",
   title: "Prijzen: lessenplanning vanaf €25/maand",
   description:
     "Tarieven voor CoachOS, lessenplanning voor tennis- en padelclubs. Je betaalt per actieve leerling, met onbeperkt trainers. 30 dagen gratis proberen, maandelijks opzegbaar.",
-  alternates: {
-    canonical: PAGE_URL,
-    languages: {
-      "nl-BE": PAGE_URL,
-      "nl-NL": PAGE_URL,
-      "x-default": PAGE_URL,
-    },
-  },
-  openGraph: {
-    type: "website",
-    locale: "nl_BE",
-    alternateLocale: ["nl_NL"],
-    url: PAGE_URL,
-    title: "Prijzen · CoachOS",
-    description:
-      "Tarieven voor CoachOS, lessenplanning voor tennis- en padelclubs. Vanaf €25/maand, per actieve leerling. 30 dagen gratis proberen.",
-    siteName: "CoachOS",
-  },
-};
+  socialDescription:
+    "Tarieven voor CoachOS, lessenplanning voor tennis- en padelclubs. Vanaf €25/maand, per actieve leerling. 30 dagen gratis proberen.",
+});
 
 function PricingPageJsonLd() {
   const breadcrumb = {

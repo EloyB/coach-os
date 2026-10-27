@@ -93,7 +93,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="nl">
+    <html lang="nl-BE">
       <body
         className={`${inter.variable} ${jetbrainsMono.variable} antialiased bg-paper text-ink`}
       >

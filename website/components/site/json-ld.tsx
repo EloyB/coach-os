@@ -1,4 +1,5 @@
 import { FAQ } from "@/content/faq";
+import { PRICING_TIERS, PRICING_VISIBLE } from "@/content/pricing";
 import { FEATURES } from "@/content/features";
 import { SITE } from "@/content/meta";
 
@@ -66,6 +67,33 @@ export function HomepageJsonLd() {
         "Tennis- en padelclubs, hoofdtrainers en zelfstandige coaches",
     },
     featureList: FEATURES.map((f) => `${f.title} — ${f.body}`),
+    // Prijzen komen uit dezelfde bron als de /prijzen-pagina. Per maand, excl. btw.
+    ...(PRICING_VISIBLE
+      ? {
+          offers: {
+            "@type": "AggregateOffer",
+            priceCurrency: "EUR",
+            lowPrice: String(Math.min(...PRICING_TIERS.map((t) => t.priceMonthly))),
+            highPrice: String(Math.max(...PRICING_TIERS.map((t) => t.priceMonthly))),
+            offerCount: PRICING_TIERS.length,
+            offers: PRICING_TIERS.map((tier) => ({
+              "@type": "Offer",
+              name: tier.name,
+              description: tier.studentLimit,
+              priceCurrency: "EUR",
+              price: String(tier.priceMonthly),
+              priceSpecification: {
+                "@type": "UnitPriceSpecification",
+                price: String(tier.priceMonthly),
+                priceCurrency: "EUR",
+                unitCode: "MON",
+                valueAddedTaxIncluded: false,
+              },
+              url: `${SITE_URL}/prijzen`,
+            })),
+          },
+        }
+      : {}),
   };
 
   const faqPage = {
