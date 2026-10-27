@@ -12,7 +12,7 @@ public class CampPriceConfiguration : IEntityTypeConfiguration<CampPrice>
 
         builder.Property(p => p.Label).HasMaxLength(120).IsRequired();
         builder.Property(p => p.Description).HasMaxLength(500);
-        builder.Property(p => p.Amount).HasPrecision(10, 2).IsRequired();
+        builder.Property(p => p.Discount).HasPrecision(10, 2).IsRequired();
 
         builder.HasOne(p => p.Organization)
             .WithMany()

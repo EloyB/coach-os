@@ -584,6 +584,10 @@ def create_camps(api: ApiClient, club_ids: list[str], trainer_id: str,
 
     # ── Paid camp: 3 consecutive days, day-trainers, custom form ──────────────
     paid_start = today + timedelta(days=21)
+    day_parts = [
+        {"name": "Ochtend", "startTime": "09:00", "endTime": "12:00"},
+        {"name": "Namiddag", "startTime": "13:00", "endTime": "16:00"},
+    ]
     paid_body = {
         "name": "Paaskamp Gevorderden",
         "description": "Drie dagen intensief trainen tijdens de paasvakantie.",
@@ -594,18 +598,28 @@ def create_camps(api: ApiClient, club_ids: list[str], trainer_id: str,
         "endDate": iso_date(paid_start + timedelta(days=2)),
         "registrationDeadline": deadline_iso,
         "maxParticipants": 20,
-        # Extra tarieven ter referentie; de beheerder kiest er per inschrijving een.
+        # Kortingstarieven (vast bedrag op de pakketprijs); de beheerder kiest er per inschrijving een.
         "prices": [
-            {"label": "Leden", "description": "Voor leden van de club.", "amount": 100},
-            {"label": "Tweede kind", "description": "Voor een broer of zus van een deelnemer.", "amount": 90},
+            {"label": "Leden", "description": "Voor leden van de club.", "discount": 20},
+            {"label": "Tweede kind", "description": "Voor een broer of zus van een deelnemer.", "discount": 30},
         ],
         "days": [
             {"date": iso_date(paid_start), "startTime": "09:00", "endTime": "16:00",
-             "trainers": [{"trainerId": trainer_id, "startTime": "09:00", "endTime": "12:00"}]},
+             "trainers": [{"trainerId": trainer_id, "startTime": "09:00", "endTime": "12:00"}],
+             "parts": day_parts},
             {"date": iso_date(paid_start + timedelta(days=1)), "startTime": "09:00", "endTime": "16:00",
-             "trainers": []},
-            {"date": iso_date(paid_start + timedelta(days=2)), "startTime": "10:00", "endTime": "15:00",
-             "trainers": []},
+             "trainers": [], "parts": day_parts},
+            {"date": iso_date(paid_start + timedelta(days=2)), "startTime": "09:00", "endTime": "16:00",
+             "trainers": [], "parts": day_parts},
+        ],
+        # Vaste pakketten: het hele kamp of enkel de ochtenden (voor de jongste kinderen).
+        "packages": [
+            {"name": "Hele kamp", "description": "Alle dagen, ochtend en namiddag.", "price": 120,
+             "slots": [{"date": iso_date(paid_start + timedelta(days=d)), "partOrder": o}
+                       for d in range(3) for o in range(2)]},
+            {"name": "Enkel ochtenden", "description": "Voor de jongste kinderen.", "price": 60,
+             "slots": [{"date": iso_date(paid_start + timedelta(days=d)), "partOrder": 0}
+                       for d in range(3)]},
         ],
     }
     paid_id = strip_quotes(api.post("/camps", paid_body))
@@ -670,10 +684,14 @@ def create_camps(api: ApiClient, club_ids: list[str], trainer_id: str,
     # ook zonder Mollie-koppeling. Zo toont de seed de "wacht op betaling"-toestand
     # in de beheer-UI.
     if paid_id:
-        enroll(paid_id, "Betaald kamp - Sofie (solo, wacht op betaling)", {
+        # Het kamp heeft pakketten: elke deelnemer kiest er een.
+        detail = api.get(f"/camps/{paid_id}") or {}
+        packages = {p["name"]: p["id"] for p in detail.get("packages", [])}
+        enroll(paid_id, "Betaald kamp - Sofie (solo, enkel ochtenden, wacht op betaling)", {
             "participantName": "Sofie Peeters",
             "participantEmail": "sofie.peeters@example.com",
             "participantPhone": "+32470111222",
+            "campPackageId": packages.get("Enkel ochtenden"),
             "responses": [],
             "enrollmentType": "solo",
         })

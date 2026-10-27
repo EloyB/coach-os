@@ -10,4 +10,5 @@ public record CampEnrollmentDto(
     List<CampEnrollmentResponseItemDto> FormResponses,
     string? PaymentMethod, string? PaymentStatus,
     decimal? PaymentAmount, DateTime? PaidAt, string? MolliePaymentId,
-    Guid? CampPriceId = null, string? CampPriceLabel = null);
+    Guid? CampPriceId = null, string? CampPriceLabel = null,
+    Guid? CampPackageId = null, string? CampPackageName = null);

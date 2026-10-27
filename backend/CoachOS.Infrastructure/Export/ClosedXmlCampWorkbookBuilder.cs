@@ -32,7 +32,7 @@ public class ClosedXmlCampWorkbookBuilder : ICampWorkbookBuilder
         IXLWorksheet ws = workbook.Worksheets.Add("Inschrijvingen");
 
         string[] fixedHeaders =
-            ["Naam", "E-mail", "Telefoon", "Status", "Betaalstatus", "Betaalmethode", "Ingeschreven op", "Notities"];
+            ["Naam", "E-mail", "Telefoon", "Status", "Betaalstatus", "Betaalmethode", "Ingeschreven op", "Notities", "Pakket"];
         string[] headers = [.. fixedHeaders, .. model.FormFieldLabels];
         ExportWorkbookStyle.RenderShell(ws, "Inschrijvingen", model.CampName, model.ExportedOn, headers);
 
@@ -61,6 +61,7 @@ public class ClosedXmlCampWorkbookBuilder : ICampWorkbookBuilder
                 enrolledCell.Value = e.EnrolledAt;
                 enrolledCell.Style.DateFormat.Format = DateTimeFormat;
                 ws.Cell(row, col++).Value = e.Notes ?? string.Empty;
+                ws.Cell(row, col++).Value = e.PackageName ?? string.Empty;
 
                 foreach (string label in model.FormFieldLabels)
                     ws.Cell(row, col++).Value = e.FormResponses.TryGetValue(label, out string? value) ? value : string.Empty;

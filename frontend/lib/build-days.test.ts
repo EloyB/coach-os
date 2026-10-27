@@ -5,6 +5,7 @@ const d = (date: string) => ({
   startTime: "09:00",
   endTime: "16:00",
   trainers: [],
+  parts: [],
 });
 describe("buildDays", () => {
   it("houdt geschrapte dagen weg bij uitbreiden", () => {

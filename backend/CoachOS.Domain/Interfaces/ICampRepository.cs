@@ -21,7 +21,7 @@ public interface ICampRepository
     Task<IReadOnlyList<CampDayTrainer>> GetTrainerDaysAsync(
         Guid trainerId, Guid organizationId, DateOnly from, DateOnly to, CancellationToken ct = default);
 
-    /// <summary>Detail incl. Days + TrainerAssignments + EnrollmentForm.Fields (tracked voor update).</summary>
+    /// <summary>Detail incl. Days + Parts + TrainerAssignments + Prices + Packages + EnrollmentForm.Fields (tracked voor update).</summary>
     Task<Camp?> GetByIdWithDetailsAsync(Guid id, Guid organizationId, CancellationToken ct = default);
 
     /// <summary>Publieke read: kamp + dagen + trainerassignments, read-only, ongeacht tenant.</summary>
@@ -36,4 +36,9 @@ public interface ICampRepository
     void RemoveDays(IEnumerable<CampDay> days);
 
     void RemovePrices(IEnumerable<CampPrice> prices);
+
+    /// <summary>Verwijdert pakketten + hun dagdelen-slots (Restrict FK: geen auto-cascade).</summary>
+    void RemovePackages(IEnumerable<CampPackage> packages);
+
+    void RemovePackageSlots(IEnumerable<CampPackageSlot> slots);
 }

@@ -13,7 +13,7 @@ public interface ICampEnrollmentService
     /// Betaalopties voor de publieke betaalpagina: de prijs en of online betalen
     /// beschikbaar is (= de organisatie van het kamp is aan Mollie gekoppeld).
     /// </summary>
-    Task<Result<CampPaymentOptionsDto>> GetPaymentOptionsAsync(Guid campId, CancellationToken ct = default);
+    Task<Result<CampPaymentOptionsDto>> GetPaymentOptionsAsync(Guid campId, Guid? campEnrollmentId = null, CancellationToken ct = default);
 
     /// <summary>
     /// Verwerkt de betaalkeuze van een deelnemer. Online maakt de Mollie payment aan

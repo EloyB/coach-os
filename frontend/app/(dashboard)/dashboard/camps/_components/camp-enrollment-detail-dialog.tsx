@@ -16,6 +16,7 @@ import { enrollmentDisplayStatus } from "@/lib/status-styles";
 import { updateCampEnrollment, type CampEnrollmentDto } from "@/lib/api/camps";
 import { getAxiosErrorMessages } from "@/lib/utils/api-errors";
 import { MolliePaymentId } from "@/components/dashboard/mollie-payment-id";
+import { CampPackageSelect } from "./camp-package-select";
 import { CampPriceSelect } from "./camp-price-select";
 
 function DetailRow({
@@ -68,14 +69,20 @@ export function CampEnrollmentDetailDialog({
   markPaidLabel,
 }: CampEnrollmentDetailDialogProps) {
   const t = useTranslations("campEnrollmentsTable");
+  const tCamps = useTranslations("camps");
   const queryClient = useQueryClient();
+  // Pakket en tarief worden samen verstuurd: het ene mag het andere niet terugzetten.
   const priceMutation = useMutation({
-    mutationFn: (campPriceId: string | null) =>
+    mutationFn: (patch: {
+      campPriceId: string | null;
+      campPackageId: string | null;
+    }) =>
       updateCampEnrollment(campId, enrollment.id, {
         participantName: enrollment.participantName,
         participantEmail: enrollment.participantEmail,
         participantPhone: enrollment.participantPhone,
-        campPriceId,
+        campPriceId: patch.campPriceId,
+        campPackageId: patch.campPackageId,
         responses: enrollment.formResponses
           .filter((r) => r.value.trim() !== "")
           .map((r) => ({ campFormFieldId: r.fieldId, value: r.value })),
@@ -171,6 +178,12 @@ export function CampEnrollmentDetailDialog({
                 "nl-BE",
               )}
             />
+            {!canEditPrice && enrollment.campPackageName && (
+              <DetailRow
+                label={tCamps("packageLabel")}
+                value={enrollment.campPackageName}
+              />
+            )}
             {!canEditPrice && enrollment.campPriceLabel && (
               <DetailRow
                 label={t("priceLabel")}
@@ -222,11 +235,28 @@ export function CampEnrollmentDetailDialog({
 
           {canEditPrice && (
             <div className={priceMutation.isPending ? "opacity-60" : undefined}>
-              <CampPriceSelect
-                campId={campId}
-                value={enrollment.campPriceId}
-                onChange={(priceId) => priceMutation.mutate(priceId)}
-              />
+              <div className="space-y-3">
+                <CampPackageSelect
+                  campId={campId}
+                  value={enrollment.campPackageId}
+                  onChange={(campPackageId) =>
+                    priceMutation.mutate({
+                      campPriceId: enrollment.campPriceId,
+                      campPackageId,
+                    })
+                  }
+                />
+                <CampPriceSelect
+                  campId={campId}
+                  value={enrollment.campPriceId}
+                  onChange={(campPriceId) =>
+                    priceMutation.mutate({
+                      campPriceId,
+                      campPackageId: enrollment.campPackageId,
+                    })
+                  }
+                />
+              </div>
             </div>
           )}
 

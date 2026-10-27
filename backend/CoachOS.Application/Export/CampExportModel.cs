@@ -30,7 +30,8 @@ public sealed record CampEnrollmentRow(
     string? PaymentMethod,
     DateTime EnrolledAt,
     string? Notes,
-    IReadOnlyDictionary<string, string> FormResponses);
+    IReadOnlyDictionary<string, string> FormResponses,
+    string? PackageName = null);
 
 /// <summary>Tab 2 — één kampdag met de kampuren en de aanwezige trainers.</summary>
 public sealed record CampDayRow(

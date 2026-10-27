@@ -25,7 +25,10 @@ import type {
   PublicCampDto,
   CampEnrollmentFormDto,
   CampFormFieldDto,
+  CampPackageDto,
 } from "@/lib/api/camps";
+import { summarizePackageSlots } from "@/lib/camp-packages";
+import { getAxiosErrorMessages } from "@/lib/utils/api-errors";
 import { getAuthUser } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -44,7 +47,7 @@ const LEVEL_KEYS: Record<number, "level1" | "level2" | "level3"> = {
   3: "level3",
 };
 
-type GroupMember = { name: string; email: string };
+type GroupMember = { name: string; email: string; packageId: string };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -66,6 +69,73 @@ function formatDeadline(iso: string): string {
 }
 
 // ─── Page ────────────────────────────────────────────────────────────────────
+
+function PackagePicker({
+  camp,
+  name,
+  value,
+  onChange,
+  error,
+  t,
+}: {
+  camp: PublicCampDto;
+  name: string;
+  value: string;
+  onChange: (packageId: string) => void;
+  error?: string;
+  t: ReturnType<typeof useTranslations<"camps">>;
+}) {
+  return (
+    <div className="space-y-2">
+      {camp.packages.map((p: CampPackageDto) => {
+        const lines = summarizePackageSlots(camp.days, p.slots);
+        const selected = value === p.id;
+        return (
+          <label
+            key={p.id}
+            className={`block rounded-lg border-2 p-3 transition ${
+              p.isFull
+                ? "cursor-not-allowed border-gray-100 bg-gray-50 opacity-60"
+                : selected
+                  ? "cursor-pointer border-tennis-green bg-tennis-green/5"
+                  : "cursor-pointer border-gray-200 hover:border-tennis-green/30"
+            }`}
+          >
+            <input
+              type="radio"
+              name={name}
+              value={p.id}
+              checked={selected}
+              disabled={p.isFull}
+              onChange={() => onChange(p.id)}
+              className="sr-only"
+            />
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-sm font-medium text-gray-900">{p.name}</span>
+              <span className="flex shrink-0 items-center gap-2 text-sm font-semibold text-gray-900">
+                {p.isFull && (
+                  <Badge variant="secondary">{t("publicPackageFull")}</Badge>
+                )}
+                {p.price > 0 ? `€${p.price.toFixed(2)}` : t("priceFree")}
+              </span>
+            </div>
+            {p.description && (
+              <p className="mt-0.5 text-xs text-gray-500">{p.description}</p>
+            )}
+            <ul className="mt-1.5 space-y-0.5 text-xs text-gray-500">
+              {lines.map((line) => (
+                <li key={line} className="first-letter:uppercase">
+                  {line}
+                </li>
+              ))}
+            </ul>
+          </label>
+        );
+      })}
+      {error && <p className="text-xs text-red-500">{error}</p>}
+    </div>
+  );
+}
 
 export default function CampEnrollPage() {
   const { campId } = useParams<{ campId: string }>();
@@ -97,8 +167,12 @@ export default function CampEnrollPage() {
   const [enrollmentType, setEnrollmentType] = useState<"solo" | "group">("solo");
   const [groupMembers, setGroupMembers] = useState<GroupMember[]>([]);
   const [memberErrors, setMemberErrors] = useState<
-    Record<number, { name?: string; email?: string }>
+    Record<number, { name?: string; email?: string; packageId?: string }>
   >({});
+
+  // Pakketkeuze: enkel relevant als het kamp pakketten heeft.
+  const [leaderPackageId, setLeaderPackageId] = useState("");
+  const [leaderPackageError, setLeaderPackageError] = useState<string | undefined>();
 
   const user = getAuthUser();
   const isAdminOrTrainer = user?.role === "Admin" || user?.role === "Trainer";
@@ -136,7 +210,7 @@ export default function CampEnrollPage() {
 
   function addGroupMember() {
     if (groupMembers.length >= 3) return;
-    setGroupMembers((prev) => [...prev, { name: "", email: "" }]);
+    setGroupMembers((prev) => [...prev, { name: "", email: "", packageId: "" }]);
   }
 
   function removeGroupMember(index: number) {
@@ -165,6 +239,17 @@ export default function CampEnrollPage() {
     }
   }
 
+  function setMemberPackage(index: number, packageId: string) {
+    setGroupMembers((prev) =>
+      prev.map((m, i) => (i === index ? { ...m, packageId } : m))
+    );
+    setMemberErrors((prev) => {
+      const next = { ...prev };
+      if (next[index]) next[index] = { ...next[index], packageId: undefined };
+      return next;
+    });
+  }
+
   // ─── Validation ─────────────────────────────────────────────────────────
 
   function validate(): boolean {
@@ -186,20 +271,30 @@ export default function CampEnrollPage() {
     }
     setFieldErrors(fErrors);
 
-    const mErrors: Record<number, { name?: string; email?: string }> = {};
+    const hasPackages = (camp?.packages.length ?? 0) > 0;
+    const leaderPkgError =
+      hasPackages && !leaderPackageId ? t("publicPackageRequired") : undefined;
+    setLeaderPackageError(leaderPkgError);
+
+    const mErrors: Record<
+      number,
+      { name?: string; email?: string; packageId?: string }
+    > = {};
     if (enrollmentType === "group") {
       groupMembers.forEach((m, i) => {
-        const e: { name?: string; email?: string } = {};
+        const e: { name?: string; email?: string; packageId?: string } = {};
+        if (hasPackages && !m.packageId) e.packageId = t("publicPackageRequired");
         if (!m.name.trim()) e.name = t("requiredField");
         if (!m.email.trim()) e.email = t("requiredField");
         else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(m.email))
           e.email = t("requiredField");
-        if (e.name || e.email) mErrors[i] = e;
+        if (e.name || e.email || e.packageId) mErrors[i] = e;
       });
     }
     setMemberErrors(mErrors);
 
     return (
+      !leaderPkgError &&
       Object.keys(errors).length === 0 &&
       Object.keys(fErrors).length === 0 &&
       Object.keys(mErrors).length === 0
@@ -223,6 +318,7 @@ export default function CampEnrollPage() {
         participantName: `${firstName.trim()} ${lastName.trim()}`,
         participantEmail: email.trim(),
         participantPhone: phone.trim() || undefined,
+        campPackageId: leaderPackageId || undefined,
         responses,
         enrollmentType,
         groupMembers:
@@ -230,6 +326,7 @@ export default function CampEnrollPage() {
             ? groupMembers.map((m) => ({
                 participantName: m.name.trim(),
                 participantEmail: m.email.trim(),
+                campPackageId: m.packageId || undefined,
                 responses: [],
               }))
             : undefined,
@@ -246,8 +343,8 @@ export default function CampEnrollPage() {
           `/camp-enrollment/thank-you?campEnrollmentId=${result.campEnrollmentId}`
         );
       }
-    } catch {
-      setSubmitError(t("submitError"));
+    } catch (err) {
+      setSubmitError(getAxiosErrorMessages(err, t("submitError")).join(" "));
       setSubmitting(false);
     }
   }
@@ -403,9 +500,15 @@ export default function CampEnrollPage() {
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <Euro className="w-4 h-4 text-gray-400 shrink-0" />
               <span>
-                {camp.price > 0
-                  ? `€${camp.price.toFixed(2)} ${t("pricePerParticipant")}`
-                  : t("priceFree")}
+                {camp.packages.length > 0
+                  ? t("publicPriceFrom", {
+                      price: Math.min(
+                        ...camp.packages.map((p) => p.price),
+                      ).toFixed(2),
+                    })
+                  : camp.price > 0
+                    ? `€${camp.price.toFixed(2)} ${t("pricePerParticipant")}`
+                    : t("priceFree")}
               </span>
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -459,28 +562,34 @@ export default function CampEnrollPage() {
                       {formatDateShort(day.date)}
                     </span>
                     <span className="text-gray-600">
-                      {day.startTime} - {day.endTime}
+                      {day.parts.length > 0
+                        ? day.parts
+                            .map((p) => `${p.name} ${p.startTime}-${p.endTime}`)
+                            .join(" · ")
+                        : `${day.startTime} - ${day.endTime}`}
                     </span>
                   </div>
                 ))}
               </div>
             </div>
           )}
-          {/* Prijzen: enkel ter referentie, het tarief dat geldt bepaalt de organisator */}
+          {/* Kortingen: enkel ter referentie, het tarief dat geldt bepaalt de organisator */}
           {camp.prices.length > 0 && (
             <div className="mt-5 pt-5 border-t border-gray-100">
               <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
                 {t("publicPricesLabel")}
               </h3>
               <ul className="space-y-2">
-                <li className="flex items-start justify-between gap-3 text-sm border border-gray-100 rounded-lg px-3 py-2">
-                  <span className="font-medium text-gray-900">
-                    {t("publicPriceMain")}
-                  </span>
-                  <span className="font-semibold text-gray-900 whitespace-nowrap">
-                    {camp.price > 0 ? `€${camp.price.toFixed(2)}` : t("priceFree")}
-                  </span>
-                </li>
+                {camp.packages.length === 0 && (
+                  <li className="flex items-start justify-between gap-3 text-sm border border-gray-100 rounded-lg px-3 py-2">
+                    <span className="font-medium text-gray-900">
+                      {t("publicPriceMain")}
+                    </span>
+                    <span className="font-semibold text-gray-900 whitespace-nowrap">
+                      {camp.price > 0 ? `€${camp.price.toFixed(2)}` : t("priceFree")}
+                    </span>
+                  </li>
+                )}
                 {camp.prices.map((p) => (
                   <li
                     key={p.id}
@@ -495,7 +604,7 @@ export default function CampEnrollPage() {
                       )}
                     </div>
                     <span className="font-semibold text-gray-900 whitespace-nowrap">
-                      {p.amount > 0 ? `€${p.amount.toFixed(2)}` : t("priceFree")}
+                      -€{p.discount.toFixed(2)}
                     </span>
                   </li>
                 ))}
@@ -598,6 +707,33 @@ export default function CampEnrollPage() {
               </div>
 
               <hr className="border-gray-100" />
+
+              {/* ── Pakket van de leider ── */}
+              {camp.packages.length > 0 && (
+                <>
+                  <div>
+                    <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                      {enrollmentType === "group"
+                        ? t("publicPackageFor", {
+                            name: firstName.trim() || t("publicPackageLeaderFallback"),
+                          })
+                        : t("publicPackagesTitle")}
+                    </h3>
+                    <PackagePicker
+                      camp={camp}
+                      name="leaderPackage"
+                      value={leaderPackageId}
+                      onChange={(id) => {
+                        setLeaderPackageId(id);
+                        setLeaderPackageError(undefined);
+                      }}
+                      error={leaderPackageError}
+                      t={t}
+                    />
+                  </div>
+                  <hr className="border-gray-100" />
+                </>
+              )}
 
               {/* ── Enrollment type ── */}
               <div>
@@ -744,6 +880,23 @@ export default function CampEnrollPage() {
                             )}
                           </div>
                         </div>
+                        {camp.packages.length > 0 && (
+                          <div>
+                            <p className="mb-2 text-xs font-medium text-gray-600">
+                              {t("publicPackageFor", {
+                                name: member.name.trim() || t("groupMemberLabel"),
+                              })}
+                            </p>
+                            <PackagePicker
+                              camp={camp}
+                              name={`memberPackage-${i}`}
+                              value={member.packageId}
+                              onChange={(id) => setMemberPackage(i, id)}
+                              error={memberErrors[i]?.packageId}
+                              t={t}
+                            />
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

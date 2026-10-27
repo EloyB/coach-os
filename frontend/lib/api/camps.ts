@@ -14,14 +14,48 @@ export interface CampDayDto {
   startTime: string;
   endTime: string;
   trainers: CampDayTrainerDto[];
+  parts: CampDayPartDto[];
 }
 
-/** Extra tarief naast de hoofdprijs; publiek ter referentie, de beheerder kiest per inschrijving. */
+/** Vast dagdeel van een kampdag; `order` is de positie binnen de dag vanaf 0. */
+export interface CampDayPartDto {
+  order: number;
+  name: string;
+  startTime: string; // "HH:mm"
+  endTime: string;
+}
+
+/** Eén dagdeel van een pakket: datum en positie van het dagdeel binnen die dag. */
+export interface CampPackageSlotDto {
+  date: string; // "yyyy-MM-dd"
+  partOrder: number;
+}
+
+/** Pakket van een kamp; `isFull` is enkel op de publieke pagina gevuld. */
+export interface CampPackageDto {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  slots: CampPackageSlotDto[];
+  isFull: boolean;
+}
+
+export interface SaveCampPackageRequest {
+  /** Gevuld = bestaand pakket bijwerken, leeg = nieuw pakket. */
+  id?: string;
+  name: string;
+  description?: string;
+  price: number;
+  slots: CampPackageSlotDto[];
+}
+
+/** Extra tarief: een vast kortingsbedrag op de pakket- of hoofdprijs; de beheerder kiest per inschrijving. */
 export interface CampPriceDto {
   id: string;
   label: string;
   description: string | null;
-  amount: number;
+  discount: number;
 }
 
 export interface SaveCampPriceRequest {
@@ -29,7 +63,7 @@ export interface SaveCampPriceRequest {
   id?: string;
   label: string;
   description?: string;
-  amount: number;
+  discount: number;
 }
 
 export interface CampDto {
@@ -63,6 +97,7 @@ export interface CampDetailDto {
   isActive: boolean;
   days: CampDayDto[];
   prices: CampPriceDto[];
+  packages: CampPackageDto[];
 }
 
 export interface PublicCampDto {
@@ -79,10 +114,17 @@ export interface PublicCampDto {
   participantCount: number;
   days: CampDayDto[];
   prices: CampPriceDto[];
+  packages: CampPackageDto[];
 }
 
 export interface CreateCampDayTrainerRequest {
   trainerId: string;
+  startTime: string;
+  endTime: string;
+}
+
+export interface CreateCampDayPartRequest {
+  name: string;
   startTime: string;
   endTime: string;
 }
@@ -92,6 +134,8 @@ export interface CreateCampDayRequest {
   startTime: string;
   endTime: string;
   trainers: CreateCampDayTrainerRequest[];
+  /** Vaste dagdelen (maximaal 2); de dagtijden zijn dan de omhullende ervan. */
+  parts?: CreateCampDayPartRequest[];
 }
 
 export interface CreateCampRequest {
@@ -107,6 +151,8 @@ export interface CreateCampRequest {
   days: CreateCampDayRequest[];
   /** Weglaten laat de bestaande prijsopties ongemoeid. */
   prices?: SaveCampPriceRequest[];
+  /** Weglaten laat de bestaande pakketten ongemoeid. */
+  packages?: SaveCampPackageRequest[];
 }
 
 export type UpdateCampRequest = CreateCampRequest & { isActive: boolean };
@@ -139,6 +185,8 @@ export interface CampGroupMemberRequest {
   participantName: string;
   participantEmail: string;
   participantPhone?: string;
+  /** Verplicht als het kamp pakketten heeft. */
+  campPackageId?: string;
   responses: { campFormFieldId: string; value: string }[];
 }
 
@@ -146,6 +194,8 @@ export interface SubmitCampEnrollmentRequest {
   participantName: string;
   participantEmail: string;
   participantPhone?: string;
+  /** Pakket van de leider; verplicht als het kamp pakketten heeft. */
+  campPackageId?: string;
   responses: { campFormFieldId: string; value: string }[];
   enrollmentType?: string; // "solo" | "group"
   groupMembers?: CampGroupMemberRequest[];
@@ -180,6 +230,8 @@ export interface CampEnrollmentDto {
   molliePaymentId: string | null;
   formResponses: { fieldId: string; fieldLabel: string; value: string }[];
   campPriceId: string | null;
+  campPackageId: string | null;
+  campPackageName: string | null;
   campPriceLabel: string | null;
 }
 
@@ -222,6 +274,7 @@ export interface CreateManualCampEnrollmentRequest {
   paid: boolean;
   /** Gekozen tarief; null = hoofdprijs. */
   campPriceId?: string | null;
+  campPackageId?: string | null;
   responses: { campFormFieldId: string; value: string }[];
 }
 export async function createManualCampEnrollment(
@@ -240,6 +293,7 @@ export interface AddCampGroupMemberRequest {
   participantPhone: string | null;
   /** Gekozen tarief; null = hoofdprijs. */
   campPriceId?: string | null;
+  campPackageId?: string | null;
   responses: { campFormFieldId: string; value: string }[];
 }
 export async function addCampGroupMember(
@@ -259,6 +313,7 @@ export interface UpdateCampEnrollmentRequest {
   participantPhone: string | null;
   /** Gekozen tarief; null = hoofdprijs. */
   campPriceId?: string | null;
+  campPackageId?: string | null;
   responses: { campFormFieldId: string; value: string }[];
 }
 export async function updateCampEnrollment(
@@ -304,8 +359,13 @@ export async function submitCampEnrollment(
   const { data } = await publicApiClient.post<SubmitCampEnrollmentResult>(`/public/camps/${campId}/enroll`, request);
   return data;
 }
-export async function getCampPaymentOptions(campId: string): Promise<CampPaymentOptions> {
-  const { data } = await publicApiClient.get<CampPaymentOptions>(`/public/camps/${campId}/payment-options`);
+export async function getCampPaymentOptions(
+  campId: string,
+  campEnrollmentId?: string
+): Promise<CampPaymentOptions> {
+  const { data } = await publicApiClient.get<CampPaymentOptions>(`/public/camps/${campId}/payment-options`, {
+    params: campEnrollmentId ? { campEnrollmentId } : undefined,
+  });
   return data;
 }
 export async function chooseCampPayment(

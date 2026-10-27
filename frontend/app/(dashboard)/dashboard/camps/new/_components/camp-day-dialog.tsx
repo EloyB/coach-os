@@ -13,12 +13,16 @@ import {
 } from "@/components/ui/dialog";
 import { isAssignableTrainer, type TrainerDto } from "@/lib/api/trainers";
 import {
+  MAX_PARTS_PER_DAY,
   clampTime,
+  deriveDayHours,
   findOverlappingShiftIndexes,
+  findPartsError,
   formatDayHeading,
   shiftHours,
   shiftsOverlap,
   type CampDayDraft,
+  type CampDayPartDraft,
 } from "../_types";
 
 const TIME_INPUT_CLS =
@@ -97,6 +101,46 @@ export function CampDayDialog({
 
   const groups = groupByTrainer(day);
   const overlapping = findOverlappingShiftIndexes(day);
+  const partsError = findPartsError(day.parts);
+  const shiftOutsideHours = day.trainers.some(
+    (tr) => tr.startTime < day.startTime || tr.endTime > day.endTime,
+  );
+
+  // Met dagdelen zijn de kampuren van de dag de omhullende van de dagdelen.
+  function setParts(parts: CampDayPartDraft[]) {
+    setDay((current) => ({
+      ...current,
+      parts,
+      ...deriveDayHours(parts, current),
+    }));
+  }
+
+  function enableParts() {
+    setParts([
+      {
+        name: t("dayPartDefaultMorning"),
+        startTime: day.startTime,
+        endTime: "12:00" > day.startTime ? "12:00" : day.endTime,
+      },
+    ]);
+  }
+
+  function addPart() {
+    const last = day.parts[day.parts.length - 1];
+    const start = last ? last.endTime : day.startTime;
+    setParts([
+      ...day.parts,
+      {
+        name: t("dayPartDefaultAfternoon"),
+        startTime: "13:00" > start ? "13:00" : start,
+        endTime: day.endTime > "13:00" ? day.endTime : "16:00",
+      },
+    ]);
+  }
+
+  function updatePart(index: number, patch: Partial<CampDayPartDraft>) {
+    setParts(day.parts.map((p, i) => (i === index ? { ...p, ...patch } : p)));
+  }
 
   function trainerName(group: {
     trainerId: string;
@@ -194,25 +238,134 @@ export function CampDayDialog({
             <p className="mb-1.5 text-[10.5px] uppercase tracking-[0.04em] text-gray-400">
               {t("dayHours")}
             </p>
-            <div className="flex items-center gap-1.5">
-              <input
-                type="time"
-                value={day.startTime}
-                onChange={(e) =>
-                  onChange({ ...day, startTime: e.target.value })
-                }
-                className={TIME_INPUT_CLS}
-              />
-              <span className="text-xs text-gray-400">
-                {t("trainerEndTime")}
-              </span>
-              <input
-                type="time"
-                value={day.endTime}
-                onChange={(e) => onChange({ ...day, endTime: e.target.value })}
-                className={TIME_INPUT_CLS}
-              />
-            </div>
+            {day.parts.length === 0 ? (
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="time"
+                  value={day.startTime}
+                  onChange={(e) =>
+                    onChange({ ...day, startTime: e.target.value })
+                  }
+                  className={TIME_INPUT_CLS}
+                />
+                <span className="text-xs text-gray-400">
+                  {t("trainerEndTime")}
+                </span>
+                <input
+                  type="time"
+                  value={day.endTime}
+                  onChange={(e) =>
+                    onChange({ ...day, endTime: e.target.value })
+                  }
+                  className={TIME_INPUT_CLS}
+                />
+              </div>
+            ) : (
+              <p className="text-[13px] text-gray-600">
+                {t("dayPartsDerivedHours", {
+                  start: day.startTime,
+                  end: day.endTime,
+                })}
+              </p>
+            )}
+          </div>
+
+          {/* Dagdelen */}
+          <div>
+            <p className="mb-1.5 text-[10.5px] uppercase tracking-[0.04em] text-gray-400">
+              {t("dayParts")}
+            </p>
+            {day.parts.length === 0 ? (
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={enableParts}
+                  className="inline-flex items-center gap-1 text-[13px] font-medium text-tennis-green hover:underline"
+                >
+                  <Plus size={13} />
+                  {t("dayPartsEnable")}
+                </button>
+                <span className="text-[11px] text-gray-400">
+                  {t("dayPartsHint")}
+                </span>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {day.parts.map((part, index) => (
+                  <div
+                    key={index}
+                    className="flex flex-wrap items-center gap-1.5 rounded-lg border border-gray-200 bg-white p-2"
+                  >
+                    <input
+                      type="text"
+                      value={part.name}
+                      maxLength={60}
+                      aria-label={t("dayPartName")}
+                      placeholder={t("dayPartNamePlaceholder")}
+                      onChange={(e) =>
+                        updatePart(index, { name: e.target.value })
+                      }
+                      className={`${TIME_INPUT_CLS} w-32`}
+                    />
+                    <input
+                      type="time"
+                      value={part.startTime}
+                      onChange={(e) =>
+                        updatePart(index, { startTime: e.target.value })
+                      }
+                      className={TIME_INPUT_CLS}
+                    />
+                    <span className="text-xs text-gray-400">
+                      {t("trainerEndTime")}
+                    </span>
+                    <input
+                      type="time"
+                      value={part.endTime}
+                      onChange={(e) =>
+                        updatePart(index, { endTime: e.target.value })
+                      }
+                      className={TIME_INPUT_CLS}
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setParts(day.parts.filter((_, i) => i !== index))
+                      }
+                      aria-label={t("dayPartRemove")}
+                      className="ml-auto p-1.5 text-gray-400 hover:text-red-600"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))}
+                {day.parts.length < MAX_PARTS_PER_DAY && (
+                  <button
+                    type="button"
+                    onClick={addPart}
+                    className="inline-flex items-center gap-1 text-[13px] font-medium text-tennis-green hover:underline"
+                  >
+                    <Plus size={13} />
+                    {t("dayPartAdd")}
+                  </button>
+                )}
+                {partsError && (
+                  <p className="text-[11px] font-medium text-red-600">
+                    {t(
+                      partsError === "emptyName"
+                        ? "dayPartsErrorEmptyName"
+                        : partsError === "endBeforeStart"
+                          ? "dayPartsErrorEndBeforeStart"
+                          : "dayPartsErrorOverlap",
+                    )}
+                  </p>
+                )}
+                {shiftOutsideHours && (
+                  <p className="text-[11px] font-medium text-red-600">
+                    {t("dayPartsShiftOutside")}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Trainers en hun shiften */}
@@ -498,7 +651,12 @@ export function CampDayDialog({
             </button>
             <button
               type="button"
-              disabled={saving || overlapping.size > 0}
+              disabled={
+                saving ||
+                overlapping.size > 0 ||
+                partsError !== null ||
+                shiftOutsideHours
+              }
               onClick={async () => {
                 setSaving(true);
                 setSaveErrors([]);

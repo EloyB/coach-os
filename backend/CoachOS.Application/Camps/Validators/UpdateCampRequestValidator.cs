@@ -45,6 +45,18 @@ public class UpdateCampRequestValidator : AbstractValidator<UpdateCampRequest>
         RuleFor(x => x.Days)
             .NotEmpty().WithMessage("Een kamp heeft minstens één dag nodig");
 
+        RuleForEach(x => x.Days).SetValidator(new CampDayPartsValidator());
+
+        RuleFor(x => x.Days)
+            .Must(days => days.All(d => d.Parts is { Count: > 0 }))
+            .WithMessage("Elke dag heeft minstens één dagdeel nodig als het kamp pakketten heeft")
+            .When(x => x.Packages is { Count: > 0 });
+
+        RuleFor(x => x.Packages)
+            .Must(p => p is null || p.Count <= SaveCampPackageRequestValidator.MaxPackages)
+            .WithMessage($"Een kamp heeft maximaal {SaveCampPackageRequestValidator.MaxPackages} pakketten");
+        RuleForEach(x => x.Packages).SetValidator(new SaveCampPackageRequestValidator());
+
         RuleForEach(x => x.Days).ChildRules(day =>
         {
             day.RuleFor(d => d.Date).Must(BeValidDate).WithMessage("Ongeldige datum (yyyy-MM-dd)");

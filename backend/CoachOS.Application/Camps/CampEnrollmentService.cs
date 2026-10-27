@@ -34,9 +34,12 @@ public class CampEnrollmentService(
         if (camp is null) return Result<PublicCampDto>.Fail(new Error(ErrorCodes.NotFound, "Kamp niet gevonden."));
 
         int participants = await enrollments.CountActiveByCampAsync(campId, ct);
+        List<Guid?> activePackageIds = camp.Packages.Count > 0 && camp.MaxParticipants.HasValue
+            ? (await enrollments.GetActiveByCampAsync(campId, ct)).Select(e => e.CampPackageId).ToList()
+            : [];
         List<CampDayDto> days = camp.Days.OrderBy(d => d.Date).Select(d => new CampDayDto(
             d.Id, d.Date.ToString(DateFormat), d.StartTime.ToString("HH\\:mm"), d.EndTime.ToString("HH\\:mm"),
-            new List<CampDayTrainerDto>())).ToList();
+            new List<CampDayTrainerDto>(), CampService.MapParts(d))).ToList();
 
         return Result<PublicCampDto>.Ok(new PublicCampDto(
             camp.Id, camp.Name, camp.Description, camp.Level.HasValue ? (int)camp.Level.Value : null,
@@ -44,7 +47,8 @@ public class CampEnrollmentService(
             camp.RegistrationDeadline, camp.TennisClub?.Name ?? string.Empty,
             camp.MaxParticipants, participants, days,
             camp.Prices.OrderBy(p => p.SortOrder)
-                .Select(p => new CampPriceDto(p.Id, p.Label, p.Description, p.Amount)).ToList()));
+                .Select(p => new CampPriceDto(p.Id, p.Label, p.Description, p.Discount)).ToList(),
+            CampService.MapPackages(camp, p => CampCapacity.IsPackageFull(camp, p, activePackageIds))));
     }
 
     public async Task<Result<CampEnrollmentFormDto?>> GetPublicFormAsync(Guid campId, CancellationToken ct = default)
@@ -96,7 +100,23 @@ public class CampEnrollmentService(
                     new Error(ErrorCodes.Conflict, "Een e-mailadres komt meerdere keren voor in deze inschrijving."));
         }
 
-        bool isPaid = camp.Price > 0m;
+        // Heeft het kamp pakketten, dan kiest elke deelnemer er één; anders worden pakket-ids genegeerd.
+        bool hasPackages = camp.Packages.Count > 0;
+        List<CampGroupMemberDto> members = request.EnrollmentType == "group" && request.GroupMembers is { Count: > 0 }
+            ? request.GroupMembers
+            : [];
+        Guid? leaderPackageId = hasPackages ? request.CampPackageId : null;
+        List<Guid?> memberPackageIds = members.Select(m => hasPackages ? m.CampPackageId : null).ToList();
+        if (hasPackages
+            && memberPackageIds.Prepend(leaderPackageId)
+                .Any(id => id is null || camp.Packages.All(pkg => pkg.Id != id.Value)))
+            return Result<SubmitCampEnrollmentResultDto>.Fail(
+                new Error(ErrorCodes.Validation, "Kies een pakket voor elke deelnemer."));
+
+        // Betaald = de som van de gekozen pakketten (of hoofdprijzen) is meer dan 0.
+        decimal total = CampPricing.Total(camp,
+            memberPackageIds.Prepend(leaderPackageId).Select(id => new CampEnrollment { CampPackageId = id }));
+        bool isPaid = total > 0m;
         EnrollmentStatus initialStatus = isPaid ? EnrollmentStatus.PendingPayment : EnrollmentStatus.Confirmed;
 
         CampEnrollment enrollment;
@@ -106,8 +126,18 @@ public class CampEnrollmentService(
 
             if (camp.MaxParticipants.HasValue)
             {
-                int activeCount = await enrollments.CountActiveByCampAsync(campId, ct);
-                if (activeCount + groupSize > camp.MaxParticipants.Value)
+                bool full;
+                if (hasPackages)
+                {
+                    List<CampEnrollment> active = await enrollments.GetActiveByCampAsync(campId, ct);
+                    full = CampCapacity.IsFull(
+                        camp, active.Select(e => e.CampPackageId), memberPackageIds.Prepend(leaderPackageId));
+                }
+                else
+                {
+                    full = await enrollments.CountActiveByCampAsync(campId, ct) + groupSize > camp.MaxParticipants.Value;
+                }
+                if (full)
                 {
                     await unitOfWork.RollbackTransactionAsync(ct);
                     return Result<SubmitCampEnrollmentResultDto>.Fail(new Error(ErrorCodes.Conflict, "Dit kamp is volzet."));
@@ -143,6 +173,7 @@ public class CampEnrollmentService(
                 ParticipantPhone = request.ParticipantPhone,
                 Status = initialStatus,
                 EnrolledAt = DateTime.UtcNow,
+                CampPackageId = leaderPackageId,
             };
             await enrollments.AddAsync(enrollment, ct);
 
@@ -169,8 +200,9 @@ public class CampEnrollmentService(
 
                 enrollment.CampEnrollmentGroupId = group.Id;
 
-                foreach (CampGroupMemberDto member in request.GroupMembers)
+                for (int i = 0; i < members.Count; i++)
                 {
+                    CampGroupMemberDto member = members[i];
                     CampEnrollment memberEnrollment = new()
                     {
                         OrganizationId = camp.OrganizationId,
@@ -181,6 +213,7 @@ public class CampEnrollmentService(
                         Status = initialStatus,
                         EnrolledAt = DateTime.UtcNow,
                         CampEnrollmentGroupId = group.Id,
+                        CampPackageId = memberPackageIds[i],
                     };
                     await enrollments.AddAsync(memberEnrollment, ct);
 
@@ -237,17 +270,19 @@ public class CampEnrollmentService(
 
         if (request.CampPriceId is { } priceId && camp.Prices.All(p => p.Id != priceId))
             return Result<Guid>.Fail(new Error(ErrorCodes.NotFound, "Prijsoptie niet gevonden."));
+        if (request.CampPackageId is { } packageId && camp.Packages.All(p => p.Id != packageId))
+            return Result<Guid>.Fail(new Error(ErrorCodes.NotFound, "Pakket niet gevonden."));
 
         string email = request.ParticipantEmail.Trim();
-        // Betalend = het gekozen tarief (of de hoofdprijs) is meer dan 0.
-        bool isPaidCamp = CampPricing.UnitPrice(camp, new CampEnrollment { CampPriceId = request.CampPriceId }) > 0m;
+        // Betalend = het gekozen pakket (of de hoofdprijs) min de gekozen korting is meer dan 0.
+        bool isPaidCamp = CampPricing.UnitPrice(camp,
+            new CampEnrollment { CampPriceId = request.CampPriceId, CampPackageId = request.CampPackageId }) > 0m;
         CampEnrollment enrollment;
 
         await unitOfWork.BeginTransactionAsync(IsolationLevel.Serializable, ct);
         try
         {
-            if (camp.MaxParticipants.HasValue
-                && await enrollments.CountActiveByCampAsync(campId, ct) + 1 > camp.MaxParticipants.Value)
+            if (await CampCapacity.IsFullAsync(enrollments, camp, [request.CampPackageId], ct))
             {
                 await unitOfWork.RollbackTransactionAsync(ct);
                 return Result<Guid>.Fail(new Error(ErrorCodes.Conflict, "Dit kamp is volzet."));
@@ -274,6 +309,7 @@ public class CampEnrollmentService(
                 Status = isPaidCamp ? EnrollmentStatus.PendingPayment : EnrollmentStatus.Confirmed,
                 EnrolledAt = DateTime.UtcNow,
                 CampPriceId = request.CampPriceId,
+                CampPackageId = request.CampPackageId,
             };
             await enrollments.AddAsync(enrollment, ct);
 
@@ -324,7 +360,7 @@ public class CampEnrollmentService(
     }
 
     public async Task<Result<CampPaymentOptionsDto>> GetPaymentOptionsAsync(
-        Guid campId, CancellationToken ct = default)
+        Guid campId, Guid? campEnrollmentId = null, CancellationToken ct = default)
     {
         Camp? camp = await camps.GetByIdPublicAsync(campId, ct);
         if (camp is null)
@@ -340,7 +376,22 @@ public class CampEnrollmentService(
             onlineAvailable = false;
         }
 
-        return Result<CampPaymentOptionsDto>.Ok(new CampPaymentOptionsDto(camp.Price, onlineAvailable));
+        decimal price = camp.Price;
+        if (campEnrollmentId is { } enrollmentId)
+        {
+            CampEnrollment? enrollment = await enrollments.GetByIdWithGroupAsync(enrollmentId, ct);
+            if (enrollment is null || enrollment.CampId != campId)
+                return Result<CampPaymentOptionsDto>.Fail(new Error(ErrorCodes.NotFound, "Inschrijving niet gevonden."));
+
+            // De betaler (solo of groepsleider) betaalt de som van alle niet-geannuleerde deelnemers.
+            IEnumerable<CampEnrollment> participants =
+                enrollment.CampEnrollmentGroupId.HasValue && enrollment.Group is not null
+                    ? enrollment.Group.Members
+                    : [enrollment];
+            price = CampPricing.Total(camp, participants);
+        }
+
+        return Result<CampPaymentOptionsDto>.Ok(new CampPaymentOptionsDto(price, onlineAvailable));
     }
 
     public async Task<Result<ChooseCampPaymentResultDto>> ChoosePaymentAsync(

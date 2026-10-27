@@ -7,9 +7,16 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { getTrainers } from "@/lib/api/trainers";
 import { CampDaysEditor } from "./camp-days-editor";
 import {
+  CampPackagesEditor,
+  CampPackagesHeading,
+} from "../../_components/camp-packages-editor";
+import {
   buildDays,
+  findPackagesBlock,
   hasOverlappingShifts,
+  prunePackages,
   type CampDayDraft,
+  type CampPackageDraft,
   type CampStep1Data,
   type DateRange,
 } from "../_types";
@@ -18,6 +25,8 @@ interface Step2Props {
   step1Data: CampStep1Data;
   days: CampDayDraft[];
   onChange: (days: CampDayDraft[]) => void;
+  packages: CampPackageDraft[];
+  onPackagesChange: (packages: CampPackageDraft[]) => void;
   daysRange: DateRange | null;
   onRangeChange: (range: DateRange) => void;
   onBack: () => void;
@@ -28,6 +37,8 @@ export function Step2Days({
   step1Data,
   days,
   onChange,
+  packages,
+  onPackagesChange,
   daysRange,
   onRangeChange,
   onBack,
@@ -53,6 +64,14 @@ export function Step2Days({
   }, [step1Data.startDate, step1Data.endDate]);
 
   const hasOverlap = hasOverlappingShifts(days);
+  const prunedPackages = prunePackages(packages, days);
+  const packagesBlock = findPackagesBlock(prunedPackages, days);
+
+  function handleNext() {
+    // Slots van verdwenen dagen of dagdelen vallen weg voor we naar het overzicht gaan.
+    onPackagesChange(prunedPackages);
+    onNext();
+  }
 
   return (
     <div>
@@ -64,9 +83,34 @@ export function Step2Days({
         rangeEnd={step1Data.endDate}
       />
 
+      <div className="mt-5 overflow-hidden rounded-xl bg-white shadow-sm shadow-gray-100">
+        <div className="border-b border-gray-100 px-6 py-4">
+          <CampPackagesHeading />
+        </div>
+        <div className="p-6">
+          <CampPackagesEditor
+            days={days}
+            packages={packages}
+            onChange={async (next) => {
+              onPackagesChange(next);
+              return [];
+            }}
+          />
+        </div>
+      </div>
+
       {hasOverlap && (
         <p className="mt-3 text-xs font-medium text-red-600">
           {t("shiftsOverlapBlock")}
+        </p>
+      )}
+      {packagesBlock && (
+        <p className="mt-3 text-xs font-medium text-red-600">
+          {t(
+            packagesBlock === "dayWithoutParts"
+              ? "packagesBlockDayWithoutParts"
+              : "packagesBlockNoSlots",
+          )}
         </p>
       )}
 
@@ -81,8 +125,8 @@ export function Step2Days({
         </button>
         <button
           type="button"
-          onClick={onNext}
-          disabled={hasOverlap}
+          onClick={handleNext}
+          disabled={hasOverlap || packagesBlock !== null}
           className="flex items-center gap-2 px-5 py-2.5 bg-tennis-green text-white text-sm font-semibold rounded-lg hover:bg-tennis-green/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {t("next")}
