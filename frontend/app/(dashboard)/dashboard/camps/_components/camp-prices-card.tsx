@@ -24,16 +24,22 @@ function PriceTile({
   label,
   description,
   amount,
+  discount,
   onClick,
 }: {
   label: string;
   description?: string | null;
-  amount: number;
+  /** Hoofdprijs; weggelaten bij een kortingstarief. */
+  amount?: number;
+  /** Kortingsbedrag; weggelaten bij de hoofdprijs. */
+  discount?: number;
   onClick?: () => void;
 }) {
   const content = (
     <>
-      <p className="text-lg font-semibold text-gray-900">€{amount}</p>
+      <p className="text-lg font-semibold text-gray-900">
+        {discount !== undefined ? `-€${discount}` : `€${amount}`}
+      </p>
       <p className="mt-0.5 text-sm font-medium text-gray-700">{label}</p>
       {description && (
         <p className="mt-1 text-xs text-gray-500 line-clamp-2">{description}</p>
@@ -138,7 +144,7 @@ export function CampPricesCard({ camp, canEdit }: CampPricesCardProps) {
             key={p.id}
             label={p.label}
             description={p.description}
-            amount={p.amount}
+            discount={p.discount}
             onClick={canEdit ? () => openDialog(current[i]) : undefined}
           />
         ))}

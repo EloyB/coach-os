@@ -45,7 +45,7 @@ export function CampPriceSelect({
         <option value="">{t("priceMain", { amount: camp.price })}</option>
         {camp.prices.map((p) => (
           <option key={p.id} value={p.id}>
-            {p.label} (€{p.amount})
+            {p.label} (-€{p.discount})
           </option>
         ))}
       </select>

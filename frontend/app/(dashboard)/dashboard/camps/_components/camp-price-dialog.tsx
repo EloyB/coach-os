@@ -19,7 +19,7 @@ import {
 
 const priceSchema = campPricesSchema.element;
 
-const EMPTY: CampPriceDraft = { label: "", description: "", amount: 0 };
+const EMPTY: CampPriceDraft = { label: "", description: "", discount: 0 };
 
 interface CampPriceDialogProps {
   open: boolean;
@@ -83,14 +83,14 @@ export function CampPriceDialog({
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                {t("priceOptionAmount")}
+                {t("priceOptionDiscount")}
               </label>
               <div className="relative sm:w-40">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 pointer-events-none">
                   €
                 </span>
                 <input
-                  {...register("amount", { valueAsNumber: true })}
+                  {...register("discount", { valueAsNumber: true })}
                   onFocus={(e) => e.currentTarget.select()}
                   type="number"
                   min={0}
@@ -98,7 +98,7 @@ export function CampPriceDialog({
                   className={inputClass + " pl-7"}
                 />
               </div>
-              <FieldError message={errors.amount?.message} />
+              <FieldError message={errors.discount?.message} />
             </div>
           </div>
           <div>

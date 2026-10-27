@@ -69,7 +69,11 @@ export function CampDaysReadOnlyCard({ camp }: CampDaysReadOnlyCardProps) {
               </div>
               <span className="inline-flex items-center gap-1 text-xs text-gray-500">
                 <Clock size={11} className="text-gray-400" />
-                {day.startTime} - {day.endTime}
+                {day.parts.length > 0
+                  ? day.parts
+                      .map((p) => `${p.name} ${p.startTime}-${p.endTime}`)
+                      .join(" · ")
+                  : `${day.startTime} - ${day.endTime}`}
               </span>
             </div>
 

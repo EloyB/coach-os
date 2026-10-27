@@ -40,6 +40,7 @@ export function CampManualEnrollmentDialog({
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [paid, setPaid] = useState(false);
   const [priceId, setPriceId] = useState<string | null>(null);
+  const [packageId, setPackageId] = useState<string | null>(null);
 
   const { data: form } = useQuery({
     queryKey: ["campForm", campId],
@@ -62,6 +63,7 @@ export function CampManualEnrollmentDialog({
         participantPhone: phone || null,
         paid: isPaidCamp && paid,
         campPriceId: priceId,
+        campPackageId: packageId,
         responses: Object.entries(answers)
           .filter(([, value]) => value !== "")
           .map(([campFormFieldId, value]) => ({ campFormFieldId, value })),
@@ -77,6 +79,7 @@ export function CampManualEnrollmentDialog({
       setAnswers({});
       setPaid(false);
       setPriceId(null);
+      setPackageId(null);
     },
     onError: (error) => {
       toast.error(getAxiosErrorMessages(error, t("manualError")).join(" "));
@@ -116,6 +119,8 @@ export function CampManualEnrollmentDialog({
             campId={campId}
             priceId={priceId}
             onPriceChange={setPriceId}
+            packageId={packageId}
+            onPackageChange={setPackageId}
           />
           {isPaidCamp && (
             <fieldset className="space-y-1.5">

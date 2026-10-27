@@ -22,10 +22,10 @@ export const campPricesSchema = z
         .min(1, "Naam is verplicht")
         .max(120, "Naam mag maximaal 120 karakters zijn"),
       description: z.string().max(500, "Uitleg is te lang"),
-      amount: z
-        .number({ message: "Bedrag is verplicht" })
-        .min(0, "Bedrag mag niet negatief zijn")
-        .max(100000, "Bedrag is onrealistisch hoog"),
+      discount: z
+        .number({ message: "Korting is verplicht" })
+        .min(0, "Korting mag niet negatief zijn")
+        .max(100000, "Korting is onrealistisch hoog"),
     }),
   )
   .max(10, "Maximaal 10 prijsopties");
@@ -80,19 +80,19 @@ export function CampPricesEditor({
                       €
                     </span>
                     <input
-                      {...register(`prices.${index}.amount`, {
+                      {...register(`prices.${index}.discount`, {
                         valueAsNumber: true,
                       })}
                       onFocus={(e) => e.currentTarget.select()}
                       type="number"
                       min={0}
                       step={0.01}
-                      aria-label={t("priceOptionAmount")}
+                      aria-label={t("priceOptionDiscount")}
                       className={inputClass + " pl-7"}
                     />
                   </div>
                   <FieldError
-                    message={errors.prices?.[index]?.amount?.message}
+                    message={errors.prices?.[index]?.discount?.message}
                   />
                 </div>
               </div>
@@ -146,7 +146,7 @@ export function CampPricesEditor({
       {priceFields.length < 10 && (
         <button
           type="button"
-          onClick={() => appendPrice({ label: "", description: "", amount: 0 })}
+          onClick={() => appendPrice({ label: "", description: "", discount: 0 })}
           className="inline-flex items-center gap-1.5 text-sm font-medium text-tennis-green hover:underline"
         >
           <Plus size={14} />

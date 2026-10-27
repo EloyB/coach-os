@@ -45,6 +45,7 @@ import { CampFormBuilder } from "../_components/camp-form-builder";
 import { CampEditForm } from "../_components/camp-edit-form";
 import { CampDaysCard } from "../_components/camp-days-card";
 import { CampPricesCard } from "../_components/camp-prices-card";
+import { CampPackagesCard } from "../_components/camp-packages-card";
 import { CampDaysReadOnlyCard } from "../_components/camp-days-readonly-card";
 import { CampEnrollmentsSection } from "../_components/camp-enrollments-section";
 
@@ -266,7 +267,7 @@ export default function CampDetailPage({
               key={`${camp.id}:${camp.days
                 .map(
                   (d) =>
-                    `${d.date}|${d.startTime}|${d.endTime}|${d.trainers.length}`,
+                    `${d.date}|${d.startTime}|${d.endTime}|${d.trainers.length}|${d.parts.length}`,
                 )
                 .join(",")}`}
               camp={camp}
@@ -276,6 +277,7 @@ export default function CampDetailPage({
           )}
 
           {/* ── Section 2b: Price options ── */}
+          <CampPackagesCard camp={camp} canEdit={isAdmin} />
           <CampPricesCard camp={camp} canEdit={isAdmin} />
 
           {/* ── Section 3: Form builder (admin only) ── */}

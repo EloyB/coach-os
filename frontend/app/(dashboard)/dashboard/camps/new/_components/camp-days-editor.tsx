@@ -80,6 +80,7 @@ export function CampDaysEditor({
         startTime: "09:00",
         endTime: "16:00",
         trainers: [],
+        parts: [],
       })
     : undefined;
   const openDayExists = openDate ? dayByDate.has(openDate) : false;

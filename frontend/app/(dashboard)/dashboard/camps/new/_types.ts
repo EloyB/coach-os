@@ -1,4 +1,9 @@
-import type { CampDetailDto, CreateCampRequest } from "@/lib/api/camps";
+import type {
+  CampDetailDto,
+  CampPackageDto,
+  CreateCampRequest,
+  SaveCampPackageRequest,
+} from "@/lib/api/camps";
 
 // ─── Wizard / shared draft types ──────────────────────────────────────────────
 
@@ -15,12 +20,28 @@ export type CampStep1Data = {
   prices: CampPriceDraft[];
 };
 
-/** Prijsoptie in het formulier; `amount` is NaN zolang het veld leeg is. */
+/** Prijsoptie in het formulier; `discount` (korting in EUR) is NaN zolang het veld leeg is. */
 export type CampPriceDraft = {
   id?: string;
   label: string;
   description: string;
-  amount: number;
+  discount: number;
+};
+
+/** Pakket in het formulier; `price` is NaN zolang het veld leeg is. */
+export type CampPackageDraft = {
+  id?: string;
+  name: string;
+  description: string;
+  price: number;
+  slots: { date: string; partOrder: number }[];
+};
+
+/** Vast dagdeel van een kampdag in het formulier. */
+export type CampDayPartDraft = {
+  name: string;
+  startTime: string; // HH:mm
+  endTime: string; // HH:mm
 };
 
 export type CampTrainerDraft = {
@@ -36,7 +57,37 @@ export type CampDayDraft = {
   startTime: string; // HH:mm
   endTime: string;
   trainers: CampTrainerDraft[];
+  /** Maximaal 2 dagdelen; leeg = de dag is één blok. Met dagdelen volgen de dagtijden de dagdelen. */
+  parts: CampDayPartDraft[];
 };
+
+/** Maximaal aantal dagdelen per kampdag (spiegelt de backendvalidatie). */
+export const MAX_PARTS_PER_DAY = 2;
+
+/** Kampuren van een dag met dagdelen: de omhullende van de dagdelen. */
+export function deriveDayHours(
+  parts: CampDayPartDraft[],
+  fallback: { startTime: string; endTime: string },
+): { startTime: string; endTime: string } {
+  if (parts.length === 0) return fallback;
+  return {
+    startTime: parts.reduce((m, p) => (p.startTime < m ? p.startTime : m), parts[0]!.startTime),
+    endTime: parts.reduce((m, p) => (p.endTime > m ? p.endTime : m), parts[0]!.endTime),
+  };
+}
+
+export type PartsError = "emptyName" | "endBeforeStart" | "overlap";
+
+/** Eerste fout in de dagdelen van een dag, of null als ze geldig zijn. */
+export function findPartsError(parts: CampDayPartDraft[]): PartsError | null {
+  if (parts.some((p) => !p.name.trim())) return "emptyName";
+  if (parts.some((p) => p.endTime <= p.startTime)) return "endBeforeStart";
+  const sorted = [...parts].sort((a, b) => a.startTime.localeCompare(b.startTime));
+  for (let i = 1; i < sorted.length; i++) {
+    if (sorted[i]!.startTime < sorted[i - 1]!.endTime) return "overlap";
+  }
+  return null;
+}
 
 // ─── Day builders / mergers ───────────────────────────────────────────────────
 
@@ -72,6 +123,7 @@ export function buildDays(
         startTime: "09:00",
         endTime: "16:00",
         trainers: [],
+        parts: [],
       });
     cur.setDate(cur.getDate() + 1);
   }
@@ -84,7 +136,58 @@ export function detailToPrices(detail: CampDetailDto): CampPriceDraft[] {
     id: p.id,
     label: p.label,
     description: p.description ?? "",
-    amount: p.amount,
+    discount: p.discount,
+  }));
+}
+
+/** Haalt slots weg die niet (meer) naar een dagdeel van de dagen wijzen, bv. na een gewijzigde kampperiode. */
+export function prunePackages(
+  packages: CampPackageDraft[],
+  days: CampDayDraft[],
+): CampPackageDraft[] {
+  const existing = new Set(
+    days.flatMap((d) => d.parts.map((_, order) => `${d.date}#${order}`)),
+  );
+  return packages.map((p) => ({
+    ...p,
+    slots: p.slots.filter((s) => existing.has(`${s.date}#${s.partOrder}`)),
+  }));
+}
+
+export type PackagesBlock = "dayWithoutParts" | "packageWithoutSlots";
+
+/** Waarom de pakketten (nog) niet bewaard kunnen worden, of null als alles klopt. */
+export function findPackagesBlock(
+  packages: CampPackageDraft[],
+  days: CampDayDraft[],
+): PackagesBlock | null {
+  if (packages.length === 0) return null;
+  if (days.some((d) => d.parts.length === 0)) return "dayWithoutParts";
+  if (packages.some((p) => p.slots.length === 0)) return "packageWithoutSlots";
+  return null;
+}
+
+/** Map the packages of an existing camp into form drafts. */
+export function detailToPackages(detail: CampDetailDto): CampPackageDraft[] {
+  return detail.packages.map((p: CampPackageDto) => ({
+    id: p.id,
+    name: p.name,
+    description: p.description ?? "",
+    price: p.price,
+    slots: p.slots.map((s) => ({ date: s.date, partOrder: s.partOrder })),
+  }));
+}
+
+/** Build the package payload; weglaten van `packages` laat bestaande pakketten ongemoeid. */
+export function buildPackageRequests(
+  packages: CampPackageDraft[],
+): SaveCampPackageRequest[] {
+  return packages.map((p) => ({
+    id: p.id,
+    name: p.name.trim(),
+    description: p.description.trim() || undefined,
+    price: p.price,
+    slots: p.slots,
   }));
 }
 
@@ -99,6 +202,11 @@ export function detailToDays(detail: CampDetailDto): CampDayDraft[] {
       startTime: tr.startTime,
       endTime: tr.endTime,
       trainerName: tr.trainerName,
+    })),
+    parts: d.parts.map((p) => ({
+      name: p.name,
+      startTime: p.startTime,
+      endTime: p.endTime,
     })),
   }));
 }
@@ -120,6 +228,7 @@ export function clampTime(value: string, min: string, max: string): string {
 export function buildCampRequest(
   step1: CampStep1Data,
   days: CampDayDraft[],
+  packages?: CampPackageDraft[],
 ): CreateCampRequest {
   return {
     name: step1.name.trim(),
@@ -134,11 +243,12 @@ export function buildCampRequest(
     // would shift the date by the UTC offset and land on the wrong day in CET).
     registrationDeadline: step1.registrationDeadline + "T00:00:00Z",
     maxParticipants: step1.maxParticipants,
+    packages: packages ? buildPackageRequests(packages) : undefined,
     prices: step1.prices.map((p) => ({
       id: p.id,
       label: p.label.trim(),
       description: p.description.trim() || undefined,
-      amount: p.amount,
+      discount: p.discount,
     })),
     days: days.map((d) => ({
       date: d.date,
@@ -149,6 +259,7 @@ export function buildCampRequest(
         startTime: tr.startTime,
         endTime: tr.endTime,
       })),
+      parts: d.parts.length > 0 ? d.parts : undefined,
     })),
   };
 }

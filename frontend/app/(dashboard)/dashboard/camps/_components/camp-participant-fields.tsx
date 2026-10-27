@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import type { CampEnrollmentFormDto } from "@/lib/api/camps";
 import { CampFormFieldInputs } from "./camp-form-field-inputs";
+import { CampPackageSelect } from "./camp-package-select";
 import { CampPriceSelect } from "./camp-price-select";
 
 export interface ParticipantValues {
@@ -23,6 +24,8 @@ interface CampParticipantFieldsProps {
   campId: string;
   priceId: string | null;
   onPriceChange: (priceId: string | null) => void;
+  packageId: string | null;
+  onPackageChange: (packageId: string | null) => void;
 }
 
 /**
@@ -39,6 +42,8 @@ export function CampParticipantFields({
   campId,
   priceId,
   onPriceChange,
+  packageId,
+  onPackageChange,
 }: CampParticipantFieldsProps) {
   const t = useTranslations("campEnrollmentsTable");
 
@@ -71,6 +76,7 @@ export function CampParticipantFields({
           className="mt-1"
         />
       </label>
+      <CampPackageSelect campId={campId} value={packageId} onChange={onPackageChange} />
       <CampPriceSelect campId={campId} value={priceId} onChange={onPriceChange} />
       {form && (
         <CampFormFieldInputs

@@ -22,12 +22,14 @@ import {
   buildCampRequest,
   formatDayHeading,
   type CampDayDraft,
+  type CampPackageDraft,
   type CampStep1Data,
 } from "../_types";
 
 interface Step3Props {
   step1Data: CampStep1Data;
   days: CampDayDraft[];
+  packages: CampPackageDraft[];
   onBack: () => void;
 }
 
@@ -46,7 +48,7 @@ function Chip({
   );
 }
 
-export function Step3Review({ step1Data, days, onBack }: Step3Props) {
+export function Step3Review({ step1Data, days, packages, onBack }: Step3Props) {
   const t = useTranslations("camps");
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -62,7 +64,7 @@ export function Step3Review({ step1Data, days, onBack }: Step3Props) {
   });
 
   const mutation = useMutation({
-    mutationFn: () => createCamp(buildCampRequest(step1Data, days)),
+    mutationFn: () => createCamp(buildCampRequest(step1Data, days, packages)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["camps"] });
       router.push("/dashboard/camps");
@@ -101,7 +103,15 @@ export function Step3Review({ step1Data, days, onBack }: Step3Props) {
               key={i}
               icon={<Euro size={11} className="text-tennis-green" />}
             >
-              {p.label}: €{p.amount}
+              {p.label}: -€{p.discount}
+            </Chip>
+          ))}
+          {packages.map((p, i) => (
+            <Chip
+              key={`pkg-${i}`}
+              icon={<Euro size={11} className="text-tennis-green" />}
+            >
+              {p.name}: €{p.price}
             </Chip>
           ))}
           <Chip icon={<CalendarDays size={11} className="text-tennis-green" />}>
@@ -152,7 +162,11 @@ export function Step3Review({ step1Data, days, onBack }: Step3Props) {
                   {formatDayHeading(day.date)}
                 </span>
                 <span className="text-xs text-gray-500 font-mono">
-                  {day.startTime} - {day.endTime}
+                  {day.parts.length > 0
+                    ? day.parts
+                        .map((p) => `${p.name} ${p.startTime}-${p.endTime}`)
+                        .join(" · ")
+                    : `${day.startTime} - ${day.endTime}`}
                 </span>
               </div>
               {day.trainers.length === 0 ? (

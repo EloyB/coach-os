@@ -8,7 +8,12 @@ import { CampStepIndicator } from "./_components/camp-step-indicator";
 import { Step1Basis } from "./_components/step-1-basis";
 import { Step2Days } from "./_components/step-2-days";
 import { Step3Review } from "./_components/step-3-review";
-import type { CampStep1Data, CampDayDraft, DateRange } from "./_types";
+import type {
+  CampStep1Data,
+  CampDayDraft,
+  CampPackageDraft,
+  DateRange,
+} from "./_types";
 
 export default function NewCampPage() {
   const t = useTranslations("camps");
@@ -16,6 +21,7 @@ export default function NewCampPage() {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [step1Data, setStep1Data] = useState<CampStep1Data | null>(null);
   const [days, setDays] = useState<CampDayDraft[]>([]);
+  const [packages, setPackages] = useState<CampPackageDraft[]>([]);
   // Periode waarvoor `days` is opgebouwd; dagen die daarin ontbreken zijn bewust geschrapt.
   const [daysRange, setDaysRange] = useState<DateRange | null>(null);
 
@@ -56,6 +62,8 @@ export default function NewCampPage() {
           step1Data={step1Data}
           days={days}
           onChange={setDays}
+          packages={packages}
+          onPackagesChange={setPackages}
           daysRange={daysRange}
           onRangeChange={setDaysRange}
           onBack={() => setStep(1)}
@@ -67,6 +75,7 @@ export default function NewCampPage() {
         <Step3Review
           step1Data={step1Data}
           days={days}
+          packages={packages}
           onBack={() => setStep(2)}
         />
       )}
