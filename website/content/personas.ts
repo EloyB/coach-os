@@ -7,6 +7,8 @@ export interface Persona {
   slug: PersonaSlug;
   /** Short label for breadcrumbs and internal nav. */
   navLabel: string;
+  /** Korte, natuurlijke ankertekst voor interne links naar deze pagina. */
+  linkLabel: string;
   /** SEO meta title zonder merknaam: de titeltemplate in de root layout voegt " · CoachOS" toe. */
   metaTitle: string;
   /** SEO meta description — ~155 chars, primary keyword up front. */
@@ -39,12 +41,13 @@ export interface PersonaItem {
 export const TENNIS_CLUBS_PERSONA: Persona = {
   slug: "voor-tennisclubs",
   navLabel: "Tennisclubs",
-  metaTitle: "Lessenplanning voor tennisclubs",
+  linkLabel: "Lesplanning voor tennisscholen",
+  metaTitle: "Lesplanning en software voor tennisscholen en -clubs",
   metaDescription:
-    "Software voor lessenplanning bij tennis- en padelclubs. Lessenreeksen, anonieme inschrijvingen en automatische groepering, geen Excel meer.",
+    "Lesplanning voor je tennisschool of tennisclub: lessenreeksen, inschrijvingen via een link en automatische groepering op niveau. Geen Excel meer.",
   kicker: "VOOR TENNISCLUBS",
-  h1: "Lessenplanning voor tennisclubs",
-  lead: "CoachOS is een lessenplanningsysteem voor tennisclubs. Beheer lessenreeksen, verzamel inschrijvingen via een publieke link en laat het algoritme leerlingen op niveau verdelen — zonder Excel-sheets, zonder accounts voor leden, zonder oneindig veel mails.",
+  h1: "Lesplanning voor tennisscholen en tennisclubs",
+  lead: "CoachOS is software voor de lesplanning van tennisscholen en tennisclubs. Je beheert lessenreeksen, verzamelt inschrijvingen via een publieke link en laat het algoritme leerlingen op niveau verdelen, zonder Excel-sheets, zonder accounts voor leden en zonder eindeloos mailen. Zo beheer je je tennisschool met veel minder administratie.",
   pains: [
     {
       title: "Excel-sheets die elk seizoen opnieuw uit elkaar vallen",
@@ -104,12 +107,13 @@ export const TENNIS_CLUBS_PERSONA: Persona = {
 export const PADEL_CLUBS_PERSONA: Persona = {
   slug: "voor-padelclubs",
   navLabel: "Padelclubs",
-  metaTitle: "Lessenplanning voor padelclubs",
+  linkLabel: "Lesplanning voor padelscholen",
+  metaTitle: "Lesplanning en software voor padelscholen en -clubs",
   metaDescription:
-    "Software voor padelclubs — beheer lessenreeksen, verzamel inschrijvingen op de gsm en plan automatisch op niveau. Zonder accounts voor spelers.",
+    "Lesplanning voor je padelschool of padelclub: beheer lessenreeksen, verzamel inschrijvingen op de gsm en plan automatisch op niveau. Zonder accounts voor spelers.",
   kicker: "VOOR PADELCLUBS",
-  h1: "Lessenplanning voor padelclubs",
-  lead: "CoachOS is een lessenplanningsysteem voor padelclubs. Spelers schrijven zich in via een publieke link op hun gsm, het algoritme groepeert op niveau, en je beheert meerdere banen vanuit één dashboard — zonder app-download of account voor je leden.",
+  h1: "Lesplanning voor padelscholen en padelclubs",
+  lead: "CoachOS is software voor de lesplanning van padelscholen en padelclubs. Spelers schrijven zich in via een publieke link op hun gsm, het algoritme groepeert op niveau en je beheert meerdere banen vanuit één dashboard, zonder app-download of account voor je leden.",
   pains: [
     {
       title: "Snelle groei die handmatig niet bij te houden is",
@@ -165,12 +169,13 @@ export const PADEL_CLUBS_PERSONA: Persona = {
 export const TRAINERS_PERSONA: Persona = {
   slug: "voor-trainers",
   navLabel: "Trainers",
-  metaTitle: "Lessenplanning voor trainers",
+  linkLabel: "Planning voor tennis- en padeltrainers",
+  metaTitle: "Planning voor tennis- en padeltrainers",
   metaDescription:
-    "Voor zelfstandige tennis- en padeltrainers: automatiseer inschrijvingen, planning en bevestigingen. Eén tool, geen Excel, 30 dagen gratis proberen.",
+    "Planning voor tennis- en padeltrainers: lessenreeksen, inschrijvingen en bevestigingen in één tool. Geen Excel, geen eindeloos mailen, 30 dagen gratis proberen.",
   kicker: "VOOR TRAINERS",
-  h1: "Lessenplanning voor trainers",
-  lead: "CoachOS is een lessenplanningsysteem gemaakt voor trainers en hoofdtrainers in tennis en padel. Stel een lessenreeks in, deel de inschrijflink, en laat het algoritme de planning maken terwijl jij op de baan staat in plaats van achter de laptop.",
+  h1: "Planning voor tennis- en padeltrainers",
+  lead: "CoachOS is software voor de lesplanning van tennis- en padeltrainers en hoofdtrainers. Stel een lessenreeks in, deel de inschrijflink en laat het algoritme de planning maken, terwijl jij op de baan staat in plaats van achter de laptop.",
   pains: [
     {
       title: "Elke maandag opnieuw lijstjes maken in Excel",

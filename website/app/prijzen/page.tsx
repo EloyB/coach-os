@@ -24,11 +24,11 @@ const PAGE_URL = `${SITE_URL}/prijzen`;
 
 export const metadata: Metadata = pageMetadata({
   path: "/prijzen",
-  title: "Prijzen: lessenplanning vanaf €25/maand",
+  title: "Prijzen: lesplanning vanaf €25 per maand",
   description:
-    "Tarieven voor CoachOS, lessenplanning voor tennis- en padelclubs. Je betaalt per actieve leerling, met onbeperkt trainers. 30 dagen gratis proberen, maandelijks opzegbaar.",
+    "Tarieven voor CoachOS, lesplanning voor tennis- en padelscholen en -clubs. Je betaalt per actieve leerling, met onbeperkt trainers. 30 dagen gratis proberen, maandelijks opzegbaar.",
   socialDescription:
-    "Tarieven voor CoachOS, lessenplanning voor tennis- en padelclubs. Vanaf €25/maand, per actieve leerling. 30 dagen gratis proberen.",
+    "Tarieven voor CoachOS, lesplanning voor tennis- en padelscholen en -clubs. Vanaf €25 per maand, per actieve leerling. 30 dagen gratis proberen.",
 });
 
 function PricingPageJsonLd() {
@@ -75,7 +75,7 @@ export default function PrijzenPage() {
               TARIEVEN
             </Mono>
             <h1 className="mt-3 max-w-3xl text-4xl font-bold leading-[1.05] tracking-tight md:text-5xl">
-              Eerlijke tarieven, voor elke clubmaat
+              Prijzen CoachOS: lesplanning vanaf €25 per maand
             </h1>
             <p className="mt-5 max-w-2xl text-lg leading-relaxed text-ink-2">
               Drie abonnementen op basis van je aantal actieve leerlingen, met

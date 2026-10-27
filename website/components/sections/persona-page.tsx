@@ -4,7 +4,9 @@ import { SiteNav } from "@/components/site/site-nav";
 import { SiteFooter } from "@/components/site/site-footer";
 import { FaqItem } from "@/components/sections/faq-item";
 import { FinalCta } from "@/components/sections/final-cta";
-import type { Persona } from "@/content/personas";
+import Link from "next/link";
+import { ALL_PERSONAS, type Persona } from "@/content/personas";
+import { PRICING_VISIBLE } from "@/content/pricing";
 
 const SITE_URL = "https://coach-os.be";
 
@@ -16,6 +18,7 @@ export function PersonaPage({ persona }: { persona: Persona }) {
       <main>
         <PersonaHero persona={persona} />
         <PersonaPainSolution persona={persona} />
+        <PersonaRelated persona={persona} />
         <PersonaFaq persona={persona} />
         <FinalCta />
       </main>
@@ -127,6 +130,45 @@ function PersonaPainSolution({ persona }: { persona: Persona }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+
+/** Links in de body naar de andere doelgroeppagina's en de prijzen (niet enkel via nav/footer). */
+function PersonaRelated({ persona }: { persona: Persona }) {
+  const others = ALL_PERSONAS.filter((p) => p.slug !== persona.slug);
+  const linkClass =
+    "font-semibold text-tennis-green underline-offset-4 hover:underline";
+
+  return (
+    <section className="border-b border-rule">
+      <div className="mx-auto max-w-3xl px-6 py-12 md:py-14">
+        <Mono className="text-[11px] tracking-[0.18em] text-ink-3">
+          OOK BEKIJKEN
+        </Mono>
+        <p className="mt-3 text-base leading-relaxed text-ink-2">
+          CoachOS werkt ook voor andere doelgroepen:{" "}
+          {others.map((p, i) => (
+            <span key={p.slug}>
+              {i > 0 ? " en " : null}
+              <Link href={`/${p.slug}`} className={linkClass}>
+                {p.linkLabel}
+              </Link>
+            </span>
+          ))}
+          .
+          {PRICING_VISIBLE ? (
+            <>
+              {" "}
+              Benieuwd wat het kost? Bekijk de{" "}
+              <Link href="/prijzen" className={linkClass}>
+                prijzen vanaf €25 per maand
+              </Link>
+              .
+            </>
+          ) : null}
+        </p>
+      </div>
+    </section>
+  );
+}
 
 function PersonaFaq({ persona }: { persona: Persona }) {
   return (

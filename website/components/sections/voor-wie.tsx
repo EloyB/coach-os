@@ -21,10 +21,9 @@ export function VoorWie() {
           {AUDIENCES.map((audience) => {
             const Icon = audience.icon;
             return (
-              <Link
+              <div
                 key={audience.slug}
-                href={`/${audience.slug}`}
-                className="group flex flex-col rounded-xl border border-rule bg-paper p-7 transition-colors hover:border-tennis-green/40"
+                className="group relative flex flex-col rounded-xl border border-rule bg-paper p-7 transition-colors hover:border-tennis-green/40"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-tennis-lime/15 text-tennis-green">
@@ -36,7 +35,13 @@ export function VoorWie() {
                   />
                 </div>
                 <h3 className="mt-5 text-xl font-bold tracking-tight">
-                  {audience.title}
+                  {/* Korte ankertekst; de uitgerekte ::after maakt de hele kaart klikbaar. */}
+                  <Link
+                    href={`/${audience.slug}`}
+                    className="after:absolute after:inset-0 after:rounded-xl"
+                  >
+                    {audience.title}
+                  </Link>
                 </h3>
                 <p className="mt-2 text-sm text-ink-2">{audience.body}</p>
                 <ul className="mt-5 space-y-2.5">
@@ -50,11 +55,14 @@ export function VoorWie() {
                     </li>
                   ))}
                 </ul>
-                <span className="mt-6 inline-flex items-center gap-1 text-xs font-semibold text-tennis-green">
+                <span
+                  aria-hidden="true"
+                  className="mt-6 inline-flex items-center gap-1 text-xs font-semibold text-tennis-green"
+                >
                   Lees meer
                   <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
                 </span>
-              </Link>
+              </div>
             );
           })}
         </div>

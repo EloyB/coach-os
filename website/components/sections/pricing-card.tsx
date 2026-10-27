@@ -56,6 +56,18 @@ export function PricingCard({ tier, billing }: PricingCardProps) {
         </span>
       </div>
 
+      {/* Maand- en jaarprijs staan altijd samen in de tekst; de toggle bepaalt enkel welke vooraan staat. */}
+      <p
+        className={cn(
+          "mt-1 text-xs font-medium",
+          featured ? "text-paper/70" : "text-ink-3",
+        )}
+      >
+        {billing === "yearly"
+          ? `of €${tier.priceMonthly} per maand`
+          : `of €${tier.priceYearly} per jaar`}
+      </p>
+
       <div className="mt-3 min-h-[22px]">
         {billing === "yearly" ? (
           <span
