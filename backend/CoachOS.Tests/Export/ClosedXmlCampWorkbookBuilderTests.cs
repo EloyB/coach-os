@@ -29,13 +29,15 @@ public class ClosedXmlCampWorkbookBuilderTests
 
         ws.Cell(3, 1).GetString().Should().Be("Naam");
         ws.Cell(3, 5).GetString().Should().Be("Betaalstatus");
-        ws.Cell(3, 9).GetString().Should().Be("Shirtmaat");
+        ws.Cell(3, 9).GetString().Should().Be("Pakket");
+        ws.Cell(3, 10).GetString().Should().Be("Shirtmaat");
 
         ws.Cell(4, 1).GetString().Should().Contain("Individuele inschrijvingen");
         ws.Cell(5, 1).GetString().Should().Be("Emma");
         ws.Cell(5, 5).GetString().Should().Be("Betaald");
         ws.Cell(5, 6).GetString().Should().Be("Online");
-        ws.Cell(5, 9).GetString().Should().Be("M");
+        ws.Cell(5, 9).GetString().Should().Be("Ochtenden");
+        ws.Cell(5, 10).GetString().Should().Be("M");
     }
 
     [Test]
@@ -62,7 +64,7 @@ public class ClosedXmlCampWorkbookBuilderTests
             new CampEnrollmentRow(
                 "Emma", "Individueel", null, "emma@test.com", "0470123456", "Bevestigd",
                 "Betaald", "Online", new DateTime(2026, 5, 1, 10, 0, 0, DateTimeKind.Utc), null,
-                new Dictionary<string, string> { ["Shirtmaat"] = "M" }),
+                new Dictionary<string, string> { ["Shirtmaat"] = "M" }, "Ochtenden"),
         ],
         Days =
         [

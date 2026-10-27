@@ -233,7 +233,7 @@ public class CampService(
                     r.CampFormFieldId, r.CampFormField?.Label ?? string.Empty, r.Value)).ToList(),
                 payment?.Method?.ToString(), payment?.Status.ToString(),
                 payment?.Amount, payment?.PaidAt, payment?.MolliePaymentId,
-                e.CampPriceId, e.Price?.Label);
+                e.CampPriceId, e.Price?.Label, e.CampPackageId, e.Package?.Name);
         }).ToList();
         return Result<List<CampEnrollmentDto>>.Ok(dtos);
     }
@@ -319,7 +319,8 @@ public class CampService(
         if (formError is not null)
             return Result.Fail(formError);
 
-        Error? priceError = await ApplyPriceChangeAsync(camp, enrollment, request.CampPriceId, organizationId, ct);
+        Error? priceError = await ApplyPricingChangeAsync(
+            camp, enrollment, request.CampPriceId, request.CampPackageId, organizationId, ct);
         if (priceError is not null)
             return Result.Fail(priceError);
 
@@ -399,20 +400,22 @@ public class CampService(
 
         if (request.CampPriceId is { } priceId && camp.Prices.All(p => p.Id != priceId))
             return Result<Guid>.Fail(new Error(ErrorCodes.NotFound, "Prijsoptie niet gevonden."));
+        if (request.CampPackageId is { } packageId && camp.Packages.All(p => p.Id != packageId))
+            return Result<Guid>.Fail(new Error(ErrorCodes.NotFound, "Pakket niet gevonden."));
 
-        // Een groep zonder betaling (bevestigd, gratis) kan geen lid met een betaald tarief krijgen.
+        // Een groep zonder betaling (bevestigd, gratis) kan geen lid met een betaald pakket of tarief krijgen.
         if (payment is null && leader.Status == EnrollmentStatus.Confirmed
-            && CampPricing.UnitPrice(camp, new CampEnrollment { CampPriceId = request.CampPriceId }) > 0m)
+            && CampPricing.UnitPrice(camp,
+                new CampEnrollment { CampPriceId = request.CampPriceId, CampPackageId = request.CampPackageId }) > 0m)
             return Result<Guid>.Fail(new Error(ErrorCodes.Conflict,
-                "Deze groep is bevestigd zonder betaling; een lid met een betaald tarief kan niet toegevoegd worden."));
+                "Deze groep is bevestigd zonder betaling; een lid met een betaald pakket of tarief kan niet toegevoegd worden."));
 
         string email = request.ParticipantEmail.Trim();
 
         await unitOfWork.BeginTransactionAsync(IsolationLevel.Serializable, ct);
         try
         {
-            if (camp.MaxParticipants.HasValue
-                && await enrollments.CountActiveByCampAsync(campId, ct) + 1 > camp.MaxParticipants.Value)
+            if (await CampCapacity.IsFullAsync(enrollments, camp, [request.CampPackageId], ct))
             {
                 await unitOfWork.RollbackTransactionAsync(ct);
                 return Result<Guid>.Fail(new Error(ErrorCodes.Conflict, "Dit kamp is volzet."));
@@ -438,6 +441,7 @@ public class CampService(
                 EnrolledAt = DateTime.UtcNow,
                 CampEnrollmentGroupId = groupId,
                 CampPriceId = request.CampPriceId,
+                CampPackageId = request.CampPackageId,
             };
             await enrollments.AddAsync(member, ct);
 
@@ -524,16 +528,20 @@ public class CampService(
     }
 
     /// <summary>
-    /// Wijzigt het tarief van een inschrijving en past een openstaande cash-betaling van de betaler
-    /// (groepsleider of de inschrijving zelf) aan. Een betaalde of online lopende betaling staat vast.
+    /// Wijzigt het pakket en/of tarief van een inschrijving en past een openstaande cash-betaling van de betaler
+    /// (groepsleider of de inschrijving zelf) aan. Een betaalde of online lopende betaling staat vast; een nieuw
+    /// pakket moet binnen de limiet per dagdeel passen (de eigen plek telt niet mee).
     /// </summary>
-    private async Task<Error?> ApplyPriceChangeAsync(
-        Camp camp, CampEnrollment enrollment, Guid? newPriceId, Guid organizationId, CancellationToken ct)
+    private async Task<Error?> ApplyPricingChangeAsync(
+        Camp camp, CampEnrollment enrollment, Guid? newPriceId, Guid? newPackageId, Guid organizationId,
+        CancellationToken ct)
     {
-        if (newPriceId == enrollment.CampPriceId)
+        if (newPriceId == enrollment.CampPriceId && newPackageId == enrollment.CampPackageId)
             return null;
         if (newPriceId is { } id && camp.Prices.All(p => p.Id != id))
             return new Error(ErrorCodes.NotFound, "Prijsoptie niet gevonden.");
+        if (newPackageId is { } packageId && camp.Packages.All(p => p.Id != packageId))
+            return new Error(ErrorCodes.NotFound, "Pakket niet gevonden.");
 
         CampEnrollmentGroup? group = enrollment.CampEnrollmentGroupId is { } groupId
             ? await enrollments.GetGroupWithMembersAsync(groupId, organizationId, ct)
@@ -545,20 +553,27 @@ public class CampService(
             && (payment.Status == PaymentStatus.Paid
                 || (payment.Status == PaymentStatus.Pending && payment.Method != PaymentMethod.Cash)))
             return new Error(ErrorCodes.Conflict,
-                "De betaling is al betaald of loopt online; het tarief kan niet meer gewijzigd worden.");
+                "De betaling is al betaald of loopt online; het pakket of tarief kan niet meer gewijzigd worden.");
 
-        // Een bevestigde inschrijving zonder betaling (gratis) kan geen betaald tarief krijgen: er zou
+        if (newPackageId != enrollment.CampPackageId
+            && await CampCapacity.IsFullAsync(enrollments, camp, [newPackageId], ct, exceptEnrollmentId: enrollment.Id))
+            return new Error(ErrorCodes.Conflict, "Dit kamp is volzet.");
+
+        // Een bevestigde inschrijving zonder betaling (gratis) kan geen betaald pakket of tarief krijgen: er zou
         // niets te betalen of te registreren zijn terwijl de deelnemer bevestigd blijft.
         CampEnrollment payer = group?.Members.FirstOrDefault(m => m.Id == payerId) ?? enrollment;
         Guid? previousPriceId = enrollment.CampPriceId;
+        Guid? previousPackageId = enrollment.CampPackageId;
         enrollment.CampPriceId = newPriceId;
+        enrollment.CampPackageId = newPackageId;
         IEnumerable<CampEnrollment> participants = group?.Members ?? [enrollment];
         if (payment is null && payer.Status == EnrollmentStatus.Confirmed
             && CampPricing.Total(camp, participants) > 0m)
         {
             enrollment.CampPriceId = previousPriceId;
+            enrollment.CampPackageId = previousPackageId;
             return new Error(ErrorCodes.Conflict,
-                "Deze inschrijving is bevestigd zonder betaling; een betaald tarief kan niet meer gekozen worden.");
+                "Deze inschrijving is bevestigd zonder betaling; een betaald pakket of tarief kan niet meer gekozen worden.");
         }
 
         if (payment is not null && payment.Status == PaymentStatus.Pending && payment.Method == PaymentMethod.Cash)

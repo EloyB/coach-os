@@ -95,6 +95,7 @@ public class CampExportServiceTests
                 {
                     Id = EnrollmentId, ParticipantName = "Emma", ParticipantEmail = "emma@test.com",
                     Status = EnrollmentStatus.Confirmed, EnrolledAt = DateTime.UtcNow,
+                    Package = new CampPackage { Name = "Ochtenden" },
                 },
             ]);
 
@@ -110,5 +111,6 @@ public class CampExportServiceTests
         row.PaymentStatus.Should().Be("Betaald");
         row.PaymentMethod.Should().Be("Cash");
         row.EnrollmentType.Should().Be("Individueel");
+        row.PackageName.Should().Be("Ochtenden");
     }
 }

@@ -13,5 +13,8 @@ public record UpdateCampEnrollmentRequest
 
     /// <summary>Gekozen tarief; null = hoofdprijs van het kamp.</summary>
     public Guid? CampPriceId { get; init; }
+
+    /// <summary>Gekozen pakket; null = hele kamp tegen de hoofdprijs (telt voor alle dagdelen).</summary>
+    public Guid? CampPackageId { get; init; }
     public List<CampFormResponseValueDto> Responses { get; init; } = new();
 }

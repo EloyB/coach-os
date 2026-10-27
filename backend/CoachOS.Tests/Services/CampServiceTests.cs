@@ -626,35 +626,35 @@ public class CampServiceTests
         _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
-    [Test, Ignore("Wordt in Task 5 herschreven naar een betaald pakket: een tarief is nu een korting")]
-    public async Task UpdateEnrollmentAsync_ConfirmedWithoutPayment_PaidOption_ReturnsConflict()
+    [Test]
+    public async Task UpdateEnrollmentAsync_ConfirmedWithoutPayment_PaidPackage_ReturnsConflict()
     {
         (Guid campId, CampEnrollment e) = ArrangeEditable(Domain.Enums.EnrollmentStatus.Confirmed);
-        CampPrice paid = new() { Id = Guid.NewGuid(), Label = "Leden", Discount = 0m };
+        CampPackage paid = new() { Id = Guid.NewGuid(), Name = "Ochtenden", Price = 90m };
         _camps.Setup(r => r.GetByIdWithDetailsAsync(campId, _orgId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Camp { Id = campId, OrganizationId = _orgId, Price = 0m, Prices = { paid } });
+            .ReturnsAsync(new Camp { Id = campId, OrganizationId = _orgId, Price = 0m, Packages = { paid } });
 
         Result result = await _sut.UpdateEnrollmentAsync(
-            campId, e.Id, _orgId, UpdateRequest() with { CampPriceId = paid.Id });
+            campId, e.Id, _orgId, UpdateRequest() with { CampPackageId = paid.Id });
 
         result.IsSuccess.Should().BeFalse();
         result.Errors[0].Code.Should().Be(ErrorCodes.Conflict);
-        e.CampPriceId.Should().BeNull();
+        e.CampPackageId.Should().BeNull();
         _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
-    [Test, Ignore("Wordt in Task 5 herschreven naar een betaald pakket: een tarief is nu een korting")]
-    public async Task AddGroupMemberAsync_ConfirmedGroupWithoutPayment_PaidOption_ReturnsConflict()
+    [Test]
+    public async Task AddGroupMemberAsync_ConfirmedGroupWithoutPayment_PaidPackage_ReturnsConflict()
     {
         Camp camp = ArrangeCampWithGroup(out CampEnrollmentGroup group, out CampEnrollment leader, out _, price: 0m);
         leader.Status = Domain.Enums.EnrollmentStatus.Confirmed;
-        CampPrice paid = new() { Id = Guid.NewGuid(), Label = "Leden", Discount = 0m };
-        camp.Prices.Add(paid);
+        CampPackage paid = new() { Id = Guid.NewGuid(), Name = "Ochtenden", Price = 90m };
+        camp.Packages.Add(paid);
 
         Result<Guid> result = await _sut.AddGroupMemberAsync(camp.Id, group.Id, _orgId,
             new AddCampGroupMemberRequest
             {
-                ParticipantName = "Lisa", ParticipantEmail = "lisa@test.com", CampPriceId = paid.Id,
+                ParticipantName = "Lisa", ParticipantEmail = "lisa@test.com", CampPackageId = paid.Id,
             });
 
         result.IsSuccess.Should().BeFalse();
@@ -1120,6 +1120,183 @@ public class CampServiceTests
 
         result.IsSuccess.Should().BeTrue();
         pending.Amount.Should().Be(65m);
+    }
+
+    // ── Pakketten in beheer ───────────────────────────────────────────────────
+
+    private static readonly DateOnly PkgDay = new(2026, 7, 14);
+
+    /// <summary>Kamp met één dag (ochtend + namiddag), prijs 100, pakketten Ochtend 60 / Namiddag 40 / Hele dag 90.</summary>
+    private Camp ArrangePackageCamp(
+        out CampPackage morning, out CampPackage afternoon, out CampPackage both, int? max = null)
+    {
+        Camp camp = new() { Id = Guid.NewGuid(), OrganizationId = _orgId, Name = "Kamp", Price = 100m, MaxParticipants = max };
+        CampDay day = new() { Id = Guid.NewGuid(), Date = PkgDay };
+        day.Parts.Add(new CampDayPart { Order = 0, Name = "Ochtend" });
+        day.Parts.Add(new CampDayPart { Order = 1, Name = "Namiddag" });
+        camp.Days.Add(day);
+        morning = PkgPackage("Ochtend", 60m, 0);
+        afternoon = PkgPackage("Namiddag", 40m, 1);
+        both = PkgPackage("Hele dag", 90m, 0, 1);
+        camp.Packages.Add(morning);
+        camp.Packages.Add(afternoon);
+        camp.Packages.Add(both);
+        _camps.Setup(r => r.GetByIdWithDetailsAsync(camp.Id, _orgId, It.IsAny<CancellationToken>())).ReturnsAsync(camp);
+        return camp;
+    }
+
+    private static CampPackage PkgPackage(string name, decimal price, params int[] parts)
+    {
+        CampPackage p = new() { Id = Guid.NewGuid(), Name = name, Price = price };
+        foreach (int part in parts) p.Slots.Add(new CampPackageSlot { Date = PkgDay, PartOrder = part });
+        return p;
+    }
+
+    private void ArrangeActive(Guid campId, params CampEnrollment[] active)
+        => _enrollments.Setup(r => r.GetActiveByCampAsync(campId, It.IsAny<CancellationToken>())).ReturnsAsync(active.ToList());
+
+    private CampEnrollment PkgEnrollment(Camp camp, Guid? packageId, Domain.Enums.EnrollmentStatus status)
+    {
+        CampEnrollment e = new()
+        {
+            Id = Guid.NewGuid(), OrganizationId = _orgId, CampId = camp.Id, CampPackageId = packageId,
+            ParticipantName = "Emma", ParticipantEmail = "emma@test.com", Status = status,
+        };
+        _enrollments.Setup(r => r.GetByIdWithResponsesAsync(e.Id, _orgId, It.IsAny<CancellationToken>())).ReturnsAsync(e);
+        return e;
+    }
+
+    [Test]
+    public async Task UpdateEnrollmentAsync_ChangingPackage_SetsPackageAndUpdatesPendingCashAmount()
+    {
+        Camp camp = ArrangePackageCamp(out CampPackage morning, out _, out _);
+        CampEnrollment e = PkgEnrollment(camp, null, Domain.Enums.EnrollmentStatus.PendingPayment);
+        ArrangeActive(camp.Id, e);
+        Payment cash = new() { Status = Domain.Enums.PaymentStatus.Pending, Method = Domain.Enums.PaymentMethod.Cash, Amount = 100m };
+        _payments.Setup(p => p.GetLatestTrackedByCampEnrollmentIdAsync(e.Id, It.IsAny<CancellationToken>())).ReturnsAsync(cash);
+
+        Result result = await _sut.UpdateEnrollmentAsync(
+            camp.Id, e.Id, _orgId, UpdateRequest() with { CampPackageId = morning.Id });
+
+        result.IsSuccess.Should().BeTrue();
+        e.CampPackageId.Should().Be(morning.Id);
+        cash.Amount.Should().Be(60m);
+    }
+
+    [Test]
+    public async Task UpdateEnrollmentAsync_UnknownPackage_ReturnsNotFound()
+    {
+        Camp camp = ArrangePackageCamp(out _, out _, out _);
+        CampEnrollment e = PkgEnrollment(camp, null, Domain.Enums.EnrollmentStatus.PendingPayment);
+
+        Result result = await _sut.UpdateEnrollmentAsync(
+            camp.Id, e.Id, _orgId, UpdateRequest() with { CampPackageId = Guid.NewGuid() });
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.NotFound);
+    }
+
+    [Test]
+    public async Task UpdateEnrollmentAsync_PackageChangeAfterOnlinePaymentStarted_ReturnsConflict()
+    {
+        Camp camp = ArrangePackageCamp(out CampPackage morning, out _, out _);
+        CampEnrollment e = PkgEnrollment(camp, null, Domain.Enums.EnrollmentStatus.PendingPayment);
+        ArrangeActive(camp.Id, e);
+        Payment online = new() { Status = Domain.Enums.PaymentStatus.Pending, Method = Domain.Enums.PaymentMethod.Online, Amount = 100m };
+        _payments.Setup(p => p.GetLatestTrackedByCampEnrollmentIdAsync(e.Id, It.IsAny<CancellationToken>())).ReturnsAsync(online);
+
+        Result result = await _sut.UpdateEnrollmentAsync(
+            camp.Id, e.Id, _orgId, UpdateRequest() with { CampPackageId = morning.Id });
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.Conflict);
+        e.CampPackageId.Should().BeNull();
+    }
+
+    [Test]
+    public async Task UpdateEnrollmentAsync_PackageIntoFullPart_ReturnsConflict()
+    {
+        Camp camp = ArrangePackageCamp(out CampPackage morning, out CampPackage afternoon, out CampPackage both, max: 1);
+        CampEnrollment mine = PkgEnrollment(camp, morning.Id, Domain.Enums.EnrollmentStatus.Confirmed);
+        CampEnrollment other = new() { Id = Guid.NewGuid(), CampPackageId = afternoon.Id, Status = Domain.Enums.EnrollmentStatus.Confirmed };
+        ArrangeActive(camp.Id, mine, other);
+
+        Result result = await _sut.UpdateEnrollmentAsync(
+            camp.Id, mine.Id, _orgId, UpdateRequest() with { CampPackageId = both.Id });
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.Conflict);
+        mine.CampPackageId.Should().Be(morning.Id);
+    }
+
+    [Test]
+    public async Task UpdateEnrollmentAsync_PackageChangeDoesNotCountTheEnrollmentsOwnSeat()
+    {
+        Camp camp = ArrangePackageCamp(out CampPackage morning, out _, out CampPackage both, max: 1);
+        CampEnrollment mine = PkgEnrollment(camp, morning.Id, Domain.Enums.EnrollmentStatus.PendingPayment);
+        ArrangeActive(camp.Id, mine);
+
+        Result result = await _sut.UpdateEnrollmentAsync(
+            camp.Id, mine.Id, _orgId, UpdateRequest() with { CampPackageId = both.Id });
+
+        result.IsSuccess.Should().BeTrue();
+        mine.CampPackageId.Should().Be(both.Id);
+    }
+
+    [Test]
+    public async Task AddGroupMemberAsync_DifferentPackage_UsesItsPriceInGroupAmount()
+    {
+        Camp camp = ArrangeCampWithGroup(out CampEnrollmentGroup group, out CampEnrollment leader, out _, price: 100m);
+        CampPackage afternoon = new() { Id = Guid.NewGuid(), Name = "Namiddag", Price = 40m };
+        camp.Packages.Add(afternoon);
+        Payment cash = new() { Status = Domain.Enums.PaymentStatus.Pending, Method = Domain.Enums.PaymentMethod.Cash, Amount = 200m };
+        _payments.Setup(p => p.GetLatestTrackedByCampEnrollmentIdAsync(leader.Id, It.IsAny<CancellationToken>())).ReturnsAsync(cash);
+        CampEnrollment? added = null;
+        _enrollments.Setup(r => r.AddAsync(It.IsAny<CampEnrollment>(), It.IsAny<CancellationToken>()))
+            .Callback<CampEnrollment, CancellationToken>((e, _) => added = e).Returns(Task.CompletedTask);
+
+        Result<Guid> result = await _sut.AddGroupMemberAsync(camp.Id, group.Id, _orgId,
+            MemberRequest() with { CampPackageId = afternoon.Id });
+
+        result.IsSuccess.Should().BeTrue();
+        added!.CampPackageId.Should().Be(afternoon.Id);
+        cash.Amount.Should().Be(100m + 100m + 40m); // leider + bestaand lid tegen hoofdprijs, nieuw lid op het pakket
+    }
+
+    [Test]
+    public async Task AddGroupMemberAsync_PackageIntoFullPart_ReturnsConflict()
+    {
+        Camp camp = ArrangeCampWithGroup(out CampEnrollmentGroup group, out _, out _, price: 100m, maxParticipants: 1);
+        CampPackage morning = PkgPackage("Ochtend", 60m, 0);
+        CampDay day = new() { Id = Guid.NewGuid(), Date = PkgDay };
+        day.Parts.Add(new CampDayPart { Order = 0, Name = "Ochtend" });
+        camp.Days.Add(day);
+        camp.Packages.Add(morning);
+        ArrangeActive(camp.Id, new CampEnrollment { Id = Guid.NewGuid(), CampPackageId = morning.Id, Status = Domain.Enums.EnrollmentStatus.Confirmed });
+
+        Result<Guid> result = await _sut.AddGroupMemberAsync(camp.Id, group.Id, _orgId,
+            MemberRequest() with { CampPackageId = morning.Id });
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.Conflict);
+        _enrollments.Verify(r => r.AddAsync(It.IsAny<CampEnrollment>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task GetEnrollmentsAsync_IncludesPackageNameAndId()
+    {
+        Camp camp = ArrangePackageCamp(out CampPackage morning, out _, out _);
+        CampEnrollment e = PkgEnrollment(camp, morning.Id, Domain.Enums.EnrollmentStatus.Confirmed);
+        e.Package = morning;
+        _camps.Setup(r => r.ExistsAsync(camp.Id, _orgId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _enrollments.Setup(r => r.GetByCampWithResponsesAsync(camp.Id, _orgId, It.IsAny<CancellationToken>())).ReturnsAsync([e]);
+        _payments.Setup(p => p.GetLatestByCampEnrollmentIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<Guid, Payment>());
+
+        Result<List<CampEnrollmentDto>> result = await _sut.GetEnrollmentsAsync(camp.Id, _orgId);
+
+        result.Value!.Single().CampPackageId.Should().Be(morning.Id);
+        result.Value!.Single().CampPackageName.Should().Be("Ochtend");
     }
 
     private (Camp Camp, CampPrice Option, CampEnrollment Enrollment) ArrangeSoloWithOption()

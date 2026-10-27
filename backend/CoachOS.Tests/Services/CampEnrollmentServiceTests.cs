@@ -441,25 +441,92 @@ public class CampEnrollmentServiceTests
             Times.Once);
     }
 
-    [Test, Ignore("Wordt in Task 5 herschreven naar een betaald pakket: een tarief is nu een korting")]
-    public async Task CreateManual_FreeMainPriceWithPaidOption_IsPendingPayment()
+    [Test]
+    public async Task CreateManual_FreeMainPriceWithPaidPackage_IsPendingPaymentAndStoresPackage()
     {
+        Camp camp = BuildPackageCamp(0m, 20, out CampPackage morning, out _, out _);
+        ArrangePackageCamp(camp);
         ArrangeManual(0m);
-        Camp camp = BuildCamp(0m);
-        CampPrice option = new() { Id = Guid.NewGuid(), Label = "Leden", Discount = 0m };
-        camp.Prices.Add(option);
         _camps.Setup(r => r.GetByIdPublicAsync(_campId, It.IsAny<CancellationToken>())).ReturnsAsync(camp);
         CreateManualCampEnrollmentRequest request = new()
         {
-            ParticipantName = "Emma", ParticipantEmail = "emma@example.com", CampPriceId = option.Id,
+            ParticipantName = "Emma", ParticipantEmail = "emma@example.com", CampPackageId = morning.Id,
         };
 
         Result<Guid> result = await _sut.CreateManualAsync(_campId, _orgId, request);
 
         result.IsSuccess.Should().BeTrue();
-        _enrollments.Verify(r => r.AddAsync(It.Is<CampEnrollment>(e => e.Status == EnrollmentStatus.PendingPayment),
+        _enrollments.Verify(r => r.AddAsync(
+            It.Is<CampEnrollment>(e => e.Status == EnrollmentStatus.PendingPayment && e.CampPackageId == morning.Id),
             It.IsAny<CancellationToken>()), Times.Once);
         _payments.Verify(p => p.RecordCampCashPaymentAsync(It.IsAny<Guid>(), _orgId, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task CreateManual_UnknownPackage_ReturnsNotFound()
+    {
+        Camp camp = BuildPackageCamp(100m, 20, out _, out _, out _);
+        ArrangePackageCamp(camp);
+        ArrangeManual(100m);
+        _camps.Setup(r => r.GetByIdPublicAsync(_campId, It.IsAny<CancellationToken>())).ReturnsAsync(camp);
+
+        Result<Guid> result = await _sut.CreateManualAsync(_campId, _orgId, new CreateManualCampEnrollmentRequest
+        {
+            ParticipantName = "Emma", ParticipantEmail = "emma@example.com", CampPackageId = Guid.NewGuid(),
+        });
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.NotFound);
+    }
+
+    [Test]
+    public async Task CreateManual_PackageIntoFullPart_ReturnsConflictAndRollsBack()
+    {
+        Camp camp = BuildPackageCamp(100m, 1, out CampPackage morning, out _, out _);
+        ArrangePackageCamp(camp, new CampEnrollment { Id = Guid.NewGuid(), CampPackageId = morning.Id, Status = EnrollmentStatus.Confirmed });
+        ArrangeManual(100m);
+        _camps.Setup(r => r.GetByIdPublicAsync(_campId, It.IsAny<CancellationToken>())).ReturnsAsync(camp);
+
+        Result<Guid> result = await _sut.CreateManualAsync(_campId, _orgId, new CreateManualCampEnrollmentRequest
+        {
+            ParticipantName = "Emma", ParticipantEmail = "emma@example.com", CampPackageId = morning.Id,
+        });
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.Conflict);
+        _enrollments.Verify(r => r.AddAsync(It.IsAny<CampEnrollment>(), It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.RollbackTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task GetPaymentOptions_WithEnrollmentId_ReturnsTheGroupTotal()
+    {
+        Camp camp = BuildPackageCamp(100m, 20, out CampPackage morning, out _, out CampPackage both);
+        Guid groupId = Guid.NewGuid();
+        CampEnrollment leader = new() { Id = Guid.NewGuid(), CampId = _campId, CampPackageId = morning.Id, Status = EnrollmentStatus.PendingPayment, CampEnrollmentGroupId = groupId };
+        CampEnrollment kid = new() { Id = Guid.NewGuid(), CampId = _campId, CampPackageId = both.Id, Status = EnrollmentStatus.PendingPayment, CampEnrollmentGroupId = groupId };
+        leader.Group = new CampEnrollmentGroup { Id = groupId, LeaderEnrollmentId = leader.Id, Members = { leader, kid } };
+        _camps.Setup(r => r.GetByIdPublicAsync(_campId, It.IsAny<CancellationToken>())).ReturnsAsync(camp);
+        _enrollments.Setup(r => r.GetByIdWithGroupAsync(leader.Id, It.IsAny<CancellationToken>())).ReturnsAsync(leader);
+        _mollieConnect.Setup(m => m.GetStatusAsync(_orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<MollieConnectionStatusDto>.Ok(new MollieConnectionStatusDto(true, null, null)));
+
+        Result<CampPaymentOptionsDto> result = await _sut.GetPaymentOptionsAsync(_campId, leader.Id, CancellationToken.None);
+
+        result.Value!.Price.Should().Be(60m + 90m);
+    }
+
+    [Test]
+    public async Task GetPaymentOptions_WithoutEnrollmentId_ReturnsTheMainPrice()
+    {
+        Camp camp = BuildPackageCamp(100m, 20, out _, out _, out _);
+        _camps.Setup(r => r.GetByIdPublicAsync(_campId, It.IsAny<CancellationToken>())).ReturnsAsync(camp);
+        _mollieConnect.Setup(m => m.GetStatusAsync(_orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<MollieConnectionStatusDto>.Ok(new MollieConnectionStatusDto(false, null, null)));
+
+        Result<CampPaymentOptionsDto> result = await _sut.GetPaymentOptionsAsync(_campId, null, CancellationToken.None);
+
+        result.Value!.Price.Should().Be(100m);
     }
 
     [Test]

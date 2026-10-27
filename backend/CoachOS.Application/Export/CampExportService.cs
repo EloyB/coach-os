@@ -119,7 +119,8 @@ public class CampExportService(
                     x.Enrollment.FormResponses
                         .Where(r => r.CampFormField is not null)
                         .GroupBy(r => r.CampFormField.Label)
-                        .ToDictionary(g => g.Key, g => string.Join(", ", g.Select(r => r.Value))));
+                        .ToDictionary(g => g.Key, g => string.Join(", ", g.Select(r => r.Value))),
+                    x.Enrollment.Package?.Name);
             })
             .ToList();
 
