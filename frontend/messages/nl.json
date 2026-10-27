@@ -839,6 +839,7 @@
     "publicPackageFull": "Vol",
     "publicPackageFor": "Pakket voor {name}",
     "publicPackageChoose": "Kies een pakket",
+    "publicPriceFrom": "Vanaf €{price} per deelnemer",
     "publicPackageLeaderFallback": "deelnemer 1",
     "occupancyValue": "{count} deelnemers",
     "occupancyOfMax": "{count} / {max} deelnemers",

@@ -1,6 +1,6 @@
 # Kamp-pakketten: inschrijven voor dagdelen
 
-Status: concept, wacht op goedkeuring. Datum: 2026-10-26.
+Status: geïmplementeerd op `feat/kamp-pakketten`. Datum: 2026-10-26.
 
 ## Waarom
 
@@ -59,6 +59,16 @@ het inschrijven het pakket, en het formulier, de prijs, de betaling en de limiet
    minimaal 0. Bestaande inschrijvingen houden hun tarief en hun bedrag blijft gelijk.
 8. **Publieke pagina:** toont de pakketten met dagen en uren en een keuze per deelnemer. Alleen als het kamp
    pakketten heeft.
+
+## Afwijkingen bij de uitvoering
+
+- **Slots op (datum, dagdeelpositie):** `CampPackageSlot` verwijst niet via een FK naar `CampDayPart`, want een
+  kampwijziging vervangt alle dagen en dagdelen. Bij elke wijziging wordt gecontroleerd dat elk slot nog naar een
+  bestaand dagdeel wijst, ook als de pakketten niet worden meegestuurd.
+- **Niet aangepast:** de e-mailtemplates (bevestiging en betaallink) tonen het gekozen pakket niet, en de
+  dashboardkalender telt niet per dagdeel. Beide kunnen later zonder datamodelwijziging.
+- **Betaalpagina:** het te betalen bedrag komt nu uit de inschrijving (som van de groep), niet meer uit de
+  hoofdprijs. Dat verbetert ook kampen zonder pakketten.
 
 ## Raakvlakken die mee moeten
 

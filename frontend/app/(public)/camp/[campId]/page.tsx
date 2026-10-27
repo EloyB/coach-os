@@ -500,9 +500,15 @@ export default function CampEnrollPage() {
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <Euro className="w-4 h-4 text-gray-400 shrink-0" />
               <span>
-                {camp.price > 0
-                  ? `€${camp.price.toFixed(2)} ${t("pricePerParticipant")}`
-                  : t("priceFree")}
+                {camp.packages.length > 0
+                  ? t("publicPriceFrom", {
+                      price: Math.min(
+                        ...camp.packages.map((p) => p.price),
+                      ).toFixed(2),
+                    })
+                  : camp.price > 0
+                    ? `€${camp.price.toFixed(2)} ${t("pricePerParticipant")}`
+                    : t("priceFree")}
               </span>
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -574,14 +580,16 @@ export default function CampEnrollPage() {
                 {t("publicPricesLabel")}
               </h3>
               <ul className="space-y-2">
-                <li className="flex items-start justify-between gap-3 text-sm border border-gray-100 rounded-lg px-3 py-2">
-                  <span className="font-medium text-gray-900">
-                    {t("publicPriceMain")}
-                  </span>
-                  <span className="font-semibold text-gray-900 whitespace-nowrap">
-                    {camp.price > 0 ? `€${camp.price.toFixed(2)}` : t("priceFree")}
-                  </span>
-                </li>
+                {camp.packages.length === 0 && (
+                  <li className="flex items-start justify-between gap-3 text-sm border border-gray-100 rounded-lg px-3 py-2">
+                    <span className="font-medium text-gray-900">
+                      {t("publicPriceMain")}
+                    </span>
+                    <span className="font-semibold text-gray-900 whitespace-nowrap">
+                      {camp.price > 0 ? `€${camp.price.toFixed(2)}` : t("priceFree")}
+                    </span>
+                  </li>
+                )}
                 {camp.prices.map((p) => (
                   <li
                     key={p.id}
