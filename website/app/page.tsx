@@ -2,7 +2,6 @@ import { SiteNav } from "@/components/site/site-nav";
 import { SiteFooter } from "@/components/site/site-footer";
 import { HomepageJsonLd } from "@/components/site/json-ld";
 import { Hero } from "@/components/sections/hero";
-import { ProductScreenshot } from "@/components/sections/product-screenshot";
 import { VoorWie } from "@/components/sections/voor-wie";
 import { HoeHetWerkt } from "@/components/sections/hoe-het-werkt";
 import { FeatureShowcase } from "@/components/sections/feature-showcase";
@@ -21,7 +20,6 @@ export default function Page() {
       <SiteNav />
       <main>
         <Hero />
-        <ProductScreenshot />
         <VoorWie />
         <HoeHetWerkt />
         <FeatureShowcase />
