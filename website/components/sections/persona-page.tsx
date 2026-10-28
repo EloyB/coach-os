@@ -18,6 +18,7 @@ export function PersonaPage({ persona }: { persona: Persona }) {
       <main>
         <PersonaHero persona={persona} />
         <PersonaPainSolution persona={persona} />
+        <PersonaStory persona={persona} />
         <PersonaRelated persona={persona} />
         <PersonaFaq persona={persona} />
         <FinalCta />
@@ -130,6 +131,45 @@ function PersonaPainSolution({ persona }: { persona: Persona }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+
+/** Uitgebreide, unieke inhoud per doelgroep: voorbeeld, inschrijven via een link, enzovoort. */
+function PersonaStory({ persona }: { persona: Persona }) {
+  if (persona.sections.length === 0) return null;
+  return (
+    <section className="border-b border-rule">
+      <div className="mx-auto max-w-3xl space-y-14 px-6 py-20 md:py-24">
+        {persona.sections.map((section) => (
+          <div key={section.heading}>
+            <h2 className="text-2xl font-bold tracking-tight md:text-3xl">
+              {section.heading}
+            </h2>
+            {section.paragraphs.map((text) => (
+              <p
+                key={text}
+                className="mt-4 text-base leading-relaxed text-ink-2"
+              >
+                {text}
+              </p>
+            ))}
+            {section.bullets ? (
+              <ul className="mt-5 space-y-3">
+                {section.bullets.map((b) => (
+                  <li key={b} className="flex items-start gap-3 text-base">
+                    <Check
+                      className="mt-1 h-4 w-4 flex-shrink-0 text-tennis-green"
+                      strokeWidth={2.5}
+                    />
+                    <span className="leading-relaxed text-ink-2">{b}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
 
 /** Links in de body naar de andere doelgroeppagina's en de prijzen (niet enkel via nav/footer). */
 function PersonaRelated({ persona }: { persona: Persona }) {
