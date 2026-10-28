@@ -137,3 +137,10 @@
     @apply bg-background text-foreground;
   }
 }
+/* Testpagina /design-test: serif voor de koppen. Het lettertype komt uit de pagina zelf. */
+.design-test h1,
+.design-test h2 {
+  font-family: var(--font-display), Georgia, serif;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}

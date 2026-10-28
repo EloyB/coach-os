@@ -1,18 +1,24 @@
 import type { Metadata } from "next";
-import { SiteNav } from "@/components/site/site-nav";
+import { Instrument_Serif } from "next/font/google";
 import { SiteFooter } from "@/components/site/site-footer";
-import { Hero } from "@/components/sections/hero";
-import { ProductScreenshot } from "@/components/sections/product-screenshot";
+import { FloatingNav } from "@/components/design-test/floating-nav";
+import { DesignHero } from "@/components/design-test/design-hero";
+import { BentoFeatures } from "@/components/design-test/bento-features";
 import { VoorWie } from "@/components/sections/voor-wie";
 import { HoeHetWerkt } from "@/components/sections/hoe-het-werkt";
-import { FeatureShowcase } from "@/components/sections/feature-showcase";
-import { FeatureGrid } from "@/components/sections/feature-grid";
 import { ExcelComparison } from "@/components/sections/excel-comparison";
 import { BespaarTijd } from "@/components/sections/bespaar-tijd";
 import { Pricing } from "@/components/sections/pricing";
 import { Faq } from "@/components/sections/faq";
 import { FinalCta } from "@/components/sections/final-cta";
 import { PRICING_VISIBLE } from "@/content/pricing";
+
+const display = Instrument_Serif({
+  variable: "--font-display",
+  subsets: ["latin"],
+  weight: "400",
+  style: ["normal", "italic"],
+});
 
 /** Testpagina voor een nieuw homepage-ontwerp: niet indexeerbaar en niet in de sitemap. */
 export const metadata: Metadata = {
@@ -22,15 +28,13 @@ export const metadata: Metadata = {
 
 export default function Page() {
   return (
-    <>
-      <SiteNav />
+    <div className={`${display.variable} design-test`}>
+      <FloatingNav />
       <main>
-        <Hero />
-        <ProductScreenshot />
+        <DesignHero />
+        <BentoFeatures />
         <VoorWie />
         <HoeHetWerkt />
-        <FeatureShowcase />
-        <FeatureGrid />
         <ExcelComparison />
         <BespaarTijd />
         {PRICING_VISIBLE ? <Pricing /> : null}
@@ -38,6 +42,6 @@ export default function Page() {
         <FinalCta />
       </main>
       <SiteFooter />
-    </>
+    </div>
   );
 }
