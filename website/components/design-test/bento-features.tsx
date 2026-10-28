@@ -10,7 +10,7 @@ export function BentoFeatures() {
           <Mono className="text-[11px] tracking-[0.18em] text-tennis-green">
             ALLES IN ÉÉN TOOL
           </Mono>
-          <h2 className="mt-3 text-4xl text-ink md:text-5xl">
+          <h2 className="mt-3 text-3xl font-bold tracking-tight text-ink md:text-4xl">
             Alles om je lesseizoen te runnen
           </h2>
           <p className="mt-4 text-base text-ink-2">
@@ -32,7 +32,7 @@ export function BentoFeatures() {
 }
 
 const CARD = "relative overflow-hidden rounded-3xl p-7 md:p-8";
-const SERIF = "font-[family-name:var(--font-display)]";
+const TITLE = "font-bold tracking-tight";
 
 function CardText({
   title,
@@ -48,7 +48,7 @@ function CardText({
   return (
     <div className={`relative z-10 ${className}`}>
       <h3
-        className={`${SERIF} text-3xl leading-[1.05] md:text-4xl ${dark ? "text-white" : "text-ink"}`}
+        className={`${TITLE} text-2xl leading-[1.1] md:text-3xl ${dark ? "text-white" : "text-ink"}`}
       >
         {title}
       </h3>

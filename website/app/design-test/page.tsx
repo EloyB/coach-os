@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Instrument_Serif } from "next/font/google";
 import { SiteFooter } from "@/components/site/site-footer";
 import { FloatingNav } from "@/components/design-test/floating-nav";
 import { DesignHero } from "@/components/design-test/design-hero";
@@ -13,13 +12,6 @@ import { Faq } from "@/components/sections/faq";
 import { FinalCta } from "@/components/sections/final-cta";
 import { PRICING_VISIBLE } from "@/content/pricing";
 
-const display = Instrument_Serif({
-  variable: "--font-display",
-  subsets: ["latin"],
-  weight: "400",
-  style: ["normal", "italic"],
-});
-
 /** Testpagina voor een nieuw homepage-ontwerp: niet indexeerbaar en niet in de sitemap. */
 export const metadata: Metadata = {
   title: "Design-test",
@@ -28,7 +20,7 @@ export const metadata: Metadata = {
 
 export default function Page() {
   return (
-    <div className={`${display.variable} design-test`}>
+    <div>
       <FloatingNav />
       <main>
         <DesignHero />

@@ -12,10 +12,10 @@ export function DesignHero() {
           Voor tennis- en padelclubs in de Benelux
         </span>
 
-        <h1 className="mt-8 text-5xl leading-[1.02] text-ink md:text-7xl">
+        <h1 className="mt-8 text-4xl font-bold leading-[1.05] tracking-tight text-ink md:text-6xl">
           Lessenplanning,
           <br />
-          eindelijk <em className="italic text-tennis-green">eenvoudig</em>
+          eindelijk <span className="text-tennis-green">eenvoudig</span>
         </h1>
 
         <p className="mx-auto mt-7 max-w-2xl text-lg leading-relaxed text-ink-2">
