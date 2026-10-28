@@ -66,7 +66,7 @@ export function HomepageJsonLd() {
       audienceType:
         "Tennis- en padelclubs, hoofdtrainers en zelfstandige coaches",
     },
-    featureList: FEATURES.map((f) => `${f.title} — ${f.body}`),
+    featureList: FEATURES.map((f) => `${f.title}: ${f.body}`),
     // Prijzen komen uit dezelfde bron als de /prijzen-pagina. Per maand, excl. btw.
     ...(PRICING_VISIBLE
       ? {

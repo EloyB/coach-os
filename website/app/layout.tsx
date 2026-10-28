@@ -15,7 +15,7 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL("https://coach-os.be"),
   title: {
-    default: "CoachOS — Lessenplanning voor tennis- en padelclubs",
+    default: "CoachOS: lessenplanning voor tennis- en padelclubs",
     template: "%s · CoachOS",
   },
   description:
@@ -37,14 +37,14 @@ export const metadata: Metadata = {
     locale: "nl_BE",
     alternateLocale: ["nl_NL"],
     url: "https://coach-os.be",
-    title: "CoachOS — Lessenplanning voor tennis- en padelclubs",
+    title: "CoachOS: lessenplanning voor tennis- en padelclubs",
     description:
       "Een planning die zichzelf bevestigt. Lessenreeksen, anonieme inschrijvingen en automatische scheduling voor tennis- en padelclubs.",
     siteName: "CoachOS",
   },
   twitter: {
     card: "summary_large_image",
-    title: "CoachOS — Lessenplanning voor tennis- en padelclubs",
+    title: "CoachOS: lessenplanning voor tennis- en padelclubs",
     description:
       "Lessenplanning voor tennis- en padelclubs in Nederland en België.",
   },

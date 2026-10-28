@@ -37,22 +37,22 @@ export function GET() {
   lines.push("");
   lines.push(`- [Homepage](${SITE_URL}/): Overzicht van alle features.`);
   lines.push(
-    "- Lessenreeksen — terugkerende lesperiodes die je één keer instelt; lessen worden automatisch gegenereerd over de hele periode.",
+    "- Lessenreeksen: terugkerende lesperiodes die je één keer instelt; lessen worden automatisch gegenereerd over de hele periode.",
   );
   lines.push(
-    "- Anonieme inschrijvingen — leerlingen schrijven zich in via een publieke link met enkel naam en e-mailadres; geen account vereist.",
+    "- Anonieme inschrijvingen: leerlingen schrijven zich in via een publieke link met enkel naam en e-mailadres; geen account vereist.",
   );
   lines.push(
-    "- Formulierbouwer — per lessenreeks aangepaste vragen (vrije tekst, meerkeuze, ja/nee).",
+    "- Formulierbouwer: per lessenreeks aangepaste vragen (vrije tekst, meerkeuze, ja/nee).",
   );
   lines.push(
-    "- Planningsalgoritme — verdeelt leerlingen automatisch over slots op basis van niveau, voorkeurstijden en groepsverbanden.",
+    "- Planningsalgoritme: verdeelt leerlingen automatisch over slots op basis van niveau, voorkeurstijden en groepsverbanden.",
   );
   lines.push(
-    "- Magic-link bevestigingen — leerlingen bevestigen hun lestijd met één klik in een e-mail; geen wachtwoord.",
+    "- Magic-link bevestigingen: leerlingen bevestigen hun lestijd met één klik in een e-mail; geen wachtwoord.",
   );
   lines.push(
-    "- Mollie-betalingen (Bancontact + iDEAL) — online betalen, plus handmatige cash-registratie per inschrijving.",
+    "- Mollie-betalingen (Bancontact + iDEAL): online betalen, plus handmatige cash-registratie per inschrijving.",
   );
   lines.push("");
 

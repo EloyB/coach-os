@@ -41,7 +41,7 @@ export const SHOWCASE: ShowcaseItem[] = [
     icon: CalendarRange,
     kicker: "LESREEKSEN",
     heading: "Eén lessenreeks. Een heel seizoen vooruit.",
-    body: "Stel een lessenreeks één keer in en laat je agenda automatisch vullen. — elke maandag voor de komende 8 weken, zaterdagochtenden tot eind juni? CoachOS plant het naar jouw wensen.",
+    body: "Stel een lessenreeks één keer in en laat je agenda automatisch vullen. Elke maandag voor de komende 8 weken, zaterdagochtenden tot eind juni? CoachOS plant het naar jouw wensen.",
     bullets: [
       "Wekelijkse, tweewekelijkse of losse trainingen",
       "Voor 1 of meerdere trainers",

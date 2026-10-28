@@ -75,7 +75,7 @@ export default function PrijzenPage() {
               TARIEVEN
             </Mono>
             <h1 className="mt-3 max-w-3xl text-4xl font-bold leading-[1.05] tracking-tight md:text-5xl">
-              Prijzen CoachOS: lesplanning vanaf €25 per maand
+              Lesplanning vanaf €25 per maand
             </h1>
             <p className="mt-5 max-w-2xl text-lg leading-relaxed text-ink-2">
               Drie abonnementen op basis van je aantal actieve leerlingen, met
@@ -129,9 +129,7 @@ export default function PrijzenPage() {
                   key={item.title}
                   className="rounded-xl border border-rule bg-paper p-6"
                 >
-                  <Mono className="text-[11px] text-ink-3">
-                    0{i + 1}
-                  </Mono>
+                  <Mono className="text-[11px] text-ink-3">0{i + 1}</Mono>
                   <h3 className="mt-3 text-lg font-bold tracking-tight">
                     {item.title}
                   </h3>
