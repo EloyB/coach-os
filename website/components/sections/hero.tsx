@@ -3,12 +3,11 @@ import { InkHeroCard } from "@/components/ui/ink-hero-card";
 import { StatStrip } from "@/components/ui/stat-strip";
 import { Mono } from "@/components/ui/mono";
 import { HERO } from "@/content/hero";
-import { LessonWeekMock } from "@/components/sections/lesson-week-mock";
 
 export function Hero() {
   return (
     <section className="border-b border-rule">
-      <div className="mx-auto grid max-w-6xl gap-8 px-6 py-16 md:py-24 lg:grid-cols-[1.05fr_0.95fr] lg:gap-10">
+      <div className="mx-auto max-w-6xl px-6 py-16 md:py-24">
         <InkHeroCard
           showCourtLines
           courtLinesOpacity={0.06}
@@ -37,10 +36,6 @@ export function Hero() {
             </a>
           </div>
         </InkHeroCard>
-
-        <div className="hidden lg:block">
-          <LessonWeekMock />
-        </div>
       </div>
     </section>
   );
