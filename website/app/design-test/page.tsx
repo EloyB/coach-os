@@ -7,7 +7,7 @@ import { BentoAudiences } from "@/components/design-test/bento-audiences";
 import { BentoSteps } from "@/components/design-test/bento-steps";
 import { BentoComparison } from "@/components/design-test/bento-comparison";
 import { BentoPricing } from "@/components/design-test/bento-pricing";
-import { Faq } from "@/components/sections/faq";
+import { BentoFaq } from "@/components/design-test/bento-faq";
 import { BentoContact } from "@/components/design-test/bento-contact";
 import { PRICING_VISIBLE } from "@/content/pricing";
 
@@ -29,7 +29,7 @@ export default function Page() {
         <BentoSteps />
         <BentoComparison />
         {PRICING_VISIBLE ? <BentoPricing /> : null}
-        <Faq />
+        <BentoFaq />
         <BentoContact />
       </main>
       <SiteFooter />
