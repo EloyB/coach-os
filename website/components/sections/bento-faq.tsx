@@ -1,9 +1,15 @@
 import { ArrowUpRight, Plus } from "lucide-react";
 import { Mono } from "@/components/ui/mono";
-import { FAQ, FAQ_HEADING } from "@/content/faq";
+import { FAQ, FAQ_HEADING, type FaqEntry } from "@/content/faq";
 
 /** FAQ als bento: een kaart met de kop links en de vragen als losse kaarten rechts. */
-export function BentoFaq() {
+export function BentoFaq({
+  heading = FAQ_HEADING,
+  entries = FAQ,
+}: {
+  heading?: string;
+  entries?: readonly FaqEntry[];
+} = {}) {
   return (
     <section id="faq" className="scroll-mt-16">
       <div className="mx-auto grid max-w-6xl gap-4 px-6 py-20 md:py-24 lg:grid-cols-[0.8fr_1.2fr]">
@@ -12,7 +18,7 @@ export function BentoFaq() {
             VRAGEN
           </Mono>
           <h2 className="mt-4 text-3xl font-bold leading-[1.1] tracking-tight md:text-4xl">
-            {FAQ_HEADING}
+            {heading}
           </h2>
           <p className="mt-4 text-sm leading-relaxed text-white/70">
             Staat je vraag er niet bij? Stuur ons een bericht, we antwoorden
@@ -28,7 +34,7 @@ export function BentoFaq() {
         </div>
 
         <div className="space-y-3">
-          {FAQ.map((entry) => (
+          {entries.map((entry) => (
             <details
               key={entry.q}
               className="group rounded-2xl bg-[#eef1e0] px-6 transition-colors open:bg-[#e4e8d2]"

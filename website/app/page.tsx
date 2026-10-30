@@ -1,5 +1,6 @@
 import { SiteNav } from "@/components/site/site-nav";
 import { SiteFooter } from "@/components/site/site-footer";
+import { WhitePage } from "@/components/site/white-page";
 import { HomepageJsonLd } from "@/components/site/json-ld";
 import { BentoHero } from "@/components/sections/bento-hero";
 import { BentoFeatures } from "@/components/sections/bento-features";
@@ -13,8 +14,7 @@ import { PRICING_VISIBLE } from "@/content/pricing";
 
 export default function Page() {
   return (
-    // Witte pagina: de footer wordt hier overschreven, de bento-secties zijn zelf transparant.
-    <div className="bg-white [&_footer]:border-t-0 [&_footer]:bg-white [&_header]:bg-white/85">
+    <WhitePage>
       <HomepageJsonLd />
       <SiteNav />
       <main>
@@ -28,6 +28,6 @@ export default function Page() {
         <BentoContact />
       </main>
       <SiteFooter />
-    </div>
+    </WhitePage>
   );
 }

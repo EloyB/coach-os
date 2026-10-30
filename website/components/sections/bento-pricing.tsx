@@ -18,27 +18,37 @@ import {
  * Tarieven als bento-kaarten naast elkaar. Geen kaart wordt uitgelicht: de tint loopt
  * van licht naar donker mee met de grootte van het plan.
  */
-export function BentoPricing() {
+export function BentoPricing({
+  hideHeader = false,
+  hideCompareLink = false,
+}: {
+  /** Verberg het tekstblok boven de kaarten, bv. op /prijzen waar de hero dat al dekt. */
+  hideHeader?: boolean;
+  /** Verberg de link naar /prijzen, bv. op die pagina zelf. */
+  hideCompareLink?: boolean;
+} = {}) {
   const [billing, setBilling] = useState<Billing>("yearly");
 
   return (
     <section id="prijzen" className="scroll-mt-16">
       <div className="mx-auto max-w-6xl px-6 py-20 md:py-24">
-        <div className="max-w-2xl">
-          <Mono className="text-[11px] tracking-[0.18em] text-ink-3">
-            TARIEVEN
-          </Mono>
-          <h2 className="mt-3 text-3xl font-bold tracking-tight md:text-4xl">
-            {PRICING_HEADING}
-          </h2>
-          <p className="mt-3 text-base text-ink-2">{PRICING_SUB}</p>
-          <p className="mt-4 flex items-start gap-2 rounded-xl bg-[#eef1e0] px-4 py-3 text-xs font-medium text-ink-2">
-            <span className="mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-tennis-green" />
-            {PRICING_ONBOARDING_NOTE}
-          </p>
-        </div>
+        {hideHeader ? null : (
+          <div className="max-w-2xl">
+            <Mono className="text-[11px] tracking-[0.18em] text-ink-3">
+              TARIEVEN
+            </Mono>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight md:text-4xl">
+              {PRICING_HEADING}
+            </h2>
+            <p className="mt-3 text-base text-ink-2">{PRICING_SUB}</p>
+            <p className="mt-4 flex items-start gap-2 rounded-xl bg-[#eef1e0] px-4 py-3 text-xs font-medium text-ink-2">
+              <span className="mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-tennis-green" />
+              {PRICING_ONBOARDING_NOTE}
+            </p>
+          </div>
+        )}
 
-        <div className="mt-10 flex items-center gap-3">
+        <div className={cn("flex items-center gap-3", !hideHeader && "mt-10")}>
           <BillingToggle billing={billing} onChange={setBilling} />
           <span className="text-xs font-medium text-ink-3">
             Jaarlijks = 2 maanden gratis
@@ -58,19 +68,21 @@ export function BentoPricing() {
 
         <p className="mt-6 text-xs text-ink-3">{PRICING_VAT_NOTE}</p>
 
-        <div className="mt-10 flex flex-wrap items-center justify-between gap-4 border-t border-rule pt-8">
-          <p className="text-sm text-ink-2">
-            Wil je per feature vergelijken? De volledige tarieven-pagina toont
-            limieten, betalingen en ondersteuning per abonnement.
-          </p>
-          <a
-            href="/prijzen"
-            className="inline-flex items-center gap-2 text-sm font-semibold text-ink hover:text-tennis-green"
-          >
-            Bekijk volledige prijslijst
-            <ArrowRight className="h-4 w-4" />
-          </a>
-        </div>
+        {hideCompareLink ? null : (
+          <div className="mt-10 flex flex-wrap items-center justify-between gap-4 border-t border-rule pt-8">
+            <p className="text-sm text-ink-2">
+              Wil je per feature vergelijken? De volledige tarieven-pagina toont
+              limieten, betalingen en ondersteuning per abonnement.
+            </p>
+            <a
+              href="/prijzen"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-ink hover:text-tennis-green"
+            >
+              Bekijk volledige prijslijst
+              <ArrowRight className="h-4 w-4" />
+            </a>
+          </div>
+        )}
       </div>
     </section>
   );

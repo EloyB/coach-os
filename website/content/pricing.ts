@@ -22,8 +22,6 @@ export interface PricingTier {
   priceYearly: number;
   /** Korte limiet-regel onder de prijs, bv. "tot 60 leerlingen". */
   studentLimit: string;
-  /** Visueel uitgelichte kaart. */
-  featured?: boolean;
   /** CTA-knop op de kaart. */
   cta: { label: string; href: string };
   /** 5–6 kernpunten per kaart. */
