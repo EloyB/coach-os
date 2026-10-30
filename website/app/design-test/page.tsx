@@ -8,7 +8,7 @@ import { BentoSteps } from "@/components/design-test/bento-steps";
 import { BentoComparison } from "@/components/design-test/bento-comparison";
 import { BentoPricing } from "@/components/design-test/bento-pricing";
 import { Faq } from "@/components/sections/faq";
-import { FinalCta } from "@/components/sections/final-cta";
+import { BentoContact } from "@/components/design-test/bento-contact";
 import { PRICING_VISIBLE } from "@/content/pricing";
 
 /** Testpagina voor een nieuw homepage-ontwerp: niet indexeerbaar en niet in de sitemap. */
@@ -30,7 +30,7 @@ export default function Page() {
         <BentoComparison />
         {PRICING_VISIBLE ? <BentoPricing /> : null}
         <Faq />
-        <FinalCta />
+        <BentoContact />
       </main>
       <SiteFooter />
     </div>
