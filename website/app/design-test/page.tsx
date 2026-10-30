@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { SiteNav } from "@/components/site/site-nav";
 import { SiteFooter } from "@/components/site/site-footer";
 import { Hero } from "@/components/sections/hero";
-import { ProductScreenshot } from "@/components/sections/product-screenshot";
 import { BentoFeatures } from "@/components/design-test/bento-features";
 import { VoorWie } from "@/components/sections/voor-wie";
 import { HoeHetWerkt } from "@/components/sections/hoe-het-werkt";
@@ -26,7 +25,6 @@ export default function Page() {
       <SiteNav />
       <main>
         <Hero />
-        <ProductScreenshot />
         <BentoFeatures />
         <VoorWie />
         <HoeHetWerkt />
