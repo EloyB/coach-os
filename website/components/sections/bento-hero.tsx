@@ -33,6 +33,11 @@ export function BentoHero() {
                 {HERO.primaryCta.label}
                 <ArrowRight className="h-4 w-4" />
               </a>
+              <p className="mt-6 max-w-xl text-sm leading-relaxed text-white/55">
+                CoachOS is lessenplanningssoftware voor tennis- en padelclubs in
+                Nederland en België: lessenreeksen, inschrijvingen, planning en
+                betalingen in één systeem.
+              </p>
             </div>
           </div>
         </div>

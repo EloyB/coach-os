@@ -23,8 +23,9 @@ export function BentoFeatures() {
           <CampCard />
           <PaymentCard />
           <SignupCard />
-          <TrainerCard />
+          <SeriesCard />
           <FormCard />
+          <TrainerCard />
         </div>
       </div>
     </section>
@@ -75,7 +76,7 @@ function PlanningCard() {
       <CardText
         dark
         title="Automatisch plannen"
-        body="Eén klik en iedereen heeft een tijdslot, op basis van niveau, voorkeur en groepsverband."
+        body="Het planningsalgoritme verdeelt leerlingen met één klik over de tijdsloten, op basis van niveau, voorkeur en groepsverband."
       />
       <div
         aria-hidden
@@ -213,7 +214,7 @@ function TrainerCard() {
     { initials: "AV", color: "bg-amber-500" },
   ];
   return (
-    <article className={`${CARD} min-h-[15rem] bg-[#3b6b1f] lg:col-span-3`}>
+    <article className={`${CARD} min-h-[27rem] bg-[#1f3d0e] lg:col-span-2`}>
       <CardText
         dark
         title="Trainers beheren"
@@ -224,7 +225,7 @@ function TrainerCard() {
         {trainers.map((t) => (
           <span
             key={t.initials}
-            className={`flex h-10 w-10 items-center justify-center rounded-full border-2 border-[#3b6b1f] text-xs font-bold text-white ${t.color}`}
+            className={`flex h-10 w-10 items-center justify-center rounded-full border-2 border-[#1f3d0e] text-xs font-bold text-white ${t.color}`}
           >
             {t.initials}
           </span>
@@ -234,17 +235,47 @@ function TrainerCard() {
   );
 }
 
-function FormCard() {
+function SeriesCard() {
   return (
-    <article className={`${CARD} min-h-[15rem] bg-[#eef1e0] lg:col-span-3`}>
+    <article className={`${CARD} min-h-[27rem] bg-[#eef1e0] lg:col-span-2`}>
       <CardText
-        title="Je eigen inschrijfformulier"
-        body="Voeg per lessenreeks vragen toe en verzamel precies wat je nodig hebt."
-        className="max-w-[16rem]"
+        title="Lessenreeksen voor een heel seizoen"
+        body="Stel een lessenreeks één keer in en CoachOS maakt alle lessen aan: wekelijks of tweewekelijks, voor jeugd en volwassenen, op de baan en het uur dat jij kiest."
       />
       <div
         aria-hidden
-        className="absolute -bottom-4 right-6 hidden w-52 space-y-2 rounded-2xl bg-white p-4 shadow-xl sm:block"
+        className="absolute inset-x-7 bottom-7 rounded-2xl bg-white p-4 shadow-md"
+      >
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-semibold">Voorjaarslessen</span>
+          <Mono className="text-[10px] text-ink-3">ELKE MAANDAG 18:00</Mono>
+        </div>
+        <div className="mt-3 grid grid-cols-8 gap-1.5">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="space-y-1">
+              <div className="h-6 rounded-md bg-tennis-green" />
+              <Mono className="block text-center text-[8px] text-ink-3">
+                W{i + 1}
+              </Mono>
+            </div>
+          ))}
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function FormCard() {
+  return (
+    <article className={`${CARD} min-h-[27rem] bg-[#2d5a16] lg:col-span-2`}>
+      <CardText
+        dark
+        title="Formulierbouwer voor je inschrijving"
+        body="Bouw per lessenreeks je eigen inschrijfformulier met tekstvelden, meerkeuzevragen en ja/nee-vragen. De antwoorden zie je meteen bij elke inschrijving."
+      />
+      <div
+        aria-hidden
+        className="absolute inset-x-7 -bottom-4 space-y-2 rounded-2xl bg-white p-4 shadow-xl"
       >
         {["Naam speler", "Speelniveau", "Voorkeurstijd"].map((label) => (
           <div key={label}>
@@ -257,6 +288,7 @@ function FormCard() {
             </div>
           </div>
         ))}
+        <div className="h-3" />
       </div>
     </article>
   );
