@@ -20,7 +20,7 @@ export const metadata: Metadata = {
 export default function Page() {
   return (
     // Hele pagina wit: de sectie- en footerachtergronden worden hier overschreven.
-    <div className="bg-white [&_header]:bg-white/85 [&_footer]:bg-white [&_section]:bg-white">
+    <div className="bg-white [&_header]:bg-white/85 [&_footer]:border-t-0 [&_footer]:bg-white [&_section]:border-b-0 [&_section]:bg-white">
       <SiteNav />
       <main>
         <BentoHero />
