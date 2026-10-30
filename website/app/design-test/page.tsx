@@ -3,7 +3,7 @@ import { SiteNav } from "@/components/site/site-nav";
 import { SiteFooter } from "@/components/site/site-footer";
 import { Hero } from "@/components/sections/hero";
 import { BentoFeatures } from "@/components/design-test/bento-features";
-import { VoorWie } from "@/components/sections/voor-wie";
+import { BentoAudiences } from "@/components/design-test/bento-audiences";
 import { HoeHetWerkt } from "@/components/sections/hoe-het-werkt";
 import { FeatureShowcase } from "@/components/sections/feature-showcase";
 import { ExcelComparison } from "@/components/sections/excel-comparison";
@@ -26,7 +26,7 @@ export default function Page() {
       <main>
         <Hero />
         <BentoFeatures />
-        <VoorWie />
+        <BentoAudiences />
         <HoeHetWerkt />
         <FeatureShowcase />
         <ExcelComparison />
