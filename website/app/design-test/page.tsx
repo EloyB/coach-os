@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { SiteNav } from "@/components/site/site-nav";
 import { SiteFooter } from "@/components/site/site-footer";
-import { Hero } from "@/components/sections/hero";
+import { BentoHero } from "@/components/design-test/bento-hero";
 import { BentoFeatures } from "@/components/design-test/bento-features";
 import { BentoAudiences } from "@/components/design-test/bento-audiences";
 import { HoeHetWerkt } from "@/components/sections/hoe-het-werkt";
@@ -24,7 +24,7 @@ export default function Page() {
     <>
       <SiteNav />
       <main>
-        <Hero />
+        <BentoHero />
         <BentoFeatures />
         <BentoAudiences />
         <HoeHetWerkt />
