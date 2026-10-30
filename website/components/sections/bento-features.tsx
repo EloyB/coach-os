@@ -4,10 +4,7 @@ import { Mono } from "@/components/ui/mono";
 /** Bento-grid met de belangrijkste features; elke kaart heeft een klein UI-fragment dat deels over de rand valt. */
 export function BentoFeatures() {
   return (
-    <section
-      id="features"
-      className="scroll-mt-16 border-b border-rule bg-canvas"
-    >
+    <section id="features" className="scroll-mt-16">
       <div className="mx-auto max-w-6xl px-6 py-20 md:py-24">
         <div className="max-w-2xl">
           <Mono className="text-[11px] tracking-[0.18em] text-ink-3">

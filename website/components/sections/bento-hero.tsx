@@ -8,7 +8,7 @@ import { HERO } from "@/content/hero";
 export function BentoHero() {
   const [time, excel] = [BENEFITS.stats[0], BENEFITS.stats[1]];
   return (
-    <section className="border-b border-rule">
+    <section>
       <div className="mx-auto grid max-w-6xl gap-4 px-6 py-16 md:py-24 lg:grid-cols-3 lg:grid-rows-2">
         <div className="relative overflow-hidden rounded-3xl bg-[#1f3d0e] p-8 text-white md:p-12 lg:col-span-2 lg:row-span-2">
           <CourtLines opacity={0.07} />

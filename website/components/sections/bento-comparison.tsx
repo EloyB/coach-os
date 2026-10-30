@@ -11,7 +11,7 @@ import {
 /** Excel vs CoachOS als bento: per taak een kaart met "Excel" en "CoachOS" als twee vlakken. */
 export function BentoComparison() {
   return (
-    <section id="excel-vs-coachos" className="border-b border-rule bg-canvas">
+    <section id="excel-vs-coachos" className="">
       <div className="mx-auto max-w-6xl px-6 py-20 md:py-24">
         <div className="max-w-2xl">
           <Mono className="text-[11px] tracking-[0.18em] text-ink-3">

@@ -27,10 +27,7 @@ export function BentoSteps() {
     },
   ];
   return (
-    <section
-      id="hoe-het-werkt"
-      className="scroll-mt-16 border-b border-rule bg-paper"
-    >
+    <section id="hoe-het-werkt" className="scroll-mt-16">
       <div className="mx-auto max-w-6xl px-6 py-20 md:py-24">
         <div className="max-w-2xl">
           <Mono className="text-[11px] tracking-[0.18em] text-ink-3">
