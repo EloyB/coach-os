@@ -5,7 +5,6 @@ import { BentoHero } from "@/components/design-test/bento-hero";
 import { BentoFeatures } from "@/components/design-test/bento-features";
 import { BentoAudiences } from "@/components/design-test/bento-audiences";
 import { BentoSteps } from "@/components/design-test/bento-steps";
-import { FeatureShowcase } from "@/components/sections/feature-showcase";
 import { ExcelComparison } from "@/components/sections/excel-comparison";
 import { BespaarTijd } from "@/components/sections/bespaar-tijd";
 import { Pricing } from "@/components/sections/pricing";
@@ -28,7 +27,6 @@ export default function Page() {
         <BentoFeatures />
         <BentoAudiences />
         <BentoSteps />
-        <FeatureShowcase />
         <ExcelComparison />
         <BespaarTijd />
         {PRICING_VISIBLE ? <Pricing /> : null}
