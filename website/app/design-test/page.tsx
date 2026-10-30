@@ -4,7 +4,7 @@ import { SiteFooter } from "@/components/site/site-footer";
 import { BentoHero } from "@/components/design-test/bento-hero";
 import { BentoFeatures } from "@/components/design-test/bento-features";
 import { BentoAudiences } from "@/components/design-test/bento-audiences";
-import { HoeHetWerkt } from "@/components/sections/hoe-het-werkt";
+import { BentoSteps } from "@/components/design-test/bento-steps";
 import { FeatureShowcase } from "@/components/sections/feature-showcase";
 import { ExcelComparison } from "@/components/sections/excel-comparison";
 import { BespaarTijd } from "@/components/sections/bespaar-tijd";
@@ -27,7 +27,7 @@ export default function Page() {
         <BentoHero />
         <BentoFeatures />
         <BentoAudiences />
-        <HoeHetWerkt />
+        <BentoSteps />
         <FeatureShowcase />
         <ExcelComparison />
         <BespaarTijd />
