@@ -6,7 +6,7 @@ import { BentoFeatures } from "@/components/design-test/bento-features";
 import { BentoAudiences } from "@/components/design-test/bento-audiences";
 import { BentoSteps } from "@/components/design-test/bento-steps";
 import { BentoComparison } from "@/components/design-test/bento-comparison";
-import { Pricing } from "@/components/sections/pricing";
+import { BentoPricing } from "@/components/design-test/bento-pricing";
 import { Faq } from "@/components/sections/faq";
 import { FinalCta } from "@/components/sections/final-cta";
 import { PRICING_VISIBLE } from "@/content/pricing";
@@ -19,7 +19,8 @@ export const metadata: Metadata = {
 
 export default function Page() {
   return (
-    <>
+    // Hele pagina wit: de sectie- en footerachtergronden worden hier overschreven.
+    <div className="bg-white [&_header]:bg-white/85 [&_footer]:bg-white [&_section]:bg-white">
       <SiteNav />
       <main>
         <BentoHero />
@@ -27,11 +28,11 @@ export default function Page() {
         <BentoAudiences />
         <BentoSteps />
         <BentoComparison />
-        {PRICING_VISIBLE ? <Pricing /> : null}
+        {PRICING_VISIBLE ? <BentoPricing /> : null}
         <Faq />
         <FinalCta />
       </main>
       <SiteFooter />
-    </>
+    </div>
   );
 }
