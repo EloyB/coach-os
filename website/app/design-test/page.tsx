@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import { SiteNav } from "@/components/site/site-nav";
 import { SiteFooter } from "@/components/site/site-footer";
-import { FloatingNav } from "@/components/design-test/floating-nav";
-import { DesignHero } from "@/components/design-test/design-hero";
+import { Hero } from "@/components/sections/hero";
+import { ProductScreenshot } from "@/components/sections/product-screenshot";
 import { BentoFeatures } from "@/components/design-test/bento-features";
 import { VoorWie } from "@/components/sections/voor-wie";
 import { HoeHetWerkt } from "@/components/sections/hoe-het-werkt";
+import { FeatureShowcase } from "@/components/sections/feature-showcase";
 import { ExcelComparison } from "@/components/sections/excel-comparison";
 import { BespaarTijd } from "@/components/sections/bespaar-tijd";
 import { Pricing } from "@/components/sections/pricing";
@@ -20,13 +22,15 @@ export const metadata: Metadata = {
 
 export default function Page() {
   return (
-    <div>
-      <FloatingNav />
+    <>
+      <SiteNav />
       <main>
-        <DesignHero />
+        <Hero />
+        <ProductScreenshot />
         <BentoFeatures />
         <VoorWie />
         <HoeHetWerkt />
+        <FeatureShowcase />
         <ExcelComparison />
         <BespaarTijd />
         {PRICING_VISIBLE ? <Pricing /> : null}
@@ -34,6 +38,6 @@ export default function Page() {
         <FinalCta />
       </main>
       <SiteFooter />
-    </div>
+    </>
   );
 }

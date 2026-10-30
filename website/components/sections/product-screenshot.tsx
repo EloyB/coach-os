@@ -4,7 +4,7 @@ import Image from "next/image";
 export function ProductScreenshot() {
   return (
     <section className="overflow-hidden border-b border-rule bg-canvas">
-      <div className="mx-auto max-w-5xl px-6 pb-16 pt-12 md:pb-24 md:pt-16">
+      <div className="mx-auto max-w-6xl px-6 pb-16 pt-12 md:pb-24 md:pt-16">
         <Laptop>
           <Image
             src="/screenshots/dashboard.png"
@@ -12,7 +12,7 @@ export function ProductScreenshot() {
             width={2400}
             height={1359}
             quality={90}
-            sizes="(min-width: 1024px) 960px, 100vw"
+            sizes="(min-width: 1024px) 1152px, 100vw"
             className="block h-auto w-full"
           />
         </Laptop>

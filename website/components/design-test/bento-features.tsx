@@ -4,11 +4,14 @@ import { Mono } from "@/components/ui/mono";
 /** Bento-grid met de belangrijkste features; elke kaart heeft een klein UI-fragment dat deels over de rand valt. */
 export function BentoFeatures() {
   return (
-    <section id="features" className="scroll-mt-16 bg-paper">
-      <div className="mx-auto max-w-6xl px-6 py-20 md:py-28">
-        <div className="mx-auto max-w-2xl text-center">
-          <Mono className="text-[11px] tracking-[0.18em] text-tennis-green">
-            ALLES IN ÉÉN TOOL
+    <section
+      id="features"
+      className="scroll-mt-16 border-b border-rule bg-canvas"
+    >
+      <div className="mx-auto max-w-6xl px-6 py-20 md:py-24">
+        <div className="max-w-2xl">
+          <Mono className="text-[11px] tracking-[0.18em] text-ink-3">
+            FEATURES
           </Mono>
           <h2 className="mt-3 text-3xl font-bold tracking-tight text-ink md:text-4xl">
             Alles om je lesseizoen te runnen
@@ -18,7 +21,7 @@ export function BentoFeatures() {
           </p>
         </div>
 
-        <div className="mt-14 grid gap-4 lg:grid-cols-6 lg:grid-rows-[repeat(3,minmax(15rem,auto))]">
+        <div className="mt-12 grid gap-4 lg:grid-cols-6 lg:grid-rows-[repeat(3,minmax(15rem,auto))]">
           <PlanningCard />
           <CampCard />
           <PaymentCard />
