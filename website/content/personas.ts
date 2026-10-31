@@ -309,17 +309,19 @@ export const PADEL_CLUBS_PERSONA: Persona = {
 export const TRAINERS_PERSONA: Persona = {
   slug: "voor-trainers",
   navLabel: "Trainers",
-  linkLabel: "Planning voor tennis- en padeltrainers",
-  metaTitle: "Planning voor tennis- en padeltrainers",
+  linkLabel: "Lessenplanning voor tennis- en padeltrainers",
+  metaTitle: "Lessenplanning voor tennis- en padeltrainers",
   metaDescription:
-    "Planning voor tennis- en padeltrainers: lessenreeksen, inschrijvingen en bevestigingen in één tool. Geen Excel, geen eindeloos mailen, 30 dagen gratis proberen.",
+    "Lessenplanning voor zelfstandige tennis- en padeltrainers: lessenreeksen, inschrijven via een link en automatisch plannen op voorkeur. Geen Excel, geen eindeloos mailen. 30 dagen gratis proberen.",
   kicker: "VOOR TRAINERS",
-  h1: "Planning voor tennis- en padeltrainers",
+  h1: "Lessenplanning voor tennis- en padeltrainers",
   lead: "CoachOS is software voor de lessenplanning van tennis- en padeltrainers en hoofdtrainers. Stel een lessenreeks in, deel de inschrijflink en laat het algoritme de planning maken, terwijl jij op de baan staat in plaats van achter de laptop.",
+  problemHeading: "Waarom lesadministratie als zelfstandige trainer zoveel tijd kost",
+  solutionHeading: "Zo regel je als trainer je lessenplanning met CoachOS",
   pains: [
     {
       title: "Elke maandag opnieuw lijstjes maken in Excel",
-      body: "Een nieuwe seizoensplanning is altijd een avond achter de laptop met talloze Excel-sheets en gegevens.",
+      body: "Voor elk nieuw seizoen zit je een avond achter je laptop met Excel-sheets en mailtjes.",
     },
     {
       title: "Eindeloos heen-en-weer mailen over voorkeurstijden",
@@ -337,7 +339,7 @@ export const TRAINERS_PERSONA: Persona = {
   solutions: [
     {
       title: "Eén lessenreeks kan volstaan voor het hele seizoen",
-      body: "Maandagen, woensdagavonden of zaterdagochtenden: elk ritme. Lessen genereren automatisch.",
+      body: "Maandagen, woensdagavonden of zaterdagochtenden: jij kiest de dag en het uur. De lessen worden automatisch aangemaakt, standaard wekelijks, en het ritme pas je daarna aan naar wens.",
     },
     {
       title: "Inschrijfflow vervangt de oneindig veel mails volledig",
@@ -352,7 +354,7 @@ export const TRAINERS_PERSONA: Persona = {
       body: "Geen export-import tussen vier verschillende apps. Eén dashboard, één login, één plek om de lessenstatus te zien.",
     },
   ],
-  // TODO(Eloy): voorbeeldscenario is hypothetisch; vervang door een echte trainerscase of citaat zodra beschikbaar.
+  // Voorbeeldscenario is bewust hypothetisch ("Stel dat").
   sections: [
     {
       heading: "Een voorbeeld: een seizoen met groepen op meerdere locaties",
@@ -367,10 +369,17 @@ export const TRAINERS_PERSONA: Persona = {
       ],
     },
     {
-      heading: "Eén link per reeks: zo schrijven je leerlingen zich in",
+      heading: "Leerlingen inschrijven met één link per lessenreeks",
       paragraphs: [
         "Je deelt de link in een bericht aan ouders, op je website of in een groepsapp. Leerlingen en ouders vullen naam, e-mailadres en voorkeuren in. Een account of wachtwoord is niet nodig. Hun voorkeuren komen direct binnen, gekoppeld aan de juiste reeks, zodat je niet meer in je mailbox moet zoeken wie welk uur wilde.",
         "Na het plannen ontvangt elke leerling een e-mail met een unieke link, waarmee de leerling de lestijd met één klik bevestigt.",
+      ],
+    },
+    {
+      heading: "Online betalen en stages als zelfstandige trainer",
+      paragraphs: [
+        "Wil je dat leerlingen online betalen, dan koppel je je eigen Mollie-account aan CoachOS. Het geld komt rechtstreeks op jouw rekening. Leerlingen betalen via Bancontact of iDEAL nadat de planning bevestigd is, en cash registreer je per inschrijving. Organiseer je ook stages of kampen, dan stel je die in met hele weken, enkele dagen of halve dagen, vaste pakketten en een limiet per dagdeel.",
+        "Een locatie of baan om les te geven regel je zelf, buiten CoachOS.",
       ],
     },
     {
@@ -387,24 +396,31 @@ export const TRAINERS_PERSONA: Persona = {
     },
     {
       q: "Wat kost CoachOS voor zelfstandige trainers?",
-      a: "Je betaalt per actieve leerling, met een onbeperkt aantal trainers: vanaf €25 per maand (of €250 per jaar met 2 maanden gratis). Je probeert alles eerst 30 dagen gratis, zonder betaalgegevens.",
+      a: "Voor een zelfstandige trainer volstaat meestal het plan Game: €25 per maand (of €250 per jaar met 2 maanden gratis) voor tot 60 actieve leerlingen, excl. btw. Je probeert alles eerst 30 dagen gratis, zonder betaalgegevens.",
     },
     {
       q: "Hoe lang duurt het om te starten?",
       a: "Een lessenreeks instellen duurt ongeveer tien minuten. Een hele seizoensplanning ronden kost een fractie van de tijd die je met Excel kwijt bent: pilotclubs houden er dagen werk aan over.",
     },
     {
-      q: "Heb ik administratieve hulp nodig om dit te gebruiken?",
-      a: "Nee. CoachOS is gemaakt voor solo-werk. Geen IT-ondersteuning, geen aparte beheerder, geen accountantsexport om te leren. Het werkt out-of-the-box.",
+      q: "Heb ik technische kennis of hulp nodig om dit te gebruiken?",
+      a: "Nee. CoachOS is ook gemaakt voor zelfstandige trainers. Je hebt geen IT-kennis en geen aparte beheerder nodig, en het werkt meteen kant-en-klaar.",
     },
-    // TODO(Eloy): bevestig dat een trainer zonder club zelf een organisatie kan aanmaken en starten.
     {
       q: "Kan ik CoachOS gebruiken zonder club, voor mijn eigen groepen?",
-      a: "Ja. Je werkt vanuit je eigen organisatie en stelt lessenreeksen in voor je eigen groepen. Je hebt geen club nodig om te starten.",
+      a: "Ja. Als zelfstandige trainer maak je zelf een organisatie aan en stel je daarin lessenreeksen in voor je eigen groepen. Je hebt geen club nodig om CoachOS te gebruiken. Een locatie of baan om les te geven regel je zelf, buiten CoachOS.",
     },
     {
       q: "Hoe schrijven leerlingen zich in bij mijn lessenreeks?",
       a: "Via een publieke link die je zelf deelt. Leerlingen of ouders vullen hun naam, e-mailadres en voorkeuren in, zonder account of wachtwoord.",
+    },
+    {
+      q: "Kunnen mijn leerlingen online betalen?",
+      a: "Ja, als je een eigen Mollie-account hebt en dat aan CoachOS koppelt. Het geld komt dan rechtstreeks op jouw rekening. Leerlingen betalen via Bancontact of iDEAL nadat de planning bevestigd is. Cash registreer je per inschrijving.",
+    },
+    {
+      q: "Kan ik als trainer stages of kampen organiseren?",
+      a: "Ja. Een stage of kamp stel je in met hele weken, enkele dagen of halve dagen, vaste pakketten en een limiet per dagdeel. Inschrijven gaat via een publieke link zonder account.",
     },
     {
       q: "Kan ik tegelijk tennis- en padellessen plannen?",

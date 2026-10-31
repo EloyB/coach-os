@@ -36,7 +36,7 @@ export const AUDIENCES: Audience[] = [
   },
   {
     icon: User,
-    title: "Planning voor trainers",
+    title: "Lessenplanning voor trainers",
     body: "Eén tool voor inschrijvingen, planning en bevestigingen. Lesgeven in plaats van administreren.",
     bullets: [
       "Publieke inschrijflink per reeks",

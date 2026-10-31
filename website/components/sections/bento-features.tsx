@@ -240,7 +240,7 @@ function SeriesCard() {
     <article className={`${CARD} min-h-[27rem] bg-[#eef1e0] lg:col-span-2`}>
       <CardText
         title="Lessenreeksen voor een heel seizoen"
-        body="Stel een lessenreeks één keer in en CoachOS maakt alle lessen aan: wekelijks of tweewekelijks, voor jeugd en volwassenen, op de baan en het uur dat jij kiest."
+        body="Stel een lessenreeks één keer in en CoachOS maakt alle lessen aan: standaard wekelijks en daarna aan te passen naar wens, voor jeugd en volwassenen, op de baan en het uur dat jij kiest."
       />
       <div
         aria-hidden
