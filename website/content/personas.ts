@@ -177,16 +177,18 @@ export const PADEL_CLUBS_PERSONA: Persona = {
   slug: "voor-padelclubs",
   navLabel: "Padelclubs",
   linkLabel: "Lessenplanning voor padelscholen",
-  metaTitle: "Lessenplanning en software voor padelscholen en -clubs",
+  metaTitle: "Lessenplanning voor padelscholen en -clubs",
   metaDescription:
-    "Lessenplanning voor je padelschool of padelclub: beheer lessenreeksen, verzamel inschrijvingen op de gsm en plan automatisch op voorkeurstijd. Zonder accounts voor spelers.",
+    "Lessenplanning voor je padelschool of padelclub: lessenreeksen, inschrijven op de gsm en automatisch plannen op voorkeur. Zonder account voor spelers. 30 dagen gratis proberen.",
   kicker: "VOOR PADELCLUBS",
   h1: "Lessenplanning voor padelscholen en padelclubs",
   lead: "CoachOS is software voor de lessenplanning van padelscholen en padelclubs. Spelers schrijven zich in via een publieke link op hun gsm, het algoritme plant op voorkeurstijd en je beheert meerdere banen vanuit één dashboard, zonder app-download of account voor je leden.",
+  problemHeading: "Waarom padellessen plannen met Excel en WhatsApp vastloopt",
+  solutionHeading: "Zo plant CoachOS de lessen van je padelschool",
   pains: [
     {
       title: "Snelle groei die handmatig niet bij te houden is",
-      body: "Padel groeit elk seizoen. Wat vorig jaar nog op één Excel-sheet paste, is nu een chaos van WhatsApp-berichten en losse mails.",
+      body: "Padel groeit snel in België en Nederland. Wat vorig jaar nog op één Excel-sheet paste, is nu een chaos van WhatsApp-berichten en losse mails.",
     },
     {
       title: "Niveauverschillen tussen beginners en gevorderde spelers",
@@ -194,13 +196,13 @@ export const PADEL_CLUBS_PERSONA: Persona = {
     },
     {
       title: "Spelers die liefst op de gsm inschrijven",
-      body: "Padel-community is mobile-first. Een formulier dat enkel op desktop werkt verliest spelers nog voor ze ingeschreven zijn.",
+      body: "Padelspelers schrijven vaak in op hun gsm. Een formulier dat enkel op desktop werkt verliest spelers nog voor ze ingeschreven zijn.",
     },
   ],
   solutions: [
     {
-      title: "Veel inschrijvingen zonder extra admin-werk",
-      body: "Geen limiet op inschrijvingen per lessenreeks en inschrijvingen worden nooit geblokkeerd. Het algoritme schaalt mee zodra de seizoen-aanmeldingen binnenstromen.",
+      title: "Veel inschrijvingen zonder extra administratie",
+      body: "Inschrijvingen worden nooit geblokkeerd, ook niet als je boven de limiet van je plan zit. Het algoritme verdeelt alle aanmeldingen met één klik, ook als ze in grote aantallen binnenstromen.",
     },
     {
       title: "Aparte reeksen per niveau, automatische planning op voorkeur",
@@ -208,10 +210,10 @@ export const PADEL_CLUBS_PERSONA: Persona = {
     },
     {
       title: "Mobiel-vriendelijke inschrijfflow zonder app",
-      body: "De inschrijflink werkt vlot op elke gsm. Geen download, geen account, geen wachtwoord, alleen naam en e-mail.",
+      body: "De inschrijflink werkt vlot op elke gsm. Geen download, geen account, geen wachtwoord. Spelers vullen hun naam, e-mail en de vragen uit jouw formulier in.",
     },
   ],
-  // TODO(Eloy): voorbeeldscenario is hypothetisch; vervang door een echte padelcase zodra die er is.
+  // Voorbeeldscenario is bewust hypothetisch ("Stel dat").
   sections: [
     {
       heading: "Een voorbeeld: een nieuwe reeks initiatielessen",
@@ -227,14 +229,24 @@ export const PADEL_CLUBS_PERSONA: Persona = {
       ],
     },
     {
-      heading: "Inschrijven op de gsm, zonder app of account",
+      heading: "Padellessen inschrijven op de gsm, zonder app of account",
       paragraphs: [
-        "Spelers openen de inschrijflink in hun browser. Er is geen app om te downloaden en geen account om aan te maken: een naam, een e-mailadres en de gekozen voorkeuren zijn genoeg. De flow is mobile-first ontworpen, met één onderwerp per scherm en grote knoppen.",
+        "Spelers openen de inschrijflink in hun browser. Er is geen app om te downloaden en geen account om aan te maken: een naam, een e-mailadres en de gekozen voorkeuren zijn genoeg. Het formulier is mobile-first ontworpen, zodat het vlot werkt op elke gsm.",
         "Heb je extra informatie nodig, zoals speelervaring of met wie iemand graag speelt, dan voeg je die vraag toe in het formulier van de lessenreeks.",
       ],
     },
-    // TODO(Eloy): bevestig dat de schaalstructuur hieronder (plannen tot 60/200/500 actieve leerlingen)
-    // het juiste verhaal is voor padelscholen en pas /prijzen aan als dat verandert.
+    {
+      heading: "Padelstages en kampen organiseren",
+      paragraphs: [
+        "Naast lessenreeksen organiseer je met CoachOS ook padelstages en kampen: hele weken, enkele dagen of halve dagen, met vaste pakketten en een limiet per dagdeel. Deelnemers schrijven zich in via dezelfde publieke link, zonder account, en betalen online nadat de planning bevestigd is.",
+      ],
+    },
+    {
+      heading: "Padel en tennis in één organisatie",
+      paragraphs: [
+        "Biedt je club zowel padel als tennis aan? Dan beheer je beide in één organisatie, met één overzicht van al je lessenreeksen en trainers.",
+      ],
+    },
     {
       heading: "Groeien zonder extra administratie",
       paragraphs: [
@@ -245,19 +257,19 @@ export const PADEL_CLUBS_PERSONA: Persona = {
   faq: [
     {
       q: "Werkt CoachOS goed op de gsm voor inschrijvingen?",
-      a: "Ja. De inschrijfflow is mobile-first ontworpen: één scherm per stap, grote tap-targets, geen scroll-puzzels. Spelers schrijven zich in onder de minuut.",
+      a: "Ja. Het inschrijfformulier is mobile-first ontworpen en werkt vlot op elke gsm, zonder app-download of account.",
     },
     {
       q: "Hoe gaat dit met snelle groei van mijn club?",
-      a: "Er is geen limiet op inschrijvingen per lessenreeks en inschrijvingen worden nooit geblokkeerd. Je plan hangt af van je aantal actieve leerlingen (tot 60, 200 of 500). Zit je er structureel boven, dan stellen we een upgrade voor.",
+      a: "Inschrijvingen worden nooit geblokkeerd, ook niet als je boven de limiet van je plan zit. Je plan hangt af van je aantal actieve leerlingen (tot 60, 200 of 500). Zit je er structureel boven, dan stellen we een upgrade voor.",
     },
     {
       q: "Kunnen mijn spelers zonder app of account inschrijven?",
-      a: "Ja. Geen download, geen account, alleen een publieke link. Bevestiging gebeurt via een magic-link in hun e-mail, zonder wachtwoord.",
+      a: "Ja. Geen download, geen account, alleen een publieke link. Bevestiging gebeurt via een link in hun e-mail, zonder wachtwoord.",
     },
     {
       q: "Wat als een speler op meerdere niveaus wil les volgen?",
-      a: "Per lessenreeks aparte inschrijving. Het planningsalgoritme houdt rekening met overlap zodat dezelfde speler niet op twee gelijktijdige slots ingedeeld wordt.",
+      a: "Ja. Per lessenreeks is er een aparte inschrijving via de eigen inschrijflink.",
     },
     {
       q: "Kan ik als padelschool meerdere banen en trainers beheren?",
@@ -270,6 +282,22 @@ export const PADEL_CLUBS_PERSONA: Persona = {
     {
       q: "Kan ik extra vragen stellen bij het inschrijven?",
       a: "Ja. Per lessenreeks bouw je een formulier met tekstvelden, meerkeuzevragen en ja/nee-vragen, bijvoorbeeld naar speelervaring.",
+    },
+    {
+      q: "Kunnen spelers online betalen?",
+      a: "Ja. Nadat de planning bevestigd is, betalen spelers online via Mollie met Bancontact of iDEAL. Betaalt iemand cash, dan registreer je dat per inschrijving.",
+    },
+    {
+      q: "Kan ik padelstages en kampen organiseren?",
+      a: "Ja. Een stage of kamp stel je in met hele weken, enkele dagen of halve dagen, vaste pakketten en een limiet per dagdeel. Inschrijven gaat via een publieke link zonder account, en betalen kan na de bevestiging van de planning.",
+    },
+    {
+      q: "Kan ik padel en tennis samen beheren?",
+      a: "Ja. Eén organisatie kan zowel padel als tennis aanbieden, met één overzicht van alle lessenreeksen en trainers.",
+    },
+    {
+      q: "Wat kost lessenplanning voor een padelschool?",
+      a: "Vanaf €25 per maand voor tot 60 actieve leerlingen, €49 voor tot 200 en €89 voor tot 500, met een onbeperkt aantal trainers en alle functies inbegrepen. Alle prijzen zijn excl. btw en je probeert eerst 30 dagen gratis. Alle details staan op de prijzenpagina.",
     },
   ],
 };
@@ -378,7 +406,6 @@ export const TRAINERS_PERSONA: Persona = {
       q: "Hoe schrijven leerlingen zich in bij mijn lessenreeks?",
       a: "Via een publieke link die je zelf deelt. Leerlingen of ouders vullen hun naam, e-mailadres en voorkeuren in, zonder account of wachtwoord.",
     },
-    // TODO(Eloy): bevestig dat tennis- en padelreeksen in dezelfde organisatie naast elkaar kunnen lopen.
     {
       q: "Kan ik tegelijk tennis- en padellessen plannen?",
       a: "Ja. CoachOS is gemaakt voor beide sporten, en je plant tennis- en padelreeksen vanuit hetzelfde dashboard.",
