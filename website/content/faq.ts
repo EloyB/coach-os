@@ -51,7 +51,7 @@ export const FAQ: FaqEntry[] = [
   },
   {
     q: "Wat doen jullie met de gegevens van leerlingen?",
-    a: "Alleen wat strikt nodig is voor lessenplanning. Geen tracking, geen advertentie-doeleinden, geen verkoop aan derden. We werken GDPR-conform met dataverwerkers binnen de EU.",
+    a: "Alleen wat strikt nodig is voor lessenplanning. Geen advertentie-doeleinden, geen verkoop aan derden. We werken GDPR-conform met dataverwerkers binnen de EU.",
   },
   {
     q: "Welke integraties zijn beschikbaar?",

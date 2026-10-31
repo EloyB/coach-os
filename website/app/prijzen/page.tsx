@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CreditCard, MapPin, ShieldCheck } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -29,9 +30,9 @@ export const metadata: Metadata = pageMetadata({
   path: "/prijzen",
   title: "Prijzen: lessenplanning vanaf €25 per maand",
   description:
-    "Tarieven voor CoachOS, lessenplanning voor tennis- en padelscholen en -clubs. Je betaalt per actieve leerling, met onbeperkt trainers. 30 dagen gratis proberen, maandelijks opzegbaar.",
+    "Prijzen van CoachOS lessenplanning voor tennis- en padelclubs: vanaf €25 per maand, per actieve leerling, met een onbeperkt aantal trainers. 30 dagen gratis proberen.",
   socialDescription:
-    "Tarieven voor CoachOS, lessenplanning voor tennis- en padelscholen en -clubs. Vanaf €25 per maand, per actieve leerling. 30 dagen gratis proberen.",
+    "Prijzen van CoachOS lessenplanning voor tennis- en padelclubs. Vanaf €25 per maand, per actieve leerling. 30 dagen gratis proberen.",
 });
 
 function PricingPageJsonLd() {
@@ -55,10 +56,45 @@ function PricingPageJsonLd() {
     })),
   };
 
+  // Zelfde entiteit als op de homepage (@id), met de prijzen die bij deze pagina horen. Per maand, excl. btw.
+  const software = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "@id": `${SITE_URL}/#software`,
+    name: "CoachOS",
+    applicationCategory: "BusinessApplication",
+    operatingSystem: "Web",
+    url: SITE_URL,
+    offers: {
+      "@type": "AggregateOffer",
+      priceCurrency: "EUR",
+      lowPrice: String(Math.min(...PRICING_TIERS.map((t) => t.priceMonthly))),
+      highPrice: String(Math.max(...PRICING_TIERS.map((t) => t.priceMonthly))),
+      offerCount: PRICING_TIERS.length,
+      offers: PRICING_TIERS.map((tier) => ({
+        "@type": "Offer",
+        name: tier.name,
+        description: tier.studentLimit,
+        priceCurrency: "EUR",
+        price: String(tier.priceMonthly),
+        priceSpecification: {
+          "@type": "UnitPriceSpecification",
+          price: String(tier.priceMonthly),
+          priceCurrency: "EUR",
+          unitCode: "MON",
+          valueAddedTaxIncluded: false,
+        },
+        url: PAGE_URL,
+      })),
+    },
+  };
+
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify([breadcrumb, faq]) }}
+      dangerouslySetInnerHTML={{
+        __html: JSON.stringify([breadcrumb, software, faq]),
+      }}
     />
   );
 }
@@ -120,6 +156,7 @@ export default function PrijzenPage() {
           </div>
         </section>
 
+        <h2 className="sr-only">Prijsplannen</h2>
         <BentoPricing hideHeader hideCompareLink />
 
         {/* Vertrouwen */}
@@ -129,7 +166,7 @@ export default function PrijzenPage() {
               <TrustItem
                 icon={ShieldCheck}
                 title="GDPR-conform"
-                body="Je data blijft binnen de EU. Geen tracking, geen verkoop aan derden."
+                body="Je data blijft binnen de EU. Geen verkoop aan derden."
               />
               <TrustItem
                 icon={CreditCard}
@@ -177,6 +214,31 @@ export default function PrijzenPage() {
 
         <PricingCompare />
 
+        <section>
+          <div className="mx-auto max-w-6xl px-6 pb-4">
+            <div className="rounded-3xl bg-[#eef1e0] p-8 md:p-10">
+              <Mono className="text-[11px] tracking-[0.18em] text-ink-3">
+                OOK BEKIJKEN
+              </Mono>
+              <p className="mt-3 text-base leading-relaxed text-ink-2">
+                Benieuwd hoe CoachOS werkt voor jouw situatie? Lees meer over{" "}
+                <Link href="/voor-tennisclubs" className={LINK}>
+                  lessenplanning voor tennisscholen
+                </Link>
+                ,{" "}
+                <Link href="/voor-padelclubs" className={LINK}>
+                  lessenplanning voor padelscholen
+                </Link>{" "}
+                en{" "}
+                <Link href="/voor-trainers" className={LINK}>
+                  planning voor trainers
+                </Link>
+                .
+              </p>
+            </div>
+          </div>
+        </section>
+
         <BentoFaq heading={PRICING_FAQ_HEADING} entries={PRICING_FAQ} />
 
         <BentoContact />
@@ -185,6 +247,9 @@ export default function PrijzenPage() {
     </WhitePage>
   );
 }
+
+const LINK =
+  "font-semibold text-tennis-green underline-offset-4 hover:underline";
 
 const EXPLAINER_TONES = [
   "bg-[#2d5a16] text-white",
