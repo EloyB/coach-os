@@ -5,7 +5,7 @@ export interface ComparisonRow {
 }
 
 export const COMPARISON_KICKER = "EXCEL VS COACHOS";
-export const COMPARISON_HEADING = "Hetzelfde werk, zonder Excel";
+export const COMPARISON_HEADING = "Van Excel naar automatische lessenplanning";
 export const COMPARISON_SUB =
   "Wat verandert er concreet als je je lessenreeks met CoachOS plant?";
 

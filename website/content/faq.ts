@@ -43,7 +43,11 @@ export const FAQ: FaqEntry[] = [
   },
   {
     q: "Hoe zit het met betalingen?",
-    a: "Online betalen kan via Mollie (Bancontact en iDEAL), en cash registreer je handmatig per inschrijving.",
+    a: "Leerlingen kunnen online betalen via Mollie (Bancontact en iDEAL) wanneer ze zich inschrijven. Het geld komt rechtstreeks op de rekening van je school of club. Cash betalingen registreer je met één klik per inschrijving, zodat je overzicht klopt.",
+  },
+  {
+    q: "Kan ik ook kampen en stages organiseren met CoachOS?",
+    a: "Ja. Je maakt een kamp of stage aan met hele weken, enkele dagen of halve dagen, werkt met vaste pakketten en stelt een limiet in per dagdeel. Inschrijven en betalen gaat via dezelfde publieke link als bij lessenreeksen, zonder account.",
   },
   {
     q: "Wat doen jullie met de gegevens van leerlingen?",

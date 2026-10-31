@@ -11,7 +11,7 @@ export function BentoFeatures() {
             FEATURES
           </Mono>
           <h2 className="mt-3 text-3xl font-bold tracking-tight text-ink md:text-4xl">
-            Alles om je lesseizoen te runnen
+            Lessen, kampen en betalingen beheren voor je tennis- of padelclub
           </h2>
           <p className="mt-4 text-base text-ink-2">
             Geen losse tools, geen koppelingen onderhouden, geen Excel meer.
