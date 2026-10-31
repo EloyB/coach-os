@@ -1,32 +1,19 @@
 import type { Metadata } from "next";
 import { BlogIndex } from "@/components/sections/blog-index";
+import { ALL_POSTS } from "@/content/blog";
+import { pageMetadata } from "@/lib/seo";
 
-const SITE_URL = "https://coach-os.be";
-const PAGE_URL = `${SITE_URL}/blog`;
-
-export const metadata: Metadata = {
-  title: "Blog · CoachOS",
+export const metadata: Metadata = pageMetadata({
+  path: "/blog",
+  title: "Blog",
   description:
     "Gidsen en achtergronden over lessenplanning voor tennis- en padelclubs: AVG-conform inschrijven, seizoensplanning, magic-link bevestigingen.",
-  alternates: {
-    canonical: PAGE_URL,
-    languages: {
-      "nl-BE": PAGE_URL,
-      "nl-NL": PAGE_URL,
-      "x-default": PAGE_URL,
-    },
-  },
-  openGraph: {
-    type: "website",
-    locale: "nl_BE",
-    alternateLocale: ["nl_NL"],
-    url: PAGE_URL,
-    title: "Blog · CoachOS",
-    description:
-      "Praktische gidsen over lessenplanning voor tennis- en padelclubs.",
-    siteName: "CoachOS",
-  },
-};
+  socialDescription:
+    "Praktische gidsen over lessenplanning voor tennis- en padelclubs.",
+  // Zolang er geen artikels zijn blijft de pagina uit de zoekresultaten en uit
+  // de sitemap. Zodra er een artikel in ALL_POSTS staat, is hij weer indexeerbaar.
+  noindex: ALL_POSTS.length === 0,
+});
 
 export default function BlogPage() {
   return <BlogIndex />;

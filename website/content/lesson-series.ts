@@ -40,10 +40,10 @@ export const LESSON_SERIES_HEADING =
   "Lessenreeksen bij clubs die met CoachOS werken";
 
 export const LESSON_SERIES_SUB =
-  "Bekijk de lessen die clubs in jouw buurt publiceren. Inschrijven gaat anoniem via een publieke link — geen account nodig.";
+  "Bekijk de lessen die clubs in jouw buurt publiceren. Inschrijven gaat via een publieke link, zonder account.";
 
 export const LESSON_SERIES_DISCLAIMER =
-  "Demovoorbeelden — de clubs en lessen op deze pagina zijn fictief. Echte lessenreeksen verschijnen hier zodra clubs hun planning publiceren.";
+  "Demovoorbeelden: de clubs en lessen op deze pagina zijn fictief. Echte lessenreeksen verschijnen hier zodra clubs hun planning publiceren.";
 
 export const LESSON_SERIES: PublicLessonSeries[] = [
   {
@@ -92,7 +92,7 @@ export const LESSON_SERIES: PublicLessonSeries[] = [
     id: "3",
     slug: "kids-tennis-6-tot-9-tc-eikenhof",
     sport: "tennis",
-    name: "Kids Tennis (6 — 9 jaar)",
+    name: "Kids Tennis (6 tot 9 jaar)",
     level: "Beginner",
     clubName: "TC Eikenhof",
     clubCity: "Brasschaat",

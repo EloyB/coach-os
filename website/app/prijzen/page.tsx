@@ -1,49 +1,39 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CreditCard, MapPin, ShieldCheck } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { pageMetadata } from "@/lib/seo";
 import { Mono } from "@/components/ui/mono";
 import { SiteNav } from "@/components/site/site-nav";
 import { SiteFooter } from "@/components/site/site-footer";
-import { FaqItem } from "@/components/sections/faq-item";
-import { Pricing } from "@/components/sections/pricing";
+import { WhitePage } from "@/components/site/white-page";
+import { CourtLines } from "@/components/ui/court-lines";
+import { BentoPricing } from "@/components/sections/bento-pricing";
+import { BentoFaq } from "@/components/sections/bento-faq";
+import { BentoContact } from "@/components/sections/bento-contact";
 import { PricingCompare } from "@/components/sections/pricing-compare";
-import { FinalCta } from "@/components/sections/final-cta";
 import {
   PRICING_EXPLAINER,
   PRICING_EXPLAINER_HEADING,
   PRICING_FAQ,
   PRICING_FAQ_HEADING,
   PRICING_ONBOARDING_NOTE,
+  PRICING_TIERS,
   PRICING_VISIBLE,
 } from "@/content/pricing";
 
 const SITE_URL = "https://coach-os.be";
 const PAGE_URL = `${SITE_URL}/prijzen`;
 
-export const metadata: Metadata = {
-  title: "Prijzen: lessenplanning vanaf €25/maand",
+export const metadata: Metadata = pageMetadata({
+  path: "/prijzen",
+  title: "Prijzen: lessenplanning vanaf €25 per maand",
   description:
-    "Tarieven voor CoachOS, lessenplanning voor tennis- en padelclubs. Je betaalt per actieve leerling, met onbeperkt trainers. 30 dagen gratis proberen, maandelijks opzegbaar.",
-  alternates: {
-    canonical: PAGE_URL,
-    languages: {
-      "nl-BE": PAGE_URL,
-      "nl-NL": PAGE_URL,
-      "x-default": PAGE_URL,
-    },
-  },
-  openGraph: {
-    type: "website",
-    locale: "nl_BE",
-    alternateLocale: ["nl_NL"],
-    url: PAGE_URL,
-    title: "Prijzen · CoachOS",
-    description:
-      "Tarieven voor CoachOS, lessenplanning voor tennis- en padelclubs. Vanaf €25/maand, per actieve leerling. 30 dagen gratis proberen.",
-    siteName: "CoachOS",
-  },
-};
+    "Prijzen van CoachOS lessenplanning voor tennis- en padelclubs: vanaf €25 per maand, per actieve leerling, met een onbeperkt aantal trainers. 30 dagen gratis proberen.",
+  socialDescription:
+    "Prijzen van CoachOS lessenplanning voor tennis- en padelclubs. Vanaf €25 per maand, per actieve leerling. 30 dagen gratis proberen.",
+});
 
 function PricingPageJsonLd() {
   const breadcrumb = {
@@ -66,10 +56,45 @@ function PricingPageJsonLd() {
     })),
   };
 
+  // Zelfde entiteit als op de homepage (@id), met de prijzen die bij deze pagina horen. Per maand, excl. btw.
+  const software = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "@id": `${SITE_URL}/#software`,
+    name: "CoachOS",
+    applicationCategory: "BusinessApplication",
+    operatingSystem: "Web",
+    url: SITE_URL,
+    offers: {
+      "@type": "AggregateOffer",
+      priceCurrency: "EUR",
+      lowPrice: String(Math.min(...PRICING_TIERS.map((t) => t.priceMonthly))),
+      highPrice: String(Math.max(...PRICING_TIERS.map((t) => t.priceMonthly))),
+      offerCount: PRICING_TIERS.length,
+      offers: PRICING_TIERS.map((tier) => ({
+        "@type": "Offer",
+        name: tier.name,
+        description: tier.studentLimit,
+        priceCurrency: "EUR",
+        price: String(tier.priceMonthly),
+        priceSpecification: {
+          "@type": "UnitPriceSpecification",
+          price: String(tier.priceMonthly),
+          priceCurrency: "EUR",
+          unitCode: "MON",
+          valueAddedTaxIncluded: false,
+        },
+        url: PAGE_URL,
+      })),
+    },
+  };
+
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify([breadcrumb, faq]) }}
+      dangerouslySetInnerHTML={{
+        __html: JSON.stringify([breadcrumb, software, faq]),
+      }}
     />
   );
 }
@@ -78,41 +103,70 @@ export default function PrijzenPage() {
   if (!PRICING_VISIBLE) {
     notFound();
   }
+  const from = PRICING_TIERS[0];
   return (
-    <>
+    <WhitePage>
       <PricingPageJsonLd />
       <SiteNav />
       <main>
-        <section className="border-b border-rule">
-          <div className="mx-auto max-w-6xl px-6 py-20 md:py-24">
-            <Mono className="text-[11px] tracking-[0.18em] text-ink-3">
-              TARIEVEN
-            </Mono>
-            <h1 className="mt-3 max-w-3xl text-4xl font-bold leading-[1.05] tracking-tight md:text-5xl">
-              Eerlijke tarieven, voor elke clubmaat
-            </h1>
-            <p className="mt-5 max-w-2xl text-lg leading-relaxed text-ink-2">
-              Drie abonnementen op basis van je aantal actieve leerlingen, met
-              een onbeperkt aantal trainers. Alle functies inbegrepen op elk
-              niveau, maandelijks opzegbaar of jaarlijks met 2 maanden gratis.
-            </p>
-            <p className="mt-6 flex max-w-2xl items-start gap-2 rounded-md border border-tennis-green/25 bg-tennis-green/5 px-4 py-3 text-sm font-medium text-ink-2">
-              <span className="mt-1.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-tennis-green" />
-              {PRICING_ONBOARDING_NOTE}
-            </p>
+        <section>
+          <div className="mx-auto grid max-w-6xl gap-4 px-6 py-16 md:py-24 lg:grid-cols-3">
+            <div className="relative overflow-hidden rounded-3xl bg-[#1f3d0e] p-8 text-white md:p-12 lg:col-span-2">
+              <CourtLines opacity={0.07} />
+              <div className="relative">
+                <Mono className="text-[11px] tracking-[0.18em] text-tennis-lime">
+                  TARIEVEN
+                </Mono>
+                <h1 className="mt-5 max-w-3xl text-4xl font-bold leading-[1.05] tracking-tight md:text-5xl">
+                  Lessenplanning vanaf €25 per maand
+                </h1>
+                <p className="mt-5 max-w-2xl text-lg leading-relaxed text-white/75">
+                  Drie abonnementen op basis van je aantal actieve leerlingen,
+                  met een onbeperkt aantal trainers. Alle functies inbegrepen op
+                  elk niveau, maandelijks opzegbaar of jaarlijks met 2 maanden
+                  gratis.
+                </p>
+                <p className="mt-6 flex max-w-2xl items-start gap-2 rounded-xl bg-white/10 px-4 py-3 text-sm font-medium text-white/85">
+                  <span className="mt-1.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-tennis-lime" />
+                  {PRICING_ONBOARDING_NOTE}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex min-h-[14rem] flex-col justify-between rounded-3xl bg-tennis-lime p-7 text-ink md:p-8">
+              <Mono className="text-[11px] tracking-[0.18em] text-tennis-green">
+                VANAF
+              </Mono>
+              <div>
+                <p className="text-5xl font-bold tracking-tight md:text-6xl">
+                  €{from.priceMonthly}
+                  <span className="text-xl font-semibold text-tennis-green">
+                    {" "}
+                    /maand
+                  </span>
+                </p>
+                <p className="mt-2 text-sm font-medium text-tennis-green">
+                  {from.studentLimit}
+                </p>
+                <p className="mt-4 text-sm text-ink/70">
+                  30 dagen gratis proberen
+                </p>
+              </div>
+            </div>
           </div>
         </section>
 
-        <Pricing hideCompareLink hideHeader />
+        <h2 className="sr-only">Prijsplannen</h2>
+        <BentoPricing hideHeader hideCompareLink />
 
         {/* Vertrouwen */}
-        <section className="border-b border-rule bg-paper">
-          <div className="mx-auto max-w-6xl px-6 py-12 md:py-14">
-            <div className="grid gap-8 sm:grid-cols-3">
+        <section>
+          <div className="mx-auto max-w-6xl px-6 pb-4">
+            <div className="grid gap-4 md:grid-cols-3">
               <TrustItem
                 icon={ShieldCheck}
                 title="GDPR-conform"
-                body="Je data blijft binnen de EU. Geen tracking, geen verkoop aan derden."
+                body="Je data blijft binnen de EU. Geen verkoop aan derden."
               />
               <TrustItem
                 icon={CreditCard}
@@ -129,7 +183,7 @@ export default function PrijzenPage() {
         </section>
 
         {/* Hoe werkt de prijs? */}
-        <section className="border-b border-rule bg-canvas">
+        <section>
           <div className="mx-auto max-w-6xl px-6 py-20 md:py-24">
             <Mono className="text-[11px] tracking-[0.18em] text-ink-3">
               UITLEG
@@ -137,19 +191,19 @@ export default function PrijzenPage() {
             <h2 className="mt-3 text-3xl font-bold tracking-tight md:text-4xl">
               {PRICING_EXPLAINER_HEADING}
             </h2>
-            <div className="mt-10 grid gap-6 md:grid-cols-3">
+            <div className="mt-10 grid gap-4 md:grid-cols-3">
               {PRICING_EXPLAINER.map((item, i) => (
                 <div
                   key={item.title}
-                  className="rounded-xl border border-rule bg-paper p-6"
+                  className={`rounded-3xl p-7 md:p-8 ${EXPLAINER_TONES[i % EXPLAINER_TONES.length]}`}
                 >
-                  <Mono className="text-[11px] text-ink-3">
-                    0{i + 1}
-                  </Mono>
-                  <h3 className="mt-3 text-lg font-bold tracking-tight">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-tennis-lime text-base font-bold text-tennis-green">
+                    {i + 1}
+                  </span>
+                  <h3 className="mt-6 text-xl font-bold leading-tight tracking-tight md:text-2xl">
                     {item.title}
                   </h3>
-                  <p className="mt-2 text-sm leading-relaxed text-ink-2">
+                  <p className="mt-3 text-sm leading-relaxed text-white/75">
                     {item.body}
                   </p>
                 </div>
@@ -160,29 +214,48 @@ export default function PrijzenPage() {
 
         <PricingCompare />
 
-        <section className="border-b border-rule bg-canvas">
-          <div className="mx-auto max-w-3xl px-6 py-20 md:py-24">
-            <Mono className="text-[11px] tracking-[0.18em] text-ink-3">
-              VRAGEN
-            </Mono>
-            <h2 className="mt-3 text-3xl font-bold tracking-tight md:text-4xl">
-              {PRICING_FAQ_HEADING}
-            </h2>
-
-            <div className="mt-10 rounded-xl border border-rule bg-paper px-6 md:px-8">
-              {PRICING_FAQ.map((entry) => (
-                <FaqItem key={entry.q} {...entry} />
-              ))}
+        <section>
+          <div className="mx-auto max-w-6xl px-6 pb-4">
+            <div className="rounded-3xl bg-[#eef1e0] p-8 md:p-10">
+              <Mono className="text-[11px] tracking-[0.18em] text-ink-3">
+                OOK BEKIJKEN
+              </Mono>
+              <p className="mt-3 text-base leading-relaxed text-ink-2">
+                Benieuwd hoe CoachOS werkt voor jouw situatie? Lees meer over{" "}
+                <Link href="/voor-tennisclubs" className={LINK}>
+                  lessenplanning voor tennisscholen
+                </Link>
+                ,{" "}
+                <Link href="/voor-padelclubs" className={LINK}>
+                  lessenplanning voor padelscholen
+                </Link>{" "}
+                en{" "}
+                <Link href="/voor-trainers" className={LINK}>
+                  planning voor trainers
+                </Link>
+                .
+              </p>
             </div>
           </div>
         </section>
 
-        <FinalCta />
+        <BentoFaq heading={PRICING_FAQ_HEADING} entries={PRICING_FAQ} />
+
+        <BentoContact />
       </main>
       <SiteFooter />
-    </>
+    </WhitePage>
   );
 }
+
+const LINK =
+  "font-semibold text-tennis-green underline-offset-4 hover:underline";
+
+const EXPLAINER_TONES = [
+  "bg-[#2d5a16] text-white",
+  "bg-[#1f3d0e] text-white",
+  "bg-[#3b6b1f] text-white",
+];
 
 function TrustItem({
   icon: Icon,
@@ -194,14 +267,14 @@ function TrustItem({
   body: string;
 }) {
   return (
-    <div className="flex gap-4">
-      <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-tennis-green text-tennis-lime">
+    <div className="rounded-3xl bg-[#eef1e0] p-7">
+      <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-tennis-green text-tennis-lime">
         <Icon className="h-5 w-5" strokeWidth={2.2} />
       </span>
-      <div>
-        <h3 className="text-base font-bold tracking-tight text-ink">{title}</h3>
-        <p className="mt-1 text-sm leading-relaxed text-ink-2">{body}</p>
-      </div>
+      <h3 className="mt-5 text-lg font-bold tracking-tight text-ink">
+        {title}
+      </h3>
+      <p className="mt-1.5 text-sm leading-relaxed text-ink-2">{body}</p>
     </div>
   );
 }

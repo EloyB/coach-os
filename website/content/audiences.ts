@@ -14,8 +14,8 @@ export interface Audience {
 export const AUDIENCES: Audience[] = [
   {
     icon: Trophy,
-    title: "Tennisclubs",
-    body: "Van eerste inschrijving tot laatste les van het seizoen — één dashboard voor je hele club.",
+    title: "Lessenplanning voor tennisscholen",
+    body: "Van eerste inschrijving tot laatste les van het seizoen, met één dashboard voor je hele club.",
     bullets: [
       "Lessenreeksen voor jeugd en volwassenen",
       "Onbeperkt aantal banen en trainers",
@@ -25,18 +25,18 @@ export const AUDIENCES: Audience[] = [
   },
   {
     icon: Building2,
-    title: "Padelclubs",
-    body: "Mobile-first inschrijvingen voor je spelers, automatische groepering op niveau achter de schermen.",
+    title: "Lessenplanning voor padelscholen",
+    body: "Mobile-first inschrijvingen voor je spelers, automatische planning op voorkeur achter de schermen.",
     bullets: [
       "Geen app of account voor leden",
-      "Voorkeur- en niveaumatch",
+      "Voorkeurstijden en groepsverbanden",
       "Schaalt mee met snelle groei",
     ],
     slug: "voor-padelclubs",
   },
   {
     icon: User,
-    title: "Zelfstandige trainers",
+    title: "Lessenplanning voor trainers",
     body: "Eén tool voor inschrijvingen, planning en bevestigingen. Lesgeven in plaats van administreren.",
     bullets: [
       "Publieke inschrijflink per reeks",
@@ -49,4 +49,4 @@ export const AUDIENCES: Audience[] = [
 
 export const AUDIENCES_HEADING = "Voor alle tennis- en padeltrainers?";
 export const AUDIENCES_SUB =
-  "Of je nu een club met 10 trainers runt of solo lesgeeft — CoachOS doet het werk.";
+  "Of je nu een club met 10 trainers runt of solo lesgeeft: CoachOS doet het werk.";

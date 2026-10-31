@@ -2,7 +2,7 @@ export interface BlogPost {
   slug: string;
   /** Visible page H1. Keep ~50-70 chars for SEO sweet spot. */
   title: string;
-  /** SEO meta title — usually `${title} · CoachOS Blog`. */
+  /** SEO meta title zonder merknaam: de titeltemplate in de root layout voegt " · CoachOS" toe. */
   metaTitle: string;
   /** SEO meta description — ~155 chars, primary keyword up front. */
   metaDescription: string;
@@ -12,7 +12,7 @@ export interface BlogPost {
   updatedAt?: string;
   /** Manual estimate based on word count. ~250 words/min. */
   readMinutes: number;
-  /** Visible category kicker (e.g., "GIDS · LESPLANNING"). */
+  /** Visible category kicker (e.g., "GIDS · LESSENPLANNING"). */
   category: string;
   /** SEO keywords + used as tag chips. */
   tags: string[];

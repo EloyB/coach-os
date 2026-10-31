@@ -1,4 +1,5 @@
 import { FAQ } from "@/content/faq";
+import { PRICING_TIERS, PRICING_VISIBLE } from "@/content/pricing";
 import { FEATURES } from "@/content/features";
 import { SITE } from "@/content/meta";
 
@@ -27,7 +28,7 @@ export function HomepageJsonLd() {
     logo: `${SITE_URL}/icon`,
     email: SITE.contactEmail,
     description:
-      "Lessenplanningsysteem voor tennis- en padelclubs. Lessenreeksen, anonieme inschrijvingen, automatische scheduling en magic-link bevestigingen.",
+      "Lessenplanningsysteem voor tennis- en padelclubs. Lessenreeksen, inschrijvingen zonder account, automatische planning en bevestiging via een link.",
     contactPoint: {
       "@type": "ContactPoint",
       contactType: "customer support",
@@ -57,7 +58,7 @@ export function HomepageJsonLd() {
     operatingSystem: "Web",
     url: SITE_URL,
     description:
-      "Lessenplanningsysteem voor tennis- en padelclubs. Beheer lessenreeksen, ontvang anonieme inschrijvingen, plan automatisch en bevestig leerlingen via magic links.",
+      "Lessenplanningsysteem voor tennis- en padelclubs. Beheer lessenreeksen, ontvang inschrijvingen zonder account, plan automatisch en bevestig leerlingen via een link.",
     inLanguage: "nl",
     publisher: { "@id": `${SITE_URL}/#organization` },
     audience: {
@@ -65,7 +66,34 @@ export function HomepageJsonLd() {
       audienceType:
         "Tennis- en padelclubs, hoofdtrainers en zelfstandige coaches",
     },
-    featureList: FEATURES.map((f) => `${f.title} — ${f.body}`),
+    featureList: FEATURES.map((f) => `${f.title}: ${f.body}`),
+    // Prijzen komen uit dezelfde bron als de /prijzen-pagina. Per maand, excl. btw.
+    ...(PRICING_VISIBLE
+      ? {
+          offers: {
+            "@type": "AggregateOffer",
+            priceCurrency: "EUR",
+            lowPrice: String(Math.min(...PRICING_TIERS.map((t) => t.priceMonthly))),
+            highPrice: String(Math.max(...PRICING_TIERS.map((t) => t.priceMonthly))),
+            offerCount: PRICING_TIERS.length,
+            offers: PRICING_TIERS.map((tier) => ({
+              "@type": "Offer",
+              name: tier.name,
+              description: tier.studentLimit,
+              priceCurrency: "EUR",
+              price: String(tier.priceMonthly),
+              priceSpecification: {
+                "@type": "UnitPriceSpecification",
+                price: String(tier.priceMonthly),
+                priceCurrency: "EUR",
+                unitCode: "MON",
+                valueAddedTaxIncluded: false,
+              },
+              url: `${SITE_URL}/prijzen`,
+            })),
+          },
+        }
+      : {}),
   };
 
   const faqPage = {

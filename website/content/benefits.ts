@@ -1,8 +1,8 @@
 export const BENEFITS = {
   heading: "Bespaar uren per week op administratie",
-  sub: "Wat trainers nu kwijt zijn aan plannen, mailen en bellen — daar loste CoachOS de hele cyclus voor op.",
+  sub: "Wat trainers nu kwijt zijn aan plannen, mailen en bellen: daar loste CoachOS de hele cyclus voor op.",
   stats: [
-    { value: "1 middag", label: "Hele seizoen ingepland" },
+    { value: "Dagen", label: "minder planningswerk dan met Excel" },
     { value: "0", label: "Excel-sheets nodig" },
     { value: "1 tool", label: "Plan · inschrijf · betaal" },
   ],

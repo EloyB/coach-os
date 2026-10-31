@@ -22,8 +22,6 @@ export interface PricingTier {
   priceYearly: number;
   /** Korte limiet-regel onder de prijs, bv. "tot 60 leerlingen". */
   studentLimit: string;
-  /** Visueel uitgelichte kaart. */
-  featured?: boolean;
   /** CTA-knop op de kaart. */
   cta: { label: string; href: string };
   /** 5–6 kernpunten per kaart. */
@@ -69,7 +67,7 @@ export const PRICING_TIERS: PricingTier[] = [
     features: [
       "Alles uit Game",
       "Tot 200 actieve leerlingen",
-      "Prioritaire ondersteuning",
+      "Prioritaire ondersteuning (reactie binnen 48 uur)",
     ],
   },
   {
@@ -84,7 +82,7 @@ export const PRICING_TIERS: PricingTier[] = [
       "Alles uit Set",
       "Tot 500 actieve leerlingen",
       "Vaste contactpersoon",
-      "Hulp bij de opstart",
+      "Uitgebreide opstartbegeleiding",
     ],
   },
 ];
@@ -154,7 +152,7 @@ export const PRICING_COMPARE: CompareGroup[] = [
         values: { starter: true, club: true, groot: true },
       },
       {
-        feature: "Magic-link bevestigingen",
+        feature: "Bevestiging via een link",
         values: { starter: true, club: true, groot: true },
       },
     ],
@@ -180,7 +178,7 @@ export const PRICING_COMPARE: CompareGroup[] = [
         values: { starter: true, club: true, groot: true },
       },
       {
-        feature: "Prioritaire ondersteuning",
+        feature: "Prioritaire ondersteuning (reactie binnen 48 uur)",
         values: { starter: false, club: true, groot: true },
       },
       {
@@ -196,8 +194,12 @@ export interface PricingFaqEntry {
   a: string;
 }
 
-export const PRICING_FAQ_HEADING = "Vragen over tarifering";
+export const PRICING_FAQ_HEADING = "Veelgestelde vragen over de prijs van CoachOS";
 export const PRICING_FAQ: PricingFaqEntry[] = [
+  {
+    q: "Wat kost lessenplanning-software voor een tennis- of padelclub?",
+    a: "CoachOS kost vanaf €25 per maand voor tot 60 actieve leerlingen (Game), €49 per maand voor tot 200 (Set) en €89 per maand voor tot 500 (Match), telkens met een onbeperkt aantal trainers. Alle prijzen zijn excl. btw. Betaal je per jaar, dan krijg je 2 maanden gratis.",
+  },
   {
     q: "Hoe meld ik mijn club aan?",
     a: "Voorlopig verloopt elke aanmelding persoonlijk. Je belt of mailt ons, we bekijken samen welke oplossing het best bij je club past en zetten alles voor je klaar. Zo ben je meteen goed vertrokken.",

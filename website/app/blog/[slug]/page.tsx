@@ -39,11 +39,16 @@ export async function generateMetadata({
       locale: "nl_BE",
       alternateLocale: ["nl_NL"],
       url: pageUrl,
-      title: post.metaTitle,
+      title: `${post.metaTitle} · CoachOS`,
       description: post.metaDescription,
       siteName: "CoachOS",
       publishedTime: post.publishedAt,
       ...(post.updatedAt ? { modifiedTime: post.updatedAt } : {}),
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${post.metaTitle} · CoachOS`,
+      description: post.metaDescription,
     },
   };
 }

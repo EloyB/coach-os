@@ -3,18 +3,24 @@ import { PRICING_VISIBLE } from "@/content/pricing";
 import { ALL_PERSONAS } from "@/content/personas";
 import { ALL_POSTS } from "@/content/blog";
 
+/**
+ * Bewust zonder `lastModified` voor de vaste pagina's: er is geen betrouwbare
+ * wijzigingsdatum per pagina (een buildtijdstip zou elke URL bij elke deploy als
+ * gewijzigd markeren). Blogartikels hebben wel een echte datum in hun content.
+ */
 export default function sitemap(): MetadataRoute.Sitemap {
   const base = "https://coach-os.be";
-  const now = new Date();
   return [
-    { url: `${base}/`, lastModified: now, changeFrequency: "monthly", priority: 1 },
+    { url: `${base}/`, changeFrequency: "monthly", priority: 1 },
     ...ALL_PERSONAS.map((p) => ({
       url: `${base}/${p.slug}`,
-      lastModified: now,
       changeFrequency: "monthly" as const,
       priority: 0.8,
     })),
-    { url: `${base}/blog`, lastModified: now, changeFrequency: "weekly", priority: 0.7 },
+    // /blog staat pas in de sitemap als er artikels zijn (anders is de pagina noindex).
+    ...(ALL_POSTS.length > 0
+      ? [{ url: `${base}/blog`, changeFrequency: "weekly" as const, priority: 0.7 }]
+      : []),
     ...ALL_POSTS.map((p) => ({
       url: `${base}/blog/${p.slug}`,
       lastModified: new Date(p.updatedAt ?? p.publishedAt),
@@ -25,13 +31,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       ? [
           {
             url: `${base}/prijzen`,
-            lastModified: now,
             changeFrequency: "monthly" as const,
             priority: 0.8,
           },
         ]
       : []),
-    { url: `${base}/privacy`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
-    { url: `${base}/voorwaarden`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${base}/privacy`, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${base}/voorwaarden`, changeFrequency: "yearly", priority: 0.3 },
   ];
 }
