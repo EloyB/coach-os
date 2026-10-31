@@ -11,7 +11,7 @@ export interface FaqEntry {
 export const FAQ: FaqEntry[] = [
   {
     q: "Wat is CoachOS?",
-    a: "CoachOS is een lessenplanningsysteem voor tennis- en padelclubs. Trainers stellen een lessenreeks in, leerlingen schrijven zich zonder account in via een link, en het planningsalgoritme verdeelt iedereen automatisch over slots op voorkeur en groepsverband. Zonder accounts, zonder Excel, zonder oneindig veel mails.",
+    a: "CoachOS (ook geschreven als Coach OS) is een lessenplanningsysteem voor tennis- en padelclubs. Trainers stellen een lessenreeks in, leerlingen schrijven zich zonder account in via een link, en het planningsalgoritme verdeelt iedereen automatisch over slots op voorkeur en groepsverband. Zonder accounts, zonder Excel, zonder oneindig veel mails.",
   },
   {
     q: "Voor welke sporten is CoachOS gemaakt?",
