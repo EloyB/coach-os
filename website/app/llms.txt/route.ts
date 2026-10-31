@@ -16,7 +16,7 @@ export function GET() {
   lines.push("# CoachOS");
   lines.push("");
   lines.push(
-    "> Lessenplanningsysteem voor tennis- en padelclubs. Trainers stellen een lessenreeks één keer in, leerlingen schrijven zich zonder account in via een publieke link, en een planningsalgoritme verdeelt iedereen automatisch over slots op niveau en voorkeur. Geen accounts voor leerlingen, geen Excel, geen oneindig veel mails.",
+    "> Lessenplanningsysteem voor tennis- en padelclubs. Trainers stellen een lessenreeks één keer in, leerlingen schrijven zich zonder account in via een publieke link, en een planningsalgoritme verdeelt iedereen automatisch over slots op voorkeur en groepsverband. Geen accounts voor leerlingen, geen Excel, geen oneindig veel mails.",
   );
   lines.push("");
   lines.push(
@@ -46,7 +46,7 @@ export function GET() {
     "- Formulierbouwer: per lessenreeks aangepaste vragen (vrije tekst, meerkeuze, ja/nee).",
   );
   lines.push(
-    "- Planningsalgoritme: verdeelt leerlingen automatisch over slots op basis van niveau, voorkeurstijden en groepsverbanden.",
+    "- Planningsalgoritme: verdeelt leerlingen automatisch over slots op basis van voorkeurstijden en groepsverbanden.",
   );
   lines.push(
     "- Magic-link bevestigingen: leerlingen bevestigen hun lestijd met één klik in een e-mail; geen wachtwoord.",

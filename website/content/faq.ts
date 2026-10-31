@@ -11,11 +11,11 @@ export interface FaqEntry {
 export const FAQ: FaqEntry[] = [
   {
     q: "Wat is CoachOS?",
-    a: "CoachOS is een lessenplanningsysteem voor tennis- en padelclubs. Trainers stellen een lessenreeks in, leerlingen schrijven zich zonder account in via een link, en het planningsalgoritme verdeelt iedereen automatisch over slots op niveau en voorkeur. Zonder accounts, zonder Excel, zonder oneindig veel mails.",
+    a: "CoachOS is een lessenplanningsysteem voor tennis- en padelclubs. Trainers stellen een lessenreeks in, leerlingen schrijven zich zonder account in via een link, en het planningsalgoritme verdeelt iedereen automatisch over slots op voorkeur en groepsverband. Zonder accounts, zonder Excel, zonder oneindig veel mails.",
   },
   {
     q: "Voor welke sporten is CoachOS gemaakt?",
-    a: "Vandaag specifiek voor tennis en padel. Niveau-indelingen, baanorganisatie en federatieconcepten zijn op die twee sporten afgestemd. Andere sporten liggen op de roadmap voor later.",
+    a: "Vandaag specifiek voor tennis en padel. Lessenreeksen, kampen en de manier van inschrijven zijn op die twee sporten afgestemd. Andere sporten liggen op de roadmap voor later.",
   },
   {
     q: "Hoe lang duurt het om te starten met CoachOS?",
@@ -43,11 +43,11 @@ export const FAQ: FaqEntry[] = [
   },
   {
     q: "Hoe zit het met betalingen?",
-    a: "Leerlingen kunnen online betalen via Mollie (Bancontact en iDEAL) wanneer ze zich inschrijven. Het geld komt rechtstreeks op de rekening van je school of club. Cash betalingen registreer je met één klik per inschrijving, zodat je overzicht klopt.",
+    a: "Zodra de planning bevestigd is, betalen leerlingen online via Mollie (Bancontact en iDEAL). Het geld komt rechtstreeks op de rekening van je school of club. Cash betalingen registreer je met één klik per inschrijving, zodat je overzicht klopt.",
   },
   {
     q: "Kan ik ook kampen en stages organiseren met CoachOS?",
-    a: "Ja. Je maakt een kamp of stage aan met hele weken, enkele dagen of halve dagen, werkt met vaste pakketten en stelt een limiet in per dagdeel. Inschrijven en betalen gaat via dezelfde publieke link als bij lessenreeksen, zonder account.",
+    a: "Ja. Je maakt een kamp of stage aan met hele weken, enkele dagen of halve dagen, werkt met vaste pakketten en stelt een limiet in per dagdeel. Inschrijven gaat via dezelfde publieke link als bij lessenreeksen, zonder account, en betalen kan na de bevestiging van de planning.",
   },
   {
     q: "Wat doen jullie met de gegevens van leerlingen?",
@@ -67,7 +67,7 @@ export const FAQ: FaqEntry[] = [
   },
   {
     q: "Wat is het verschil met een algemene clubadministratie-tool?",
-    a: "Algemene clubadministratie-tools doen ledenbeheer en boekhouding voor de hele club. CoachOS focust specifiek op de lessenkant: lessenreeksen, inschrijvingen per reeks, niveau-indeling en seizoensplanning. We integreren met of zitten naast bestaande administratie-software, niet als vervanging.",
+    a: "Algemene clubadministratie-tools doen ledenbeheer en boekhouding voor de hele club. CoachOS focust specifiek op de lessenkant: lessenreeksen, inschrijvingen per reeks en seizoensplanning. We integreren met of zitten naast bestaande administratie-software, niet als vervanging.",
   },
 ];
 

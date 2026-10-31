@@ -63,7 +63,7 @@ function PersonaPainSolution({ persona }: { persona: Persona }) {
               WAT JE NU HERKENT
             </Mono>
             <h2 className="mt-3 text-3xl font-bold tracking-tight md:text-4xl">
-              Het probleem in jouw seizoen
+              {persona.problemHeading ?? "Het probleem in jouw seizoen"}
             </h2>
             <ul className="mt-8 space-y-4">
               {persona.pains.map((p) => (
@@ -93,7 +93,7 @@ function PersonaPainSolution({ persona }: { persona: Persona }) {
               HOE COACHOS DAT OPLOST
             </Mono>
             <h2 className="mt-3 text-3xl font-bold tracking-tight md:text-4xl">
-              Wat de tool ervoor doet
+              {persona.solutionHeading ?? "Wat de tool ervoor doet"}
             </h2>
             <ul className="mt-8 space-y-4">
               {persona.solutions.map((s) => (

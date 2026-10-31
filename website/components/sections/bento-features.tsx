@@ -76,7 +76,7 @@ function PlanningCard() {
       <CardText
         dark
         title="Automatisch plannen"
-        body="Het planningsalgoritme verdeelt leerlingen met één klik over de tijdsloten, op basis van niveau, voorkeur en groepsverband."
+        body="Het planningsalgoritme verdeelt leerlingen met één klik over de tijdsloten, op basis van voorkeur en groepsverband."
       />
       <div
         aria-hidden

@@ -21,6 +21,10 @@ export interface Persona {
    * to "wat is CoachOS?"
    */
   lead: string;
+  /** Optionele eigen H2 boven de pijnpunten; standaardtekst als leeg. */
+  problemHeading?: string;
+  /** Optionele eigen H2 boven de oplossingen; standaardtekst als leeg. */
+  solutionHeading?: string;
   /** Pain points the persona faces in their current world. */
   pains: PersonaItem[];
   /** How CoachOS addresses each pain. Order matches `pains` so they read as pairs. */
@@ -54,28 +58,30 @@ export const TENNIS_CLUBS_PERSONA: Persona = {
   slug: "voor-tennisclubs",
   navLabel: "Tennisclubs",
   linkLabel: "Lessenplanning voor tennisscholen",
-  metaTitle: "Lessenplanning en software voor tennisscholen en -clubs",
+  metaTitle: "Lessenplanning voor tennisscholen en -clubs",
   metaDescription:
-    "Lessenplanning voor je tennisschool of tennisclub: lessenreeksen, inschrijvingen via een link en automatische groepering op niveau. Geen Excel meer.",
+    "Lessenplanning voor je tennisschool of tennisclub: lessenreeksen, inschrijven via een link en automatisch plannen op voorkeur. Geen Excel meer. 30 dagen gratis proberen.",
   kicker: "VOOR TENNISCLUBS",
   h1: "Lessenplanning voor tennisscholen en tennisclubs",
-  lead: "CoachOS is software voor de lessenplanning van tennisscholen en tennisclubs. Je beheert lessenreeksen, verzamelt inschrijvingen via een publieke link en laat het algoritme leerlingen op niveau verdelen, zonder Excel-sheets, zonder accounts voor leden en zonder eindeloos mailen. Zo beheer je je tennisschool met veel minder administratie.",
+  lead: "CoachOS is software voor de lessenplanning van tennisscholen en tennisclubs. Je beheert lessenreeksen, verzamelt inschrijvingen via een publieke link en laat het algoritme leerlingen over de tijdsloten verdelen op basis van hun voorkeur, zonder Excel-sheets, zonder accounts voor leden en zonder eindeloos mailen. Zo beheer je je tennisschool met veel minder administratie.",
+  problemHeading: "Waarom lessen plannen in Excel vastloopt",
+  solutionHeading: "Zo plant CoachOS de lessen van je tennisschool",
   pains: [
     {
       title: "Excel-sheets die elk seizoen opnieuw uit elkaar vallen",
-      body: "Versies, formules, blocked celwaarden: bij elke nieuwe coach of seizoenswissel begint de chaos opnieuw.",
+      body: "Versies, formules, verdwaalde celwaarden en kleurcodes: bij elke nieuwe coach of seizoenswissel begint de chaos opnieuw.",
     },
     {
       title: "Eindeloos mailen over voorkeurstijden",
       body: "Ouders mailen tien keer hetzelfde, jij verwerkt het in een spreadsheet, en bij elke wijziging gaat het opnieuw rond.",
     },
     {
-      title: "Met de hand puzzelen op niveau- en leeftijdsmatches",
-      body: "Junior beginners niet bij gevorderden, A-spelers niet bij C-spelers, broers/zussen samenhouden: alles handmatig.",
+      title: "Met de hand puzzelen met voorkeurstijden en groepjes",
+      body: "Wie kan wanneer, wie moet bij wie blijven, broers en zussen samenhouden: alles handmatig.",
     },
     {
       title: "Verschillende tools voor inschrijving, planning en betaling",
-      body: "Google Forms voor de inschrijving, Excel voor de planning, een app voor betalingen: vier vinkjes om iemand te bevestigen.",
+      body: "Google Forms voor de inschrijving, Excel voor de planning, een app voor betalingen: drie tools voor één bevestiging.",
     },
   ],
   solutions: [
@@ -89,15 +95,14 @@ export const TENNIS_CLUBS_PERSONA: Persona = {
     },
     {
       title: "Planningsalgoritme verdeelt leerlingen automatisch",
-      body: "Voorkeurstijden, niveaus en groepsverbanden worden meegenomen. Handmatige aanpassingen blijven bewaard bij herplannen.",
+      body: "Voorkeurstijden en groepsverbanden worden meegenomen, zodat wie samen is ingeschreven ook samen les krijgt. Handmatige aanpassingen blijven bewaard bij herplannen.",
     },
     {
-      title: "Mollie-betalingen + magic-link bevestigingen in dezelfde flow",
+      title: "Betalen en bevestigen in dezelfde flow",
       body: "Inschrijving, planning, bevestiging en betaling lopen door één tool, zonder export-import.",
     },
   ],
-  // TODO(Eloy): vervang het voorbeeldscenario door een echte seizoenscase van een pilootclub
-  // zodra die er is (aantal inschrijvingen, doorlooptijd). Tot dan is "Stel dat" bewust hypothetisch.
+  // Voorbeeldscenario is bewust hypothetisch ("Stel dat").
   sections: [
     {
       heading: "Een voorbeeld: voorjaarslessen met 120 inschrijvingen",
@@ -108,21 +113,27 @@ export const TENNIS_CLUBS_PERSONA: Persona = {
         "Je maakt per niveau een lessenreeks aan met dag, uur, baan en groepsgrootte. De lessen worden automatisch over het hele seizoen gegenereerd.",
         "Je deelt de inschrijflink van elke reeks via je website, nieuwsbrief of sociale media.",
         "Leerlingen en ouders vullen hun gegevens en voorkeurstijden in. Je ziet de inschrijvingen binnenkomen, gekoppeld aan de juiste reeks.",
-        "Zodra de inschrijvingen binnen zijn, laat je het planningsalgoritme draaien. Het verdeelt iedereen over de slots op niveau en voorkeurstijd en houdt groepsverbanden, zoals broers en zussen, samen.",
-        "Je loopt het voorstel na, past aan waar nodig en bevestigt. Elke leerling krijgt een e-mail met een unieke bevestigingslink.",
+        "Zodra de inschrijvingen binnen zijn, laat je het planningsalgoritme draaien. Het verdeelt iedereen over de slots op voorkeurstijd en houdt groepsverbanden, zoals broers en zussen, samen.",
+        "Je loopt het voorstel na, past aan waar nodig en bevestigt. Elke leerling krijgt een e-mail met een unieke bevestigingslink en betaalt daarna online.",
       ],
     },
     {
-      heading: "Inschrijven via een link, zonder account",
+      heading: "Tennislessen inschrijven via een link, zonder account",
       paragraphs: [
         "Elke lessenreeks heeft een eigen publieke inschrijflink. Ouders en leerlingen openen die op hun gsm of laptop, vullen hun naam, e-mailadres en voorkeuren in en zijn klaar. Er is geen account en geen wachtwoord nodig, dus ook wie maar één keer per seizoen inschrijft, kan dat zonder gedoe.",
-        "Wil je meer weten van je leerlingen, bijvoorbeeld hun ervaring of een opmerking voor de trainer, dan bouw je per lessenreeks een eigen formulier met tekstvelden, meerkeuzevragen en ja/nee-vragen. Na de inschrijving bevestigt de leerling zijn lesmoment met één klik via een unieke link in een e-mail.",
+        "Wil je meer weten van je leerlingen, bijvoorbeeld hun ervaring of een opmerking voor de trainer, dan bouw je per lessenreeks een eigen formulier met tekstvelden, meerkeuzevragen en ja/nee-vragen. Na de inschrijving bevestigt de leerling het lesmoment met één klik via een unieke link in een e-mail.",
       ],
     },
     {
       heading: "Jij houdt de controle over de indeling",
       paragraphs: [
-        "Het algoritme neemt het puzzelwerk over, maar jij beslist. Je kan elke indeling bekijken en met de hand aanpassen. Die aanpassingen blijven bewaard als je later opnieuw plant, bijvoorbeeld omdat er nog inschrijvingen bijkomen. Betalen kan online via Bancontact of iDEAL, en cash registreer je per inschrijving.",
+        "Het algoritme neemt het puzzelwerk over, maar jij beslist. Je kan elke indeling bekijken en met de hand aanpassen. Die aanpassingen blijven bewaard als je later opnieuw plant, bijvoorbeeld omdat er nog inschrijvingen bijkomen. Na de bevestiging van de planning betalen leerlingen online via Bancontact of iDEAL, en cash registreer je per inschrijving.",
+      ],
+    },
+    {
+      heading: "Tennisstages en zomerkampen organiseren",
+      paragraphs: [
+        "Naast lessenreeksen organiseer je met CoachOS ook tennisstages en zomerkampen: hele weken, enkele dagen of halve dagen, met vaste pakketten en een limiet per dagdeel. Deelnemers schrijven zich in via dezelfde publieke link, zonder account, en betalen net als bij lessen nadat de planning bevestigd is.",
       ],
     },
   ],
@@ -133,24 +144,27 @@ export const TENNIS_CLUBS_PERSONA: Persona = {
     },
     {
       q: "Werkt dit voor jeugd én volwassenen tegelijk?",
-      a: "Ja. Per lessenreeks stel je niveau, leeftijd en groepsgrootte in. Het algoritme houdt rekening met alle drie bij het verdelen van leerlingen over slots.",
-    },
-    {
-      q: "Kan ik tussentijds een nieuwe trainer toevoegen?",
-      a: "Ja. Een bestaande clubadmin nodigt nieuwe trainers uit per e-mail. De trainer ziet enkel zijn eigen lessenreeksen. Multi-club rollen en rechten zijn ingebouwd.",
+      a: "Ja. Je maakt per doelgroep een eigen lessenreeks, bijvoorbeeld per niveau of leeftijdsgroep, met eigen ritme, capaciteit en groepsgrootte. Het algoritme verdeelt de leerlingen van elke reeks over de tijdsloten op basis van hun voorkeur en houdt groepsverbanden samen.",
     },
     {
       q: "Kan ik mijn tennisschool beheren met meerdere trainers en banen?",
-      a: "Ja. Het aantal trainers en banen is onbeperkt. Trainers ontvang je per e-mail en zien enkel hun eigen lessenreeksen, terwijl jij als clubadmin het overzicht over alle reeksen houdt.",
+      a: "Ja. Het aantal trainers en banen is onbeperkt. Als clubadmin nodig je trainers uit per e-mail, ook tijdens het seizoen. Elke trainer ziet enkel de eigen lessenreeksen, terwijl jij het overzicht houdt over alle reeksen.",
     },
     {
       q: "Wat als er na het plannen nog leerlingen bijkomen?",
       a: "Dan plan je opnieuw. Handmatige aanpassingen die je al gedaan hebt, blijven bewaard, dus je begint niet van nul.",
     },
-    // TODO(Eloy): bevestig hoe het betaalmoment precies verloopt voor lessenreeksen (vs. kampen).
     {
       q: "Kunnen leerlingen online betalen?",
-      a: "Ja. Online betalen kan via Mollie met Bancontact of iDEAL. Betaalt een leerling cash, dan registreer je dat per inschrijving.",
+      a: "Ja. Nadat de planning bevestigd is, betalen leerlingen online via Mollie met Bancontact of iDEAL. Betaalt een leerling cash, dan registreer je dat per inschrijving.",
+    },
+    {
+      q: "Kan ik tennisstages en zomerkampen organiseren?",
+      a: "Ja. Een kamp of stage stel je in met hele weken, enkele dagen of halve dagen, vaste pakketten en een limiet per dagdeel. Inschrijven gaat via een publieke link zonder account, en betalen kan na de bevestiging van de planning.",
+    },
+    {
+      q: "Wat kost lessenplanning voor een tennisschool?",
+      a: "Vanaf €25 per maand voor tot 60 actieve leerlingen, €49 voor tot 200 en €89 voor tot 500, met een onbeperkt aantal trainers en alle functies inbegrepen. Alle prijzen zijn excl. btw en je probeert eerst 30 dagen gratis. Alle details staan op de prijzenpagina.",
     },
   ],
 };
@@ -165,10 +179,10 @@ export const PADEL_CLUBS_PERSONA: Persona = {
   linkLabel: "Lessenplanning voor padelscholen",
   metaTitle: "Lessenplanning en software voor padelscholen en -clubs",
   metaDescription:
-    "Lessenplanning voor je padelschool of padelclub: beheer lessenreeksen, verzamel inschrijvingen op de gsm en plan automatisch op niveau. Zonder accounts voor spelers.",
+    "Lessenplanning voor je padelschool of padelclub: beheer lessenreeksen, verzamel inschrijvingen op de gsm en plan automatisch op voorkeurstijd. Zonder accounts voor spelers.",
   kicker: "VOOR PADELCLUBS",
   h1: "Lessenplanning voor padelscholen en padelclubs",
-  lead: "CoachOS is software voor de lessenplanning van padelscholen en padelclubs. Spelers schrijven zich in via een publieke link op hun gsm, het algoritme groepeert op niveau en je beheert meerdere banen vanuit één dashboard, zonder app-download of account voor je leden.",
+  lead: "CoachOS is software voor de lessenplanning van padelscholen en padelclubs. Spelers schrijven zich in via een publieke link op hun gsm, het algoritme plant op voorkeurstijd en je beheert meerdere banen vanuit één dashboard, zonder app-download of account voor je leden.",
   pains: [
     {
       title: "Snelle groei die handmatig niet bij te houden is",
@@ -189,8 +203,8 @@ export const PADEL_CLUBS_PERSONA: Persona = {
       body: "Geen limiet op inschrijvingen per lessenreeks en inschrijvingen worden nooit geblokkeerd. Het algoritme schaalt mee zodra de seizoen-aanmeldingen binnenstromen.",
     },
     {
-      title: "Voorkeur- en niveaumatch in het planningsalgoritme",
-      body: "Niveau, voorkeurstijd en groepsverbanden worden samen meegenomen. Beginners blijven bij beginners, gevorderden bij gevorderden.",
+      title: "Aparte reeksen per niveau, automatische planning op voorkeur",
+      body: "Je maakt een lessenreeks per niveau en spelers kiezen de reeks die bij hen past. Voorkeurstijden en groepsverbanden worden daarna samen meegenomen.",
     },
     {
       title: "Mobiel-vriendelijke inschrijfflow zonder app",
@@ -207,8 +221,8 @@ export const PADEL_CLUBS_PERSONA: Persona = {
       bullets: [
         "Je maakt een lessenreeks per niveau met baan, dag, uur en groepsgrootte.",
         "Je deelt de inschrijflink via je website, een sociale post of een bericht in de clubgroep.",
-        "Spelers kiezen hun niveau en voorkeurstijden en zijn in een paar tikken klaar.",
-        "Het algoritme groepeert spelers op niveau en voorkeurstijd. Een complete beginner komt niet naast een ervaren speler terecht.",
+        "Spelers kiezen de reeks die bij hun niveau past, geven hun voorkeurstijden door en zijn in een paar tikken klaar.",
+        "Het algoritme verdeelt spelers per reeks op voorkeurstijd en houdt groepsverbanden samen. Omdat je per niveau een reeks maakt, komt een complete beginner niet naast een ervaren speler terecht.",
         "Je bevestigt de indeling en iedereen krijgt een e-mail met een bevestigingslink. Komen er later nog aanmeldingen bij, dan plan je opnieuw en blijven je handmatige aanpassingen staan.",
       ],
     },
@@ -247,11 +261,11 @@ export const PADEL_CLUBS_PERSONA: Persona = {
     },
     {
       q: "Kan ik als padelschool meerdere banen en trainers beheren?",
-      a: "Ja. De baan voeg je toe als vrij tekstveld op de lessenreeks en het aantal trainers is onbeperkt. Elke trainer ziet enkel zijn eigen lessenreeksen.",
+      a: "Ja. De baan voeg je toe als vrij tekstveld op de lessenreeks en het aantal trainers is onbeperkt. Elke trainer ziet enkel de eigen lessenreeksen.",
     },
     {
       q: "Kunnen beginners en gevorderden in aparte reeksen les volgen?",
-      a: "Ja. Je maakt per niveau een lessenreeks en het algoritme houdt bij het verdelen rekening met het gekozen niveau en de voorkeurstijden.",
+      a: "Ja. Je maakt per niveau een lessenreeks en spelers kiezen de reeks die bij hun niveau past. Binnen die reeks verdeelt het algoritme de spelers op basis van hun voorkeurstijden.",
     },
     {
       q: "Kan ik extra vragen stellen bij het inschrijven?",
@@ -302,8 +316,8 @@ export const TRAINERS_PERSONA: Persona = {
       body: "Je deelt één link. Leerlingen vullen alles in. Hun voorkeuren komen direct binnen, gekoppeld aan de juiste reeks.",
     },
     {
-      title: "Algoritme groepeert op voorkeur en niveau",
-      body: "Planning op niveau, voorkeurstijd en groepsverbanden. Aanpassingen achteraf blijven bewaard wanneer je opnieuw plant.",
+      title: "Algoritme plant op voorkeur en groepsverband",
+      body: "Planning op voorkeurstijd en groepsverbanden. Aanpassingen achteraf blijven bewaard wanneer je opnieuw plant.",
     },
     {
       title: "Inschrijving → planning → bevestiging → betaling, één tool",
@@ -321,20 +335,20 @@ export const TRAINERS_PERSONA: Persona = {
         "Elke club of locatie is een aparte organisatie in je account. Je wisselt met één klik tussen beide.",
         "Per groep maak je een lessenreeks met ritme, niveau en groepsgrootte.",
         "Je deelt per reeks één inschrijflink en laat de voorkeuren binnenkomen.",
-        "Het algoritme maakt een voorstel op niveau en voorkeurstijd. Jij past aan en bevestigt.",
+        "Het algoritme maakt een voorstel op voorkeurstijd en groepsverband. Jij past aan en bevestigt.",
       ],
     },
     {
       heading: "Eén link per reeks: zo schrijven je leerlingen zich in",
       paragraphs: [
         "Je deelt de link in een bericht aan ouders, op je website of in een groepsapp. Leerlingen en ouders vullen naam, e-mailadres en voorkeuren in. Een account of wachtwoord is niet nodig. Hun voorkeuren komen direct binnen, gekoppeld aan de juiste reeks, zodat je niet meer in je mailbox moet zoeken wie welk uur wilde.",
-        "Na het plannen ontvangt elke leerling een e-mail met een unieke link, waarmee hij zijn lestijd met één klik bevestigt.",
+        "Na het plannen ontvangt elke leerling een e-mail met een unieke link, waarmee de leerling de lestijd met één klik bevestigt.",
       ],
     },
     {
       heading: "Wat verdwijnt er uit je week?",
       paragraphs: [
-        "De avond met lijstjes, het heen-en-weer mailen over voorkeurstijden en het met de hand vormen van niveaugroepen. Wat overblijft is het nakijken van het voorstel en het lesgeven zelf. Je betaalt per actieve leerling, met een onbeperkt aantal trainers, vanaf €25 per maand, en je probeert alles eerst 30 dagen gratis.",
+        "De avond met lijstjes, het heen-en-weer mailen over voorkeurstijden en het met de hand verdelen van leerlingen over tijdsloten. Wat overblijft is het nakijken van het voorstel en het lesgeven zelf. Je betaalt per actieve leerling, met een onbeperkt aantal trainers, vanaf €25 per maand, en je probeert alles eerst 30 dagen gratis.",
       ],
     },
   ],

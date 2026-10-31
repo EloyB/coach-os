@@ -26,10 +26,10 @@ export const AUDIENCES: Audience[] = [
   {
     icon: Building2,
     title: "Lessenplanning voor padelscholen",
-    body: "Mobile-first inschrijvingen voor je spelers, automatische groepering op niveau achter de schermen.",
+    body: "Mobile-first inschrijvingen voor je spelers, automatische planning op voorkeur achter de schermen.",
     bullets: [
       "Geen app of account voor leden",
-      "Voorkeur- en niveaumatch",
+      "Voorkeurstijden en groepsverbanden",
       "Schaalt mee met snelle groei",
     ],
     slug: "voor-padelclubs",
