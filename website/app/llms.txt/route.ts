@@ -16,7 +16,7 @@ export function GET() {
   lines.push("# CoachOS");
   lines.push("");
   lines.push(
-    "> Lessenplanningsysteem voor tennis- en padelclubs. Trainers stellen een lessenreeks één keer in, leerlingen schrijven zich anoniem in via een publieke link, en een planningsalgoritme verdeelt iedereen automatisch over slots op niveau en voorkeur. Geen accounts voor leerlingen, geen Excel, geen oneindig veel mails.",
+    "> Lessenplanningsysteem voor tennis- en padelclubs. Trainers stellen een lessenreeks één keer in, leerlingen schrijven zich zonder account in via een publieke link, en een planningsalgoritme verdeelt iedereen automatisch over slots op niveau en voorkeur. Geen accounts voor leerlingen, geen Excel, geen oneindig veel mails.",
   );
   lines.push("");
   lines.push(
@@ -40,7 +40,7 @@ export function GET() {
     "- Lessenreeksen: terugkerende lesperiodes die je één keer instelt; lessen worden automatisch gegenereerd over de hele periode.",
   );
   lines.push(
-    "- Anonieme inschrijvingen: leerlingen schrijven zich in via een publieke link met enkel naam en e-mailadres; geen account vereist.",
+    "- Inschrijven zonder account: leerlingen schrijven zich in via een publieke link met naam, e-mailadres en de vragen uit het formulier; geen account vereist.",
   );
   lines.push(
     "- Formulierbouwer: per lessenreeks aangepaste vragen (vrije tekst, meerkeuze, ja/nee).",

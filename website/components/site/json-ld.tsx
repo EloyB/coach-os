@@ -28,7 +28,7 @@ export function HomepageJsonLd() {
     logo: `${SITE_URL}/icon`,
     email: SITE.contactEmail,
     description:
-      "Lessenplanningsysteem voor tennis- en padelclubs. Lessenreeksen, anonieme inschrijvingen, automatische scheduling en magic-link bevestigingen.",
+      "Lessenplanningsysteem voor tennis- en padelclubs. Lessenreeksen, inschrijvingen zonder account, automatische planning en bevestiging via een link.",
     contactPoint: {
       "@type": "ContactPoint",
       contactType: "customer support",
@@ -58,7 +58,7 @@ export function HomepageJsonLd() {
     operatingSystem: "Web",
     url: SITE_URL,
     description:
-      "Lessenplanningsysteem voor tennis- en padelclubs. Beheer lessenreeksen, ontvang anonieme inschrijvingen, plan automatisch en bevestig leerlingen via magic links.",
+      "Lessenplanningsysteem voor tennis- en padelclubs. Beheer lessenreeksen, ontvang inschrijvingen zonder account, plan automatisch en bevestig leerlingen via een link.",
     inLanguage: "nl",
     publisher: { "@id": `${SITE_URL}/#organization` },
     audience: {

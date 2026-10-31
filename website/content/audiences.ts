@@ -14,7 +14,7 @@ export interface Audience {
 export const AUDIENCES: Audience[] = [
   {
     icon: Trophy,
-    title: "Lesplanning voor tennisscholen",
+    title: "Lessenplanning voor tennisscholen",
     body: "Van eerste inschrijving tot laatste les van het seizoen, met één dashboard voor je hele club.",
     bullets: [
       "Lessenreeksen voor jeugd en volwassenen",
@@ -25,7 +25,7 @@ export const AUDIENCES: Audience[] = [
   },
   {
     icon: Building2,
-    title: "Lesplanning voor padelscholen",
+    title: "Lessenplanning voor padelscholen",
     body: "Mobile-first inschrijvingen voor je spelers, automatische groepering op niveau achter de schermen.",
     bullets: [
       "Geen app of account voor leden",

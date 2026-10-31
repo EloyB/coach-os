@@ -11,7 +11,7 @@ export interface FaqEntry {
 export const FAQ: FaqEntry[] = [
   {
     q: "Wat is CoachOS?",
-    a: "CoachOS is een lessenplanningsysteem voor tennis- en padelclubs. Trainers stellen een lessenreeks in, leerlingen schrijven zich anoniem in via een link, en het planningsalgoritme verdeelt iedereen automatisch over slots op niveau en voorkeur. Zonder accounts, zonder Excel, zonder oneindig veel mails.",
+    a: "CoachOS is een lessenplanningsysteem voor tennis- en padelclubs. Trainers stellen een lessenreeks in, leerlingen schrijven zich zonder account in via een link, en het planningsalgoritme verdeelt iedereen automatisch over slots op niveau en voorkeur. Zonder accounts, zonder Excel, zonder oneindig veel mails.",
   },
   {
     q: "Voor welke sporten is CoachOS gemaakt?",
@@ -19,15 +19,15 @@ export const FAQ: FaqEntry[] = [
   },
   {
     q: "Hoe lang duurt het om te starten met CoachOS?",
-    a: "Een lessenreeks instellen duurt ongeveer tien minuten. Een hele seizoensplanning maken, inschrijvingen verzamelen, algoritme draaien, bevestigingen versturen, duurt voor de meeste clubs één middag. Geen voorafgaande training of consultancy nodig.",
+    a: "Een lessenreeks instellen duurt ongeveer tien minuten. Een hele seizoensplanning maken (inschrijvingen verzamelen, algoritme draaien, bevestigingen versturen) kost een fractie van de tijd die je met Excel kwijt bent: clubs uit onze pilot houden er dagen werk aan over. Geen voorafgaande training of consultancy nodig.",
   },
   {
     q: "Moeten mijn leerlingen een account aanmaken?",
-    a: "Nee. Leerlingen schrijven zich in via een link met alleen hun naam en e-mailadres. Bevestigingen en lesinformatie krijgen ze via een unieke link in hun mail. Geen wachtwoord nodig.",
+    a: "Nee. Leerlingen schrijven zich in via een link met hun naam, e-mailadres en de vragen die jij in het formulier hebt ingesteld. Bevestigingen en lesinformatie krijgen ze via een unieke link in hun mail. Geen wachtwoord nodig.",
   },
   {
     q: "Werkt CoachOS op de gsm?",
-    a: "Ja, volledig. De inschrijfflow voor leerlingen is mobile-first ontworpen. Geen app-download, geen account, alles in de browser. De trainer-interface werkt ook op gsm voor op-de-baan beheer. Voor seizoensplanning zelf werkt een laptop comfortabeler.",
+    a: "Ja, volledig. De inschrijfflow voor leerlingen is mobile-first ontworpen. Geen app-download, geen account, alles in de browser. De trainer-interface is volledig responsief en werkt op gsm, tablet en desktop.",
   },
   {
     q: "Wat kost CoachOS?",
@@ -51,7 +51,7 @@ export const FAQ: FaqEntry[] = [
   },
   {
     q: "Welke integraties zijn beschikbaar?",
-    a: "Vandaag: e-mailbevestiging via unieke link en Mollie-betalingen (Bancontact + iDEAL). Specifieke integraties zoals boekhouding, kassa-systemen of agenda-apps bouwen we op aanvraag.",
+    a: "Vandaag: e-mailbevestiging via unieke link en Mollie-betalingen (Bancontact + iDEAL). Specifieke integraties zoals boekhouding, kassa-systemen of agenda-apps kijken we graag mee. We staan altijd open voor suggesties en verbeteringen: mis je iets, laat het ons weten.",
   },
   {
     q: "Kan ik mijn eigen formulier-vragen stellen per lessenreeks?",

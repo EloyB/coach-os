@@ -1,6 +1,6 @@
 export const SITE = {
   name: "CoachOS",
-  tagline: "Een planning die zichzelf bevestigt.",
+  tagline: "Lessenplanning, eindelijk eenvoudig.",
   short: "Lessenplanning, inschrijvingen en betalingen in één systeem.",
   appUrl: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:5317",
   contactEmail: "info@coach-os.be",

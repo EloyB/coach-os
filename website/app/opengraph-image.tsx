@@ -83,7 +83,7 @@ export default function OpengraphImage() {
           color: "#4a4741",
         }}
       >
-        <div>Een planning die zichzelf bevestigt.</div>
+        <div>Lessenplanning, eindelijk eenvoudig.</div>
         <div style={{ fontWeight: 600, color: "#161513" }}>coach-os.be</div>
       </div>
     </div>,

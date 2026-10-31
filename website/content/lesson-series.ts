@@ -40,7 +40,7 @@ export const LESSON_SERIES_HEADING =
   "Lessenreeksen bij clubs die met CoachOS werken";
 
 export const LESSON_SERIES_SUB =
-  "Bekijk de lessen die clubs in jouw buurt publiceren. Inschrijven gaat anoniem via een publieke link, zonder account.";
+  "Bekijk de lessen die clubs in jouw buurt publiceren. Inschrijven gaat via een publieke link, zonder account.";
 
 export const LESSON_SERIES_DISCLAIMER =
   "Demovoorbeelden: de clubs en lessen op deze pagina zijn fictief. Echte lessenreeksen verschijnen hier zodra clubs hun planning publiceren.";
