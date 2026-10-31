@@ -12,7 +12,7 @@ export interface BlogPost {
   updatedAt?: string;
   /** Manual estimate based on word count. ~250 words/min. */
   readMinutes: number;
-  /** Visible category kicker (e.g., "GIDS · LESPLANNING"). */
+  /** Visible category kicker (e.g., "GIDS · LESSENPLANNING"). */
   category: string;
   /** SEO keywords + used as tag chips. */
   tags: string[];

@@ -8,7 +8,7 @@ export const HOE_PLAN_JE_LESSEIZOEN_TENNISCLUB: BlogPost = {
     "Praktische gids om een lesseizoen op te zetten voor je tennisclub: kalender, niveaus, inschrijvingen en planning, zonder Excel en zonder oneindig veel mails.",
   publishedAt: "2026-05-07",
   readMinutes: 6,
-  category: "GIDS · LESPLANNING",
+  category: "GIDS · LESSENPLANNING",
   tags: ["lessenplanning", "tennisclub", "seizoen", "praktische gids"],
   lead: "Een tennisseizoen plannen begint niet bij het verdelen van leerlingen, maar bij een degelijke kalender en een duidelijk groeperingskader. Wie die twee in orde heeft, plant een heel seizoen in één middag. Wie ze overslaat, blijft het hele seizoen brandjes blussen. Deze gids loopt stap voor stap door wat een tennisclub nodig heeft om de planning werkbaar én voorspelbaar te maken.",
   sections: [

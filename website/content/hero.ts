@@ -1,5 +1,5 @@
 export const HERO = {
-  eyebrow: "LESPLANNING",
+  eyebrow: "LESSENPLANNING",
   heading: "Lessenplanning, inschrijvingen en betalingen in één systeem.",
   tagline: "Lessenplanning, eindelijk eenvoudig.",
   body: "Stop met heen-en-weer mailen over beschikbaarheid. Stel je lessenreeks één keer in, deel een publieke link, en CoachOS plant de rest.",

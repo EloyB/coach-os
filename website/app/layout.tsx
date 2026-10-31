@@ -19,18 +19,9 @@ export const metadata: Metadata = {
     template: "%s · CoachOS",
   },
   description:
-    "Lessenplanning voor tennis- en padelclubs in Nederland en België. Lessenreeksen, anonieme inschrijvingen, automatische scheduling en magic-link bevestiging.",
+    "Lessenplanning voor tennis- en padelclubs: lessenreeksen, inschrijvingen, kampen, betalingen en automatische planning in één systeem. 30 dagen gratis proberen.",
   applicationName: "CoachOS",
   authors: [{ name: "CoachOS" }],
-  keywords: [
-    "lessenplanning tennisclub",
-    "lessenplanning padelclub",
-    "tennisles inschrijven",
-    "padel lessenreeksen",
-    "ledenadministratie tennisclub",
-    "trainersplanning",
-    "sportclub software",
-  ],
   category: "business",
   openGraph: {
     type: "website",
@@ -39,7 +30,7 @@ export const metadata: Metadata = {
     url: "https://coach-os.be",
     title: "CoachOS: lessenplanning voor tennis- en padelclubs",
     description:
-      "Een planning die zichzelf bevestigt. Lessenreeksen, anonieme inschrijvingen en automatische scheduling voor tennis- en padelclubs.",
+      "Lessenplanning, eindelijk eenvoudig. Lessenreeksen, inschrijvingen zonder account en automatische planning voor tennis- en padelclubs.",
     siteName: "CoachOS",
   },
   twitter: {
