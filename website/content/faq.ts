@@ -31,7 +31,7 @@ export const FAQ: FaqEntry[] = [
   },
   {
     q: "Wat kost CoachOS?",
-    a: "Je betaalt per actieve leerling, met een onbeperkt aantal trainers: vanaf €25 per maand, of €250 per jaar met 2 maanden gratis. Nieuwe clubs proberen alles eerst 30 dagen gratis, zonder betaalgegevens. Zie de prijzenpagina voor alle details.",
+    a: "Je kiest een vast plan op basis van je aantal actieve leerlingen, met een onbeperkt aantal trainers: €25 per maand voor tot 60 leerlingen, €49 voor tot 200 en €89 voor tot 500 (of per jaar met 2 maanden gratis). Alle prijzen zijn excl. btw. Nieuwe clubs proberen alles eerst 30 dagen gratis, zonder betaalgegevens. Zie de prijzenpagina voor alle details.",
   },
   {
     q: "In welke talen is CoachOS beschikbaar?",

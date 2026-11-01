@@ -30,7 +30,7 @@ export interface PricingTier {
 
 export const PRICING_HEADING = "Eerlijke tarieven, voor elke clubmaat";
 export const PRICING_SUB =
-  "Je betaalt per actieve leerling, met een onbeperkt aantal trainers. Geen jaarcontract: maandelijks opzegbaar, of betaal per jaar en krijg 2 maanden gratis.";
+  "Je kiest een vast plan op basis van je aantal actieve leerlingen (tot 60, 200 of 500), met een onbeperkt aantal trainers. Geen jaarcontract: maandelijks opzegbaar, of betaal per jaar en krijg 2 maanden gratis.";
 
 /** Voorlopig geen online aanmelding: elke club start persoonlijk op via contact. */
 export const PRICING_ONBOARDING_NOTE =
@@ -91,7 +91,7 @@ export const PRICING_TIERS: PricingTier[] = [
 export const PRICING_EXPLAINER_HEADING = "Hoe werkt de prijs?";
 export const PRICING_EXPLAINER: Array<{ title: string; body: string }> = [
   {
-    title: "Per actieve leerling, niet per trainer",
+    title: "Een vast plan per groep actieve leerlingen, niet per trainer",
     body: "Je plan hangt af van het aantal unieke leerlingen met een bevestigde inschrijving binnen het jaar. Trainers en jobstudenten voeg je onbeperkt toe, zonder meerkost.",
   },
   {
@@ -194,7 +194,8 @@ export interface PricingFaqEntry {
   a: string;
 }
 
-export const PRICING_FAQ_HEADING = "Veelgestelde vragen over de prijs van CoachOS";
+export const PRICING_FAQ_HEADING =
+  "Veelgestelde vragen over de prijs van CoachOS";
 export const PRICING_FAQ: PricingFaqEntry[] = [
   {
     q: "Wat kost lessenplanning-software voor een tennis- of padelclub?",
@@ -210,7 +211,7 @@ export const PRICING_FAQ: PricingFaqEntry[] = [
   },
   {
     q: "Betaal ik per trainer?",
-    a: "Nee. Het aantal trainers is altijd onbeperkt. Je betaalt enkel op basis van het aantal actieve leerlingen. Zo kan je gerust met part-time trainers en jobstudenten werken zonder accounts te delen.",
+    a: "Nee. Het aantal trainers is altijd onbeperkt. Je plan hangt enkel af van het aantal actieve leerlingen. Zo kan je gerust met part-time trainers en jobstudenten werken zonder accounts te delen.",
   },
   {
     q: "Maandelijks of jaarlijks?",

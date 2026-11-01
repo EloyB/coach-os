@@ -30,9 +30,9 @@ export const metadata: Metadata = pageMetadata({
   path: "/prijzen",
   title: "Prijzen: lessenplanning vanaf €25 per maand",
   description:
-    "Prijzen van CoachOS lessenplanning voor tennis- en padelclubs: vanaf €25 per maand, per actieve leerling, met een onbeperkt aantal trainers. 30 dagen gratis proberen.",
+    "Prijzen van CoachOS lessenplanning voor tennis- en padelclubs: vanaf €25 per maand voor tot 60 actieve leerlingen, met een onbeperkt aantal trainers. 30 dagen gratis proberen.",
   socialDescription:
-    "Prijzen van CoachOS lessenplanning voor tennis- en padelclubs. Vanaf €25 per maand, per actieve leerling. 30 dagen gratis proberen.",
+    "Prijzen van CoachOS lessenplanning voor tennis- en padelclubs. Vanaf €25 per maand voor tot 60 actieve leerlingen. 30 dagen gratis proberen.",
 });
 
 function PricingPageJsonLd() {
