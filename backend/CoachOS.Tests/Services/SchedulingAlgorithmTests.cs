@@ -299,12 +299,128 @@ public class SchedulingAlgorithmTests
         result.Conflicts.Should().HaveCount(1);
     }
 
+    // ── Age category matching ────────────────────────────────────────────────
+
+    [Test]
+    public void Generate_OpenSolosSameAge_AutoMergedTogether()
+    {
+        var alice = MakeSolo("Alice", new() { { Slot1, SlotPreference.Preferred } }, isOpenToGrouping: true, ageCategory: "7-9");
+        var bob = MakeSolo("Bob", new() { { Slot1, SlotPreference.Preferred } }, isOpenToGrouping: true, ageCategory: "7-9");
+
+        var input = new SchedulingInput(
+            [alice, bob],
+            [new SlotInfo(Slot1, 4)]);
+
+        var result = Generate(input);
+
+        result.Assignments.Should().HaveCount(2);
+        result.Assignments.Should().AllSatisfy(a => a.WeeklyTemplateEntryId.Should().Be(Slot1));
+        result.Conflicts.Should().BeEmpty();
+    }
+
+    [Test]
+    public void Generate_OpenSolosDifferentAge_NotMergedIntoSameSlot()
+    {
+        // Only one slot, both prefer it, but different age buckets must not share it.
+        var young = MakeSolo("Young", new() { { Slot1, SlotPreference.Preferred } }, isOpenToGrouping: true, ageCategory: "4-6");
+        var older = MakeSolo("Older", new() { { Slot1, SlotPreference.Preferred } }, isOpenToGrouping: true, ageCategory: "9-11");
+
+        var input = new SchedulingInput(
+            [young, older],
+            [new SlotInfo(Slot1, 4)]);
+
+        var result = Generate(input);
+
+        // One claims the slot (locking its bucket); the other has nowhere age-compatible to go.
+        result.Assignments.Should().HaveCount(1);
+        result.Conflicts.Should().HaveCount(1);
+        var assignedSlot = result.Assignments[0].WeeklyTemplateEntryId;
+        assignedSlot.Should().Be(Slot1);
+    }
+
+    [Test]
+    public void Generate_ThreeOpenSolos_SameAgeMerge_OtherAgeSeparated()
+    {
+        // Two "4-6" and one "9-11", two roomy slots, everyone prefers both.
+        var a = MakeSolo("A", new() { { Slot1, SlotPreference.Preferred }, { Slot2, SlotPreference.Preferred } }, isOpenToGrouping: true, ageCategory: "4-6");
+        var b = MakeSolo("B", new() { { Slot1, SlotPreference.Preferred }, { Slot2, SlotPreference.Preferred } }, isOpenToGrouping: true, ageCategory: "4-6");
+        var c = MakeSolo("C", new() { { Slot1, SlotPreference.Preferred }, { Slot2, SlotPreference.Preferred } }, isOpenToGrouping: true, ageCategory: "9-11");
+
+        var input = new SchedulingInput(
+            [a, b, c],
+            [new SlotInfo(Slot1, 4), new SlotInfo(Slot2, 4)]);
+
+        var result = Generate(input);
+
+        result.Assignments.Should().HaveCount(3);
+        result.Conflicts.Should().BeEmpty();
+
+        var slotOf = result.Assignments.ToDictionary(x => x.EnrollmentId!.Value, x => x.WeeklyTemplateEntryId);
+        slotOf[a.EnrollmentIds[0]].Should().Be(slotOf[b.EnrollmentIds[0]]); // same-age together
+        slotOf[c.EnrollmentIds[0]].Should().NotBe(slotOf[a.EnrollmentIds[0]]); // other age elsewhere
+    }
+
+    [Test]
+    public void Generate_SoloDifferentAgeThanGroup_NotMergedIn()
+    {
+        // Open group of "4-6" claims the only slot; a "9-11" solo must not be merged in.
+        var group = MakeGroup("Kids", 2, new() { { Slot1, SlotPreference.Preferred } }, isOpenToGrouping: true, ageCategory: "4-6");
+        var solo = MakeSolo("Teen", new() { { Slot1, SlotPreference.Preferred } }, isOpenToGrouping: true, ageCategory: "9-11");
+
+        var input = new SchedulingInput(
+            [group, solo],
+            [new SlotInfo(Slot1, 4)]);
+
+        var result = Generate(input);
+
+        result.Assignments.Should().HaveCount(1);
+        result.Assignments[0].GroupId.Should().NotBeNull();
+        result.Conflicts.Should().HaveCount(1);
+        result.Conflicts[0].StudentName.Should().Be("Teen");
+    }
+
+    [Test]
+    public void Generate_SoloSameAgeAsGroup_MergedIn()
+    {
+        var group = MakeGroup("Kids", 2, new() { { Slot1, SlotPreference.Preferred } }, isOpenToGrouping: true, ageCategory: "4-6");
+        var solo = MakeSolo("AlsoKid", new() { { Slot1, SlotPreference.Preferred } }, isOpenToGrouping: true, ageCategory: "4-6");
+
+        var input = new SchedulingInput(
+            [group, solo],
+            [new SlotInfo(Slot1, 4)]);
+
+        var result = Generate(input);
+
+        result.Assignments.Should().HaveCount(2);
+        result.Assignments.Should().AllSatisfy(a => a.WeeklyTemplateEntryId.Should().Be(Slot1));
+        result.Conflicts.Should().BeEmpty();
+    }
+
+    [Test]
+    public void Generate_NoAgeCategory_AutoMergesAsBefore()
+    {
+        // Feature unused: null age buckets must not constrain anything.
+        var alice = MakeSolo("Alice", new() { { Slot1, SlotPreference.Preferred } }, isOpenToGrouping: true);
+        var bob = MakeSolo("Bob", new() { { Slot1, SlotPreference.Preferred } }, isOpenToGrouping: true);
+
+        var input = new SchedulingInput(
+            [alice, bob],
+            [new SlotInfo(Slot1, 4)]);
+
+        var result = Generate(input);
+
+        result.Assignments.Should().HaveCount(2);
+        result.Assignments.Should().AllSatisfy(a => a.WeeklyTemplateEntryId.Should().Be(Slot1));
+        result.Conflicts.Should().BeEmpty();
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     private static EnrollmentUnit MakeSolo(
         string name,
         Dictionary<Guid, SlotPreference> prefs,
-        bool isOpenToGrouping = false)
+        bool isOpenToGrouping = false,
+        string? ageCategory = null)
     {
         var id = Guid.NewGuid();
         return new EnrollmentUnit(
@@ -315,13 +431,16 @@ public class SchedulingAlgorithmTests
             StudentNames: [name],
             Size: 1,
             IsOpenToGrouping: isOpenToGrouping,
-            Preferences: prefs);
+            Preferences: prefs,
+            AgeCategory: ageCategory);
     }
 
     private static EnrollmentUnit MakeGroup(
         string name,
         int size,
-        Dictionary<Guid, SlotPreference> prefs)
+        Dictionary<Guid, SlotPreference> prefs,
+        bool isOpenToGrouping = false,
+        string? ageCategory = null)
     {
         var groupId = Guid.NewGuid();
         var enrollmentIds = Enumerable.Range(0, size).Select(_ => Guid.NewGuid()).ToList();
@@ -333,7 +452,8 @@ public class SchedulingAlgorithmTests
             EnrollmentIds: enrollmentIds,
             StudentNames: names,
             Size: size,
-            IsOpenToGrouping: false,
-            Preferences: prefs);
+            IsOpenToGrouping: isOpenToGrouping,
+            Preferences: prefs,
+            AgeCategory: ageCategory);
     }
 }
