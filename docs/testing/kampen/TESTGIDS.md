@@ -7,9 +7,9 @@ Welkom, en bedankt dat je meetest! Deze gids loodst je door de nieuwe **Kampen**
 Een kamp is een **meerdaagse stage** (bijvoorbeeld een paas- of zomerstage van een paar dagen) waarvoor een deelnemer zich **eenmalig** inschrijft. Dit staat helemaal los van de gewone lesreeksen:
 
 - Een **lesreeks** is een terugkerende les, week na week, waarvoor leerlingen per moment kunnen bevestigen.
-- Een **kamp** is een blok van opeenvolgende dagen. Je schrijft je in voor het hele kamp in een keer, betaalt (indien betalend) en je plek is geboekt.
+- Een **kamp** is een blok van dagen. Je schrijft je eenmalig in en **kiest per dag** of je de voormiddag, de namiddag of de hele dag komt (of je kiest "Ik kom heel het kamp"). Je betaalt (indien betalend) volgens je keuze en je plek is geboekt.
 
-Per kampdag kun je de kampuren instellen en de aanwezige trainers koppelen, elk met hun eigen uren.
+Per kampdag stel je de uren van de voormiddag en de namiddag in en koppel je de aanwezige trainers, elk met hun eigen uren.
 
 ## Wat willen we laten testen?
 
@@ -30,7 +30,7 @@ Per kampdag kun je de kampuren instellen en de aanwezige trainers koppelen, elk 
 | Lokaal (referentie) | http://localhost:5317 |
 | Inloggen (beheerder) | e-mail `jan@deaces.be` - wachtwoord `Demo1234!` |
 
-Er staan al twee demokampen klaar: **Paaskamp Gevorderden** (betalend, 120 euro) en **Gratis Padel Proefkamp** (gratis).
+Er staan al twee demokampen klaar: **Paaskamp Gevorderden** (betalend: 32,50 euro per hele dag, 20 euro per halve dag, vier dagen waarvan de laatste enkel voormiddag) en **Gratis Padel Proefkamp** (gratis, enkel hele dagen).
 
 ### Rollen
 
@@ -65,8 +65,9 @@ Vul in stap 1 de basisgegevens in:
 - **Omschrijving**: extra info die deelnemers op de inschrijfpagina zien.
 - **Club** (verplicht): kies de tennisclub waar het kamp plaatsvindt.
 - **Niveau**: optioneel niveau (bijvoorbeeld Gevorderd), of laat het op "Geen niveau".
-- **Prijs** (verplicht): bedrag in euro. **0 = gratis** (dan is er geen betaalstap).
-- **Max. deelnemers**: het maximaal aantal plekken. Leeg laten = onbeperkt.
+- **Dagprijs** (verplicht): bedrag in euro voor een hele dag. **0 = gratis** (dan is er geen betaalstap).
+- **Halve dagen toegestaan**: schakelaar. Aan: deelnemers mogen ook enkel de voormiddag of enkel de namiddag van een dag kiezen. Dan verschijnt het veld **Prijs halve dag** (nooit hoger dan de dagprijs).
+- **Max. deelnemers per dagdeel**: het maximaal aantal plekken per voormiddag of namiddag, elke dag apart geteld. Leeg laten = onbeperkt.
 - **Startdatum** en **Einddatum** (verplicht): de eerste en laatste kampdag.
 - **Inschrijfdeadline** (verplicht): tot wanneer deelnemers kunnen inschrijven.
 
@@ -84,7 +85,7 @@ Klik op **Volgende**.
 
 Op basis van de start- en einddatum genereert CoachOS automatisch een kaart per kampdag. Per dag kun je:
 
-- De **kampuren** instellen (van - tot), bijvoorbeeld 09:00 tot 16:00. Dit zijn de algemene uren van die dag.
+- De **voormiddag** en de **namiddag** aan of uit zetten en hun uren instellen, bijvoorbeeld 09:15 - 12:00 en 13:15 - 16:00. Een dag zonder dagdelen kan niet; een dag met maar een dagdeel (bijvoorbeeld "enkel voormiddag") wel.
 - Een of meer **trainers** toevoegen via de keuzelijst "Trainer toevoegen".
 - Per trainer **hun eigen uren** instellen. Zo kun je bijvoorbeeld een trainer in de voormiddag (09:00 - 12:00) en een andere in de namiddag (12:00 - 16:00) laten werken.
 - Een trainer weer verwijderen met het prullenbak-icoon.
@@ -96,7 +97,7 @@ Klik op **Volgende**.
 
 ### Stap 3 - Controle
 
-In stap 3 zie je een overzicht van alles wat je hebt ingevuld: naam, prijs, periode, niveau, club, max. deelnemers, inschrijfdeadline, plus de dagen met hun trainers en uren. Controleer dit goed.
+In stap 3 zie je een overzicht van alles wat je hebt ingevuld: naam, prijs, periode, niveau, club, max. deelnemers, inschrijfdeadline, plus de dagen met hun dagdelen, trainers en uren. Controleer dit goed.
 
 ![Wizard stap 3 - Controle](images/06-wizard-stap3-controle.png)
 *Stap 3: het controleoverzicht voor je het kamp aanmaakt.*
@@ -141,6 +142,10 @@ Op deze pagina:
 - Bij **Type inschrijving** kies je **Solo** (jezelf) of **Groep** (meerdere deelnemers in een keer).
 
 > **Groepsinschrijving**: bij een groep schrijf je meerdere deelnemers in een keer in. Er is dan **een** registratie en **een** betaling voor de hele groep, niet per persoon.
+
+### Dagen en dagdelen kiezen
+
+Onder "Dagen" kies je per kampdag **Voormiddag**, **Namiddag** of **Hele dag** (alleen de opties die voor die dag bestaan; zijn halve dagen niet toegestaan, dan is enkel "Hele dag" beschikbaar). Bovenaan staat de snelkeuze **Ik kom heel het kamp**: die kiest voor elke dag alles wat beschikbaar is. Onderaan zie je het **totaalbedrag** (hele dag = dagprijs, een dagdeel = prijs halve dag). Een dagdeel dat het maximum aantal deelnemers bereikt heeft, staat op **vol** en kan niet gekozen worden.
 
 Klik op **Inschrijven** om door te gaan naar de betaalstap (bij een betalend kamp) of meteen naar de bevestiging (bij een gratis kamp).
 
@@ -194,10 +199,16 @@ Loop deze punten af en vink aan wat klopt:
 - [ ] De einddatum kan **niet** voor de startdatum gekozen worden (eerdere dagen zijn grijs en geblokkeerd).
 - [ ] Trainers worden overal getoond met hun **naam**, niet met een technische id.
 - [ ] Je kunt **per dag per trainer** aparte uren instellen (bijvoorbeeld voormiddag tegenover namiddag).
-- [ ] Een **gratis** kamp (prijs 0) heeft **geen** betaalstap; een **betalend** kamp wel.
+- [ ] Een **gratis** kamp (dagprijs 0) heeft **geen** betaalstap; een **betalend** kamp wel.
+- [ ] **Dagkeuze**: "Ik kom heel het kamp" kiest elke dag volledig; het totaal klopt (32,50 per hele dag, 20 per halve dag in het demokamp).
+- [ ] **Halve dagen uit**: bij het gratis demokamp kun je enkel hele dagen kiezen.
+- [ ] **Capaciteit per dagdeel**: is de voormiddag van een dag vol, dan kan een "hele dag" daar niet meer, maar de namiddag nog wel apart.
+- [ ] **Kamp bewerken met inschrijvingen**: een dag of dagdeel waarvoor al iemand ingeschreven is kan niet verwijderd worden; een prijswijziging verandert het bedrag van bestaande inschrijvingen niet.
+- [ ] **Inschrijving bewerken** (beheerder): de dagkeuze aanpassen herrekent het bedrag; na een betaalde of online lopende betaling kan dat niet meer.
+- [ ] **Geannuleerde inschrijving** geeft de dagdelen weer vrij.
 - [ ] Cash-flow: een cash-inschrijving staat eerst op **wacht op betaling**, na **Markeer als betaald** wordt ze **Betaald** en **Bevestigd**.
 - [ ] **Groepsinschrijving**: meerdere deelnemers, maar **een** registratie en **een** betaling voor de hele groep.
-- [ ] **Capaciteit**: bij het bereiken van max. deelnemers is het kamp **volzet** en kan er niemand meer inschrijven.
+- [ ] **Volzet**: zijn alle gekozen dagdelen vol, dan kan er niet ingeschreven worden en toont de melding welke dag en welk dagdeel vol zijn.
 - [ ] **Dubbele inschrijving**: een tweede inschrijving met **hetzelfde e-mailadres** voor hetzelfde kamp wordt geweigerd.
 - [ ] **Inschrijfdeadline**: na de deadline kan er niet meer ingeschreven worden.
 - [ ] **Rollen**: een **beheerder** kan bewerken en verwijderen, een **trainer** ziet alles read-only (geen bewerk-, opslaan- of verwijderknoppen).
