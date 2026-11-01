@@ -54,7 +54,7 @@ export function GET() {
     "- Planningsalgoritme: verdeelt leerlingen automatisch over slots op basis van voorkeurstijden en groepsverbanden.",
   );
   lines.push(
-    "- Magic-link bevestigingen: leerlingen bevestigen hun lestijd met één klik in een e-mail; geen wachtwoord.",
+    "- Bevestiging via een link: leerlingen bevestigen hun lestijd met één klik in een e-mail; geen wachtwoord.",
   );
   lines.push(
     "- Mollie-betalingen (Bancontact + iDEAL): online betalen, plus handmatige cash-registratie per inschrijving.",
