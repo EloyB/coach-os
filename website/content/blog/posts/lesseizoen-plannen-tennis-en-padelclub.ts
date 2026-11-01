@@ -1,23 +1,29 @@
 import type { BlogPost } from "@/content/blog/types";
 
-export const HOE_PLAN_JE_LESSEIZOEN_TENNISCLUB: BlogPost = {
-  slug: "hoe-plan-je-lesseizoen-tennisclub",
-  title: "Hoe plan je een lesseizoen voor je tennisclub",
-  metaTitle: "Hoe plan je een lesseizoen voor je tennisclub",
+export const LESSEIZOEN_PLANNEN_TENNIS_EN_PADELCLUB: BlogPost = {
+  slug: "lesseizoen-plannen-tennis-en-padelclub",
+  title: "Hoe plan je een lesseizoen voor je tennis- of padelclub",
+  metaTitle: "Hoe plan je een lesseizoen voor je tennis- of padelclub",
   metaDescription:
-    "Praktische gids om een lesseizoen op te zetten voor je tennisclub: kalender, niveaus, inschrijvingen en planning, zonder Excel en zonder oneindig veel mails.",
+    "Praktische gids om een lesseizoen op te zetten voor je tennis- of padelclub: kalender, niveaus, inschrijvingen en planning, zonder Excel en zonder oneindig veel mails.",
   publishedAt: "2026-05-07",
   updatedAt: "2026-11-01",
   readMinutes: 7,
   category: "GIDS · LESSENPLANNING",
-  tags: ["lessenplanning", "tennisclub", "seizoen", "praktische gids"],
-  lead: "Een tennisseizoen plannen begint niet bij het verdelen van leerlingen, maar bij een degelijke kalender en een duidelijk groeperingskader. Wie die twee in orde heeft, plant een heel seizoen met een fractie van het werk. Wie ze overslaat, blijft het hele seizoen brandjes blussen. Deze gids loopt stap voor stap door wat een tennisclub nodig heeft om de planning werkbaar én voorspelbaar te maken.",
+  tags: [
+    "lessenplanning",
+    "tennisclub",
+    "padelclub",
+    "seizoen",
+    "praktische gids",
+  ],
+  lead: "Een lesseizoen plannen voor tennis of padel begint niet bij het verdelen van leerlingen, maar bij een degelijke kalender en een duidelijk groeperingskader. Wie die twee in orde heeft, plant een heel seizoen met een fractie van het werk. Wie ze overslaat, blijft het hele seizoen brandjes blussen. Deze gids loopt stap voor stap door wat een tennis- of padelclub nodig heeft om de planning werkbaar én voorspelbaar te maken.",
   sections: [
     {
       heading: "1. Begin met je seizoenskalender",
       paragraphs: [
         "Voor je over groepjes of inschrijvingen nadenkt: zet de kalender vast. Een seizoen telt vaak ongeveer 14 tot 16 lesweken, met onderbrekingen voor vakanties, federatieverplichtingen en clubevenementen. Hoe nauwkeuriger die data vooraf staan, hoe minder je later moet schuiven.",
-        "Verzamel concreet: schoolvakanties van zowel Nederland als Vlaanderen (als je leden uit beide regio's komt), KNLTB- of Tennis Vlaanderen-data, geplande tornooien, en bekende clubevenementen zoals openingsdagen en jeugdkampen. Bouw vanuit die uitsluitingslijst je leskalender op.",
+        "Verzamel concreet: schoolvakanties van zowel Nederland als Vlaanderen (als je leden uit beide regio's komt), de kalenders van je federatie, geplande tornooien, en bekende clubevenementen zoals openingsdagen en jeugdkampen. Bouw vanuit die uitsluitingslijst je leskalender op.",
       ],
       bullets: [
         "Lesperiode: vaak van september tot juni, met een winterstop",
@@ -32,12 +38,12 @@ export const HOE_PLAN_JE_LESSEIZOEN_TENNISCLUB: BlogPost = {
     {
       heading: "2. Bepaal je groeperingsniveau",
       paragraphs: [
-        "Tennisclubs werken meestal met drie tot vijf niveaus: mini's (4-7), juniors beginners, juniors gevorderden, volwassenen recreatief en volwassenen competitie. Hoe meer niveaus, hoe gerichter de les, maar ook hoe moeilijker de planning, want elk niveau moet voldoende inschrijvingen hebben om door te gaan.",
-        "Een veelgebruikte vuistregel: minimaal vier leerlingen per groep om de les boeiend te houden, maximaal zes om iedereen genoeg balcontact te geven. Onder de vier wordt het een privéles in vermomming; boven de zes wordt het een rondje slaan.",
+        "Tennisclubs werken meestal met drie tot vijf niveaus: mini's (4-7), juniors beginners, juniors gevorderden, volwassenen recreatief en volwassenen competitie. Padelscholen houden het vaak eenvoudiger, bijvoorbeeld initiatie, beginners en gevorderden. Hoe meer niveaus, hoe gerichter de les, maar ook hoe moeilijker de planning, want elk niveau moet voldoende inschrijvingen hebben om door te gaan.",
+        "Een veelgebruikte vuistregel: minimaal vier leerlingen per groep om de les boeiend te houden, maximaal zes om iedereen genoeg balcontact te geven. Onder de vier wordt het een privéles in vermomming; boven de zes wordt het een rondje slaan. Bij padel is een groep van vier spelers het logische maximum: dan staat iedereen op één baan.",
       ],
       callout: {
         tone: "info",
-        text: "Voor de eerste twee jaren van een nieuwe club: hou je niveaus simpel. Mini, junior, volwassen. Verfijn pas wanneer je per niveau structureel 8+ leerlingen hebt.",
+        text: "Voor de eerste twee jaren van een nieuwe club: hou je niveaus simpel. Bij tennis: mini, junior, volwassen. Bij padel: initiatie en gevorderd. Verfijn pas wanneer je per niveau structureel 8+ leerlingen hebt.",
       },
     },
     {
@@ -78,7 +84,7 @@ export const HOE_PLAN_JE_LESSEIZOEN_TENNISCLUB: BlogPost = {
     {
       heading: "7. Vergeet je stages en kampen niet",
       paragraphs: [
-        "Naast de lessenreeksen organiseren veel clubs stages en zomerkampen. Behandel die apart van je seizoenskalender: een kamp heeft eigen dagen en dagdelen (hele week, enkele dagen of halve dagen), een eigen limiet per dagdeel en vaste pakketten. Ook hier werkt één publieke inschrijflink beter dan losse mails.",
+        "Naast de lessenreeksen organiseren veel tennis- en padelclubs stages en zomerkampen. Behandel die apart van je seizoenskalender: een kamp heeft eigen dagen en dagdelen (hele week, enkele dagen of halve dagen), een eigen limiet per dagdeel en vaste pakketten. Ook hier werkt één publieke inschrijflink beter dan losse mails.",
       ],
     },
   ],
@@ -93,7 +99,7 @@ export const HOE_PLAN_JE_LESSEIZOEN_TENNISCLUB: BlogPost = {
     },
     {
       q: "Hoe kies ik de juiste groepsgrootte?",
-      a: "Als richtlijn: voor jeugd vier tot zes leerlingen per groep, voor volwassenen vier tot acht, afhankelijk van het niveau. Beginners hebben meer baancontact nodig (kleinere groepen); gevorderden kunnen draven met grotere groepen.",
+      a: "Als richtlijn: bij tennis vier tot zes leerlingen per groep voor jeugd en vier tot acht voor volwassenen, afhankelijk van het niveau. Bij padel is vier spelers per baan de norm. Beginners hebben meer baancontact nodig (kleinere groepen); gevorderden kunnen draven met grotere groepen.",
     },
     {
       q: "Wanneer is Excel niet meer voldoende?",

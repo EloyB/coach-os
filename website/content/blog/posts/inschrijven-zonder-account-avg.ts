@@ -29,7 +29,7 @@ export const INSCHRIJVEN_ZONDER_ACCOUNT_AVG: BlogPost = {
     {
       heading: "Waarom geen accounts voor leerlingen?",
       paragraphs: [
-        "Accounts klinken professioneel maar voegen voor een tennisles weinig toe. Ouders krijgen een mail, klikken op de bevestigingslink, en zijn klaar. Een wachtwoord onthouden voor één seizoen lessen is overhead die niemand wil. Het gevolg: meer afhakers in de inschrijfflow en meer vragen als 'ik kan niet inloggen'.",
+        "Accounts klinken professioneel maar voegen voor een tennis- of padelles weinig toe. Ouders krijgen een mail, klikken op de bevestigingslink, en zijn klaar. Een wachtwoord onthouden voor één seizoen lessen is overhead die niemand wil. Het gevolg: meer afhakers in de inschrijfflow en meer vragen als 'ik kan niet inloggen'.",
         "Vanuit AVG-perspectief is het sterker: hoe minder accounts er bestaan, hoe minder er kan uitlekken. Geen wachtwoorden om te beveiligen, geen sessietokens om te beheren, geen wachtwoord-reset-flows om correct te implementeren. Minder oppervlakte betekent minder risico.",
       ],
       callout: {
@@ -100,5 +100,5 @@ export const INSCHRIJVEN_ZONDER_ACCOUNT_AVG: BlogPost = {
       a: "Jij als club blijft verwerkingsverantwoordelijke; de leverancier van de tool treedt op als verwerker. Tussen beide partijen horen schriftelijke afspraken over die rol, meestal in een verwerkersovereenkomst. Vraag ernaar bij je leverancier voor je de tool in gebruik neemt.",
     },
   ],
-  related: ["hoe-plan-je-lesseizoen-tennisclub"],
+  related: ["lesseizoen-plannen-tennis-en-padelclub"],
 };
