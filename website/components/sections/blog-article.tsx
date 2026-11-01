@@ -133,6 +133,20 @@ function ArticleSection({ section }: { section: BlogSection }) {
         </ul>
       ) : null}
       {section.callout ? <Callout {...section.callout} /> : null}
+      {section.coachos ? <CoachOsBox text={section.coachos} /> : null}
+    </div>
+  );
+}
+
+function CoachOsBox({ text }: { text: string }) {
+  return (
+    <div className="mt-6 rounded-3xl bg-[#1f3d0e] p-6 md:p-7">
+      <Mono className="text-[10px] tracking-[0.18em] text-tennis-lime">
+        ZO DOE JE DAT MET COACHOS
+      </Mono>
+      <p className="mt-2 text-sm leading-relaxed text-white/85 md:text-base">
+        {text}
+      </p>
     </div>
   );
 }

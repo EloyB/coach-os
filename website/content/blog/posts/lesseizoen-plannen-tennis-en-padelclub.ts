@@ -23,10 +23,10 @@ export const LESSEIZOEN_PLANNEN_TENNIS_EN_PADELCLUB: BlogPost = {
       heading: "1. Begin met je seizoenskalender",
       paragraphs: [
         "Voor je over groepjes of inschrijvingen nadenkt: zet de kalender vast. Een seizoen telt vaak ongeveer 14 tot 16 lesweken, met onderbrekingen voor vakanties, federatieverplichtingen en clubevenementen. Hoe nauwkeuriger die data vooraf staan, hoe minder je later moet schuiven.",
-        "Verzamel concreet: schoolvakanties van zowel Nederland als Vlaanderen (als je leden uit beide regio's komt), de kalenders van je federatie, geplande tornooien, en bekende clubevenementen zoals openingsdagen en jeugdkampen. Bouw vanuit die uitsluitingslijst je leskalender op.",
+        "Verzamel concreet: schoolvakanties, de kalenders van je federatie, geplande tornooien, en bekende clubevenementen zoals openingsdagen en jeugdkampen. Bouw vanuit die uitsluitingslijst je leskalender op.",
       ],
       bullets: [
-        "Lesperiode: vaak van september tot juni, met een winterstop",
+        "Lesperiode: vaak enkele weken in het zomerseizoen en indoor doorheen het winterseizoen",
         "Reken op ongeveer 14 effectieve lesweken per seizoen",
         "Markeer feestdagen en uitsluitingsdata vóór de inschrijvingen openen",
       ],
@@ -34,6 +34,8 @@ export const LESSEIZOEN_PLANNEN_TENNIS_EN_PADELCLUB: BlogPost = {
         tone: "tip",
         text: "Werk altijd met een uitsluitingslijst, niet met een dichte kalender. Het is makkelijker om een lege week te vullen dan een geboekte week te verschuiven.",
       },
+      coachos:
+        "Je maakt een lessenreeks met dag, uur en capaciteit en CoachOS genereert alle lessen over het hele seizoen, standaard wekelijks. Daarna pas je het ritme aan naar wens, bijvoorbeeld voor vakantieweken.",
     },
     {
       heading: "2. Bepaal je groeperingsniveau",
@@ -45,6 +47,8 @@ export const LESSEIZOEN_PLANNEN_TENNIS_EN_PADELCLUB: BlogPost = {
         tone: "info",
         text: "Voor de eerste twee jaren van een nieuwe club: hou je niveaus simpel. Bij tennis: mini, junior, volwassen. Bij padel: initiatie en gevorderd. Verfijn pas wanneer je per niveau structureel 8+ leerlingen hebt.",
       },
+      coachos:
+        "Maak per niveau een aparte lessenreeks aan, elk met een eigen capaciteit. Leerlingen kiezen de reeks die bij hun niveau past.",
     },
     {
       heading: "3. Verzamel inschrijvingen, niet via mail",
@@ -59,6 +63,8 @@ export const LESSEIZOEN_PLANNEN_TENNIS_EN_PADELCLUB: BlogPost = {
         "Optionele partner of groep om samen te houden",
         "Eventueel een vrij veld voor opmerkingen",
       ],
+      coachos:
+        "Elke lessenreeks krijgt een eigen publieke inschrijflink, zonder account voor de leerling. Met de formulierbouwer voeg je je eigen vragen toe: tekstvelden, meerkeuze en ja/nee.",
     },
     {
       heading: "4. Verdeel leerlingen over slots",
@@ -66,13 +72,17 @@ export const LESSEIZOEN_PLANNEN_TENNIS_EN_PADELCLUB: BlogPost = {
         "Met de inschrijvingen binnen begint de verdeling. Handmatig is dit een puzzel: elke leerling heeft voorkeurstijden, sommigen willen samen met een vriend of broer in dezelfde groep, en elke baan heeft beperkte capaciteit. Een planningsalgoritme dat met al die voorkeuren tegelijk werkt, doet hetzelfde werk in een fractie van de tijd.",
         "Belangrijk daarbij: werk met een aparte lessenreeks per niveau, zodat leerlingen zich inschrijven voor de reeks die bij hun niveau past. Laat het algoritme daarna binnen elke reeks een eerste voorstel maken en pas dat handmatig aan. De combinatie automatisch + bijwerken is sneller én accurater dan alles vanaf nul invoeren of alles handmatig houden.",
       ],
+      coachos:
+        "Met één klik verdeelt het planningsalgoritme de leerlingen over de tijdsloten op basis van hun voorkeur en groepsverband, bijvoorbeeld broers en zussen. Jij past het voorstel aan en je aanpassingen blijven bewaard als je opnieuw plant.",
     },
     {
       heading: "5. Bevestig en houd het werkbaar",
       paragraphs: [
-        "Stuur niet één massamail met een Excel-export. Stuur elke leerling individueel een bevestiging met zijn of haar concrete tijdslot, baannummer en starttijd. Werk daarbij met een persoonlijke link in plaats van een account met wachtwoord. Dat verlaagt de drempel voor leerlingen en ouders.",
-        "Wat geen routine moet worden: vragen of de bevestiging is aangekomen en handmatig bijhouden wie waar staat. Als je systeem bevestigingen en inschrijvingen in één overzicht bundelt, kan je je terug op het lesgeven richten.",
+        "Stuur niet één massamail met een Excel-export. Stuur elke leerling individueel een bevestiging met zijn of haar concrete tijdslot, baannummer en starttijd, via een persoonlijke link in plaats van een account met wachtwoord. Dat verlaagt de drempel voor leerlingen en ouders.",
+        "Wat geen routine moet worden: vragen of de bevestiging is aangekomen en handmatig bijhouden wie waar staat. Een systeem dat bevestigingen en inschrijvingen in één overzicht bundelt, laat je je terug op het lesgeven richten.",
       ],
+      coachos:
+        "Zodra jij de planning bevestigt, verstuurt CoachOS automatisch een e-mail naar elke leerling met een persoonlijke link naar zijn of haar lestijd. De leerling bevestigt met één klik, jij hoeft zelf geen mails te versturen.",
     },
     {
       heading: "6. Wat tijdens het seizoen gebeurt",
@@ -80,12 +90,16 @@ export const LESSEIZOEN_PLANNEN_TENNIS_EN_PADELCLUB: BlogPost = {
         "Geen seizoen verloopt zonder afzeggingen of niveauwissels. Reken erop. Ouders verhuizen, kinderen stappen over naar competitie, één blessure verschuift drie kalenders. Een planning die ervan uitgaat dat alles een vast schema is, breekt bij de eerste wijziging.",
         "Ontwerp je seizoen daarom met buffers: één 'open' slot per week dat je kan inzetten voor inhaallessen, en een korte wachtlijst voor leerlingen die later willen aansluiten. Dat soort flexibiliteit voorkomt dat één afzegging je hele zaterdagochtend in de war stuurt.",
       ],
+      coachos:
+        "Komen er leerlingen bij of vallen er af, dan plan je opnieuw. Je handmatige aanpassingen blijven bewaard, dus je begint niet van nul.",
     },
     {
       heading: "7. Vergeet je stages en kampen niet",
       paragraphs: [
         "Naast de lessenreeksen organiseren veel tennis- en padelclubs stages en zomerkampen. Behandel die apart van je seizoenskalender: een kamp heeft eigen dagen en dagdelen (hele week, enkele dagen of halve dagen), een eigen limiet per dagdeel en vaste pakketten. Ook hier werkt één publieke inschrijflink beter dan losse mails.",
       ],
+      coachos:
+        "Een kamp of stage stel je in met hele weken, enkele dagen of halve dagen, vaste pakketten en een limiet per dagdeel. Deelnemers schrijven zich in via dezelfde publieke link, zonder account.",
     },
   ],
   faq: [
