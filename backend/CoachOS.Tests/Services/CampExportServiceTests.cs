@@ -24,6 +24,8 @@ public class CampExportServiceTests
     private static readonly Guid CampId = Guid.NewGuid();
     private static readonly Guid TrainerId = Guid.NewGuid();
     private static readonly Guid EnrollmentId = Guid.NewGuid();
+    private static readonly Guid DayMonday = Guid.NewGuid();
+    private static readonly Guid DayTuesday = Guid.NewGuid();
 
     [SetUp]
     public void SetUp()
@@ -80,11 +82,12 @@ public class CampExportServiceTests
             [
                 new CampDay
                 {
-                    Date = new DateOnly(2026, 7, 7),
-                    StartTime = new TimeOnly(9, 0), EndTime = new TimeOnly(16, 0),
+                    Id = DayTuesday, Date = new DateOnly(2026, 7, 7),
+                    MorningStart = new TimeOnly(9, 0), MorningEnd = new TimeOnly(12, 0),
+                    AfternoonStart = new TimeOnly(13, 0), AfternoonEnd = new TimeOnly(16, 0),
                     TrainerAssignments = [new CampDayTrainer { TrainerId = TrainerId, StartTime = new TimeOnly(9, 0), EndTime = new TimeOnly(12, 0) }],
                 },
-                new CampDay { Date = new DateOnly(2026, 7, 6), StartTime = new TimeOnly(9, 0), EndTime = new TimeOnly(16, 0) },
+                new CampDay { Id = DayMonday, Date = new DateOnly(2026, 7, 6), MorningStart = new TimeOnly(9, 0), MorningEnd = new TimeOnly(12, 0) },
             ],
         };
         _campRepo.Setup(r => r.GetByIdWithDetailsAsync(CampId, OrgId, It.IsAny<CancellationToken>()))
@@ -110,5 +113,46 @@ public class CampExportServiceTests
         row.PaymentStatus.Should().Be("Betaald");
         row.PaymentMethod.Should().Be("Cash");
         row.EnrollmentType.Should().Be("Individueel");
+    }
+
+    [Test]
+    public async Task ExportCampAsync_SummarizesChosenDaysAndCountsPartsIgnoringCancelled()
+    {
+        Camp camp = new()
+        {
+            Id = CampId, OrganizationId = OrgId, Name = "Zomerkamp",
+            Days =
+            [
+                new CampDay { Id = DayMonday, Date = new DateOnly(2026, 7, 6), MorningStart = new TimeOnly(9, 0), MorningEnd = new TimeOnly(12, 0), AfternoonStart = new TimeOnly(13, 0), AfternoonEnd = new TimeOnly(16, 0) },
+                new CampDay { Id = DayTuesday, Date = new DateOnly(2026, 7, 7), MorningStart = new TimeOnly(9, 0), MorningEnd = new TimeOnly(12, 0), AfternoonStart = new TimeOnly(13, 0), AfternoonEnd = new TimeOnly(16, 0) },
+            ],
+        };
+        CampEnrollment Enrolled(string name, EnrollmentStatus status, decimal total, params (Guid Day, bool M, bool A)[] days)
+        {
+            CampEnrollment e = new() { Id = Guid.NewGuid(), ParticipantName = name, ParticipantEmail = $"{name}@x.be", Status = status, EnrolledAt = DateTime.UtcNow, TotalAmount = total };
+            foreach ((Guid day, bool m, bool a) in days)
+                e.Days.Add(new CampEnrollmentDay { CampDayId = day, Morning = m, Afternoon = a });
+            return e;
+        }
+        _campRepo.Setup(r => r.GetByIdWithDetailsAsync(CampId, OrgId, It.IsAny<CancellationToken>())).ReturnsAsync(camp);
+        _enrollmentRepo.Setup(r => r.GetByCampWithResponsesAsync(CampId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([
+                Enrolled("Emma", EnrollmentStatus.Confirmed, 52.5m, (DayMonday, true, true), (DayTuesday, false, true)),
+                Enrolled("Tom", EnrollmentStatus.Confirmed, 20m, (DayMonday, true, false)),
+                Enrolled("Weg", EnrollmentStatus.Cancelled, 32.5m, (DayMonday, true, true)),
+            ]);
+
+        var result = await _service.ExportCampAsync(CampId, OrgId);
+
+        result.IsSuccess.Should().BeTrue();
+        CampEnrollmentRow emma = _captured!.Enrollments.Single(e => e.ParticipantName == "Emma");
+        emma.DaysSummary.Should().Be("06/07 hele dag; 07/07 namiddag");
+        emma.TotalAmount.Should().Be(52.5m);
+        CampDayRow monday = _captured.Days.Single(d => d.Date == new DateOnly(2026, 7, 6));
+        monday.MorningCount.Should().Be(2);
+        monday.AfternoonCount.Should().Be(1);
+        CampDayRow tuesday = _captured.Days.Single(d => d.Date == new DateOnly(2026, 7, 7));
+        tuesday.MorningCount.Should().Be(0);
+        tuesday.AfternoonCount.Should().Be(1);
     }
 }

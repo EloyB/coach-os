@@ -163,8 +163,8 @@ public class DashboardService(
             CampId = d.CampId,
             CampName = d.Camp.Name,
             Date = d.Date.ToString("yyyy-MM-dd"),
-            StartTime = d.StartTime.ToString("HH:mm"),
-            EndTime = d.EndTime.ToString("HH:mm"),
+            StartTime = d.FirstStart.ToString("HH:mm"),
+            EndTime = d.LastEnd.ToString("HH:mm"),
             TennisClubName = d.Camp.TennisClub?.Name,
         }).ToList());
     }

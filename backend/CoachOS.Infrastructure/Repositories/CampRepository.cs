@@ -27,7 +27,7 @@ public class CampRepository(ApplicationDbContext db) : ICampRepository
                 && d.Date >= from && d.Date <= to
                 && d.Camp.IsActive)
             .OrderBy(d => d.Date)
-            .ThenBy(d => d.StartTime)
+            .ThenBy(d => d.MorningStart ?? d.AfternoonStart)
             .ToListAsync(ct);
 
     public async Task<IReadOnlyList<CampDayTrainer>> GetTrainerDaysAsync(
