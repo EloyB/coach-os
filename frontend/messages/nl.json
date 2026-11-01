@@ -1007,7 +1007,15 @@
     "dayPartsInvalid": "Een dag heeft minstens één dagdeel nodig, elk dagdeel eindigt na zijn start en de namiddag begint na de voormiddag",
     "pricePerDay": "€{price} per hele dag",
     "pricePerHalfDay": "€{price} per halve dag",
-    "halfDaysNotAllowed": "Geen halve dagen"
+    "halfDaysNotAllowed": "Geen halve dagen",
+    "pickerWholeCamp": "Ik kom heel het kamp",
+    "pickerNotComing": "Niet",
+    "pickerFull": "vol",
+    "pickerTotal": "Totaal",
+    "pickerDaysTitle": "Dagen",
+    "pickerNoDaySelected": "Kies minstens één dag",
+    "publicDayPriceLabel": "Prijs",
+    "maxPerPart": "max. {max} per dagdeel"
   },
   "invitations": {
     "loading": "Laden...",
