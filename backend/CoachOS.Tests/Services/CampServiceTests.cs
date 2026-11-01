@@ -51,12 +51,12 @@ public class CampServiceTests
     }
 
     private CreateCampRequest Request() => new(
-        "Paaskamp", null, _clubId, null, 120m, "2026-04-14", "2026-04-16",
+        "Paaskamp", null, _clubId, null, 120m, 60m, true, "2026-04-14", "2026-04-16",
         new DateTime(2026, 4, 1, 0, 0, 0, DateTimeKind.Utc), 20,
         new List<CreateCampDayRequest>
         {
-            new("2026-04-14", "09:00", "16:00", new List<CreateCampDayTrainerRequest> { new(_trainerId, "09:00", "12:00") }),
-            new("2026-04-15", "09:00", "16:00", new List<CreateCampDayTrainerRequest>()),
+            new(null, "2026-04-14", "09:00", "12:00", "13:00", "16:00", new List<CreateCampDayTrainerRequest> { new(_trainerId, "09:00", "12:00") }),
+            new(null, "2026-04-15", "09:00", "12:00", "13:00", "16:00", new List<CreateCampDayTrainerRequest>()),
         });
 
     private void Happy()
@@ -100,7 +100,7 @@ public class CampServiceTests
     }
 
     [Test]
-    public async Task UpdateAsync_ReplacesDays_RemovesOldDaysAndSavesOnce()
+    public async Task UpdateAsync_DaysWithoutIdsAndNoEnrollments_ReplacesDaysAndSavesOnce()
     {
         Happy();
         Guid campId = Guid.NewGuid();
@@ -141,11 +141,11 @@ public class CampServiceTests
             .ReturnsAsync(existing);
 
         UpdateCampRequest request = new(
-            "Nieuw kamp", null, _clubId, null, 150m, "2026-05-01", "2026-05-02",
+            "Nieuw kamp", null, _clubId, null, 150m, 75m, true, "2026-05-01", "2026-05-02",
             new DateTime(2026, 4, 20, 0, 0, 0, DateTimeKind.Utc), 25, true,
             new List<CreateCampDayRequest>
             {
-                new("2026-05-01", "10:00", "15:00", new List<CreateCampDayTrainerRequest> { new(_trainerId, "10:00", "13:00") }),
+                new(null, "2026-05-01", "10:00", "12:00", "13:00", "15:00", new List<CreateCampDayTrainerRequest> { new(_trainerId, "10:00", "13:00") }),
             });
 
         Result result = await _sut.UpdateAsync(campId, _orgId, request, CancellationToken.None);
@@ -803,127 +803,6 @@ public class CampServiceTests
 
         result.IsSuccess.Should().BeFalse();
         result.Errors[0].Code.Should().Be(ErrorCodes.Validation);
-    }
-
-    // ── Prijsopties ──────────────────────────────────────────────────────────
-
-    private UpdateCampRequest UpdateWithPrices(List<SaveCampPriceRequest> prices) => new(
-        "Kamp", null, _clubId, null, 100m, "2026-05-01", "2026-05-01",
-        new DateTime(2026, 4, 20, 0, 0, 0, DateTimeKind.Utc), 25, true,
-        new List<CreateCampDayRequest> { new("2026-05-01", "10:00", "15:00", new List<CreateCampDayTrainerRequest>()) },
-        prices);
-
-    [Test]
-    public async Task CreateAsync_WithPrices_StoresThemInOrder()
-    {
-        Happy();
-        CreateCampRequest request = Request() with
-        {
-            Prices = [new(null, "Leden", "Voor leden", 90m), new(null, "Niet-leden", null, 120m)],
-        };
-
-        Result<Guid> result = await _sut.CreateAsync(_orgId, request, CancellationToken.None);
-
-        result.IsSuccess.Should().BeTrue();
-        _camps.Verify(r => r.AddAsync(
-            It.Is<Camp>(c => c.Prices.Count == 2
-                && c.Prices.Single(p => p.Label == "Leden").SortOrder == 0
-                && c.Prices.Single(p => p.Label == "Niet-leden").SortOrder == 1
-                && c.Prices.All(p => p.OrganizationId == _orgId)),
-            It.IsAny<CancellationToken>()), Times.Once);
-    }
-
-    [Test]
-    public async Task UpdateAsync_Prices_UpdatesAddsAndRemoves()
-    {
-        Happy();
-        Guid campId = Guid.NewGuid();
-        CampPrice keep = new() { Id = Guid.NewGuid(), Label = "Oud", Amount = 80m, SortOrder = 0 };
-        CampPrice drop = new() { Id = Guid.NewGuid(), Label = "Weg", Amount = 70m, SortOrder = 1 };
-        Camp existing = new()
-        {
-            Id = campId, OrganizationId = _orgId, TennisClubId = _clubId,
-            StartDate = new DateOnly(2026, 5, 1), EndDate = new DateOnly(2026, 5, 1),
-            Prices = { keep, drop },
-        };
-        _camps.Setup(r => r.GetByIdWithDetailsAsync(campId, _orgId, It.IsAny<CancellationToken>())).ReturnsAsync(existing);
-
-        Result result = await _sut.UpdateAsync(campId, _orgId, UpdateWithPrices(
-            [new(null, "Nieuw", "Uitleg", 60m), new(keep.Id, "  Leden ", null, 85m)]), CancellationToken.None);
-
-        result.IsSuccess.Should().BeTrue();
-        existing.Prices.Should().HaveCount(2);
-        keep.Label.Should().Be("Leden");
-        keep.Amount.Should().Be(85m);
-        keep.SortOrder.Should().Be(1);
-        existing.Prices.Single(p => p.Label == "Nieuw").SortOrder.Should().Be(0);
-        _camps.Verify(r => r.RemovePrices(It.Is<IEnumerable<CampPrice>>(x => x.Single().Id == drop.Id)), Times.Once);
-    }
-
-    [Test]
-    public async Task UpdateAsync_MainPriceChanged_RecalculatesPendingCashPayment()
-    {
-        Happy();
-        Guid campId = Guid.NewGuid();
-        Camp existing = new()
-        {
-            Id = campId, OrganizationId = _orgId, TennisClubId = _clubId, Price = 80m,
-            StartDate = new DateOnly(2026, 5, 1), EndDate = new DateOnly(2026, 5, 1),
-        };
-        CampEnrollment solo = new() { Id = Guid.NewGuid(), CampId = campId, Status = Domain.Enums.EnrollmentStatus.Confirmed };
-        Payment pending = new() { Amount = 80m, Status = Domain.Enums.PaymentStatus.Pending, Method = Domain.Enums.PaymentMethod.Cash };
-        _camps.Setup(r => r.GetByIdWithDetailsAsync(campId, _orgId, It.IsAny<CancellationToken>())).ReturnsAsync(existing);
-        _enrollments.Setup(r => r.GetByCampWithResponsesAsync(campId, _orgId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync([solo]);
-        _payments.Setup(p => p.GetLatestTrackedByCampEnrollmentIdAsync(solo.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(pending);
-
-        Result result = await _sut.UpdateAsync(campId, _orgId, UpdateWithPrices([]), CancellationToken.None);
-
-        result.IsSuccess.Should().BeTrue();
-        pending.Amount.Should().Be(100m);
-    }
-
-    [Test]
-    public async Task UpdateAsync_RemovingPriceInUse_ReturnsConflict()
-    {
-        Happy();
-        Guid campId = Guid.NewGuid();
-        CampPrice inUse = new() { Id = Guid.NewGuid(), Label = "Leden", Amount = 80m };
-        Camp existing = new()
-        {
-            Id = campId, OrganizationId = _orgId, TennisClubId = _clubId,
-            StartDate = new DateOnly(2026, 5, 1), EndDate = new DateOnly(2026, 5, 1),
-            Prices = { inUse },
-        };
-        _camps.Setup(r => r.GetByIdWithDetailsAsync(campId, _orgId, It.IsAny<CancellationToken>())).ReturnsAsync(existing);
-        _enrollments.Setup(r => r.AnyUsingPricesAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true);
-
-        Result result = await _sut.UpdateAsync(campId, _orgId, UpdateWithPrices([]), CancellationToken.None);
-
-        result.IsSuccess.Should().BeFalse();
-        result.Errors[0].Code.Should().Be(ErrorCodes.Conflict);
-        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
-    }
-
-    [Test]
-    public async Task UpdateAsync_NullPrices_LeavesExistingPricesUntouched()
-    {
-        Happy();
-        Guid campId = Guid.NewGuid();
-        Camp existing = new()
-        {
-            Id = campId, OrganizationId = _orgId, TennisClubId = _clubId,
-            StartDate = new DateOnly(2026, 5, 1), EndDate = new DateOnly(2026, 5, 1),
-            Prices = { new CampPrice { Id = Guid.NewGuid(), Label = "Leden", Amount = 80m } },
-        };
-        _camps.Setup(r => r.GetByIdWithDetailsAsync(campId, _orgId, It.IsAny<CancellationToken>())).ReturnsAsync(existing);
-
-        Result result = await _sut.UpdateAsync(campId, _orgId, UpdateWithPrices([]) with { Prices = null }, CancellationToken.None);
-
-        result.IsSuccess.Should().BeTrue();
-        existing.Prices.Should().HaveCount(1);
     }
 
     private (Camp Camp, CampPrice Option, CampEnrollment Enrollment) ArrangeSoloWithOption()

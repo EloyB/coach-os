@@ -36,4 +36,16 @@ public interface ICampRepository
     void RemoveDays(IEnumerable<CampDay> days);
 
     void RemovePrices(IEnumerable<CampPrice> prices);
+
+    /// <summary>Verwijdert alleen de trainerassignments van een dag (de dag zelf blijft).</summary>
+    void RemoveDayTrainers(IEnumerable<CampDayTrainer> trainers);
+
+    /// <summary>Heeft minstens één inschrijving (ook geannuleerd) deze dag gekozen?</summary>
+    Task<bool> DayHasEnrollmentsAsync(Guid campDayId, CancellationToken ct = default);
+
+    /// <summary>Heeft minstens één inschrijving (ook geannuleerd) dit dagdeel van deze dag gekozen?</summary>
+    Task<bool> AnyEnrollmentUsesPartAsync(Guid campDayId, CoachOS.Domain.Enums.CampDayPart part, CancellationToken ct = default);
+
+    /// <summary>Heeft minstens één inschrijving van dit kamp een halve dag (één dagdeel) gekozen?</summary>
+    Task<bool> AnyHalfDayEnrollmentAsync(Guid campId, CancellationToken ct = default);
 }
