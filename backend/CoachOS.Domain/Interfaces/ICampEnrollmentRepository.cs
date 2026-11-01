@@ -13,6 +13,13 @@ public interface ICampEnrollmentRepository
     Task<int> CountActiveByCampAsync(Guid campId, CancellationToken ct = default);
 
     /// <summary>Actieve deelnemertellingen per kamp in één query (vermijdt N+1 in lijst-overzicht).</summary>
+    /// <summary>
+    /// Actieve deelnemers per dagdeel van elke kampdag (hele dag telt in beide dagdelen; geannuleerde
+    /// inschrijvingen tellen niet mee). Dagdelen zonder deelnemers ontbreken in het resultaat.
+    /// </summary>
+    Task<Dictionary<(Guid CampDayId, CoachOS.Domain.Enums.CampDayPart Part), int>> CountActivePerDayPartAsync(
+        Guid campId, CancellationToken ct = default);
+
     Task<Dictionary<Guid, int>> CountActiveByCampsAsync(IEnumerable<Guid> campIds, CancellationToken ct = default);
 
     Task<bool> IsDuplicateAsync(Guid campId, string participantEmail, CancellationToken ct = default);

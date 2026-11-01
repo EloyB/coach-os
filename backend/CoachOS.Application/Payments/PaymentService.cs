@@ -563,7 +563,7 @@ public class PaymentService(
     /// zonder geannuleerde leden, of de solo-inschrijving zelf. Een geannuleerd lid telt niet meer mee.
     /// </summary>
     private static decimal CampAmount(CampEntity camp, CampEnrollmentEntity enrollment)
-        => CampPricing.Total(camp, CampParticipants(enrollment));
+        => CampPricing.Total(CampParticipants(enrollment));
 
     private static int CountActiveCampParticipants(CampEnrollmentEntity enrollment)
         => CampParticipants(enrollment).Count(p => p.Status != EnrollmentStatus.Cancelled);

@@ -36,6 +36,29 @@ public class CampEnrollmentRepository(ApplicationDbContext context) : ICampEnrol
                 (e.Status == EnrollmentStatus.Pending || e.Status == EnrollmentStatus.Confirmed || e.Status == EnrollmentStatus.PendingPayment), ct);
     }
 
+    public async Task<Dictionary<(Guid CampDayId, CampDayPart Part), int>> CountActivePerDayPartAsync(
+        Guid campId, CancellationToken ct = default)
+    {
+        List<DayPartRow> rows = await context.CampEnrollmentDays
+            .AsNoTracking()
+            .Where(d => d.CampEnrollment.CampId == campId
+                && (d.CampEnrollment.Status == EnrollmentStatus.Pending
+                    || d.CampEnrollment.Status == EnrollmentStatus.Confirmed
+                    || d.CampEnrollment.Status == EnrollmentStatus.PendingPayment))
+            .Select(d => new DayPartRow(d.CampDayId, d.Morning, d.Afternoon))
+            .ToListAsync(ct);
+
+        Dictionary<(Guid CampDayId, CampDayPart Part), int> counts = new();
+        foreach (DayPartRow row in rows)
+        {
+            if (row.Morning)
+                counts[(row.CampDayId, CampDayPart.Morning)] = counts.GetValueOrDefault((row.CampDayId, CampDayPart.Morning)) + 1;
+            if (row.Afternoon)
+                counts[(row.CampDayId, CampDayPart.Afternoon)] = counts.GetValueOrDefault((row.CampDayId, CampDayPart.Afternoon)) + 1;
+        }
+        return counts;
+    }
+
     public async Task<Dictionary<Guid, int>> CountActiveByCampsAsync(
         IEnumerable<Guid> campIds, CancellationToken ct = default)
     {
@@ -138,4 +161,6 @@ public class CampEnrollmentRepository(ApplicationDbContext context) : ICampEnrol
     {
         await context.CampFormResponses.AddAsync(response, ct);
     }
+
+    private sealed record DayPartRow(Guid CampDayId, bool Morning, bool Afternoon);
 }

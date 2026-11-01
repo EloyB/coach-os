@@ -49,17 +49,34 @@ public class CampEnrollmentServiceTests
             NullLogger<CampEnrollmentService>.Instance);
     }
 
-    private Camp BuildCamp(decimal price) => new()
+    private readonly Guid _dayId = Guid.NewGuid();
+
+    private Camp BuildCamp(decimal price)
     {
-        Id = _campId, OrganizationId = _orgId, Name = "Paaskamp", Price = price,
-        StartDate = new DateOnly(2026, 4, 14), EndDate = new DateOnly(2026, 4, 16),
-        RegistrationDeadline = DateTime.UtcNow.AddDays(10), MaxParticipants = 20, IsActive = true,
-    };
+        Camp camp = new()
+        {
+            Id = _campId, OrganizationId = _orgId, Name = "Paaskamp", DayPrice = price, HalfDayPrice = price,
+            StartDate = new DateOnly(2026, 4, 14), EndDate = new DateOnly(2026, 4, 16),
+            RegistrationDeadline = DateTime.UtcNow.AddDays(10), MaxParticipants = 20, IsActive = true,
+        };
+        camp.Days.Add(new CampDay
+        {
+            Id = _dayId, CampId = _campId, OrganizationId = _orgId, Date = new DateOnly(2026, 4, 14),
+            MorningStart = new TimeOnly(9, 0), MorningEnd = new TimeOnly(12, 0),
+            AfternoonStart = new TimeOnly(13, 0), AfternoonEnd = new TimeOnly(16, 0),
+        });
+        return camp;
+    }
 
     private SubmitCampEnrollmentRequest Req() => new()
     {
         ParticipantName = "Emma", ParticipantEmail = "emma@example.com", EnrollmentType = "solo",
+        Days = [new CampDaySelectionDto(_dayId, true, true)],
     };
+
+    private void NoPartsTaken()
+        => _enrollments.Setup(r => r.CountActivePerDayPartAsync(_campId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<(Guid CampDayId, CampDayPart Part), int>());
 
     private void Happy(decimal price)
     {
@@ -67,6 +84,7 @@ public class CampEnrollmentServiceTests
         _forms.Setup(r => r.GetByCampIdReadOnlyAsync(_campId, It.IsAny<CancellationToken>())).ReturnsAsync((CampEnrollmentForm?)null);
         _enrollments.Setup(r => r.CountActiveByCampAsync(_campId, It.IsAny<CancellationToken>())).ReturnsAsync(0);
         _enrollments.Setup(r => r.IsDuplicateAsync(_campId, "emma@example.com", It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        NoPartsTaken();
     }
 
     [Test]
@@ -202,7 +220,8 @@ public class CampEnrollmentServiceTests
     public async Task Submit_Full_ReturnsConflict()
     {
         Happy(120m);
-        _enrollments.Setup(r => r.CountActiveByCampAsync(_campId, It.IsAny<CancellationToken>())).ReturnsAsync(20);
+        _enrollments.Setup(r => r.CountActivePerDayPartAsync(_campId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<(Guid CampDayId, CampDayPart Part), int> { [(_dayId, CampDayPart.Morning)] = 20 });
 
         Result<SubmitCampEnrollmentResultDto> result = await _sut.SubmitAsync(_campId, Req(), CancellationToken.None);
         result.IsSuccess.Should().BeFalse();
@@ -217,10 +236,12 @@ public class CampEnrollmentServiceTests
         _enrollments.Setup(r => r.CountActiveByCampAsync(_campId, It.IsAny<CancellationToken>())).ReturnsAsync(0);
         _enrollments.Setup(r => r.IsDuplicateAsync(_campId, "emma@example.com", It.IsAny<CancellationToken>())).ReturnsAsync(false);
         _enrollments.Setup(r => r.IsDuplicateAsync(_campId, "lars@example.com", It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        NoPartsTaken();
 
         SubmitCampEnrollmentRequest req = new()
         {
             ParticipantName = "Emma", ParticipantEmail = "emma@example.com", EnrollmentType = "group",
+            Days = [new CampDaySelectionDto(_dayId, true, true)],
             GroupMembers = new List<CampGroupMemberDto>
             {
                 new() { ParticipantName = "Lars", ParticipantEmail = "lars@example.com" },
