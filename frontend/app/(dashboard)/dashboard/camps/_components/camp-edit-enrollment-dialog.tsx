@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import {
+  getCampById,
   getCampForm,
   updateCampEnrollment,
   type CampEnrollmentDto,
@@ -19,6 +20,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { CampDayPicker } from "@/components/camps/camp-day-picker";
+import type { CampDaySelection } from "@/lib/api/camps";
 import { CampParticipantFields } from "./camp-participant-fields";
 
 interface CampEditEnrollmentDialogProps {
@@ -73,7 +76,7 @@ function EditEnrollmentForm({
   const [name, setName] = useState(enrollment.participantName);
   const [email, setEmail] = useState(enrollment.participantEmail);
   const [phone, setPhone] = useState(enrollment.participantPhone ?? "");
-  const [priceId, setPriceId] = useState<string | null>(enrollment.campPriceId);
+  const [selection, setSelection] = useState<CampDaySelection[]>(enrollment.days);
   const [answers, setAnswers] = useState<Record<string, string>>(() =>
     Object.fromEntries(
       enrollment.formResponses.map((r) => [r.fieldId, r.value]),
@@ -84,6 +87,10 @@ function EditEnrollmentForm({
     queryKey: ["campForm", campId],
     queryFn: () => getCampForm(campId),
   });
+  const { data: camp } = useQuery({
+    queryKey: ["camp", campId],
+    queryFn: () => getCampById(campId),
+  });
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -91,7 +98,7 @@ function EditEnrollmentForm({
         participantName: name,
         participantEmail: email,
         participantPhone: phone.trim() ? phone : null,
-        campPriceId: priceId,
+        days: selection,
         responses: Object.entries(answers)
           .filter(([, value]) => value.trim() !== "")
           .map(([campFormFieldId, value]) => ({ campFormFieldId, value })),
@@ -132,17 +139,24 @@ function EditEnrollmentForm({
           setAnswers((prev) => ({ ...prev, [fieldId]: value }))
         }
         idPrefix={`edit_${enrollment.id}`}
-        campId={campId}
-        priceId={priceId}
-        onPriceChange={setPriceId}
       />
+      {camp && (
+        <CampDayPicker
+          days={camp.days}
+          allowHalfDays={camp.allowHalfDays}
+          dayPrice={camp.dayPrice}
+          halfDayPrice={camp.halfDayPrice}
+          value={selection}
+          onChange={setSelection}
+        />
+      )}
       <DialogFooter>
         <button type="button" onClick={onClose} className={btnSecondary}>
           {t("back")}
         </button>
         <button
           type="submit"
-          disabled={mutation.isPending}
+          disabled={mutation.isPending || selection.length === 0}
           className={btnPrimary}
         >
           {t("editSubmit")}

@@ -1,7 +1,6 @@
 "use client";
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { CheckCircle2, Mail, MessageCircle, Phone } from "lucide-react";
 import {
@@ -13,10 +12,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { btnPrimary } from "@/lib/styles";
 import { enrollmentDisplayStatus } from "@/lib/status-styles";
-import { updateCampEnrollment, type CampEnrollmentDto } from "@/lib/api/camps";
-import { getAxiosErrorMessages } from "@/lib/utils/api-errors";
+import { getCampById, type CampEnrollmentDto } from "@/lib/api/camps";
+import { describeSelection } from "@/lib/camp-day-selection";
 import { MolliePaymentId } from "@/components/dashboard/mollie-payment-id";
-import { CampPriceSelect } from "./camp-price-select";
 
 function DetailRow({
   label,
@@ -45,8 +43,6 @@ function DetailRow({
 
 interface CampEnrollmentDetailDialogProps {
   campId: string;
-  /** Mag de beheerder het tarief van deze inschrijving wijzigen? */
-  canEditPrice: boolean;
   enrollment: CampEnrollmentDto;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -58,7 +54,6 @@ interface CampEnrollmentDetailDialogProps {
 
 export function CampEnrollmentDetailDialog({
   campId,
-  canEditPrice,
   enrollment,
   open,
   onOpenChange,
@@ -68,26 +63,17 @@ export function CampEnrollmentDetailDialog({
   markPaidLabel,
 }: CampEnrollmentDetailDialogProps) {
   const t = useTranslations("campEnrollmentsTable");
-  const queryClient = useQueryClient();
-  const priceMutation = useMutation({
-    mutationFn: (campPriceId: string | null) =>
-      updateCampEnrollment(campId, enrollment.id, {
-        participantName: enrollment.participantName,
-        participantEmail: enrollment.participantEmail,
-        participantPhone: enrollment.participantPhone,
-        campPriceId,
-        responses: enrollment.formResponses
-          .filter((r) => r.value.trim() !== "")
-          .map((r) => ({ campFormFieldId: r.fieldId, value: r.value })),
-      }),
-    onSuccess: () => {
-      toast.success(t("toastUpdated"));
-      queryClient.invalidateQueries({ queryKey: ["campEnrollments", campId] });
-      queryClient.invalidateQueries({ queryKey: ["camp", campId] });
-    },
-    onError: (error) => {
-      toast.error(getAxiosErrorMessages(error, t("editError")).join(" "));
-    },
+  const tCamps = useTranslations("camps");
+  // Zelfde query als de detailpagina: meestal al in de cache.
+  const { data: camp } = useQuery({
+    queryKey: ["camp", campId],
+    queryFn: () => getCampById(campId),
+    enabled: open,
+  });
+  const dayLines = describeSelection(enrollment.days, camp?.days ?? [], {
+    morning: tCamps("morning"),
+    afternoon: tCamps("afternoon"),
+    wholeDay: tCamps("wholeDay"),
   });
   const style = enrollmentDisplayStatus(
     enrollment.status,
@@ -171,12 +157,16 @@ export function CampEnrollmentDetailDialog({
                 "nl-BE",
               )}
             />
-            {!canEditPrice && enrollment.campPriceLabel && (
-              <DetailRow
-                label={t("priceLabel")}
-                value={enrollment.campPriceLabel}
-              />
+            {dayLines.length > 0 && (
+              <DetailRow label={t("detailDays")} value={dayLines.join(", ")} />
             )}
+            <DetailRow
+              label={t("detailTotalAmount")}
+              value={new Intl.NumberFormat("nl-BE", {
+                style: "currency",
+                currency: "EUR",
+              }).format(enrollment.totalAmount)}
+            />
             {enrollment.groupName && (
               <DetailRow
                 label={t("group")}
@@ -219,16 +209,6 @@ export function CampEnrollmentDetailDialog({
               </div>
             )}
           </dl>
-
-          {canEditPrice && (
-            <div className={priceMutation.isPending ? "opacity-60" : undefined}>
-              <CampPriceSelect
-                campId={campId}
-                value={enrollment.campPriceId}
-                onChange={(priceId) => priceMutation.mutate(priceId)}
-              />
-            </div>
-          )}
 
           <div>
             <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400">

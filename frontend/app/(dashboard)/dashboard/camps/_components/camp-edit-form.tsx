@@ -14,8 +14,8 @@ import {
   buildCampRequest,
   buildDays,
   detailToDays,
-  detailToPrices,
   toDateOnly,
+  DEFAULT_DAY_PARTS,
   type CampDayDraft,
   type DateRange,
 } from "../new/_types";
@@ -59,12 +59,13 @@ export function CampEditForm({ camp, onCancel, onSaved }: CampEditFormProps) {
       description: camp.description ?? "",
       tennisClubId: camp.tennisClubId,
       level: camp.level,
-      price: camp.price,
+      dayPrice: camp.dayPrice,
+      allowHalfDays: camp.allowHalfDays,
+      halfDayPrice: camp.halfDayPrice,
       maxParticipants: camp.maxParticipants,
       startDate: camp.startDate,
       endDate: camp.endDate,
       registrationDeadline: toDateOnly(camp.registrationDeadline),
-      prices: detailToPrices(camp),
     },
   });
 
@@ -77,17 +78,17 @@ export function CampEditForm({ camp, onCancel, onSaved }: CampEditFormProps) {
             description: values.description ?? "",
             tennisClubId: values.tennisClubId,
             level: values.level,
-            price: values.price,
+            dayPrice: values.dayPrice,
+            halfDayPrice: values.halfDayPrice,
+            allowHalfDays: values.allowHalfDays,
             maxParticipants: values.maxParticipants,
             startDate: values.startDate,
             endDate: values.endDate,
             registrationDeadline: values.registrationDeadline,
-            prices: values.prices,
+            defaultParts: DEFAULT_DAY_PARTS,
           },
           days,
         ),
-        // Prijsopties worden in hun eigen kaart beheerd; niet meesturen laat ze ongemoeid.
-        prices: undefined,
         isActive: camp.isActive,
       }),
     onSuccess: () => {
@@ -115,7 +116,6 @@ export function CampEditForm({ camp, onCancel, onSaved }: CampEditFormProps) {
       className="mt-5 space-y-5"
     >
       <CampBasisFields
-        showPrices={false}
         register={register}
         control={control}
         errors={errors}

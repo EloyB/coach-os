@@ -35,6 +35,7 @@ import { LogoMark } from "@/components/ui/logo-mark";
 import { Spinner } from "@/components/ui/spinner";
 import { CampDayPicker } from "@/components/camps/camp-day-picker";
 import { formatDateNL, formatDateShort } from "@/lib/date-utils";
+import { formatPrice } from "@/lib/camp-day-selection";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -414,8 +415,8 @@ export default function CampEnrollPage() {
               <span>
                 {camp.dayPrice > 0
                   ? camp.allowHalfDays
-                    ? `${t("pricePerDay", { price: camp.dayPrice.toFixed(2) })} · ${t("pricePerHalfDay", { price: camp.halfDayPrice.toFixed(2) })}`
-                    : t("pricePerDay", { price: camp.dayPrice.toFixed(2) })
+                    ? `${t("pricePerDay", { price: formatPrice(camp.dayPrice) })} · ${t("pricePerHalfDay", { price: formatPrice(camp.halfDayPrice) })}`
+                    : t("pricePerDay", { price: formatPrice(camp.dayPrice) })
                   : t("priceFree")}
               </span>
             </div>

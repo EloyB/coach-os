@@ -101,3 +101,30 @@ export function isWholeCamp(
     )
   );
 }
+
+/** "21/12 hele dag", "22/12 voormiddag", op datum gesorteerd; onbekende dagen worden overgeslagen. */
+export function describeSelection(
+  selection: CampDaySelection[],
+  days: Pick<PickerDay, "id" | "date">[],
+  labels: { morning: string; afternoon: string; wholeDay: string },
+): string[] {
+  const dateOf = new Map(days.map((d) => [d.id, d.date]));
+  return selection
+    .filter((s) => dateOf.has(s.campDayId))
+    .sort((a, b) => dateOf.get(a.campDayId)!.localeCompare(dateOf.get(b.campDayId)!))
+    .map((s) => {
+      const [, month, day] = dateOf.get(s.campDayId)!.split("-");
+      const part =
+        s.morning && s.afternoon
+          ? labels.wholeDay
+          : s.morning
+            ? labels.morning
+            : labels.afternoon;
+      return `${day}/${month} ${part.toLowerCase()}`;
+    });
+}
+
+/** "32,50": bedrag met twee decimalen en een komma, voor in vertaalde zinnen. */
+export function formatPrice(amount: number): string {
+  return amount.toFixed(2).replace(".", ",");
+}

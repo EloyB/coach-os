@@ -44,9 +44,9 @@ import { toast } from "sonner";
 import { CampFormBuilder } from "../_components/camp-form-builder";
 import { CampEditForm } from "../_components/camp-edit-form";
 import { CampDaysCard } from "../_components/camp-days-card";
-import { CampPricesCard } from "../_components/camp-prices-card";
 import { CampDaysReadOnlyCard } from "../_components/camp-days-readonly-card";
 import { CampEnrollmentsSection } from "../_components/camp-enrollments-section";
+import { formatPrice } from "@/lib/camp-day-selection";
 
 // ─── Info chips ───────────────────────────────────────────────────────────────
 
@@ -73,7 +73,14 @@ function InfoCard({ camp }: { camp: CampDetailDto }) {
   return (
     <div className="flex flex-wrap gap-2">
       <Chip icon={<Euro size={11} className="text-tennis-green" />}>
-        {camp.price > 0 ? `€${camp.price}` : t("priceFree")}
+        {camp.dayPrice > 0
+          ? t("pricePerDay", { price: formatPrice(camp.dayPrice) })
+          : t("priceFree")}
+      </Chip>
+      <Chip icon={<Euro size={11} className="text-tennis-green" />}>
+        {camp.allowHalfDays
+          ? t("pricePerHalfDay", { price: formatPrice(camp.halfDayPrice) })
+          : t("halfDaysNotAllowed")}
       </Chip>
       <Chip icon={<CalendarDays size={11} className="text-tennis-green" />}>
         {formatDateNL(camp.startDate)} - {formatDateNL(camp.endDate)}
@@ -266,7 +273,7 @@ export default function CampDetailPage({
               key={`${camp.id}:${camp.days
                 .map(
                   (d) =>
-                    `${d.date}|${d.startTime}|${d.endTime}|${d.trainers.length}`,
+                    `${d.date}|${d.morningStart}|${d.morningEnd}|${d.afternoonStart}|${d.afternoonEnd}|${d.trainers.length}`,
                 )
                 .join(",")}`}
               camp={camp}
@@ -274,9 +281,6 @@ export default function CampDetailPage({
           ) : (
             <CampDaysReadOnlyCard camp={camp} />
           )}
-
-          {/* ── Section 2b: Price options ── */}
-          <CampPricesCard camp={camp} canEdit={isAdmin} />
 
           {/* ── Section 3: Form builder (admin only) ── */}
           {isAdmin && <CampFormBuilder campId={id} />}

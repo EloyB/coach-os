@@ -9,6 +9,7 @@ import { TennisBallEmptyIcon } from "@/components/ui/tennis-ball-icon";
 import { SlashLabel } from "@/components/ui/slash-label";
 import { Mono } from "@/components/ui/mono";
 import { OccupancyBar } from "@/components/ui/occupancy-bar";
+import { formatPrice } from "@/lib/camp-day-selection";
 
 function formatDateRange(start: string, end: string): string {
   const fmt = (d: string) => {
@@ -106,7 +107,7 @@ function CampRow({ camp }: { camp: CampDto }) {
 
       <Mono className="text-ink font-bold block">
         <span className="lg:hidden text-ink-3 font-normal">{t("listPrice")}&nbsp;</span>
-        {camp.price > 0 ? `€${camp.price}` : t("priceFree")}
+        {camp.dayPrice > 0 ? t("pricePerDay", { price: formatPrice(camp.dayPrice) }) : t("priceFree")}
       </Mono>
 
       <div className="hidden lg:block text-right">{status}</div>

@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   availableOptions,
   calcTotal,
+  describeSelection,
   isWholeCamp,
   optionOf,
   selectionFor,
@@ -97,5 +98,25 @@ describe("wholeCampSelection", () => {
     const days = [full("a"), morningOnly("b")];
     expect(isWholeCamp(wholeCampSelection(days, true), days, true)).toBe(true);
     expect(isWholeCamp([{ campDayId: "a", morning: true, afternoon: true }], days, true)).toBe(false);
+  });
+});
+
+describe("describeSelection", () => {
+  it("beschrijft de keuze per dag op datum gesorteerd", () => {
+    const days = [
+      { id: "a", date: "2026-12-22" },
+      { id: "b", date: "2026-12-21" },
+    ];
+    expect(
+      describeSelection(
+        [
+          { campDayId: "a", morning: true, afternoon: false },
+          { campDayId: "b", morning: true, afternoon: true },
+          { campDayId: "x", morning: true, afternoon: true },
+        ],
+        days,
+        { morning: "Voormiddag", afternoon: "Namiddag", wholeDay: "Hele dag" },
+      ),
+    ).toEqual(["21/12 hele dag", "22/12 voormiddag"]);
   });
 });

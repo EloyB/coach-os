@@ -19,6 +19,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { CampDayPicker } from "@/components/camps/camp-day-picker";
+import type { CampDaySelection } from "@/lib/api/camps";
+import { calcTotal } from "@/lib/camp-day-selection";
 import { CampParticipantFields } from "./camp-participant-fields";
 
 interface CampManualEnrollmentDialogProps {
@@ -39,7 +42,7 @@ export function CampManualEnrollmentDialog({
   const [phone, setPhone] = useState("");
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [paid, setPaid] = useState(false);
-  const [priceId, setPriceId] = useState<string | null>(null);
+  const [selection, setSelection] = useState<CampDaySelection[]>([]);
 
   const { data: form } = useQuery({
     queryKey: ["campForm", campId],
@@ -52,7 +55,8 @@ export function CampManualEnrollmentDialog({
     queryFn: () => getCampById(campId),
     enabled: open,
   });
-  const isPaidCamp = (camp?.price ?? 0) > 0;
+  const amount = camp ? calcTotal(selection, camp.dayPrice, camp.halfDayPrice) : 0;
+  const isPaidCamp = amount > 0;
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -61,7 +65,7 @@ export function CampManualEnrollmentDialog({
         participantEmail: email,
         participantPhone: phone || null,
         paid: isPaidCamp && paid,
-        campPriceId: priceId,
+        days: selection,
         responses: Object.entries(answers)
           .filter(([, value]) => value !== "")
           .map(([campFormFieldId, value]) => ({ campFormFieldId, value })),
@@ -76,7 +80,7 @@ export function CampManualEnrollmentDialog({
       setPhone("");
       setAnswers({});
       setPaid(false);
-      setPriceId(null);
+      setSelection([]);
     },
     onError: (error) => {
       toast.error(getAxiosErrorMessages(error, t("manualError")).join(" "));
@@ -113,10 +117,17 @@ export function CampManualEnrollmentDialog({
               setAnswers((prev) => ({ ...prev, [fieldId]: value }))
             }
             idPrefix="manual"
-            campId={campId}
-            priceId={priceId}
-            onPriceChange={setPriceId}
           />
+          {camp && (
+            <CampDayPicker
+              days={camp.days}
+              allowHalfDays={camp.allowHalfDays}
+              dayPrice={camp.dayPrice}
+              halfDayPrice={camp.halfDayPrice}
+              value={selection}
+              onChange={setSelection}
+            />
+          )}
           {isPaidCamp && (
             <fieldset className="space-y-1.5">
               <legend className="text-sm font-medium">
@@ -158,7 +169,7 @@ export function CampManualEnrollmentDialog({
             </button>
             <button
               type="submit"
-              disabled={mutation.isPending}
+              disabled={mutation.isPending || selection.length === 0}
               className={btnPrimary}
             >
               {t("manualSubmit")}

@@ -24,6 +24,7 @@ import {
   type CampDayDraft,
   type CampStep1Data,
 } from "../_types";
+import { formatPrice } from "@/lib/camp-day-selection";
 
 interface Step3Props {
   step1Data: CampStep1Data;
@@ -95,12 +96,12 @@ export function Step3Review({ step1Data, days, onBack }: Step3Props) {
         <div className="flex flex-wrap gap-2">
           <Chip icon={<Euro size={11} className="text-tennis-green" />}>
             {step1Data.dayPrice > 0
-              ? t("pricePerDay", { price: step1Data.dayPrice })
+              ? t("pricePerDay", { price: formatPrice(step1Data.dayPrice) })
               : t("priceFree")}
           </Chip>
           <Chip icon={<Euro size={11} className="text-tennis-green" />}>
             {step1Data.allowHalfDays
-              ? t("pricePerHalfDay", { price: step1Data.halfDayPrice })
+              ? t("pricePerHalfDay", { price: formatPrice(step1Data.halfDayPrice) })
               : t("halfDaysNotAllowed")}
           </Chip>
           <Chip icon={<CalendarDays size={11} className="text-tennis-green" />}>
