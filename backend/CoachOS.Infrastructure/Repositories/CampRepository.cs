@@ -85,5 +85,8 @@ public class CampRepository(ApplicationDbContext db) : ICampRepository
             d => d.CampDayId == campDayId && (part == CampDayPart.Morning ? d.Morning : d.Afternoon), ct);
 
     public async Task<bool> AnyHalfDayEnrollmentAsync(Guid campId, CancellationToken ct = default)
-        => await db.CampEnrollmentDays.AnyAsync(d => d.CampDay.CampId == campId && d.Morning != d.Afternoon, ct);
+        => await db.CampEnrollmentDays.AnyAsync(
+            d => d.CampDay.CampId == campId
+                && (d.Morning != d.CampDay.MorningStart.HasValue
+                    || d.Afternoon != d.CampDay.AfternoonStart.HasValue), ct);
 }

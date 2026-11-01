@@ -192,4 +192,19 @@ public class CampServiceDayPartsTests
 
         result.Errors.Should().Contain(e => e.Code == ErrorCodes.Conflict);
     }
+
+    [Test]
+    public async Task UpdateAsync_HalfDaysStayOff_IsNotBlockedByExistingEnrollments()
+    {
+        Camp camp = ExistingCamp(out CampDay monday, out CampDay tuesday);
+        camp.AllowHalfDays = false;
+        // Ook als de repository "halve dagen" meldt: er verandert niets aan de toggle.
+        _camps.Setup(r => r.AnyHalfDayEnrollmentAsync(camp.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
+        Result result = await _sut.UpdateAsync(camp.Id, _orgId,
+            Update(false, DayRequest(monday.Id, "2026-12-21"), DayRequest(tuesday.Id, "2026-12-22")),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+    }
 }

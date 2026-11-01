@@ -72,7 +72,7 @@ public class CampService(
         Error? validation = await ValidateClubAndTrainersAsync(organizationId, request.TennisClubId, request.Days, ct);
         if (validation is not null) return Result.Fail(validation);
 
-        if (!request.AllowHalfDays && await camps.AnyHalfDayEnrollmentAsync(camp.Id, ct))
+        if (camp.AllowHalfDays && !request.AllowHalfDays && await camps.AnyHalfDayEnrollmentAsync(camp.Id, ct))
             return Result.Fail(new Error(ErrorCodes.Conflict,
                 "Halve dagen kunnen niet uitgezet worden: er zijn al inschrijvingen voor een halve dag."));
 

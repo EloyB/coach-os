@@ -44,6 +44,6 @@ public interface ICampRepository
     /// <summary>Heeft minstens één inschrijving (ook geannuleerd) dit dagdeel van deze dag gekozen?</summary>
     Task<bool> AnyEnrollmentUsesPartAsync(Guid campDayId, CoachOS.Domain.Enums.CampDayPart part, CancellationToken ct = default);
 
-    /// <summary>Heeft minstens één inschrijving van dit kamp een halve dag (één dagdeel) gekozen?</summary>
+    /// <summary>Heeft minstens één inschrijving van dit kamp een halve dag gekozen (niet alle dagdelen die die dag heeft)?</summary>
     Task<bool> AnyHalfDayEnrollmentAsync(Guid campId, CancellationToken ct = default);
 }

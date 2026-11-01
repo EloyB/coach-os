@@ -87,4 +87,36 @@ public class CampEnrollmentRepositoryDayPartsTests
         counts.Should().BeEmpty();
         dayId.Should().NotBe(otherDayId);
     }
+
+    [Test]
+    public async Task AnyHalfDayEnrollment_CountsOnlySelectionsThatDoNotCoverTheWholeDay()
+    {
+        (Guid campId, Guid dayId) = await CampWithDay();
+        CampDay day = _db.CampDays.Single(d => d.Id == dayId);
+        day.MorningStart = new TimeOnly(9, 15);
+        day.MorningEnd = new TimeOnly(12, 0);
+        day.AfternoonStart = new TimeOnly(13, 15);
+        day.AfternoonEnd = new TimeOnly(16, 0);
+        await _db.SaveChangesAsync();
+        CampRepository camps = new(_db);
+
+        await Enroll(campId, dayId, EnrollmentStatus.Confirmed, true, true);
+        (await camps.AnyHalfDayEnrollmentAsync(campId)).Should().BeFalse();
+
+        await Enroll(campId, dayId, EnrollmentStatus.Confirmed, true, false);
+        (await camps.AnyHalfDayEnrollmentAsync(campId)).Should().BeTrue();
+    }
+
+    [Test]
+    public async Task AnyHalfDayEnrollment_ADayWithOnePartChosenInFullIsNotAHalfDay()
+    {
+        (Guid campId, Guid dayId) = await CampWithDay();
+        CampDay day = _db.CampDays.Single(d => d.Id == dayId);
+        day.MorningStart = new TimeOnly(9, 15);
+        day.MorningEnd = new TimeOnly(12, 0);
+        await _db.SaveChangesAsync();
+        await Enroll(campId, dayId, EnrollmentStatus.Confirmed, true, false);
+
+        (await new CampRepository(_db).AnyHalfDayEnrollmentAsync(campId)).Should().BeFalse();
+    }
 }
