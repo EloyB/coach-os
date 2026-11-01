@@ -11,7 +11,12 @@ import {
   campBasisSchema,
   type CampBasisFormValues,
 } from "./camp-basis-fields";
-import type { CampStep1Data } from "../_types";
+import { useState } from "react";
+import { DEFAULT_DAY_PARTS, type CampDayParts, type CampStep1Data } from "../_types";
+import {
+  CampDefaultPartsFields,
+  defaultPartsError,
+} from "./camp-default-parts-fields";
 
 interface Step1Props {
   defaultValues: CampStep1Data | null;
@@ -40,27 +45,36 @@ export function Step1Basis({ defaultValues, onNext }: Step1Props) {
       description: "",
       tennisClubId: "",
       level: null,
-      price: 0,
+      dayPrice: 0,
+      allowHalfDays: false,
+      halfDayPrice: 0,
       maxParticipants: null,
       startDate: "",
       endDate: "",
       registrationDeadline: "",
-      prices: [],
     },
   });
 
+  const [defaultParts, setDefaultParts] = useState<CampDayParts>(
+    defaultValues?.defaultParts ?? DEFAULT_DAY_PARTS,
+  );
+  const partsError = defaultPartsError(defaultParts);
+
   function submit(values: CampBasisFormValues) {
+    if (partsError) return;
     onNext({
       name: values.name,
       description: values.description ?? "",
       tennisClubId: values.tennisClubId,
       level: values.level,
-      price: values.price,
+      dayPrice: values.dayPrice,
+      halfDayPrice: values.halfDayPrice,
+      allowHalfDays: values.allowHalfDays,
       maxParticipants: values.maxParticipants,
       startDate: values.startDate,
       endDate: values.endDate,
       registrationDeadline: values.registrationDeadline,
-      prices: values.prices,
+      defaultParts,
     });
   }
 
@@ -78,6 +92,13 @@ export function Step1Basis({ defaultValues, onNext }: Step1Props) {
             endDate: getValues("endDate"),
           })}
         />
+        <div className="mt-5">
+          <CampDefaultPartsFields
+            value={defaultParts}
+            onChange={setDefaultParts}
+            error={partsError}
+          />
+        </div>
       </div>
 
       <div className="flex justify-end mt-5">
