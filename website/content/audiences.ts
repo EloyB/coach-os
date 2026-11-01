@@ -19,7 +19,7 @@ export const AUDIENCES: Audience[] = [
     bullets: [
       "Lessenreeksen voor jeugd en volwassenen",
       "Onbeperkt aantal banen en trainers",
-      "Magic-link bevestigingen per leerling",
+      "Persoonlijke bevestigingslink per leerling",
     ],
     slug: "voor-tennisclubs",
   },
