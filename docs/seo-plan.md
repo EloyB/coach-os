@@ -15,7 +15,7 @@
 - JSON-LD: `SoftwareApplication` met prijzen (ook op `/prijzen`), `FAQPage`, `BreadcrumbList`, `BlogPosting`.
 - Inhoudelijke correcties: "zonder account" in plaats van "anoniem", het algoritme verdeelt op voorkeurstijd en groepsverband (niet op niveau), betalen na bevestiging van de planning, vaste schrijfwijze "lessenplanning" en slogan "Lessenplanning, eindelijk eenvoudig."
 - `noindex` voor de hele app (`app.coach-os.be`).
-- Twee blogartikelen op een branch (zie sectie 5). Het tweede (GDPR) wordt nog niet gebruikt.
+- Eén blogartikel gepubliceerd op de branch (zie sectie 5). Het tweede (GDPR) staat als bestand klaar maar is bewust niet gepubliceerd.
 
 ### Wat Search Console toont (stand 31 oktober 2026)
 
@@ -126,9 +126,9 @@ Zoekmachines vertrouwen sites die door anderen genoemd worden. Realistische kans
 |---|---|---|
 | #281 | SEO en bento-herontwerp van de marketingsite | gemerged |
 | #282 | `noindex` voor de app | gemerged |
-| #283 | Blog met twee artikelen | open (branch `feat/blog-artikelen`) |
+| #283 | Blog met één artikel, SEO-plan en logo's | open (branch `feat/blog-artikelen`) |
 
-Het tweede artikel (`inschrijven-zonder-account-gdpr`) wordt voorlopig niet gebruikt en moet nog beslist worden: publiceren, aanpassen of laten liggen. Het bevat juridische passages (bewaartermijn van 14 maanden, 7 jaar boekhouding, verwerkingsregister) die door een boekhouder of jurist bekeken moeten worden. Het eerste artikel is af en bevat CoachOS-vakjes.
+Het tweede artikel (`inschrijven-zonder-account-gdpr`) staat als bestand klaar maar is niet toegevoegd aan `ALL_POSTS`, dus niet gepubliceerd. Nog te beslissen: publiceren, aanpassen of laten liggen. Het bevat juridische passages (bewaartermijn van 14 maanden, 7 jaar boekhouding, verwerkingsregister) die door een boekhouder of jurist bekeken moeten worden. Het eerste artikel is af en bevat CoachOS-vakjes.
 
 ### Open inhoudelijke punten
 
