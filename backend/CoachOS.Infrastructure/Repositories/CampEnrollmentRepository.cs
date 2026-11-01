@@ -102,12 +102,18 @@ public class CampEnrollmentRepository(ApplicationDbContext context) : ICampEnrol
     {
         return await context.CampEnrollments
             .Include(e => e.FormResponses)
+            .Include(e => e.Days)
             .FirstOrDefaultAsync(e => e.Id == id && e.OrganizationId == organizationId, ct);
     }
 
     public void RemoveFormResponse(CampFormResponse response)
     {
         context.CampFormResponses.Remove(response);
+    }
+
+    public void RemoveEnrollmentDays(IEnumerable<CampEnrollmentDay> days)
+    {
+        context.CampEnrollmentDays.RemoveRange(days);
     }
 
     public async Task<int> CountActiveByCampGroupsAsync(
@@ -126,6 +132,7 @@ public class CampEnrollmentRepository(ApplicationDbContext context) : ICampEnrol
             .Include(e => e.FormResponses)
                 .ThenInclude(r => r.CampFormField)
             .Include(e => e.Group)
+            .Include(e => e.Days)
             .Include(e => e.Price)
             .Where(e => e.CampId == campId && e.OrganizationId == organizationId)
             .OrderByDescending(e => e.EnrolledAt)
@@ -137,6 +144,7 @@ public class CampEnrollmentRepository(ApplicationDbContext context) : ICampEnrol
     {
         return await context.CampEnrollmentGroups
             .Include(g => g.Members)
+                .ThenInclude(m => m.Days)
             .FirstOrDefaultAsync(g => g.Id == groupId && g.OrganizationId == organizationId, ct);
     }
 

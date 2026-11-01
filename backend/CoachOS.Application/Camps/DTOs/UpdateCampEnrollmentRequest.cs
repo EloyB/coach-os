@@ -11,7 +11,7 @@ public record UpdateCampEnrollmentRequest
     public string ParticipantEmail { get; init; } = string.Empty;
     public string? ParticipantPhone { get; init; }
 
-    /// <summary>Gekozen tarief; null = hoofdprijs van het kamp.</summary>
-    public Guid? CampPriceId { get; init; }
+    /// <summary>Gekozen dagdelen per kampdag; vervangt de bestaande keuze (volledige set).</summary>
+    public List<CampDaySelectionDto> Days { get; init; } = new();
     public List<CampFormResponseValueDto> Responses { get; init; } = new();
 }

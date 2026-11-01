@@ -39,7 +39,7 @@ public class CampEnrollmentService(
             d.Id, d.Date.ToString(DateFormat),
             d.MorningStart?.ToString("HH\\:mm"), d.MorningEnd?.ToString("HH\\:mm"),
             d.AfternoonStart?.ToString("HH\\:mm"), d.AfternoonEnd?.ToString("HH\\:mm"),
-            IsFull(camp, perPart, d.Id, CampDayPart.Morning), IsFull(camp, perPart, d.Id, CampDayPart.Afternoon))).ToList();
+            CampCapacity.IsFull(camp, perPart, d.Id, CampDayPart.Morning), CampCapacity.IsFull(camp, perPart, d.Id, CampDayPart.Afternoon))).ToList();
 
         return Result<PublicCampDto>.Ok(new PublicCampDto(
             camp.Id, camp.Name, camp.Description, camp.Level.HasValue ? (int)camp.Level.Value : null,
@@ -48,33 +48,6 @@ public class CampEnrollmentService(
             camp.RegistrationDeadline, camp.TennisClub?.Name ?? string.Empty,
             camp.MaxParticipants, participants, days));
     }
-
-    private static bool IsFull(
-        Camp camp, Dictionary<(Guid CampDayId, CampDayPart Part), int> perPart, Guid dayId, CampDayPart part)
-        => camp.MaxParticipants.HasValue && perPart.GetValueOrDefault((dayId, part)) >= camp.MaxParticipants.Value;
-
-    /// <summary>Eerste dagdeel in de keuze waar <paramref name="extra"/> nieuwe deelnemers niet meer bij passen, of null.</summary>
-    private static string? FirstFullPart(
-        Camp camp, Dictionary<(Guid CampDayId, CampDayPart Part), int> perPart,
-        IEnumerable<CampDaySelectionDto> selection, int extra)
-    {
-        if (!camp.MaxParticipants.HasValue) return null;
-        foreach (CampDaySelectionDto choice in selection)
-        {
-            string date = camp.Days.First(d => d.Id == choice.CampDayId).Date.ToString("dd/MM/yyyy");
-            if (choice.Morning && perPart.GetValueOrDefault((choice.CampDayId, CampDayPart.Morning)) + extra > camp.MaxParticipants.Value)
-                return $"De voormiddag van {date} is volzet.";
-            if (choice.Afternoon && perPart.GetValueOrDefault((choice.CampDayId, CampDayPart.Afternoon)) + extra > camp.MaxParticipants.Value)
-                return $"De namiddag van {date} is volzet.";
-        }
-        return null;
-    }
-
-    private static List<CampEnrollmentDay> BuildEnrollmentDays(Guid organizationId, IEnumerable<CampDaySelectionDto> selection)
-        => selection.Select(c => new CampEnrollmentDay
-        {
-            OrganizationId = organizationId, CampDayId = c.CampDayId, Morning = c.Morning, Afternoon = c.Afternoon,
-        }).ToList();
 
     public async Task<Result<CampEnrollmentFormDto?>> GetPublicFormAsync(Guid campId, CancellationToken ct = default)
     {
@@ -139,7 +112,7 @@ public class CampEnrollmentService(
             await unitOfWork.BeginTransactionAsync(IsolationLevel.Serializable, ct);
 
             Dictionary<(Guid CampDayId, CampDayPart Part), int> perPart = await enrollments.CountActivePerDayPartAsync(campId, ct);
-            string? fullMessage = FirstFullPart(camp, perPart, request.Days, groupSize);
+            string? fullMessage = CampCapacity.FirstFullPart(camp, perPart, request.Days, groupSize);
             if (fullMessage is not null)
             {
                 await unitOfWork.RollbackTransactionAsync(ct);
@@ -176,7 +149,7 @@ public class CampEnrollmentService(
                 Status = initialStatus,
                 EnrolledAt = DateTime.UtcNow,
                 TotalAmount = amount,
-                Days = BuildEnrollmentDays(camp.OrganizationId, request.Days),
+                Days = CampCapacity.BuildEnrollmentDays(camp.OrganizationId, request.Days),
             };
             await enrollments.AddAsync(enrollment, ct);
 
@@ -216,7 +189,7 @@ public class CampEnrollmentService(
                         EnrolledAt = DateTime.UtcNow,
                         CampEnrollmentGroupId = group.Id,
                         TotalAmount = amount,
-                        Days = BuildEnrollmentDays(camp.OrganizationId, request.Days),
+                        Days = CampCapacity.BuildEnrollmentDays(camp.OrganizationId, request.Days),
                     };
                     await enrollments.AddAsync(memberEnrollment, ct);
 
@@ -271,22 +244,24 @@ public class CampEnrollmentService(
         if (formError is not null)
             return Result<Guid>.Fail(formError);
 
-        if (request.CampPriceId is { } priceId && camp.Prices.All(p => p.Id != priceId))
-            return Result<Guid>.Fail(new Error(ErrorCodes.NotFound, "Prijsoptie niet gevonden."));
+        Error? selectionError = CampDaySelectionRules.Validate(camp, request.Days);
+        if (selectionError is not null)
+            return Result<Guid>.Fail(selectionError);
+        decimal amount = CampPricing.AmountFor(camp, request.Days);
 
         string email = request.ParticipantEmail.Trim();
-        // Betalend = het gekozen tarief (of de hoofdprijs) is meer dan 0.
-        bool isPaidCamp = CampPricing.UnitPrice(camp, new CampEnrollment { CampPriceId = request.CampPriceId }) > 0m;
+        bool isPaidCamp = amount > 0m;
         CampEnrollment enrollment;
 
         await unitOfWork.BeginTransactionAsync(IsolationLevel.Serializable, ct);
         try
         {
-            if (camp.MaxParticipants.HasValue
-                && await enrollments.CountActiveByCampAsync(campId, ct) + 1 > camp.MaxParticipants.Value)
+            Dictionary<(Guid CampDayId, CampDayPart Part), int> perPart = await enrollments.CountActivePerDayPartAsync(campId, ct);
+            string? fullMessage = CampCapacity.FirstFullPart(camp, perPart, request.Days, 1);
+            if (fullMessage is not null)
             {
                 await unitOfWork.RollbackTransactionAsync(ct);
-                return Result<Guid>.Fail(new Error(ErrorCodes.Conflict, "Dit kamp is volzet."));
+                return Result<Guid>.Fail(new Error(ErrorCodes.Conflict, fullMessage));
             }
 
             if (await enrollments.IsDuplicateAsync(campId, email, ct))
@@ -309,7 +284,8 @@ public class CampEnrollmentService(
                 // als de publieke flow). Gratis kamp: meteen bevestigd.
                 Status = isPaidCamp ? EnrollmentStatus.PendingPayment : EnrollmentStatus.Confirmed,
                 EnrolledAt = DateTime.UtcNow,
-                CampPriceId = request.CampPriceId,
+                TotalAmount = amount,
+                Days = CampCapacity.BuildEnrollmentDays(organizationId, request.Days),
             };
             await enrollments.AddAsync(enrollment, ct);
 

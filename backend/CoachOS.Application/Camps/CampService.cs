@@ -202,7 +202,7 @@ public class CampService(
                     r.CampFormFieldId, r.CampFormField?.Label ?? string.Empty, r.Value)).ToList(),
                 payment?.Method?.ToString(), payment?.Status.ToString(),
                 payment?.Amount, payment?.PaidAt, payment?.MolliePaymentId,
-                e.CampPriceId, e.Price?.Label);
+                CampCapacity.ToSelection(e.Days), e.TotalAmount);
         }).ToList();
         return Result<List<CampEnrollmentDto>>.Ok(dtos);
     }
@@ -251,7 +251,7 @@ public class CampService(
         // de groep na een annulering niet te veel moet betalen.
         if (group is not null)
         {
-            await SyncPendingCashAmountAsync(group.LeaderEnrollmentId, camp, group.Members, ct);
+            await SyncPendingCashAmountAsync(group.LeaderEnrollmentId, group.Members, ct);
         }
 
         await unitOfWork.SaveChangesAsync(ct);
@@ -288,9 +288,9 @@ public class CampService(
         if (formError is not null)
             return Result.Fail(formError);
 
-        Error? priceError = await ApplyPriceChangeAsync(camp, enrollment, request.CampPriceId, organizationId, ct);
-        if (priceError is not null)
-            return Result.Fail(priceError);
+        Error? dayError = await ApplyDayChangeAsync(camp, enrollment, request.Days, organizationId, ct);
+        if (dayError is not null)
+            return Result.Fail(dayError);
 
         enrollment.ParticipantName = request.ParticipantName.Trim();
         enrollment.ParticipantEmail = email;
@@ -366,25 +366,26 @@ public class CampService(
         if (formError is not null)
             return Result<Guid>.Fail(formError);
 
-        if (request.CampPriceId is { } priceId && camp.Prices.All(p => p.Id != priceId))
-            return Result<Guid>.Fail(new Error(ErrorCodes.NotFound, "Prijsoptie niet gevonden."));
+        // Het lid neemt de dagkeuze van de leider over.
+        List<CampDaySelectionDto> selection = CampCapacity.ToSelection(leader.Days);
+        decimal amount = CampPricing.AmountFor(camp, selection);
 
-        // Een groep zonder betaling (bevestigd, gratis) kan geen lid met een betaald tarief krijgen.
-        if (payment is null && leader.Status == EnrollmentStatus.Confirmed
-            && CampPricing.UnitPrice(camp, new CampEnrollment { CampPriceId = request.CampPriceId }) > 0m)
+        // Een groep zonder betaling (bevestigd, gratis) kan geen betalend lid krijgen.
+        if (payment is null && leader.Status == EnrollmentStatus.Confirmed && amount > 0m)
             return Result<Guid>.Fail(new Error(ErrorCodes.Conflict,
-                "Deze groep is bevestigd zonder betaling; een lid met een betaald tarief kan niet toegevoegd worden."));
+                "Deze groep is bevestigd zonder betaling; een betalend lid kan niet toegevoegd worden."));
 
         string email = request.ParticipantEmail.Trim();
 
         await unitOfWork.BeginTransactionAsync(IsolationLevel.Serializable, ct);
         try
         {
-            if (camp.MaxParticipants.HasValue
-                && await enrollments.CountActiveByCampAsync(campId, ct) + 1 > camp.MaxParticipants.Value)
+            Dictionary<(Guid CampDayId, CampDayPart Part), int> perPart = await enrollments.CountActivePerDayPartAsync(campId, ct);
+            string? fullMessage = CampCapacity.FirstFullPart(camp, perPart, selection, 1);
+            if (fullMessage is not null)
             {
                 await unitOfWork.RollbackTransactionAsync(ct);
-                return Result<Guid>.Fail(new Error(ErrorCodes.Conflict, "Dit kamp is volzet."));
+                return Result<Guid>.Fail(new Error(ErrorCodes.Conflict, fullMessage));
             }
 
             if (await enrollments.IsDuplicateAsync(campId, email, ct))
@@ -406,7 +407,8 @@ public class CampService(
                 Status = leader.Status, // status geërfd van de groep
                 EnrolledAt = DateTime.UtcNow,
                 CampEnrollmentGroupId = groupId,
-                CampPriceId = request.CampPriceId,
+                TotalAmount = amount,
+                Days = CampCapacity.BuildEnrollmentDays(organizationId, selection),
             };
             await enrollments.AddAsync(member, ct);
 
@@ -420,7 +422,7 @@ public class CampService(
             {
                 // EF voegt het nieuwe lid via relationship fixup al toe aan group.Members; tel het
                 // daarom expliciet apart zodat het niet dubbel meetelt.
-                payment.Amount = CampPricing.Total(camp, group.Members.Where(m => m.Id != member.Id).Append(member));
+                payment.Amount = CampPricing.Total(group.Members.Where(m => m.Id != member.Id).Append(member));
             }
 
             await unitOfWork.SaveChangesAsync(ct);
@@ -465,44 +467,32 @@ public class CampService(
     /// <c>prijs × actieve leden</c>. Betaalde of online lopende betalingen blijven ongemoeid.
     /// </summary>
     private async Task SyncPendingCashAmountAsync(
-        Guid payerEnrollmentId, Camp camp, IEnumerable<CampEnrollment> participants, CancellationToken ct)
+        Guid payerEnrollmentId, IEnumerable<CampEnrollment> participants, CancellationToken ct)
     {
         Payment? payment = await payments.GetLatestTrackedByCampEnrollmentIdAsync(payerEnrollmentId, ct);
         if (payment is null || payment.Status != PaymentStatus.Pending || payment.Method != PaymentMethod.Cash)
             return;
 
-        payment.Amount = CampPricing.Total(camp, participants);
-    }
-
-    /// <summary>Herberekent de openstaande cash-betalingen van alle actieve betalers van het kamp.</summary>
-    private async Task SyncAllPendingCashAmountsAsync(Camp camp, Guid organizationId, CancellationToken ct)
-    {
-        List<CampEnrollment> all = await enrollments.GetByCampWithResponsesAsync(camp.Id, organizationId, ct);
-        List<CampEnrollment> active = all.Where(e => e.Status != EnrollmentStatus.Cancelled).ToList();
-
-        foreach (CampEnrollment solo in active.Where(e => e.CampEnrollmentGroupId is null))
-            await SyncPendingCashAmountAsync(solo.Id, camp, [solo], ct);
-
-        foreach (Guid groupId in active.Where(e => e.CampEnrollmentGroupId is not null)
-                     .Select(e => e.CampEnrollmentGroupId!.Value).Distinct())
-        {
-            CampEnrollmentGroup? group = await enrollments.GetGroupWithMembersAsync(groupId, organizationId, ct);
-            if (group is not null)
-                await SyncPendingCashAmountAsync(group.LeaderEnrollmentId, camp, group.Members, ct);
-        }
+        payment.Amount = CampPricing.Total(participants);
     }
 
     /// <summary>
-    /// Wijzigt het tarief van een inschrijving en past een openstaande cash-betaling van de betaler
-    /// (groepsleider of de inschrijving zelf) aan. Een betaalde of online lopende betaling staat vast.
+    /// Wijzigt de dagkeuze van een inschrijving, herrekent het bedrag en past een openstaande
+    /// cash-betaling van de betaler (groepsleider of de inschrijving zelf) aan. Een betaalde of online
+    /// lopende betaling staat vast. Geen wijziging van de keuze = niets te doen.
     /// </summary>
-    private async Task<Error?> ApplyPriceChangeAsync(
-        Camp camp, CampEnrollment enrollment, Guid? newPriceId, Guid organizationId, CancellationToken ct)
+    private async Task<Error?> ApplyDayChangeAsync(
+        Camp camp, CampEnrollment enrollment, List<CampDaySelectionDto> selection, Guid organizationId, CancellationToken ct)
     {
-        if (newPriceId == enrollment.CampPriceId)
+        Error? selectionError = CampDaySelectionRules.Validate(camp, selection);
+        if (selectionError is not null)
+            return selectionError;
+
+        List<CampDaySelectionDto> current = CampCapacity.ToSelection(enrollment.Days);
+        bool unchanged = current.Count == selection.Count
+            && selection.All(s => current.Any(c => c == s));
+        if (unchanged)
             return null;
-        if (newPriceId is { } id && camp.Prices.All(p => p.Id != id))
-            return new Error(ErrorCodes.NotFound, "Prijsoptie niet gevonden.");
 
         CampEnrollmentGroup? group = enrollment.CampEnrollmentGroupId is { } groupId
             ? await enrollments.GetGroupWithMembersAsync(groupId, organizationId, ct)
@@ -514,24 +504,30 @@ public class CampService(
             && (payment.Status == PaymentStatus.Paid
                 || (payment.Status == PaymentStatus.Pending && payment.Method != PaymentMethod.Cash)))
             return new Error(ErrorCodes.Conflict,
-                "De betaling is al betaald of loopt online; het tarief kan niet meer gewijzigd worden.");
+                "De betaling is al betaald of loopt online; de dagen kunnen niet meer gewijzigd worden.");
 
-        // Een bevestigde inschrijving zonder betaling (gratis) kan geen betaald tarief krijgen: er zou
-        // niets te betalen of te registreren zijn terwijl de deelnemer bevestigd blijft.
+        decimal amount = CampPricing.AmountFor(camp, selection);
         CampEnrollment payer = group?.Members.FirstOrDefault(m => m.Id == payerId) ?? enrollment;
-        Guid? previousPriceId = enrollment.CampPriceId;
-        enrollment.CampPriceId = newPriceId;
-        IEnumerable<CampEnrollment> participants = group?.Members ?? [enrollment];
-        if (payment is null && payer.Status == EnrollmentStatus.Confirmed
-            && CampPricing.Total(camp, participants) > 0m)
-        {
-            enrollment.CampPriceId = previousPriceId;
+        // Een bevestigde inschrijving zonder betaling (gratis) kan niet betalend worden: er zou niets te
+        // betalen of te registreren zijn terwijl de deelnemer bevestigd blijft.
+        if (payment is null && payer.Status == EnrollmentStatus.Confirmed && amount > 0m && enrollment.TotalAmount == 0m)
             return new Error(ErrorCodes.Conflict,
-                "Deze inschrijving is bevestigd zonder betaling; een betaald tarief kan niet meer gekozen worden.");
-        }
+                "Deze inschrijving is bevestigd zonder betaling; ze kan niet betalend gemaakt worden.");
+
+        Dictionary<(Guid CampDayId, CampDayPart Part), int> perPart = CampCapacity.WithoutOwnParts(
+            await enrollments.CountActivePerDayPartAsync(camp.Id, ct), enrollment.Days);
+        string? fullMessage = CampCapacity.FirstFullPart(camp, perPart, selection, 1);
+        if (fullMessage is not null)
+            return new Error(ErrorCodes.Conflict, fullMessage);
+
+        enrollments.RemoveEnrollmentDays(enrollment.Days.ToList());
+        enrollment.Days.Clear();
+        foreach (CampEnrollmentDay day in CampCapacity.BuildEnrollmentDays(organizationId, selection))
+            enrollment.Days.Add(day);
+        enrollment.TotalAmount = amount;
 
         if (payment is not null && payment.Status == PaymentStatus.Pending && payment.Method == PaymentMethod.Cash)
-            payment.Amount = CampPricing.Total(camp, participants);
+            payment.Amount = CampPricing.Total(group?.Members ?? [enrollment]);
         return null;
     }
 

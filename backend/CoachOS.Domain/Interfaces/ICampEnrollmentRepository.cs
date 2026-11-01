@@ -34,6 +34,9 @@ public interface ICampEnrollmentRepository
 
     void RemoveFormResponse(CampFormResponse response);
 
+    /// <summary>Verwijdert gekozen dagdelen van een inschrijving (Restrict FK: geen auto-cascade).</summary>
+    void RemoveEnrollmentDays(IEnumerable<CampEnrollmentDay> days);
+
     Task<int> CountActiveByCampGroupsAsync(Guid campId, Guid organizationId, CancellationToken ct = default);
 
     /// <summary>Alle inschrijvingen van een kamp incl. FormResponses (admin-overzicht).</summary>
