@@ -37,4 +37,6 @@ export interface BlogSection {
   bullets?: string[];
   /** Optional emphasized callout box. */
   callout?: { tone: "info" | "tip" | "warn"; text: string };
+  /** Optioneel vakje "Zo doe je dat met CoachOS" onder de sectie: 2 tot 3 zinnen, enkel bevestigde functies. */
+  coachos?: string;
 }

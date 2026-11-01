@@ -385,7 +385,7 @@ export const TRAINERS_PERSONA: Persona = {
     {
       heading: "Wat verdwijnt er uit je week?",
       paragraphs: [
-        "De avond met lijstjes, het heen-en-weer mailen over voorkeurstijden en het met de hand verdelen van leerlingen over tijdsloten. Wat overblijft is het nakijken van het voorstel en het lesgeven zelf. Je betaalt per actieve leerling, met een onbeperkt aantal trainers, vanaf €25 per maand, en je probeert alles eerst 30 dagen gratis.",
+        "De avond met lijstjes, het heen-en-weer mailen over voorkeurstijden en het met de hand verdelen van leerlingen over tijdsloten. Wat overblijft is het nakijken van het voorstel en het lesgeven zelf. Je kiest een vast plan op basis van je aantal actieve leerlingen, met een onbeperkt aantal trainers, vanaf €25 per maand voor tot 60 leerlingen, en je probeert alles eerst 30 dagen gratis.",
       ],
     },
   ],

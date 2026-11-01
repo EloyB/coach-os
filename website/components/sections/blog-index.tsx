@@ -40,7 +40,7 @@ export function BlogIndex() {
         <BentoPageHero
           kicker="BLOG"
           title="Gidsen, achtergronden en meningen over lessenplanning"
-          lead="Hoe je een seizoen plant zonder Excel, wat de AVG-eisen zijn voor een tennisclub, en waarom magic-link bevestigingen gebruiksvriendelijker zijn dan accounts. Praktische gidsen voor clubs en trainers."
+          lead="Hoe je een seizoen plant zonder Excel, hoe inschrijvingen en kampen vlot verlopen en wat je daarbij met je leerlingen regelt. Praktische gidsen voor tennis- en padelclubs en trainers."
           titleClassName="text-3xl md:text-5xl"
         />
 

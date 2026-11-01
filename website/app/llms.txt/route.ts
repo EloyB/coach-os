@@ -1,6 +1,7 @@
 import { ALL_PERSONAS } from "@/content/personas";
 import { POSTS_BY_DATE } from "@/content/blog";
 import { SITE } from "@/content/meta";
+import { PRICING_TIERS } from "@/content/pricing";
 
 const SITE_URL = "https://coach-os.be";
 
@@ -20,7 +21,11 @@ export function GET() {
   );
   lines.push("");
   lines.push(
-    "CoachOS is beschikbaar voor tennis- en padelclubs. Nieuwe clubs proberen het 30 dagen gratis, zonder betaalgegevens. Prijzen vanaf €25/maand per actieve leerling, met een onbeperkt aantal trainers.",
+    "CoachOS is beschikbaar voor tennis- en padelclubs. Nieuwe clubs proberen het 30 dagen gratis, zonder betaalgegevens. Prijzen per maand, excl. btw, met een onbeperkt aantal trainers: " +
+      PRICING_TIERS.map(
+        (t) => `${t.name} €${t.priceMonthly} (${t.studentLimit})`,
+      ).join(", ") +
+      ".",
   );
   lines.push("");
 
@@ -49,7 +54,7 @@ export function GET() {
     "- Planningsalgoritme: verdeelt leerlingen automatisch over slots op basis van voorkeurstijden en groepsverbanden.",
   );
   lines.push(
-    "- Magic-link bevestigingen: leerlingen bevestigen hun lestijd met één klik in een e-mail; geen wachtwoord.",
+    "- Bevestiging via een link: leerlingen bevestigen hun lestijd met één klik in een e-mail; geen wachtwoord.",
   );
   lines.push(
     "- Mollie-betalingen (Bancontact + iDEAL): online betalen, plus handmatige cash-registratie per inschrijving.",

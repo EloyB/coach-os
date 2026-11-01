@@ -1,7 +1,11 @@
 import type { BlogPost } from "@/content/blog/types";
+import { LESSEIZOEN_PLANNEN_TENNIS_EN_PADELCLUB } from "@/content/blog/posts/lesseizoen-plannen-tennis-en-padelclub";
 
-/** All published blog posts. New posts: import + add here. */
-export const ALL_POSTS: BlogPost[] = [];
+/**
+ * All published blog posts. New posts: import + add here.
+ * `posts/inschrijven-zonder-account-gdpr.ts` is bewust nog niet gepubliceerd.
+ */
+export const ALL_POSTS: BlogPost[] = [LESSEIZOEN_PLANNEN_TENNIS_EN_PADELCLUB];
 
 /** Posts sorted newest-first by publishedAt — used on the index page. */
 export const POSTS_BY_DATE: BlogPost[] = [...ALL_POSTS].sort((a, b) =>

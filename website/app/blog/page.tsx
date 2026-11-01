@@ -7,7 +7,7 @@ export const metadata: Metadata = pageMetadata({
   path: "/blog",
   title: "Blog",
   description:
-    "Gidsen en achtergronden over lessenplanning voor tennis- en padelclubs: AVG-conform inschrijven, seizoensplanning, magic-link bevestigingen.",
+    "Gidsen en achtergronden over lessenplanning voor tennis- en padelclubs: seizoensplanning, inschrijvingen en kampen.",
   socialDescription:
     "Praktische gidsen over lessenplanning voor tennis- en padelclubs.",
   // Zolang er geen artikels zijn blijft de pagina uit de zoekresultaten en uit
