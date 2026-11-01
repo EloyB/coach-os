@@ -12,6 +12,7 @@ public class CampConfiguration : IEntityTypeConfiguration<Camp>
 
         builder.Property(c => c.Name).IsRequired().HasMaxLength(200);
         builder.Property(c => c.Description).HasMaxLength(2000);
+        builder.Property(c => c.Price).HasColumnType("numeric(10,2)");
         builder.Property(c => c.DayPrice).HasColumnType("numeric(10,2)");
         builder.Property(c => c.HalfDayPrice).HasColumnType("numeric(10,2)");
         builder.Property(c => c.StartDate).IsRequired();

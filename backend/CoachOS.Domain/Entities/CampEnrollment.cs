@@ -19,6 +19,10 @@ public class CampEnrollment : BaseEntity
 
     public Guid? CampEnrollmentGroupId { get; set; }
 
+    /// <summary>LEGACY: vervalt in de opruimtaak.</summary>
+    public Guid? CampPriceId { get; set; }
+    public CampPrice? Price { get; set; }
+
     /// <summary>Bedrag van deze deelnemer, vastgelegd bij inschrijving (EUR).</summary>
     public decimal TotalAmount { get; set; }
 
