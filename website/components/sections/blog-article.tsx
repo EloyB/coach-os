@@ -14,6 +14,7 @@ import { WhitePage } from "@/components/site/white-page";
 import { BentoPageHero } from "@/components/sections/bento-page-hero";
 import { BentoFaq } from "@/components/sections/bento-faq";
 import { BentoContact } from "@/components/sections/bento-contact";
+import { PRICING_VISIBLE } from "@/content/pricing";
 import {
   formatDateNL,
   getRelatedPosts,
@@ -37,6 +38,7 @@ export function BlogArticle({ post }: { post: BlogPost }) {
           <BentoFaq entries={post.faq} heading="Veelgestelde vragen" />
         ) : null}
         {related.length > 0 ? <RelatedPosts posts={related} /> : null}
+        <ExploreLinks />
         <BentoContact />
       </main>
       <SiteFooter />
@@ -185,6 +187,48 @@ function Callout({
 // ─────────────────────────────────────────────────────────────────────────
 
 // ─────────────────────────────────────────────────────────────────────────
+
+/** Interne links naar de doelgroeppagina's en de prijzen, onderaan elk artikel. */
+function ExploreLinks() {
+  const linkClass =
+    "font-semibold text-tennis-green underline-offset-4 hover:underline";
+  return (
+    <section>
+      <div className="mx-auto max-w-5xl px-6 pb-4">
+        <div className="rounded-3xl bg-[#eef1e0] p-8 md:p-10">
+          <Mono className="text-[11px] tracking-[0.18em] text-ink-3">
+            OOK BEKIJKEN
+          </Mono>
+          <p className="mt-3 text-base leading-relaxed text-ink-2">
+            Lees hoe CoachOS de lessenplanning regelt voor{" "}
+            <Link href="/voor-tennisclubs" className={linkClass}>
+              tennisscholen
+            </Link>
+            ,{" "}
+            <Link href="/voor-padelclubs" className={linkClass}>
+              padelscholen
+            </Link>{" "}
+            en{" "}
+            <Link href="/voor-trainers" className={linkClass}>
+              trainers
+            </Link>
+            .
+            {PRICING_VISIBLE ? (
+              <>
+                {" "}
+                Benieuwd wat het kost? Bekijk de{" "}
+                <Link href="/prijzen" className={linkClass}>
+                  prijzen
+                </Link>
+                .
+              </>
+            ) : null}
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
 
 function RelatedPosts({ posts }: { posts: BlogPost[] }) {
   return (

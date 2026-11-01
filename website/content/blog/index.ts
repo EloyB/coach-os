@@ -1,7 +1,12 @@
 import type { BlogPost } from "@/content/blog/types";
+import { HOE_PLAN_JE_LESSEIZOEN_TENNISCLUB } from "@/content/blog/posts/hoe-plan-je-lesseizoen-tennisclub";
+import { INSCHRIJVEN_ZONDER_ACCOUNT_AVG } from "@/content/blog/posts/inschrijven-zonder-account-avg";
 
 /** All published blog posts. New posts: import + add here. */
-export const ALL_POSTS: BlogPost[] = [];
+export const ALL_POSTS: BlogPost[] = [
+  HOE_PLAN_JE_LESSEIZOEN_TENNISCLUB,
+  INSCHRIJVEN_ZONDER_ACCOUNT_AVG,
+];
 
 /** Posts sorted newest-first by publishedAt — used on the index page. */
 export const POSTS_BY_DATE: BlogPost[] = [...ALL_POSTS].sort((a, b) =>
