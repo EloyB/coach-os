@@ -117,13 +117,6 @@ public class CampEnrollmentRepository(ApplicationDbContext context) : ICampEnrol
             .FirstOrDefaultAsync(g => g.Id == groupId && g.OrganizationId == organizationId, ct);
     }
 
-    public async Task<bool> AnyUsingPricesAsync(IEnumerable<Guid> priceIds, CancellationToken ct = default)
-    {
-        List<Guid> ids = priceIds.ToList();
-        return ids.Count > 0
-            && await context.CampEnrollments.AnyAsync(e => e.CampPriceId != null && ids.Contains(e.CampPriceId.Value), ct);
-    }
-
     public async Task AddAsync(CampEnrollment enrollment, CancellationToken ct = default)
     {
         await context.CampEnrollments.AddAsync(enrollment, ct);
