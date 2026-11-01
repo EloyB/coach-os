@@ -1,11 +1,11 @@
 import type { BlogPost } from "@/content/blog/types";
 import { LESSEIZOEN_PLANNEN_TENNIS_EN_PADELCLUB } from "@/content/blog/posts/lesseizoen-plannen-tennis-en-padelclub";
-import { INSCHRIJVEN_ZONDER_ACCOUNT_AVG } from "@/content/blog/posts/inschrijven-zonder-account-avg";
+import { INSCHRIJVEN_ZONDER_ACCOUNT_GDPR } from "@/content/blog/posts/inschrijven-zonder-account-gdpr";
 
 /** All published blog posts. New posts: import + add here. */
 export const ALL_POSTS: BlogPost[] = [
   LESSEIZOEN_PLANNEN_TENNIS_EN_PADELCLUB,
-  INSCHRIJVEN_ZONDER_ACCOUNT_AVG,
+  INSCHRIJVEN_ZONDER_ACCOUNT_GDPR,
 ];
 
 /** Posts sorted newest-first by publishedAt — used on the index page. */

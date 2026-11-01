@@ -120,5 +120,5 @@ export const LESSEIZOEN_PLANNEN_TENNIS_EN_PADELCLUB: BlogPost = {
       a: "Zodra je met meerdere trainers of meerdere groepen per niveau werkt, wordt Excel een blokkade in plaats van een hulpmiddel. Wijzigingen propageren niet, formules breken, en niemand weet welke versie de meest recente is. Een speciaal voor lessenplanning gemaakte tool verdient zich dan terug in tijdwinst alleen al.",
     },
   ],
-  related: ["inschrijven-zonder-account-avg"],
+  related: ["inschrijven-zonder-account-gdpr"],
 };
