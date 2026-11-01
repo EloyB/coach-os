@@ -18,9 +18,6 @@ public class Camp : BaseEntity
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
 
-    /// <summary>LEGACY: wordt verwijderd in de opruimtaak (vervangen door DayPrice/HalfDayPrice).</summary>
-    public decimal Price { get; set; }
-
     /// <summary>Prijs van een hele dag (EUR). 0 = gratis (geen betaalstap).</summary>
     public decimal DayPrice { get; set; }
 
@@ -48,7 +45,6 @@ public class Camp : BaseEntity
     // Navigation
     public Organization Organization { get; set; } = null!;
     public TennisClub TennisClub { get; set; } = null!;
-    public ICollection<CampPrice> Prices { get; set; } = new List<CampPrice>(); // LEGACY
     public ICollection<CampDay> Days { get; set; } = new List<CampDay>();
     public ICollection<CampEnrollment> Enrollments { get; set; } = new List<CampEnrollment>();
     public CampEnrollmentForm? EnrollmentForm { get; set; }

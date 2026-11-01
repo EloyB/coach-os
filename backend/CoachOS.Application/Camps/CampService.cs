@@ -30,7 +30,7 @@ public class CampService(
         Dictionary<Guid, int> counts = await enrollments.CountActiveByCampsAsync(list.Select(c => c.Id), ct);
         List<CampDto> dtos = list.Select(c => new CampDto(
             c.Id, c.Name, c.TennisClubId, c.TennisClub?.Name ?? string.Empty,
-            c.Level.HasValue ? (int)c.Level.Value : null, c.Price,
+            c.Level.HasValue ? (int)c.Level.Value : null, c.DayPrice, c.HalfDayPrice, c.AllowHalfDays,
             c.StartDate.ToString(DateFormat), c.EndDate.ToString(DateFormat),
             c.MaxParticipants, counts.GetValueOrDefault(c.Id, 0), c.Days.Count, c.IsActive)).ToList();
         return Result<List<CampDto>>.Ok(dtos);
@@ -86,7 +86,6 @@ public class CampService(
         camp.DayPrice = request.DayPrice;
         camp.HalfDayPrice = request.HalfDayPrice;
         camp.AllowHalfDays = request.AllowHalfDays;
-        camp.Price = request.DayPrice; // LEGACY, vervalt in de opruimtaak
         camp.StartDate = ParseDate(request.StartDate);
         camp.EndDate = ParseDate(request.EndDate);
         camp.RegistrationDeadline = DateTime.SpecifyKind(request.RegistrationDeadline, DateTimeKind.Utc);
@@ -558,7 +557,6 @@ public class CampService(
             DayPrice = request.DayPrice,
             HalfDayPrice = request.HalfDayPrice,
             AllowHalfDays = request.AllowHalfDays,
-            Price = request.DayPrice, // LEGACY, vervalt in de opruimtaak
             StartDate = ParseDate(request.StartDate),
             EndDate = ParseDate(request.EndDate),
             RegistrationDeadline = DateTime.SpecifyKind(request.RegistrationDeadline, DateTimeKind.Utc),
@@ -588,8 +586,6 @@ public class CampService(
         day.MorningEnd = ParseTime(d.MorningEnd);
         day.AfternoonStart = ParseTime(d.AfternoonStart);
         day.AfternoonEnd = ParseTime(d.AfternoonEnd);
-        day.StartTime = day.FirstStart; // LEGACY, vervalt in de opruimtaak
-        day.EndTime = day.LastEnd;
         day.TrainerAssignments.Clear();
         foreach (CreateCampDayTrainerRequest t in d.Trainers)
         {

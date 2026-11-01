@@ -35,8 +35,6 @@ public interface ICampRepository
     /// <summary>Verwijdert dagen + hun trainerassignments (Restrict FK: geen auto-cascade).</summary>
     void RemoveDays(IEnumerable<CampDay> days);
 
-    void RemovePrices(IEnumerable<CampPrice> prices);
-
     /// <summary>Verwijdert alleen de trainerassignments van een dag (de dag zelf blijft).</summary>
     void RemoveDayTrainers(IEnumerable<CampDayTrainer> trainers);
 

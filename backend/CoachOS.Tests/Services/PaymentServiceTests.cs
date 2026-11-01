@@ -667,7 +667,7 @@ public class PaymentServiceTests
         _campEnrollments.Setup(c => c.GetByIdWithGroupAsync(campEnrollmentId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new CampEnrollment { Id = campEnrollmentId, OrganizationId = OrgId, CampId = campId });
         _camps.Setup(c => c.GetByIdPublicAsync(campId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Camp { Id = campId, OrganizationId = OrgId, Name = "Gratis", Price = 0m });
+            .ReturnsAsync(new Camp { Id = campId, OrganizationId = OrgId, Name = "Gratis" });
 
         Result result = await _sut.RecordCampCashPaymentAsync(campEnrollmentId, OrgId);
 

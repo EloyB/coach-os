@@ -10,10 +10,6 @@ public class CampDay : BaseEntity
     public Guid OrganizationId { get; set; }
     public DateOnly Date { get; set; }
 
-    // LEGACY: vervallen in de opruimtaak (vervangen door de dagdelen).
-    public TimeOnly StartTime { get; set; }
-    public TimeOnly EndTime { get; set; }
-
     public TimeOnly? MorningStart { get; set; }
     public TimeOnly? MorningEnd { get; set; }
     public TimeOnly? AfternoonStart { get; set; }

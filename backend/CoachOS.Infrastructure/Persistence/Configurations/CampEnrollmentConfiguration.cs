@@ -27,12 +27,6 @@ public class CampEnrollmentConfiguration : IEntityTypeConfiguration<CampEnrollme
             .OnDelete(DeleteBehavior.Restrict)
             .IsRequired(false);
 
-        builder.HasOne(e => e.Price)
-            .WithMany()
-            .HasForeignKey(e => e.CampPriceId)
-            .OnDelete(DeleteBehavior.Restrict)
-            .IsRequired(false);
-
         builder.Property(e => e.TotalAmount).HasColumnType("numeric(10,2)");
 
         builder.HasIndex(e => e.OrganizationId);

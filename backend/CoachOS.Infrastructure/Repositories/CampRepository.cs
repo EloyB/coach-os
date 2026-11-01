@@ -48,7 +48,6 @@ public class CampRepository(ApplicationDbContext db) : ICampRepository
     public async Task<Camp?> GetByIdWithDetailsAsync(Guid id, Guid organizationId, CancellationToken ct = default)
         => await db.Camps
             .Include(c => c.Days).ThenInclude(d => d.TrainerAssignments)
-            .Include(c => c.Prices)
             .Include(c => c.EnrollmentForm!).ThenInclude(f => f.Fields)
             .Include(c => c.TennisClub)
             .FirstOrDefaultAsync(c => c.Id == id && c.OrganizationId == organizationId && c.IsActive, ct);
@@ -58,7 +57,6 @@ public class CampRepository(ApplicationDbContext db) : ICampRepository
             .AsNoTracking()
             .IgnoreQueryFilters()
             .Include(c => c.Days).ThenInclude(d => d.TrainerAssignments)
-            .Include(c => c.Prices)
             .Include(c => c.TennisClub)
             .FirstOrDefaultAsync(c => c.Id == id && c.IsActive, ct);
 
@@ -69,8 +67,6 @@ public class CampRepository(ApplicationDbContext db) : ICampRepository
         => await db.Camps.AddAsync(camp, ct);
 
     public void Remove(Camp camp) => db.Camps.Remove(camp);
-
-    public void RemovePrices(IEnumerable<CampPrice> prices) => db.CampPrices.RemoveRange(prices);
 
     public void RemoveDays(IEnumerable<CampDay> days)
     {

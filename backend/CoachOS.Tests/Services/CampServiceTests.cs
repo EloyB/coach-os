@@ -123,8 +123,8 @@ public class CampServiceTests
                 OrganizationId = _orgId,
                 CampId = campId,
                 Date = new DateOnly(2026, 4, 14 + i),
-                StartTime = new TimeOnly(9, 0),
-                EndTime = new TimeOnly(16, 0),
+                MorningStart = new TimeOnly(9, 0), MorningEnd = new TimeOnly(12, 0),
+                AfternoonStart = new TimeOnly(13, 0), AfternoonEnd = new TimeOnly(16, 0),
             };
             day.TrainerAssignments.Add(new CampDayTrainer
             {
