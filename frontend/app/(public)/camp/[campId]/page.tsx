@@ -488,25 +488,6 @@ export default function CampEnrollPage() {
                 </div>
               )}
 
-              {/* ── Dagen kiezen ── */}
-              <div>
-                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-                  {t("pickerDaysTitle")}
-                </h3>
-                <CampDayPicker
-                  days={camp.days}
-                  allowHalfDays={camp.allowHalfDays}
-                  dayPrice={camp.dayPrice}
-                  halfDayPrice={camp.halfDayPrice}
-                  value={selection}
-                  onChange={(next) => {
-                    setSelection(next);
-                    setSelectionError(null);
-                  }}
-                  error={selectionError}
-                />
-              </div>
-
               {/* ── Personal info ── */}
               <div>
                 <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
@@ -579,6 +560,25 @@ export default function CampEnrollPage() {
                     />
                   </div>
                 </div>
+              </div>
+
+              {/* ── Dagen kiezen ── */}
+              <div>
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                  {t("pickerDaysTitle")}
+                </h3>
+                <CampDayPicker
+                  days={camp.days}
+                  allowHalfDays={camp.allowHalfDays}
+                  dayPrice={camp.dayPrice}
+                  halfDayPrice={camp.halfDayPrice}
+                  value={selection}
+                  onChange={(next) => {
+                    setSelection(next);
+                    setSelectionError(null);
+                  }}
+                  error={selectionError}
+                />
               </div>
 
               <hr className="border-gray-100" />
