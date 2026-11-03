@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Text.RegularExpressions;
 using CoachOS.Application.Camps.DTOs;
 using FluentValidation;
 
@@ -11,7 +10,6 @@ namespace CoachOS.Application.Camps.Validators;
 /// </summary>
 public class UpdateCampRequestValidator : AbstractValidator<UpdateCampRequest>
 {
-    private static readonly Regex TimePattern = new(@"^([01]\d|2[0-3]):[0-5]\d$", RegexOptions.Compiled);
     private const string DateFormat = "yyyy-MM-dd";
 
     public UpdateCampRequestValidator()
@@ -23,13 +21,16 @@ public class UpdateCampRequestValidator : AbstractValidator<UpdateCampRequest>
         RuleFor(x => x.TennisClubId)
             .NotEmpty().WithMessage("Club is verplicht");
 
-        RuleFor(x => x.Price)
-            .GreaterThanOrEqualTo(0m).WithMessage("Prijs mag niet negatief zijn");
+        RuleFor(x => x)
+            .Custom((x, ctx) =>
+            {
+                string? error = CampRequestRules.PriceError(x.DayPrice, x.HalfDayPrice, x.AllowHalfDays);
+                if (error is not null) ctx.AddFailure(error);
+            });
 
-        RuleFor(x => x.Prices)
-            .Must(p => p is null || p.Count <= SaveCampPriceRequestValidator.MaxPrices)
-            .WithMessage($"Een kamp heeft maximaal {SaveCampPriceRequestValidator.MaxPrices} prijsopties");
-        RuleForEach(x => x.Prices).SetValidator(new SaveCampPriceRequestValidator());
+        RuleFor(x => x.MaxParticipants)
+            .GreaterThan(0).WithMessage("Maximum aantal deelnemers moet groter dan 0 zijn")
+            .When(x => x.MaxParticipants.HasValue);
 
         RuleFor(x => x.StartDate)
             .Must(BeValidDate).WithMessage("Ongeldige startdatum (yyyy-MM-dd)");
@@ -45,31 +46,22 @@ public class UpdateCampRequestValidator : AbstractValidator<UpdateCampRequest>
         RuleFor(x => x.Days)
             .NotEmpty().WithMessage("Een kamp heeft minstens één dag nodig");
 
-        RuleForEach(x => x.Days).ChildRules(day =>
-        {
-            day.RuleFor(d => d.Date).Must(BeValidDate).WithMessage("Ongeldige datum (yyyy-MM-dd)");
-            day.RuleFor(d => d.StartTime).Must(BeValidTime).WithMessage("Ongeldige starttijd (HH:mm)");
-            day.RuleFor(d => d.EndTime).Must(BeValidTime).WithMessage("Ongeldige eindtijd (HH:mm)");
-            day.RuleFor(d => d)
-                .Must(d => string.Compare(d.EndTime, d.StartTime, StringComparison.Ordinal) > 0)
-                .WithMessage("Eindtijd moet na starttijd zijn")
-                .When(d => BeValidTime(d.StartTime) && BeValidTime(d.EndTime));
+        RuleFor(x => x.Days)
+            .Custom((days, ctx) =>
+            {
+                string? error = CampRequestRules.DuplicateDateError(days);
+                if (error is not null)
+                    ctx.AddFailure(error);
+            });
 
-            day.RuleForEach(d => d.Trainers).Must((d, trainer) =>
-                    string.Compare(trainer.StartTime, d.StartTime, StringComparison.Ordinal) >= 0
-                    && string.Compare(trainer.EndTime, d.EndTime, StringComparison.Ordinal) <= 0
-                    && string.Compare(trainer.EndTime, trainer.StartTime, StringComparison.Ordinal) > 0)
-                .WithMessage("Trainer-uren moeten binnen de kampuren van die dag vallen")
-                .When(d => BeValidTime(d.StartTime) && BeValidTime(d.EndTime));
-
-            day.RuleFor(d => d.Trainers)
-                .Must(trainers => !CampShiftRules.HasOverlappingShifts(trainers))
-                .WithMessage(CampShiftRules.OverlapMessage)
-                .When(d => d.Trainers.All(t => BeValidTime(t.StartTime) && BeValidTime(t.EndTime)));
-        });
+        RuleForEach(x => x.Days)
+            .Custom((day, ctx) =>
+            {
+                foreach (string error in CampRequestRules.DayErrors(day))
+                    ctx.AddFailure(error);
+            });
     }
 
-    private static bool BeValidTime(string? t) => t is not null && TimePattern.IsMatch(t);
     private static bool BeValidDate(string? d) =>
         d is not null && DateOnly.TryParseExact(d, DateFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out _);
     private static DateOnly ParseDate(string d) => DateOnly.ParseExact(d, DateFormat, CultureInfo.InvariantCulture);

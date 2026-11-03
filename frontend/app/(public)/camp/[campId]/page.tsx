@@ -22,16 +22,20 @@ import {
   submitCampEnrollment,
 } from "@/lib/api/camps";
 import type {
+  CampDaySelection,
   PublicCampDto,
   CampEnrollmentFormDto,
   CampFormFieldDto,
 } from "@/lib/api/camps";
 import { getAuthUser } from "@/lib/auth";
+import { getAxiosErrorMessages } from "@/lib/utils/api-errors";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { LogoMark } from "@/components/ui/logo-mark";
 import { Spinner } from "@/components/ui/spinner";
+import { CampDayPicker } from "@/components/camps/camp-day-picker";
 import { formatDateNL, formatDateShort } from "@/lib/date-utils";
+import { formatPrice } from "@/lib/camp-day-selection";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -92,6 +96,10 @@ export default function CampEnrollPage() {
     lastName?: string;
     email?: string;
   }>({});
+
+  // Gekozen dagdelen
+  const [selection, setSelection] = useState<CampDaySelection[]>([]);
+  const [selectionError, setSelectionError] = useState<string | null>(null);
 
   // Enrollment type
   const [enrollmentType, setEnrollmentType] = useState<"solo" | "group">("solo");
@@ -199,7 +207,11 @@ export default function CampEnrollPage() {
     }
     setMemberErrors(mErrors);
 
+    const noDays = selection.length === 0;
+    setSelectionError(noDays ? t("pickerNoDaySelected") : null);
+
     return (
+      !noDays &&
       Object.keys(errors).length === 0 &&
       Object.keys(fErrors).length === 0 &&
       Object.keys(mErrors).length === 0
@@ -224,6 +236,7 @@ export default function CampEnrollPage() {
         participantEmail: email.trim(),
         participantPhone: phone.trim() || undefined,
         responses,
+        days: selection,
         enrollmentType,
         groupMembers:
           enrollmentType === "group" && groupMembers.length > 0
@@ -246,8 +259,10 @@ export default function CampEnrollPage() {
           `/camp-enrollment/thank-you?campEnrollmentId=${result.campEnrollmentId}`
         );
       }
-    } catch {
-      setSubmitError(t("submitError"));
+    } catch (err) {
+      // Een volzet dagdeel of ongeldige keuze komt als leesbare melding terug van de server.
+      const message = getAxiosErrorMessages(err, t("submitError"))[0];
+      setSubmitError(message ?? t("submitError"));
       setSubmitting(false);
     }
   }
@@ -359,11 +374,6 @@ export default function CampEnrollPage() {
   }
 
   const levelKey = camp.level != null ? LEVEL_KEYS[camp.level] : undefined;
-  const spotsLeft =
-    camp.maxParticipants != null
-      ? Math.max(0, camp.maxParticipants - camp.participantCount)
-      : null;
-
   // ─── Render ─────────────────────────────────────────────────────────────
 
   return (
@@ -403,8 +413,10 @@ export default function CampEnrollPage() {
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <Euro className="w-4 h-4 text-gray-400 shrink-0" />
               <span>
-                {camp.price > 0
-                  ? `€${camp.price.toFixed(2)} ${t("pricePerParticipant")}`
+                {camp.dayPrice > 0
+                  ? camp.allowHalfDays
+                    ? `${t("pricePerDay", { price: formatPrice(camp.dayPrice) })} · ${t("pricePerHalfDay", { price: formatPrice(camp.halfDayPrice) })}`
+                    : t("pricePerDay", { price: formatPrice(camp.dayPrice) })
                   : t("priceFree")}
               </span>
             </div>
@@ -416,30 +428,11 @@ export default function CampEnrollPage() {
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <Users className="w-4 h-4 text-gray-400 shrink-0" />
-              {camp.maxParticipants != null && spotsLeft != null ? (
-                <span>
-                  {t("enrolledOfMax", {
-                    enrolled: camp.participantCount,
-                    max: camp.maxParticipants,
-                  })}
-                  {" — "}
-                  <span
-                    className={
-                      spotsLeft === 0
-                        ? "text-red-600 font-medium"
-                        : spotsLeft <= camp.maxParticipants * 0.2
-                          ? "text-amber-600 font-medium"
-                          : "text-tennis-green font-medium"
-                    }
-                  >
-                    {t("spotsLeft", { count: spotsLeft })}
-                  </span>
-                </span>
-              ) : (
-                <span>
-                  {camp.participantCount} {t("enrolledLabel")}
-                </span>
-              )}
+              <span>
+                {camp.participantCount} {t("enrolledLabel")}
+                {camp.maxParticipants != null &&
+                  ` · ${t("maxPerPart", { max: camp.maxParticipants })}`}
+              </span>
             </div>
           </div>
 
@@ -458,49 +451,21 @@ export default function CampEnrollPage() {
                     <span className="font-medium text-gray-900 capitalize">
                       {formatDateShort(day.date)}
                     </span>
-                    <span className="text-gray-600">
-                      {day.startTime} - {day.endTime}
+                    <span className="text-gray-600 text-right">
+                      {day.morningStart && (
+                        <span className="block">
+                          {t("morning")} {day.morningStart} - {day.morningEnd}
+                        </span>
+                      )}
+                      {day.afternoonStart && (
+                        <span className="block">
+                          {t("afternoon")} {day.afternoonStart} - {day.afternoonEnd}
+                        </span>
+                      )}
                     </span>
                   </div>
                 ))}
               </div>
-            </div>
-          )}
-          {/* Prijzen: enkel ter referentie, het tarief dat geldt bepaalt de organisator */}
-          {camp.prices.length > 0 && (
-            <div className="mt-5 pt-5 border-t border-gray-100">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-                {t("publicPricesLabel")}
-              </h3>
-              <ul className="space-y-2">
-                <li className="flex items-start justify-between gap-3 text-sm border border-gray-100 rounded-lg px-3 py-2">
-                  <span className="font-medium text-gray-900">
-                    {t("publicPriceMain")}
-                  </span>
-                  <span className="font-semibold text-gray-900 whitespace-nowrap">
-                    {camp.price > 0 ? `€${camp.price.toFixed(2)}` : t("priceFree")}
-                  </span>
-                </li>
-                {camp.prices.map((p) => (
-                  <li
-                    key={p.id}
-                    className="flex items-start justify-between gap-3 text-sm border border-gray-100 rounded-lg px-3 py-2"
-                  >
-                    <div className="min-w-0">
-                      <span className="font-medium text-gray-900">{p.label}</span>
-                      {p.description && (
-                        <p className="text-xs text-gray-500 mt-0.5">
-                          {p.description}
-                        </p>
-                      )}
-                    </div>
-                    <span className="font-semibold text-gray-900 whitespace-nowrap">
-                      {p.amount > 0 ? `€${p.amount.toFixed(2)}` : t("priceFree")}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              <p className="text-xs text-gray-400 mt-2">{t("publicPricesNote")}</p>
             </div>
           )}
         </div>
@@ -595,6 +560,25 @@ export default function CampEnrollPage() {
                     />
                   </div>
                 </div>
+              </div>
+
+              {/* ── Dagen kiezen ── */}
+              <div>
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                  {t("pickerDaysTitle")}
+                </h3>
+                <CampDayPicker
+                  days={camp.days}
+                  allowHalfDays={camp.allowHalfDays}
+                  dayPrice={camp.dayPrice}
+                  halfDayPrice={camp.halfDayPrice}
+                  value={selection}
+                  onChange={(next) => {
+                    setSelection(next);
+                    setSelectionError(null);
+                  }}
+                  error={selectionError}
+                />
               </div>
 
               <hr className="border-gray-100" />

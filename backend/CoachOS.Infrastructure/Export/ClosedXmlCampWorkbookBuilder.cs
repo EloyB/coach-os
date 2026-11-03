@@ -32,7 +32,7 @@ public class ClosedXmlCampWorkbookBuilder : ICampWorkbookBuilder
         IXLWorksheet ws = workbook.Worksheets.Add("Inschrijvingen");
 
         string[] fixedHeaders =
-            ["Naam", "E-mail", "Telefoon", "Status", "Betaalstatus", "Betaalmethode", "Ingeschreven op", "Notities"];
+            ["Naam", "E-mail", "Telefoon", "Status", "Betaalstatus", "Betaalmethode", "Ingeschreven op", "Notities", "Dagen", "Bedrag"];
         string[] headers = [.. fixedHeaders, .. model.FormFieldLabels];
         ExportWorkbookStyle.RenderShell(ws, "Inschrijvingen", model.CampName, model.ExportedOn, headers);
 
@@ -61,6 +61,10 @@ public class ClosedXmlCampWorkbookBuilder : ICampWorkbookBuilder
                 enrolledCell.Value = e.EnrolledAt;
                 enrolledCell.Style.DateFormat.Format = DateTimeFormat;
                 ws.Cell(row, col++).Value = e.Notes ?? string.Empty;
+                ws.Cell(row, col++).Value = e.DaysSummary;
+                IXLCell amountCell = ws.Cell(row, col++);
+                amountCell.Value = e.TotalAmount;
+                amountCell.Style.NumberFormat.Format = "#,##0.00";
 
                 foreach (string label in model.FormFieldLabels)
                     ws.Cell(row, col++).Value = e.FormResponses.TryGetValue(label, out string? value) ? value : string.Empty;
@@ -80,7 +84,7 @@ public class ClosedXmlCampWorkbookBuilder : ICampWorkbookBuilder
     {
         IXLWorksheet ws = workbook.Worksheets.Add("Kampdagen");
 
-        string[] headers = ["Dag", "Datum", "Van", "Tot", "Trainers"];
+        string[] headers = ["Dag", "Datum", "Voormiddag", "Namiddag", "Deelnemers voormiddag", "Deelnemers namiddag", "Trainers"];
         ExportWorkbookStyle.RenderShell(ws, "Kampdagen", model.CampName, model.ExportedOn, headers);
 
         int row = FirstDataRow;
@@ -90,10 +94,12 @@ public class ClosedXmlCampWorkbookBuilder : ICampWorkbookBuilder
             IXLCell dateCell = ws.Cell(row, 2);
             dateCell.Value = d.Date.ToDateTime(TimeOnly.MinValue);
             dateCell.Style.DateFormat.Format = "dd/MM/yyyy";
-            ws.Cell(row, 3).Value = d.StartTime.ToString(TimeFormat);
-            ws.Cell(row, 4).Value = d.EndTime.ToString(TimeFormat);
-            ws.Cell(row, 5).Value = string.Join(", ", d.Trainers.Select(t =>
-                t.StartTime == d.StartTime && t.EndTime == d.EndTime
+            ws.Cell(row, 3).Value = PartLabel(d.MorningStart, d.MorningEnd);
+            ws.Cell(row, 4).Value = PartLabel(d.AfternoonStart, d.AfternoonEnd);
+            ws.Cell(row, 5).Value = d.MorningStart.HasValue ? d.MorningCount : string.Empty;
+            ws.Cell(row, 6).Value = d.AfternoonStart.HasValue ? d.AfternoonCount : string.Empty;
+            ws.Cell(row, 7).Value = string.Join(", ", d.Trainers.Select(t =>
+                t.StartTime == d.FirstStart && t.EndTime == d.LastEnd
                     ? t.Name
                     : $"{t.Name} ({t.StartTime.ToString(TimeFormat)}–{t.EndTime.ToString(TimeFormat)})"));
             row++;
@@ -101,4 +107,7 @@ public class ClosedXmlCampWorkbookBuilder : ICampWorkbookBuilder
 
         ExportWorkbookStyle.FinalizeGrouped(ws, headers.Length, row - 1);
     }
+
+    private static string PartLabel(TimeOnly? start, TimeOnly? end)
+        => start.HasValue && end.HasValue ? $"{start.Value.ToString(TimeFormat)}–{end.Value.ToString(TimeFormat)}" : string.Empty;
 }

@@ -11,8 +11,8 @@ public class CampDayConfiguration : IEntityTypeConfiguration<CampDay>
         builder.HasKey(d => d.Id);
 
         builder.Property(d => d.Date).IsRequired();
-        builder.Property(d => d.StartTime).IsRequired();
-        builder.Property(d => d.EndTime).IsRequired();
+        builder.Ignore(d => d.FirstStart);
+        builder.Ignore(d => d.LastEnd);
 
         builder.HasOne(d => d.Camp)
             .WithMany(c => c.Days)

@@ -203,7 +203,8 @@ public class OrganizationCampDaysTests
         CampDay Day(Camp camp, DateOnly date) => new()
         {
             Id = Guid.NewGuid(), OrganizationId = camp.OrganizationId, Camp = camp, CampId = camp.Id, Date = date,
-            StartTime = new TimeOnly(9, 0), EndTime = new TimeOnly(16, 0),
+            MorningStart = new TimeOnly(9, 0), MorningEnd = new TimeOnly(12, 0),
+            AfternoonStart = new TimeOnly(13, 0), AfternoonEnd = new TimeOnly(16, 0),
         };
         Camp mine = Camp(OrgId, true);
         CampDay inRange = Day(mine, new DateOnly(2026, 10, 10));
@@ -234,5 +235,38 @@ public class OrganizationCampDaysTests
 
         result.Errors[0].Code.Should().Be(ErrorCodes.Validation);
         camps.VerifyNoOtherCalls();
+    }
+
+    private static DashboardService BuildSut(Mock<ICampRepository> camps) => new(
+        Mock.Of<ILessonSerieRepository>(), Mock.Of<ILessonRepository>(), Mock.Of<IEnrollmentRepository>(),
+        Mock.Of<ITennisClubRepository>(), Mock.Of<IUserLookupService>(),
+        Mock.Of<IAssignmentConfirmationTokenRepository>(), Mock.Of<IScheduleAssignmentRepository>(),
+        Mock.Of<ILessonInvitationRepository>(), camps.Object, TimeProvider.System);
+
+    [Test]
+    public async Task GetOrganizationCampDays_ShowsFirstStartAndLastEndOfTheDayParts()
+    {
+        Camp camp = new() { Id = Guid.NewGuid(), OrganizationId = OrgId, Name = "Kerstkamp" };
+        CampDay fullDay = new()
+        {
+            CampId = camp.Id, Camp = camp, Date = new DateOnly(2026, 12, 21),
+            MorningStart = new TimeOnly(9, 15), MorningEnd = new TimeOnly(12, 0),
+            AfternoonStart = new TimeOnly(13, 15), AfternoonEnd = new TimeOnly(16, 0),
+        };
+        CampDay afternoonOnly = new()
+        {
+            CampId = camp.Id, Camp = camp, Date = new DateOnly(2026, 12, 22),
+            AfternoonStart = new TimeOnly(13, 15), AfternoonEnd = new TimeOnly(16, 0),
+        };
+        Mock<ICampRepository> camps = new();
+        camps.Setup(r => r.GetDaysByOrganizationAsync(OrgId, From, From.AddDays(30), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([fullDay, afternoonOnly]);
+
+        Result<List<MyCampDayDto>> result = await BuildSut(camps).GetOrganizationCampDaysAsync(OrgId, From, From.AddDays(30));
+
+        result.Value![0].StartTime.Should().Be("09:15");
+        result.Value[0].EndTime.Should().Be("16:00");
+        result.Value[1].StartTime.Should().Be("13:15");
+        result.Value[1].EndTime.Should().Be("16:00");
     }
 }

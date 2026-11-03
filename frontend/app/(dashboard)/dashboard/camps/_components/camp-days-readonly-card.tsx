@@ -69,7 +69,12 @@ export function CampDaysReadOnlyCard({ camp }: CampDaysReadOnlyCardProps) {
               </div>
               <span className="inline-flex items-center gap-1 text-xs text-gray-500">
                 <Clock size={11} className="text-gray-400" />
-                {day.startTime} - {day.endTime}
+                {[
+                  day.morningStart && `${t("morning")} ${day.morningStart} - ${day.morningEnd}`,
+                  day.afternoonStart && `${t("afternoon")} ${day.afternoonStart} - ${day.afternoonEnd}`,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
               </span>
             </div>
 

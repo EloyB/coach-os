@@ -18,8 +18,14 @@ public class Camp : BaseEntity
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
 
-    /// <summary>Eenmalige prijs voor het hele kamp (EUR). 0 = gratis (geen betaalstap).</summary>
-    public decimal Price { get; set; }
+    /// <summary>Prijs van een hele dag (EUR). 0 = gratis (geen betaalstap).</summary>
+    public decimal DayPrice { get; set; }
+
+    /// <summary>Prijs van één dagdeel (EUR); nooit hoger dan <see cref="DayPrice"/>.</summary>
+    public decimal HalfDayPrice { get; set; }
+
+    /// <summary>Mogen deelnemers ook één dagdeel per dag kiezen?</summary>
+    public bool AllowHalfDays { get; set; }
 
     public DateOnly StartDate { get; set; }
     public DateOnly EndDate { get; set; }
@@ -30,7 +36,7 @@ public class Camp : BaseEntity
     /// </summary>
     public DateTime RegistrationDeadline { get; set; }
 
-    /// <summary>Max. aantal deelnemers; null = onbeperkt.</summary>
+    /// <summary>Max. aantal deelnemers per dagdeel (elke dag apart geteld); null = onbeperkt.</summary>
     public int? MaxParticipants { get; set; }
 
     /// <summary>Soft delete / concept-vlag.</summary>
@@ -39,7 +45,6 @@ public class Camp : BaseEntity
     // Navigation
     public Organization Organization { get; set; } = null!;
     public TennisClub TennisClub { get; set; } = null!;
-    public ICollection<CampPrice> Prices { get; set; } = new List<CampPrice>();
     public ICollection<CampDay> Days { get; set; } = new List<CampDay>();
     public ICollection<CampEnrollment> Enrollments { get; set; } = new List<CampEnrollment>();
     public CampEnrollmentForm? EnrollmentForm { get; set; }

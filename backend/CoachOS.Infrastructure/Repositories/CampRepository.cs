@@ -1,4 +1,5 @@
 using CoachOS.Domain.Entities;
+using CoachOS.Domain.Enums;
 using CoachOS.Domain.Interfaces;
 using CoachOS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -26,7 +27,7 @@ public class CampRepository(ApplicationDbContext db) : ICampRepository
                 && d.Date >= from && d.Date <= to
                 && d.Camp.IsActive)
             .OrderBy(d => d.Date)
-            .ThenBy(d => d.StartTime)
+            .ThenBy(d => d.MorningStart ?? d.AfternoonStart)
             .ToListAsync(ct);
 
     public async Task<IReadOnlyList<CampDayTrainer>> GetTrainerDaysAsync(
@@ -47,7 +48,6 @@ public class CampRepository(ApplicationDbContext db) : ICampRepository
     public async Task<Camp?> GetByIdWithDetailsAsync(Guid id, Guid organizationId, CancellationToken ct = default)
         => await db.Camps
             .Include(c => c.Days).ThenInclude(d => d.TrainerAssignments)
-            .Include(c => c.Prices)
             .Include(c => c.EnrollmentForm!).ThenInclude(f => f.Fields)
             .Include(c => c.TennisClub)
             .FirstOrDefaultAsync(c => c.Id == id && c.OrganizationId == organizationId && c.IsActive, ct);
@@ -57,7 +57,6 @@ public class CampRepository(ApplicationDbContext db) : ICampRepository
             .AsNoTracking()
             .IgnoreQueryFilters()
             .Include(c => c.Days).ThenInclude(d => d.TrainerAssignments)
-            .Include(c => c.Prices)
             .Include(c => c.TennisClub)
             .FirstOrDefaultAsync(c => c.Id == id && c.IsActive, ct);
 
@@ -69,12 +68,25 @@ public class CampRepository(ApplicationDbContext db) : ICampRepository
 
     public void Remove(Camp camp) => db.Camps.Remove(camp);
 
-    public void RemovePrices(IEnumerable<CampPrice> prices) => db.CampPrices.RemoveRange(prices);
-
     public void RemoveDays(IEnumerable<CampDay> days)
     {
         List<CampDay> dayList = days.ToList();
         db.CampDayTrainers.RemoveRange(dayList.SelectMany(d => d.TrainerAssignments));
         db.CampDays.RemoveRange(dayList);
     }
+
+    public void RemoveDayTrainers(IEnumerable<CampDayTrainer> trainers) => db.CampDayTrainers.RemoveRange(trainers);
+
+    public async Task<bool> DayHasEnrollmentsAsync(Guid campDayId, CancellationToken ct = default)
+        => await db.CampEnrollmentDays.AnyAsync(d => d.CampDayId == campDayId, ct);
+
+    public async Task<bool> AnyEnrollmentUsesPartAsync(Guid campDayId, CampDayPart part, CancellationToken ct = default)
+        => await db.CampEnrollmentDays.AnyAsync(
+            d => d.CampDayId == campDayId && (part == CampDayPart.Morning ? d.Morning : d.Afternoon), ct);
+
+    public async Task<bool> AnyHalfDayEnrollmentAsync(Guid campId, CancellationToken ct = default)
+        => await db.CampEnrollmentDays.AnyAsync(
+            d => d.CampDay.CampId == campId
+                && (d.Morning != d.CampDay.MorningStart.HasValue
+                    || d.Afternoon != d.CampDay.AfternoonStart.HasValue), ct);
 }

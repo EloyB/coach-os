@@ -16,7 +16,9 @@ public class UpdateCampRequestValidatorTests
         Description: null,
         TennisClubId: Guid.NewGuid(),
         Level: null,
-        Price: 120m,
+        DayPrice: 120m,
+        HalfDayPrice: 60m,
+        AllowHalfDays: true,
         StartDate: "2026-04-14",
         EndDate: "2026-04-14",
         RegistrationDeadline: new DateTime(2026, 4, 1, 0, 0, 0, DateTimeKind.Utc),
@@ -24,7 +26,7 @@ public class UpdateCampRequestValidatorTests
         IsActive: true,
         Days: new List<CreateCampDayRequest>
         {
-            new("2026-04-14", "09:00", "16:00", shifts.ToList()),
+            new(null, "2026-04-14", "09:00", "12:00", "13:00", "16:00", shifts.ToList()),
         });
 
     [Test]
@@ -51,5 +53,32 @@ public class UpdateCampRequestValidatorTests
         result.IsValid.Should().BeFalse();
         result.Errors.Should().Contain(e =>
             e.ErrorMessage == "Een trainer kan niet twee overlappende shiften op dezelfde dag hebben");
+    }
+
+    [Test]
+    public void Validate_MalformedTrainerTime_FailsWithoutThrowing()
+    {
+        ValidationResult result = null!;
+        Action act = () => result = _validator.Validate(WithShifts(new CreateCampDayTrainerRequest(Guid.NewGuid(), "10:xx", "11:00")));
+
+        act.Should().NotThrow();
+        result.Errors.Should().Contain(e => e.ErrorMessage == "Ongeldige tijd (HH:mm)");
+    }
+
+    [Test]
+    public void Validate_DuplicateDayDates_Fails()
+    {
+        UpdateCampRequest request = WithShifts() with
+        {
+            Days =
+            [
+                new(null, "2026-04-14", "09:00", "12:00", null, null, []),
+                new(null, "2026-04-14", null, null, "13:00", "16:00", []),
+            ],
+        };
+
+        ValidationResult result = _validator.Validate(request);
+
+        result.Errors.Should().Contain(e => e.ErrorMessage == "Elke kampdag mag maar één keer voorkomen");
     }
 }

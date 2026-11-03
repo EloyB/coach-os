@@ -10,13 +10,22 @@ import {
 } from "@/components/calendar/calendar-grid";
 import type { TrainerDto } from "@/lib/api/trainers";
 import { formatDateShort } from "@/lib/date-utils";
-import { formatDayHeading, type CampDayDraft } from "../_types";
+import {
+  DEFAULT_DAY_PARTS,
+  dayEnd,
+  dayStart,
+  formatDayHeading,
+  type CampDayDraft,
+  type CampDayParts,
+} from "../_types";
 import { CampDayDialog } from "./camp-day-dialog";
 
 interface CampDaysEditorProps {
   days: CampDayDraft[];
   onChange: (days: CampDayDraft[]) => void;
   trainers: TrainerDto[];
+  /** Standaarduren voor nieuwe kampdagen en voor dagdelen die je aanzet. */
+  defaultParts?: CampDayParts;
   /** Kampperiode: data hierin zonder kampdag tonen als "geen kampdag" en kunnen toegevoegd worden. */
   rangeStart?: string;
   rangeEnd?: string;
@@ -27,6 +36,20 @@ interface CampDaysEditorProps {
   onSaveDays?: (days: CampDayDraft[]) => Promise<string[]>;
   /** Optionele voettekst onderaan de kaart (bv. een opslaan-balk die in beeld blijft plakken). */
   footer?: React.ReactNode;
+}
+
+/** "Voormiddag 09:15 – 12:00 · Namiddag 13:15 – 16:00", enkel de dagdelen die bestaan. */
+function partsSummary(
+  day: CampDayDraft,
+  morningLabel: string,
+  afternoonLabel: string,
+): string {
+  const parts: string[] = [];
+  if (day.morningStart && day.morningEnd)
+    parts.push(`${morningLabel} ${day.morningStart} – ${day.morningEnd}`);
+  if (day.afternoonStart && day.afternoonEnd)
+    parts.push(`${afternoonLabel} ${day.afternoonStart} – ${day.afternoonEnd}`);
+  return parts.join(" · ");
 }
 
 function toIso(d: Date): string {
@@ -44,6 +67,7 @@ export function CampDaysEditor({
   days,
   onChange,
   trainers,
+  defaultParts = DEFAULT_DAY_PARTS,
   rangeStart,
   rangeEnd,
   onSaveDays,
@@ -77,8 +101,7 @@ export function CampDaysEditor({
   const openDay = openDate
     ? (dayByDate.get(openDate) ?? {
         date: openDate,
-        startTime: "09:00",
-        endTime: "16:00",
+        ...defaultParts,
         trainers: [],
       })
     : undefined;
@@ -107,9 +130,11 @@ export function CampDaysEditor({
 
   // Zichtbaar uurbereik over het hele kamp (en de standaarduren voor nieuwe dagen), zodat de
   // rasterhoogte bij het bladeren gelijk blijft.
-  const hourRanges: [string, string][] = [["09:00", "16:00"]];
+  const hourRanges: [string, string][] = [
+    [dayStart(defaultParts), dayEnd(defaultParts)],
+  ];
   for (const d of days) {
-    hourRanges.push([d.startTime, d.endTime]);
+    hourRanges.push([dayStart(d), dayEnd(d)]);
     d.trainers.forEach((tr) => hourRanges.push([tr.startTime, tr.endTime]));
   }
   const minMin = Math.min(...hourRanges.map(([start]) => parseTime(start)));
@@ -217,7 +242,7 @@ export function CampDaysEditor({
                       {formatDayHeading(day.date)}
                     </p>
                     <p className="text-xs text-gray-500">
-                      {day.startTime} – {day.endTime}
+                      {partsSummary(day, t("morning"), t("afternoon"))}
                     </p>
                     <p className="mt-1 text-xs text-gray-400">
                       {day.trainers.length === 0
@@ -252,8 +277,8 @@ export function CampDaysEditor({
                       {
                         id: date,
                         dayOfWeek: dayIndex,
-                        startTime: "09:00",
-                        endTime: "16:00",
+                        startTime: dayStart(defaultParts),
+                        endTime: dayEnd(defaultParts),
                         trainerId: null,
                       },
                       calStartHour,
@@ -277,35 +302,59 @@ export function CampDaysEditor({
                       </button>
                     );
                   }
-                  const pos = getSlotPosition(
-                    {
-                      id: date,
-                      dayOfWeek: dayIndex,
-                      startTime: day.startTime,
-                      endTime: day.endTime,
-                      trainerId: null,
-                    },
-                    calStartHour,
-                  );
                   const count = new Set(day.trainers.map((tr) => tr.trainerId))
                     .size;
+                  const parts = [
+                    {
+                      key: "morning",
+                      start: day.morningStart,
+                      end: day.morningEnd,
+                    },
+                    {
+                      key: "afternoon",
+                      start: day.afternoonStart,
+                      end: day.afternoonEnd,
+                    },
+                  ].filter(
+                    (p): p is { key: string; start: string; end: string } =>
+                      p.start !== null && p.end !== null,
+                  );
                   return (
-                    <button
-                      type="button"
-                      onClick={() => setOpenDate(date)}
-                      aria-label={formatDayHeading(date)}
-                      className="absolute inset-x-px z-10 cursor-pointer flex flex-col items-start justify-start overflow-hidden rounded-r-md border-l-[3px] border-tennis-green bg-tennis-green/10 px-1.5 py-1 text-left transition-all hover:shadow-md hover:brightness-95"
-                      style={{ top: pos.top, height: pos.height }}
-                    >
-                      <div className="text-[11px] font-semibold text-tennis-green">
-                        {day.startTime} — {day.endTime}
-                      </div>
-                      <div
-                        className={`text-[10px] ${count === 0 ? "italic text-gray-400" : "text-ink-2"}`}
-                      >
-                        {t("trainersPresent", { count })}
-                      </div>
-                    </button>
+                    <>
+                      {parts.map((part, i) => {
+                        const pos = getSlotPosition(
+                          {
+                            id: `${date}-${part.key}`,
+                            dayOfWeek: dayIndex,
+                            startTime: part.start,
+                            endTime: part.end,
+                            trainerId: null,
+                          },
+                          calStartHour,
+                        );
+                        return (
+                          <button
+                            key={part.key}
+                            type="button"
+                            onClick={() => setOpenDate(date)}
+                            aria-label={`${formatDayHeading(date)} ${t(part.key)}`}
+                            className="absolute inset-x-px z-10 cursor-pointer flex flex-col items-start justify-start overflow-hidden rounded-r-md border-l-[3px] border-tennis-green bg-tennis-green/10 px-1.5 py-1 text-left transition-all hover:shadow-md hover:brightness-95"
+                            style={{ top: pos.top, height: pos.height }}
+                          >
+                            <div className="text-[11px] font-semibold text-tennis-green">
+                              {part.start} — {part.end}
+                            </div>
+                            {i === 0 && (
+                              <div
+                                className={`text-[10px] ${count === 0 ? "italic text-gray-400" : "text-ink-2"}`}
+                              >
+                                {t("trainersPresent", { count })}
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </>
                   );
                 }}
               />
@@ -322,6 +371,7 @@ export function CampDaysEditor({
           day={openDay}
           trainers={trainers}
           saveLabel={onSaveDays ? t("save") : t("dayDialogApply")}
+          defaultParts={defaultParts}
           isNew={!openDayExists}
           canRemove={openDayExists && days.length > 1}
           onSave={async (updated) => {

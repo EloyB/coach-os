@@ -1,3 +1,4 @@
+using System.Globalization;
 using CoachOS.Application.Abstractions;
 using CoachOS.Domain.Common;
 using CoachOS.Domain.Entities;
@@ -54,8 +55,8 @@ public class CampExportService(
             StartDate = camp.StartDate,
             EndDate = camp.EndDate,
             FormFieldLabels = CollectFormFieldLabels(camp, enrollments),
-            Enrollments = BuildEnrollmentRows(enrollments, paymentInfo),
-            Days = BuildDayRows(camp, trainerNames),
+            Enrollments = BuildEnrollmentRows(enrollments, paymentInfo, camp.Days.ToDictionary(d => d.Id)),
+            Days = BuildDayRows(camp, enrollments, trainerNames),
         };
 
         byte[] content = workbookBuilder.Build(model);
@@ -88,7 +89,8 @@ public class CampExportService(
 
     private static IReadOnlyList<CampEnrollmentRow> BuildEnrollmentRows(
         List<CampEnrollment> enrollments,
-        Dictionary<Guid, (PaymentMethod? Method, PaymentStatus Status)> paymentInfo)
+        Dictionary<Guid, (PaymentMethod? Method, PaymentStatus Status)> paymentInfo,
+        Dictionary<Guid, CampDay> daysById)
         => enrollments
             .Select(e =>
             {
@@ -119,19 +121,40 @@ public class CampExportService(
                     x.Enrollment.FormResponses
                         .Where(r => r.CampFormField is not null)
                         .GroupBy(r => r.CampFormField.Label)
-                        .ToDictionary(g => g.Key, g => string.Join(", ", g.Select(r => r.Value))));
+                        .ToDictionary(g => g.Key, g => string.Join(", ", g.Select(r => r.Value))),
+                    DaysSummary(x.Enrollment, daysById),
+                    x.Enrollment.TotalAmount);
             })
             .ToList();
 
-    private static IReadOnlyList<CampDayRow> BuildDayRows(Camp camp, Dictionary<Guid, string> trainerNames)
-        => camp.Days
+    /// <summary>"06/07 hele dag; 07/07 namiddag", op datum gesorteerd.</summary>
+    private static string DaysSummary(CampEnrollment enrollment, Dictionary<Guid, CampDay> daysById)
+        => string.Join("; ", enrollment.Days
+            .Where(d => daysById.ContainsKey(d.CampDayId))
+            .OrderBy(d => daysById[d.CampDayId].Date)
+            .Select(d =>
+            {
+                string part = d.Morning && d.Afternoon ? "hele dag" : d.Morning ? "voormiddag" : "namiddag";
+                return $"{daysById[d.CampDayId].Date.ToString("dd/MM", CultureInfo.InvariantCulture)} {part}";
+            }));
+
+    private static IReadOnlyList<CampDayRow> BuildDayRows(
+        Camp camp, List<CampEnrollment> enrollments, Dictionary<Guid, string> trainerNames)
+    {
+        List<CampEnrollmentDay> active = enrollments
+            .Where(e => e.Status != EnrollmentStatus.Cancelled)
+            .SelectMany(e => e.Days)
+            .ToList();
+
+        return camp.Days
             .OrderBy(d => d.Date)
-            .ThenBy(d => d.StartTime)
+            .ThenBy(d => d.FirstStart)
             .Select(d => new CampDayRow(
                 d.Date,
                 ExportLabels.DutchDay(d.Date.DayOfWeek),
-                d.StartTime,
-                d.EndTime,
+                d.MorningStart, d.MorningEnd, d.AfternoonStart, d.AfternoonEnd,
+                active.Count(x => x.CampDayId == d.Id && x.Morning),
+                active.Count(x => x.CampDayId == d.Id && x.Afternoon),
                 d.TrainerAssignments
                     .Select(t => new CampDayTrainerRow(
                         trainerNames.GetValueOrDefault(t.TrainerId, "Onbekend"), t.StartTime, t.EndTime))
@@ -139,4 +162,5 @@ public class CampExportService(
                     .ThenBy(t => t.StartTime)
                     .ToList()))
             .ToList();
+    }
 }

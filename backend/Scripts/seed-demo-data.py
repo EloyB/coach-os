@@ -570,8 +570,8 @@ def planning_enrollments(api: ApiClient, planning_series_id: str,
 
 def create_camps(api: ApiClient, club_ids: list[str], trainer_id: str,
                  today: date, deadline_iso: str) -> list[str]:
-    """Creates demo camps (one paid multi-day with per-day trainers + a custom
-    form field, one free) and a handful of public enrollments (solo + group).
+    """Creates demo camps (one paid with day/half-day prices, per-day trainers and a
+    custom form field; one free whole-day-only camp) and a handful of public enrollments (solo + group).
     Paid-camp enrollments stay PendingPayment (no real Mollie in seed); free-camp
     enrollments come back Confirmed. Emails are distinct per participant because
     each camp has a unique (CampId, ParticipantEmail) active index."""
@@ -582,36 +582,39 @@ def create_camps(api: ApiClient, club_ids: list[str], trainer_id: str,
 
     camp_ids: list[str] = []
 
-    # ── Paid camp: 3 consecutive days, day-trainers, custom form ──────────────
+    # Standaarduren van de dagdelen (zoals bij Turnhoutse Tennis & Padel).
+    am = {"morningStart": "09:15", "morningEnd": "12:00"}
+    pm = {"afternoonStart": "13:15", "afternoonEnd": "16:00"}
+
+    # ── Paid camp: 4 days, halve dagen toegestaan, donderdag enkel voormiddag ──
     paid_start = today + timedelta(days=21)
     paid_body = {
         "name": "Paaskamp Gevorderden",
-        "description": "Drie dagen intensief trainen tijdens de paasvakantie.",
+        "description": "Vier dagen intensief trainen tijdens de paasvakantie.",
         "tennisClubId": club_ids[0],
         "level": 3,
-        "price": 120,
+        "dayPrice": 32.5,
+        "halfDayPrice": 20,
+        "allowHalfDays": True,
         "startDate": iso_date(paid_start),
-        "endDate": iso_date(paid_start + timedelta(days=2)),
+        "endDate": iso_date(paid_start + timedelta(days=3)),
         "registrationDeadline": deadline_iso,
         "maxParticipants": 20,
-        # Extra tarieven ter referentie; de beheerder kiest er per inschrijving een.
-        "prices": [
-            {"label": "Leden", "description": "Voor leden van de club.", "amount": 100},
-            {"label": "Tweede kind", "description": "Voor een broer of zus van een deelnemer.", "amount": 90},
-        ],
         "days": [
-            {"date": iso_date(paid_start), "startTime": "09:00", "endTime": "16:00",
-             "trainers": [{"trainerId": trainer_id, "startTime": "09:00", "endTime": "12:00"}]},
-            {"date": iso_date(paid_start + timedelta(days=1)), "startTime": "09:00", "endTime": "16:00",
-             "trainers": []},
-            {"date": iso_date(paid_start + timedelta(days=2)), "startTime": "10:00", "endTime": "15:00",
-             "trainers": []},
+            {"date": iso_date(paid_start), **am, **pm,
+             "trainers": [{"trainerId": trainer_id, "startTime": "09:15", "endTime": "12:00"}]},
+            {"date": iso_date(paid_start + timedelta(days=1)), **am, **pm, "trainers": []},
+            {"date": iso_date(paid_start + timedelta(days=2)), **am, **pm, "trainers": []},
+            {"date": iso_date(paid_start + timedelta(days=3)), **am, "trainers": []},
         ],
     }
     paid_id = strip_quotes(api.post("/camps", paid_body))
+    paid_day_ids: list[str] = []
     if paid_id:
         camp_ids.append(paid_id)
         print(f"   Created paid camp: {paid_body['name']} ({len(paid_body['days'])} days)")
+        public_camp = api.get(f"/public/camps/{paid_id}", auth=False) or {}
+        paid_day_ids = [d["id"] for d in sorted(public_camp.get("days", []), key=lambda d: d["date"])]
 
         # Custom enrollment form with one extra (optional) field.
         form_result = api.put(
@@ -628,29 +631,33 @@ def create_camps(api: ApiClient, club_ids: list[str], trainer_id: str,
     else:
         print("   WARNING: paid camp creation failed (see stderr).", file=sys.stderr)
 
-    # ── Free camp: 2 days, no day-trainers required ──────────────────────────
+    # ── Free camp: 2 days, enkel hele dagen, no day-trainers required ────────
     free_start = today + timedelta(days=35)
     free_body = {
         "name": "Gratis Padel Proefkamp",
         "description": "Twee dagen gratis kennismaken met padel.",
         "tennisClubId": club_ids[0],
         "level": 1,
-        "price": 0,
+        "dayPrice": 0,
+        "halfDayPrice": 0,
+        "allowHalfDays": False,
         "startDate": iso_date(free_start),
         "endDate": iso_date(free_start + timedelta(days=1)),
         "registrationDeadline": deadline_iso,
         "maxParticipants": 16,
         "days": [
-            {"date": iso_date(free_start), "startTime": "13:00", "endTime": "17:00",
-             "trainers": [{"trainerId": trainer_id, "startTime": "13:00", "endTime": "17:00"}]},
-            {"date": iso_date(free_start + timedelta(days=1)), "startTime": "13:00", "endTime": "17:00",
-             "trainers": []},
+            {"date": iso_date(free_start), **am, **pm,
+             "trainers": [{"trainerId": trainer_id, "startTime": "13:15", "endTime": "16:00"}]},
+            {"date": iso_date(free_start + timedelta(days=1)), **am, **pm, "trainers": []},
         ],
     }
     free_id = strip_quotes(api.post("/camps", free_body))
+    free_day_ids: list[str] = []
     if free_id:
         camp_ids.append(free_id)
         print(f"   Created free camp: {free_body['name']} ({len(free_body['days'])} days)")
+        public_free = api.get(f"/public/camps/{free_id}", auth=False) or {}
+        free_day_ids = [d["id"] for d in sorted(public_free.get("days", []), key=lambda d: d["date"])]
     else:
         print("   WARNING: free camp creation failed (see stderr).", file=sys.stderr)
 
@@ -669,22 +676,49 @@ def create_camps(api: ApiClient, club_ids: list[str], trainer_id: str,
     # cash of online op de betaalpagina). De inschrijving blijft PendingPayment,
     # ook zonder Mollie-koppeling. Zo toont de seed de "wacht op betaling"-toestand
     # in de beheer-UI.
-    if paid_id:
-        enroll(paid_id, "Betaald kamp - Sofie (solo, wacht op betaling)", {
+    def day(day_id: str, morning: bool, afternoon: bool) -> dict:
+        return {"campDayId": day_id, "morning": morning, "afternoon": afternoon}
+
+    if paid_id and len(paid_day_ids) == 4:
+        # Heel kamp: alle beschikbare dagdelen (3 hele dagen + donderdag voormiddag).
+        enroll(paid_id, "Betaald kamp - Sofie (heel kamp, wacht op betaling)", {
             "participantName": "Sofie Peeters",
             "participantEmail": "sofie.peeters@example.com",
             "participantPhone": "+32470111222",
             "responses": [],
             "enrollmentType": "solo",
+            "days": [day(paid_day_ids[0], True, True), day(paid_day_ids[1], True, True),
+                     day(paid_day_ids[2], True, True), day(paid_day_ids[3], True, False)],
+        })
+        # Gemengde keuze: maandag hele dag, dinsdag voormiddag, woensdag namiddag.
+        enroll(paid_id, "Betaald kamp - Jules (gemengd, wacht op betaling)", {
+            "participantName": "Jules Maes",
+            "participantEmail": "jules.maes@example.com",
+            "responses": [],
+            "enrollmentType": "solo",
+            "days": [day(paid_day_ids[0], True, True), day(paid_day_ids[1], True, False),
+                     day(paid_day_ids[2], False, True)],
+        })
+        # Groep van twee (zussen): zelfde dagkeuze voor iedereen.
+        enroll(paid_id, "Betaald kamp - Lotte + Fien (groep, halve dagen)", {
+            "participantName": "Lotte Willems",
+            "participantEmail": "lotte.willems@example.com",
+            "responses": [],
+            "enrollmentType": "group",
+            "groupMembers": [{"participantName": "Fien Willems",
+                              "participantEmail": "fien.willems@example.com"}],
+            "days": [day(paid_day_ids[1], True, False), day(paid_day_ids[2], True, False)],
         })
 
-    if free_id:
+    if free_id and len(free_day_ids) == 2:
+        full_free = [day(free_day_ids[0], True, True), day(free_day_ids[1], True, True)]
         enroll(free_id, "Gratis kamp - Noor (solo)", {
             "participantName": "Noor Janssens",
             "participantEmail": "noor.janssens@example.com",
             "participantPhone": "+32470777888",
             "responses": [],
             "enrollmentType": "solo",
+            "days": full_free,
         })
         enroll(free_id, "Gratis kamp - Milan (solo)", {
             "participantName": "Milan Claes",
@@ -692,6 +726,7 @@ def create_camps(api: ApiClient, club_ids: list[str], trainer_id: str,
             "participantPhone": "+32470999000",
             "responses": [],
             "enrollmentType": "solo",
+            "days": full_free,
         })
 
     return camp_ids

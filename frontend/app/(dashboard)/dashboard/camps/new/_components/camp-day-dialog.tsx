@@ -18,7 +18,10 @@ import {
   formatDayHeading,
   shiftHours,
   shiftsOverlap,
+  dayEnd,
+  dayStart,
   type CampDayDraft,
+  type CampDayParts,
 } from "../_types";
 
 const TIME_INPUT_CLS =
@@ -50,6 +53,17 @@ function groupByTrainer(day: CampDayDraft): TrainerGroup[] {
   }));
 }
 
+/** Een dag klopt als elk aanwezig dagdeel een geldig venster heeft en de namiddag na de voormiddag valt. */
+function dayPartsInvalid(day: CampDayParts): boolean {
+  const morning = day.morningStart !== null;
+  const afternoon = day.afternoonStart !== null;
+  if (!morning && !afternoon) return true;
+  if (morning && (!day.morningStart || !day.morningEnd || day.morningEnd <= day.morningStart)) return true;
+  if (afternoon && (!day.afternoonStart || !day.afternoonEnd || day.afternoonEnd <= day.afternoonStart)) return true;
+  if (morning && afternoon && day.afternoonStart! < day.morningEnd!) return true;
+  return false;
+}
+
 function formatHours(hours: number): string {
   return hours.toLocaleString("nl-BE", { maximumFractionDigits: 1 });
 }
@@ -58,6 +72,8 @@ interface CampDayDialogProps {
   day: CampDayDraft;
   trainers: TrainerDto[];
   saveLabel: string;
+  /** Standaarduren waarmee een dagdeel gevuld wordt als je het aanzet. */
+  defaultParts: CampDayParts;
   /** Dag die nog niet bestaat en met deze dialog wordt toegevoegd. */
   isNew: boolean;
   /** Mag de dag geschrapt worden (niet de laatste kampdag)? */
@@ -74,6 +90,7 @@ export function CampDayDialog({
   day: initialDay,
   trainers,
   saveLabel,
+  defaultParts,
   isNew,
   canRemove,
   onRemove,
@@ -89,10 +106,13 @@ export function CampDayDialog({
   const [saveErrors, setSaveErrors] = useState<string[]>([]);
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [editingShift, setEditingShift] = useState<number | null>(null);
+  const dStart = dayStart(day);
+  const dEnd = dayEnd(day);
+  const partsError = dayPartsInvalid(day);
   const [form, setForm] = useState({
     trainerId: "",
-    start: day.startTime,
-    end: day.endTime,
+    start: dStart,
+    end: dEnd,
   });
 
   const groups = groupByTrainer(day);
@@ -112,19 +132,19 @@ export function CampDayDialog({
     const existing = day.trainers.filter((x) => x.trainerId === trainerId);
     const lastEnd = existing.reduce(
       (max, s) => (s.endTime > max ? s.endTime : max),
-      day.startTime,
+      dStart,
     );
-    const hasRoom = existing.length > 0 && lastEnd < day.endTime;
+    const hasRoom = existing.length > 0 && lastEnd < dEnd;
     setForm({
       trainerId,
-      start: hasRoom ? lastEnd : day.startTime,
-      end: day.endTime,
+      start: hasRoom ? lastEnd : dStart,
+      end: dEnd,
     });
   }
 
   let formError: string | null = null;
   if (form.end <= form.start) formError = t("shiftEndBeforeStart");
-  else if (form.start < day.startTime || form.end > day.endTime)
+  else if (form.start < dStart || form.end > dEnd)
     formError = t("shiftOutsideCampHours");
   else if (
     day.trainers.some(
@@ -144,7 +164,7 @@ export function CampDayDialog({
         { trainerId: form.trainerId, startTime: form.start, endTime: form.end },
       ],
     });
-    setForm({ trainerId: "", start: day.startTime, end: day.endTime });
+    setForm({ trainerId: "", start: dStart, end: dEnd });
   }
 
   function removeShift(index: number) {
@@ -169,7 +189,7 @@ export function CampDayDialog({
       ...day,
       trainers: day.trainers.map((tr, i) =>
         i === index
-          ? { ...tr, [field]: clampTime(value, day.startTime, day.endTime) }
+          ? { ...tr, [field]: clampTime(value, dStart, dEnd) }
           : tr,
       ),
     });
@@ -189,30 +209,73 @@ export function CampDayDialog({
             <DialogDescription>{t("dayDialogDescription")}</DialogDescription>
           </DialogHeader>
 
-          {/* Kampuren */}
+          {/* Dagdelen */}
           <div>
             <p className="mb-1.5 text-[10.5px] uppercase tracking-[0.04em] text-gray-400">
-              {t("dayHours")}
+              {t("dayParts")}
             </p>
-            <div className="flex items-center gap-1.5">
-              <input
-                type="time"
-                value={day.startTime}
-                onChange={(e) =>
-                  onChange({ ...day, startTime: e.target.value })
-                }
-                className={TIME_INPUT_CLS}
-              />
-              <span className="text-xs text-gray-400">
-                {t("trainerEndTime")}
-              </span>
-              <input
-                type="time"
-                value={day.endTime}
-                onChange={(e) => onChange({ ...day, endTime: e.target.value })}
-                className={TIME_INPUT_CLS}
-              />
+            <div className="space-y-2">
+              {(["morning", "afternoon"] as const).map((part) => {
+                const startKey = `${part}Start` as const;
+                const endKey = `${part}End` as const;
+                const enabled = day[startKey] !== null;
+                const otherEnabled =
+                  (part === "morning" ? day.afternoonStart : day.morningStart) !==
+                  null;
+                return (
+                  <div key={part} className="flex flex-wrap items-center gap-3">
+                    <label className="flex w-32 items-center gap-2 text-sm text-gray-700">
+                      <input
+                        type="checkbox"
+                        checked={enabled}
+                        disabled={enabled && !otherEnabled}
+                        onChange={(e) =>
+                          onChange({
+                            ...day,
+                            [startKey]: e.target.checked
+                              ? defaultParts[startKey]
+                              : null,
+                            [endKey]: e.target.checked
+                              ? defaultParts[endKey]
+                              : null,
+                          })
+                        }
+                        className="h-4 w-4 rounded border-gray-300 accent-tennis-green"
+                      />
+                      {t(part)}
+                    </label>
+                    {enabled && (
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="time"
+                          value={day[startKey] ?? ""}
+                          onChange={(e) =>
+                            onChange({ ...day, [startKey]: e.target.value })
+                          }
+                          className={TIME_INPUT_CLS}
+                        />
+                        <span className="text-xs text-gray-400">
+                          {t("trainerEndTime")}
+                        </span>
+                        <input
+                          type="time"
+                          value={day[endKey] ?? ""}
+                          onChange={(e) =>
+                            onChange({ ...day, [endKey]: e.target.value })
+                          }
+                          className={TIME_INPUT_CLS}
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
+            {partsError && (
+              <p className="mt-2 text-xs font-medium text-red-600">
+                {t("dayPartsInvalid")}
+              </p>
+            )}
           </div>
 
           {/* Trainers en hun shiften */}
@@ -291,8 +354,8 @@ export function CampDayDialog({
                                   <input
                                     type="time"
                                     value={shift.startTime}
-                                    min={day.startTime}
-                                    max={day.endTime}
+                                    min={dStart}
+                                    max={dEnd}
                                     onChange={(e) =>
                                       updateShiftTime(
                                         shift.index,
@@ -306,8 +369,8 @@ export function CampDayDialog({
                                   <input
                                     type="time"
                                     value={shift.endTime}
-                                    min={day.startTime}
-                                    max={day.endTime}
+                                    min={dStart}
+                                    max={dEnd}
                                     onChange={(e) =>
                                       updateShiftTime(
                                         shift.index,
@@ -498,7 +561,7 @@ export function CampDayDialog({
             </button>
             <button
               type="button"
-              disabled={saving || overlapping.size > 0}
+              disabled={saving || overlapping.size > 0 || partsError}
               onClick={async () => {
                 setSaving(true);
                 setSaveErrors([]);

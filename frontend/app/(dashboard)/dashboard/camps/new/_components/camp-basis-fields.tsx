@@ -17,11 +17,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
-import {
-  campPricesSchema,
-  CampPricesEditor,
-  type CampPricesFormValues,
-} from "./camp-prices-editor";
 import { FieldError } from "@/components/forms/field-error";
 import { inputClass } from "@/lib/styles";
 import type { TennisClubDto } from "@/lib/api/tennisClubs";
@@ -40,8 +35,13 @@ export const campBasisSchema = z
     description: z.string().max(2000, "Omschrijving is te lang").optional(),
     tennisClubId: z.string().min(1, "Club is verplicht"),
     level: z.number().nullable(),
-    price: z
-      .number({ message: "Prijs is verplicht" })
+    dayPrice: z
+      .number({ message: "Dagprijs is verplicht" })
+      .min(0, "Prijs mag niet negatief zijn")
+      .max(100000, "Prijs is onrealistisch hoog"),
+    allowHalfDays: z.boolean(),
+    halfDayPrice: z
+      .number({ message: "Prijs voor een halve dag is verplicht" })
       .min(0, "Prijs mag niet negatief zijn")
       .max(100000, "Prijs is onrealistisch hoog"),
     maxParticipants: z
@@ -52,8 +52,22 @@ export const campBasisSchema = z
     startDate: z.string().min(1, "Startdatum is verplicht"),
     endDate: z.string().min(1, "Einddatum is verplicht"),
     registrationDeadline: z.string().min(1, "Inschrijfdeadline is verplicht"),
-    prices: campPricesSchema,
   })
+  .refine(
+    (d) => !d.allowHalfDays || d.halfDayPrice <= d.dayPrice,
+    {
+      message:
+        "De prijs van een halve dag mag niet hoger zijn dan die van een hele dag",
+      path: ["halfDayPrice"],
+    },
+  )
+  .refine(
+    (d) => !d.allowHalfDays || d.dayPrice === 0 || d.halfDayPrice > 0,
+    {
+      message: "Geef een prijs voor een halve dag",
+      path: ["halfDayPrice"],
+    },
+  )
   .refine((d) => !d.startDate || !d.endDate || d.endDate >= d.startDate, {
     message: "Einddatum moet op of na de startdatum zijn",
     path: ["endDate"],
@@ -96,8 +110,6 @@ interface CampBasisFieldsProps {
   onDateRangeChange?: (startDate: string, endDate: string) => void;
   /** Current form values for the date range, so we can report both on change. */
   getDates: () => { startDate: string; endDate: string };
-  /** Toon de prijsopties-editor (aan in de wizard; op de detailpagina een eigen kaart). */
-  showPrices?: boolean;
 }
 
 export function CampBasisFields({
@@ -108,12 +120,12 @@ export function CampBasisFields({
   clubsLoading = false,
   onDateRangeChange,
   getDates,
-  showPrices = true,
 }: CampBasisFieldsProps) {
   const t = useTranslations("camps");
   // Reactive start-date value so the end-date picker disables earlier dates as
   // soon as a start date is picked (getValues is not reactive on its own).
   const watchedStartDate = useWatch({ control, name: "startDate" });
+  const allowHalfDays = useWatch({ control, name: "allowHalfDays" });
 
   return (
     <div className="space-y-5">
@@ -204,16 +216,16 @@ export function CampBasisFields({
         </div>
       </div>
 
-      {/* Prijs + Max deelnemers */}
-      <div className="grid grid-cols-2 gap-4">
+      {/* Prijzen */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <Label required>{t("fieldPrice")}</Label>
+          <Label required>{t("fieldDayPrice")}</Label>
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 pointer-events-none">
               €
             </span>
             <input
-              {...register("price", { valueAsNumber: true })}
+              {...register("dayPrice", { valueAsNumber: true })}
               onFocus={(e) => e.currentTarget.select()}
               type="number"
               min={0}
@@ -222,11 +234,51 @@ export function CampBasisFields({
             />
           </div>
           <p className="text-[11px] text-gray-400 mt-1">
-            {t("fieldPriceHint")}
+            {t("fieldDayPriceHint")}
           </p>
-          <FieldError message={errors.price?.message} />
+          <FieldError message={errors.dayPrice?.message} />
         </div>
 
+        <div>
+          <Label>{t("fieldAllowHalfDays")}</Label>
+          <label className="flex items-center gap-2 h-9 text-sm text-gray-700 cursor-pointer">
+            <input
+              {...register("allowHalfDays")}
+              type="checkbox"
+              className="h-4 w-4 rounded border-gray-300 accent-tennis-green"
+            />
+            {t("fieldAllowHalfDaysLabel")}
+          </label>
+          <p className="text-[11px] text-gray-400 mt-1">
+            {t("fieldAllowHalfDaysHint")}
+          </p>
+        </div>
+      </div>
+
+      {allowHalfDays && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <Label required>{t("fieldHalfDayPrice")}</Label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 pointer-events-none">
+                €
+              </span>
+              <input
+                {...register("halfDayPrice", { valueAsNumber: true })}
+                onFocus={(e) => e.currentTarget.select()}
+                type="number"
+                min={0}
+                step={0.01}
+                className={inputClass + " pl-7"}
+              />
+            </div>
+            <FieldError message={errors.halfDayPrice?.message} />
+          </div>
+        </div>
+      )}
+
+      {/* Max deelnemers per dagdeel */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <Label>{t("fieldMaxParticipants")}</Label>
           <input
@@ -246,22 +298,6 @@ export function CampBasisFields({
           <FieldError message={errors.maxParticipants?.message} />
         </div>
       </div>
-
-      {showPrices && (
-        <div>
-          <Label>{t("pricesTitle")}</Label>
-          <p className="text-[11px] text-gray-400 -mt-1 mb-2.5">
-            {t("pricesHint")}
-          </p>
-          <CampPricesEditor
-            register={
-              register as unknown as UseFormRegister<CampPricesFormValues>
-            }
-            control={control as unknown as Control<CampPricesFormValues>}
-            errors={errors as unknown as FieldErrors<CampPricesFormValues>}
-          />
-        </div>
-      )}
 
       {/* Startdatum + Einddatum */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

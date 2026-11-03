@@ -15,6 +15,8 @@ public class SubmitCampEnrollmentRequestValidator : AbstractValidator<SubmitCamp
             .NotEmpty().WithMessage("E-mailadres is verplicht")
             .Must(e => EmailPattern.IsMatch(e)).WithMessage("Ongeldig e-mailadres");
 
+        RuleFor(x => x.Days).NotEmpty().WithMessage("Kies minstens één dag");
+
         RuleForEach(x => x.GroupMembers).ChildRules(member =>
         {
             member.RuleFor(m => m.ParticipantName).NotEmpty().WithMessage("Naam groepslid is verplicht");
