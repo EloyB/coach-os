@@ -27,6 +27,16 @@ internal static class CampRequestRules
         return null;
     }
 
+    /// <summary>Foutmelding als twee dagen dezelfde datum hebben, anders null.</summary>
+    public static string? DuplicateDateError(IEnumerable<CreateCampDayRequest> days)
+    {
+        bool hasDuplicate = days
+            .Where(d => IsValidDate(d.Date))
+            .GroupBy(d => ParseDate(d.Date))
+            .Any(g => g.Count() > 1);
+        return hasDuplicate ? "Elke kampdag mag maar één keer voorkomen" : null;
+    }
+
     /// <summary>Alle fouten van één kampdag (dagdelen, uren en trainershiften).</summary>
     public static IEnumerable<string> DayErrors(CreateCampDayRequest d)
     {
@@ -36,7 +46,11 @@ internal static class CampRequestRules
             yield break;
         }
 
-        string?[] times = [d.MorningStart, d.MorningEnd, d.AfternoonStart, d.AfternoonEnd];
+        string?[] times =
+        [
+            d.MorningStart, d.MorningEnd, d.AfternoonStart, d.AfternoonEnd,
+            .. d.Trainers.SelectMany(t => new[] { t.StartTime, t.EndTime }),
+        ];
         if (times.Any(t => t is not null && !IsValidTime(t)))
         {
             yield return "Ongeldige tijd (HH:mm)";
@@ -74,8 +88,7 @@ internal static class CampRequestRules
         if (!trainersInRange)
             yield return "Trainer-uren moeten binnen de kampuren van die dag vallen";
 
-        if (d.Trainers.All(t => IsValidTime(t.StartTime) && IsValidTime(t.EndTime))
-            && CampShiftRules.HasOverlappingShifts(d.Trainers))
+        if (CampShiftRules.HasOverlappingShifts(d.Trainers))
             yield return CampShiftRules.OverlapMessage;
     }
 }

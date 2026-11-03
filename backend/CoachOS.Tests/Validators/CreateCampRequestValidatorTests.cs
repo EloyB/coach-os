@@ -221,4 +221,35 @@ public class CreateCampRequestValidatorTests
     [Test]
     public void Validate_NegativeMaxParticipants_Fails()
         => _validator.Validate(Valid() with { MaxParticipants = 0 }).IsValid.Should().BeFalse();
+
+    [TestCase("10:xx", "11:00")]
+    [TestCase("10:00", "abc")]
+    [TestCase("25:00", "26:00")]
+    public void Validate_MalformedTrainerTime_FailsWithoutThrowing(string start, string end)
+    {
+        ValidationResult result = null!;
+        Action act = () => result = _validator.Validate(
+            WithDay(new(null, "2026-04-14", "09:00", "12:00", "13:00", "16:00",
+                [new(Guid.NewGuid(), start, end)])));
+
+        act.Should().NotThrow();
+        result.Errors.Should().Contain(e => e.ErrorMessage == "Ongeldige tijd (HH:mm)");
+    }
+
+    [Test]
+    public void Validate_DuplicateDayDates_Fails()
+    {
+        CreateCampRequest request = Valid() with
+        {
+            Days =
+            [
+                new(null, "2026-04-14", "09:00", "12:00", null, null, []),
+                new(null, "2026-04-14", null, null, "13:00", "16:00", []),
+            ],
+        };
+
+        ValidationResult result = _validator.Validate(request);
+
+        result.Errors.Should().Contain(e => e.ErrorMessage == "Elke kampdag mag maar één keer voorkomen");
+    }
 }

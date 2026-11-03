@@ -46,6 +46,14 @@ public class UpdateCampRequestValidator : AbstractValidator<UpdateCampRequest>
         RuleFor(x => x.Days)
             .NotEmpty().WithMessage("Een kamp heeft minstens één dag nodig");
 
+        RuleFor(x => x.Days)
+            .Custom((days, ctx) =>
+            {
+                string? error = CampRequestRules.DuplicateDateError(days);
+                if (error is not null)
+                    ctx.AddFailure(error);
+            });
+
         RuleForEach(x => x.Days)
             .Custom((day, ctx) =>
             {

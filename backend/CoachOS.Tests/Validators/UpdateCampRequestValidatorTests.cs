@@ -54,4 +54,31 @@ public class UpdateCampRequestValidatorTests
         result.Errors.Should().Contain(e =>
             e.ErrorMessage == "Een trainer kan niet twee overlappende shiften op dezelfde dag hebben");
     }
+
+    [Test]
+    public void Validate_MalformedTrainerTime_FailsWithoutThrowing()
+    {
+        ValidationResult result = null!;
+        Action act = () => result = _validator.Validate(WithShifts(new CreateCampDayTrainerRequest(Guid.NewGuid(), "10:xx", "11:00")));
+
+        act.Should().NotThrow();
+        result.Errors.Should().Contain(e => e.ErrorMessage == "Ongeldige tijd (HH:mm)");
+    }
+
+    [Test]
+    public void Validate_DuplicateDayDates_Fails()
+    {
+        UpdateCampRequest request = WithShifts() with
+        {
+            Days =
+            [
+                new(null, "2026-04-14", "09:00", "12:00", null, null, []),
+                new(null, "2026-04-14", null, null, "13:00", "16:00", []),
+            ],
+        };
+
+        ValidationResult result = _validator.Validate(request);
+
+        result.Errors.Should().Contain(e => e.ErrorMessage == "Elke kampdag mag maar één keer voorkomen");
+    }
 }
