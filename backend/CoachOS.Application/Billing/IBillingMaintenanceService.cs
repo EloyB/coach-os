@@ -6,6 +6,9 @@ public interface IBillingMaintenanceService
     /// <summary>Factuur-outbox: maakt openstaande facturen aan (met backoff). Geeft het aantal nieuwe facturen terug.</summary>
     Task<int> ProcessPendingInvoicesAsync(CancellationToken ct = default);
 
+    /// <summary>Geeft betalingen door van facturen die onbetaald verstuurd werden; geeft het aantal terug.</summary>
+    Task<int> SyncPaidInvoicesAsync(CancellationToken ct = default);
+
     /// <summary>
     /// Eén keer per dag: verlengingsfactuur 30 dagen voor het einde van een jaarabonnement per
     /// overschrijving, lopende periode opschuiven, en afgelopen deals beëindigen.

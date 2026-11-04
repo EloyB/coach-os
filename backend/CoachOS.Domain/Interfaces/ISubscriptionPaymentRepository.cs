@@ -30,6 +30,13 @@ public interface ISubscriptionPaymentRepository
     Task<DateOnly?> GetLatestBilledPeriodEndAsync(Guid subscriptionId, CancellationToken ct = default);
 
     /// <summary>AsNoTracking: betalingen waarvoor nu een factuur(poging) moet gebeuren.</summary>
+    /// <summary>
+    /// Betaalde betalingen waarvan de factuur onbetaald verstuurd is en nog als betaald
+    /// doorgegeven moet worden (over alle organisaties; voor de worker).
+    /// </summary>
+    Task<IReadOnlyList<SubscriptionPayment>> ListInvoicePaidSyncDueAsync(
+        DateTime nowUtc, int maxAttempts, int take, CancellationToken ct = default);
+
     Task<IReadOnlyList<SubscriptionPayment>> ListInvoiceDueAsync(
         DateTime nowUtc, int maxAttempts, int take, CancellationToken ct = default);
 

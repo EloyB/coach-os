@@ -40,6 +40,14 @@ public class SubscriptionPayment : BaseEntity
     public string? InvoiceLastError { get; set; }
 
     /// <summary>
+    /// De factuur staat ook bij de facturatieprovider als betaald. Blijft <c>false</c> bij een
+    /// factuur die onbetaald verstuurd werd, tot de worker de betaling heeft doorgegeven.
+    /// </summary>
+    public bool InvoiceMarkedPaid { get; set; }
+
+    public int InvoicePaidSyncAttempts { get; set; }
+
+    /// <summary>
     /// Optimistische concurrency: webhooks en de factuurjob kunnen tegelijk dezelfde rij
     /// bijwerken. Wordt bij elke wijziging vernieuwd (ApplicationDbContext.SaveChanges).
     /// </summary>

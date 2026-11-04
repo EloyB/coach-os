@@ -28,4 +28,7 @@ public class FakeInvoicingService(TimeProvider timeProvider, ILogger<FakeInvoici
         });
         return Task.FromResult(Result<CreatedInvoice>.Ok(invoice));
     }
+
+    public Task<Result<bool>> MarkInvoicePaidAsync(string invoiceId, CancellationToken ct = default)
+        => Task.FromResult(Result<bool>.Ok(true));
 }

@@ -85,7 +85,8 @@ public class BillingService(
                 .Select(p => new PlanOptionDto((int)p.Plan, p.Name, p.MonthlyPrice, p.YearlyPrice, p.StudentLimit))
                 .ToList(),
             Profile = profile is null ? null : ToDto(profile),
-            Payments = history.Select(ToDto).ToList(),
+            // Foutdetails van de facturatie zijn intern: enkel de superadmin ziet ze.
+            Payments = history.Select(p => ToDto(p) with { InvoiceLastError = null }).ToList(),
         });
     }
 

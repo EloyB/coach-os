@@ -64,6 +64,7 @@ public static class DependencyInjection
         services.Configure<AppOptions>(configuration.GetSection(AppOptions.Section));
         services.Configure<MollieOptions>(configuration.GetSection(MollieOptions.Section));
         services.Configure<MollieBillingOptions>(configuration.GetSection(MollieBillingOptions.Section));
+        services.Configure<BillitOptions>(configuration.GetSection(BillitOptions.Section));
         services.Configure<RegistrationOptions>(configuration.GetSection(RegistrationOptions.Section));
         services.Configure<BillingOptions>(configuration.GetSection(BillingOptions.Section));
         services.Configure<SuperAdminOptions>(configuration.GetSection(SuperAdminOptions.Section));
@@ -103,8 +104,22 @@ public static class DependencyInjection
             services.AddHttpClient<IBillingMollieClient, BillingMollieClient>();
         }
 
-        // Billit-koppeling volgt zodra er API-toegang is; tot dan een fake met oplopende nummers.
-        services.AddSingleton<IInvoicingService, FakeInvoicingService>();
+        // Facturatie: echte Billit-client zodra key en bedrijf ingevuld zijn, anders een fake
+        // met oplopende nummers (IsConfigured = false: self-service blijft dan uit).
+        string billitApiKey = configuration[$"{BillitOptions.Section}:ApiKey"]
+                              ?? configuration[$"{BillitOptions.Section}__ApiKey"]
+                              ?? string.Empty;
+        string billitPartyId = configuration[$"{BillitOptions.Section}:PartyId"]
+                               ?? configuration[$"{BillitOptions.Section}__PartyId"]
+                               ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(billitApiKey) || string.IsNullOrWhiteSpace(billitPartyId))
+        {
+            services.AddSingleton<IInvoicingService, FakeInvoicingService>();
+        }
+        else
+        {
+            services.AddHttpClient<IInvoicingService, BillitInvoicingService>();
+        }
         services.AddHttpClient<IVatNumberValidator, ViesVatNumberValidator>();
 
         services.AddScoped<TenantContext>();

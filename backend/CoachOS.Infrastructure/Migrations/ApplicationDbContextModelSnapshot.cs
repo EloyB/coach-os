@@ -1721,12 +1721,18 @@ namespace CoachOS.Infrastructure.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
 
+                    b.Property<bool>("InvoiceMarkedPaid")
+                        .HasColumnType("boolean");
+
                     b.Property<DateTime?>("InvoiceNextAttemptAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("InvoiceNumber")
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
+
+                    b.Property<int>("InvoicePaidSyncAttempts")
+                        .HasColumnType("integer");
 
                     b.Property<string>("InvoicePdfUrl")
                         .HasMaxLength(1000)

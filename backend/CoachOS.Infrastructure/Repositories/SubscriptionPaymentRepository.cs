@@ -48,6 +48,21 @@ public class SubscriptionPaymentRepository(ApplicationDbContext context) : ISubs
                                 && (p.Status == SubscriptionPaymentStatus.Open || p.Status == SubscriptionPaymentStatus.Failed))))
             .MaxAsync(p => (DateOnly?)p.PeriodEnd, ct);
 
+    public async Task<IReadOnlyList<SubscriptionPayment>> ListInvoicePaidSyncDueAsync(
+        DateTime nowUtc, int maxAttempts, int take, CancellationToken ct = default)
+        => await context.SubscriptionPayments
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(p => p.Status == SubscriptionPaymentStatus.Paid
+                        && p.InvoiceStatus == InvoiceStatus.Created
+                        && p.InvoiceId != null
+                        && !p.InvoiceMarkedPaid
+                        && p.InvoicePaidSyncAttempts < maxAttempts
+                        && (p.InvoiceNextAttemptAt == null || p.InvoiceNextAttemptAt <= nowUtc))
+            .OrderBy(p => p.CreatedAt)
+            .Take(take)
+            .ToListAsync(ct);
+
     public async Task<IReadOnlyList<SubscriptionPayment>> ListInvoiceDueAsync(
         DateTime nowUtc, int maxAttempts, int take, CancellationToken ct = default)
         => await context.SubscriptionPayments

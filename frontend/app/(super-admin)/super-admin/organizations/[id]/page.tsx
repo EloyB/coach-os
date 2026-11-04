@@ -277,7 +277,7 @@ export default function OrganizationDetailPage() {
                         {formatDateNL(p.periodStart)} – {formatDateNL(p.periodEnd)}
                         {p.status === "Open" && p.dueDate && ` · ${t("paymentDue", { date: formatDateNL(p.dueDate) })}`}
                       </p>
-                      {p.invoiceLastError && p.invoiceStatus === "Failed" && (
+                      {p.invoiceLastError && (
                         <p className="text-xs text-red-600">{t("paymentInvoiceError", { error: p.invoiceLastError })}</p>
                       )}
                     </div>

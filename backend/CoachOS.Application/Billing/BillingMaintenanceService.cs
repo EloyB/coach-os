@@ -28,6 +28,7 @@ public class BillingMaintenanceService(
     public const int MaxInvoiceAttempts = 8;
     public const int RenewalNoticeDays = 30;
     private const int InvoiceBatchSize = 20;
+    private const int MaxErrorLength = 2000;
 
     public async Task<int> ProcessPendingInvoicesAsync(CancellationToken ct = default)
     {
@@ -49,6 +50,58 @@ public class BillingMaintenanceService(
         return created;
     }
 
+    public async Task<int> SyncPaidInvoicesAsync(CancellationToken ct = default)
+    {
+        if (!invoicing.IsConfigured && !billingOptions.Value.AllowFakeIntegrations)
+            return 0;
+
+        DateTime now = timeProvider.GetUtcNow().UtcDateTime;
+        IReadOnlyList<SubscriptionPayment> due =
+            await payments.ListInvoicePaidSyncDueAsync(now, MaxInvoiceAttempts, InvoiceBatchSize, ct);
+
+        int synced = 0;
+        foreach (SubscriptionPayment candidate in due)
+        {
+            if (await TrySyncPaidInvoiceAsync(candidate.Id, candidate.OrganizationId, now, ct))
+                synced++;
+        }
+
+        return synced;
+    }
+
+    /// <summary>Claimt de poging vóór de externe call, net als <see cref="TryCreateInvoiceAsync"/>.</summary>
+    private async Task<bool> TrySyncPaidInvoiceAsync(Guid paymentId, Guid organizationId, DateTime now, CancellationToken ct)
+    {
+        SubscriptionPayment? payment = await payments.GetByIdAsync(paymentId, organizationId, ct);
+        if (payment?.InvoiceId is null || payment.InvoiceMarkedPaid || payment.InvoiceNextAttemptAt > now)
+            return false;
+
+        payment.InvoicePaidSyncAttempts++;
+        payment.InvoiceNextAttemptAt = now.AddMinutes(Math.Pow(2, payment.InvoicePaidSyncAttempts));
+        if (!await unitOfWork.TrySaveChangesAsync(ct))
+            return false;
+
+        Result<bool> result = await invoicing.MarkInvoicePaidAsync(payment.InvoiceId, ct);
+        payment.InvoiceMarkedPaid = result.IsSuccess;
+        payment.InvoiceLastError = result.IsSuccess ? null : ErrorText(result.Errors);
+        string? invoiceNumber = payment.InvoiceNumber;
+        int attempts = payment.InvoicePaidSyncAttempts;
+        string? lastError = payment.InvoiceLastError;
+
+        // Conflict: de rij is intussen gewijzigd. Billit opnieuw "betaald" melden is veilig, dus de
+        // volgende ronde herstelt dit vanzelf.
+        await unitOfWork.TrySaveChangesAsync(ct);
+
+        if (!result.IsSuccess && attempts >= MaxInvoiceAttempts)
+        {
+            await NotifySuperAdminAsync("Factuur kon niet als betaald gemarkeerd worden",
+                $"Na {MaxInvoiceAttempts} pogingen staat factuur {invoiceNumber} (organisatie {organizationId}) nog open bij Billit, terwijl de betaling binnen is. Zet ze manueel op betaald. Laatste fout: {lastError}",
+                ct);
+        }
+
+        return result.IsSuccess;
+    }
+
     /// <summary>
     /// Claimt de betaling (poging + backoff vastleggen) vóór de externe call: een tweede
     /// instantie ziet dan dat de volgende poging pas later mag, of verliest de concurrency-race.
@@ -56,8 +109,11 @@ public class BillingMaintenanceService(
     private async Task<bool> TryCreateInvoiceAsync(Guid paymentId, Guid organizationId, DateTime now, CancellationToken ct)
     {
         SubscriptionPayment? payment = await payments.GetByIdAsync(paymentId, organizationId, ct);
-        if (payment is null || payment.InvoiceStatus is InvoiceStatus.Created or InvoiceStatus.NotNeeded)
+        if (payment is null || payment.InvoiceStatus is InvoiceStatus.Created or InvoiceStatus.NotNeeded
+            || payment.InvoiceNextAttemptAt > now)
+        {
             return false;
+        }
 
         payment.InvoiceAttempts++;
         payment.InvoiceNextAttemptAt = now.AddMinutes(Math.Pow(2, payment.InvoiceAttempts));
@@ -65,31 +121,75 @@ public class BillingMaintenanceService(
             return false;
 
         Result<CreatedInvoice> result = await CreateInvoiceAsync(payment, ct);
+        bool sentAsPaid = payment.Status == SubscriptionPaymentStatus.Paid;
+        int attempts = payment.InvoiceAttempts;
         if (result.IsSuccess)
         {
-            payment.InvoiceStatus = InvoiceStatus.Created;
-            payment.InvoiceId = result.Value!.Id;
-            payment.InvoiceNumber = result.Value.Number;
-            payment.InvoicePdfUrl = result.Value.PdfUrl;
-            payment.InvoiceLastError = null;
+            ApplyCreatedInvoice(payment, result.Value!, sentAsPaid);
         }
         else
         {
             payment.InvoiceStatus = InvoiceStatus.Failed;
-            payment.InvoiceLastError = string.Join("; ", result.Errors.Select(e => e.Message));
+            payment.InvoiceLastError = ErrorText(result.Errors);
         }
 
-        await unitOfWork.SaveChangesAsync(ct);
+        // Conflict: de rij is gewijzigd tijdens de externe call (bv. een opzegging). Een factuur die
+        // al bestaat mag niet verloren gaan; een mislukte poging wordt gewoon opnieuw opgepikt.
+        if (!await unitOfWork.TrySaveChangesAsync(ct) && result.IsSuccess)
+        {
+            await RecordInvoiceAfterConflictAsync(paymentId, organizationId, result.Value!, sentAsPaid, ct);
+            return true;
+        }
 
-        if (!result.IsSuccess && payment.InvoiceAttempts >= MaxInvoiceAttempts)
+        if (!result.IsSuccess && attempts >= MaxInvoiceAttempts)
         {
             await NotifySuperAdminAsync("Factuur kon niet aangemaakt worden",
-                $"Na {MaxInvoiceAttempts} pogingen kon de factuur voor betaling {payment.Id} (organisatie {payment.OrganizationId}) niet aangemaakt worden: {payment.InvoiceLastError}", ct);
+                $"Na {MaxInvoiceAttempts} pogingen kon de factuur voor betaling {paymentId} (organisatie {organizationId}) niet aangemaakt worden: {ErrorText(result.Errors)}", ct);
         }
 
         if (result.IsSuccess)
-            logger.LogInformation("Factuur {Number} aangemaakt voor betaling {PaymentId}", payment.InvoiceNumber, payment.Id);
+            logger.LogInformation("Factuur {Number} aangemaakt voor betaling {PaymentId}", result.Value!.Number, paymentId);
         return result.IsSuccess;
+    }
+
+    private static void ApplyCreatedInvoice(SubscriptionPayment payment, CreatedInvoice invoice, bool sentAsPaid)
+    {
+        payment.InvoiceStatus = InvoiceStatus.Created;
+        payment.InvoiceId = invoice.Id;
+        payment.InvoiceNumber = invoice.Number;
+        payment.InvoicePdfUrl = invoice.PdfUrl;
+        payment.InvoiceMarkedPaid = sentAsPaid;
+        payment.InvoiceNextAttemptAt = null;
+        payment.InvoiceLastError = null;
+    }
+
+    private async Task RecordInvoiceAfterConflictAsync(
+        Guid paymentId, Guid organizationId, CreatedInvoice invoice, bool sentAsPaid, CancellationToken ct)
+    {
+        SubscriptionPayment? fresh = await payments.GetByIdAsync(paymentId, organizationId, ct);
+        bool canceled = fresh?.Status == SubscriptionPaymentStatus.Canceled;
+        if (fresh is not null)
+            ApplyCreatedInvoice(fresh, invoice, sentAsPaid);
+
+        bool saved = fresh is not null && await unitOfWork.TrySaveChangesAsync(ct);
+        if (!saved)
+        {
+            logger.LogError("Factuur {Number} bestaat bij Billit, maar kon niet bewaard worden bij betaling {PaymentId}",
+                invoice.Number, paymentId);
+        }
+
+        if (canceled || !saved)
+        {
+            await NotifySuperAdminAsync("Factuur aangemaakt tijdens een wijziging",
+                $"Factuur {invoice.Number} (organisatie {organizationId}) werd verstuurd terwijl de betaling gewijzigd of opgezegd werd. Maak indien nodig een creditnota in Billit.",
+                ct);
+        }
+    }
+
+    private static string ErrorText(IEnumerable<Error> errors)
+    {
+        string text = string.Join("; ", errors.Select(e => e.Message));
+        return text.Length <= MaxErrorLength ? text : text[..MaxErrorLength];
     }
 
     private async Task<Result<CreatedInvoice>> CreateInvoiceAsync(SubscriptionPayment payment, CancellationToken ct)
