@@ -19,7 +19,7 @@ for (const kind of ["lessons", "camps"] as const) {
       };
       let savedFields: unknown;
       // Every API call is intercepted: this spec never needs a running backend.
-      await page.route("http://localhost:5142/api/**", async (route) => {
+      await page.route("**/api/**", async (route) => {
         const path = new URL(route.request().url()).pathname;
         let data: unknown = [];
         if (path === `/api/${apiKind}/${id}`) data = detail;
@@ -41,6 +41,11 @@ for (const kind of ["lessons", "camps"] as const) {
       await builder.getByRole("button", { name: "Veld toevoegen" }).click();
       await builder.locator('input[type="text"]').fill("Allergieën voor de veiligheid");
       await expect(warning).toBeVisible();
+      expect(await warning.evaluate((element) => {
+        const builder = element.parentElement;
+        const field = builder?.querySelector('input[type="text"]');
+        return field !== null && field !== undefined && Boolean(element.compareDocumentPosition(field) & Node.DOCUMENT_POSITION_FOLLOWING);
+      })).toBe(true);
       await builder.getByRole("button", { name: "Formulier opslaan" }).click();
       await expect.poll(() => savedFields).toEqual([
         { label: "Allergieën voor de veiligheid", type: 1, isRequired: false, order: 0 },
