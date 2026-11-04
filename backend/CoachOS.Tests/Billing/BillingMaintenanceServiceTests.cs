@@ -188,6 +188,67 @@ public class BillingMaintenanceServiceTests
             Times.Once);
     }
 
+    /// <summary>Een opzegging die de rij wijzigt terwijl de factuur bij Billit aangemaakt wordt.</summary>
+    private void CancelPaymentDuringInvoiceCreation(Guid paymentId)
+        => _ctx.Invoicing.Setup(i => i.CreateInvoiceAsync(It.IsAny<InvoiceRequest>(), It.IsAny<CancellationToken>()))
+            .Returns(() =>
+            {
+                using BillingTestContext other = new(_ctx.DbOptions, _ctx.FakeMollie, _ctx.Mollie);
+                SubscriptionPayment row = other.Db.SubscriptionPayments.IgnoreQueryFilters().Single(p => p.Id == paymentId);
+                row.Status = SubscriptionPaymentStatus.Canceled;
+                row.InvoiceStatus = InvoiceStatus.NotNeeded;
+                other.Db.SaveChanges();
+                return Task.FromResult(Result<CreatedInvoice>.Ok(new CreatedInvoice("inv_1", "2026-0001", null)));
+            });
+
+    [Test]
+    public async Task ProcessPendingInvoices_CancelledWhileInvoicing_KeepsInvoiceAndAsksForCreditNote()
+    {
+        Organization org = await BankTransferYearlyAsync();
+        SubscriptionPayment payment = (await _ctx.ReloadPaymentsAsync(org.Id)).Single();
+        _ctx.Db.ChangeTracker.Clear();
+        CancelPaymentDuringInvoiceCreation(payment.Id);
+
+        Func<Task> act = () => _sut.ProcessPendingInvoicesAsync();
+
+        await act.Should().NotThrowAsync();
+        SubscriptionPayment saved = await ReloadAsync(payment.Id);
+        saved.Status.Should().Be(SubscriptionPaymentStatus.Canceled);
+        saved.InvoiceStatus.Should().Be(InvoiceStatus.Created);
+        saved.InvoiceId.Should().Be("inv_1");
+        saved.InvoiceNumber.Should().Be("2026-0001");
+        _ctx.Email.Verify(e => e.SendBillingSuperAdminNoticeAsync(BillingTestContext.SuperAdminEmail,
+            It.IsAny<string>(), It.Is<string>(b => b.Contains("creditnota") && b.Contains("2026-0001")),
+            It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task ProcessPendingInvoices_VeryLongError_IsTruncatedForTheColumn()
+    {
+        Organization org = await BankTransferYearlyAsync();
+        _ctx.Invoicing.Setup(i => i.CreateInvoiceAsync(It.IsAny<InvoiceRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<CreatedInvoice>.Fail(new Error(ErrorCodes.ExternalService, new string('x', 5000))));
+
+        await _sut.ProcessPendingInvoicesAsync();
+        _ctx.Db.ChangeTracker.Clear();
+
+        (await _ctx.ReloadPaymentsAsync(org.Id)).Single().InvoiceLastError!.Length.Should().BeLessThanOrEqualTo(2000);
+    }
+
+    [Test]
+    public async Task GetOverview_InvoiceError_IsNotExposedToTheClub()
+    {
+        Organization org = await BankTransferYearlyAsync();
+        _ctx.Invoicing.Setup(i => i.CreateInvoiceAsync(It.IsAny<InvoiceRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<CreatedInvoice>.Fail(new Error(ErrorCodes.ExternalService, "interne Billit-fout")));
+        await _sut.ProcessPendingInvoicesAsync();
+        _ctx.Db.ChangeTracker.Clear();
+
+        Result<BillingOverviewDto> overview = await _billing.GetOverviewAsync(org.Id);
+
+        overview.Value!.Payments.Single().InvoiceLastError.Should().BeNull();
+    }
+
     [Test]
     public async Task ProcessPendingInvoices_PaidMolliePayment_CreatesPaidInvoice()
     {

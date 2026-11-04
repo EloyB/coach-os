@@ -220,12 +220,12 @@ public class BillitInvoicingService(
             BillitResponse result = new(response.StatusCode, content);
             if (!result.IsSuccess && response.StatusCode is not (HttpStatusCode.Conflict or HttpStatusCode.NotFound))
                 logger.LogWarning("Billit {Method} {Path} gaf {Status}: {Error}",
-                    method, path.Split('?')[0], (int)response.StatusCode, result.ErrorDetail);
+                    method, LogPath(path), (int)response.StatusCode, result.ErrorDetail);
             return result;
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException && !ct.IsCancellationRequested)
         {
-            logger.LogError(ex, "Fout bij Billit {Method} {Path}", method, path.Split('?')[0]);
+            logger.LogError(ex, "Fout bij Billit {Method} {Path}", method, LogPath(path));
             return new BillitResponse(null, string.Empty);
         }
     }
@@ -236,6 +236,10 @@ public class BillitInvoicingService(
                         ?? (response.Status is null ? "Billit niet bereikbaar" : $"HTTP {(int)response.Status}");
         return new Error(ErrorCodes.ExternalService, $"{message}: {detail}");
     }
+
+    /// <summary>Pad zonder query en zonder btw-nummer: bij een eenmanszaak is dat een persoonsgegeven.</summary>
+    private static string LogPath(string path)
+        => path.StartsWith("/v1/peppol/", StringComparison.Ordinal) ? "/v1/peppol/participantInformation" : path.Split('?')[0];
 
     private static string OrderPath(long orderId)
         => string.Create(CultureInfo.InvariantCulture, $"{OrdersPath}/{orderId}");

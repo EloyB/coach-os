@@ -23,6 +23,12 @@ namespace CoachOS.Infrastructure.Migrations
                 type: "integer",
                 nullable: false,
                 defaultValue: 0);
+
+            // Bestaande betaalde facturen zijn al als betaald aangemaakt.
+            migrationBuilder.Sql("""
+                UPDATE "SubscriptionPayments" SET "InvoiceMarkedPaid" = TRUE
+                WHERE "Status" = 2 AND "InvoiceStatus" = 2;
+                """);
         }
 
         /// <inheritdoc />
