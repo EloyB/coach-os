@@ -24,7 +24,7 @@
         <mj-text padding-top="16px">
           Hoi {{studentName}}, we hebben je inschrijving voor
           <strong style="color:#111827">{{seriesName}}</strong> goed ontvangen.
-          Je betaalt via <strong style="color:#111827">overschrijving</strong>.
+          Je betaalt via <strong style="color:#111827">cash of overschrijving</strong>.
           Je plek is definitief zodra de club je betaling heeft bevestigd.
         </mj-text>
 
@@ -37,7 +37,7 @@
         </mj-section>
 
         <mj-text mj-class="fine" padding-top="24px">
-          De club bezorgt je de betaalgegevens en bevestigt je plek zodra de overschrijving verwerkt is.
+          De club laat je weten hoe je kunt betalen en bevestigt je plek zodra je betaling ontvangen is.
           Vragen? Neem contact op met je trainer of club.
         </mj-text>
       </mj-column>
