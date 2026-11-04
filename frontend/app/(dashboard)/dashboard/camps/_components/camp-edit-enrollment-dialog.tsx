@@ -73,6 +73,7 @@ function EditEnrollmentForm({
   const [name, setName] = useState(enrollment.participantName);
   const [email, setEmail] = useState(enrollment.participantEmail);
   const [phone, setPhone] = useState(enrollment.participantPhone ?? "");
+  const [priceId, setPriceId] = useState<string | null>(enrollment.campPriceId);
   const [answers, setAnswers] = useState<Record<string, string>>(() =>
     Object.fromEntries(
       enrollment.formResponses.map((r) => [r.fieldId, r.value]),
@@ -90,6 +91,7 @@ function EditEnrollmentForm({
         participantName: name,
         participantEmail: email,
         participantPhone: phone.trim() ? phone : null,
+        campPriceId: priceId,
         responses: Object.entries(answers)
           .filter(([, value]) => value.trim() !== "")
           .map(([campFormFieldId, value]) => ({ campFormFieldId, value })),
@@ -130,6 +132,9 @@ function EditEnrollmentForm({
           setAnswers((prev) => ({ ...prev, [fieldId]: value }))
         }
         idPrefix={`edit_${enrollment.id}`}
+        campId={campId}
+        priceId={priceId}
+        onPriceChange={setPriceId}
       />
       <DialogFooter>
         <button type="button" onClick={onClose} className={btnSecondary}>

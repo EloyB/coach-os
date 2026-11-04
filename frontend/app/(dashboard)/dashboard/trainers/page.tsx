@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { TrainerAvailabilityDialog } from "./_components/trainer-availability-dialog";
+import { useClientValue } from "@/lib/hooks/use-client-value";
 import { Mono } from "@/components/ui/mono";
 import {
   getTrainerMembers,
@@ -700,7 +701,14 @@ type RemoveDialogState =
   | { type: "reassign"; trainer: TrainerDto };
 
 export default function TrainersPage() {
-  const [showInviteForm, setShowInviteForm] = useState(false);
+  // "?invite=1" (bv. vanuit het dashboard) opent meteen het uitnodigingsformulier.
+  const openedByLink =
+    useClientValue(
+      () => new URLSearchParams(window.location.search).get("invite") === "1",
+    ) ?? false;
+  const [inviteOverride, setInviteOverride] = useState<boolean | null>(null);
+  const showInviteForm = inviteOverride ?? openedByLink;
+  const setShowInviteForm = setInviteOverride;
   const [removeDialog, setRemoveDialog] = useState<RemoveDialogState>({ type: "none" });
   const [editTrainer, setEditTrainer] = useState<TrainerDto | null>(null);
   const [roleChange, setRoleChange] = useState<{ trainer: TrainerDto; makeAdmin: boolean } | null>(null);

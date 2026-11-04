@@ -8,6 +8,7 @@
 - [market-analysis.md](market-analysis.md) - Market size & opportunity
 - [competition-analysis.md](competition-analysis.md) - Competitive landscape
 - [pricing-strategy.md](pricing-strategy.md) - Prijstiers, concurrent-benchmarks & unit-economics
+- [seo-plan.md](seo-plan.md) - SEO-stand van zaken, concurrent TrainYou, blogplan, tools en open punten
 - [development-guide.md](development-guide.md) - Coding patterns & conventions
 
 ## Architecture

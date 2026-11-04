@@ -594,6 +594,11 @@ def create_camps(api: ApiClient, club_ids: list[str], trainer_id: str,
         "endDate": iso_date(paid_start + timedelta(days=2)),
         "registrationDeadline": deadline_iso,
         "maxParticipants": 20,
+        # Extra tarieven ter referentie; de beheerder kiest er per inschrijving een.
+        "prices": [
+            {"label": "Leden", "description": "Voor leden van de club.", "amount": 100},
+            {"label": "Tweede kind", "description": "Voor een broer of zus van een deelnemer.", "amount": 90},
+        ],
         "days": [
             {"date": iso_date(paid_start), "startTime": "09:00", "endTime": "16:00",
              "trainers": [{"trainerId": trainer_id, "startTime": "09:00", "endTime": "12:00"}]},

@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { SiteNav } from "@/components/site/site-nav";
 import { SiteFooter } from "@/components/site/site-footer";
-import { Mono } from "@/components/ui/mono";
+import { WhitePage } from "@/components/site/white-page";
+import { BentoPageHero } from "@/components/sections/bento-page-hero";
 
 export const metadata: Metadata = {
   title: "Voorwaarden",
@@ -11,21 +12,17 @@ export const metadata: Metadata = {
 
 export default function VoorwaardenPage() {
   return (
-    <>
+    <WhitePage>
       <SiteNav />
       <main>
-        <article className="mx-auto max-w-3xl px-6 py-20 md:py-28">
-          <Mono className="text-[11px] tracking-[0.18em] text-ink-3">
-            JURIDISCH
-          </Mono>
-          <h1 className="mt-3 text-3xl font-bold tracking-tight md:text-4xl">
-            Algemene voorwaarden
-          </h1>
-          <p className="mt-4 text-sm text-ink-3">
-            Laatst bijgewerkt: nog te bepalen.
-          </p>
-
-          <div className="mt-10 space-y-6 text-base leading-relaxed text-ink-2">
+        <BentoPageHero
+          kicker="JURIDISCH"
+          title="Algemene voorwaarden"
+          lead="Laatst bijgewerkt: nog te bepalen."
+          titleClassName="text-3xl md:text-4xl"
+        />
+        <article className="mx-auto max-w-3xl px-6 py-12 md:py-16">
+          <div className="space-y-6 text-base leading-relaxed text-ink-2">
             <p>
               CoachOS is in pre-launch. De definitieve algemene voorwaarden
               worden gepubliceerd vóór algemene beschikbaarheid.
@@ -44,6 +41,6 @@ export default function VoorwaardenPage() {
         </article>
       </main>
       <SiteFooter />
-    </>
+    </WhitePage>
   );
 }

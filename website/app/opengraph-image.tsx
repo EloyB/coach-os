@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 import { LogoMarkSvg } from "@/components/site/logo-mark-svg";
 
-export const alt = "CoachOS — Lessenplanning voor tennis- en padelclubs";
+export const alt = "CoachOS: lessenplanning voor tennis- en padelclubs";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -56,7 +56,7 @@ export default function OpengraphImage() {
             fontFamily: "ui-monospace, SFMono-Regular, monospace",
           }}
         >
-          LESPLANNING
+          LESSENPLANNING
         </div>
         <div
           style={{
@@ -83,7 +83,7 @@ export default function OpengraphImage() {
           color: "#4a4741",
         }}
       >
-        <div>Een planning die zichzelf bevestigt.</div>
+        <div>Lessenplanning, eindelijk eenvoudig.</div>
         <div style={{ fontWeight: 600, color: "#161513" }}>coach-os.be</div>
       </div>
     </div>,

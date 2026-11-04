@@ -1,5 +1,7 @@
 "use client";
 
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { CheckCircle2, Mail, MessageCircle, Phone } from "lucide-react";
 import {
@@ -11,7 +13,10 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { btnPrimary } from "@/lib/styles";
 import { enrollmentDisplayStatus } from "@/lib/status-styles";
-import type { CampEnrollmentDto } from "@/lib/api/camps";
+import { updateCampEnrollment, type CampEnrollmentDto } from "@/lib/api/camps";
+import { getAxiosErrorMessages } from "@/lib/utils/api-errors";
+import { MolliePaymentId } from "@/components/dashboard/mollie-payment-id";
+import { CampPriceSelect } from "./camp-price-select";
 
 function DetailRow({
   label,
@@ -39,6 +44,9 @@ function DetailRow({
 }
 
 interface CampEnrollmentDetailDialogProps {
+  campId: string;
+  /** Mag de beheerder het tarief van deze inschrijving wijzigen? */
+  canEditPrice: boolean;
   enrollment: CampEnrollmentDto;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -49,6 +57,8 @@ interface CampEnrollmentDetailDialogProps {
 }
 
 export function CampEnrollmentDetailDialog({
+  campId,
+  canEditPrice,
   enrollment,
   open,
   onOpenChange,
@@ -58,7 +68,31 @@ export function CampEnrollmentDetailDialog({
   markPaidLabel,
 }: CampEnrollmentDetailDialogProps) {
   const t = useTranslations("campEnrollmentsTable");
-  const style = enrollmentDisplayStatus(enrollment.status, enrollment.paymentStatus);
+  const queryClient = useQueryClient();
+  const priceMutation = useMutation({
+    mutationFn: (campPriceId: string | null) =>
+      updateCampEnrollment(campId, enrollment.id, {
+        participantName: enrollment.participantName,
+        participantEmail: enrollment.participantEmail,
+        participantPhone: enrollment.participantPhone,
+        campPriceId,
+        responses: enrollment.formResponses
+          .filter((r) => r.value.trim() !== "")
+          .map((r) => ({ campFormFieldId: r.fieldId, value: r.value })),
+      }),
+    onSuccess: () => {
+      toast.success(t("toastUpdated"));
+      queryClient.invalidateQueries({ queryKey: ["campEnrollments", campId] });
+      queryClient.invalidateQueries({ queryKey: ["camp", campId] });
+    },
+    onError: (error) => {
+      toast.error(getAxiosErrorMessages(error, t("editError")).join(" "));
+    },
+  });
+  const style = enrollmentDisplayStatus(
+    enrollment.status,
+    enrollment.paymentStatus,
+  );
   const waPhone = enrollment.participantPhone?.replace(/[^\d]/g, "");
 
   const methodLabel =
@@ -133,8 +167,16 @@ export function CampEnrollmentDetailDialog({
             )}
             <DetailRow
               label={t("enrolledAt")}
-              value={new Date(enrollment.enrolledAt).toLocaleDateString("nl-BE")}
+              value={new Date(enrollment.enrolledAt).toLocaleDateString(
+                "nl-BE",
+              )}
             />
+            {!canEditPrice && enrollment.campPriceLabel && (
+              <DetailRow
+                label={t("priceLabel")}
+                value={enrollment.campPriceLabel}
+              />
+            )}
             {enrollment.groupName && (
               <DetailRow
                 label={t("group")}
@@ -148,7 +190,45 @@ export function CampEnrollmentDetailDialog({
             {methodLabel && (
               <DetailRow label={t("paymentMethod")} value={methodLabel} />
             )}
+            {enrollment.paymentAmount != null && (
+              <DetailRow
+                label={t("paymentAmount")}
+                value={new Intl.NumberFormat("nl-BE", { style: "currency", currency: "EUR" }).format(
+                  enrollment.paymentAmount,
+                )}
+              />
+            )}
+            {enrollment.paidAt && (
+              <DetailRow
+                label={t("paymentPaidAt")}
+                value={new Date(enrollment.paidAt).toLocaleString("nl-BE", {
+                  dateStyle: "short",
+                  timeStyle: "short",
+                })}
+              />
+            )}
+            {enrollment.molliePaymentId && (
+              <div className="flex items-center gap-3 text-sm">
+                <dt className="w-32 shrink-0 text-gray-400">{t("paymentMollieId")}</dt>
+                <dd className="min-w-0 font-medium text-gray-900">
+                  <MolliePaymentId
+                    id={enrollment.molliePaymentId}
+                    copyLabel={t("paymentCopyMollieId")}
+                  />
+                </dd>
+              </div>
+            )}
           </dl>
+
+          {canEditPrice && (
+            <div className={priceMutation.isPending ? "opacity-60" : undefined}>
+              <CampPriceSelect
+                campId={campId}
+                value={enrollment.campPriceId}
+                onChange={(priceId) => priceMutation.mutate(priceId)}
+              />
+            </div>
+          )}
 
           <div>
             <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400">

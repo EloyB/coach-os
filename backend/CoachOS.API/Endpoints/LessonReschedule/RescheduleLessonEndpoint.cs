@@ -17,12 +17,13 @@ public class RescheduleLessonEndpoint : IEndpoint
                 CancellationToken ct) =>
             {
                 Domain.Models.Result<RescheduleLessonResultDto> result =
-                    await service.RescheduleAsync(ctx.GetOrganizationId(), id, request, ct);
+                    await service.RescheduleAsync(
+                        ctx.GetOrganizationId(), id, request, ct, ctx.IsAdmin() ? null : ctx.GetUserId());
                 return result.IsSuccess
                     ? Results.Ok(result.Value)
                     : result.ToErrorResult();
             })
-        .RequireAuthorization()
+        .RequireAuthorization(policy => policy.RequireRole("Admin", "Trainer"))
         .AddEndpointFilter<ValidationFilter<RescheduleLessonRequest>>()
         .WithTags("Lessons");
     }

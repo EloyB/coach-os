@@ -15,36 +15,27 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL("https://coach-os.be"),
   title: {
-    default: "CoachOS — Lessenplanning voor tennis- en padelclubs",
+    default: "CoachOS: lessenplanning voor tennis- en padelclubs",
     template: "%s · CoachOS",
   },
   description:
-    "Lessenplanning voor tennis- en padelclubs in Nederland en België. Lessenreeksen, anonieme inschrijvingen, automatische scheduling en magic-link bevestiging.",
+    "Lessenplanning voor tennis- en padelclubs: lessenreeksen, inschrijvingen, kampen, betalingen en automatische planning in één systeem. 30 dagen gratis proberen.",
   applicationName: "CoachOS",
   authors: [{ name: "CoachOS" }],
-  keywords: [
-    "lessenplanning tennisclub",
-    "lessenplanning padelclub",
-    "tennisles inschrijven",
-    "padel lessenreeksen",
-    "ledenadministratie tennisclub",
-    "trainersplanning",
-    "sportclub software",
-  ],
   category: "business",
   openGraph: {
     type: "website",
     locale: "nl_BE",
     alternateLocale: ["nl_NL"],
     url: "https://coach-os.be",
-    title: "CoachOS — Lessenplanning voor tennis- en padelclubs",
+    title: "CoachOS: lessenplanning voor tennis- en padelclubs",
     description:
-      "Een planning die zichzelf bevestigt. Lessenreeksen, anonieme inschrijvingen en automatische scheduling voor tennis- en padelclubs.",
+      "Lessenplanning, eindelijk eenvoudig. Lessenreeksen, inschrijvingen zonder account en automatische planning voor tennis- en padelclubs.",
     siteName: "CoachOS",
   },
   twitter: {
     card: "summary_large_image",
-    title: "CoachOS — Lessenplanning voor tennis- en padelclubs",
+    title: "CoachOS: lessenplanning voor tennis- en padelclubs",
     description:
       "Lessenplanning voor tennis- en padelclubs in Nederland en België.",
   },
@@ -93,7 +84,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="nl">
+    <html lang="nl-BE">
       <body
         className={`${inter.variable} ${jetbrainsMono.variable} antialiased bg-paper text-ink`}
       >

@@ -29,7 +29,7 @@ import type {
 import { getAuthUser } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { TennisBallIcon } from "@/components/ui/tennis-ball-icon";
+import { LogoMark } from "@/components/ui/logo-mark";
 import { Spinner } from "@/components/ui/spinner";
 import { formatDateNL, formatDateShort } from "@/lib/date-utils";
 
@@ -371,9 +371,7 @@ export default function CampEnrollPage() {
       <div className="max-w-2xl mx-auto px-4 py-8">
         {/* Logo */}
         <div className="flex items-center gap-2 mb-8">
-          <div className="w-8 h-8 bg-tennis-green rounded-full flex items-center justify-center">
-            <TennisBallIcon className="w-4 h-4 text-white" strokeWidth={2} />
-          </div>
+          <LogoMark className="h-8 w-8" markPx={22} />
           <span className="font-semibold text-lg text-tennis-green">CoachOS</span>
         </div>
 
@@ -395,7 +393,7 @@ export default function CampEnrollPage() {
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <CalendarDays className="w-4 h-4 text-gray-400 shrink-0" />
               <span>
-                {formatDateNL(camp.startDate)} tot {formatDateNL(camp.endDate)}
+                {formatDateNL(camp.startDate)} – {formatDateNL(camp.endDate)}
               </span>
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -405,7 +403,9 @@ export default function CampEnrollPage() {
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <Euro className="w-4 h-4 text-gray-400 shrink-0" />
               <span>
-                {camp.price > 0 ? `€${camp.price.toFixed(2)}` : t("priceFree")}
+                {camp.price > 0
+                  ? `€${camp.price.toFixed(2)} ${t("pricePerParticipant")}`
+                  : t("priceFree")}
               </span>
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -414,22 +414,33 @@ export default function CampEnrollPage() {
                 {t("publicDeadlineLabel")}: {formatDeadline(camp.registrationDeadline)}
               </span>
             </div>
-            {spotsLeft != null && (
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <Users className="w-4 h-4 text-gray-400 shrink-0" />
-                <span
-                  className={
-                    spotsLeft === 0
-                      ? "text-red-600 font-medium"
-                      : spotsLeft <= (camp.maxParticipants ?? 0) * 0.2
-                        ? "text-amber-600 font-medium"
-                        : "text-tennis-green font-medium"
-                  }
-                >
-                  {t("spotsLeft", { count: spotsLeft })}
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <Users className="w-4 h-4 text-gray-400 shrink-0" />
+              {camp.maxParticipants != null && spotsLeft != null ? (
+                <span>
+                  {t("enrolledOfMax", {
+                    enrolled: camp.participantCount,
+                    max: camp.maxParticipants,
+                  })}
+                  {" — "}
+                  <span
+                    className={
+                      spotsLeft === 0
+                        ? "text-red-600 font-medium"
+                        : spotsLeft <= camp.maxParticipants * 0.2
+                          ? "text-amber-600 font-medium"
+                          : "text-tennis-green font-medium"
+                    }
+                  >
+                    {t("spotsLeft", { count: spotsLeft })}
+                  </span>
                 </span>
-              </div>
-            )}
+              ) : (
+                <span>
+                  {camp.participantCount} {t("enrolledLabel")}
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Programma — per dag datum + uren */}
@@ -455,6 +466,43 @@ export default function CampEnrollPage() {
               </div>
             </div>
           )}
+          {/* Prijzen: enkel ter referentie, het tarief dat geldt bepaalt de organisator */}
+          {camp.prices.length > 0 && (
+            <div className="mt-5 pt-5 border-t border-gray-100">
+              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                {t("publicPricesLabel")}
+              </h3>
+              <ul className="space-y-2">
+                <li className="flex items-start justify-between gap-3 text-sm border border-gray-100 rounded-lg px-3 py-2">
+                  <span className="font-medium text-gray-900">
+                    {t("publicPriceMain")}
+                  </span>
+                  <span className="font-semibold text-gray-900 whitespace-nowrap">
+                    {camp.price > 0 ? `€${camp.price.toFixed(2)}` : t("priceFree")}
+                  </span>
+                </li>
+                {camp.prices.map((p) => (
+                  <li
+                    key={p.id}
+                    className="flex items-start justify-between gap-3 text-sm border border-gray-100 rounded-lg px-3 py-2"
+                  >
+                    <div className="min-w-0">
+                      <span className="font-medium text-gray-900">{p.label}</span>
+                      {p.description && (
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {p.description}
+                        </p>
+                      )}
+                    </div>
+                    <span className="font-semibold text-gray-900 whitespace-nowrap">
+                      {p.amount > 0 ? `€${p.amount.toFixed(2)}` : t("priceFree")}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <p className="text-xs text-gray-400 mt-2">{t("publicPricesNote")}</p>
+            </div>
+          )}
         </div>
 
         {/* Enrollment form card */}
@@ -477,6 +525,9 @@ export default function CampEnrollPage() {
 
               {/* ── Personal info ── */}
               <div>
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                  {t("publicPersonalTitle")}
+                </h3>
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
@@ -533,7 +584,7 @@ export default function CampEnrollPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      {t("formPhoneOptional")}
+                      {t("formPhone")}
                     </label>
                     <input
                       type="tel"
@@ -573,8 +624,13 @@ export default function CampEnrollPage() {
                       <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
                         <User className="w-5 h-5 text-gray-600" />
                       </div>
-                      <div className="font-medium text-gray-900 text-sm">
-                        {t("typeSolo")}
+                      <div>
+                        <div className="font-medium text-gray-900 text-sm">
+                          {t("typeSolo")}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {t("typeSoloDesc")}
+                        </div>
                       </div>
                     </div>
                   </label>
@@ -598,8 +654,13 @@ export default function CampEnrollPage() {
                       <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
                         <Users className="w-5 h-5 text-gray-600" />
                       </div>
-                      <div className="font-medium text-gray-900 text-sm">
-                        {t("typeGroup")}
+                      <div>
+                        <div className="font-medium text-gray-900 text-sm">
+                          {t("typeGroup")}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {t("typeGroupDesc")}
+                        </div>
                       </div>
                     </div>
                   </label>
@@ -610,7 +671,7 @@ export default function CampEnrollPage() {
                   <div className="mt-4 space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium text-gray-700">
-                        {t("groupMembersTitle")}
+                        {t("groupMembersTitle")} {t("groupMembersMax")}
                       </span>
                       {groupMembers.length < 3 && (
                         <button
@@ -624,12 +685,22 @@ export default function CampEnrollPage() {
                       )}
                     </div>
 
+                    <p className="text-xs text-gray-500">
+                      {t("groupContactExplainer")}
+                    </p>
+
                     {groupMembers.map((member, i) => (
                       <div
                         key={i}
                         className="border border-gray-200 rounded-lg p-3 space-y-3"
                       >
-                        <div className="flex items-center justify-end">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 text-xs text-gray-500">
+                            <span className="w-5 h-5 rounded-full bg-tennis-green text-white flex items-center justify-center text-xs font-medium">
+                              {i + 1}
+                            </span>
+                            {t("groupMemberLabel")}
+                          </div>
                           <button
                             type="button"
                             onClick={() => removeGroupMember(i)}
@@ -684,6 +755,9 @@ export default function CampEnrollPage() {
                 <>
                   <hr className="border-gray-100" />
                   <div>
+                    <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                      {t("publicExtraQuestions")}
+                    </h3>
                     <div className="space-y-4">
                       {form.fields.map((field) => renderCustomField(field))}
                     </div>
@@ -702,6 +776,9 @@ export default function CampEnrollPage() {
                 {submitting && <Spinner />}
                 {submitting ? t("submitting") : t("submit")}
               </button>
+              <p className="text-xs text-gray-400 text-center mt-3">
+                {t("submitNote")}
+              </p>
             </div>
           </form>
 

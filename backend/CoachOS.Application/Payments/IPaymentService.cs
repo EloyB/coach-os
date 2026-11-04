@@ -35,7 +35,7 @@ public interface IPaymentService
 
     /// <summary>
     /// Creëert een Mollie payment voor een bestaande kamp-inschrijving. Het bedrag
-    /// is <c>camp.Price × aantal deelnemers</c> (groep = leider + leden, solo = 1).
+    /// is <c>som van het tarief per deelnemer</c> (groep = leider + leden, solo = 1).
     /// Bij succes returnt een <see cref="CreatePaymentResultDto.CheckoutUrl"/> waar
     /// de FE de deelnemer naartoe redirect.
     /// </summary>
@@ -52,7 +52,7 @@ public interface IPaymentService
 
     /// <summary>
     /// Legt een Pending cash-betaling vast voor een kamp-inschrijving. Het bedrag is
-    /// <c>camp.Price × aantal deelnemers</c> (zelfde regel als de online flow). De
+    /// <c>som van het tarief per deelnemer</c> (zelfde regel als de online flow). De
     /// inschrijving blijft op PendingPayment staan; de coach bevestigt de cash later
     /// via <see cref="MarkCampCashPaidAsync"/>.
     /// </summary>

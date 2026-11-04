@@ -35,9 +35,9 @@ interface AccountBannersProps {
 }
 
 /**
- * Smalle meldingen onder de topbar over de staat van het account: lopende of afgelopen
- * proef en een nog niet bevestigd e-mailadres. Bestaande klanten (Legacy) en betalende
- * abonnementen zien hier niets.
+ * Smalle meldingen onder de topbar over de staat van het account: een nog niet bevestigd
+ * e-mailadres en alleen-lezen toegang. De status van de gratis proef staat in de sidenav
+ * (<TrialSidebarCard />). Bestaande klanten (Legacy) en betalende abonnementen zien hier niets.
  */
 export function AccountBanners({ user }: AccountBannersProps) {
   const t = useTranslations("subscription");
@@ -82,24 +82,6 @@ export function AccountBanners({ user }: AccountBannersProps) {
       body: t("cancelledBody", { date: formatDate(subscription.cancelAt) }),
       action: { href: SUBSCRIPTION_PAGE, label: t("choosePlanCta") },
     });
-  } else if (isAdmin && subscription?.status === "Trialing" && subscription.trialEndsAt) {
-    banners.push(
-      subscription.isTrialExpired
-        ? {
-            key: "trial-expired",
-            tone: "warn",
-            chip: t("trialExpiredChip"),
-            body: t("trialExpiredBody"),
-            action: choosePlan,
-          }
-        : {
-            key: "trial",
-            tone: "info",
-            chip: t("trialChip", { days: subscription.trialDaysRemaining ?? 0 }),
-            body: t("trialBody", { date: formatDate(subscription.trialEndsAt) }),
-            action: choosePlan,
-          },
-    );
   }
 
   if (banners.length === 0) return null;

@@ -13,7 +13,11 @@ public interface ILessonSerieService
     Task<Result> DeleteAsync(Guid id, Guid organizationId, CancellationToken ct = default);
     Task<Result<Guid>> AddLessonAsync(Guid seriesId, Guid organizationId, CreateLessonRequest request, CancellationToken ct = default);
     Task<Result<Guid>> AddWeeklyTemplateEntryAsync(Guid seriesId, Guid organizationId, AddWeeklyTemplateEntryRequest request, CancellationToken ct = default);
-    Task<Result<LessonDto>> UpdateLessonAsync(Guid seriesId, Guid lessonId, Guid organizationId, UpdateLessonRequest request, CancellationToken ct = default);
+    /// <param name="actingTrainerId">
+    /// Null voor een admin (geen beperkingen). Gezet voor een trainer: die mag enkel een eigen les
+    /// aanpassen, niet aan een andere trainer toewijzen en niet het hele weekslot wijzigen.
+    /// </param>
+    Task<Result<LessonDto>> UpdateLessonAsync(Guid seriesId, Guid lessonId, Guid organizationId, UpdateLessonRequest request, CancellationToken ct = default, Guid? actingTrainerId = null);
     Task<Result> DeleteLessonAsync(Guid seriesId, Guid lessonId, Guid organizationId, bool wholeSlot = false, CancellationToken ct = default);
 
     /// <summary>

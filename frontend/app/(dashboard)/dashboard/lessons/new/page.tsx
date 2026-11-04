@@ -4,6 +4,8 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { getAuthUser } from "@/lib/auth";
+import { useClientValue } from "@/lib/hooks/use-client-value";
 import { ChevronLeft } from "lucide-react";
 import {
   Dialog,
@@ -18,7 +20,7 @@ import { Step1Basisinfo } from "./_components/step-1-basisinfo";
 import { Step2Planning } from "./_components/step-2-planning";
 import { Step3Validation } from "./_components/step-3-validation";
 
-export default function NewLessonSeriesPage() {
+function NewLessonSeriesWizard() {
   const t = useTranslations("lessonWizard");
   const router = useRouter();
 
@@ -204,4 +206,17 @@ export default function NewLessonSeriesPage() {
       </Dialog>
     </div>
   );
+}
+
+export default function NewLessonSeriesPage() {
+  const router = useRouter();
+  // Alleen admins maken lesreeksen aan (de server weigert het voor trainers).
+  const role = useClientValue(() => getAuthUser()?.role ?? "");
+
+  useEffect(() => {
+    if (role !== null && role !== "Admin") router.replace("/dashboard/lessons");
+  }, [role, router]);
+
+  if (role !== "Admin") return null;
+  return <NewLessonSeriesWizard />;
 }

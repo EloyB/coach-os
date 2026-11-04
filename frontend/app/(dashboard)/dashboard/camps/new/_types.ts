@@ -12,6 +12,15 @@ export type CampStep1Data = {
   startDate: string; // yyyy-MM-dd
   endDate: string; // yyyy-MM-dd
   registrationDeadline: string; // yyyy-MM-dd
+  prices: CampPriceDraft[];
+};
+
+/** Prijsoptie in het formulier; `amount` is NaN zolang het veld leeg is. */
+export type CampPriceDraft = {
+  id?: string;
+  label: string;
+  description: string;
+  amount: number;
 };
 
 export type CampTrainerDraft = {
@@ -31,14 +40,18 @@ export type CampDayDraft = {
 
 // ─── Day builders / mergers ───────────────────────────────────────────────────
 
+export type DateRange = { start: string; end: string };
+
 /**
- * Build one CampDayDraft per date in [start, end]. Existing days (matched by
- * date) keep their times + trainers so adjusting the range never wipes data.
+ * Build the day list for [start, end]. Existing days (matched by date) keep their times + trainers.
+ * Dates that were already inside `previousRange` but have no day are days the admin deliberately
+ * dropped: they stay dropped. Only dates that are new to the range get a default day.
  */
 export function buildDays(
   start: string,
   end: string,
   existing: CampDayDraft[],
+  previousRange?: DateRange | null,
 ): CampDayDraft[] {
   if (!start || !end || end < start) return [];
   const byDate = new Map(existing.map((d) => [d.date, d]));
@@ -47,17 +60,32 @@ export function buildDays(
   const last = new Date(end + "T00:00:00");
   while (cur <= last) {
     const iso = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, "0")}-${String(cur.getDate()).padStart(2, "0")}`;
-    result.push(
-      byDate.get(iso) ?? {
+    const kept = byDate.get(iso);
+    const wasDropped =
+      previousRange != null &&
+      iso >= previousRange.start &&
+      iso <= previousRange.end;
+    if (kept) result.push(kept);
+    else if (!wasDropped)
+      result.push({
         date: iso,
         startTime: "09:00",
         endTime: "16:00",
         trainers: [],
-      },
-    );
+      });
     cur.setDate(cur.getDate() + 1);
   }
   return result;
+}
+
+/** Map the price options of an existing camp into form drafts. */
+export function detailToPrices(detail: CampDetailDto): CampPriceDraft[] {
+  return detail.prices.map((p) => ({
+    id: p.id,
+    label: p.label,
+    description: p.description ?? "",
+    amount: p.amount,
+  }));
 }
 
 /** Map an existing camp detail into editable day drafts. */
@@ -106,6 +134,12 @@ export function buildCampRequest(
     // would shift the date by the UTC offset and land on the wrong day in CET).
     registrationDeadline: step1.registrationDeadline + "T00:00:00Z",
     maxParticipants: step1.maxParticipants,
+    prices: step1.prices.map((p) => ({
+      id: p.id,
+      label: p.label.trim(),
+      description: p.description.trim() || undefined,
+      amount: p.amount,
+    })),
     days: days.map((d) => ({
       date: d.date,
       startTime: d.startTime,
@@ -126,4 +160,46 @@ export function formatDayHeading(iso: string): string {
     day: "numeric",
     month: "long",
   }).format(date);
+}
+
+// ─── Shiften van een trainer op een dag ──────────────────────────────────────
+
+/** Eén shift van een trainer: een tijdvenster binnen een kampdag. */
+export type CampShift = Pick<CampTrainerDraft, "startTime" | "endTime">;
+
+/** Twee shiften overlappen als de ene begint voor de andere eindigt; aansluitende shiften zijn oké. */
+export function shiftsOverlap(a: CampShift, b: CampShift): boolean {
+  return a.startTime < b.endTime && b.startTime < a.endTime;
+}
+
+/**
+ * Indexen (in `day.trainers`) van shiften die overlappen met een andere shift van dezelfde trainer
+ * op die dag.
+ */
+export function findOverlappingShiftIndexes(day: CampDayDraft): Set<number> {
+  const result = new Set<number>();
+  day.trainers.forEach((a, i) => {
+    day.trainers.forEach((b, j) => {
+      if (i < j && a.trainerId === b.trainerId && shiftsOverlap(a, b)) {
+        result.add(i);
+        result.add(j);
+      }
+    });
+  });
+  return result;
+}
+
+export function hasOverlappingShifts(days: CampDayDraft[]): boolean {
+  return days.some((d) => findOverlappingShiftIndexes(d).size > 0);
+}
+
+/** Duur van een shift in uren (HH:mm-strings). */
+export function shiftHours(shift: CampShift): number {
+  const toMinutes = (time: string) => {
+    const [h, m] = time.split(":").map(Number);
+    return (h ?? 0) * 60 + (m ?? 0);
+  };
+  return (
+    Math.max(0, toMinutes(shift.endTime) - toMinutes(shift.startTime)) / 60
+  );
 }

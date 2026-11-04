@@ -15,5 +15,6 @@ public interface ILessonRescheduleService
         Guid organizationId,
         Guid lessonId,
         RescheduleLessonRequest request,
-        CancellationToken ct = default);
+        CancellationToken ct = default,
+        Guid? actingTrainerId = null);
 }

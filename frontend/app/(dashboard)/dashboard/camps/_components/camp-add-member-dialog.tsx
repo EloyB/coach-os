@@ -36,6 +36,7 @@ export function CampAddMemberDialog({
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [priceId, setPriceId] = useState<string | null>(null);
 
   const { data: form } = useQuery({
     queryKey: ["campForm", campId],
@@ -49,6 +50,7 @@ export function CampAddMemberDialog({
         participantName: name,
         participantEmail: email,
         participantPhone: phone || null,
+        campPriceId: priceId,
         responses: Object.entries(answers)
           .filter(([, value]) => value !== "")
           .map(([campFormFieldId, value]) => ({ campFormFieldId, value })),
@@ -62,6 +64,7 @@ export function CampAddMemberDialog({
       setEmail("");
       setPhone("");
       setAnswers({});
+      setPriceId(null);
     },
     onError: (error) => {
       toast.error(getAxiosErrorMessages(error, t("addMemberError")).join(" "));
@@ -95,6 +98,9 @@ export function CampAddMemberDialog({
               setAnswers((prev) => ({ ...prev, [fieldId]: value }))
             }
             idPrefix={`member_${groupId}`}
+            campId={campId}
+            priceId={priceId}
+            onPriceChange={setPriceId}
           />
           <DialogFooter>
             <button

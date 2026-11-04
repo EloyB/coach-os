@@ -12,6 +12,8 @@ public interface IUserLookupService
     /// Admins tellen mee wanneer AdminsActAsTrainers aan staat, zodat het dashboard-
     /// cijfer overeenkomt met de trainerslijst die aan de admin getoond wordt.
     /// </summary>
+    /// <summary>Wekelijkse capaciteit (uren) van een lid binnen de organisatie; null als het lid niet bestaat.</summary>
+    Task<int?> GetWeeklyCapacityHoursAsync(Guid userId, Guid organizationId, CancellationToken ct = default);
     Task<int> CountActiveTrainersAsync(Guid organizationId, CancellationToken ct = default);
     Task<Dictionary<Guid, (string FullName, string Email)>> GetUserNamesAndEmailsByIdsAsync(IEnumerable<Guid> ids, CancellationToken ct = default);
     Task<(string FullName, string Email)?> GetUserInfoByIdAsync(Guid id, CancellationToken ct = default);

@@ -35,6 +35,9 @@ public interface ICampEnrollmentRepository
     /// <summary>Tracked groep incl. leden (voor annuleren); org-gescoped.</summary>
     Task<CampEnrollmentGroup?> GetGroupWithMembersAsync(Guid groupId, Guid organizationId, CancellationToken ct = default);
 
+    /// <summary>Of minstens één inschrijving (ook geannuleerd) een van deze tarieven gekozen heeft.</summary>
+    Task<bool> AnyUsingPricesAsync(IEnumerable<Guid> priceIds, CancellationToken ct = default);
+
     Task AddAsync(CampEnrollment enrollment, CancellationToken ct = default);
     Task AddGroupAsync(CampEnrollmentGroup group, CancellationToken ct = default);
     Task AddFormResponseAsync(CampFormResponse response, CancellationToken ct = default);

@@ -1,6 +1,7 @@
 import { ALL_PERSONAS } from "@/content/personas";
 import { POSTS_BY_DATE } from "@/content/blog";
 import { SITE } from "@/content/meta";
+import { PRICING_TIERS } from "@/content/pricing";
 
 const SITE_URL = "https://coach-os.be";
 
@@ -16,11 +17,15 @@ export function GET() {
   lines.push("# CoachOS");
   lines.push("");
   lines.push(
-    "> Lessenplanningsysteem voor tennis- en padelclubs. Trainers stellen een lessenreeks één keer in, leerlingen schrijven zich anoniem in via een publieke link, en een planningsalgoritme verdeelt iedereen automatisch over slots op niveau en voorkeur. Geen accounts voor leerlingen, geen Excel, geen oneindig veel mails.",
+    "> Lessenplanningsysteem voor tennis- en padelclubs. Trainers stellen een lessenreeks één keer in, leerlingen schrijven zich zonder account in via een publieke link, en een planningsalgoritme verdeelt iedereen automatisch over slots op voorkeur en groepsverband. Geen accounts voor leerlingen, geen Excel, geen oneindig veel mails.",
   );
   lines.push("");
   lines.push(
-    "CoachOS is beschikbaar voor tennis- en padelclubs. Nieuwe clubs proberen het 30 dagen gratis, zonder betaalgegevens. Prijzen vanaf €25/maand per actieve leerling, met een onbeperkt aantal trainers.",
+    "CoachOS is beschikbaar voor tennis- en padelclubs. Nieuwe clubs proberen het 30 dagen gratis, zonder betaalgegevens. Prijzen per maand, excl. btw, met een onbeperkt aantal trainers: " +
+      PRICING_TIERS.map(
+        (t) => `${t.name} €${t.priceMonthly} (${t.studentLimit})`,
+      ).join(", ") +
+      ".",
   );
   lines.push("");
 
@@ -37,22 +42,22 @@ export function GET() {
   lines.push("");
   lines.push(`- [Homepage](${SITE_URL}/): Overzicht van alle features.`);
   lines.push(
-    "- Lessenreeksen — terugkerende lesperiodes die je één keer instelt; lessen worden automatisch gegenereerd over de hele periode.",
+    "- Lessenreeksen: terugkerende lesperiodes die je één keer instelt; lessen worden automatisch gegenereerd over de hele periode.",
   );
   lines.push(
-    "- Anonieme inschrijvingen — leerlingen schrijven zich in via een publieke link met enkel naam en e-mailadres; geen account vereist.",
+    "- Inschrijven zonder account: leerlingen schrijven zich in via een publieke link met naam, e-mailadres en de vragen uit het formulier; geen account vereist.",
   );
   lines.push(
-    "- Formulierbouwer — per lessenreeks aangepaste vragen (vrije tekst, meerkeuze, ja/nee).",
+    "- Formulierbouwer: per lessenreeks aangepaste vragen (vrije tekst, meerkeuze, ja/nee).",
   );
   lines.push(
-    "- Planningsalgoritme — verdeelt leerlingen automatisch over slots op basis van niveau, voorkeurstijden en groepsverbanden.",
+    "- Planningsalgoritme: verdeelt leerlingen automatisch over slots op basis van voorkeurstijden en groepsverbanden.",
   );
   lines.push(
-    "- Magic-link bevestigingen — leerlingen bevestigen hun lestijd met één klik in een e-mail; geen wachtwoord.",
+    "- Bevestiging via een link: leerlingen bevestigen hun lestijd met één klik in een e-mail; geen wachtwoord.",
   );
   lines.push(
-    "- Mollie-betalingen (Bancontact + iDEAL) — online betalen, plus handmatige cash-registratie per inschrijving.",
+    "- Mollie-betalingen (Bancontact + iDEAL): online betalen, plus handmatige cash-registratie per inschrijving.",
   );
   lines.push("");
 

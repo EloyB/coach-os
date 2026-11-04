@@ -26,6 +26,11 @@ public class UpdateCampRequestValidator : AbstractValidator<UpdateCampRequest>
         RuleFor(x => x.Price)
             .GreaterThanOrEqualTo(0m).WithMessage("Prijs mag niet negatief zijn");
 
+        RuleFor(x => x.Prices)
+            .Must(p => p is null || p.Count <= SaveCampPriceRequestValidator.MaxPrices)
+            .WithMessage($"Een kamp heeft maximaal {SaveCampPriceRequestValidator.MaxPrices} prijsopties");
+        RuleForEach(x => x.Prices).SetValidator(new SaveCampPriceRequestValidator());
+
         RuleFor(x => x.StartDate)
             .Must(BeValidDate).WithMessage("Ongeldige startdatum (yyyy-MM-dd)");
 
@@ -56,6 +61,11 @@ public class UpdateCampRequestValidator : AbstractValidator<UpdateCampRequest>
                     && string.Compare(trainer.EndTime, trainer.StartTime, StringComparison.Ordinal) > 0)
                 .WithMessage("Trainer-uren moeten binnen de kampuren van die dag vallen")
                 .When(d => BeValidTime(d.StartTime) && BeValidTime(d.EndTime));
+
+            day.RuleFor(d => d.Trainers)
+                .Must(trainers => !CampShiftRules.HasOverlappingShifts(trainers))
+                .WithMessage(CampShiftRules.OverlapMessage)
+                .When(d => d.Trainers.All(t => BeValidTime(t.StartTime) && BeValidTime(t.EndTime)));
         });
     }
 

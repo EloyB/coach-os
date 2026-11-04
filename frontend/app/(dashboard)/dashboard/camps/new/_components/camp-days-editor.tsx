@@ -1,394 +1,341 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Trash2, Plus, Clock, Pencil, Check } from "lucide-react";
-import { NativeSelect } from "@/components/ui/native-select";
+import { ChevronLeft, ChevronRight, Clock } from "lucide-react";
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { isAssignableTrainer, type TrainerDto } from "@/lib/api/trainers";
-import { clampTime, formatDayHeading, type CampDayDraft } from "../_types";
+  CalendarGrid,
+  getSlotPosition,
+  parseTime,
+} from "@/components/calendar/calendar-grid";
+import type { TrainerDto } from "@/lib/api/trainers";
+import { formatDateShort } from "@/lib/date-utils";
+import { formatDayHeading, type CampDayDraft } from "../_types";
+import { CampDayDialog } from "./camp-day-dialog";
 
 interface CampDaysEditorProps {
   days: CampDayDraft[];
   onChange: (days: CampDayDraft[]) => void;
   trainers: TrainerDto[];
+  /** Kampperiode: data hierin zonder kampdag tonen als "geen kampdag" en kunnen toegevoegd worden. */
+  rangeStart?: string;
+  rangeEnd?: string;
+  /**
+   * Bewaart de dagen vanuit de dag-dialog en geeft foutmeldingen terug (leeg = gelukt).
+   * Zonder deze prop past de dialog de wijzigingen enkel lokaal toe.
+   */
+  onSaveDays?: (days: CampDayDraft[]) => Promise<string[]>;
+  /** Optionele voettekst onderaan de kaart (bv. een opslaan-balk die in beeld blijft plakken). */
+  footer?: React.ReactNode;
 }
 
-export function CampDaysEditor({ days, onChange, trainers }: CampDaysEditorProps) {
+function toIso(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** Maandag van de week waarin `iso` valt. */
+function mondayOf(iso: string): Date {
+  const d = new Date(iso + "T00:00:00");
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  return d;
+}
+
+export function CampDaysEditor({
+  days,
+  onChange,
+  trainers,
+  rangeStart,
+  rangeEnd,
+  onSaveDays,
+  footer,
+}: CampDaysEditorProps) {
   const t = useTranslations("camps");
-  // Welke trainer-kaart staat in uren-bewerkmodus (key = `${date}:${trainerId}`).
-  const [editingTimes, setEditingTimes] = useState<string | null>(null);
-  // Dialog om een trainer aan een dag toe te voegen (null = gesloten).
-  const [addDialog, setAddDialog] = useState<{
-    date: string;
-    trainerId: string;
-    start: string;
-    end: string;
-  } | null>(null);
+  const [weekIndex, setWeekIndex] = useState(0);
+  const [openDate, setOpenDate] = useState<string | null>(null);
 
-  const assignableTrainers = trainers.filter(isAssignableTrainer);
+  // Alle weken (als maandag) die de kampperiode en de kampdagen bestrijken.
+  const weeks = useMemo(() => {
+    const dates = days.map((d) => d.date);
+    if (rangeStart) dates.push(rangeStart);
+    if (rangeEnd) dates.push(rangeEnd);
+    if (dates.length === 0) return [] as Date[];
+    dates.sort();
+    const result: Date[] = [];
+    const cur = mondayOf(dates[0]);
+    const last = mondayOf(dates[dates.length - 1]);
+    while (cur <= last) {
+      result.push(new Date(cur));
+      cur.setDate(cur.getDate() + 7);
+    }
+    return result;
+  }, [days, rangeStart, rangeEnd]);
 
-  function updateDay(date: string, updates: Partial<CampDayDraft>) {
-    onChange(days.map((d) => (d.date === date ? { ...d, ...updates } : d)));
+  const safeIndex = Math.min(weekIndex, Math.max(weeks.length - 1, 0));
+  const monday = weeks[safeIndex];
+  const dayByDate = new Map(days.map((d) => [d.date, d]));
+  // Een nieuw toe te voegen dag bestaat pas in `days` nadat de dialog is opgeslagen.
+  const openDay = openDate
+    ? (dayByDate.get(openDate) ?? {
+        date: openDate,
+        startTime: "09:00",
+        endTime: "16:00",
+        trainers: [],
+      })
+    : undefined;
+  const openDayExists = openDate ? dayByDate.has(openDate) : false;
+  const isInRange = (date: string) =>
+    !rangeStart || !rangeEnd || (date >= rangeStart && date <= rangeEnd);
+
+  /** Bewaar (indien mogelijk) en pas de dagen toe; geeft foutmeldingen terug (leeg = gelukt). */
+  async function commit(next: CampDayDraft[]): Promise<string[]> {
+    const errors = onSaveDays ? await onSaveDays(next) : [];
+    if (errors.length === 0) {
+      onChange(next);
+      setOpenDate(null);
+    }
+    return errors;
   }
 
-  function addTrainer(
-    date: string,
-    trainerId: string,
-    startTime?: string,
-    endTime?: string,
-  ) {
-    if (!trainerId) return;
-    onChange(
-      days.map((d) => {
-        if (d.date !== date) return d;
-        if (d.trainers.some((tr) => tr.trainerId === trainerId)) return d;
-        return {
-          ...d,
-          trainers: [
-            ...d.trainers,
-            {
-              trainerId,
-              startTime: startTime ?? d.startTime,
-              endTime: endTime ?? d.endTime,
-            },
-          ],
-        };
-      }),
-    );
-  }
-
-  function removeTrainer(date: string, trainerId: string) {
-    onChange(
-      days.map((d) =>
-        d.date === date
-          ? {
-              ...d,
-              trainers: d.trainers.filter((tr) => tr.trainerId !== trainerId),
-            }
-          : d,
-      ),
-    );
-  }
-
-  function updateTrainerTime(
-    date: string,
-    trainerId: string,
-    field: "startTime" | "endTime",
-    value: string,
-  ) {
-    onChange(
-      days.map((d) => {
-        if (d.date !== date) return d;
-        return {
-          ...d,
-          trainers: d.trainers.map((tr) =>
-            tr.trainerId === trainerId
-              ? { ...tr, [field]: clampTime(value, d.startTime, d.endTime) }
-              : tr,
-          ),
-        };
-      }),
-    );
-  }
-
-  function trainerName(draft: { trainerId: string; trainerName?: string }): string {
-    const tr = trainers.find((x) => x.id === draft.trainerId);
+  const trainerName = (day: CampDayDraft, trainerId: string): string => {
+    const tr = trainers.find((x) => x.id === trainerId);
     if (tr) return `${tr.firstName} ${tr.lastName}`;
-    // Fall back to the server-resolved name carried in from the camp detail,
-    // so names render even when the trainers list is unavailable.
-    return draft.trainerName ?? draft.trainerId;
-  }
+    return (
+      day.trainers.find((x) => x.trainerId === trainerId)?.trainerName ??
+      trainerId
+    );
+  };
 
-  const timeInputCls =
-    "border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm bg-white appearance-none min-w-0 focus:outline-none focus:ring-2 focus:ring-tennis-green/30 focus:border-tennis-green";
+  // Zichtbaar uurbereik over het hele kamp (en de standaarduren voor nieuwe dagen), zodat de
+  // rasterhoogte bij het bladeren gelijk blijft.
+  const hourRanges: [string, string][] = [["09:00", "16:00"]];
+  for (const d of days) {
+    hourRanges.push([d.startTime, d.endTime]);
+    d.trainers.forEach((tr) => hourRanges.push([tr.startTime, tr.endTime]));
+  }
+  const minMin = Math.min(...hourRanges.map(([start]) => parseTime(start)));
+  const maxMin = Math.max(...hourRanges.map(([, end]) => parseTime(end)));
+  const calStartHour = Math.max(0, Math.floor(minMin / 60) - 1) + 0.5;
+  const calEndHour = Math.min(24, Math.ceil(maxMin / 60) + 1);
+
+  const weekDates = monday
+    ? Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(monday);
+        d.setDate(d.getDate() + i);
+        return toIso(d);
+      })
+    : [];
+
+  const rangeLabel = monday
+    ? `${formatDateShort(weekDates[0])} – ${formatDateShort(weekDates[6])}`
+    : "";
 
   return (
-    <div className="bg-white rounded-xl shadow-sm shadow-gray-100 overflow-hidden">
+    // overflow-clip (niet -hidden): knipt de hoeken af zonder een scrollcontainer te maken, zodat de
+    // plakkende voettekst aan de pagina blijft kleven.
+    <div className="bg-white rounded-xl shadow-sm shadow-gray-100 overflow-clip">
       <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2.5">
         <div className="w-6 h-6 shrink-0 rounded-md bg-tennis-green/10 flex items-center justify-center">
           <Clock size={13} className="text-tennis-green" />
         </div>
-        <div>
+        <div className="min-w-0 flex-1">
           <h2 className="text-sm font-semibold text-gray-900">
             {t("daysTitle")}
           </h2>
           <p className="text-xs text-gray-400 mt-0.5">{t("daysDescription")}</p>
         </div>
-      </div>
-
-      <div className="p-6 space-y-3">
-        {days.length === 0 && (
-          <p className="text-xs text-gray-400 py-2">{t("noDays")}</p>
-        )}
-
-        {days.map((day) => {
-          const available = assignableTrainers.filter(
-            (tr) => !day.trainers.some((d) => d.trainerId === tr.id),
-          );
-          return (
-            <div
-              key={day.date}
-              className="border border-gray-100 rounded-xl p-4 bg-[#FAFAF8]"
-            >
-              <div className="mb-3 text-[13px] font-bold text-tennis-green">
-                {formatDayHeading(day.date)}
-              </div>
-
-              {/* Camp hours */}
-              <p className="text-[10.5px] uppercase tracking-[0.04em] text-gray-400 mb-1.5">
-                {t("dayHours")}
-              </p>
-              <div className="flex items-center gap-2 mb-3 pb-3 border-b border-dashed border-gray-200">
-                <input
-                  type="time"
-                  value={day.startTime}
-                  onChange={(e) =>
-                    updateDay(day.date, { startTime: e.target.value })
-                  }
-                  className={timeInputCls}
-                />
-                <span className="text-gray-400 text-xs">{t("trainerEndTime")}</span>
-                <input
-                  type="time"
-                  value={day.endTime}
-                  onChange={(e) =>
-                    updateDay(day.date, { endTime: e.target.value })
-                  }
-                  className={timeInputCls}
-                />
-              </div>
-
-              {/* Trainers present */}
-              <div className="mb-1.5 flex items-center justify-between gap-2">
-                <p className="text-[10.5px] uppercase tracking-[0.04em] text-gray-400">
-                  {t("dayTrainers")}
-                </p>
+        {monday && (
+          <div className="flex shrink-0 items-center gap-2">
+            <span className="hidden sm:inline text-xs text-gray-500 whitespace-nowrap">
+              {t("weekOf", { current: safeIndex + 1, total: weeks.length })}
+            </span>
+            <span className="text-xs text-gray-400 whitespace-nowrap">
+              {rangeLabel}
+            </span>
+            {weeks.length > 1 && (
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setWeekIndex(Math.max(safeIndex - 1, 0))}
+                  disabled={safeIndex === 0}
+                  aria-label={t("weekPrevious")}
+                  className="w-7 h-7 flex items-center justify-center rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <ChevronLeft size={14} />
+                </button>
                 <button
                   type="button"
                   onClick={() =>
-                    setAddDialog({
-                      date: day.date,
-                      trainerId: "",
-                      start: day.startTime,
-                      end: day.endTime,
-                    })
+                    setWeekIndex(Math.min(safeIndex + 1, weeks.length - 1))
                   }
-                  disabled={available.length === 0}
-                  aria-label={t("addTrainer")}
-                  title={t("addTrainer")}
-                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-500 transition-colors hover:bg-gray-50 hover:text-tennis-green disabled:opacity-40 disabled:cursor-not-allowed"
+                  disabled={safeIndex >= weeks.length - 1}
+                  aria-label={t("weekNext")}
+                  className="w-7 h-7 flex items-center justify-center rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                 >
-                  <Plus size={13} />
+                  <ChevronRight size={14} />
                 </button>
               </div>
-              <div className="space-y-2">
-                {day.trainers.length === 0 && (
-                  <p className="text-[11px] text-gray-400 py-1">
-                    {t("dayNoTrainersPlanned")}
-                  </p>
-                )}
-                {day.trainers.map((tr) => {
-                  const key = `${day.date}:${tr.trainerId}`;
-                  const isEditing = editingTimes === key;
-                  return (
-                    <div
-                      key={tr.trainerId}
-                      className="rounded-lg border border-gray-200 bg-white p-3"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0 flex-1">
-                          <p className="text-[13px] font-semibold text-gray-900">
-                            {trainerName(tr)}
-                          </p>
-                          {isEditing ? (
-                            <div className="mt-2 flex items-center gap-2">
-                              <input
-                                type="time"
-                                value={tr.startTime}
-                                min={day.startTime}
-                                max={day.endTime}
-                                onChange={(e) =>
-                                  updateTrainerTime(
-                                    day.date,
-                                    tr.trainerId,
-                                    "startTime",
-                                    e.target.value,
-                                  )
-                                }
-                                className={timeInputCls + " px-2 py-1"}
-                              />
-                              <span className="text-gray-400 text-xs">-</span>
-                              <input
-                                type="time"
-                                value={tr.endTime}
-                                min={day.startTime}
-                                max={day.endTime}
-                                onChange={(e) =>
-                                  updateTrainerTime(
-                                    day.date,
-                                    tr.trainerId,
-                                    "endTime",
-                                    e.target.value,
-                                  )
-                                }
-                                className={timeInputCls + " px-2 py-1"}
-                              />
-                            </div>
-                          ) : (
-                            <p className="mt-0.5 text-xs text-gray-500 tabular-nums">
-                              {tr.startTime} – {tr.endTime}
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex shrink-0 items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => setEditingTimes(isEditing ? null : key)}
-                            aria-label={
-                              isEditing
-                                ? t("trainerTimesDone")
-                                : t("editTrainerTimes")
-                            }
-                            className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-tennis-green hover:bg-tennis-green/10 transition-colors"
-                          >
-                            {isEditing ? (
-                              <Check size={14} />
-                            ) : (
-                              <Pencil size={13} />
-                            )}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => removeTrainer(day.date, tr.trainerId)}
-                            aria-label={t("removeTrainer")}
-                            className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {assignableTrainers.length === 0 && (
-                <p className="text-[11px] text-gray-400 mt-3">
-                  {t("noTrainers")}
-                </p>
-              )}
-            </div>
-          );
-        })}
+            )}
+          </div>
+        )}
       </div>
 
-      {addDialog &&
-        (() => {
-          const day = days.find((d) => d.date === addDialog.date);
-          const available = day
-            ? assignableTrainers.filter(
-                (tr) => !day.trainers.some((x) => x.trainerId === tr.id),
-              )
-            : [];
-          return (
-            <Dialog open onOpenChange={(o) => !o && setAddDialog(null)}>
-              <DialogContent
-                className="sm:max-w-md"
-                onOpenAutoFocus={(e) => e.preventDefault()}
-              >
-                <DialogHeader>
-                  <DialogTitle>{t("addTrainer")}</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-gray-600">
-                      {t("addTrainerTrainerLabel")}
-                    </label>
-                    <NativeSelect
-                      value={addDialog.trainerId}
-                      onChange={(e) =>
-                        setAddDialog((d) =>
-                          d ? { ...d, trainerId: e.target.value } : d,
-                        )
-                      }
+      <div className="p-6">
+        {!monday ? (
+          <p className="text-xs text-gray-400 py-2">{t("noDays")}</p>
+        ) : (
+          <>
+            {/* Mobiel: lijst met de kampdagen van deze week */}
+            <div className="sm:hidden space-y-2">
+              {weekDates.map((date) => {
+                const day = dayByDate.get(date);
+                if (!day) {
+                  if (!isInRange(date)) return null;
+                  return (
+                    <button
+                      key={date}
+                      type="button"
+                      onClick={() => setOpenDate(date)}
+                      className="w-full rounded-xl border border-dashed border-gray-300 p-3 text-left text-gray-400 hover:border-tennis-green/50"
                     >
-                      <option value="">{t("selectTrainer")}</option>
-                      {available.map((tr) => (
-                        <option key={tr.id} value={tr.id}>
-                          {tr.firstName} {tr.lastName}
-                        </option>
-                      ))}
-                    </NativeSelect>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="min-w-0">
-                      <label className="mb-1 block text-xs font-medium text-gray-600">
-                        {t("dayStartTime")}
-                      </label>
-                      <input
-                        type="time"
-                        value={addDialog.start}
-                        onChange={(e) =>
-                          setAddDialog((d) =>
-                            d ? { ...d, start: e.target.value } : d,
-                          )
-                        }
-                        className={timeInputCls + " w-full"}
-                      />
-                    </div>
-                    <div className="min-w-0">
-                      <label className="mb-1 block text-xs font-medium text-gray-600">
-                        {t("dayEndTime")}
-                      </label>
-                      <input
-                        type="time"
-                        value={addDialog.end}
-                        onChange={(e) =>
-                          setAddDialog((d) =>
-                            d ? { ...d, end: e.target.value } : d,
-                          )
-                        }
-                        className={timeInputCls + " w-full"}
-                      />
-                    </div>
-                  </div>
-                </div>
-                <DialogFooter>
+                      <p className="text-sm font-medium first-letter:uppercase">
+                        {formatDayHeading(date)}
+                      </p>
+                      <p className="text-xs">
+                        {t("noCampDay")} · {t("addCampDayShort")}
+                      </p>
+                    </button>
+                  );
+                }
+                return (
                   <button
+                    key={day.date}
                     type="button"
-                    onClick={() => setAddDialog(null)}
-                    className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+                    onClick={() => setOpenDate(day.date)}
+                    className="w-full rounded-xl border border-gray-100 p-3 text-left hover:border-gray-200"
                   >
-                    {t("cancel")}
+                    <p className="text-sm font-semibold text-gray-900 first-letter:uppercase">
+                      {formatDayHeading(day.date)}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {day.startTime} – {day.endTime}
+                    </p>
+                    <p className="mt-1 text-xs text-gray-400">
+                      {day.trainers.length === 0
+                        ? t("noTrainersOnDay")
+                        : [
+                            ...new Set(
+                              day.trainers.map((tr) =>
+                                trainerName(day, tr.trainerId),
+                              ),
+                            ),
+                          ].join(", ")}
+                    </p>
                   </button>
-                  <button
-                    type="button"
-                    disabled={!addDialog.trainerId}
-                    onClick={() => {
-                      addTrainer(
-                        addDialog.date,
-                        addDialog.trainerId,
-                        addDialog.start,
-                        addDialog.end,
-                      );
-                      setAddDialog(null);
-                    }}
-                    className="rounded-lg bg-tennis-green px-4 py-2 text-sm font-semibold text-white hover:bg-tennis-green/90 disabled:opacity-50"
-                  >
-                    {t("addTrainerSubmit")}
-                  </button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          );
-        })()}
+                );
+              })}
+            </div>
+
+            {/* Desktop: kalender-raster, klik een kampdag of shift om de trainers in te stellen */}
+            <div className="hidden sm:block">
+              <CalendarGrid
+                slots={[]}
+                readOnly
+                dayDates={weekDates.map(formatDateShort)}
+                startHour={calStartHour}
+                endHour={calEndHour}
+                renderDayOverlay={(dayIndex) => {
+                  const date = weekDates[dayIndex];
+                  const day = dayByDate.get(date);
+                  if (!day) {
+                    if (!isInRange(date)) return null;
+                    const offPos = getSlotPosition(
+                      {
+                        id: date,
+                        dayOfWeek: dayIndex,
+                        startTime: "09:00",
+                        endTime: "16:00",
+                        trainerId: null,
+                      },
+                      calStartHour,
+                    );
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => setOpenDate(date)}
+                        aria-label={t("addCampDay", {
+                          date: formatDayHeading(date),
+                        })}
+                        className="absolute inset-x-px z-10 flex cursor-pointer flex-col items-start justify-start rounded-md border border-dashed border-gray-300 px-1.5 py-1 text-left text-gray-400 transition-colors hover:border-tennis-green/50 hover:bg-tennis-green/5 hover:text-tennis-green"
+                        style={{ top: offPos.top, height: offPos.height }}
+                      >
+                        <span className="text-[11px] font-medium">
+                          {t("noCampDay")}
+                        </span>
+                        <span className="text-[10px]">
+                          {t("addCampDayShort")}
+                        </span>
+                      </button>
+                    );
+                  }
+                  const pos = getSlotPosition(
+                    {
+                      id: date,
+                      dayOfWeek: dayIndex,
+                      startTime: day.startTime,
+                      endTime: day.endTime,
+                      trainerId: null,
+                    },
+                    calStartHour,
+                  );
+                  const count = new Set(day.trainers.map((tr) => tr.trainerId))
+                    .size;
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => setOpenDate(date)}
+                      aria-label={formatDayHeading(date)}
+                      className="absolute inset-x-px z-10 cursor-pointer flex flex-col items-start justify-start overflow-hidden rounded-r-md border-l-[3px] border-tennis-green bg-tennis-green/10 px-1.5 py-1 text-left transition-all hover:shadow-md hover:brightness-95"
+                      style={{ top: pos.top, height: pos.height }}
+                    >
+                      <div className="text-[11px] font-semibold text-tennis-green">
+                        {day.startTime} — {day.endTime}
+                      </div>
+                      <div
+                        className={`text-[10px] ${count === 0 ? "italic text-gray-400" : "text-ink-2"}`}
+                      >
+                        {t("trainersPresent", { count })}
+                      </div>
+                    </button>
+                  );
+                }}
+              />
+            </div>
+          </>
+        )}
+      </div>
+
+      {footer}
+
+      {openDay && (
+        <CampDayDialog
+          key={openDay.date}
+          day={openDay}
+          trainers={trainers}
+          saveLabel={onSaveDays ? t("save") : t("dayDialogApply")}
+          isNew={!openDayExists}
+          canRemove={openDayExists && days.length > 1}
+          onSave={async (updated) => {
+            const next = openDayExists
+              ? days.map((d) => (d.date === updated.date ? updated : d))
+              : [...days, updated].sort((a, b) => a.date.localeCompare(b.date));
+            return commit(next);
+          }}
+          onRemove={async () =>
+            commit(days.filter((d) => d.date !== openDay.date))
+          }
+          onClose={() => setOpenDate(null)}
+        />
+      )}
     </div>
   );
 }

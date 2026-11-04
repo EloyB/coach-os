@@ -45,6 +45,7 @@ export function Step1Basis({ defaultValues, onNext }: Step1Props) {
       startDate: "",
       endDate: "",
       registrationDeadline: "",
+      prices: [],
     },
   });
 
@@ -59,6 +60,7 @@ export function Step1Basis({ defaultValues, onNext }: Step1Props) {
       startDate: values.startDate,
       endDate: values.endDate,
       registrationDeadline: values.registrationDeadline,
+      prices: values.prices,
     });
   }
 

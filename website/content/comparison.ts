@@ -5,7 +5,7 @@ export interface ComparisonRow {
 }
 
 export const COMPARISON_KICKER = "EXCEL VS COACHOS";
-export const COMPARISON_HEADING = "Hetzelfde werk, zonder Excel";
+export const COMPARISON_HEADING = "Van Excel naar automatische lessenplanning";
 export const COMPARISON_SUB =
   "Wat verandert er concreet als je je lessenreeks met CoachOS plant?";
 
@@ -20,11 +20,11 @@ export const COMPARISON: ComparisonRow[] = [
       "Eén link per lessenreeks. Leerlingen vullen naam, voorkeurstijden en niveau zelf in.",
   },
   {
-    task: "Niveaugroepen vormen",
+    task: "Leerlingen indelen",
     excel:
-      "Met de hand puzzelen tot het past. Eén niveauwissel betekent het hele schema opnieuw doorlopen.",
+      "Met de hand puzzelen tot het past. Eén wijziging betekent het hele schema opnieuw doorlopen.",
     coachos:
-      "Algoritme verdeelt op niveau, voorkeurstijd en groepsverband in seconden. Manuele aanpassingen blijven bewaard.",
+      "Algoritme verdeelt op voorkeurstijd en groepsverband in seconden. Manuele aanpassingen blijven bewaard.",
   },
   {
     task: "Bevestigingen sturen",

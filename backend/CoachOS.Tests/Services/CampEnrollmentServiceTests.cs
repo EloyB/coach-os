@@ -272,6 +272,27 @@ public class CampEnrollmentServiceTests
     }
 
     [Test]
+    public async Task CreateManual_FreeMainPriceWithPaidOption_IsPendingPayment()
+    {
+        ArrangeManual(0m);
+        Camp camp = BuildCamp(0m);
+        CampPrice option = new() { Id = Guid.NewGuid(), Label = "Leden", Amount = 90m };
+        camp.Prices.Add(option);
+        _camps.Setup(r => r.GetByIdPublicAsync(_campId, It.IsAny<CancellationToken>())).ReturnsAsync(camp);
+        CreateManualCampEnrollmentRequest request = new()
+        {
+            ParticipantName = "Emma", ParticipantEmail = "emma@example.com", CampPriceId = option.Id,
+        };
+
+        Result<Guid> result = await _sut.CreateManualAsync(_campId, _orgId, request);
+
+        result.IsSuccess.Should().BeTrue();
+        _enrollments.Verify(r => r.AddAsync(It.Is<CampEnrollment>(e => e.Status == EnrollmentStatus.PendingPayment),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _payments.Verify(p => p.RecordCampCashPaymentAsync(It.IsAny<Guid>(), _orgId, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
     public async Task CreateManual_PaidCampNotYetPaid_PendingPaymentWithCashRecordedNotMarked()
     {
         ArrangeManual(150m);

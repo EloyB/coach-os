@@ -64,7 +64,9 @@ import {
   MOLLIE_CONNECTION_QUERY_KEY,
   getMollieConnectionStatus,
 } from "@/lib/api/mollieConnect";
+import { useTranslations } from "next-intl";
 import { getAuthUser } from "@/lib/auth";
+import { useClientValue } from "@/lib/hooks/use-client-value";
 import { FieldError } from "@/components/forms/field-error";
 import { DatePicker } from "@/components/ui/date-picker";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -457,12 +459,15 @@ function EditLessonDialog({
   lesson,
   seriesId,
   trainers,
+  isAdmin,
   onClose,
   onSaved,
 }: {
   lesson: LessonDto;
   seriesId: string;
   trainers: TrainerDto[];
+  /** Admin mag alles; een trainer past enkel zijn eigen les aan (geen trainerwissel, geen weekslot, geen verwijderen). */
+  isAdmin: boolean;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -496,7 +501,8 @@ function EditLessonDialog({
     try {
       const request: UpdateLessonRequest = {
         date,
-        trainerId: trainerId || null,
+        // Een trainer kan de toewijzing niet wijzigen; de server negeert/weigert een andere waarde.
+        trainerId: isAdmin ? trainerId || null : (lesson.trainerId ?? null),
         courtName,
         startTime,
         endTime,
@@ -516,6 +522,11 @@ function EditLessonDialog({
   }
 
   function handleSave() {
+    // Een trainer wijzigt enkel deze les (het hele weekslot aanpassen is voorbehouden aan admins).
+    if (!isAdmin) {
+      void doSave("lesson");
+      return;
+    }
     // Komt de les uit een weekslot, vraag eerst de reikwijdte; anders meteen opslaan.
     if (belongsToWeekSlot) {
       setConfirmScopeOpen(true);
@@ -628,6 +639,7 @@ function EditLessonDialog({
             </div>
           </div>
 
+          {isAdmin && (
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
               Trainer
@@ -647,6 +659,7 @@ function EditLessonDialog({
                 ))}
             </NativeSelect>
           </div>
+          )}
 
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
@@ -871,6 +884,7 @@ function EditLessonDialog({
                       </button>
                     </>
                   )}
+                  {isAdmin && (
                   <button
                     type="button"
                     onClick={() => {
@@ -887,6 +901,7 @@ function EditLessonDialog({
                     <Trash2 size={13} />
                     Verwijderen
                   </button>
+                  )}
                 </div>
               )}
             </div>
@@ -981,12 +996,17 @@ function LessonWeekView({
   endDate,
   trainers,
   seriesId,
+  isAdmin,
+  userId,
 }: {
   lessons: LessonDto[];
   startDate: string;
   endDate: string;
   trainers: TrainerDto[];
   seriesId: string;
+  isAdmin: boolean;
+  /** Id van de ingelogde gebruiker; een trainer kan enkel zijn eigen lessen openen om aan te passen. */
+  userId: string | null;
 }) {
   const weeks = computeWeeks(startDate, endDate);
   const initialWeekIndex = (() => {
@@ -1003,6 +1023,11 @@ function LessonWeekView({
   const [editingLesson, setEditingLesson] = useState<LessonDto | null>(null);
   const queryClient = useQueryClient();
   const currentWeek = weeks[weekIndex];
+  const canEditLesson = (l: LessonDto) =>
+    isAdmin || (userId !== null && l.trainerId === userId);
+  const openLesson = (l: LessonDto) => {
+    if (canEditLesson(l)) setEditingLesson(l);
+  };
 
   if (!currentWeek) return null;
 
@@ -1144,8 +1169,10 @@ function LessonWeekView({
                       <button
                         key={l.id}
                         type="button"
-                        onClick={() => setEditingLesson(l)}
-                        className="flex w-full items-stretch gap-3 rounded-xl border border-gray-100 bg-white p-3 text-left transition-colors hover:border-gray-200"
+                        onClick={() => openLesson(l)}
+                        className={`flex w-full items-stretch gap-3 rounded-xl border border-gray-100 bg-white p-3 text-left transition-colors ${
+                          canEditLesson(l) ? "hover:border-gray-200" : "cursor-default"
+                        }`}
                       >
                         <span
                           className="w-1 shrink-0 rounded-full"
@@ -1198,7 +1225,7 @@ function LessonWeekView({
           endHour={calEndHour}
           onSlotClick={(slot) => {
             const lesson = lessons.find((l) => l.id === slot.id);
-            if (lesson) setEditingLesson(lesson);
+            if (lesson) openLesson(lesson);
           }}
         />
       </div>
@@ -1210,6 +1237,7 @@ function LessonWeekView({
           lesson={editingLesson}
           seriesId={seriesId}
           trainers={trainers}
+          isAdmin={isAdmin}
           onClose={() => setEditingLesson(null)}
           onSaved={() => {
             setEditingLesson(null);
@@ -1602,13 +1630,15 @@ export default function LessonSeriesDetailPage({
   const { id } = use(params);
   const router = useRouter();
   const queryClient = useQueryClient();
+  const t = useTranslations("lessonSeries");
   const [editing, setEditing] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [actionsMenuOpen, setActionsMenuOpen] = useState(false);
 
-  useEffect(() => {
-    setIsAdmin(getAuthUser()?.role === "Admin");
-  }, []);
+  // Auth staat enkel in localStorage: pas na hydration bekend (null tot dan).
+  const role = useClientValue(() => getAuthUser()?.role ?? "");
+  const userId = useClientValue(() => getAuthUser()?.userId ?? "");
+  const headClubIds = useClientValue(() => (getAuthUser()?.headTrainerClubIds ?? []).join(","));
+  const isAdmin = role === "Admin";
 
   const {
     data: series,
@@ -1619,9 +1649,11 @@ export default function LessonSeriesDetailPage({
     queryFn: () => getLessonSeriesById(id),
   });
 
+  // De trainerlijst is admin-only (403 voor trainers): enkel nodig voor namen/trainerkeuze bij beheer.
   const { data: trainers = [] } = useQuery({
     queryKey: ["trainers"],
     queryFn: getTrainers,
+    enabled: isAdmin,
   });
 
   const deleteSeriesMutation = useMutation({
@@ -1642,6 +1674,11 @@ export default function LessonSeriesDetailPage({
       toast.error("Kon de planning niet exporteren");
     },
   });
+
+  // Planning en inschrijvingen: admin, of hoofdtrainer van de club van déze reeks (alleen-lezen).
+  const isHeadTrainerOfSeries =
+    !!series && (headClubIds ?? "").split(",").includes(series.tennisClubId);
+  const canViewPlanning = isAdmin || isHeadTrainerOfSeries;
 
   return (
     <>
@@ -1713,23 +1750,27 @@ export default function LessonSeriesDetailPage({
 
               {!editing ? (
                 <div className="flex items-center gap-2 sm:shrink-0">
-                  <Link
-                    href={`/dashboard/lessons/${id}/planning`}
-                    className="flex flex-1 justify-center sm:flex-none sm:justify-start items-center gap-1.5 px-3 py-1.5 rounded-lg bg-tennis-green text-white text-xs font-medium hover:bg-tennis-green/90 transition-colors"
-                  >
-                    <CalendarDays size={12} />
-                    Plan lessen
-                  </Link>
+                  {canViewPlanning && (
+                    <Link
+                      href={`/dashboard/lessons/${id}/planning`}
+                      className="flex flex-1 justify-center sm:flex-none sm:justify-start items-center gap-1.5 px-3 py-1.5 rounded-lg bg-tennis-green text-white text-xs font-medium hover:bg-tennis-green/90 transition-colors"
+                    >
+                      <CalendarDays size={12} />
+                      {isAdmin ? "Plan lessen" : t("viewPlanning")}
+                    </Link>
+                  )}
 
                   {/* Desktop: secundaire acties inline */}
-                  <button
-                    onClick={() => exportMutation.mutate()}
-                    disabled={exportMutation.isPending}
-                    className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                  >
-                    <Download size={12} />
-                    {exportMutation.isPending ? "Exporteren…" : "Exporteer naar Excel"}
-                  </button>
+                  {canViewPlanning && (
+                    <button
+                      onClick={() => exportMutation.mutate()}
+                      disabled={exportMutation.isPending}
+                      className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      <Download size={12} />
+                      {exportMutation.isPending ? "Exporteren…" : "Exporteer naar Excel"}
+                    </button>
+                  )}
                   {isAdmin && (
                     <button
                       onClick={() => setEditing(true)}
@@ -1740,7 +1781,8 @@ export default function LessonSeriesDetailPage({
                     </button>
                   )}
 
-                  {/* Mobiel: secundaire acties in een ⋯-menu */}
+                  {/* Mobiel: secundaire acties in een ⋯-menu (enkel als er acties zijn) */}
+                  {canViewPlanning && (
                   <Popover open={actionsMenuOpen} onOpenChange={setActionsMenuOpen}>
                     <PopoverTrigger asChild>
                       <button
@@ -1779,6 +1821,7 @@ export default function LessonSeriesDetailPage({
                       )}
                     </PopoverContent>
                   </Popover>
+                  )}
                 </div>
               ) : (
                 <button
@@ -1822,6 +1865,8 @@ export default function LessonSeriesDetailPage({
             endDate={series.endDate}
             trainers={trainers}
             seriesId={id}
+            isAdmin={isAdmin}
+            userId={userId || null}
           />
 
           {/* ── Section 4: Prijzen per categorie en groepsgrootte (admin only) ── */}
@@ -1832,8 +1877,8 @@ export default function LessonSeriesDetailPage({
           {/* ── Section 5: Form builder (admin only) ── */}
           {isAdmin && <FormBuilderSection seriesId={id} />}
 
-          {/* ── Section 5: Enrollments ── */}
-          <EnrollmentsSection seriesId={id} />
+          {/* ── Section 5: Enrollments (admin of hoofdtrainer van de club) ── */}
+          {canViewPlanning && <EnrollmentsSection seriesId={id} />}
 
           {/* ── Section 6: Danger zone (admin only) ── */}
           {isAdmin && (

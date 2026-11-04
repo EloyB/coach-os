@@ -161,26 +161,39 @@ public class PaymentRepository(ApplicationDbContext context) : IPaymentRepositor
                 });
     }
 
-    public async Task<Dictionary<Guid, (PaymentMethod? Method, PaymentStatus Status)>> GetLatestMethodAndStatusByEnrollmentIdsAsync(
-        IEnumerable<Guid> enrollmentIds, CancellationToken ct = default)
+    public async Task<Dictionary<Guid, Payment>> GetLatestByCampEnrollmentIdsAsync(
+        IEnumerable<Guid> campEnrollmentIds, CancellationToken ct = default)
     {
-        List<Guid> ids = enrollmentIds.Distinct().ToList();
-        if (ids.Count == 0) return new Dictionary<Guid, (PaymentMethod?, PaymentStatus)>();
+        List<Guid> ids = campEnrollmentIds.Distinct().ToList();
+        if (ids.Count == 0) return new Dictionary<Guid, Payment>();
 
-        var rows = await context.Payments
+        List<Payment> rows = await context.Payments
             .AsNoTracking()
-            .Where(p => p.EnrollmentId != null && ids.Contains(p.EnrollmentId.Value))
-            .Select(p => new { EnrollmentId = p.EnrollmentId!.Value, p.Method, p.Status, p.CreatedAt })
+            .Where(p => p.CampEnrollmentId != null && ids.Contains(p.CampEnrollmentId.Value))
             .ToListAsync(ct);
 
         return rows
-            .GroupBy(r => r.EnrollmentId)
+            .GroupBy(p => p.CampEnrollmentId!.Value)
             .ToDictionary(
                 g => g.Key,
-                g =>
-                {
-                    var latest = g.OrderByDescending(r => r.CreatedAt).First();
-                    return (latest.Method, latest.Status);
-                });
+                g => g.OrderByDescending(p => p.CreatedAt).First());
+    }
+
+    public async Task<Dictionary<Guid, Payment>> GetLatestByEnrollmentIdsAsync(
+        IEnumerable<Guid> enrollmentIds, CancellationToken ct = default)
+    {
+        List<Guid> ids = enrollmentIds.Distinct().ToList();
+        if (ids.Count == 0) return new Dictionary<Guid, Payment>();
+
+        List<Payment> rows = await context.Payments
+            .AsNoTracking()
+            .Where(p => p.EnrollmentId != null && ids.Contains(p.EnrollmentId.Value))
+            .ToListAsync(ct);
+
+        return rows
+            .GroupBy(p => p.EnrollmentId!.Value)
+            .ToDictionary(
+                g => g.Key,
+                g => g.OrderByDescending(p => p.CreatedAt).First());
     }
 }

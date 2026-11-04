@@ -675,6 +675,51 @@ public class PaymentServiceTests
         _payments.Verify(p => p.AddAsync(It.IsAny<Payment>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
+    [Test]
+    public async Task RecordCampCash_FreeOptionOnPaidCamp_FailsValidationInsteadOfChargingMainPrice()
+    {
+        Guid campEnrollmentId = Guid.NewGuid();
+        Guid campId = Guid.NewGuid();
+        CampPrice free = new() { Id = Guid.NewGuid(), Label = "Gratis", Amount = 0m };
+        _campEnrollments.Setup(c => c.GetByIdWithGroupAsync(campEnrollmentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CampEnrollment
+            {
+                Id = campEnrollmentId, OrganizationId = OrgId, CampId = campId, CampPriceId = free.Id,
+            });
+        _camps.Setup(c => c.GetByIdPublicAsync(campId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Camp { Id = campId, OrganizationId = OrgId, Name = "Kamp", Price = 100m, Prices = { free } });
+
+        Result result = await _sut.RecordCampCashPaymentAsync(campEnrollmentId, OrgId);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.Validation);
+        _payments.Verify(p => p.AddAsync(It.IsAny<Payment>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task RecordCampCash_PaidOptionOnFreeMainPrice_ChargesOptionAmount()
+    {
+        Guid campEnrollmentId = Guid.NewGuid();
+        Guid campId = Guid.NewGuid();
+        CampPrice option = new() { Id = Guid.NewGuid(), Label = "Leden", Amount = 90m };
+        _campEnrollments.Setup(c => c.GetByIdWithGroupAsync(campEnrollmentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CampEnrollment
+            {
+                Id = campEnrollmentId, OrganizationId = OrgId, CampId = campId, CampPriceId = option.Id,
+            });
+        _camps.Setup(c => c.GetByIdPublicAsync(campId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Camp { Id = campId, OrganizationId = OrgId, Name = "Kamp", Price = 0m, Prices = { option } });
+        Payment? saved = null;
+        _payments.Setup(p => p.AddAsync(It.IsAny<Payment>(), It.IsAny<CancellationToken>()))
+            .Callback<Payment, CancellationToken>((p, _) => saved = p)
+            .Returns(Task.CompletedTask);
+
+        Result result = await _sut.RecordCampCashPaymentAsync(campEnrollmentId, OrgId);
+
+        result.IsSuccess.Should().BeTrue();
+        saved!.Amount.Should().Be(90m);
+    }
+
     // ── MarkCampCashPaidAsync ─────────────────────────────────────────────────
 
     [Test]

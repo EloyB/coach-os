@@ -5,6 +5,7 @@ import {
   BrainCircuit,
   MailCheck,
   CreditCard,
+  Tent,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -22,7 +23,7 @@ export const FEATURES: Feature[] = [
   },
   {
     icon: ClipboardList,
-    title: "Anonieme inschrijving",
+    title: "Inschrijven zonder account",
     body: "Leerlingen schrijven zich in via een publieke link. Geen account, geen wachtwoord, geen drempel.",
   },
   {
@@ -44,6 +45,11 @@ export const FEATURES: Feature[] = [
     icon: CreditCard,
     title: "Betalingen",
     body: "Online betalen via Mollie (Bancontact en iDEAL), of cash die je handmatig per inschrijving registreert.",
+  },
+  {
+    icon: Tent,
+    title: "Kampen en stages",
+    body: "Organiseer kampen en stages met hele weken, enkele dagen of halve dagen, vaste pakketten en een limiet per dagdeel.",
   },
 ];
 

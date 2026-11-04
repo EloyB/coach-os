@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="108" height="108" viewBox="0 0 108 108" role="img" aria-label="CoachOS">
+  <title>CoachOS</title>
+  <rect width="108" height="108" rx="14" fill="#D0FF14"/>
+  <g stroke="#161513" stroke-width="7" fill="none" stroke-linecap="round">
+    <circle cx="54" cy="54" r="28"/>
+    <path d="M 28 54 C 36 42, 44 42, 54 54 C 64 66, 72 66, 80 54"/>
+  </g>
+</svg>

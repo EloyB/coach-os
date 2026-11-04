@@ -376,4 +376,130 @@ public class LessonSlotScopeUpdateTests
         sibling.EndTime.Should().Be(new TimeOnly(19, 0));
         _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
+
+    // ── Rechten: een trainer past enkel zijn eigen les aan ────────────────────
+
+    private static readonly Guid MyTrainerId = Guid.NewGuid();
+
+    private (LessonSerie Series, Lesson Edited) BuildOwnLesson()
+    {
+        (LessonSerie series, Lesson edited, _, _, _) = BuildSlotScenario();
+        edited.TrainerId = MyTrainerId;
+        return (series, edited);
+    }
+
+    [Test]
+    public async Task UpdateLessonAsync_TrainerEditsOwnLesson_Succeeds()
+    {
+        (LessonSerie series, Lesson edited) = BuildOwnLesson();
+        UpdateLessonRequest request = new()
+        {
+            TrainerId = MyTrainerId, StartTime = "18:00", EndTime = "19:00", Notes = "Neem extra ballen mee",
+        };
+
+        Result<LessonDto> result = await _service.UpdateLessonAsync(
+            series.Id, edited.Id, OrgId, request, CancellationToken.None, actingTrainerId: MyTrainerId);
+
+        result.IsSuccess.Should().BeTrue();
+        edited.Notes.Should().Be("Neem extra ballen mee");
+    }
+
+    [Test]
+    public async Task UpdateLessonAsync_TrainerEditsLessonOfAnotherTrainer_IsForbidden()
+    {
+        (LessonSerie series, Lesson edited) = BuildOwnLesson();
+        UpdateLessonRequest request = new() { TrainerId = MyTrainerId, Notes = "kaapt de les" };
+
+        Result<LessonDto> result = await _service.UpdateLessonAsync(
+            series.Id, edited.Id, OrgId, request, CancellationToken.None, actingTrainerId: Guid.NewGuid());
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.Forbidden);
+        edited.Notes.Should().BeNull();
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task UpdateLessonAsync_TrainerReassignsOwnLessonToAnotherTrainer_IsForbidden()
+    {
+        (LessonSerie series, Lesson edited) = BuildOwnLesson();
+        UpdateLessonRequest request = new() { TrainerId = Guid.NewGuid() };
+
+        Result<LessonDto> result = await _service.UpdateLessonAsync(
+            series.Id, edited.Id, OrgId, request, CancellationToken.None, actingTrainerId: MyTrainerId);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.Forbidden);
+        edited.TrainerId.Should().Be(MyTrainerId);
+    }
+
+    [Test]
+    public async Task UpdateLessonAsync_TrainerCancelsOwnLessonWithoutTrainerInRequest_KeepsAssignment()
+    {
+        (LessonSerie series, Lesson edited) = BuildOwnLesson();
+        _scheduleAssignmentRepo
+            .Setup(r => r.GetBySeriesAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ScheduleAssignment>());
+
+        // De UI stuurt bij annuleren enkel isCancelled + reden, zonder trainerId.
+        Result<LessonDto> result = await _service.UpdateLessonAsync(
+            series.Id, edited.Id, OrgId,
+            new UpdateLessonRequest { IsCancelled = true, CancellationReason = "Ziek" },
+            CancellationToken.None, actingTrainerId: MyTrainerId);
+
+        result.IsSuccess.Should().BeTrue();
+        edited.IsCancelled.Should().BeTrue();
+        // Een trainer kan zichzelf niet ontkoppelen, ook niet per ongeluk via een lege trainerId.
+        edited.TrainerId.Should().Be(MyTrainerId);
+    }
+
+    [Test]
+    public async Task UpdateLessonAsync_AdminCancelWithoutTrainerInRequest_KeepsExistingBehaviour()
+    {
+        (LessonSerie series, Lesson edited) = BuildOwnLesson();
+        _scheduleAssignmentRepo
+            .Setup(r => r.GetBySeriesAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ScheduleAssignment>());
+
+        Result<LessonDto> result = await _service.UpdateLessonAsync(
+            series.Id, edited.Id, OrgId,
+            new UpdateLessonRequest { IsCancelled = true }, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        edited.IsCancelled.Should().BeTrue();
+    }
+
+    [Test]
+    public async Task UpdateLessonAsync_TrainerChangesWholeWeeklySlot_IsForbidden()
+    {
+        (LessonSerie series, Lesson edited) = BuildOwnLesson();
+        UpdateLessonRequest request = new()
+        {
+            TrainerId = MyTrainerId, StartTime = "18:00", EndTime = "19:30", ApplyTo = "slot",
+        };
+
+        Result<LessonDto> result = await _service.UpdateLessonAsync(
+            series.Id, edited.Id, OrgId, request, CancellationToken.None, actingTrainerId: MyTrainerId);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.Forbidden);
+        edited.EndTime.Should().Be(new TimeOnly(19, 0));
+    }
+
+    [Test]
+    public async Task UpdateLessonAsync_AdminCanReassignAndChangeWholeSlot()
+    {
+        (LessonSerie series, Lesson edited) = BuildOwnLesson();
+        Guid newTrainer = Guid.NewGuid();
+        UpdateLessonRequest request = new()
+        {
+            TrainerId = newTrainer, StartTime = "18:00", EndTime = "19:30", ApplyTo = "slot",
+        };
+
+        Result<LessonDto> result = await _service.UpdateLessonAsync(
+            series.Id, edited.Id, OrgId, request, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        edited.TrainerId.Should().Be(newTrainer);
+    }
 }

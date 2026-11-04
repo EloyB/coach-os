@@ -9,6 +9,8 @@ import { TennisBallEmptyIcon } from "@/components/ui/tennis-ball-icon";
 import { SlashLabel } from "@/components/ui/slash-label";
 import { Mono } from "@/components/ui/mono";
 import { OccupancyBar } from "@/components/ui/occupancy-bar";
+import { getAuthUser } from "@/lib/auth";
+import { useClientValue } from "@/lib/hooks/use-client-value";
 
 function formatDateRange(start: string, end: string): string {
   const fmt = (d: string) => {
@@ -19,7 +21,7 @@ function formatDateRange(start: string, end: string): string {
   return `${fmt(start)} → ${fmt(end)}`;
 }
 
-function EmptyState() {
+function EmptyState({ canCreate }: { canCreate: boolean }) {
   const t = useTranslations("lessonSeries");
   return (
     <div className="flex flex-col items-center justify-center py-24 px-6 text-center">
@@ -28,15 +30,17 @@ function EmptyState() {
       </div>
       <p className="text-ink font-semibold text-base mb-1">{t("empty")}</p>
       <p className="text-ink-3 text-sm max-w-64 leading-relaxed mb-7">
-        {t("emptyDescription")}
+        {canCreate ? t("emptyDescription") : t("emptyDescriptionTrainer")}
       </p>
-      <Link
-        href="/dashboard/lessons/new"
-        className="inline-flex items-center gap-2 px-5 py-2.5 bg-ink text-white text-sm font-semibold rounded-lg"
-      >
-        <Plus size={14} />
-        {t("create")}
-      </Link>
+      {canCreate && (
+        <Link
+          href="/dashboard/lessons/new"
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-ink text-white text-sm font-semibold rounded-lg"
+        >
+          <Plus size={14} />
+          {t("create")}
+        </Link>
+      )}
     </div>
   );
 }
@@ -110,6 +114,9 @@ export default function LessonsPage() {
     queryFn: getLessonSeries,
   });
 
+  // Alleen admins maken lesreeksen aan (de server weigert het voor trainers).
+  const canCreate = useClientValue(() => getAuthUser()?.role ?? "") === "Admin";
+
   const activeCount = series?.filter((s) => s.isActive).length ?? 0;
   const draftCount = series ? series.length - activeCount : 0;
 
@@ -125,14 +132,16 @@ export default function LessonsPage() {
             {t("title")}
           </h1>
         </div>
-        <div className="flex items-center gap-2.5">
-          <Link
-            href="/dashboard/lessons/new"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-ink text-white text-[11.5px] font-semibold rounded-md"
-          >
-            + {t("create")}
-          </Link>
-        </div>
+        {canCreate && (
+          <div className="flex items-center gap-2.5">
+            <Link
+              href="/dashboard/lessons/new"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-ink text-white text-[11.5px] font-semibold rounded-md"
+            >
+              + {t("create")}
+            </Link>
+          </div>
+        )}
       </div>
 
       {isLoading && (
@@ -150,7 +159,7 @@ export default function LessonsPage() {
         </div>
       )}
 
-      {!isLoading && !isError && series?.length === 0 && <EmptyState />}
+      {!isLoading && !isError && series?.length === 0 && <EmptyState canCreate={canCreate} />}
 
       {!isLoading && !isError && series && series.length > 0 && (
         <div className="bg-paper border border-rule rounded-xl overflow-hidden">

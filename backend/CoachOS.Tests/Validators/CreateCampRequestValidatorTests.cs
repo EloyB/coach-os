@@ -111,4 +111,60 @@ public class CreateCampRequestValidatorTests
         result.IsValid.Should().BeFalse();
         result.Errors.Should().Contain(e => e.ErrorMessage == "Trainer-uren moeten binnen de kampuren van die dag vallen");
     }
+
+    private static CreateCampRequest WithShifts(params CreateCampDayTrainerRequest[] shifts) => Valid() with
+    {
+        Days = new List<CreateCampDayRequest>
+        {
+            new("2026-04-14", "09:00", "16:00", shifts.ToList()),
+        },
+    };
+
+    [Test]
+    public void Validate_SameTrainerTwoSeparateShiftsOnOneDay_Passes()
+    {
+        Guid trainer = Guid.NewGuid();
+
+        ValidationResult result = _validator.Validate(WithShifts(
+            new(trainer, "09:00", "11:00"),
+            new(trainer, "13:00", "15:00")));
+
+        result.IsValid.Should().BeTrue();
+    }
+
+    [Test]
+    public void Validate_SameTrainerBackToBackShifts_Passes()
+    {
+        Guid trainer = Guid.NewGuid();
+
+        ValidationResult result = _validator.Validate(WithShifts(
+            new(trainer, "09:00", "11:00"),
+            new(trainer, "11:00", "13:00")));
+
+        result.IsValid.Should().BeTrue();
+    }
+
+    [Test]
+    public void Validate_SameTrainerOverlappingShifts_Fails()
+    {
+        Guid trainer = Guid.NewGuid();
+
+        ValidationResult result = _validator.Validate(WithShifts(
+            new(trainer, "09:00", "12:00"),
+            new(trainer, "11:00", "14:00")));
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e =>
+            e.ErrorMessage == "Een trainer kan niet twee overlappende shiften op dezelfde dag hebben");
+    }
+
+    [Test]
+    public void Validate_DifferentTrainersAtTheSameTime_Passes()
+    {
+        ValidationResult result = _validator.Validate(WithShifts(
+            new(Guid.NewGuid(), "09:00", "12:00"),
+            new(Guid.NewGuid(), "09:00", "12:00")));
+
+        result.IsValid.Should().BeTrue();
+    }
 }

@@ -16,9 +16,38 @@ public class CampRepository(ApplicationDbContext db) : ICampRepository
             .OrderByDescending(c => c.StartDate)
             .ToListAsync(ct);
 
+    public async Task<IReadOnlyList<CampDay>> GetDaysByOrganizationAsync(
+        Guid organizationId, DateOnly from, DateOnly to, CancellationToken ct = default)
+        => await db.CampDays
+            .AsNoTracking()
+            .Include(d => d.Camp)
+                .ThenInclude(c => c.TennisClub)
+            .Where(d => d.OrganizationId == organizationId
+                && d.Date >= from && d.Date <= to
+                && d.Camp.IsActive)
+            .OrderBy(d => d.Date)
+            .ThenBy(d => d.StartTime)
+            .ToListAsync(ct);
+
+    public async Task<IReadOnlyList<CampDayTrainer>> GetTrainerDaysAsync(
+        Guid trainerId, Guid organizationId, DateOnly from, DateOnly to, CancellationToken ct = default)
+        => await db.CampDayTrainers
+            .AsNoTracking()
+            .Include(a => a.CampDay)
+                .ThenInclude(d => d.Camp)
+                    .ThenInclude(c => c.TennisClub)
+            .Where(a => a.OrganizationId == organizationId
+                && a.TrainerId == trainerId
+                && a.CampDay.Date >= from && a.CampDay.Date <= to
+                && a.CampDay.Camp.IsActive)
+            .OrderBy(a => a.CampDay.Date)
+            .ThenBy(a => a.StartTime)
+            .ToListAsync(ct);
+
     public async Task<Camp?> GetByIdWithDetailsAsync(Guid id, Guid organizationId, CancellationToken ct = default)
         => await db.Camps
             .Include(c => c.Days).ThenInclude(d => d.TrainerAssignments)
+            .Include(c => c.Prices)
             .Include(c => c.EnrollmentForm!).ThenInclude(f => f.Fields)
             .Include(c => c.TennisClub)
             .FirstOrDefaultAsync(c => c.Id == id && c.OrganizationId == organizationId && c.IsActive, ct);
@@ -28,6 +57,7 @@ public class CampRepository(ApplicationDbContext db) : ICampRepository
             .AsNoTracking()
             .IgnoreQueryFilters()
             .Include(c => c.Days).ThenInclude(d => d.TrainerAssignments)
+            .Include(c => c.Prices)
             .Include(c => c.TennisClub)
             .FirstOrDefaultAsync(c => c.Id == id && c.IsActive, ct);
 
@@ -38,6 +68,8 @@ public class CampRepository(ApplicationDbContext db) : ICampRepository
         => await db.Camps.AddAsync(camp, ct);
 
     public void Remove(Camp camp) => db.Camps.Remove(camp);
+
+    public void RemovePrices(IEnumerable<CampPrice> prices) => db.CampPrices.RemoveRange(prices);
 
     public void RemoveDays(IEnumerable<CampDay> days)
     {

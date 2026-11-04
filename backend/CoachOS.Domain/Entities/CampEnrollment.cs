@@ -19,8 +19,12 @@ public class CampEnrollment : BaseEntity
 
     public Guid? CampEnrollmentGroupId { get; set; }
 
+    /// <summary>Door de beheerder gekozen tarief; null = hoofdprijs van het kamp.</summary>
+    public Guid? CampPriceId { get; set; }
+
     // Navigation
     public Camp Camp { get; set; } = null!;
+    public CampPrice? Price { get; set; }
     public CampEnrollmentGroup? Group { get; set; }
     public ICollection<CampFormResponse> FormResponses { get; set; } = new List<CampFormResponse>();
     public ICollection<Payment> Payments { get; set; } = new List<Payment>();

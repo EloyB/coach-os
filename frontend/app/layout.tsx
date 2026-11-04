@@ -19,6 +19,10 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "CoachOS",
   description: "Tennis en padel lesplanning voor trainers",
+  // De app (inloggen, dashboard, publieke inschrijfpagina's) hoort niet in Google;
+  // de marketingsite staat op coach-os.be. Geen robots.txt-disallow: Google moet
+  // de pagina kunnen openen om de noindex te zien.
+  robots: { index: false, follow: false },
 };
 
 export default async function RootLayout({

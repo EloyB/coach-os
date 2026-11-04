@@ -21,14 +21,14 @@ export default async function BedanktPage({ searchParams }: PageProps) {
     ? CTA_SECTION.waitlist.success
     : CTA_SECTION.contact.success;
   const body = isWaitlist
-    ? "We nemen contact op om een tijdstip te prikken voor je demo — meestal binnen één werkdag."
+    ? "We nemen contact op om een tijdstip te prikken voor je demo, meestal binnen één werkdag."
     : "Een van ons leest je bericht en antwoordt binnen één werkdag.";
 
   return (
-    <main className="flex min-h-svh items-center justify-center bg-canvas px-6 py-16">
-      <div className="w-full max-w-md rounded-2xl border border-rule bg-paper p-10 text-center shadow-sm">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-tennis-lime/30">
-          <Check className="h-6 w-6 text-tennis-green" strokeWidth={3} />
+    <main className="flex min-h-svh items-center justify-center bg-white px-6 py-16">
+      <div className="w-full max-w-md rounded-3xl bg-[#eef1e0] p-10 text-center">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-tennis-green">
+          <Check className="h-6 w-6 text-tennis-lime" strokeWidth={3} />
         </div>
         <Mono className="mt-6 block text-[11px] tracking-[0.18em] text-ink-3">
           {isWaitlist ? "DEMO AANGEVRAAGD" : "BERICHT ONTVANGEN"}
@@ -38,7 +38,7 @@ export default async function BedanktPage({ searchParams }: PageProps) {
 
         <Link
           href="/"
-          className="mt-8 inline-flex h-10 items-center gap-2 rounded-md bg-ink px-4 text-sm font-semibold text-white transition-colors hover:bg-ink/90"
+          className="mt-8 inline-flex h-10 items-center gap-2 rounded-lg bg-ink px-4 text-sm font-semibold text-white transition-colors hover:bg-ink/90"
         >
           <LogoMark size="sm" />
           Terug naar home

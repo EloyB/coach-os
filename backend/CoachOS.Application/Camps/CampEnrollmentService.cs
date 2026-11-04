@@ -42,7 +42,9 @@ public class CampEnrollmentService(
             camp.Id, camp.Name, camp.Description, camp.Level.HasValue ? (int)camp.Level.Value : null,
             camp.Price, camp.StartDate.ToString(DateFormat), camp.EndDate.ToString(DateFormat),
             camp.RegistrationDeadline, camp.TennisClub?.Name ?? string.Empty,
-            camp.MaxParticipants, participants, days));
+            camp.MaxParticipants, participants, days,
+            camp.Prices.OrderBy(p => p.SortOrder)
+                .Select(p => new CampPriceDto(p.Id, p.Label, p.Description, p.Amount)).ToList()));
     }
 
     public async Task<Result<CampEnrollmentFormDto?>> GetPublicFormAsync(Guid campId, CancellationToken ct = default)
@@ -233,8 +235,12 @@ public class CampEnrollmentService(
         if (formError is not null)
             return Result<Guid>.Fail(formError);
 
+        if (request.CampPriceId is { } priceId && camp.Prices.All(p => p.Id != priceId))
+            return Result<Guid>.Fail(new Error(ErrorCodes.NotFound, "Prijsoptie niet gevonden."));
+
         string email = request.ParticipantEmail.Trim();
-        bool isPaidCamp = camp.Price > 0m;
+        // Betalend = het gekozen tarief (of de hoofdprijs) is meer dan 0.
+        bool isPaidCamp = CampPricing.UnitPrice(camp, new CampEnrollment { CampPriceId = request.CampPriceId }) > 0m;
         CampEnrollment enrollment;
 
         await unitOfWork.BeginTransactionAsync(IsolationLevel.Serializable, ct);
@@ -267,6 +273,7 @@ public class CampEnrollmentService(
                 // als de publieke flow). Gratis kamp: meteen bevestigd.
                 Status = isPaidCamp ? EnrollmentStatus.PendingPayment : EnrollmentStatus.Confirmed,
                 EnrolledAt = DateTime.UtcNow,
+                CampPriceId = request.CampPriceId,
             };
             await enrollments.AddAsync(enrollment, ct);
 
