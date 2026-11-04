@@ -64,6 +64,10 @@ services:
       MollieBilling__ApiKey: "${MOLLIE_BILLING_API_KEY:-}"
       # Optioneel: publieke URL (bv. een cloudflared quick tunnel) zodat Mollie-webhooks lokaal binnenkomen.
       MollieBilling__WebhookBaseUrl: "${MOLLIE_BILLING_WEBHOOK_BASE_URL:-}"
+      # Facturen via Billit. Leeg = fake met FAKE-nummers. Lokaal altijd de sandbox.
+      Billit__ApiKey: "${BILLIT_API_KEY:-}"
+      Billit__PartyId: "${BILLIT_PARTY_ID:-}"
+      Billit__ApiBaseUrl: "https://api.sandbox.billit.be"
       # DataProtection keystore in een named volume zodat tokens rebuilds overleven.
       # Zonder dit worden bestaande Mollie-tokens in de DB onleesbaar bij elke
       # `docker-compose up --build backend` (keys liggen anders in /tmp).

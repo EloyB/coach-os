@@ -59,7 +59,11 @@ TEM only issues SMTP credentials after DKIM/SPF DNS verification has propagated.
 | `Mollie__RedirectUri` | **manual** | `https://app.<domain_name>/api/oauth/mollie/callback` — must match Mollie dashboard exactly |
 | `MollieBilling__WebhookBaseUrl` | ✓ Terraform | `https://app.<domain_name>` — webhooks voor CoachOS-abonnementen op `/api/webhooks/mollie-billing` |
 | `MollieBilling__ApiKey` | **manual** | API-key van het **eigen** Mollie-account van Studio Swyft (`test_…`, later `live_…`), niet de Connect-app. Leeg = fake-client zonder echte betalingen. SEPA-domiciliëring + kaart voor recurring activeren op dat account. |
+| `Billit__ApiKey` | **manual** | API-key uit MyBillit (Mijn profiel) van het facturerende bedrijf. Leeg of afwezig = fake, self-service blijft uit. |
+| `Billit__PartyId` | **manual** | Id van dat bedrijf: staat in de URL van Mijn bedrijf. Sandbox en productie verschillen. |
 | `SuperAdmin__Email` | **manual** | Email of the first system-level super admin (promoted at API startup) |
+
+> **Let op:** maak een manual secret altijd meteen aan **met een versie**. De API leest bij het opstarten van elk secret in het project de nieuwste versie; een secret zonder versie geeft een 404 en laat de API crashen. Daarom staan de Billit-secrets niet in Terraform: Terraform maakt het secret aan zonder waarde.
 
 ### Manual TEM creds setup
 
