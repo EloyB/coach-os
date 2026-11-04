@@ -12,7 +12,7 @@
 
 In deze algemene voorwaarden wordt verstaan onder:
 
-- **Platform**: de softwareoplossing CoachOS, beschikbaar via `coach-os.be`, geëxploiteerd door **[BEDRIJFSNAAM CoachOS]**, met maatschappelijke zetel te **[ADRES]**, ondernemingsnummer **[KBO-NR]**, btw-nummer **[BTW-NR]** (hierna *"CoachOS"*).
+- **Platform**: de softwareoplossing CoachOS, beschikbaar via `coach-os.be`, geëxploiteerd door **Studio Swyft BV**, met maatschappelijke zetel te **Molenzicht 17, 2380 Ravels, België**, ondernemingsnummer **1032.227.379**, btw-nummer **BE 1032.227.379** (hierna *"CoachOS"*).
 - **Club**: de tennis- of padelclub die via het Platform een Lessenreeks aanbiedt. De identiteit en contactgegevens van de Club worden weergegeven op de pagina van de betreffende Lessenreeks.
 - **Lessenreeks**: een door de Club aangeboden reeks van groepslessen, met een bepaalde duur, niveau en prijs.
 - **Tijdslot**: een wekelijks lesmoment binnen een Lessenreeks (bijv. *Maandag 19:00–20:00*).
@@ -163,7 +163,7 @@ In deze algemene voorwaarden wordt verstaan onder:
 
 14.1. Op deze overeenkomst is uitsluitend het **Belgisch recht** van toepassing.
 
-14.2. Onverminderd de bepalingen van dwingend consumentenrecht zijn enkel de **rechtbanken van het gerechtelijk arrondissement [VESTIGINGSPLAATS]** bevoegd. De Speler-consument kan steeds een vordering instellen bij de rechtbank van zijn/haar woonplaats.
+14.2. Onverminderd de bepalingen van dwingend consumentenrecht zijn enkel de **rechtbanken van het gerechtelijk arrondissement Antwerpen, afdeling Turnhout** bevoegd. De Speler-consument kan steeds een vordering instellen bij de rechtbank van zijn/haar woonplaats.
 
 ## 15. Slotbepalingen
 
