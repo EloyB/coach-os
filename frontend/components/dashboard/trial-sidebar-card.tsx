@@ -1,11 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { getSubscriptionStatus } from "@/lib/api/subscription";
 import type { AuthUser } from "@/lib/auth";
 import { subscriptionStatusQueryKey } from "@/lib/subscription-query";
 import { cn } from "@/lib/utils";
+
+const SUBSCRIPTION_PAGE = "/dashboard/settings/subscription";
 
 function formatDate(isoDate: string): string {
   const [year, month, day] = isoDate.split("-");
@@ -64,6 +67,12 @@ export function TrialSidebarCard({ user }: { user: AuthUser | null }) {
           ? t("trialCardExpiredHint")
           : t("trialCardUntil", { date: formatDate(subscription.trialEndsAt) })}
       </p>
+      <Link
+        href={SUBSCRIPTION_PAGE}
+        className="mt-2 inline-block text-[11px] font-semibold text-white underline underline-offset-2 hover:text-white/80 transition-colors"
+      >
+        {t("choosePlanCta")}
+      </Link>
     </div>
   );
 }

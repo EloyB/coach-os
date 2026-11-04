@@ -129,4 +129,46 @@ public class SubscriptionAccessServiceTests
         result.Value!.AccessLevel.Should().Be("ReadOnly");
         result.Value.IsTrialExpired.Should().BeTrue();
     }
+
+    [Test]
+    public async Task GetStatusAsync_Locked_IsReadOnlyEvenWhenEnforcementOff()
+    {
+        ArrangeSubscription(new Subscription { OrganizationId = OrgId, Status = SubscriptionStatus.Locked, TrialEndsAt = Today.AddDays(-1) });
+
+        Result<SubscriptionStatusDto> result = await CreateSut(enforceTrialExpiry: false).GetStatusAsync(OrgId);
+
+        result.Value!.Status.Should().Be("Locked");
+        result.Value.AccessLevel.Should().Be("ReadOnly");
+    }
+
+    [Test]
+    public async Task GetStatusAsync_Cancelled_IsFullWithCancelAt()
+    {
+        ArrangeSubscription(new Subscription
+        {
+            OrganizationId = OrgId,
+            Status = SubscriptionStatus.Cancelled,
+            CurrentPeriodEnd = Today.AddDays(20),
+            CancelAt = Today.AddDays(20),
+        });
+
+        Result<SubscriptionStatusDto> result = await CreateSut(enforceTrialExpiry: true).GetStatusAsync(OrgId);
+
+        result.Value!.Status.Should().Be("Cancelled");
+        result.Value.AccessLevel.Should().Be("Full");
+        result.Value.CancelAt.Should().Be(Today.AddDays(20));
+        result.Value.CurrentPeriodEnd.Should().Be(Today.AddDays(20));
+    }
+
+    [Test]
+    public async Task GetStatusAsync_Active_ReturnsCurrentPeriodEnd()
+    {
+        ArrangeSubscription(new Subscription { OrganizationId = OrgId, Status = SubscriptionStatus.Active, CurrentPeriodEnd = Today.AddDays(5) });
+
+        Result<SubscriptionStatusDto> result = await CreateSut(enforceTrialExpiry: true).GetStatusAsync(OrgId);
+
+        result.Value!.AccessLevel.Should().Be("Full");
+        result.Value.CurrentPeriodEnd.Should().Be(Today.AddDays(5));
+        result.Value.CancelAt.Should().BeNull();
+    }
 }

@@ -1,6 +1,6 @@
 import apiClient from "@/lib/api-client";
 
-export type SubscriptionStatus = "Legacy" | "Trialing" | "Active";
+export type SubscriptionStatus = "Legacy" | "Trialing" | "Active" | "Cancelled" | "Locked";
 export type SubscriptionAccessLevel = "Full" | "ReadOnly";
 
 export interface SubscriptionStatusDto {
@@ -10,6 +10,10 @@ export interface SubscriptionStatusDto {
   trialEndsAt: string | null;
   trialDaysRemaining: number | null;
   isTrialExpired: boolean;
+  /** Laatste dag van de lopende betaalde periode; null zonder betaald abonnement. */
+  currentPeriodEnd: string | null;
+  /** Opgezegd per deze datum; null als niet opgezegd. */
+  cancelAt: string | null;
 }
 
 export async function getSubscriptionStatus(): Promise<SubscriptionStatusDto> {

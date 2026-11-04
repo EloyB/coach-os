@@ -57,6 +57,27 @@ public class MjmlTemplateRenderTests
     }
 
     [Test]
+    public void BillingNotice_RendersHeadingBodyAndButton()
+    {
+        string html = _renderer.Render("billing-notice", new Dictionary<string, string>
+        {
+            ["organizationName"] = "TC Brederode",
+            ["heading"] = "Je abonnement is actief",
+            ["body"] = "We schreven € 59,29 af.",
+            ["buttonLabel"] = "Naar je abonnement",
+            ["buttonUrl"] = "https://app.coach-os.be/dashboard/settings/subscription",
+            ["year"] = "2026",
+        });
+
+        html.Should().Contain("Je abonnement is actief");
+        html.Should().Contain("TC Brederode");
+        html.Should().Contain("€ 59,29");
+        html.Should().Contain("Naar je abonnement");
+        html.Should().Contain("https://app.coach-os.be/dashboard/settings/subscription");
+        html.Should().NotContain("{{");
+    }
+
+    [Test]
     public void TrialReminder_RendersHeadingBodyAndLink()
     {
         string html = _renderer.Render("trial-reminder", new Dictionary<string, string>

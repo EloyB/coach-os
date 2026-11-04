@@ -23,6 +23,13 @@ const TONE_STYLES: Record<Tone, { bar: string; chip: string }> = {
   warn: { bar: "border-l-amber-400", chip: "bg-amber-100 text-amber-800" },
 };
 
+const SUBSCRIPTION_PAGE = "/dashboard/settings/subscription";
+
+function formatDate(isoDate: string): string {
+  const [year, month, day] = isoDate.split("-");
+  return `${day}/${month}/${year}`;
+}
+
 interface AccountBannersProps {
   user: AuthUser;
 }
@@ -55,13 +62,25 @@ export function AccountBanners({ user }: AccountBannersProps) {
     });
   }
 
+  const choosePlan = { href: SUBSCRIPTION_PAGE, label: t("choosePlanCta") };
+
   if (subscription?.accessLevel === "ReadOnly") {
     // Trainers kunnen niets aan het abonnement doen: neutrale melding zonder details.
+    const locked = subscription.status === "Locked";
     banners.push({
       key: "read-only",
       tone: "warn",
-      chip: t("readOnlyChip"),
-      body: isAdmin ? t("readOnlyAdminBody") : t("readOnlyTrainerBody"),
+      chip: locked ? t("lockedChip") : t("readOnlyChip"),
+      body: isAdmin ? (locked ? t("lockedAdminBody") : t("readOnlyAdminBody")) : t("readOnlyTrainerBody"),
+      action: isAdmin ? choosePlan : undefined,
+    });
+  } else if (isAdmin && subscription?.status === "Cancelled" && subscription.cancelAt) {
+    banners.push({
+      key: "cancelled",
+      tone: "info",
+      chip: t("cancelledChip"),
+      body: t("cancelledBody", { date: formatDate(subscription.cancelAt) }),
+      action: { href: SUBSCRIPTION_PAGE, label: t("choosePlanCta") },
     });
   }
 

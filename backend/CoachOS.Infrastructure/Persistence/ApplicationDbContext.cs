@@ -32,6 +32,8 @@ public class ApplicationDbContext(
     public DbSet<Enrollment> Enrollments { get; set; } = null!;
     public DbSet<Payment> Payments { get; set; } = null!;
     public DbSet<Subscription> Subscriptions { get; set; } = null!;
+    public DbSet<SubscriptionPayment> SubscriptionPayments { get; set; } = null!;
+    public DbSet<BillingProfile> BillingProfiles { get; set; } = null!;
     public DbSet<TermsAcceptance> TermsAcceptances { get; set; } = null!;
     public DbSet<EnrollmentForm> EnrollmentForms { get; set; } = null!;
     public DbSet<FormField> FormFields { get; set; } = null!;
@@ -80,6 +82,8 @@ public class ApplicationDbContext(
         builder.ApplyConfiguration(new EnrollmentConfiguration());
         builder.ApplyConfiguration(new PaymentConfiguration());
         builder.ApplyConfiguration(new SubscriptionConfiguration());
+        builder.ApplyConfiguration(new SubscriptionPaymentConfiguration());
+        builder.ApplyConfiguration(new BillingProfileConfiguration());
         builder.ApplyConfiguration(new TermsAcceptanceConfiguration());
         builder.ApplyConfiguration(new EnrollmentFormConfiguration());
         builder.ApplyConfiguration(new FormFieldConfiguration());
@@ -134,6 +138,10 @@ public class ApplicationDbContext(
         builder.Entity<Payment>().HasQueryFilter(e =>
             _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
         builder.Entity<Subscription>().HasQueryFilter(e =>
+            _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
+        builder.Entity<SubscriptionPayment>().HasQueryFilter(e =>
+            _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
+        builder.Entity<BillingProfile>().HasQueryFilter(e =>
             _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
         builder.Entity<TermsAcceptance>().HasQueryFilter(e =>
             _tenant.OrganizationId == Guid.Empty || e.OrganizationId == _tenant.OrganizationId);
@@ -206,6 +214,10 @@ public class ApplicationDbContext(
             else if (entry.State == EntityState.Modified)
             {
                 entry.Entity.UpdatedAt = now;
+                if (entry.Entity is SubscriptionPayment payment)
+                    payment.ConcurrencyStamp = Guid.NewGuid();
+                else if (entry.Entity is Subscription subscription)
+                    subscription.ConcurrencyStamp = Guid.NewGuid();
             }
         }
 

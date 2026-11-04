@@ -11,6 +11,13 @@ public interface IUnitOfWork
 {
     Task SaveChangesAsync(CancellationToken ct = default);
 
+    /// <summary>
+    /// Zoals <see cref="SaveChangesAsync"/>, maar geeft <c>false</c> als een andere schrijver voor
+    /// was: een concurrency-conflict of een schending van een unieke index. De openstaande
+    /// wijzigingen worden dan verworpen. Voor idempotente verwerking (webhooks, jobs).
+    /// </summary>
+    Task<bool> TrySaveChangesAsync(CancellationToken ct = default);
+
     Task BeginTransactionAsync(CancellationToken ct = default);
 
     Task BeginTransactionAsync(IsolationLevel isolationLevel, CancellationToken ct = default);

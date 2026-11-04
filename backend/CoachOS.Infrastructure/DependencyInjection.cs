@@ -10,7 +10,9 @@ using CoachOS.Domain.Interfaces;
 using CoachOS.Infrastructure.Email;
 using CoachOS.Infrastructure.Export;
 using CoachOS.Infrastructure.Identity;
+using CoachOS.Infrastructure.Invoicing;
 using CoachOS.Infrastructure.Mollie;
+using CoachOS.Infrastructure.Vat;
 using CoachOS.Infrastructure.MultiTenancy;
 using CoachOS.Infrastructure.Persistence;
 using CoachOS.Infrastructure.Repositories;
@@ -61,8 +63,10 @@ public static class DependencyInjection
         services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.Section));
         services.Configure<AppOptions>(configuration.GetSection(AppOptions.Section));
         services.Configure<MollieOptions>(configuration.GetSection(MollieOptions.Section));
+        services.Configure<MollieBillingOptions>(configuration.GetSection(MollieBillingOptions.Section));
         services.Configure<RegistrationOptions>(configuration.GetSection(RegistrationOptions.Section));
         services.Configure<BillingOptions>(configuration.GetSection(BillingOptions.Section));
+        services.Configure<SuperAdminOptions>(configuration.GetSection(SuperAdminOptions.Section));
 
         // TimeProvider is in .NET 8+ ingebouwd; testen kunnen FakeTimeProvider injecteren.
         services.AddSingleton(TimeProvider.System);
@@ -82,6 +86,26 @@ public static class DependencyInjection
         services.AddHttpClient<IMollieClient, MollieClient>();
         services.AddScoped<ITokenProtector, DataProtectionTokenProtector>();
         services.AddScoped<IMollieConnectService, MollieConnectService>();
+
+        // Platform-billing client: echte Mollie-client zodra er een API-key is,
+        // anders een fake zodat de flow zonder key gebouwd en getest kan worden.
+        string billingApiKey = configuration[$"{MollieBillingOptions.Section}:ApiKey"]
+                               ?? configuration[$"{MollieBillingOptions.Section}__ApiKey"]
+                               ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(billingApiKey))
+        {
+            // Singleton: de fake houdt zijn betalingen in het geheugen bij.
+            services.AddSingleton<FakeBillingMollieClient>();
+            services.AddSingleton<IBillingMollieClient>(sp => sp.GetRequiredService<FakeBillingMollieClient>());
+        }
+        else
+        {
+            services.AddHttpClient<IBillingMollieClient, BillingMollieClient>();
+        }
+
+        // Billit-koppeling volgt zodra er API-toegang is; tot dan een fake met oplopende nummers.
+        services.AddSingleton<IInvoicingService, FakeInvoicingService>();
+        services.AddHttpClient<IVatNumberValidator, ViesVatNumberValidator>();
 
         services.AddScoped<TenantContext>();
         services.AddScoped<ITenantContext>(sp => sp.GetRequiredService<TenantContext>());
@@ -111,6 +135,11 @@ public static class DependencyInjection
         services.AddScoped<IScheduleAssignmentRepository, ScheduleAssignmentRepository>();
         services.AddScoped<IAssignmentConfirmationTokenRepository, AssignmentConfirmationTokenRepository>();
         services.AddScoped<IPaymentRepository, PaymentRepository>();
+        services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();
+        services.AddScoped<ISubscriptionPaymentRepository, SubscriptionPaymentRepository>();
+        services.AddScoped<IBillingProfileRepository, BillingProfileRepository>();
+        services.AddScoped<IActiveStudentCounter, ActiveStudentCounter>();
+        services.AddScoped<IOrganizationRepository, OrganizationRepository>();
         services.AddScoped<IMagicLinkTokenRepository, MagicLinkTokenRepository>();
         services.AddScoped<IStudentMagicLinkService, StudentMagicLinkService>();
         services.AddScoped<IRescheduleRequestRepository, RescheduleRequestRepository>();
@@ -118,8 +147,8 @@ public static class DependencyInjection
         services.AddScoped<IOrganizationSettingsRepository, OrganizationSettingsRepository>();
         services.AddScoped<IMollieConnectionRepository, MollieConnectionRepository>();
         services.AddScoped<IOAuthStateRepository, OAuthStateRepository>();
-        services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();
         services.AddHostedService<TrialReminderWorker>();
+        services.AddHostedService<CoachOS.Infrastructure.Billing.BillingWorker>();
         services.AddScoped<ICampRepository, CampRepository>();
         services.AddScoped<ICampEnrollmentRepository, CampEnrollmentRepository>();
         services.AddScoped<ICampEnrollmentFormRepository, CampEnrollmentFormRepository>();

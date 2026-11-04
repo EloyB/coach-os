@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { loginPathFor } from './redirect';
 import { clearAuth } from '@/lib/auth';
 import { showApiErrorToast } from '@/lib/api-error-toast';
 
@@ -31,7 +32,7 @@ apiClient.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401 && typeof window !== 'undefined') {
       clearAuth();
-      window.location.href = '/login';
+      window.location.href = loginPathFor(window.location.pathname, window.location.search);
       return Promise.reject(error);
     }
 

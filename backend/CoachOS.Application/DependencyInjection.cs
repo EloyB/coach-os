@@ -1,3 +1,4 @@
+using CoachOS.Application.Billing;
 using System.Reflection;
 using CoachOS.Application.Camps;
 using CoachOS.Application.Dashboard;
@@ -52,9 +53,13 @@ public static class DependencyInjection
         services.AddScoped<IOrganizationSettingsService, OrganizationSettingsService>();
         services.AddScoped<IOnboardingService, OnboardingService>();
         services.AddScoped<IPaymentService, PaymentService>();
+        services.AddScoped<ISubscriptionService, SubscriptionService>();
         services.AddScoped<IPlanningExportService, PlanningExportService>();
         services.AddScoped<ICampExportService, CampExportService>();
         services.AddScoped<ISubscriptionAccessService, SubscriptionAccessService>();
+        services.AddScoped<IBillingService, BillingService>();
+        services.AddScoped<IBillingPaymentSyncService, BillingPaymentSyncService>();
+        services.AddScoped<IBillingMaintenanceService, BillingMaintenanceService>();
         services.AddScoped<ITrialReminderService, TrialReminderService>();
 
         return services;

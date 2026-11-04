@@ -57,6 +57,8 @@ TEM only issues SMTP credentials after DKIM/SPF DNS verification has propagated.
 | `Mollie__ClientId` | **manual** | From my.mollie.com → Developers → OAuth applications |
 | `Mollie__ClientSecret` | **manual** | Same place, shown once on creation |
 | `Mollie__RedirectUri` | **manual** | `https://app.<domain_name>/api/oauth/mollie/callback` — must match Mollie dashboard exactly |
+| `MollieBilling__WebhookBaseUrl` | ✓ Terraform | `https://app.<domain_name>` — webhooks voor CoachOS-abonnementen op `/api/webhooks/mollie-billing` |
+| `MollieBilling__ApiKey` | **manual** | API-key van het **eigen** Mollie-account van Studio Swyft (`test_…`, later `live_…`), niet de Connect-app. Leeg = fake-client zonder echte betalingen. SEPA-domiciliëring + kaart voor recurring activeren op dat account. |
 | `SuperAdmin__Email` | **manual** | Email of the first system-level super admin (promoted at API startup) |
 
 ### Manual TEM creds setup

@@ -47,6 +47,11 @@ locals {
     # The actual webhook path is /api/webhooks/mollie (handled by the API).
     # ClientId and ClientSecret are manually filled (see resources below).
     "Mollie__WebhookBaseUrl" = "https://app.${var.domain_name}"
+
+    # Platform-billing (clubs betalen hun CoachOS-abonnement aan ons): webhooks van
+    # ons eigen Mollie-account komen op /api/webhooks/mollie-billing. De API-key
+    # zelf is een manuele secret (zie mollie_billing_api_key hieronder).
+    "MollieBilling__WebhookBaseUrl" = "https://app.${var.domain_name}"
   }
 }
 
@@ -80,6 +85,20 @@ resource "scaleway_secret" "super_admin_email" {
   name        = "SuperAdmin__Email"
   description = "E-mail van de eerste system-level super admin — manueel ingevuld"
   tags        = ["coach-os", "manual"]
+}
+
+# Mollie platform-billing API-key — de statische key van het EIGEN Mollie-account
+# van Studio Swyft (eerst test_..., later live_...), los van de Connect-credentials.
+# Zolang deze secret leeg is, draait de API met een fake-client (geen echte betalingen).
+# Op dat Mollie-account moeten SEPA-domiciliëring en kaart voor recurring actief zijn.
+# Vul in via:
+#   scw secret secret-version create <secret_id> data=<test_of_live_key>
+resource "scaleway_secret" "mollie_billing_api_key" {
+  project_id  = var.scw_project_id
+  region      = var.scw_region
+  name        = "MollieBilling__ApiKey"
+  description = "Mollie API-key van het eigen platformaccount (abonnementen) — manueel ingevuld"
+  tags        = ["coach-os", "manual", "mollie"]
 }
 
 # Mollie Connect OAuth credentials — manueel ingevuld na het aanmaken van het

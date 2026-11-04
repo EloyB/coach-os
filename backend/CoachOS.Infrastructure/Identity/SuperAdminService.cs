@@ -281,7 +281,8 @@ public class SuperAdminService(
                 AdminCount = context.OrganizationMemberships.Count(m =>
                     m.OrganizationId == o.Id && m.Role == UserRole.Admin && m.IsActive),
                 SubscriptionStatus = o.Subscription == null ? (SubscriptionStatus?)null : o.Subscription.Status,
-                TrialEndsAt = o.Subscription == null ? null : o.Subscription.TrialEndsAt
+                TrialEndsAt = o.Subscription == null ? null : o.Subscription.TrialEndsAt,
+                SubscriptionPlan = o.Subscription == null ? (SubscriptionPlan?)null : o.Subscription.Plan
             })
             .ToListAsync(ct);
 
@@ -299,6 +300,7 @@ public class SuperAdminService(
                 CreatedAt = r.CreatedAt,
                 AdminCount = r.AdminCount,
                 SubscriptionStatus = status.ToString(),
+                SubscriptionPlan = r.SubscriptionPlan?.ToString(),
                 TrialEndsAt = status == SubscriptionStatus.Trialing ? r.TrialEndsAt : null
             };
         }).ToList();
