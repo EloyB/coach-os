@@ -12,6 +12,9 @@ public interface IInvoicingService
     bool IsConfigured { get; }
 
     Task<Result<CreatedInvoice>> CreateInvoiceAsync(InvoiceRequest request, CancellationToken ct = default);
+
+    /// <summary>Geeft door dat een onbetaald verstuurde factuur betaald is. Veilig om te herhalen.</summary>
+    Task<Result<bool>> MarkInvoicePaidAsync(string invoiceId, CancellationToken ct = default);
 }
 
 /// <summary>Eén factuurlijn voor één abonnementsperiode. Bedrag excl. btw.</summary>

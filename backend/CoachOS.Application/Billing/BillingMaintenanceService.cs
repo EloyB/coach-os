@@ -49,6 +49,52 @@ public class BillingMaintenanceService(
         return created;
     }
 
+    public async Task<int> SyncPaidInvoicesAsync(CancellationToken ct = default)
+    {
+        if (!invoicing.IsConfigured && !billingOptions.Value.AllowFakeIntegrations)
+            return 0;
+
+        DateTime now = timeProvider.GetUtcNow().UtcDateTime;
+        IReadOnlyList<SubscriptionPayment> due =
+            await payments.ListInvoicePaidSyncDueAsync(now, MaxInvoiceAttempts, InvoiceBatchSize, ct);
+
+        int synced = 0;
+        foreach (SubscriptionPayment candidate in due)
+        {
+            if (await TrySyncPaidInvoiceAsync(candidate.Id, candidate.OrganizationId, now, ct))
+                synced++;
+        }
+
+        return synced;
+    }
+
+    /// <summary>Claimt de poging vóór de externe call, net als <see cref="TryCreateInvoiceAsync"/>.</summary>
+    private async Task<bool> TrySyncPaidInvoiceAsync(Guid paymentId, Guid organizationId, DateTime now, CancellationToken ct)
+    {
+        SubscriptionPayment? payment = await payments.GetByIdAsync(paymentId, organizationId, ct);
+        if (payment?.InvoiceId is null || payment.InvoiceMarkedPaid)
+            return false;
+
+        payment.InvoicePaidSyncAttempts++;
+        payment.InvoiceNextAttemptAt = now.AddMinutes(Math.Pow(2, payment.InvoicePaidSyncAttempts));
+        if (!await unitOfWork.TrySaveChangesAsync(ct))
+            return false;
+
+        Result<bool> result = await invoicing.MarkInvoicePaidAsync(payment.InvoiceId, ct);
+        payment.InvoiceMarkedPaid = result.IsSuccess;
+        payment.InvoiceLastError = result.IsSuccess ? null : string.Join("; ", result.Errors.Select(e => e.Message));
+        await unitOfWork.SaveChangesAsync(ct);
+
+        if (!result.IsSuccess && payment.InvoicePaidSyncAttempts >= MaxInvoiceAttempts)
+        {
+            await NotifySuperAdminAsync("Factuur kon niet als betaald gemarkeerd worden",
+                $"Na {MaxInvoiceAttempts} pogingen staat factuur {payment.InvoiceNumber} (organisatie {payment.OrganizationId}) nog open bij Billit, terwijl de betaling binnen is. Zet ze manueel op betaald. Laatste fout: {payment.InvoiceLastError}",
+                ct);
+        }
+
+        return result.IsSuccess;
+    }
+
     /// <summary>
     /// Claimt de betaling (poging + backoff vastleggen) vóór de externe call: een tweede
     /// instantie ziet dan dat de volgende poging pas later mag, of verliest de concurrency-race.
@@ -71,6 +117,8 @@ public class BillingMaintenanceService(
             payment.InvoiceId = result.Value!.Id;
             payment.InvoiceNumber = result.Value.Number;
             payment.InvoicePdfUrl = result.Value.PdfUrl;
+            payment.InvoiceMarkedPaid = payment.Status == SubscriptionPaymentStatus.Paid;
+            payment.InvoiceNextAttemptAt = null;
             payment.InvoiceLastError = null;
         }
         else

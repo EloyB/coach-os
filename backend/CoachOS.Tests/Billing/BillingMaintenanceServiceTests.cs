@@ -5,6 +5,7 @@ using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
 using CoachOS.Domain.Models;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 using Moq;
 using NUnit.Framework;
 
@@ -65,6 +66,126 @@ public class BillingMaintenanceServiceTests
                 && r.Customer.Name == "TC Brederode vzw"
                 && r.Customer.InvoiceEmail == "penningmeester@brederode.be"),
             It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    private async Task<SubscriptionPayment> InvoicedThenPaidBankTransferAsync()
+    {
+        Organization org = await BankTransferYearlyAsync();
+        await _sut.ProcessPendingInvoicesAsync();
+        _ctx.Db.ChangeTracker.Clear();
+
+        SubscriptionPayment payment = (await _ctx.ReloadPaymentsAsync(org.Id)).Single();
+        SubscriptionPayment tracked = await _ctx.Db.SubscriptionPayments.IgnoreQueryFilters().SingleAsync(p => p.Id == payment.Id);
+        tracked.Status = SubscriptionPaymentStatus.Paid;
+        await _ctx.Db.SaveChangesAsync();
+        _ctx.Db.ChangeTracker.Clear();
+        return tracked;
+    }
+
+    private async Task<SubscriptionPayment> ReloadAsync(Guid paymentId)
+    {
+        _ctx.Db.ChangeTracker.Clear();
+        return await _ctx.Db.SubscriptionPayments.IgnoreQueryFilters().AsNoTracking().SingleAsync(p => p.Id == paymentId);
+    }
+
+    [Test]
+    public async Task SyncPaidInvoices_TransferPaidAfterInvoicing_MarksInvoicePaidOnce()
+    {
+        _ctx.Invoicing.Setup(i => i.MarkInvoicePaidAsync("inv_1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<bool>.Ok(true));
+        SubscriptionPayment payment = await InvoicedThenPaidBankTransferAsync();
+
+        int synced = await _sut.SyncPaidInvoicesAsync();
+        _ctx.Db.ChangeTracker.Clear();
+        int again = await _sut.SyncPaidInvoicesAsync();
+
+        synced.Should().Be(1);
+        again.Should().Be(0);
+        (await ReloadAsync(payment.Id)).InvoiceMarkedPaid.Should().BeTrue();
+        _ctx.Invoicing.Verify(i => i.MarkInvoicePaidAsync("inv_1", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task SyncPaidInvoices_InvoiceCreatedAsPaid_DoesNothing()
+    {
+        (Organization org, _) = await _ctx.SeedOrganizationAsync();
+        await _billing.StartCheckoutAsync(org.Id, new CheckoutRequest(
+            (int)SubscriptionPlan.Game, (int)BillingInterval.Monthly, (int)BillingPaymentMethod.Mollie));
+        SubscriptionPayment first = (await _ctx.ReloadPaymentsAsync(org.Id)).Single();
+        _ctx.FakeMollie.SetFakeStatus(first.MolliePaymentId!, "paid");
+        await _ctx.CreateSyncService(_billing).SyncAsync(first.MolliePaymentId!);
+        _ctx.Db.ChangeTracker.Clear();
+        await _sut.ProcessPendingInvoicesAsync();
+        _ctx.Db.ChangeTracker.Clear();
+
+        int synced = await _sut.SyncPaidInvoicesAsync();
+
+        synced.Should().Be(0);
+        _ctx.Invoicing.Verify(i => i.MarkInvoicePaidAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task SyncPaidInvoices_StillOpen_DoesNothing()
+    {
+        await BankTransferYearlyAsync();
+        await _sut.ProcessPendingInvoicesAsync();
+        _ctx.Db.ChangeTracker.Clear();
+
+        int synced = await _sut.SyncPaidInvoicesAsync();
+
+        synced.Should().Be(0);
+        _ctx.Invoicing.Verify(i => i.MarkInvoicePaidAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task SyncPaidInvoices_Failure_RecordsErrorAndRetriesAfterBackoff()
+    {
+        _ctx.Invoicing.Setup(i => i.MarkInvoicePaidAsync("inv_1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<bool>.Fail(new Error(ErrorCodes.ExternalService, "Billit plat")));
+        SubscriptionPayment payment = await InvoicedThenPaidBankTransferAsync();
+
+        int synced = await _sut.SyncPaidInvoicesAsync();
+
+        synced.Should().Be(0);
+        SubscriptionPayment failed = await ReloadAsync(payment.Id);
+        failed.InvoiceMarkedPaid.Should().BeFalse();
+        failed.InvoicePaidSyncAttempts.Should().Be(1);
+        failed.InvoiceLastError.Should().Be("Billit plat");
+        failed.InvoiceStatus.Should().Be(InvoiceStatus.Created, "de factuur zelf bestaat al");
+
+        await _sut.SyncPaidInvoicesAsync();
+        _ctx.Invoicing.Verify(i => i.MarkInvoicePaidAsync("inv_1", It.IsAny<CancellationToken>()), Times.Once);
+
+        _ctx.Time.Advance(TimeSpan.FromMinutes(5));
+        _ctx.Invoicing.Setup(i => i.MarkInvoicePaidAsync("inv_1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<bool>.Ok(true));
+        _ctx.Db.ChangeTracker.Clear();
+        await _sut.SyncPaidInvoicesAsync();
+
+        SubscriptionPayment recovered = await ReloadAsync(payment.Id);
+        recovered.InvoiceMarkedPaid.Should().BeTrue();
+        recovered.InvoiceLastError.Should().BeNull();
+    }
+
+    [Test]
+    public async Task SyncPaidInvoices_MaxAttemptsReached_NotifiesSuperAdminOnceAndStops()
+    {
+        _ctx.Invoicing.Setup(i => i.MarkInvoicePaidAsync("inv_1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<bool>.Fail(new Error(ErrorCodes.ExternalService, "Billit plat")));
+        await InvoicedThenPaidBankTransferAsync();
+
+        for (int attempt = 0; attempt < BillingMaintenanceService.MaxInvoiceAttempts + 2; attempt++)
+        {
+            _ctx.Time.Advance(TimeSpan.FromDays(1));
+            _ctx.Db.ChangeTracker.Clear();
+            await _sut.SyncPaidInvoicesAsync();
+        }
+
+        _ctx.Invoicing.Verify(i => i.MarkInvoicePaidAsync("inv_1", It.IsAny<CancellationToken>()),
+            Times.Exactly(BillingMaintenanceService.MaxInvoiceAttempts));
+        _ctx.Email.Verify(e => e.SendBillingSuperAdminNoticeAsync(BillingTestContext.SuperAdminEmail,
+            It.Is<string>(s => s.Contains("betaald")), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Test]

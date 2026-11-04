@@ -58,6 +58,10 @@ public sealed class BillingWorker(
             int created = await service.ProcessPendingInvoicesAsync(ct);
             if (created > 0)
                 logger.LogInformation("{Count} factuur/facturen aangemaakt", created);
+
+            int synced = await service.SyncPaidInvoicesAsync(ct);
+            if (synced > 0)
+                logger.LogInformation("{Count} factuur/facturen als betaald doorgegeven", synced);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

@@ -62,6 +62,22 @@ public class BillitInvoicingService(
             orderId.ToString(CultureInfo.InvariantCulture), order.Value!.OrderNumber!, null));
     }
 
+    public async Task<Result<bool>> MarkInvoicePaidAsync(string invoiceId, CancellationToken ct = default)
+    {
+        if (!long.TryParse(invoiceId, NumberStyles.None, CultureInfo.InvariantCulture, out long orderId))
+            return Result<bool>.Fail(new Error(ErrorCodes.Validation, $"Ongeldig Billit-factuurnummer: {invoiceId}"));
+
+        return await MarkOrderPaidAsync(orderId, ct);
+    }
+
+    private async Task<Result<bool>> MarkOrderPaidAsync(long orderId, CancellationToken ct)
+    {
+        BillitResponse response = await SendAsync(HttpMethod.Patch, OrderPath(orderId), new { Paid = true }, null, ct);
+        return response.IsSuccess
+            ? Result<bool>.Ok(true)
+            : Result<bool>.Fail(Failure("Kon de factuur niet als betaald markeren bij Billit", response));
+    }
+
     private async Task<Result<long>> CreateOrFindOrderAsync(InvoiceRequest request, string reference, CancellationToken ct)
     {
         BillitResponse response = await SendAsync(HttpMethod.Post, OrdersPath, BuildOrder(request, reference), reference, ct);
@@ -102,9 +118,9 @@ public class BillitInvoicingService(
     {
         if (request.IsPaid && !order.Paid)
         {
-            BillitResponse paid = await SendAsync(HttpMethod.Patch, OrderPath(orderId), new { Paid = true }, null, ct);
+            Result<bool> paid = await MarkOrderPaidAsync(orderId, ct);
             if (!paid.IsSuccess)
-                return Result<bool>.Fail(Failure("Kon de factuur niet als betaald markeren bij Billit", paid));
+                return paid;
         }
 
         if (order.IsSent)

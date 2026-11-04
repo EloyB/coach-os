@@ -356,6 +356,40 @@ public class BillitInvoicingServiceTests
     }
 
     [Test]
+    public async Task MarkInvoicePaid_PatchesOrder()
+    {
+        RecordingHttpHandler handler = new FakeBillit().Handler();
+
+        Result<bool> result = await Create(handler).MarkInvoicePaidAsync("3522673");
+
+        result.IsSuccess.Should().BeTrue();
+        using JsonDocument patch = JsonDocument.Parse(BodyOf(handler, HttpMethod.Patch, $"{OrdersPath}/3522673"));
+        patch.RootElement.GetProperty("Paid").GetBoolean().Should().BeTrue();
+    }
+
+    [Test]
+    public async Task MarkInvoicePaid_BillitRejects_ReturnsFailure()
+    {
+        RecordingHttpHandler handler = new(_ => Respond(HttpStatusCode.BadRequest, """{"errors":[{"Code":"Nope"}]}"""));
+
+        Result<bool> result = await Create(handler).MarkInvoicePaidAsync("3522673");
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Single().Message.Should().Contain("Nope");
+    }
+
+    [Test]
+    public async Task MarkInvoicePaid_InvoiceIdNotNumeric_FailsWithoutCallingBillit()
+    {
+        RecordingHttpHandler handler = new FakeBillit().Handler();
+
+        Result<bool> result = await Create(handler).MarkInvoicePaidAsync("fake_123");
+
+        result.IsSuccess.Should().BeFalse();
+        handler.Requests.Should().BeEmpty();
+    }
+
+    [Test]
     public async Task CreateInvoice_NetworkFailure_ReturnsFailureInsteadOfThrowing()
     {
         RecordingHttpHandler handler = new(_ => throw new HttpRequestException("geen netwerk"));
