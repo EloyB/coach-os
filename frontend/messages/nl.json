@@ -424,6 +424,8 @@
     "paymentCopyMollieId": "Mollie-referentie kopiëren"
   },
   "formBuilder": {
+    "privacyWarningTitle": "Let op met medische vragen",
+    "privacyWarningDescription": "Medische vragen zijn niet toegelaten, behalve vragen naar allergieën of aandachtspunten voor de veiligheid van deelnemers. De club is verantwoordelijk voor de vragen die ze stelt en de gegevens die ze verzamelt.",
     "title": "Inschrijfformulier",
     "predefined_fields": "Vaste velden",
     "custom_fields": "Aangepaste velden",
