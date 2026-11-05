@@ -130,6 +130,7 @@ public static class DependencyInjection
         services.AddScoped<ISuperAdminService, SuperAdminService>();
         services.AddHostedService<SuperAdminBootstrapHostedService>();
         services.AddScoped<ITrainerService, TrainerService>();
+        services.AddScoped<CoachOS.Application.Privacy.IPlayerErasureService, CoachOS.Infrastructure.Privacy.PlayerErasureService>();
         services.AddScoped<IUserLookupService, UserLookupService>();
         services.AddSingleton<IMjmlTemplateRenderer, MjmlTemplateRenderer>();
         services.AddScoped<IEmailService, EmailService>();
@@ -167,6 +168,11 @@ public static class DependencyInjection
         services.AddScoped<ICampRepository, CampRepository>();
         services.AddScoped<ICampEnrollmentRepository, CampEnrollmentRepository>();
         services.AddScoped<ICampEnrollmentFormRepository, CampEnrollmentFormRepository>();
+
+        services.Configure<CoachOS.Infrastructure.Privacy.PlayerRetentionOptions>(
+            configuration.GetSection(CoachOS.Infrastructure.Privacy.PlayerRetentionOptions.Section));
+        services.AddScoped<CoachOS.Infrastructure.Privacy.PlayerRetentionPreview>();
+        services.AddHostedService<CoachOS.Infrastructure.Privacy.PlayerRetentionWorker>();
 
         return services;
     }

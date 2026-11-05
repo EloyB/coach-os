@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
@@ -73,6 +75,7 @@ export function EnrollmentDetailDialog({
   onMarkGroupPaid?: () => void;
 }) {
   const t = useTranslations("enrollmentDetail");
+  const tPrivacy = useTranslations("playerErasure");
 
   const { data: prefsData, isLoading: prefsLoading } = useQuery({
     queryKey: ["enrollmentPrefs", seriesId],
@@ -154,6 +157,7 @@ export function EnrollmentDetailDialog({
             />
           </DialogTitle>
         </DialogHeader>
+          {canEdit && <Link className="text-sm text-tennis-green underline" href={`/dashboard/privacy?kind=enrollments&id=${enrollment.id}`}>{tPrivacy("link")}</Link>}
 
         {/* Tab-balk */}
         <div role="tablist" className="flex gap-1 border-b border-gray-100">
