@@ -5,9 +5,7 @@ let started = false;
 export async function startSubmissionMaintenance(): Promise<void> {
   if (started) return;
   started = true;
-  if (!process.env.WEBSITE_LAUNCH_DATE) {
-    console.warn("[submissions] WEBSITE_LAUNCH_DATE ontbreekt: zesmaandenlimiet wachtlijst nog niet geactiveerd; bevestig de lanceringsdatum.");
-  }
+
   const clean = async () => {
     try {
       await cleanupSubmissions();

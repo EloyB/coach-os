@@ -6,12 +6,24 @@ import path from "node:path";
 const originalCwd = process.cwd();
 let directory;
 let contact;
+let backend;
+let backendStatus = 200;
+let received;
+const originalApi = process.env.WEBSITE_API_URL;
 beforeAll(async () => {
   directory = await mkdtemp(path.join(tmpdir(), "coachos-264-"));
   process.chdir(directory);
   contact = await import("../app/api/contact/route.ts");
+  backend = Bun.serve({ hostname: "127.0.0.1", port: 0, async fetch(req) {
+    received = await req.json();
+    return Response.json({ ok: true }, { status: backendStatus });
+  } });
+  process.env.WEBSITE_API_URL = `http://127.0.0.1:${backend.port}/api`;
 });
 afterAll(async () => {
+  backend?.stop(true);
+  if (originalApi === undefined) delete process.env.WEBSITE_API_URL;
+  else process.env.WEBSITE_API_URL = originalApi;
   process.chdir(originalCwd);
   await rm(directory, { recursive: true, force: true });
 });
@@ -58,19 +70,18 @@ test("contact retention removes only entries older than twelve calendar months",
   expect((await records("contact")).map((entry) => entry.email)).toEqual(["recent@example.test"]);
 });
 
-test("waitlist registration omits IP and duplicate registration never reveals an existing unsubscribe link", async () => {
+test("waitlist registration uses backend without IP or public capability and no new JSON records", async () => {
   const waitlist = await import("../app/api/waitlist/route.ts");
   await seed("waitlist", []);
   const register = (email) => waitlist.POST(new Request("http://localhost/api/waitlist", { method: "POST", headers: { "content-type": "application/json", "x-forwarded-for": "192.0.2.99" }, body: JSON.stringify({ email, role: "club" }) }));
   const first = await register("owner@example.test");
   const result = await first.json();
   expect(first.status).toBe(200);
-  expect(result.unsubscribeUrl).toMatch(/^\/uitschrijven#[a-f0-9]{64}$/);
+  expect(result).toEqual({ ok: true });
+  expect(received).toEqual({ email: "owner@example.test", role: "club" });
   expect(await (await register("OWNER@example.test")).json()).toEqual({ ok: true });
   const saved = await records("waitlist");
-  expect(saved).toHaveLength(1);
-  expect(saved[0]).not.toHaveProperty("ip");
-  expect(JSON.stringify(saved)).not.toContain(result.unsubscribeUrl.split("#")[1]);
+  expect(saved).toHaveLength(0);
 });
 
 test("unsubscribe requires explicit POST capability and removes only its owner, idempotently", async () => {
@@ -176,13 +187,13 @@ test("invalid supplied launch date fails closed rather than guessing a date", as
 
 test("waitlist API reports closure instead of acknowledging a discarded registration", async () => {
   const waitlist = await import("../app/api/waitlist/route.ts");
-  process.env.WEBSITE_LAUNCH_DATE = "2020-01-01";
+  backendStatus = 410;
   try {
     const response = await waitlist.POST(new Request("http://localhost/api/waitlist", {
       method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: "late@example.test" }),
     }));
     expect(response.status).toBe(410);
-  } finally { delete process.env.WEBSITE_LAUNCH_DATE; }
+  } finally { backendStatus = 200; }
 });
 
 test("Next instrumentation cleans at Node startup but never during a build or edge runtime", async () => {
@@ -201,6 +212,17 @@ test("Next instrumentation cleans at Node startup but never during a build or ed
     expect(await child.exited, errors).toBe(0);
     expect(await records("contact")).toHaveLength(shouldClean ? 0 : 1);
   }
+});
+
+test("approved launch applies to legacy cleanup without new required configuration", async () => {
+  const store = await import("../lib/submissions.ts");
+  delete process.env.WEBSITE_LAUNCH_DATE;
+  setSystemTime(new Date("2027-05-15T00:00:00.000Z"));
+  try {
+    await seed("waitlist", [{ email: "legacy@example.test", submittedAt: "2026-11-05T00:00:00.000Z" }]);
+    await store.cleanupSubmissions();
+    expect(await records("waitlist")).toEqual([]);
+  } finally { setSystemTime(); }
 });
 
 const file = (type) => path.join(directory, "data", `${type}-submissions.json`);

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { waitlistSchema } from "@/lib/schemas";
-import { appendSubmission, isWaitlistClosed } from "@/lib/submissions";
+import { postWaitlist } from "@/lib/waitlist-api";
 
 export const runtime = "nodejs";
 
@@ -21,20 +21,5 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  const clean = { ...parsed.data };
-  delete clean.website;
-  const unsubscribeUrl = await appendSubmission("waitlist", {
-    ...clean,
-    submittedAt: new Date().toISOString(),
-  });
-
-  if (isWaitlistClosed()) {
-    return NextResponse.json({ error: "waitlist_closed" }, { status: 410, headers: { "Cache-Control": "no-store" } });
-  }
-
-  // Only the initial registration receives its new capability; duplicates do
-  // not reveal or rotate an existing subscriber's token.
-  return NextResponse.json({ ok: true, ...(unsubscribeUrl ? { unsubscribeUrl } : {}) }, {
-    headers: { "Cache-Control": "no-store" },
-  });
+  return postWaitlist("", { email: parsed.data.email, ...(parsed.data.role ? { role: parsed.data.role } : {}) });
 }

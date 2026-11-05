@@ -217,6 +217,15 @@ public static class ConfigurationExtensions
                             QueueLimit = 0,
                         }));
 
+                // Global mail-volume cap across all IPs on this API instance. The
+                // global per-IP limiter also applies. Never persist IP addresses.
+                options.AddFixedWindowLimiter("website-waitlist", limiter =>
+                {
+                    limiter.PermitLimit = 10;
+                    limiter.Window = TimeSpan.FromHours(1);
+                    limiter.QueueLimit = 0;
+                });
+
                 options.AddFixedWindowLimiter("public", limiter =>
                 {
                     limiter.PermitLimit = 30;

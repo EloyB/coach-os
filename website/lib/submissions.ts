@@ -16,8 +16,8 @@ function validate(records: unknown): asserts records is Submission[] {
 }
 
 function sixMonthDeadline(): number | undefined {
-  const launch = process.env.WEBSITE_LAUNCH_DATE;
-  if (!launch) return undefined; // Launch is a business decision, never inferred from a deploy.
+  // Explicitly approved by Lorenz; not inferred from a deployment.
+  const launch = process.env.WEBSITE_LAUNCH_DATE || "2026-11-15";
   const date = new Date(`${launch}T00:00:00.000Z`);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(launch) || !Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== launch) {
     throw new Error("WEBSITE_LAUNCH_DATE must be a valid YYYY-MM-DD date");

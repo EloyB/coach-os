@@ -30,6 +30,7 @@ public static class DependencyInjection
     {
         services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
         services.AddScoped<ApplicationMapper>();
+        services.AddScoped<WebsiteWaitlist.IWebsiteWaitlistService, WebsiteWaitlist.WebsiteWaitlistService>();
 
         services.AddScoped<ICampService, CampService>();
         services.AddScoped<ICampEnrollmentService, CampEnrollmentService>();
