@@ -113,6 +113,7 @@ function ClubRow({ club }: { club: TennisClubDto }) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SettingsPage() {
+  const privacy = useTranslations("organizationPrivacy");
   const t = useTranslations("tennisClubs");
   const queryClient = useQueryClient();
 
@@ -156,6 +157,7 @@ export default function SettingsPage() {
         </p>
       </div>
 
+      <Link href="/dashboard/offboarding" className="mb-6 inline-block text-sm font-medium underline">{privacy("exportTitle")}</Link>
       {/* Abonnement */}
       <SubscriptionLinkCard />
 

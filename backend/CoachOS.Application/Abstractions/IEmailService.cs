@@ -3,6 +3,8 @@ namespace CoachOS.Application.Abstractions;
 
 public interface IEmailService
 {
+    Task SendOrganizationOffboardingNoticeAsync(string toEmail, string organizationName, DateOnly endedOn, bool reminder, CancellationToken ct = default);
+
     Task SendTrainerInviteAsync(string toEmail, string firstName, string inviteUrl, CancellationToken ct = default);
 
     Task SendAdminInviteAsync(string toEmail, string firstName, string organizationName, string inviteUrl, CancellationToken ct = default);

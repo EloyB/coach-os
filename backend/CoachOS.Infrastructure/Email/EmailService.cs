@@ -494,6 +494,15 @@ public class EmailService(
         string toEmail, string organizationName, string subscribeUrl, CancellationToken ct = default)
         => SendBillingNoticeAsync(toEmail, organizationName, BillingEmails.Invitation(), subscribeUrl, ct);
 
+    public Task SendOrganizationOffboardingNoticeAsync(string toEmail, string organizationName, DateOnly endedOn, bool reminder, CancellationToken ct = default)
+    {
+        string export = endedOn.AddDays(30).ToString("dd/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture);
+        string deletion = endedOn.AddDays(90).ToString("dd/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture);
+        string subject = reminder ? "Herinnering: geplande verwijdering van clubgegevens" : "Einde clubabonnement: exporteer je clubgegevens";
+        string body = $"De betaalde periode of proef van je club eindigt op {endedOn:dd/MM/yyyy}. Clubbeheerders kunnen tot en met {export} gegevens bekijken en beveiligd exporteren. Daarna sluit de normale clubtoegang. De verwijderdatum is {deletion}, behalve afzonderlijk verplicht te bewaren gegevens of expliciete blokkades die beoordeling vereisen. Een geldige heractivatie vóór uitvoering stopt het verwijdertraject. Neem bij vragen contact op met info@coach-os.be. Dit is een noodzakelijke clubmelding, geen marketingmail.";
+        return SendBillingNoticeAsync(toEmail, organizationName, new BillingEmailContent(subject, subject, body, "Clubexport openen"), "https://app.coach-os.be/dashboard/offboarding", ct);
+    }
+
     public Task SendBillingSuperAdminNoticeAsync(
         string toEmail, string subject, string body, string? link, CancellationToken ct = default)
         => SendBillingNoticeAsync(toEmail, "superadmin",

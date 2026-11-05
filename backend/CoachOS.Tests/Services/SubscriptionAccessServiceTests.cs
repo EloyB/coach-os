@@ -44,6 +44,31 @@ public class SubscriptionAccessServiceTests
         TrialEndsAt = trialEndsAt
     };
 
+    [TestCase(1, "ReadOnly")]
+    [TestCase(30, "ReadOnly")]
+    [TestCase(31, "Closed")]
+    [TestCase(90, "Closed")]
+    public async Task EndedPaidPeriodHasThirtyDayReadExportWindowNotFromCancellation(int days, string expected)
+    {
+        ArrangeSubscription(new Subscription
+        {
+            OrganizationId = OrgId,
+            Status = SubscriptionStatus.Cancelled,
+            CurrentPeriodEnd = Today.AddDays(-days),
+            CancelAt = Today.AddDays(-days)
+        });
+        Result<SubscriptionStatusDto> result = await CreateSut(enforceTrialExpiry: true).GetStatusAsync(OrgId);
+        result.Value!.AccessLevel.Should().Be(expected);
+    }
+
+    [Test]
+    public async Task ExpiredTrialAfterDayThirtyClosesInsteadOfKeepingReadAccessForever()
+    {
+        ArrangeSubscription(Trial(Today.AddDays(-31)));
+        Result<SubscriptionStatusDto> result = await CreateSut(enforceTrialExpiry: true).GetStatusAsync(OrgId);
+        result.Value!.AccessLevel.Should().Be("Closed");
+    }
+
     [Test]
     public async Task GetStatusAsync_NoSubscription_ReturnsLegacyWithFullAccess()
     {

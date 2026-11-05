@@ -168,6 +168,17 @@ public static class DependencyInjection
         services.AddScoped<ICampEnrollmentRepository, CampEnrollmentRepository>();
         services.AddScoped<ICampEnrollmentFormRepository, CampEnrollmentFormRepository>();
 
+        services.Configure<CoachOS.Infrastructure.Privacy.OrganizationRetentionOptions>(
+            configuration.GetSection(CoachOS.Infrastructure.Privacy.OrganizationRetentionOptions.Section));
+        services.AddScoped<CoachOS.Infrastructure.Privacy.OrganizationRetentionPreview>();
+        services.AddScoped<CoachOS.Application.Privacy.IOrganizationDataExport, CoachOS.Infrastructure.Privacy.OrganizationDataExport>();
+        services.AddScoped<CoachOS.Application.Privacy.IOrganizationErasureService, CoachOS.Infrastructure.Privacy.OrganizationErasureService>();
+        services.AddScoped<CoachOS.Infrastructure.Privacy.OrganizationOffboardingNotices>();
+        services.AddScoped<CoachOS.Infrastructure.Privacy.OrganizationOffboardingDelivery>();
+        services.AddScoped<CoachOS.Infrastructure.Privacy.OrganizationLifecycleMaintenance>();
+        services.AddScoped<CoachOS.Application.Subscriptions.IOrganizationPublicScopeResolver, CoachOS.Infrastructure.Privacy.OrganizationPublicScopeResolver>();
+        services.AddHostedService<CoachOS.Infrastructure.Privacy.OrganizationRetentionWorker>();
+
         return services;
     }
 }

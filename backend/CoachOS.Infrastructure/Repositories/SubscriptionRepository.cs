@@ -52,6 +52,7 @@ public class SubscriptionRepository(ApplicationDbContext context) : ISubscriptio
     public async Task<Subscription?> GetByOrganizationReadOnlyAsync(Guid organizationId, CancellationToken ct = default)
     {
         return await context.Subscriptions
+            .IgnoreQueryFilters() // explicit target organization, also for anonymous public-resource gates
             .AsNoTracking()
             .FirstOrDefaultAsync(s => s.OrganizationId == organizationId, ct);
     }

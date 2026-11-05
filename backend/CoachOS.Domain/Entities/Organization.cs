@@ -15,6 +15,8 @@ public class Organization : BaseEntity
     public string? PostalCode { get; set; }
     public string Country { get; set; } = "BE";
     public bool IsActive { get; set; } = true;
+    /// <summary>Explicit unresolved privacy/dispute hold; never bypassed by early erasure.</summary>
+    public bool PrivacyHold { get; set; }
     public string? LogoUrl { get; set; }
 
     /// <summary>

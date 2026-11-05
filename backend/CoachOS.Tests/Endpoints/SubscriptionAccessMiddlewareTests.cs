@@ -18,7 +18,7 @@ public class SubscriptionAccessMiddlewareTests
     private static readonly Guid OrgId = Guid.NewGuid();
 
     private static async Task<(int Status, bool NextCalled)> InvokeAsync(
-        string method, string path, string status, string accessLevel)
+        string method, string path, string status, string accessLevel, string? role = "Admin", bool anonymous = false)
     {
         Mock<ISubscriptionAccessService> access = new();
         access.Setup(a => a.GetStatusAsync(OrgId, It.IsAny<CancellationToken>()))
@@ -26,11 +26,14 @@ public class SubscriptionAccessMiddlewareTests
 
         ServiceCollection services = new();
         services.AddSingleton(access.Object);
+        Mock<IOrganizationPublicScopeResolver> resolver = new();
+        resolver.Setup(x => x.ResolveAsync(It.Is<string>(r => new[] { "lessonseries", "camps", "camp-enrollments", "payments", "confirmation", "invitations" }.Contains(r)), It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(OrgId);
+        services.AddSingleton(resolver.Object);
 
         DefaultHttpContext context = new()
         {
             RequestServices = services.BuildServiceProvider(),
-            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(CoachOsClaims.OrganizationId, OrgId.ToString())], "test")),
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(CoachOsClaims.OrganizationId, OrgId.ToString()), new Claim(ClaimTypes.Role, role ?? "Trainer")], anonymous ? null : "test")),
         };
         context.Request.Method = method;
         context.Request.Path = path;
@@ -44,6 +47,39 @@ public class SubscriptionAccessMiddlewareTests
 
         await middleware.InvokeAsync(context);
         return (context.Response.StatusCode, nextCalled);
+    }
+
+    [Test]
+    public async Task ReadOnlyClubOnlyAllowsClubAdminReadsNotTrainerReads()
+    {
+        (int status, bool nextCalled) = await InvokeAsync("GET", "/api/tennisclubs", "Cancelled", "ReadOnly", "Trainer");
+        status.Should().Be(402); nextCalled.Should().BeFalse();
+    }
+
+    [TestCase("POST", "/api/public/lessonseries/11111111-1111-4111-8111-111111111111/enroll")]
+    [TestCase("POST", "/api/public/camps/11111111-1111-4111-8111-111111111111/enroll")]
+    [TestCase("GET", "/api/public/confirmation/synthetic-token")]
+    [TestCase("POST", "/api/PUBLIC/CAMPS/11111111-1111-4111-8111-111111111111/ENROLL")]
+    [TestCase("GET", "/api/PUBLIC/CONFIRMATION/CaseSensitiveSyntheticToken")]
+    public async Task AnonymousPublicScopeCannotBypassEndedOrganizationGate(string method, string path)
+    {
+        (int status, bool nextCalled) = await InvokeAsync(method, path, "Cancelled", "ReadOnly", anonymous: true);
+        status.Should().Be(402); nextCalled.Should().BeFalse();
+    }
+
+    [TestCase("GET")]
+    [TestCase("POST")]
+    public async Task ClosedClubCannotReadOrWriteNormalData(string method)
+    {
+        (int status, bool nextCalled) = await InvokeAsync(method, "/api/tennisclubs", "Cancelled", "Closed");
+        status.Should().Be(402); nextCalled.Should().BeFalse();
+    }
+
+    [Test]
+    public async Task SimilarLookingBillingPathDoesNotBypassReadOnlyGate()
+    {
+        (int status, bool nextCalled) = await InvokeAsync("POST", "/api/billing-unsafe", "Cancelled", "ReadOnly");
+        status.Should().Be(402); nextCalled.Should().BeFalse();
     }
 
     [Test]

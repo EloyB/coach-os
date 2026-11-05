@@ -18,6 +18,19 @@ public class SubscriptionAccessService(
     {
         Subscription? subscription = await subscriptionRepo.GetByOrganizationReadOnlyAsync(organizationId, ct);
 
+        DateOnly today = timeProvider.GetBrusselsToday();
+        DateOnly? ended = CoachOS.Domain.Subscriptions.OrganizationRetentionClock.EndedOn(subscription);
+        if (billingOptions.Value.EnforceTrialExpiry && ended is not null && today > ended)
+        {
+            SubscriptionAccessLevel level = today > ended.Value.AddDays(30)
+                ? SubscriptionAccessLevel.Closed : SubscriptionAccessLevel.ReadOnly;
+            return Result<SubscriptionStatusDto>.Ok(new SubscriptionStatusDto(
+                Status: subscription!.Status.ToString(), AccessLevel: level.ToString(),
+                TrialEndsAt: subscription.TrialEndsAt, TrialDaysRemaining: 0,
+                IsTrialExpired: subscription.Status == SubscriptionStatus.Trialing,
+                CurrentPeriodEnd: subscription.CurrentPeriodEnd, CancelAt: subscription.CancelAt));
+        }
+
         // Geen abonnement = organisatie van vóór het abonnementsmodel. Behandelen als legacy
         // zodat een ontbrekende rij nooit een bestaande klant kan blokkeren.
         if (subscription is null || subscription.Status != SubscriptionStatus.Trialing || subscription.TrialEndsAt is null)
@@ -39,7 +52,6 @@ public class SubscriptionAccessService(
                 CancelAt: subscription?.CancelAt));
         }
 
-        DateOnly today = timeProvider.GetBrusselsToday();
         DateOnly trialEndsAt = subscription.TrialEndsAt.Value;
         int daysRemaining = trialEndsAt.DayNumber - today.DayNumber;
         bool isExpired = daysRemaining < 0;
