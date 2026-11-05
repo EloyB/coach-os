@@ -1,0 +1,254 @@
+{
+  "snapshot_utc": "2026-11-05T05:45:19.402807+00:00",
+  "base_commit": "ab03c68d5b44afbba73f42fe5314c67878406ab3",
+  "publication_authorized": false,
+  "concept_warnings_preserved": true,
+  "source_sha256": {
+    "docs/legal/algemene-voorwaarden-clubs.md": "1879639cf1471419462ca177442eeaa12996543af1a3466d02053d1261218e2d",
+    "docs/legal/algemene-voorwaarden-inschrijving.md": "c5d24a511a856e5a39cefcdd42b75840ec5a300bf2c3898751143ea71bdd0d79",
+    "docs/legal/privacyverklaring.md": "1eecb124006f6cb613eb27036d5d7df0809bd3c87af94c0eccd4b8ace265e905",
+    "docs/legal/verwerkersovereenkomst.md": "a7fbf702a2e38f307306a888df38756226147ca84f682a2b4dade4b501007cf3"
+  },
+  "pull_request_snapshot": [
+    {
+      "number": 287,
+      "url": "https://github.com/EloyB/coach-os/pull/287",
+      "state": "open",
+      "merged": false,
+      "draft": false,
+      "sha": "a7cce1999fb39270778a6af6e8928c2c6cb92095",
+      "checks": []
+    },
+    {
+      "number": 288,
+      "url": "https://github.com/EloyB/coach-os/pull/288",
+      "state": "open",
+      "merged": false,
+      "draft": false,
+      "sha": "7475386b79f933e85dea91a2c96e9aded8a29d97",
+      "checks": [
+        [
+          "typecheck-test-build",
+          "completed",
+          "success"
+        ]
+      ]
+    },
+    {
+      "number": 289,
+      "url": "https://github.com/EloyB/coach-os/pull/289",
+      "state": "open",
+      "merged": false,
+      "draft": true,
+      "sha": "a5a231ef13fb76437a1a90eb31d2e8188cb909fb",
+      "checks": []
+    },
+    {
+      "number": 290,
+      "url": "https://github.com/EloyB/coach-os/pull/290",
+      "state": "open",
+      "merged": false,
+      "draft": true,
+      "sha": "08f9c3c0202e6687252e48453eebacf34369bb18",
+      "checks": [
+        [
+          "build-and-test",
+          "completed",
+          "success"
+        ]
+      ]
+    },
+    {
+      "number": 291,
+      "url": "https://github.com/EloyB/coach-os/pull/291",
+      "state": "open",
+      "merged": false,
+      "draft": true,
+      "sha": "0a01ca32da2ca328ae0f8157e6684cb1136403a2",
+      "checks": [
+        [
+          "build-and-test",
+          "completed",
+          "success"
+        ]
+      ]
+    },
+    {
+      "number": 292,
+      "url": "https://github.com/EloyB/coach-os/pull/292",
+      "state": "open",
+      "merged": false,
+      "draft": true,
+      "sha": "a029e33f8d36b0e23bf748d1fff8022a5491c714",
+      "checks": [
+        [
+          "apply",
+          "completed",
+          "skipped"
+        ],
+        [
+          "plan",
+          "completed",
+          "success"
+        ]
+      ]
+    },
+    {
+      "number": 293,
+      "url": "https://github.com/EloyB/coach-os/pull/293",
+      "state": "open",
+      "merged": false,
+      "draft": true,
+      "sha": "c81c3975ede12909b451dafffa848884efc10bf0",
+      "checks": [
+        [
+          "apply",
+          "completed",
+          "skipped"
+        ],
+        [
+          "plan",
+          "completed",
+          "success"
+        ]
+      ]
+    }
+  ],
+  "occurrences": [
+    {
+      "source": "docs/legal/algemene-voorwaarden-clubs.md",
+      "occurrence": 1,
+      "line": 7,
+      "marker": "[TE BOUWEN]",
+      "classification": "tekstcorrectie",
+      "assessment": "Verklarende legenda, geen losse feature. Conceptwaarschuwing en marker behouden; niet na code-PR automatisch verwijderen.",
+      "pull_requests": [],
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/algemene-voorwaarden-clubs.md",
+      "occurrence": 2,
+      "line": 104,
+      "marker": "[TE BOUWEN: waarschuwing in de formulierbouwer bij zo'n vraag]",
+      "classification": "gebouwd",
+      "assessment": "Waarschuwing formulierbouwer gebouwd en getest in open PR #288 voor #263; niet gemergd of als productiegedrag geverifieerd. Juridische uitzondering blijft ter review.",
+      "pull_requests": [
+        "https://github.com/EloyB/coach-os/pull/288"
+      ],
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/privacyverklaring.md",
+      "occurrence": 1,
+      "line": 6,
+      "marker": "[TE BOUWEN]",
+      "classification": "tekstcorrectie",
+      "assessment": "Verklarende legenda. Conceptstatus en advocaatcontrole behouden, geen publicatie of ingangsdatum.",
+      "pull_requests": [],
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/privacyverklaring.md",
+      "occurrence": 2,
+      "line": 26,
+      "marker": "[TE BOUWEN: formulierdata worden nu zonder einddatum bewaard, met IP-adres; IP niet meer opslaan + automatisch verwijderen na 12 maanden]",
+      "classification": "onbeslist",
+      "assessment": "IP-scrubbing en twaalf kalendermaandenretentie in open draft #289. submittedAt versus laatste contact, persistente opslag/back-up en live opschoning nog onbeslist/niet geverifieerd. Niet volledig gereed.",
+      "pull_requests": [
+        "https://github.com/EloyB/coach-os/pull/289"
+      ],
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/privacyverklaring.md",
+      "occurrence": 3,
+      "line": 27,
+      "marker": "[TE BOUWEN, zie hierboven]",
+      "classification": "onbeslist",
+      "assessment": "Capability met expliciete POST en getoonde link gebouwd in #289; officiële lanceringsdatum ontbreekt, geen mailbezorging voor bestaande abonnees, volume/back-upuitrol niet bevestigd. Zesmaandenregel dus nog geen onvoorwaardelijke garantie.",
+      "pull_requests": [
+        "https://github.com/EloyB/coach-os/pull/289"
+      ],
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/verwerkersovereenkomst.md",
+      "occurrence": 1,
+      "line": 6,
+      "marker": "[TE BOUWEN]",
+      "classification": "tekstcorrectie",
+      "assessment": "Verklarende legenda binnen conceptwaarschuwing. Advocaatreview en conceptstatus ongewijzigd laten.",
+      "pull_requests": [],
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/verwerkersovereenkomst.md",
+      "occurrence": 2,
+      "line": 137,
+      "marker": "[TE BOUWEN: waarschuwing in de formulierbouwer]",
+      "classification": "gebouwd",
+      "assessment": "Dezelfde geteste waarschuwing #263 in open PR #288. Gebouwd in een branch is niet gemergd, gedeployed of juridisch goedgekeurd.",
+      "pull_requests": [
+        "https://github.com/EloyB/coach-os/pull/288"
+      ],
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/verwerkersovereenkomst.md",
+      "occurrence": 3,
+      "line": 149,
+      "marker": "[TE BOUWEN: de Dienst kan vandaag geen inschrijvingen of spelergegevens verwijderen, en de automatische verwijdering na 24 maanden bestaat nog niet]",
+      "classification": "onbeslist",
+      "assessment": "Alleen opt-in read-only preview voor een beperkte reeksselectie; geen 24-maandsdelete, anonimisering of admin-delete. Boekhouding, gedeelde speleridentiteit, afhankelijke records, globale tokens en outbox vereisen besluit. #261 blijft open.",
+      "pull_requests": [
+        "https://github.com/EloyB/coach-os/pull/290"
+      ],
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/verwerkersovereenkomst.md",
+      "occurrence": 4,
+      "line": 150,
+      "marker": "[TE BOUWEN: er bestaat nog geen proces om een organisatie volledig te verwijderen; tot dat gebouwd is, moet het manueel en gedocumenteerd gebeuren]",
+      "classification": "onbeslist",
+      "assessment": "Opt-in reviewpreview en voorlopige handmatige procedure gebouwd; volledige export, 30/90-dagenlifecycle, notices, financieel archief en echte organisatieverwijdering niet gebouwd. #262 blijft open; procedure is geen deleteautorisatie.",
+      "pull_requests": [
+        "https://github.com/EloyB/coach-os/pull/291"
+      ],
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/verwerkersovereenkomst.md",
+      "occurrence": 5,
+      "line": 189,
+      "marker": "[INVULLEN: bewaartermijn van de back-ups — staat nu op de standaardinstelling van Scaleway; expliciet instellen en hier vermelden]",
+      "classification": "tekstcorrectie",
+      "assessment": "Voorstel dagelijks/14dagen in open #292 en concepttekst expliciet nog te verifiëren. Echte CI-plan: 0 add/1 change/0 destroy, DB-retentie7→14 plus password_wo write-only reviewpunt. Keyringrestore lokaal bewezen, off-host encryptie/scheduler/managed DB-restore niet ingericht. Marker nog niet als actuele garantie invullen.",
+      "pull_requests": [
+        "https://github.com/EloyB/coach-os/pull/292"
+      ],
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/verwerkersovereenkomst.md",
+      "occurrence": 6,
+      "line": 199,
+      "marker": "[TE DOEN: korte interne procedure op papier zetten]",
+      "classification": "onbeslist",
+      "assessment": "Interne datalekprocedure nog niet opgesteld/goedgekeurd in deze batch. Eigenaar, bereikbaarheid, escalatie, meldklok/bewijs en oefening juridisch/organisatorisch vastleggen. Geen bestaande werkende procedure geclaimd.",
+      "pull_requests": [],
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    }
+  ]
+}
