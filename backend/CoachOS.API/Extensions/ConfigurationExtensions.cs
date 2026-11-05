@@ -226,6 +226,14 @@ public static class ConfigurationExtensions
                     limiter.QueueLimit = 0;
                 });
 
+                // Independent contact quota: contact traffic cannot spend mail capacity.
+                options.AddFixedWindowLimiter("website-contact", limiter =>
+                {
+                    limiter.PermitLimit = 10;
+                    limiter.Window = TimeSpan.FromHours(1);
+                    limiter.QueueLimit = 0;
+                });
+
                 options.AddFixedWindowLimiter("public", limiter =>
                 {
                     limiter.PermitLimit = 30;

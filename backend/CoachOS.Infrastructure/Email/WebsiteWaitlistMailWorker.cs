@@ -47,6 +47,7 @@ public sealed class WebsiteWaitlistMailWorker(IServiceScopeFactory scopes, ILogg
         await using Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction transaction = await db.Database.BeginTransactionAsync(ct);
         await db.Database.ExecuteSqlRawAsync($"SELECT pg_advisory_xact_lock({LockId})", ct);
         DateTime now = clock.GetUtcNow().UtcDateTime;
+        await new Repositories.WebsiteContactRepository(db).CleanupAsync(now, ct);
         int expired = await db.WebsiteWaitlistMails.Where(x => x.ExpiresAt <= now).ExecuteDeleteAsync(ct);
         if (expired > 0)
             logger.LogWarning("{Count} undelivered website waitlist mail payloads expired; operator review required", expired);

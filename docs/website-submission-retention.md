@@ -1,66 +1,49 @@
 # Websiteformulierdata en persoonlijke wachtlijstmail (#264 / PR #289)
 
-> **Reviewbare implementatie, niet gemergd of uitgerold.** Geen productiegegevens, mailprovider, back-ups of live configuratie geïnspecteerd. Geen juridische publicatie of complianceclaim. De wachtlijst blijft behouden; toekomstige herwerking staat in #295.
+> Reviewbare code, niet gemergd/uitgerold. Geen live configuratie, persoonsgegevens of back-ups onderzocht. Juridische concepten blijven concepten; geen complianceclaim. Wachtlijst behouden; #295 blijft later werk. Formulieren zijn niet onverwacht openbaar gemount.
 
-## Goedgekeurde keuzes
+## Besloten beleid
 
-- Officiële lancering: **2026-11-15**. Zes kalendermaanden later is **2027-05-15 00:00 UTC**. De backend hanteert deze eindgrens zonder nieuwe vereiste configuratie. Legacy JSON-onderhoud gebruikt dezelfde goedgekeurde standaard; de al bestaande optionele `WEBSITE_LAUNCH_DATE` blijft voor legacybeheer/testfixtures bestaan. Gebruik bij uitrol geen afwijkende legacydatum.
-- Contactformulierinzendingen: verwijderen twaalf kalendermaanden na **ontvangst/submittedAt**, niet na latere mailboxcorrespondentie. Voor mailbox-e-mails is nog geen aparte termijn vastgesteld.
-- Gewenste opslag: benodigde formulierdata via de CoachOS-API naar bestaande PostgreSQL, met dezelfde databaseback-ups; geen website-DBcredentials.
-- Mail eerst: **nieuwe wachtlijstdata gaan nu via API naar PostgreSQL**. Contactdata blijven in deze PR nog in veilige JSON-opslag. Historische migratie is geen automatische startupactie en is hieronder afzonderlijk begrensd.
+- Lancering 2026-11-15; wachtlijsteinde 2027-05-15 00:00 UTC. Backend heeft deze grens zonder nieuwe verplichte configuratie; bestaande optionele WEBSITE_LAUNCH_DATE is alleen voor legacybeheer/testfixtures. Geen afwijkende legacydatum gebruiken bij uitrol.
+- Contactformulier: twaalf kalendermaanden na ontvangst, niet na latere mailboxactiviteit. Gewone info-/demomails: afzonderlijke mailboxrichtlijn twaalf maanden na afhandeling, lopende relatie/afspraken/geschillen apart; geen mailboxautomatisering.
+- Website → specifieke CoachOS-API → bestaande PostgreSQL. Geen brede DBcredentials op website, geen nieuw providerabonnement.
 
-## Nieuwe wachtlijstflow
+## Contactopslag
 
-1. Bestaande websitecomponent/route valideert de inschrijving en honeypot. De formulieren worden **niet openbaar gemount** en bestaande CTA's worden niet naar selfservice omgebouwd.
-2. De serverroute verstuurt uitsluitend e-mail en optionele rol naar `POST /api/website/waitlist`. Server-only `WEBSITE_API_URL` is optioneel; de standaard `http://api:8080/api` past bij de repository-compose. Geen IP- of Authorizationheader wordt doorgestuurd. De website krijgt geen databasegeheimen.
-3. De API valideert opnieuw (maximaal254 tekens, e-mail, rol club/coach/anders). Een globale noodrem staat maximaal10 wachtlijst-/beheerde mailrequests per uur per APIproces toe; de bestaande globale per-IPlimiter geldt daarnaast. Dit is bewust streng, geen gedistribueerde quota-garantie over meerdere APIinstances. Rate-limitstaat is vluchtig, geen opgeslagen IPveld.
-4. Eén SaveChanges-transactie maakt de unieke genormaliseerde inschrijving en mailtaak. Concurrerende duplicaten maken hooguit één van beide. Nieuw en duplicaat geven alleen `{ok:true}` terug: geen bestaand of nieuw publiek token, geen publiek resend, geen arbitrary recipient/body/URL-mailrelay.
-5. `WebsiteWaitlistEntries` bevat alleen e-mail, optionele rol, auditvelden en SHA-256-capabilityhash. Het is expliciet **platformdata vóór organisatieaanmaak**, niet tenantdata; er wordt geen fictieve OrganizationId aangemaakt en geen bestaande tenantfilter versoepeld.
-6. `WebsiteWaitlistMails` is een afzonderlijke **gevoelige** duurzame payloadtabel. Het ruwe willekeurige token is tijdelijk nodig om dezelfde persoonlijke link te kunnen herbezorgen. Het is niet als versleuteld voorgesteld. De ontvanger staat op de gekoppelde inschrijving. Beperk DB-/back-uptoegang; payloads vallen zolang ze bestaan ook in DBback-ups.
-7. De worker hergebruikt bestaande `IEmailService`, SMTP-configuratie, MJMLrenderer, logo en MIME/plaintext. Vaste template `website-waitlist` met vaste vertrouwde URL `https://coach-os.be/uitschrijven#<64hex>`; de request-Host of gebruikersinvoer bepaalt nooit de link. De mail zegt **‘Verwijder mij van de wachtlijst’** en sluit account-, les- en betaalmails expliciet uit. Die bestaande mailflows/templates zijn niet gewijzigd.
-8. GET opent alleen een bevestigingsscherm; fragmenttoken komt niet in URL/querylogs. Alleen expliciete POST verwijdert de hashmatch plus eventuele pending mailtaak. Andere inschrijvers/accountdata blijven behouden. Herhaalde uitschrijving is idempotent. Oude JSON-capabilities blijven via de websiteroute werken totdat gecontroleerde migratie is afgerond.
+`POST /api/contact` op de website valideert schema en honeypot en proxy't uitsluitend naam, e-mail, bericht en optionele organisatie naar `POST /api/website/contact`. De backend valideert opnieuw, begrenst velden en slaat in WebsiteContactEntries op. De server kiest de ontvangstdatum; een publieke client kan die niet verlengen/vervalsen. Geen IP/honeypot/authheaderopslag, geen e-mailadres in applicatielogs, geen JSONfallback als de API faalt. Upstreamstoringen leveren 503 en geen vals success op. WEBSITE_API_URL is optioneel; standaard http://api:8080/api.
 
-## Bezorging, retry en gevoelige gegevens
+De bestaande platformworker verwijdert ontvangen contactrecords op de twaalfmaandsgrens (UTC/calendar months), onafhankelijk van UpdatedAt. Dit raakt geen mailbox, club, account of factuur. Tijdens APIstilstand vindt geen cleanup plaats; volgende iteratie haalt in. PostgreSQLback-ups omvatten deze records na uitrol; feitelijke cloudbackup/restore blijft operatorverificatie.
 
-- Worker elke2seconden; transactionele PostgreSQL-advisory lock serializeert de specifieke wachtlijstbezorging en uitschrijving tussen APIinstances. SMTPpoging heeft een timeout van20seconden; de lock blijft tijdens de poging vast, zodat een uitschrijfbevestiging niet tegelijk door bezorging wordt ingehaald.
-- Na SMTPacceptatie wordt de mailpayload meteen verwijderd. SMTP is **at-least-once**: crash na acceptatie vóór DBcommit kan dezelfde link nogmaals bezorgen. Geen claim op exactly-once of daadwerkelijke inboxbezorging.
-- Backoff vanaf5seconden, verdubbelend, maximaal1uur; maximaal8 automatische pogingen. Daarna wordt het ruwe token gewist en blijft de mislukte metadata tot de payloadtermijn beschikbaar voor operatoronderzoek.
-- Payloads verlopen uiterlijk7dagen na aanmaak of eerder bij de wachtlijsteindgrens. Verlopen, niet-bezorgde taken geven een waarschuwing met aantallen; fouten loggen alleen taak-ID/poging/status, geen ontvanger, providerexception, IP of token. Geen stilteverlies; controleer workerwaarschuwingen bij operationeel beheer.
-- Bij de zesmaandengrens worden alleen beide platformwachtlijsttabellen opgeruimd. Startup haalt verlopen data in; tijdens stilstand kan geen cleanup draaien. Contact-/account-/betaaldata worden niet door deze worker verwijderd.
-- Verwijdering uit de live DB wist geen historische back-ups of reeds ontvangen mails. Herstel moet eerdere verwijderingen opnieuw respecteren; retentie/toegang van historische back-ups blijft een afzonderlijk beheer-/juridisch onderwerp.
+Contact en wachtlijst hebben onafhankelijke strenge website-noodremmen (elk10 requests/uur per APIproces); contactverkeer kan de wachtlijstmailcapaciteit niet verbruiken. Beheerde wachtlijstmail deelt alleen de wachtlijst-noodrem. Daarnaast geldt de bestaande globale limiter. Dit is geen gedistribueerde quota-garantie; geen IPveld wordt bewaard.
 
-## Beheerde mail voor bestaande inschrijvers
+## Bestaande wachtlijstmail behouden
 
-`POST /api/super-admin/website-waitlist/{entryId}/mail` vereist de bestaande **SuperAdminpolicy**, werkt alleen op één bestaande database-ID en kent geen vrij ontvanger-/URL-/templateveld.
+Nieuwe inschrijving maakt de unieke genormaliseerde WebsiteWaitlistEntry plus WebsiteWaitlistMail atomair. Nieuw/duplicaat geven dezelfde {ok:true}, geen publiek token, geen automatische duplicate resend. De entry bewaart SHA256; het ruwe capabilitytoken staat slechts tijdelijk in de gevoelige afzonderlijke mailpayloadtabel. Geen fictieve OrganizationId: dit zijn platformleads vóór clubaanmaak.
 
-- `{}` of `{"apply":false}` is een **dry-run**: alleen `{eligible,queued:false}`, geen tokenuitgifte, hashwijziging of mail.
-- Alleen `{"apply":true}` queue't voor een daarvoor in aanmerking komende bestaande inschrijving een nieuwe persoonlijke link. Dit roteert de oude hash. Pending/mislukte payload nog aanwezig? Dan geen tweede taak/rotatie. Eerst fout onderzoeken; na de begrensde payloadtermijn kan een bevoegde operator expliciet opnieuw handelen.
-- De APIantwoordbody bevat nooit een token. Dezelfde rate-limiet geldt. Geen openbare route via duplicate registration en geen automatische bulkmail.
-- Deze route is lokaal getest op autorisatie (anoniem401), en met echte PostgreSQL op dry-run, apply en duplicaatbescherming. Geen productiesuperadmin gebruikt, geen live mail verzonden.
+De bestaande SMTP/MJML/MIME-flow bezorgt de vaste persoonlijke https://coach-os.be/uitschrijven#…-link: ‘Verwijder mij van de wachtlijst’, niet afmelden voor account-/les-/betaalmails. GET verwijdert niets; expliciete POST verwijdert alleen hashmatch en pending payload. Oude JSONlinks blijven via de websiteroute bruikbaar tijdens gecontroleerde cutover.
 
-### Afzonderlijke historische JSON-migratie — NIET automatisch uitgevoerd
+Transactionele PostgreSQL advisory-lock serializeert delivery/unsubscribe/import; SMTPtimeout20s, at-least-once (crash na acceptatie kan duplicaat veroorzaken). Na SMTPacceptatie wordt payload direct verwijderd. Begrensde retry: vanaf5s tot1uur, maximaal8pogingen; daarna raw token weg, operatorwaarschuwing zonder PII/providerexception. Payload uiterlijk7dagen of eerder wachtlijsteinde weg. De technische 30dagen-mailqueuepolicy verlengt deze tokenpayloadtermijn niet.
 
-Er is bewust **geen blinde JSON-importer of datamigratie bij APIstartup**. De schemamigratie maakt alleen de nieuwe lege tabellen. Historische import en contactopslagmigratie zijn nog afzonderlijk uit te voeren werk; dit is niet als voltooid gerapporteerd.
+`POST /api/super-admin/website-waitlist/{entryId}/mail`: bestaande SuperAdminpolicy, één bestaande PG-ID, standaard dry-run `{eligible,queued:false}`. Alleen expliciet apply roteert capability/queue't; bestaande payload voorkomt dubbel queue'en. Geen token in response, vrij ontvanger-/URL-/templateveld, publieke resend of bulkloop.
 
-Veilige operatorprocedure vóór eventuele uitrol:
+## Werkelijke historische importtool — geen startup/live import
 
-1. Inventariseer waar de huidige JSONbestanden werkelijk staan en of ze recente gegevens bevatten. Bewaar een beveiligde bronkopie vóór containerrecreatie of een mount. Een lege mount kan overlaybestanden verbergen. Deze PR heeft geen live bestandsinventaris uitgevoerd.
-2. Maak een **dry-runmanifest** met aantallen, bron/tijdstip en uniek genormaliseerd e-mailadres, oorspronkelijke submittedAt, toegestane rol en eventueel bestaande capabilityhash. Geen IP/honeypotvelden, geen raw tokens in rapportage. Valideer de hele bron, duplicaten en datums; corrupte records blokkeren de import, niet stil overslaan. Contactdata apart behandelen.
-3. Verifieer volledigheid en eerdere uitschrijvingen/verwijderingen; reconcilieer die met alle te importeren/herstellen bronnen. Gebruik nooit een oude bron als actuele toestemming. Plan een korte write-pauze om registratie/uitschrijving tijdens cutover niet kwijt te raken.
-4. Laat een bevoegd beheerder de goedgekeurde import in een **expliciete transactie** uitvoeren. Behoud bestaande hashes waar van toepassing; accounts/tenanttabellen blijven onaangeroerd. Maak bij de import **geen mailtaken**. Vergelijk vooraf/achteraf aantallen en controleer een lokaal herstelscenario met fictieve data. Een daadwerkelijk importtool met schema-/idempotentie-/hersteltests is nog nodig vóór een grootschalige historische migratie; niet gokken met ad-hoc productiescripts.
-5. Verwijder/archiefbron alleen conform het goedgekeurde bewaarbeleid na verificatie. Voorkom dat opnieuw importeren of terugzetten een reeds uitgeschreven persoon herstelt.
-6. Pas na verificatie kan een bevoegde SuperAdmin per bestaande PostgreSQL-entry eerst de dry-runroute en dan expliciet apply gebruiken om de persoonlijke link te bezorgen. Geen bulkloop in deze PR. Bestaande inschrijvers kunnen intussen geverifieerde verzoeken via info@coach-os.be doen.
+`backend/Scripts/import-website-submissions.py` gebruikt standaard Python + bestaande psql met door de operator geselecteerde PGHOST/PGPORT/PGDATABASE/PGUSER en veilige libpq-auth. Geen appsettings/UserSecrets/.env inlezen, geen website-DBcredentials. De tool is uitsluitend lokaal met synthetische data uitgevoerd.
 
-## Resterende contact-/legacyopslag
+1. Inventariseer/bescherm huidige bronbestanden vóór recreatie; live locatie/data zijn niet onderzocht. Stop legacy writes tijdens cutover en neem de actuele bron, niet een oude back-up als huidige toestemming.
+2. Maak een expliciet gereviewde JSON-suppressielijst met SHA256 van getrimde lowercase e-mailadressen die eerder verwijderd/uitgeschreven zijn. Een lege lijst mag alleen na verificatie; de tool kan onbekende historische verzoeken niet zelf ontdekken. Bronvelden unsubscribedAt/deletedAt worden ook gerespecteerd. Neem geen ruwe tokens/IP's in rapportage op.
+3. Dry-run (PG*-omgeving vooraf door bevoegde operator gekozen):
+   `python3 backend/Scripts/import-website-submissions.py --kind waitlist --input <actuele-json> --suppressions <hashmanifest-json>`
+   Of `--kind contact`. Response bevat alleen aantallen, dry_run en SHA256 van kind + exacte bron + suppressiemanifest, geen persoonsgegevens. Alle invoer wordt eerst gevalideerd; corrupte velden, conflicterende duplicaten, toekomstige/naïeve timestamps blokkeren de hele import. Verlopen contact/wachtlijstdata worden niet geïmporteerd. IP/extra velden worden niet opgeslagen.
+4. Pas na review dezelfde opdracht met `--apply --confirm-sha256 <exacte-dryrunhash>`. Verandering van bron OF suppressielijst maakt de bevestiging ongeldig. Eén transactie en advisory-lock, bounded locktimeout; bij fout rollback. Dry-run rolt ook tijdelijke ledgeraanmaak terug. Er wordt nooit mail gequeue'd.
+5. Oorspronkelijke received/submittedAt en bestaande capabilityhash blijven behouden. Bestaande PG-wachtlijstentry wordt niet overschreven. Contactimport is inhoud+ontvangstdatum-idempotent; wachtlijst op genormaliseerd e-mailadres. De operationele tabel WebsiteSubmissionImportReceipts bevat alleen SHA256-sleutels en importtijd, geen PII/raw capabilities. Hij blijft behouden na entryverwijdering en voorkomt dat dezelfde import verwijderde entries recreëert. Deze tabel is bewust operatorledger buiten EF, wordt door apply transactioneel aangemaakt en moet samen met de DB worden geback-upt; hij vervangt geen onafhankelijk restore-/suppressionjournal (#265).
+6. Reconcilieer bron/eligible/skipped/inserted en herhaalde dry-run. Verwijder/archief bron pas na verificatie volgens beleid; PGbackup dekt oude JSONbestanden niet. Behoud gecontroleerd bridged legacyunsubscribe tot writers definitief uit staan. Herstel van een ouder DBsnapshot vereist replay van latere suppressies vóór netwerktoegang; lokale importidempotentie alleen bewijst dat niet.
+7. Historische entries zonder capability vereisen desgewenst per-entry SuperAdmin dry-run/apply om een link te bezorgen. Geen automatische bulkmail. Verifieer oude uitschrijvingen vóór herbezorging.
 
-Contactinzendingen schrijven nog naar `<website cwd>/data/contact-submissions.json`. Retentie, IPscrubbing, exclusieve locks, fsync en atomische vervanging blijven behouden. Ongeldige bronbestanden worden niet overschreven. Startup en periodiek onderhoud werken zonder nieuw verkeer. Een achtergebleven lock wordt niet blind gestolen.
+## Bewijs en operatorgates
 
-De repository-compose bevat nog geen websitevolume/back-up voor historische JSON of resterende contactdata. PostgreSQL-back-ups dekken deze bestanden niet. De goedgekeurde eindrichting is **API/PostgreSQL**, niet een nieuw besluit over een JSONback-updienst. Tot contact-/historische migratie moet een bevoegde beheerder verlies bij recreatie voorkomen en de bestaande opslag veilig overbruggen. Geen infrastructuur/config-/secretwijziging in deze aanvulling; netwerkstandaard afgeleid van repository-compose, niet live geverifieerd.
-
-## Bewijs en open punten
-
-- RED→GREEN met echte lokale API: ontbrekend endpoint404, ontbrekende Mailpitmail, ontbrekende expliciete POST; daarna succesvolle gehele keten. Ook websiteproxy, mailcopy in browser, verlopen-payloadwaarschuwing en goedgekeurde launchdefault geobserveerd RED→GREEN.
-- Echte geïsoleerde PostgreSQL + Mailpit: registratie→bevestigingsmail→vertrouwde persoonlijke HTML/plaintextlink→GET zonder delete→browserbevestiging via website→alleen eigenaar verwijderd; ander behouden; duplicaatbescherming; hash/payloadcontroles; echte SMTPverbindingsfout→duurzame retry na APIherstart→Mailpitbezorging. Geen externe SMTPrelay.
-- Herhaalbare backendregressies staan in `WebsiteWaitlistTests`; websitechecks in `tests/submissions.test.mjs` en `tests/waitlist-proxy.test.mjs`. Evidencebestanden en exacte verificatieresultaten staan in PR289.
-- Geen selfserviceherontwerp, geen formulieractivatie, geen productie/bulkmail/deployment/merge/workflowwijziging. #264 blijft open vanwege contactopslag, historische migratie en operationele uitrol. #295 is toekomstig werk, geen duplicaatissue nodig.
-- Juridisch nog af te stemmen: afzonderlijke mailboxbewaring en historische back-up-/herstelretentie. Lancering, contactformuliertermijn en PostgreSQLrichting zijn **beslist**, niet opnieuw als productvraag opgevoerd. Conceptwaarschuwingen, juridische versie en ingangsdatum blijven staan.
+- Geobserveerde HTTP404→200 contact-RED/GREEN, echte loopback HTTP→PG, validatie400/rate-limit429, geen e-mail in applicatielog; websiteproxy RED/GREEN.
+- Echte PG-contactcleanupgrens met recente UpdatedAt versus receipt; gecorrigeerde auditfixture apart vastgelegd.
+- Import: noop-gedrags-RED→echte PG dry-run/apply/reconcile, oorspronkelijke hash, geen mail, na delete geen resurrectie, contactdatum/expiry, foutieve bevestiging/invoer en SQL-metatekens.
+- Bestaande volledige wachtlijstmail/SMTP/browserveiligheid blijft vereist en wordt niet opnieuw als nieuw werk opgevoerd. Exacte logs/testcounts/remotechecks staan in PR289 en task-evidence/coachos-privacy/finish-prs.
+- Geen productieimport, cloudrestore, live mail, merge of deploy. Live bronreconciliatie, cutover/writepauze, backuprestore/replay en juridische financiële garanties blijven bevoegde operatorgates; #264 niet automatisch sluiten.

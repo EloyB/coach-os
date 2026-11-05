@@ -29,19 +29,18 @@ afterAll(async () => {
 });
 const records = async (type) => JSON.parse(await readFile(path.join(directory, "data", `${type}-submissions.json`), "utf8"));
 
-test("contact API persists the message without forwarded IP or honeypot", async () => {
+test("contact API proxies the message without forwarded IP, timestamp or honeypot", async () => {
   const response = await contact.POST(new Request("http://localhost/api/contact", {
     method: "POST", headers: { "content-type": "application/json", "x-forwarded-for": "192.0.2.10" },
     body: JSON.stringify({ name: "Local Test", email: "local@example.test", message: "A local test message", website: "" }),
   }));
   expect(response.status).toBe(200);
-  const [saved] = await records("contact");
-  expect(saved.email).toBe("local@example.test");
-  expect(saved).not.toHaveProperty("ip");
-  expect(saved).not.toHaveProperty("website");
+  expect(received).toEqual({ name: "Local Test", email: "local@example.test", message: "A local test message" });
+  await expect(readFile(file("contact"))).rejects.toThrow();
 });
 
 test("malformed file fails closed without replacing legacy bytes", async () => {
+  await mkdir(path.join(directory, "data"), { recursive: true });
   const { appendSubmission } = await import("../lib/submissions.ts");
   for (const raw of ["{broken", "{}", "[null]", '[{"email":"legacy@example.test","submittedAt":"invalid"}]']) {
     await writeFile(file("contact"), raw);

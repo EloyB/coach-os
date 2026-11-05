@@ -50,6 +50,7 @@ public class WebsiteWaitlistTests
     {
         _clock = new(new DateTimeOffset(2026, 11, 5, 12, 0, 0, TimeSpan.Zero));
         await using ApplicationDbContext db = Db();
+        await db.WebsiteContactEntries.ExecuteDeleteAsync();
         await db.WebsiteWaitlistMails.ExecuteDeleteAsync();
         await db.WebsiteWaitlistEntries.ExecuteDeleteAsync();
     }
@@ -63,6 +64,49 @@ public class WebsiteWaitlistTests
         await admin.OpenAsync();
         await using NpgsqlCommand command = new($"DROP DATABASE IF EXISTS \"{_database}\" WITH (FORCE)", admin);
         await command.ExecuteNonQueryAsync();
+    }
+
+    [Test]
+    public async Task ContactAnniversaryUsesUtcEvenWhenDatabaseSessionUsesDstZone()
+    {
+        _clock = new(new DateTimeOffset(2025, 3, 30, 11, 30, 0, TimeSpan.Zero));
+        await using ApplicationDbContext db = Db();
+        await db.Database.OpenConnectionAsync();
+        await db.Database.ExecuteSqlRawAsync("SET TIME ZONE 'Europe/Brussels'");
+        db.WebsiteContactEntries.Add(new WebsiteContactEntry { Name = "DST", Email = "dst@example.test", Message = "Synthetic DST contact" });
+        await db.SaveChangesAsync();
+        await db.WebsiteContactEntries.Where(x => x.Email == "dst@example.test").ExecuteUpdateAsync(s => s.SetProperty(x => x.CreatedAt, new DateTime(2024, 3, 30, 12, 0, 0, DateTimeKind.Utc)));
+        await WebsiteWaitlistMailWorker.ProcessNextAsync(db, new Mock<IEmailService>().Object, _clock, NullLogger.Instance, default);
+        (await db.WebsiteContactEntries.CountAsync()).Should().Be(1, "UTC receipt anniversary is still thirty minutes away");
+    }
+
+    [Test]
+    public async Task ContactLeapDayExpiresOnClampedAnniversary()
+    {
+        _clock = new(new DateTimeOffset(2025, 2, 28, 12, 0, 0, TimeSpan.Zero));
+        await using ApplicationDbContext db = Db();
+        db.WebsiteContactEntries.Add(new WebsiteContactEntry { Name = "Leap", Email = "leap@example.test", Message = "Synthetic leap contact" });
+        await db.SaveChangesAsync();
+        await db.WebsiteContactEntries.Where(x => x.Email == "leap@example.test").ExecuteUpdateAsync(s => s.SetProperty(x => x.CreatedAt, new DateTime(2024, 2, 29, 12, 0, 0, DateTimeKind.Utc)));
+        await WebsiteWaitlistMailWorker.ProcessNextAsync(db, new Mock<IEmailService>().Object, _clock, NullLogger.Instance, default);
+        (await db.WebsiteContactEntries.CountAsync()).Should().Be(0);
+    }
+
+    [Test]
+    public async Task ContactCleanupUsesTwelveCalendarMonthsSinceReceiptNotLaterActivity()
+    {
+        await using ApplicationDbContext db = Db();
+        DateTime now = _clock.GetUtcNow().UtcDateTime;
+        db.WebsiteContactEntries.AddRange(
+            new WebsiteContactEntry { Name = "Old", Email = "old@example.test", Message = "Synthetic old contact", CreatedAt = now.AddMonths(-12), UpdatedAt = now },
+            new WebsiteContactEntry { Name = "Fresh", Email = "fresh@example.test", Message = "Synthetic fresh contact", CreatedAt = now.AddMonths(-12).AddTicks(10) });
+        await db.SaveChangesAsync();
+        // Audit fields are stamped on insert; age fixtures through actual PostgreSQL.
+        await db.WebsiteContactEntries.Where(x => x.Email == "old@example.test").ExecuteUpdateAsync(s => s.SetProperty(x => x.CreatedAt, now.AddMonths(-12)).SetProperty(x => x.UpdatedAt, now));
+        await db.WebsiteContactEntries.Where(x => x.Email == "fresh@example.test").ExecuteUpdateAsync(s => s.SetProperty(x => x.CreatedAt, now.AddMonths(-12).AddTicks(10)));
+        await WebsiteWaitlistMailWorker.ProcessNextAsync(db, new Mock<IEmailService>().Object, _clock, NullLogger.Instance, default);
+        (await db.WebsiteContactEntries.Select(x => x.Email).ToListAsync()).Should().Equal("fresh@example.test");
+        await db.WebsiteContactEntries.ExecuteDeleteAsync();
     }
 
     [Test]

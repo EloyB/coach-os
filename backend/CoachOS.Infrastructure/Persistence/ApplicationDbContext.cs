@@ -69,6 +69,7 @@ public class ApplicationDbContext(
     public DbSet<TrainerAvailability> TrainerAvailabilities { get; set; } = null!;
     public DbSet<EmailOutboxMessage> EmailOutboxMessages { get; set; } = null!;
     // Platform website leads: no organization exists yet; never tenant account data.
+    public DbSet<WebsiteContactEntry> WebsiteContactEntries => Set<WebsiteContactEntry>();
     public DbSet<WebsiteWaitlistEntry> WebsiteWaitlistEntries { get; set; } = null!;
     public DbSet<WebsiteWaitlistMail> WebsiteWaitlistMails { get; set; } = null!;
 
@@ -114,6 +115,7 @@ public class ApplicationDbContext(
         builder.ApplyConfiguration(new CampFormResponseConfiguration());
         builder.ApplyConfiguration(new TrainerAvailabilityConfiguration());
         builder.ApplyConfiguration(new EmailOutboxMessageConfiguration());
+        builder.ApplyConfiguration(new WebsiteContactEntryConfiguration());
         builder.ApplyConfiguration(new WebsiteWaitlistEntryConfiguration());
         builder.ApplyConfiguration(new WebsiteWaitlistMailConfiguration());
 
