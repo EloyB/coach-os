@@ -26,13 +26,21 @@ async function submit(response) {
   await page.getByRole('heading', { name: 'Bedankt, we plannen je demo in.' }).waitFor();
 }
 try {
+  await submit({ ok: true });
+  await page.getByText(/persoonlijke uitschrijflink per e-mail/).waitFor();
+  assert.equal(await page.getByRole('link', { name: 'Uitschrijflink bewaren' }).count(), 0);
+  assert.equal(new URL(page.url()).hash, '');
+  await screenshot('ui-waitlist-mail');
+  console.log('PASS new signup shows mail notice without a public capability');
+
+  // Compatibility with an already issued legacy fragment, not the new API contract.
   await submit({ ok: true, unsubscribeUrl: `/uitschrijven#${token}` });
   const link = page.getByRole('link', { name: 'Uitschrijflink bewaren' });
   await link.waitFor();
   assert.equal(await link.getAttribute('href'), `/uitschrijven#${token}`);
   assert.equal(new URL(page.url()).search, '?type=waitlist');
   await screenshot('ui-waitlist-link');
-  console.log('PASS new signup retains personal fragment-only link');
+  console.log('PASS synthetic legacy response retains personal fragment-only link');
 
   for (const response of [{ ok: true }, { ok: true, unsubscribeUrl: 'https://evil.example/#'+token }]) {
     await submit(response);
@@ -54,7 +62,7 @@ try {
   assert.equal(posts, 0);
   await screenshot('ui-unsubscribe-confirm');
   await button.click();
-  await page.getByRole('alert').waitFor();
+  await page.getByRole('alert').filter({ hasText: 'Uitschrijven lukte niet' }).waitFor();
   assert.equal(posts, 1);
   assert.equal(new URL(page.url()).hash, '#'+token);
   fail = false;
