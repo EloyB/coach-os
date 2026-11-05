@@ -130,6 +130,7 @@ public static class DependencyInjection
         services.AddScoped<ISuperAdminService, SuperAdminService>();
         services.AddHostedService<SuperAdminBootstrapHostedService>();
         services.AddScoped<ITrainerService, TrainerService>();
+        services.AddScoped<CoachOS.Application.Privacy.IPlayerErasureService, CoachOS.Infrastructure.Privacy.PlayerErasureService>();
         services.AddScoped<IUserLookupService, UserLookupService>();
         services.AddSingleton<IMjmlTemplateRenderer, MjmlTemplateRenderer>();
         services.AddScoped<IEmailService, EmailService>();

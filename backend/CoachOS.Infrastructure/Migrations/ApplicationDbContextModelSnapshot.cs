@@ -298,6 +298,9 @@ namespace CoachOS.Infrastructure.Migrations
                         .HasMaxLength(30)
                         .HasColumnType("character varying(30)");
 
+                    b.Property<bool>("PrivacyHold")
+                        .HasColumnType("boolean");
+
                     b.Property<int>("Status")
                         .HasColumnType("integer");
 
@@ -598,6 +601,9 @@ namespace CoachOS.Infrastructure.Migrations
 
                     b.Property<Guid>("OrganizationId")
                         .HasColumnType("uuid");
+
+                    b.Property<bool>("PrivacyHold")
+                        .HasColumnType("boolean");
 
                     b.Property<Guid?>("SelectedPriceOptionId")
                         .HasColumnType("uuid");

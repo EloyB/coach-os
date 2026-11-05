@@ -1,5 +1,8 @@
 "use client";
 
+import Link from "next/link";
+import { canEditEnrollment } from "@/lib/auth";
+
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
@@ -68,6 +71,7 @@ export function CampEnrollmentDetailDialog({
   markPaidLabel,
 }: CampEnrollmentDetailDialogProps) {
   const t = useTranslations("campEnrollmentsTable");
+  const tPrivacy = useTranslations("playerErasure");
   const queryClient = useQueryClient();
   const priceMutation = useMutation({
     mutationFn: (campPriceId: string | null) =>
@@ -121,6 +125,7 @@ export function CampEnrollmentDetailDialog({
               )}
             </DialogTitle>
           </DialogHeader>
+          {canEditEnrollment() && <Link className="text-sm text-tennis-green underline" href={`/dashboard/privacy?kind=camp-enrollments&id=${enrollment.id}`}>{tPrivacy("link")}</Link>}
 
           <div className="flex flex-wrap gap-2">
             <a
