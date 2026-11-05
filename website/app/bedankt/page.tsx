@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { WaitlistUnsubscribeLink } from "@/components/sections/waitlist-unsubscribe-link";
 import { Check } from "lucide-react";
 import type { Metadata } from "next";
 import { LogoMark } from "@/components/site/logo-mark";
@@ -35,6 +36,8 @@ export default async function BedanktPage({ searchParams }: PageProps) {
         </Mono>
         <h1 className="mt-3 text-2xl font-bold tracking-tight">{heading}</h1>
         <p className="mt-3 text-sm leading-relaxed text-ink-2">{body}</p>
+
+        {isWaitlist && <WaitlistUnsubscribeLink />}
 
         <Link
           href="/"

@@ -21,11 +21,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  const { website: _hp, ...clean } = parsed.data;
+  const clean = { ...parsed.data };
+  delete clean.website;
   await appendSubmission("contact", {
     ...clean,
     submittedAt: new Date().toISOString(),
-    ip: req.headers.get("x-forwarded-for") ?? null,
   });
 
   // TODO: replace with email service (Resend/Loops/SMTP) before production deploy.
