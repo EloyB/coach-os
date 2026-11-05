@@ -34,6 +34,18 @@ public class EmailService(
         return ms.ToArray();
     }
 
+    public async Task SendWebsiteWaitlistAsync(string email, string token, CancellationToken ct = default)
+    {
+        if (!System.Text.RegularExpressions.Regex.IsMatch(token, "\\A[a-f0-9]{64}\\z"))
+            throw new ArgumentException("Invalid waitlist capability");
+        string html = renderer.Render("website-waitlist", new Dictionary<string, string>
+        {
+            ["unsubscribeUrl"] = $"https://coach-os.be/uitschrijven#{token}",
+            ["year"] = DateTime.UtcNow.Year.ToString(),
+        });
+        await SendAsync(email, "", "Je staat op de CoachOS-wachtlijst", html, ct, privateDelivery: true);
+    }
+
     public async Task SendTrainerInviteAsync(
         string toEmail, string firstName, string inviteUrl, CancellationToken ct = default)
     {
@@ -559,7 +571,7 @@ public class EmailService(
 
     private async Task SendAsync(
         string toEmail, string toName, string subject, string htmlBody,
-        CancellationToken ct = default)
+        CancellationToken ct = default, bool privateDelivery = false)
     {
         using SmtpClient smtp = new(_options.SmtpHost, _options.SmtpPort)
         {
@@ -573,11 +585,13 @@ public class EmailService(
         try
         {
             await smtp.SendMailAsync(message, ct);
-            logger.LogInformation("E-mail verstuurd naar {Email} — onderwerp: {Subject}", toEmail, subject);
+            if (!privateDelivery)
+                logger.LogInformation("E-mail verstuurd naar {Email} — onderwerp: {Subject}", toEmail, subject);
         }
         catch (SmtpException ex)
         {
-            logger.LogError(ex, "Versturen mislukt naar {Email} — {Message}", toEmail, ex.Message);
+            if (!privateDelivery)
+                logger.LogError(ex, "Versturen mislukt naar {Email} — {Message}", toEmail, ex.Message);
             throw;
         }
     }

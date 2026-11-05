@@ -50,7 +50,11 @@ export function WaitlistForm() {
         body: JSON.stringify(values),
       });
       if (!res.ok) throw new Error("submit failed");
-      router.push("/bedankt?type=waitlist");
+      const data: { unsubscribeUrl?: unknown } = await res.json();
+      const token = typeof data.unsubscribeUrl === "string"
+        ? /^\/uitschrijven#([a-f0-9]{64})$/.exec(data.unsubscribeUrl)?.[1]
+        : undefined;
+      router.push(`/bedankt?type=waitlist${token ? `#${token}` : ""}`);
     } catch {
       setError("Aanvraag versturen lukte niet. Probeer het opnieuw.");
       setSubmitting(false);

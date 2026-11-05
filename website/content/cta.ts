@@ -61,6 +61,7 @@ export const CTA_SECTION = {
     body: "Laat je e-mail achter en we plannen een korte demo in waarin we je live laten zien hoe CoachOS werkt voor jouw type organisatie.",
     submit: "Demo aanvragen",
     success: "Bedankt, we plannen je demo in.",
+    mailNotice: "Bij een nieuwe wachtlijstinschrijving ontvang je een persoonlijke uitschrijflink per e-mail. Daarmee kun je uitsluitend je wachtlijstinschrijving verwijderen, na je bevestiging.",
     fields: {
       email: "E-mailadres",
       role: "Wat doe je?",

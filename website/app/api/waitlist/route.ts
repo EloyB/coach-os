@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { waitlistSchema } from "@/lib/schemas";
-import { appendSubmission } from "@/lib/submissions";
+import { postWaitlist } from "@/lib/waitlist-api";
 
 export const runtime = "nodejs";
 
@@ -21,15 +21,5 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  const { website: _hp, ...clean } = parsed.data;
-  await appendSubmission("waitlist", {
-    ...clean,
-    submittedAt: new Date().toISOString(),
-    ip: req.headers.get("x-forwarded-for") ?? null,
-  });
-
-  // TODO: replace with email service (Resend/Loops/SMTP) before production deploy.
-  console.info("[waitlist]", clean.email, clean.role ?? "—");
-
-  return NextResponse.json({ ok: true });
+  return postWaitlist("", { email: parsed.data.email, ...(parsed.data.role ? { role: parsed.data.role } : {}) });
 }
