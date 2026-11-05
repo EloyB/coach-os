@@ -186,7 +186,8 @@ De verwerker slaat **geen** betaalkaart- of bankrekeninggegevens van spelers op.
 - **[TE VERBETEREN, aanbevolen vóór inwerkingtreding: aparte database-gebruikers met minimale rechten, inclusief een read-only rol voor support; SSH niet als `root`; logviewer en monitoring niet publiek bereikbaar of extra afgeschermd.]**
 
 **Beschikbaarheid en back-ups**
-- De beheerde database maakt automatisch back-ups bij Scaleway. **[INVULLEN: bewaartermijn van de back-ups — staat nu op de standaardinstelling van Scaleway; expliciet instellen en hier vermelden]**
+- De beheerde database heeft in de bronconfiguratie back-ups ingeschakeld bij Scaleway. **Voorstel #265: dagelijks (elke 24 uur), 14 dagen bewaren**; nog niet operationeel geverifieerd. **[INVULLEN: na goedkeuring, uitrol en restorecontrole de daadwerkelijke frequentie en bewaartermijn bevestigen, inclusief historische/handmatige kopieën; dit voorstel is geen actuele garantie.]**
+- De volledige DataProtection-keyring is nodig om versleutelde Mollie-tokens na herstel te kunnen lezen. Het lokale snapshot-/restorehulpmiddel uit #265 is met fictieve gegevens getest; een versleutelde off-host back-up, planning, archiefretentie en productieherstel zijn nog niet ingericht of geverifieerd. **[INVULLEN: bestemming, encryptie, bevoegde herstelidentiteit, frequentie en bewaartermijn van keyringback-ups na goedkeuring en uitrol.]**
 - E-mails worden via een wachtrij met herhaalpogingen verstuurd, zodat een tijdelijke storing geen berichten doet verloren gaan.
 
 **Logging en monitoring**
