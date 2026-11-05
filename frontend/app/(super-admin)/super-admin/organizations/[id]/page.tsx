@@ -59,6 +59,7 @@ function Card({ title, subtitle, children }: { title: string; subtitle?: string;
 export default function OrganizationDetailPage() {
   const t = useTranslations("superAdmin");
   const organizationId = useParams().id as string;
+  const privacy = useTranslations("organizationPrivacy");
   const queryClient = useQueryClient();
   const subscriptionKey = ["super-admin", "subscription", organizationId] as const;
 
@@ -120,6 +121,7 @@ export default function OrganizationDetailPage() {
           {t("navOrganizations")}
         </Link>
         <h1 className="mt-2 text-2xl font-bold text-ink">{org?.name ?? t("loading")}</h1>
+        <Link href={`/super-admin/organizations/${organizationId}/erasure`} className="mt-3 inline-block text-sm font-medium underline">{privacy("erasureTitle")}</Link>
         {org && <p className="mt-1 text-sm text-ink-3">{org.email}</p>}
       </div>
 

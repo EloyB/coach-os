@@ -24,10 +24,11 @@ public sealed class OrganizationRetentionWorker(IServiceScopeFactory scopes,
                         await using AsyncServiceScope scope = scopes.CreateAsyncScope();
                         await scope.ServiceProvider.GetRequiredService<OrganizationRetentionPreview>()
                             .RunAsync(organizationId, clock.GetBrusselsToday(), stoppingToken);
+                        await scope.ServiceProvider.GetRequiredService<OrganizationLifecycleMaintenance>().RunAsync(organizationId, stoppingToken);
                     }
                     catch (Exception error) when (error is not OperationCanceledException)
                     {
-                        logger.LogError("Organization retention DRY-RUN failed for {OrganizationId}; no deletion performed", organizationId);
+                        logger.LogError("Organization retention failed for {OrganizationId}; inspect review holds and delivery state; no completion claimed", organizationId);
                     }
                 }
                 await Task.Delay(TimeSpan.FromDays(1), stoppingToken);

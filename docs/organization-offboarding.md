@@ -1,31 +1,47 @@
-# Organisatie-offboarding — voorlopige procedure (#262)
+# Organisatie-offboarding en beveiligde export (#262)
 
-> CONCEPT. Niet uitgevoerd, geen verwijderautorisatie en geen bewijs van naleving van 30/90 dagen. De verwijderfunctie is nog niet gebouwd.
+Status: daadwerkelijke lokale implementatie voor het afgebakende niet-financiële pad; draft PR, niet ingeschakeld, niet uitgerold. Dit is geen juridische goedkeuring of bewijs van productieconformiteit. Financiële archivering en externe herstel-/Billitgaranties blijven expliciete gates.
 
-## Veilige preview
+## Levenscyclus en toegang
 
-`OrganizationRetentionPreview:Enabled` is optioneel en standaard false. Alleen de expliciete GUID-lijst `OrganizationRetentionPreview:OrganizationIds` wordt dagelijks bekeken. De worker gebruikt de Brusselse kalenderdatum. Dry-run logt uitsluitend organisatie-ID, vastgestelde einddatum en reviewmelding; geen mail, outboxmutatie, statuswijziging, providers, accountverwijdering of databasewrite.
+`OrganizationRetentionClock` gebruikt het werkelijke einde van proef/betaalde periode, niet de eerdere opzeggingsdag. Een actieve verlenging met historische proefdatum wordt niet als verlopen behandeld. Onduidelijke einddatums geven geen automatische verwijderautorisatie.
 
-Alle queries filteren expliciet OrganizationId. Trialing telt alleen met TrialEndsAt, zonder plan, betaalperiode of MollieSubscriptionId. Cancelled telt alleen als CancelAt en CurrentPeriodEnd beide bestaan en gelijk zijn. Vanaf dag90 volgt een reviewmelding, geen verwijdering. Active (ook met historisch TrialEndsAt), Legacy, Locked, ontbrekend abonnement en onduidelijke datums worden overgeslagen. Locked vereist een afzonderlijk goedgekeurde einddatumregel. Heractivatie wordt iedere run opnieuw gelezen. Dit is een conservatieve reviewselectie en geen definitieve juridische einddatumresolver.
+Met de bestaande `Billing:EnforceTrialExpiry`-toegangsgate krijgen uitsluitend clubbeheerders nog dertig kalenderdagen lees-/exporttoegang; nieuwe inschrijvingen, andere wijzigingen en publieke mutaties worden geweigerd. Na het exportvenster sluit gewone toegang. Exacte bestaande authenticatie-/abonnementsroutes blijven bereikbaar voor herstel/heractivatie. Publieke resources/capabilities bepalen hun eigen tenant, ook bij een niet-gerelateerde ingelogde sessie. De expliciet getargete subscription-repositorylookup negeert de ambient tenantfilter en past onmiddellijk de resource-OrganizationId toe; hierdoor kan een andere JWT-tenant de einddatumcontrole niet omzeilen.
 
-## Handmatige procedure — alleen door bevoegde beheerder na goedkeuring
+## Werkelijke export
 
-1. Verifieer identiteit/bevoegdheid van de aanvrager en expliciet doel-OrganizationId. Leg reden en verzoek vast zonder onnodige persoonsgegevens. Geen account/e-mail als tenantselector gebruiken.
-2. Bevestig daadwerkelijke einddag, open betalingen, refunds/creditnota's, geschillen en legal holds. Bij tegenstrijdige datums of actieve dienstverlening: pauzeer en laat eigenaar beslissen.
-3. Bied export aan gedurende de overeengekomen 30 dagen en leg veilige aflevering vast. Bestaande reeks- en kampexports zijn GEEN volledige organisatie-export; losse lessen, instellingen, lidmaatschappen en overige data apart inventariseren. Geen onbewezen volledigheidsclaim.
-4. Meld voorgenomen verwijdering vooraf aan bevoegde beheerders; laat termijn, ontvangers en gevolg van bezorgfouten goedkeuren. Er bestaat nog geen nieuwe automatische verwijdermail of duurzame notice-status.
-5. Inventariseer per OrganizationId alle afhankelijke data: inschrijvingen, antwoorden via gescopete ouders, voorkeuren, groepen/leiders (cyclische FK's), lessen/verplaatsingen/planning, kampen/dagen/formulieren, bevestigingstokens, outbox, OAuth/Mollie, instellingen, memberships en financiële administratie. Globale magic-link-tokens/users nooit verwijderen op basis van één organisatie of gedeeld adres.
-6. Laat financieel archiefmodel expliciet goedkeuren. SubscriptionPayment heeft restrictieve FK's naar Subscription en Organization; facturen tien jaar bewaren is niet opgelost door Organizations.Remove. Minimale archiefvelden, start bewaartermijn en bewijs/legal holds moeten worden beslist. Verwijder niet klakkeloos BillingProfile: open facturen gebruiken de huidige adresgegevens. Verwar clubbetalingen niet met platformfacturen.
-7. Bewaar gedeelde users zodra er een ander lidmaatschap of relevante referentie is, ook inactief; bescherm superadmin en globale leerlingidentiteit. Controleer plain UserId/TrainerId-referenties naast echte FK's.
-8. Voor daadwerkelijke verwijdering is nog een gereviewde tenant-scoped transactionele implementatie met PostgreSQL FK-, rollback-, concurrency- en negatieve andere-tenanttests nodig. Deze procedure bevat bewust geen ongeteste DELETE-SQL. Tot dat gebouwd/goedgekeurd is: escaleer naar eigenaar/jurist; de preview is niet de uitvoering.
-9. Een latere bevoegde uitvoering moet vóór commit status/renewal/leden opnieuw controleren, externe provideracties apart retrybaar afhandelen, voor/na-aantallen en andere-tenantcontroles bewijzen, minimale audit/bevestiging geven en herintroductie na back-uprestore voorkomen. Geen workflow/deploymentactie in deze PR.
+Een bevoegde, actieve, bevestigde clubbeheerder opent Instellingen → Clubgegevens exporteren (`/dashboard/offboarding`). `GET /api/privacy/organization/export` levert rechtstreeks één ZIP met CSV plus JSON: spelers/contacten, groepen, inschrijvingen/antwoorden, planning/losse lessen/reeksen, kampen/dagen, prijsopties/betalingen, instellingen/lidmaatschappen en beschikbare factuurreferenties/status.
 
-## Nog te beslissen/bouwen
+De export heeft een repeatable-read snapshot, vaste veilige kolomlijsten, correct gequote CSV en neutralisering van Excel-formuleprefixen. Antwoorden en join-entiteiten controleren beide tenantouders. Globale accountgeheimen, wachtwoorden, authenticatie-/providercredentials en andere-clublidmaatschappen ontbreken. Geen mailbijlage of publieke downloadtoken; HTTP-responses zijn `no-store`. De browser accepteert geen onverwacht JSON/HTML-document als succesvolle ZIP.
 
-- Exacte dag0/30/90-semantiek, wat mag dag31–90 en hoe publieke writes, jobs, webhooks en heractivatie omgaan met read-only?
-- Juridische einddatum per status, conflicterende datums, voortijdig superadminverzoek en voorafgaande notificatietermijn/bezorgfalen.
-- Financiële archiefmigratie en tienjaarsstart, clubbetalingen en TermsAcceptance.
-- Volledige export, toegangsgates, echte deletes/anonimisering en superadmin preview/confirm/audit.
-- Backupretentie en restore-verwijderlijst; operationele eigenaar en uitrolbewijs.
+Billit-PDF's/bijlagen zijn niet lokaal opgeslagen in dit datamodel en worden niet stilzwijgend als opgenomen voorgesteld. Het manifest noemt deze externe beperking. Contractuele archiefgaranties en een bevoegd extern document-exportpad zijn operator-/juridische gates; er is geen Billit-account of provider aangeroepen.
 
-De huidige SubscriptionAccessService/middleware zijn niet gewijzigd. Ze bieden nog geen complete 30/90-dagenlevenscyclus en laten sommige anonieme mutaties door. Deze PR is uitsluitend de veilige opt-in voorbereiding plus procedure. Issue blijft open; conceptteksten worden niet gepubliceerd.
+## Werkelijke verwijdering en bediening
+
+`OrganizationErasureService` voert een transactionele, expliciet geordende tenantverwijdering uit. Geen nieuwe brede cascades. Groeps-/lescycli worden binnen de transactie verbroken; antwoorden gaan via beide ouders. FK-/concurrentiefouten rollen de hele uitvoering terug. Expliciete tabel-writelocks plus korte locktimeout serialiseren met bestaande schrijvers en hercontroleren status, holds, actualiteit en lidmaatschappen voordat iets verdwijnt. Dit is een zeldzame, mogelijk blokkerende onderhoudsoperatie; schaal/lockimpact moet vóór activering beoordeeld worden.
+
+Superadminbediening: Organisaties → organisatie → Organisatieverwijdering beoordelen. Alleen de bestaande SuperAdmin-policy plus actuele DB-superadminbevoegdheid. Vroege verwijdering vereist attestatie van een geverifieerd verzoek van een werkelijke actieve bevoegde clubbeheerder, een preview met aantallen, actuele previewhash en extra exacte organisatienaambevestiging. De attestatie is geen automatische identiteitscontrole: de operator moet het verzoek echt controleren. Een hold is geen overrideknop.
+
+Alleen doelorganisatiegegevens/lidmaatschappen verdwijnen. Accounts met enig ander lidmaatschap (ook inactief), actuele andere-clubreferenties, globale leerlingidentiteit en superadmins blijven behouden. Niet-gedeelde clubaccounts zonder die beschermingen worden daadwerkelijk verwijderd. Globale leerlingidentiteit en globale magic links worden niet op basis van een gedeeld e-mailadres weggehaald.
+
+Een minimale `PrivacyErasureReceipts`-regel met organisatie/target-ID, type en uitvoeringstijd wordt in dezelfde transactie opgeslagen, zonder naam/email/payload. Deze operationele herstelbewijzen zijn geen wettelijke financiële archiefregel. Voordat een oude back-up weer live komt, moeten recentere herstelbewijzen opnieuw toegepast worden; zie #265. Een ontvangstbewijs zonder getest replayproces maakt restore niet vanzelf privacyveilig.
+
+## Notices, retries en operatorwaarschuwing
+
+Een aparte duurzame notice-tabel bewaart uitsluitend organisatie-ID, echte einddatum, soort, ontvanger-user-ID en bezorg-/retrystatus; geen adres of volledige berichtpayload. Alle actieve bevoegde bevestigde clubbeheerders krijgen een vast bericht op het einde en één herinnering vanaf dag83, met expliciete export-/verwijderdatum. Geen spelers/trainers zonder beheerdersrol. Reeds bekende notices zijn uniek en worden niet opnieuw aangemaakt.
+
+Delivery gebruikt atomaire claims met `SKIP LOCKED`, leases/fencing via pogingteller, maximaal acht pogingen met begrensde backoff. Heractivatie en actuele ontvangerbevoegdheid worden vóór SMTP opnieuw gecontroleerd. Aanhoudend mislukte clubnotices maken een unieke duurzame waarschuwing aan actuele CoachOS-superadmins via de bestaande mailvoorziening; ook die aflevering is begrensd/retrybaar. Als er geen geldig superadminadres bestaat of SMTP geheel faalt, blijven foutstatus en waarschuwing in beheerlogs staan voor handmatige opvolging. Geen stilzwijgend succes of termijnverlenging. SMTP kan na acceptatie maar vóór de statuscommit crashen: zoals ieder SMTP-outboxpad is dit at-least-once, geen onbewezen exact-oncegarantie.
+
+Automatische dag90-verwijdering blokkeert wanneer tijdige verplichte notices niet bewezen zijn. Te laat activeren, gewijzigde ontvangers en mislukte bezorging vragen operatorbeslissing; dit is geen goedgekeurd onbeperkt uitstel van de dag90-verplichting.
+
+## Opt-in; standaard niets automatisch uitvoeren
+
+De bestaande optionele `OrganizationRetentionPreview`-sectie behoudt `Enabled=false` en een lege `OrganizationIds`-allowlist. Nieuwe optionele schakelaars: `Apply=false`, `DryRun=true`. Alleen `Enabled=true`, expliciete doel-ID, `Apply=true` én `DryRun=false` laten de dagelijkse worker notices verzenden en het werkelijk geschikte niet-financiële dag90-pad uitvoeren. Alle andere combinaties veroorzaken geen noticewrite, SMTP of verwijdering. Er is geen nieuwe verplichte environmentvariabele. Geen config of dagelijkse taak is in productie gewijzigd.
+
+## Concrete externe gates; geen volledigheidsclaim
+
+- Een privacy-/geschilhold blokkeert. Financiële/contractuele feiten (betalingen, betaalde plannen/prijsopties, voorwaardenacceptaties) gaan naar afzonderlijke beoordeling. Exacte noodzakelijke archiefvelden/termijnen/legal-holdafhandeling zijn niet door Lorenz vastgesteld. De code wist zulke bewijsstukken niet en beweert niet dat het hele dossier onbeperkt mag blijven staan. Het financiële gedeeltelijke-erasure-/archiefpad blijft geblokkeerd op die beslissing.
+- Billit-bewaargarantie en export van externe facturen/bijlagen: niet geverifieerd, geen credentials/live toegang gebruikt.
+- Herstelbewijs buiten een teruggedraaide database en geteste replay/holdprocedure: operatorgate onder #265, geen veilige productie-enable vóór die gate.
+- Lockimpact, correcte lokale tijd/daggrenzen, veilige registratie van geverifieerde verzoeken en tijdige operatoropvolging moeten vóór activering worden gereviewd.
+- Alleen lokale synthetische PostgreSQL-, HTTP-, browser- en Mailpitproeven. Geen echte mail, productie/cloud, deployment, merge, hoofdbranchpush of workflowwijziging.

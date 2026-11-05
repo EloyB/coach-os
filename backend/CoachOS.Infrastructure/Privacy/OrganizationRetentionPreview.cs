@@ -11,6 +11,8 @@ public sealed class OrganizationRetentionOptions
 {
     public const string Section = "OrganizationRetentionPreview";
     public bool Enabled { get; set; }
+    public bool Apply { get; set; }
+    public bool DryRun { get; set; } = true;
     public Guid[] OrganizationIds { get; set; } = [];
 }
 

@@ -1605,5 +1605,37 @@
     "fakePaid": "Betaling geslaagd",
     "fakeFailed": "Betaling mislukt",
     "checkoutUnavailable": "Zelf een abonnement afsluiten kan binnenkort. Neem intussen contact op via info@coach-os.be, dan regelen we het samen."
+  },
+  "organizationPrivacy": {
+    "exportTitle": "Clubgegevens exporteren",
+    "exportDescription": "Voor bevoegde clubbeheerders: een rechtstreekse ZIP-download met je clubgegevens in CSV en JSON. Na het echte abonnementseinde kan dit nog maximaal dertig dagen.",
+    "exportPrivacy": "Dit bestand bevat persoonsgegevens. Bewaar het beveiligd en deel het alleen met bevoegde personen. Wachtwoorden, toegangstokens en betaalcredentials worden niet geëxporteerd.",
+    "download": "Clubexport downloaden",
+    "busy": "Even wachten…",
+    "adminOnly": "Alleen een bevoegde clubbeheerder kan deze export downloaden.",
+    "downloadStarted": "Download gestart. Controleer het bestand in je downloads.",
+    "exportError": "Export mislukt. Controleer je bevoegdheid en de exporttermijn; er is geen export als geslaagd bevestigd.",
+    "erasureTitle": "Organisatieverwijdering beoordelen",
+    "scope": "Verwijdert de afgebakende clubdata: planning, lessen en kampen, inschrijvingen, antwoorden, groepen, instellingen en lidmaatschappen. Gedeelde accounts en andere clubs blijven behouden. Globale leerlingaccounts vragen afzonderlijke beoordeling.",
+    "gates": "Alleen na een gecontroleerd verzoek van de bevoegde clubbeheerder. Een vroege aanvraag omzeilt geen financiële, juridische, operationele of privacyblokkades. Er wordt niets verwijderd tijdens beoordeling.",
+    "requestingAdmin": "ID van de bevoegde aanvragende clubbeheerder",
+    "verified": "Ik heb identiteit en bevoegd verzoek gecontroleerd",
+    "review": "Organisatieverwijdering beoordelen",
+    "exactName": "Exacte organisatienaam",
+    "erase": "Organisatie definitief verwijderen",
+    "erasureError": "Beoordeling of uitvoering mislukt. Er is geen organisatieverwijdering als voltooid bevestigd.",
+    "deleted": "Organisatieverwijdering voltooid. Het minimale herstelbewijs is vastgelegd.",
+    "holdGeneric": "Deze organisatie vereist afzonderlijke beoordeling; uitvoering is geblokkeerd.",
+    "counts": "{enrollments} lesinschrijvingen · {camps} kampinschrijvingen · {members} lidmaatschappen",
+    "holds": {
+      "financial_or_legal_evidence_review_required": "Financiële of juridische beoordeling vereist",
+      "privacy_hold_review_required": "Privacy- of geschilblokkade vereist beoordeling",
+      "verified_club_admin_request_required": "Een gecontroleerd verzoek van de bevoegde clubbeheerder ontbreekt",
+      "future_activity_or_delivery_review_required": "Toekomstige activiteit of nog te verwerken communicatie vereist beoordeling",
+      "notice_delivery_review_required": "Verplichte meldingen ontbreken, zijn te laat of vereisen opvolging",
+      "retention_not_due_or_reactivated": "Bewaartermijn niet verstreken of organisatie geheractiveerd",
+      "current_preview_and_exact_name_required": "Vraag een nieuwe beoordeling en bevestig de exacte organisatienaam",
+      "concurrent_change_or_dependency_review_required": "Gelijktijdige wijziging of gegevensafhankelijkheid; niets als afgerond bevestigd"
+    }
   }
 }

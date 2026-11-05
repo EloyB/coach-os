@@ -9,8 +9,8 @@ namespace CoachOS.API.Middleware;
 /// <summary>
 /// Dwingt enkel-lezen af voor organisaties waarvan de proef verlopen is: wijzigende requests
 /// krijgen 402. Staat volledig uit zolang <see cref="BillingOptions.EnforceTrialExpiry"/> false
-/// is — dan raakt deze middleware geen enkele request aan. Publieke (anonieme) flows zoals
-/// inschrijfformulieren lopen altijd door.
+/// is, behalve de bestaande Locked-status. Publieke resources/capabilities bepalen
+/// hun eigen tenant en kunnen de einddatum-/writegate niet anoniem omzeilen.
 /// </summary>
 public class SubscriptionAccessMiddleware(RequestDelegate next)
 {
@@ -22,14 +22,31 @@ public class SubscriptionAccessMiddleware(RequestDelegate next)
     // enkel-lezen. ISubscriptionAccessService past die instelling zelf toe op verlopen proeven.
     public async Task InvokeAsync(HttpContext context)
     {
-        if (!IsGuardedRequest(context))
+        bool publicScope = context.Request.Path.StartsWithSegments("/api/public", StringComparison.OrdinalIgnoreCase);
+        if (!publicScope && !IsGuardedRequest(context))
         {
             await next(context);
             return;
         }
 
-        System.Security.Claims.Claim? orgClaim = context.User.FindFirst(CoachOsClaims.OrganizationId);
-        if (orgClaim is null || !Guid.TryParse(orgClaim.Value, out Guid organizationId))
+        Guid organizationId = Guid.Empty;
+        if (publicScope)
+        {
+            string[] segments = (context.Request.Path.Value ?? "").Split('/', StringSplitOptions.RemoveEmptyEntries);
+            if (segments.Length >= 4)
+            {
+                string resource = segments[2].ToLowerInvariant(); // routing is case-insensitive; capability values are not
+                string value = resource == "payments" && segments.Length >= 5 ? segments[4] : segments[3];
+                IOrganizationPublicScopeResolver resolver = context.RequestServices.GetRequiredService<IOrganizationPublicScopeResolver>();
+                organizationId = await resolver.ResolveAsync(resource, value, context.RequestAborted) ?? Guid.Empty;
+            }
+        }
+        else
+        {
+            System.Security.Claims.Claim? orgClaim = context.User.FindFirst(CoachOsClaims.OrganizationId);
+            if (orgClaim is not null) Guid.TryParse(orgClaim.Value, out organizationId);
+        }
+        if (organizationId == Guid.Empty)
         {
             await next(context);
             return;
@@ -37,7 +54,9 @@ public class SubscriptionAccessMiddleware(RequestDelegate next)
 
         ISubscriptionAccessService accessService = context.RequestServices.GetRequiredService<ISubscriptionAccessService>();
         Result<SubscriptionStatusDto> status = await accessService.GetStatusAsync(organizationId, context.RequestAborted);
-        if (status.IsSuccess && status.Value!.AccessLevel == SubscriptionAccessLevel.ReadOnly.ToString())
+        bool read = HttpMethods.IsGet(context.Request.Method) || HttpMethods.IsHead(context.Request.Method) || HttpMethods.IsOptions(context.Request.Method);
+        if (status.IsSuccess && (status.Value!.AccessLevel == SubscriptionAccessLevel.Closed.ToString() ||
+            ((publicScope || !read || !context.User.IsInRole("Admin")) && status.Value!.AccessLevel == SubscriptionAccessLevel.ReadOnly.ToString())))
         {
             context.Response.StatusCode = StatusCodes.Status402PaymentRequired;
             context.Response.ContentType = "application/json";
@@ -56,11 +75,6 @@ public class SubscriptionAccessMiddleware(RequestDelegate next)
         if (context.User.Identity?.IsAuthenticated != true)
             return false;
 
-        string method = context.Request.Method;
-        if (HttpMethods.IsGet(method) || HttpMethods.IsHead(method) || HttpMethods.IsOptions(method))
-            return false;
-
-        string path = context.Request.Path.Value ?? string.Empty;
-        return !AlwaysAllowedPrefixes.Any(prefix => path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
+        return !AlwaysAllowedPrefixes.Any(prefix => context.Request.Path.StartsWithSegments(prefix, StringComparison.OrdinalIgnoreCase));
     }
 }
