@@ -1,5 +1,5 @@
 {
-  "snapshot_utc": "2026-11-06T09:46:11.594098+00:00",
+  "snapshot_utc": "2026-11-06T09:48:46.858609+00:00",
   "base_commit": "ab03c68d5b44afbba73f42fe5314c67878406ab3",
   "publication_authorized": false,
   "concept_warnings_preserved": true,
@@ -670,5 +670,41 @@
     "291": "9a35aa7c49a8c4ab9ba8d0d4107e93ca2a26d766",
     "292": "d04ebb8483327645b70325355bda5ab28f2818b8",
     "293": "2e5a5cc264afc5b6e49aea29e804263ca86a363f"
+  },
+  "integration_joint_restore": {
+    "status": "PASS",
+    "full_combined_schema_restore": true,
+    "source_db_and_ring_removed": true,
+    "restored_organization_count": 2,
+    "fresh_process_decryption": true,
+    "wrong_ring_rejected": true,
+    "api_health_during_backup": [
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200
+    ],
+    "quarantine_manifest": true,
+    "production_access": false,
+    "cloud_restore_proven": false
+  },
+  "integration_scripts": "17 PASS / 0 FAIL",
+  "integration_product_trees": {
+    "backend": "b83997d57adbd75eaa1ee764798b1a1759521b7a",
+    "frontend": "f93ce656151bb3d2b433fed18ae4bdc51371b891",
+    "website": "c7d026b5db655b594d2b20e7ae9e2df9db0d20a4"
   }
 }

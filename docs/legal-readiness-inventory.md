@@ -2,7 +2,7 @@
 
 > CONCEPT — eigenaar/advocaatreview blijft verplicht; geen complianceverklaring of publicatiemachtiging. Geen juridische versie of ingangsdatum ingesteld. Open PR is niet gemergd, deployed of enabled.
 
-Werkelijk gecontroleerde snapshot: 2026-11-06T09:46:11.594098+00:00. Basis `ab03c68d5b44afbba73f42fe5314c67878406ab3`. Onafhankelijke branches op main, geen featurebranchstack. Alle18 besluiten hieronder zijn productinput, geen juridische goedkeuring of productiebevoegdheid.
+Werkelijk gecontroleerde snapshot: 2026-11-06T09:48:46.858609+00:00. Basis `ab03c68d5b44afbba73f42fe5314c67878406ab3`. Onafhankelijke branches op main, geen featurebranchstack. Alle18 besluiten hieronder zijn productinput, geen juridische goedkeuring of productiebevoegdheid.
 
 ## Betekenis en volledige broninventaris
 
@@ -72,7 +72,7 @@ Studio Swyft BV, Molenzicht17,2380Ravels,België;ondernemingsnummer1032.227.379,
 
 Eigen detached validation-worktree combineert PR288–294 lokaal, nooit naar main/featurebranch gepusht. **1010backendPASS/1externeBillitSKIP**, legeDBmigrate+volledigeAPIseed inclhoofdtrainerPASS;geen schema-/migratiefout aangetroffen. Beide mailinterfaces en DIregistraties behouden bij2codeconflicten;1privacytabelconflict opgelost met finale goedgekeurde legaltekst. Deze3tekstconflicten moeten ook bij menselijke merge expliciet worden opgelost.
 
-Gecombineerdfrontendunit25PASS/build/typesPASS;website21PASS72assertions/build/types/lintPASS. Frontendfull-lintFAIL17bestaandeerrors14warnings, geen groeneallesclaim. Eerste gecombineerde scriptsuite15PASS/2FAIL:branchspecifiekeTFbytevergelijkingbotsteopgoedgekeurdebackupmetadataenlegalhashsnapshotbotsteopPR292DPAtoevoeging. Accessinvariant is nu beperkt tot access (niet backupinstellingen);branch en gecombineerde legalbronsnapshots zijn beide exact gehashd/geïnventariseerd, onbekende drift blijft fout. Definitieve rerunbewijs staat in de PRbody/task-evidence.
+Gecombineerdfrontendunit25PASS/build/typesPASS;website21PASS72assertions/build/types/lintPASS. Frontendfull-lintFAIL17bestaandeerrors14warnings, geen groeneallesclaim. Eerste gecombineerde scriptsuite15PASS/2FAIL:branchspecifiekeTFbytevergelijkingbotsteopgoedgekeurdebackupmetadataenlegalhashsnapshotbotsteopPR292DPAtoevoeging. Accessinvariant is nu beperkt tot access (niet backupinstellingen);branch en gecombineerde legalbronsnapshots zijn beide exact gehashd/geïnventariseerd, onbekende drift blijft fout. Definitieve scriptsrerun:17PASS/0FAIL, beide exacte legalbronsnapshots en accessinvariant gecontroleerd.
 
 Lokale gecombineerde full-schemaResticrestore en APIbeschikbaarheidsproef wordt in de PRbody met echte uitkomst gerapporteerd; geen cloudrestoreclaim. Bewijs: /opt/data/task-evidence/coachos-privacy/finish-combined-nov6-rerun/ en finish-prs/integration/.
 
@@ -81,3 +81,7 @@ Lokale gecombineerde full-schemaResticrestore en APIbeschikbaarheidsproef wordt 
 `python3 -m unittest discover -s scripts/tests -p test_legal_inventory.py -v`
 
 Dit is document-/configuratie-TDD: regressies op oude beleids-/headclaims eerst echt RED, daarna GREEN met actuele bronhashes. Geen backend/UIproductiecode gewijzigd in PR294. Alle conceptwaarschuwingen behouden;geen publicatie/versie/ingangsdatum.
+
+### Gezamenlijk herstel daadwerkelijk uitgevoerd
+
+PASS: volledige gecombineerde schema/seed via pg_dump→versleutelde Restic→pg_restore; originele database en ring verwijderd;2organisaties hersteld; echte DataProtectiondecryptie in vers proces alleen met herstelde ring. Verkeerde ring geweigerd. API bleef tijdens backup bereikbaar: alle17gezondheidschecks HTTP200. Manifest markeert de verplichte operatorquarantaine; daadwerkelijke isolatie/vrijgave blijft operatorverantwoordelijkheid, geen automatische API/SMTPactivering. Dit is lokale herstelvalidatie, geen Scaleway/cloudrestore. Exacte resultaten/producttreehashes in JSON en task-evidence/integration/joint-restore/result.json.
