@@ -1,0 +1,23 @@
+# REVIEW PROPOSAL ONLY: not installed/enabled; operator must provision identity/config/alerts.
+[Unit]
+Description=CoachOS encrypted DB and full keyring backup
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=coachos-backup
+Group=coachos-backup
+UMask=0077
+EnvironmentFile=/etc/coachos-backup/environment
+ExecStart=/usr/bin/python3 /opt/coachos/scripts/restic_backup.py backup --keyring ${KEYRING_DIR} --staging-parent ${STAGING_DIR}
+ExecStart=/usr/bin/python3 /opt/coachos/scripts/restic_backup.py prune
+ExecStart=/usr/local/bin/restic check
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/coachos-backup
+# Operator: use STAGING_DIR and RESTIC_CACHE_DIR below /var/lib/coachos-backup.
+# Grant read-only access to complete keyring and private libpq/Scaleway configuration.
+# Connect failure monitoring to existing alerting before enabling; no success mails.

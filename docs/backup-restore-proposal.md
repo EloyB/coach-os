@@ -1,43 +1,78 @@
-# Back-upvoorstel en lokale keyring-restore (#265)
+# Dagelijkse database + keyringbackup met Restic (#265)
 
-> CONCEPT / NIET UITGEROLD. Geen bewijs van een actuele productieback-up of beheerde Scaleway-restore.
+> CONCEPT / NIET UITGEROLD. De lokale echte tests hieronder bewijzen geen actuele productieback-up, Scaleway-upload of beheerde cloudrestore. Refs #265; issue blijft open voor operatorgates.
 
-## Database
+## Vastgelegd ontwerp
 
-De bestaande RDB-resource krijgt `backup_schedule_frequency = 24` (uren) en `backup_schedule_retention = 14` (dagen). Geen nieuwe resource, secret of verplichte configuratie. `disable_backup=false` blijft behouden. De echte automatische CI-planuitkomst staat in de PR-body: lokale fmt/validate zijn GEEN plan of bewijs van een veilige wijziging. Bij destroy/replace van database, VPS of bestaande secrets stopt dit werk; niet toepassen/mergen.
+Lorenz heeft dagelijks / 14 dagen, Restic naar S3-compatibel Scaleway Object Storage in EU, runtimewachtwoord uit Scaleway Secret Manager en een onafhankelijke herstelkopie in de zakelijke kluis van Lorenz/Eloy goedgekeurd. Normale dagelijkse back-ups stoppen de API niet. Deze punten zijn geen open beleidsvragen meer. Welke kluis, provisionering, eigenaar/RPO/RTO en werkelijk herstel zijn nog operationeel te bevestigen.
 
-## Lokale keyringtool (geen productieadapter)
+Bestaande managed PostgreSQL-back-ups blijven aan: voorgestelde `backup_schedule_frequency=24`, `backup_schedule_retention=14`. Geen nieuwe cloudresources, versionloze secrets of verplichte appconfig worden gemaakt. Echte CI-plan en de afzonderlijke `password_wo`-reviewgate staan in de PR-body; geen onbevoegde apply of wachtwoordwijziging.
 
-`scripts/keyring_snapshot.py` maakt een volledige snapshot van een **vlakke XML-keyringdirectory**, inclusief oude keys en revocation-XML. Geen selectieve keyrotatie of verwijdering. Mappen/symlinks, niet-XML, lege bron of meer dan 512 bestanden/16MiB worden geweigerd. Backup gebruikt 0600-bestand en atomaire no-clobber-publicatie, controleert ZIP-CRC, overschrijft geen bestaand archief en vereist een private 0700-parent buiten de bron. Een falende opname verwijdert geen eerdere back-up.
+## Werkende expliciete operatortool
 
-Writers moeten aantoonbaar gestopt zijn; `--quiesced` is een expliciete bevestiging, geen automatische API-lock. Voor productie vereist dit een goedgekeurde stop of apart bewezen consistentieontwerp. Geen SSH/Docker/stop/deploy is uitgevoerd.
+`scripts/restic_backup.py backup --keyring /operator/gecontroleerde/keyring --staging-parent /private/0700/staging`
 
-Voor een goedgekeurde lokale test met eigen fictieve directory:
+De tool gebruikt standaard libpq-configuratie (`PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSFILE`), geïnstalleerde PostgreSQL-client, tar en Restic. Zet geheimen niet op de commandline. Restic gebruikt eigen `RESTIC_REPOSITORY`, `RESTIC_PASSWORD_COMMAND` of private passwordfile en S3-credentialconfiguratie. De app krijgt geen nieuwe configuratie of brede website-DBcredentials.
+
+1. Lees alle reguliere XML-keyringbestanden, inclusief oude keys en revocations. Geen symlinks, submappen, lege ring of onbegrensde inhoud.
+2. Maak een consistente volledige PostgreSQL custom-format dump via `pg_dump`; geen API-stop of mutatie van applicatiedata.
+3. Lees de volledige ring opnieuw. Is iets toegevoegd, verwijderd of veranderd tijdens de dump, dan fail-closed zonder nieuwe Restic-snapshot. Een volgende run kan opnieuw proberen; wijzig nooit de ring om de test groen te maken. Dit is bewust conservatief bij rotatie/revocation.
+4. Bij byte-identieke ring: pak dump, volledige ring en hashmanifest samen in een encrypted Restic-snapshot met vaste host/tag/pad. De private staging wordt op succes en fout verwijderd. Een processcrash kan lokale plaintext achterlaten: staging moet op een afgeschermde/encrypted hostdisk staan; operator beheert opruiming en diskquota. Geen plaintext ZIP uploaden.
+
+Consistentievoorwaarde: de actieve app gebruikt de standaard Data Protection file-store, schrijft een nieuwe key vóór die voor encryptie wordt gebruikt en verwijdert/wijzigt geen keys tijdens capture. Het dubbel lezen detecteert gewone rotatie; dit is geen distributed lock of bescherming tegen kwaadwillige ABA-wijziging. Operator moet dit met de echte volume-/appconfig verifiëren. De lokale test herstelt ciphertext uit de database met uitsluitend de herstelde ring in een vers proces; verkeerde ring/application falen.
+
+`python3 scripts/restic_backup.py prune` gebruikt echte `restic forget --keep-within 14d --group-by host,tags --prune` voor uitsluitend de vaste backuphost/tag. Het newest snapshot blijft bij Restic behouden; 14 dagen is dus geen garantie dat ieder object exact dag14 verdwenen is. Gebruik GEEN bucket-expiry die willekeurige repositoryobjecten na14dagen wist. `restic check --read-data` en periodieke restore zijn afzonderlijke controles.
+
+## Niet-geïnstalleerd scheduler-/secretvoorstel
+
+Reviewbare units staan in `infrastructure/backup/`; niets wordt automatisch geïnstalleerd of enabled. Bevoegde operator moet een dedicated backupidentiteit, private staging, read-only volledige keyringmount, minimaal bevoegde DBbackupaccount, beperkte bucketrechten en alleen access op de gekozen Secret Manager-versie configureren. Geen versie/resource met lege echte waarde in Terraform opnemen.
+
+Voorbeeldconfiguratie (bewust geen echte ID/secret):
 
 ```sh
-python3 scripts/keyring_snapshot.py backup /eigen/fictieve-keyring /eigen/private-0700-map/nieuwe-snapshot.zip --quiesced
-python3 scripts/keyring_snapshot.py restore /eigen/private-0700-map/nieuwe-snapshot.zip /eigen/nog-niet-bestaande-herstelmap
+RESTIC_REPOSITORY=s3:https://s3.fr-par.scw.cloud/OPERATOR_BUCKET/coachos
+RESTIC_PASSWORD_COMMAND="scw secret version access OPERATOR_SECRET_ID revision=OPERATOR_VERSION raw=true region=fr-par"
+PGPASSFILE=/etc/coachos-backup/pgpass
+# PGHOST/PGPORT/PGDATABASE/PGUSER door operator, TLS verify-full met juiste CA.
+# AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY uit afgeschermde runtimeconfig, niet uit appcredentials kopiëren.
+# KEYRING_DIR en STAGING_DIR zijn private/gecontroleerde hostpaden.
 ```
 
-Restore weigert een bestaande doelmap (ook een lege), onveilige/absolute/nested paden, links, dubbele namen, overmatige inhoud en corrupte ZIP/CRC. Na volledige validatie wordt staging atomisch gepubliceerd; bij falen geen gedeeltelijke keyringdoelmap. Bestanden 0600, directory0700. Controleer voor een echte uitrol de bevoegde uid/gid; deze tool neemt niet automatisch de productie-appidentiteit over. Draai niet tegen een actieve ring of als algemene zip-extractor.
+Scaleway CLI-opdracht gecontroleerd tegen officiële openbare CLI-documentatie; niet tegen een cloudaccount uitgevoerd. S3-upload/IAM/Secret Manager-toegang zijn dus NIET bewezen. Restic-wachtwoord hoort daarnaast onafhankelijk bij Lorenz/Eloy in zakelijke kluis, niet Git/chat/DB/bucket; backuphost met runtime-toegang kan ontsleutelen, dus geen bescherming tegen volledige hostovername claimen. Credentialrotatie en kluisherstel moeten werkelijk geoefend worden. Mislukte unit moet via bestaande operatoralerting worden opgevolgd; geen dagelijkse succesmail of echte mail in deze opdracht.
 
-**Deze ZIP is NIET versleuteld.** CRC is foutdetectie, geen authenticiteit/vertrouwelijkheid. Upload de plaintext niet als productieback-up. Off-host bestemming, authenticated encryption, onafhankelijke herstelidentiteit, quota, dagelijkse scheduler, monitoring en archiefretentie zijn open operationele keuzes. De tool uploadt/prunet/plaatst geen scheduler en wordt niet automatisch door bestaande workflows geïnstalleerd. Verwijder nooit actieve oude keys omdat een back-uparchief ouder is dan veertien dagen: bestaande ciphertext kan die keys nog nodig hebben.
+## Herstel: altijd quarantaine, niet stil activeren
+
+1. Herstel uitsluitend naar aparte afgeschermde omgeving zonder publiek verkeer, jobs of SMTP. `restic check --read-data`; `restic restore SNAPSHOT --target NIEUWE_PRIVATE_MAP`. Pak `capture.tar` met een veilige extractor uit; controleer manifesthashes. Gebruik nooit een onbeoordeeld archief om een actieve ring te overschrijven.
+2. Restore dump naar lege disposable DB met `pg_restore --no-owner --no-privileges --exit-on-error`; herstel volledige ring met passende uid/gid en private rechten. Behoud netwerk-/mailquarantaine. Deze tool start geen API, mailworker of release.
+3. Verkrijg de **actuele onafhankelijke, complete** verwijder-/uitschrijfledger, ook gebeurtenissen ná de snapshot. Een ledger die uitsluitend in diezelfde oude DB/back-up zit is onvoldoende. Minimale gegevens: organisatie-ID + recordsoort/ID en uitschrijfentry-ID; geen namen, e-mailadressen, vrije antwoorden of tokens. Voor historische import kunnen daarnaast afzonderlijke suppressionhashes/reconciliatie nodig zijn.
+4. `python3 scripts/restic_backup.py guard --ledger /private/current-ledger.json` voert alleen tenantgebonden read-only queries uit. Exit3 betekent gewiste/uitgeschreven gegevens zijn teruggekomen: GEEN vrijgave, herstel onder beoordeling opnieuw verwerken en guard herhalen. Exit1 betekent ontbrekende schema's, ongeldige input, verouderde ledger (>24uur), futuretimestamp of technische fout: eveneens geen vrijgave. Exit0 bewijst alleen afwezigheid van opgegeven targets, NIET volledigheid of vrijgavetoestemming.
+5. Goedgekeurde herverwerking moet actuele financiële/hold-/tenantguards blijven respecteren; de tool doet bewust geen blinde SQL-cascade of legal-hold-bypass. Bevoegde operator moet volledigheid/laatste ledgerwatermark vaststellen, verwijderingen en uitschrijvingen herverwerken, overige verlopen gegevens controleren en expliciet vrijgeven. Tot dan geen API/SMTP. Deze handmatige gate is geen automatische volledige replay en blijft een operationele acceptatievoorwaarde.
+
+Ledgerformaat:
+
+```json
+{"complete_through":"UTC-ISO-TIMESTAMP","erasures":[{"organization_id":"UUID","kind":"enrollment","target_id":"UUID"}],"unsubscribed_entry_ids":["UUID"]}
+```
+
+Soorten: `enrollment`, `camp_enrollment`, `organization`; organisatie-target moet gelijk zijn aan organisatie-ID. Een ontbrekende tabel is fout, geen stil overslaan. Deze versie levert geen automatische onafhankelijke ledgerpublicatie vanuit #261/#262 of wachtlijsttransacties. Dat vereist een gecontroleerde externe opslag-/failure-atomicitykeuze; zonder die operationele voorziening mag deletion/restore niet als veilig automatisch heractiveerbaar worden ingeschakeld. De lokale guardproef is geen cloudrestore of afdoende compleet historisch bewijs.
 
 ## Echte lokale verificatie
 
 ```sh
-python3 -m unittest discover -s scripts/tests -p 'test_*.py'
 python3 scripts/tests/verify_keyring_restore.py
+COACHOS_BACKUP_LOCAL_TEST=1 python3 -m unittest discover -s scripts/tests -p 'test_*.py' -v
 ```
 
-De tweede check bouwt een lokale .NET-probe tegen de echte `DataProtectionTokenProtector`. Een apart proces beschermt een duidelijk fictieve payload met application name CoachOS en de echte OAuth-purpose. Dat proces stopt vóór opname. De oorspronkelijke ring wordt verwijderd; alleen het herstelde archief wordt in een nieuw proces gelezen. Verkeerde/lege ring en verkeerde application name moeten falen. Geen API-startup, cloud, UserSecrets of werkelijke Mollie-credentials. Bewijs betreft keyringrestore, NIET database-/managed-back-uprestore. Volledige backend en lege lokale PostgreSQL-migraties/API-seed zijn aanvullend uitgevoerd, niet als database-restore geclaimd.
+Vereist lokaal loopback PostgreSQL127.0.0.1:55432, Restic en .NET10. De integratietests maken uitsluitend eigen willekeurige `backup_test_*`-databases en tijdelijke versleutelde repositories met een duidelijk disposable testwachtwoord; geen echte sleutels/credentials. Ze bewijzen echte pg_dump/Restic/pg_restore, verlies van originele ring en DBinhoud, cryptografisch herstel in nieuwe processen, verkeerde ring/app/passwordweigering, capturefalen tijdens ringwijziging, echte forget/prune + read-data, en een non-mutating restorequarantaineguard. Volledige backend + lege-DBmigraties/APIseed worden apart gerapporteerd.
 
-## Nog te beslissen
+De oudere `scripts/keyring_snapshot.py` blijft alleen een lokale plaintext/quiesced ZIP-testtool. Die is niet het dagelijkse productieontwerp; geen standaard API-stop goedgekeurd of nodig gemaakt.
 
-1. Is dagelijks/14dagen goedgekeurd en welk RPO/RTO, eigenaar en alarmcriterium horen daarbij?
-2. Welke versleutelde off-host bestemming/regio en herstelidentiteit? Geen nieuwe appsecret of versionless Secret Manager-resource toevoegen.
-3. Mag een korte API-stop voor capture? Hoe wordt de scheduler veilig uitgerold onder het verbod op workflowwijzigingen?
-4. Wanneer voert een bevoegde beheerder een managed database-restore naar een nieuwe testomgeving uit? Dat is onder het huidige productie/cloudverbod niet toegestaan.
-5. Hoe worden ingetrokken toestemmingen/verwijderingen na restore opnieuw verwerkt (#261/#262), en wat gebeurt met historische/handmatige back-ups?
+## Open operator-/juridische gates
 
-Geen conceptwaarschuwing verwijderd, juridische versie of ingangsdatum ingesteld. Bijlage II is alleen als voorgesteld/nog te verifiëren bijgewerkt. Issue blijft open tot operationele onderdelen en echte uitrol gecontroleerd zijn.
+- Secret/bucket/IAM/kluis/scheduler/alerting daadwerkelijk provisioneren en controleren door bevoegde eigenaar; geen huidige werking geclaimd.
+- `password_wo`-diff uit echte CI-plan vóór apply afzonderlijk verklaren; geen onbedoelde passwordwijziging toegestaan.
+- Onafhankelijke actuele volledige ledger en gecontroleerde herverwerking/vrijgave. Deletion blijft standaard uit; geen automatische heractivatie.
+- Managed-cloud/off-host restore met echte afhankelijkheden onder bevoegdheid uitvoeren; lokale test vervangt die niet.
+- Financiële/Billit-/legal-holdbesluiten niet afleiden uit technische backupretentie. Geen juridische publicatie/versie/ingangsdatum.
+
+Bronnen: https://restic.readthedocs.io/en/stable/030_preparing_a_new_repo.html (S3); https://restic.readthedocs.io/en/stable/060_forget.html (retentie); https://github.com/scaleway/scaleway-cli/blob/master/docs/commands/secret.md (version access). Openbare bronkopieën staan in task-evidence; geen live cloud benaderd.
