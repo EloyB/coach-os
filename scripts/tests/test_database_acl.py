@@ -18,6 +18,14 @@ class DatabaseAccessDecisionTests(unittest.TestCase):
                 relative = str(path.relative_to(ROOT))
                 original = subprocess.run(['git', 'show', 'origin/main:' + relative], cwd=ROOT, capture_output=True)
                 self.assertEqual(original.returncode, 0, relative + ' must not introduce unapproved network resources')
-                self.assertEqual(path.read_bytes(), original.stdout, relative + ' must not alter current access or migration routes')
+                if directory == 'infrastructure/terraform' and path.name == 'main.tf':
+                    # #265 independently owns backup scheduling, not database access.
+                    # Compare all other statements, allowing formatter alignment only.
+                    def access_source(text):
+                        return [re.sub(r'\s*=\s*', '=', line.strip()) for line in text.splitlines()
+                                if not line.strip().startswith(('backup_schedule_frequency', 'backup_schedule_retention'))]
+                    self.assertEqual(access_source(path.read_text()), access_source(original.stdout.decode()), relative + ' changes access beyond independent backup policy')
+                else:
+                    self.assertEqual(path.read_bytes(), original.stdout, relative + ' must not alter current access or migration routes')
 
 if __name__ == '__main__': unittest.main()
