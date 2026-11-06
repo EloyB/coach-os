@@ -106,6 +106,8 @@ Wat nog niet bekend is, wordt aangevuld zodra het beschikbaar is.
 
 10.3. Op verzoek bevestigt de verwerker schriftelijk dat de gegevens gewist zijn.
 
+Conceptuitwerking na eigenaarsbesluit: de termijnen beginnen bij het **werkelijke einde** van de betaalde abonnementsperiode of proef, niet de opzeggingsdatum. ZIP-export is voor bevoegde actieve clubadmins via de beveiligde app (CSV plus JSON; spelers/contacten/inschrijvingen/antwoorden/planning/lessen/kampen/betalingen en beschikbare factuurgegevens/bijlagen). Geen wachtwoorden/tokens/andere clubs of onbeschermde mailbijlage. Externe Billit-documenten en nog onbesliste financiële bewijsvelden zijn geen bewezen volledig exportarchief. Open PR #291 bevat echte niet-financiële uitvoering; financiële/juridische/operatorgates blijven vóór activering van toepassing. Een restore blijft in quarantaine totdat latere verwijderingen/uitschrijvingen gecontroleerd zijn herverwerkt.
+
 ## 11. Aansprakelijkheid
 
 Voor de aansprakelijkheid tussen partijen gelden de beperkingen uit artikel 12 van de algemene voorwaarden. Die beperkingen doen geen afbreuk aan de rechten van betrokkenen uit artikel 82 AVG. **[VRAAG VOOR DE ADVOCAAT: moet dit plafond ook gelden voor privacy-inbreuken, of is een apart, hoger plafond aangewezen?]**
@@ -146,8 +148,8 @@ De verwerker slaat **geen** betaalkaart- of bankrekeninggegevens van spelers op.
 - Technische logging voor beveiliging en foutopsporing.
 
 **Duur en bewaring**
-- Zolang de Klant een account heeft, beslist de Klant zelf over het bewaren van zijn gegevens, binnen de mogelijkheden van de Dienst. De persoonsgegevens van spelers worden automatisch verwijderd of geanonimiseerd 24 maanden na het einde van de laatste lessenreeks, les of kamp waarvoor ze ingeschreven waren. Dat stemt overeen met de voorwaarden voor spelers (`algemene-voorwaarden-inschrijving.md`, art. 11.5). De Klant kan inschrijvingen ook eerder laten verwijderen. **[TE BOUWEN: de Dienst kan vandaag geen inschrijvingen of spelergegevens verwijderen, en de automatische verwijdering na 24 maanden bestaat nog niet]**
-- Na het einde van de dienstverlening: zie artikel 10. **[TE BOUWEN: er bestaat nog geen proces om een organisatie volledig te verwijderen; tot dat gebouwd is, moet het manueel en gedocumenteerd gebeuren]**
+- Goedgekeurd uitgangspunt: persoonsgegevens en vrije antwoorden van spelers verwijderen 24 maanden na de laatste deelname aan lessenreeks, losse les of kamp **binnen dezelfde club**; login, e-mail of activiteit bij een andere club verlengen dit niet. Alleen werkelijk niet-herleidbare statistieken behouden. Clubbeheerder kan vroegtijdig verwijderen na preview en expliciete bevestiging; actieve/toekomstige deelname, open betalingen en geschillen vereisen afzonderlijke afhandeling. Minimale verplichte financiële bewijsgegevens afzonderlijk afschermen; exacte velden/termijnen/startmomenten blijven juridisch te bevestigen, geen volledig spelersdossier automatisch bewaren. **[TE BOUWEN: gecontroleerde uitrol en financiële/hold-/herstelreview; echte niet-financiële spelerverwijdering, tenantgebonden adminroute, technische cleanup en UI gebouwd/getest in open PR #290, standaard uit, niet uitgerold]**
+- Na het werkelijke einde van de betaalde periode/proef: 30 dagen read/export voor actieve clubadmins, daarna normale toegang dicht; uiterlijk dag90 niet-financiële verwerking met afzonderlijke financiële/holdreview. Geldige heractivatie stopt het traject en wordt vóór uitvoering opnieuw gecontroleerd. Einddatum-/dag83meldingen alleen aan actieve clubadmins, geen spelers of gewone trainers. Vroegtijdige organisatieverwijdering alleen door superadmin na geverifieerd clubadminverzoek, preview en extra bevestiging; accounts bij andere clubs intact. **[TE BOUWEN: gecontroleerde uitrol en financiële/Terms-/Billit-/herstelgates; echte ZIPexport, toegangsgates, notices/retries en niet-financiële organisatiedelete gebouwd/getest in open PR #291, standaard uit, niet uitgerold]**
 - Technische logs: 7 dagen.
 - Eenmalige links en codes verlopen automatisch:
 
@@ -157,6 +159,8 @@ De verwerker slaat **geen** betaalkaart- of bankrekeninggegevens van spelers op.
 | Verificatiecode | 30 minuten |
 | Uitnodiging | 72 uur |
 | Bevestigingslink voor een lesmoment | 72 uur |
+
+Technisch beleid: gebruikte/verlopen beveiligingslinks opruimen, geldige links intact; succesvol afgehandelde interne mailwachtrijmetadata na 30 dagen opruimen op basis van afhandelingstijd. Pending/failure niet blind verwijderen. Dit verlengt geen gevoelige tijdelijke wachtlijst-tokenpayload: die verdwijnt bij SMTPacceptatie of de apart begrensde expiry. Het is geen mailboxopschoning of financiële verwijdering. Gebouwd in open #289/#290, geen productieactivering geclaimd.
 
 **Frequentie**: doorlopend, zolang de Dienst gebruikt wordt.
 
@@ -196,7 +200,7 @@ De verwerker slaat **geen** betaalkaart- of bankrekeninggegevens van spelers op.
 - Elke wijziging gaat via code review en geautomatiseerde tests voor ze in productie komt. Testomgevingen gebruiken fictieve gegevens.
 
 **Organisatorisch**
-- Er is een procedure voor datalekken, met melding binnen 48 uur (artikel 8). **[TE DOEN: korte interne procedure op papier zetten]**
+- Aanspreekpunt bij een mogelijk datalek is **info@coach-os.be**, volgens het eigenaarsbesluit bereikbaar voor Lorenz en Eloy; geen persoonlijke primary/deputy-verdeling aangenomen. Een bruikbaar intern concept staat in `docs/privacy-incident-procedure.md`. **[TE DOEN: eigenaar/advocaatreview en oefening van het incidentconcept; de contractuele 48 uur is geen wettelijke wachttijd en mag melding zonder onredelijke vertraging niet uitstellen.]**
 - De Dienst bevat geen trackers, advertenties of analysediensten van derden.
 
 ## Bijlage III — Subverwerkers
@@ -205,7 +209,7 @@ De verwerker slaat **geen** betaalkaart- of bankrekeninggegevens van spelers op.
 |---|---|---|---|---|
 | **Scaleway SAS** | Frankrijk | Hosting van server en database, opslag van geheime sleutels, DNS en het versturen van e-mails (Transactional Email) | Parijs, Frankrijk (EU) | Verwerkersovereenkomst van Scaleway |
 | **Google Ireland Ltd** (Google Workspace) | Ierland | Ontvangst en opslag van e-mail naar @coach-os.be-adressen, zoals supportvragen van de Klant die persoonsgegevens kunnen bevatten | EU/wereldwijd | Cloud Data Processing Addendum van Google, met standaardcontractbepalingen en EU-US Data Privacy Framework |
-| **GitHub Inc.** | Verenigde Staten | Uitvoeren van database-updates bij een nieuwe versie van de Dienst. Er worden geen gegevens gekopieerd, maar er is tijdens die stap wel technische toegang. | VS | GitHub Data Protection Agreement, met standaardcontractbepalingen en EU-US Data Privacy Framework. **[WORDT GESCHRAPT: de database-updates verhuizen naar de eigen server in Frankrijk, waarna GitHub geen subverwerker meer is — issue #260]** |
+| **GitHub Inc.** | Verenigde Staten | Bestaande CI-/deploy-/databasemigratierol en technische toegang afzonderlijk beoordelen; workflows zijn niet gewijzigd. | VS | GitHub Data Protection Agreement, met standaardcontractbepalingen en EU-US Data Privacy Framework. Niet automatisch schrappen na #260: VPS-only ontwerp is afgewezen en teruggenomen; dit is geen compliance- of productiecontrole. |
 
 **Geen subverwerker: de betaalprovider van de Klant.** Online betalingen van spelers verlopen via het eigen Mollie-account van de Klant, dat de Klant zelf aan CoachOS koppelt. Mollie B.V. (Nederland) handelt die betalingen af op basis van de overeenkomst tussen de Klant en Mollie. CoachOS stuurt Mollie alleen het bedrag, een omschrijving en technische referenties. Naam en e-mailadres vult de betaler zelf in bij Mollie.
 

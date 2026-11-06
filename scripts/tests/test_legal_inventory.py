@@ -34,4 +34,34 @@ class LegalInventoryTests(unittest.TestCase):
             self.assertIn(f'/pull/{number}',report)
         self.assertIn('geen complianceverklaring',report)
 
+    def test_decisions_and_delivery_snapshot_are_current(self):
+        data=json.loads((ROOT/'docs/legal-readiness-inventory.json').read_text())
+        self.assertEqual([d['number'] for d in data.get('policy_decisions',[])],list(range(1,19)))
+        heads={p['number']:p['sha'] for p in data['pull_request_snapshot']}
+        self.assertTrue(heads[289].startswith('3291c856'))
+        self.assertTrue(heads[290].startswith('2b54a29'))
+        self.assertTrue(heads[291].startswith('9a35aa7'))
+        self.assertTrue(heads[292].startswith('d04ebb8'))
+        self.assertTrue(heads[293].startswith('1d095ec'))
+        report=(ROOT/'docs/legal-readiness-inventory.md').read_text()
+        self.assertNotIn('uitsluitend opt-in beperkte read-only preview',report)
+        self.assertIn('974',report)
+        self.assertIn('17 bestaande lintfouten',report)
+
+    def test_concept_mailbox_incident_and_access_policies_match_approved_choices(self):
+        privacy=(ROOT/'docs/legal/privacyverklaring.md').read_text()
+        self.assertIn('twaalf maanden na afhandeling',privacy)
+        self.assertIn('Billit als primair archief',privacy)
+        self.assertNotIn('[wordt geschrapt na issue #260]',privacy)
+        dpa=(ROOT/'docs/legal/verwerkersovereenkomst.md').read_text()
+        self.assertIn('binnen dezelfde club',dpa)
+        self.assertIn('werkelijke einde',dpa)
+        self.assertIn('info@coach-os.be',dpa)
+        incident=ROOT/'docs/privacy-incident-procedure.md'
+        self.assertTrue(incident.exists(),'usable incident concept required')
+        text=incident.read_text()
+        for term in ['CONCEPT','info@coach-os.be','72 uur','zonder onredelijke vertraging','48 uur','33(5)','https://www.edpb.europa.eu/sme/assess-the-risks/data-breaches_en']:
+            self.assertIn(term,text)
+        self.assertIn('geen externe melding',text)
+
 if __name__=='__main__': unittest.main()

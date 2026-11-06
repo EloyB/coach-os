@@ -1,66 +1,79 @@
 # Juridische gereedheidsinventaris — concept, geen publicatie
 
-> **CONCEPT — nazicht door eigenaar en advocaat blijft verplicht.** Dit is een technisch overzicht, geen complianceverklaring, juridische goedkeuring of machtiging om te publiceren. Alle bestaande conceptwaarschuwingen, versies en datumplaatsaanduidingen in `docs/legal/` zijn ongewijzigd. Geen productie benaderd, geen merge, deployment of workflowwijziging uitgevoerd.
+> CONCEPT — eigenaar/advocaatreview blijft verplicht; geen complianceverklaring of publicatiemachtiging. Geen juridische versie of ingangsdatum ingesteld. Open PR is niet gemergd, deployed of enabled.
 
-## Scope en betekenis van de statussen
+Werkelijk gecontroleerde snapshot: 2026-11-06T09:35:53.222946+00:00. Basis `ab03c68d5b44afbba73f42fe5314c67878406ab3`. Onafhankelijke branches op main, geen featurebranchstack. Alle18 besluiten hieronder zijn productinput, geen juridische goedkeuring of productiebevoegdheid.
 
-Basis: vers opgehaalde `origin/main` op `ab03c68d5b44afbba73f42fe5314c67878406ab3`. Alle elf voorkomens van de gevraagde drie markertypes in vier juridische Markdownbestanden zijn afzonderlijk opgenomen, **inclusief de drie verklarende legenda's**. Het spelersvoorwaardenbestand heeft geen van deze drie markertypes, maar wel andere plaatsaanduidingen; die zijn hierdoor niet automatisch ingevuld of goedgekeurd.
+## Betekenis en volledige broninventaris
 
-De exacte bronquote, bestandsnaam, regel, volgnummer, classificatie, assessment, bron-SHA256 en teruggelezen PR-status staan in [de machineleesbare inventaris](./legal-readiness-inventory.json). De lokale test vergelijkt de inventaris met elke werkelijke bronoccurrence en alle vier bronhashes. Daardoor kan een nieuwe/verplaatste marker niet ongemerkt worden overgeslagen.
+Gebouwd = code in open PR met echt lokaal bewijs; tekstcorrectie = concept of verduidelijking; onbeslist = concrete juridische/operatorgate, ook als niet-financiële code al geleverd is. Alle actuele occurrences inclusief legenda en exacte vier bronhashes staan in JSON. Baseline-occurrences zijn daarnaast behouden voor herleidbaarheid van iedere oorspronkelijke marker. Markers zijn niet stil verwijderd wegens groene CI.
 
-- **Gebouwd** betekent uitsluitend: in de genoemde open PR gebouwd en getest. Niet gemergd is niet in main, en is geen bewijs van deployment, activering of juridische naleving.
-- **Tekstcorrectie** betekent: legenda behouden of voorgestelde formulering/status verduidelijken; geen toestemming om een waarschuwing te verwijderen of een onbewezen actuele garantie te publiceren.
-- **Onbeslist** betekent: implementatie en/of juridische/operationele keuze ontbreekt. Ook gedeeltelijk gebouwde guarded functionaliteit kan hier staan.
-- Productie-/activeringsstatus is **niet gecontroleerd**. Voor deze batch zijn geen deployments uitgevoerd. #261/#262 staan bovendien in de code standaard uit en kunnen alleen read-only dry-run activeren, geen verwijdering.
+| Bron:regel | Classificatie | Beoordeling |
+|---|---|---|
+| docs/legal/algemene-voorwaarden-clubs.md:7 (#1) | tekstcorrectie | Verklarende legenda/conceptwaarschuwing behouden; geen feature of publicatieautorisatie. |
+| docs/legal/algemene-voorwaarden-clubs.md:104 (#2) | gebouwd | Waarschuwing gebouwd/getest in open PR288, desktop/mobiel4PASS; niet gemergd/uitgerold of juridisch goedgekeurd. |
+| docs/legal/privacyverklaring.md:6 (#1) | tekstcorrectie | Verklarende legenda/conceptwaarschuwing behouden; geen feature of publicatieautorisatie. |
+| docs/legal/privacyverklaring.md:25 (#2) | onbeslist | Billit als primair eigen factuurarchief goedgekeurd; noodzakelijke lokale velden/financiële termijnen en garanties na beëindiging blijven externe juridische/accountgates; geen volledig dubbel archief. |
+| docs/legal/privacyverklaring.md:26 (#3) | onbeslist | Code geleverd in PR289: contact API→PG,12kalendermaanden vanaf ontvangst, echte cleanup/historische offlineimport en mailflow getest. Marker betreft resterende bevoegde livecutover/uitrol/restore, niet ontbrekende feature. |
+| docs/legal/privacyverklaring.md:28 (#4) | onbeslist | PR289: echte registratie→PG→SMTP→uitschrijfbevestiging, historischeimport/dryrun/idempotentie. Lancering15nov2026 goedgekeurd. Uitrol en historischecutover/operatorreplay blijven open. |
+| docs/legal/verwerkersovereenkomst.md:6 (#1) | tekstcorrectie | Verklarende legenda/conceptwaarschuwing behouden; geen feature of publicatieautorisatie. |
+| docs/legal/verwerkersovereenkomst.md:139 (#2) | gebouwd | Waarschuwing gebouwd/getest in open PR288, desktop/mobiel4PASS; niet gemergd/uitgerold of juridisch goedgekeurd. |
+| docs/legal/verwerkersovereenkomst.md:151 (#3) | onbeslist | PR290: echte niet-financiële spelerdelete/adminUI/technischecleanup met tenant/FK/concurrencytests;959backendPASS/1BillitSKIP en echte UI/API/PG. Financieel/holdbeleid en onafhankelijke herstelledger/uitrol blijven gates; geen preview-only meer. |
+| docs/legal/verwerkersovereenkomst.md:152 (#4) | onbeslist | Billit als primair eigen factuurarchief goedgekeurd; noodzakelijke lokale velden/financiële termijnen en garanties na beëindiging blijven externe juridische/accountgates; geen volledig dubbel archief. |
+| docs/legal/verwerkersovereenkomst.md:193 (#5) | tekstcorrectie | Goedgekeurd dagelijks14d; PR292 wijzigt bronvoorstel en bevat echte lokale Restic/DB/keyringrestore+quarantaineguard. Werkelijke cloud/scheduler/ledger/kluis/operatorrestore niet bewezen; password_wo vóór apply verklaren. Zie afzonderlijke PR292-brondelta. |
+| docs/legal/verwerkersovereenkomst.md:203 (#6) | onbeslist | Bruikbaar intern concept opgesteld met gedeeld info@coach-os.be en officieel gecontroleerde EDPBmeldregels. Eigenaars-/advocaatreview, bereikbaarheid/fallback en oefening nog niet bewezen; geen echte melding. |
 
-## Iedere occurrence
+## Echte finale featureheads en bewijs
 
-| ID | Bron en regel op deze basis | Classificatie | Werkelijke status en vervolg |
-|---|---|---|---|
-| C1 | [Clubs, regel 7](./legal/algemene-voorwaarden-clubs.md#L7) — legenda | Tekstcorrectie | Behoud legenda, conceptwaarschuwing en advocaatreview. Geen feature-acceptatiepunt. |
-| C2 | [Clubs, regel 104](./legal/algemene-voorwaarden-clubs.md#L104) — formulierwaarschuwing | Gebouwd, alleen open PR | #263 / PR #288 heeft waarschuwing en regressiebewijs. Niet gemergd of op productie getest. Bestaande juridische uitzondering voor allergieën/aandachtspunten blijft een reviewkeuze. |
-| P1 | [Privacy, regel 6](./legal/privacyverklaring.md#L6) — legenda | Tekstcorrectie | Conceptstatus en marker behouden. Geen ingangsdatum of publicatie. |
-| P2 | [Privacy, regel 26](./legal/privacyverklaring.md#L26) — contactbewaring/IP | Onbeslist, deels gebouwd | #264 / #289: IP-velden uit nieuwe/bestaande bestandswrites, twaalf kalendermaandenopschoning en onderhoud getest. Juridische ‘laatste contact’ versus `submittedAt`, persistente opslag, back-up en live opruiming niet bevestigd. |
-| P3 | [Privacy, regel 27](./legal/privacyverklaring.md#L27) — wachtlijst | Onbeslist, deels gebouwd | #264 / #289: capability en expliciete POST gebouwd, geen lek bij duplicaten. Officiële lanceringsdatum, bestaande abonneelinks/mailbezorging en opslaguitrol onbeslist. Optionele datum is niet ingesteld/gecontroleerd. |
-| V1 | [DPA, regel 6](./legal/verwerkersovereenkomst.md#L6) — legenda | Tekstcorrectie | Dezelfde conceptlegenda bewaren; geen automatische verwijdering na samenvoegen van code. |
-| V2 | [DPA, regel 137](./legal/verwerkersovereenkomst.md#L137) — formulierwaarschuwing | Gebouwd, alleen open PR | Dezelfde #263 / #288 als C2, afzonderlijke occurrence. Geen nieuwe verwerking/rechtsgrond goedgekeurd. |
-| V3 | [DPA, regel 149](./legal/verwerkersovereenkomst.md#L149) — spelerretentie | Onbeslist | #261 / #290 bevat uitsluitend opt-in beperkte read-only preview, geen admin-delete, anonimisering of volledige laatste-deelnameberekening. Betalingen/boekhouding, gedeelde identiteit en afhankelijke records/tokens/outbox blijven vragen. Issue open. |
-| V4 | [DPA, regel 150](./legal/verwerkersovereenkomst.md#L150) — organisatieverwijdering | Onbeslist | #262 / #291: preview en voorlopige procedure, geen volledige export, 30/90-dag toegangsgates, notice, financieel archief of definitieve delete. Manuele procedure is geen ongetest deletescript en machtigt geen uitvoering. Issue open. |
-| V5 | [DPA, regel 189](./legal/verwerkersovereenkomst.md#L189) — back-uptermijn | Tekstcorrectie, operationeel open | #265 / #292 stelt dagelijks/14dagen voor en maakt de tekst expliciet nog te bevestigen. Echte CI-plan en echte lokale keyringrestore bestaan; off-host versleuteling/scheduler, productie-inrichting en managed-DB-restore zijn niet bewezen. Niet als huidige garantie invullen. |
-| V6 | [DPA, regel 199](./legal/verwerkersovereenkomst.md#L199) — interne datalekprocedure | Onbeslist | Geen goedgekeurde nieuwe procedure in deze batch. Eigenaar/bereikbaarheid, escalatie, meldklok, bewijs en oefening vastleggen; advocaat/eigenaar beoordelen de contractuele 48uur. |
+| PR | Head/checks | Werkelijk resultaat en resterende gates |
+|---|---|---|
+| [#287](https://github.com/EloyB/coach-os/pull/287) | `a7cce1999fb39270778a6af6e8928c2c6cb92095`; geen checks op deze head; open, draft=False, merged=False | Bedrijfsgegevens spelersvoorwaarden bestaande PR, niet gedupliceerd. Dit bestand blijft ongewijzigd door PR294. |
+| [#288](https://github.com/EloyB/coach-os/pull/288) | `7475386b79f933e85dea91a2c96e9aded8a29d97`; typecheck-test-build:success; open, draft=False, merged=False | Bestaande formulierwaarschuwing behouden; echte desktop/mobiel4PASS. Geen juridische toestemming voor bijzondere gegevens afgeleid. |
+| [#289](https://github.com/EloyB/coach-os/pull/289) | `3291c85683c147446d7a9fa46547610181adafbe`; build-and-test:success; open, draft=True, merged=False | 951backendPASS/1externeBillitSKIP;website21tests72assertions/types/lint/build;echte SMTP/browser/PGimport/dryrun/concurrency/suppression/cleanup. Operatorcutover/restoregate;één bestaande lintwarning. |
+| [#290](https://github.com/EloyB/coach-os/pull/290) | `2b54a29f471843e1aa6057c5438184bf54f7d841`; build-and-test:success, typecheck-test-build:success; open, draft=True, merged=False | 959backendPASS/1BillitSKIP;legeDBmigrate/seed;echte UI/API/PGles/kampdelete;UI4PASS/unit25PASS/build/types/changedlint. Financieel/hold/restoregates;17 bestaande lintfouten elders. |
+| [#291](https://github.com/EloyB/coach-os/pull/291) | `9a35aa7c49a8c4ab9ba8d0d4107e93ca2a26d766`; build-and-test:success, typecheck-test-build:success; open, draft=True, merged=False | 974backendPASS/1BillitSKIP;legeDBmigrate/seed;echte ZIPexport/UI/API/PG/Mailpit/delete/noticeconcurrency. UI3PASS/unit25PASS/build/types/changedlint. Brede browsersuite NIET groen:22PASS20FAIL1onderbroken102nietgerund;17 bestaande lintfouten. Externe factuurPDF/Terms/financial/restoregates. |
+| [#292](https://github.com/EloyB/coach-os/pull/292) | `d04ebb8483327645b70325355bda5ab28f2818b8`; apply:skipped, plan:success; open, draft=True, merged=False | 12scriptsPASS;echte pg_dump/Restic/pg_restore+fresh-processdecryption;verkeerde key/app/passwordgeweigerd;echte forget/prune/read-data;restoreguard blokkeert resurrectie.937backendPASS/1skip+legeDBseed. CIplan0add/1change/0destroy,retentie7→14 plus password_wo-reviewgate. Cloud/ledger/kluis/scheduler/alerting/managedrestore niet geverifieerd. |
+| [#293](https://github.com/EloyB/coach-os/pull/293) | `1d095ecefe989fd7d3f810050a6c0ac576c3855a`; geen checks op deze head; open, draft=True, merged=False | Afgewezen VPS-only ACL daadwerkelijk verwijderd.2configtestsRED→GREEN;alleTF/workflowsidentiek aanmain. Geen nieuwe exacte-headCI:pathsfilter alleenTF/workflow;oud1ACLaddplan is NIET geldig. Geen no-opcloudplan geclaimd. Onderliggende hardening blijft open;directe dynamischetoegang behouden. |
 
-### Delta in nog open #292
+Geen brede frontendgroenclaim. Echte lokale PostgreSQLtests zijn geen bewijs dat CI dezelfde opt-ins uitvoert. Empty-DBmigrate+APIseed is geen Dockerreset/cloudrestore. Graphify module ontbreekt, niet groen. Geen prodHTTP/DB/SSH/cloudcredentials/echte mail/merge/deploy/apply/workflowwijziging.
 
-Deze branch is niet gestapeld op #292. Die PR vervangt de oorspronkelijke back-upmarker V5 door een expliciete ‘na goedkeuring/uitrol/restorecontrole’-marker en voegt één extra invulmarker voor de keyringback-upbestemming, encryptie, herstelidentiteit, frequentie en retentie toe. Die nieuwe occurrence is **onbeslist**; niet een extra voltooid punt. Na eventuele merge de broninventaris opnieuw genereren en testen, niet alvast main als gewijzigd presenteren.
+## Alle18 vastgelegde besluiten
 
-## PR's, echte checks en grenzen
+| Nr | Besluit | Implementatie/gate |
+|---|---|---|
+| 1: Lancering | 15 november2026; uiterste wachtlijstgrens15mei2027 | Gebouwd als code-default PR289; niet uitgerold |
+| 2: Formulierclock | 12kalendermaanden na ontvangst, niet mailboxactiviteit | API/PGcleanup getest PR289 |
+| 3: Opslag | API→bestaandePG, geen brede websiteDBcredentials; gecontroleerde historischeimport | Gebouwd/getest PR289; livecutover operator |
+| 4: Wachtlijst | Behouden; persoonlijke bevestigingsuitschrijflink alleen wachtlijst; #295 later | Echte lokale SMTP/browserflow PR289; geen bulkmail |
+| 5: Speleractie | Persoonsgegevens/vrijeantwoorden weg; alleen echt anonieme statistiek; minimaal financieel bewijs apart | Niet-financiële uitvoering PR290; financiële velden/termijnen/holds open |
+| 6: Spelerclock | 24maanden sinds laatste deelname eigen club; actief/toekomstig blokkeert; geen login/mail/andereclub | Gebouwd/getest PR290 |
+| 7: Vroegtijdig speler | Clubadmin preview/bevestiging, geen financiële/holdbypass | Echte UI/API/PG PR290 |
+| 8: Technischecleanup | Used/expiredlinks; completedmail30dagen; pending/failure en tijdelijke tokenpolicy behouden | Gebouwd/getest PR290/289 |
+| 9: Offboarding | Werkelijk einde betaald/proef;30dagen adminread/export;dan dicht;dag90processing;reactivatie recheck | Niet-financiële uitvoering PR291; financiële/Terms/restoregates |
+| 10: Notices | Einddatum en7dagen voor dag90 alleen actieveadmins;begrensde retry/waarschuwing | Echte lokale Mailpit/PG PR291 |
+| 11: Vroegtijdig organisatie | Superadmin met geverifieerdclubadminverzoek,preview,extrabevestiging;andereclubs/accounts intact | Gebouwd/getest PR291; holds blijven |
+| 12: Export | BeveiligdeclubadminZIP CSV+JSON,geen tokens/andereclubs/mailbijlage | Echte export PR291; externe BillitPDF/financialarchivegate |
+| 13: Backup | Restic EUScalewayS3;daily14d;SMruntimepassword;onafhankelijkeeigenaarskluis | Lokale echte Restic/DB/keyringrestore PR292;cloudprovisioning/ledger/operatorgate |
+| 14: Beschikbaarheid | Geen standaard dagelijkse APIstop | Tool PR292 stopt API niet; echte lokale jointrestore;volumeverificatie operator |
+| 15: Financieel | Billit primair eigen facturen;minimale lokale refs/status;geen dubbelvolledigarchief | Leveranciersgaranties/veldiscount/termijnen externonbevestigd;clubbetalingen apart |
+| 16: Incidentcontact | info@coach-os.be bereikt volgens Lorenz beideeigenaars;geen persoonlijkeprimary/deputy | Bruikbaar concept;bezorging/fallback/oefening niet gecontroleerd |
+| 17: DBtoegang | Huidige directe toegang ook wisselende netwerken behouden;geen VPN/tunnel/vasteIPdwang | Afgewezen VPSonlycode verwijderd PR293;hardeningissue open |
+| 18: Mailbox | Gewone info/demo12maanden na afhandeling;relatie/afspraak/geschil apart | Conceptbeleid aangepast;geen mailboxautomatisering |
 
-Alle genoemde PR's zijn bij het ophalen van de JSON-snapshot **open en niet gemergd**. #289–#293 zijn draft; #287/#288 niet. Iedere nieuwe issuebranch komt onafhankelijk van dezelfde vers gefetchte main, niet uit de vorige issuebranch.
+## Afzonderlijke documentdeltas en juridische grenzen
 
-| Werk | PR | Geverifieerd bewijs | Niet bewezen / nog open |
-|---|---|---|---|
-| Bedrijfsgegevens spelersvoorwaarden | [#287](https://github.com/EloyB/coach-os/pull/287) | Bestaande PR en head teruggelezen; niet door deze batch gedupliceerd | Samenvoegen/publiceren niet uitgevoerd; overige placeholders niet als voltooid gepresenteerd |
-| #263 formulierwaarschuwing | [#288](https://github.com/EloyB/coach-os/pull/288) | Head7475386, automatische typecheck/test/build success; bestaand lokaal/browserbewijs uit handoff | Geen productie-uitrol of juridische goedkeuring |
-| #264 websiteformulierdata | [#289](https://github.com/EloyB/coach-os/pull/289) | Head a5a231e; opnieuw 14 tests/53 assertions, types, lint en build pass; echte lokale browsergroepen en screenshot gecontroleerd; raw screenshot200 image/png | Geen automatische PR-check aangetroffen voor website; één bestaande lintwarning. Opslag/datum/last-contact/bestaande links open |
-| #261 spelerretentiepreview | [#290](https://github.com/EloyB/coach-os/pull/290) | Head08f9c3c; 2 gerichte tests; volledige backend939 pass/1 externe Billit skip; lege lokale DB migraties + complete API-seed; automatische build-and-test success | Geen verwijderfunctie; nieuwe querytests gebruiken EF InMemory, geen PG-delete/FK-test geclaimd |
-| #262 offboardingpreview | [#291](https://github.com/EloyB/coach-os/pull/291) | Head0a01ca3; 7 gerichte tests; volledige backend944 pass/1 externe Billit skip; lege lokale DB migraties + complete API-seed; automatische build-and-test success | Geen volledige offboarding; nieuwe previewtests EF InMemory; financiële/notice/access/exportkeuzes open |
-| #265 backupvoorstel | [#292](https://github.com/EloyB/coach-os/pull/292) | Heada029e33; 6 scripttests; echte fresh-process DataProtectionTokenProtector-restore nadat originele ring verwijderd is; fmt/backend-false validate; aanvullend937 backendtests/1 skip en empty-DB seed; [echte CI-plan41975129240](https://github.com/EloyB/coach-os/actions/runs/41975129240):0 add/1 change/0 destroy | DB-retentie7→14 plus `password_wo` write-only attribuut: vóór apply beoordelen, niet als bewezen wachtwoord-no-op claimen. Geen off-host encryptie/scheduler/managed-DB-restore. Apply-check skipped |
-| #260 DB-netwerk/migratievoorstel | [#293](https://github.com/EloyB/coach-os/pull/293) | Headc81c397; configRED/GREEN, fmt/backend-false validate;937 backendtests/1 skip en empty-DB seed; echte migratiefout exit1 zonder HTTP-listener; [echte CI-plan41975714116](https://github.com/EloyB/coach-os/actions/runs/41975714116):1 ACL add/0 change/0 destroy | ACL vervangt ALLE toegangen; eerst bevoegde workflowwijziging en VPS-egress/herstelroute controleren. Workflowdiff alleen in PR-body, geen bronwijziging. GitHub juridisch niet geschrapt. Apply-check skipped |
+PR292 heeft een onafhankelijke DPAbackuptekst met twee invulmarkers; de exacte branchbronhash en markers staan in `feature_document_deltas`. Deze legalbranch is niet op PR292 gestapeld. PR289 en PR294 raken beide dezelfde privacytabel; lokale gecombineerde merge moet de finale goedgekeurde juridische tekst behouden, geen oude onbeantwoorde mailboxvraag terugplaatsen. Tekstconflicten zijn expliciete reviewgates, geen impliciete featuredependency.
 
-De volledige backendruns gebruikten de bestaande lokale PostgreSQL-concurrencytests. Empty-DB migraties + API-seed zijn **niet** als Docker-reset of restore van een beheerde back-up gepresenteerd. Externe Billit-test bleef zonder credentials overgeslagen. Geen frontend-/productiecheck geclaimd voor backend/docs-only werk. Graphify-herbouw geprobeerd maar module ontbreekt; dat is gerapporteerd, niet als geslaagd aangemerkt.
+Studio Swyft BV, Molenzicht17,2380Ravels,België;ondernemingsnummer1032.227.379,btwBE1032.227.379. Bestaande bedrijfsgegevens staan in club/platformdocumenten; PR287 blijft eigenaar van spelersvoorwaarden. De daar bestaande7jaar-tekst is NIET goedgekeurd door dit overzicht;financiële termijnen/velden/startmomenten en Billitgarantie zijn reviewgates,geen nieuwe7/10jaar-regel gegokt.
 
-## Bedrijfsgegevens en andere niet-markergaten
+[Incidentconcept](./privacy-incident-procedure.md) gebruikt info@coach-os.be, verwerker zonder onredelijke vertraging, controller72uur/risico en hoogrisicocommunicatie, volledige incidentdocumentatie;officiëleEDPBbron werkelijk gelezen. Contractuele48uur is geen wettelijke wachttijd. Geen externe melding of mailboxautomatisering. Eigenaars-/advocaatreview/fallback/oefening blijven open.
 
-Bekende gegevens: **Studio Swyft BV, Molenzicht 17, 2380 Ravels, België; ondernemingsnummer 1032.227.379; btw BE 1032.227.379**. Deze staan al in de drie club/platformdocumenten. De bedrijfsgegevens in `algemene-voorwaarden-inschrijving.md` zijn uitsluitend eigendom van open PR #287; deze PR wijzigt dat bestand niet.
+## Lokale gecombineerde integratie
 
-Niet elke inhoudelijke lacune heeft één van de drie geselecteerde markers. Dit overzicht keurt andere plaatsen zoals datums, contactadressen, juridische grondslagen, 7jaar versus10jaar boekhouding, log-/secretrotatieclaims of de overige vierkante-hakenplaatsaanduidingen niet goed. Ook de `[TE VERBETEREN]`-securitypunten vallen buiten de drie gevraagde markertypes en zijn niet stil als afgehandeld beschouwd.
+Nog uit te voeren op een eigen tijdelijke validation-worktree. Finale bewijsverwijzing wordt vóór levering toegevoegd. Geen branchmerges naar featurebranches of main.
 
-GitHub staat nog als (sub)verwerker in de privacy-/DPA-concepten. #260 is niet gemergd en de workflow is ongewijzigd. Pas na echte uitrol en beoordeling van alle resterende CI/deploy-/secrettoegang beoordelen of die tekst mag veranderen. Geen leverancier schrappen op grond van alleen een open ACL-PR.
+## Inventariscontrole
 
-## Verificatie van deze inventaris
+`python3 -m unittest discover -s scripts/tests -p test_legal_inventory.py -v`
 
-```sh
-python3 -m unittest discover -s scripts/tests -p 'test_legal_inventory.py'
-```
-
-Dit is een document-/broninventaristest, geen producttest. Eerst echt RED doordat de inventaris ontbrak, daarna GREEN. Deze PR wijzigt geen bestand in `docs/legal/`, workflow of productiecode; geen backend-reset/build/UI-check nodig voor deze documentwijziging. Nieuwe beslissingen, merges en deployments vereisen een hercontrole van de snapshot. Geen juridisch versienummer of datum instellen via deze PR.
+Dit is document-/configuratie-TDD: regressies op oude beleids-/headclaims eerst echt RED, daarna GREEN met actuele bronhashes. Geen backend/UIproductiecode gewijzigd in PR294. Alle conceptwaarschuwingen behouden;geen publicatie/versie/ingangsdatum.
