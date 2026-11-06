@@ -1,0 +1,710 @@
+{
+  "snapshot_utc": "2026-11-06T09:48:46.858609+00:00",
+  "base_commit": "ab03c68d5b44afbba73f42fe5314c67878406ab3",
+  "publication_authorized": false,
+  "concept_warnings_preserved": true,
+  "source_sha256": {
+    "docs/legal/algemene-voorwaarden-clubs.md": "1879639cf1471419462ca177442eeaa12996543af1a3466d02053d1261218e2d",
+    "docs/legal/algemene-voorwaarden-inschrijving.md": "c5d24a511a856e5a39cefcdd42b75840ec5a300bf2c3898751143ea71bdd0d79",
+    "docs/legal/privacyverklaring.md": "6ac3a6eb289582cb80bb7414d5340908d7c78b5a40229d8a3fb5aac996a14f69",
+    "docs/legal/verwerkersovereenkomst.md": "c29581a7ac2b22ddc8689e27d729ab72186fa89f3884b274b8e4a8206f40b240"
+  },
+  "pull_request_snapshot": [
+    {
+      "number": 287,
+      "url": "https://github.com/EloyB/coach-os/pull/287",
+      "state": "open",
+      "merged": false,
+      "draft": false,
+      "sha": "a7cce1999fb39270778a6af6e8928c2c6cb92095",
+      "checks": []
+    },
+    {
+      "number": 288,
+      "url": "https://github.com/EloyB/coach-os/pull/288",
+      "state": "open",
+      "merged": false,
+      "draft": false,
+      "sha": "7475386b79f933e85dea91a2c96e9aded8a29d97",
+      "checks": [
+        [
+          "typecheck-test-build",
+          "completed",
+          "success"
+        ]
+      ]
+    },
+    {
+      "number": 289,
+      "url": "https://github.com/EloyB/coach-os/pull/289",
+      "state": "open",
+      "merged": false,
+      "draft": true,
+      "sha": "3291c85683c147446d7a9fa46547610181adafbe",
+      "checks": [
+        [
+          "build-and-test",
+          "completed",
+          "success"
+        ]
+      ]
+    },
+    {
+      "number": 290,
+      "url": "https://github.com/EloyB/coach-os/pull/290",
+      "state": "open",
+      "merged": false,
+      "draft": true,
+      "sha": "2b54a29f471843e1aa6057c5438184bf54f7d841",
+      "checks": [
+        [
+          "build-and-test",
+          "completed",
+          "success"
+        ],
+        [
+          "typecheck-test-build",
+          "completed",
+          "success"
+        ]
+      ]
+    },
+    {
+      "number": 291,
+      "url": "https://github.com/EloyB/coach-os/pull/291",
+      "state": "open",
+      "merged": false,
+      "draft": true,
+      "sha": "9a35aa7c49a8c4ab9ba8d0d4107e93ca2a26d766",
+      "checks": [
+        [
+          "build-and-test",
+          "completed",
+          "success"
+        ],
+        [
+          "typecheck-test-build",
+          "completed",
+          "success"
+        ]
+      ]
+    },
+    {
+      "number": 292,
+      "url": "https://github.com/EloyB/coach-os/pull/292",
+      "state": "open",
+      "merged": false,
+      "draft": true,
+      "sha": "d04ebb8483327645b70325355bda5ab28f2818b8",
+      "checks": [
+        [
+          "apply",
+          "completed",
+          "skipped"
+        ],
+        [
+          "plan",
+          "completed",
+          "success"
+        ]
+      ]
+    },
+    {
+      "number": 293,
+      "url": "https://github.com/EloyB/coach-os/pull/293",
+      "state": "open",
+      "merged": false,
+      "draft": true,
+      "sha": "2e5a5cc264afc5b6e49aea29e804263ca86a363f",
+      "checks": []
+    }
+  ],
+  "policy_decisions": [
+    {
+      "number": 1,
+      "title": "Lancering",
+      "approved": "15 november2026; uiterste wachtlijstgrens15mei2027",
+      "delivery": "Gebouwd als code-default PR289; niet uitgerold"
+    },
+    {
+      "number": 2,
+      "title": "Formulierclock",
+      "approved": "12kalendermaanden na ontvangst, niet mailboxactiviteit",
+      "delivery": "API/PGcleanup getest PR289"
+    },
+    {
+      "number": 3,
+      "title": "Opslag",
+      "approved": "API→bestaandePG, geen brede websiteDBcredentials; gecontroleerde historischeimport",
+      "delivery": "Gebouwd/getest PR289; livecutover operator"
+    },
+    {
+      "number": 4,
+      "title": "Wachtlijst",
+      "approved": "Behouden; persoonlijke bevestigingsuitschrijflink alleen wachtlijst; #295 later",
+      "delivery": "Echte lokale SMTP/browserflow PR289; geen bulkmail"
+    },
+    {
+      "number": 5,
+      "title": "Speleractie",
+      "approved": "Persoonsgegevens/vrijeantwoorden weg; alleen echt anonieme statistiek; minimaal financieel bewijs apart",
+      "delivery": "Niet-financiële uitvoering PR290; financiële velden/termijnen/holds open"
+    },
+    {
+      "number": 6,
+      "title": "Spelerclock",
+      "approved": "24maanden sinds laatste deelname eigen club; actief/toekomstig blokkeert; geen login/mail/andereclub",
+      "delivery": "Gebouwd/getest PR290"
+    },
+    {
+      "number": 7,
+      "title": "Vroegtijdig speler",
+      "approved": "Clubadmin preview/bevestiging, geen financiële/holdbypass",
+      "delivery": "Echte UI/API/PG PR290"
+    },
+    {
+      "number": 8,
+      "title": "Technischecleanup",
+      "approved": "Used/expiredlinks; completedmail30dagen; pending/failure en tijdelijke tokenpolicy behouden",
+      "delivery": "Gebouwd/getest PR290/289"
+    },
+    {
+      "number": 9,
+      "title": "Offboarding",
+      "approved": "Werkelijk einde betaald/proef;30dagen adminread/export;dan dicht;dag90processing;reactivatie recheck",
+      "delivery": "Niet-financiële uitvoering PR291; financiële/Terms/restoregates"
+    },
+    {
+      "number": 10,
+      "title": "Notices",
+      "approved": "Einddatum en7dagen voor dag90 alleen actieveadmins;begrensde retry/waarschuwing",
+      "delivery": "Echte lokale Mailpit/PG PR291"
+    },
+    {
+      "number": 11,
+      "title": "Vroegtijdig organisatie",
+      "approved": "Superadmin met geverifieerdclubadminverzoek,preview,extrabevestiging;andereclubs/accounts intact",
+      "delivery": "Gebouwd/getest PR291; holds blijven"
+    },
+    {
+      "number": 12,
+      "title": "Export",
+      "approved": "BeveiligdeclubadminZIP CSV+JSON,geen tokens/andereclubs/mailbijlage",
+      "delivery": "Echte export PR291; externe BillitPDF/financialarchivegate"
+    },
+    {
+      "number": 13,
+      "title": "Backup",
+      "approved": "Restic EUScalewayS3;daily14d;SMruntimepassword;onafhankelijkeeigenaarskluis",
+      "delivery": "Lokale echte Restic/DB/keyringrestore PR292;cloudprovisioning/ledger/operatorgate"
+    },
+    {
+      "number": 14,
+      "title": "Beschikbaarheid",
+      "approved": "Geen standaard dagelijkse APIstop",
+      "delivery": "Tool PR292 stopt API niet; echte lokale jointrestore;volumeverificatie operator"
+    },
+    {
+      "number": 15,
+      "title": "Financieel",
+      "approved": "Billit primair eigen facturen;minimale lokale refs/status;geen dubbelvolledigarchief",
+      "delivery": "Leveranciersgaranties/veldiscount/termijnen externonbevestigd;clubbetalingen apart"
+    },
+    {
+      "number": 16,
+      "title": "Incidentcontact",
+      "approved": "info@coach-os.be bereikt volgens Lorenz beideeigenaars;geen persoonlijkeprimary/deputy",
+      "delivery": "Bruikbaar concept;bezorging/fallback/oefening niet gecontroleerd"
+    },
+    {
+      "number": 17,
+      "title": "DBtoegang",
+      "approved": "Huidige directe toegang ook wisselende netwerken behouden;geen VPN/tunnel/vasteIPdwang",
+      "delivery": "Afgewezen VPSonlycode verwijderd PR293;hardeningissue open"
+    },
+    {
+      "number": 18,
+      "title": "Mailbox",
+      "approved": "Gewone info/demo12maanden na afhandeling;relatie/afspraak/geschil apart",
+      "delivery": "Conceptbeleid aangepast;geen mailboxautomatisering"
+    }
+  ],
+  "occurrences": [
+    {
+      "source": "docs/legal/algemene-voorwaarden-clubs.md",
+      "occurrence": 1,
+      "line": 7,
+      "marker": "[TE BOUWEN]",
+      "classification": "tekstcorrectie",
+      "assessment": "Verklarende legenda/conceptwaarschuwing behouden; geen feature of publicatieautorisatie.",
+      "pull_requests": [],
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/algemene-voorwaarden-clubs.md",
+      "occurrence": 2,
+      "line": 104,
+      "marker": "[TE BOUWEN: waarschuwing in de formulierbouwer bij zo'n vraag]",
+      "classification": "gebouwd",
+      "assessment": "Waarschuwing gebouwd/getest in open PR288, desktop/mobiel4PASS; niet gemergd/uitgerold of juridisch goedgekeurd.",
+      "pull_requests": [
+        "https://github.com/EloyB/coach-os/pull/288"
+      ],
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/privacyverklaring.md",
+      "occurrence": 1,
+      "line": 6,
+      "marker": "[TE BOUWEN]",
+      "classification": "tekstcorrectie",
+      "assessment": "Verklarende legenda/conceptwaarschuwing behouden; geen feature of publicatieautorisatie.",
+      "pull_requests": [],
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/privacyverklaring.md",
+      "occurrence": 2,
+      "line": 25,
+      "marker": "[INVULLEN: noodzakelijke lokale velden, toepasselijke financiële termijnen en startmomenten juridisch/boekhoudkundig bevestigen; Billit-bewaar-/raadpleeg-/exportgarantie ook na beëindiging verifiëren. Geen termijn gegokt of volledig spelersdossier bewaard wegens één betaling.]",
+      "classification": "onbeslist",
+      "assessment": "Billit als primair eigen factuurarchief goedgekeurd; noodzakelijke lokale velden/financiële termijnen en garanties na beëindiging blijven externe juridische/accountgates; geen volledig dubbel archief.",
+      "pull_requests": [],
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/privacyverklaring.md",
+      "occurrence": 3,
+      "line": 26,
+      "marker": "[TE BOUWEN: gecontroleerde uitrol en historische cutover; contact-API/PostgreSQL, opschoning en offline import gebouwd/getest in open PR #289, niet uitgerold]",
+      "classification": "onbeslist",
+      "assessment": "Code geleverd in PR289: contact API→PG,12kalendermaanden vanaf ontvangst, echte cleanup/historische offlineimport en mailflow getest. Marker betreft resterende bevoegde livecutover/uitrol/restore, niet ontbrekende feature.",
+      "pull_requests": [
+        "https://github.com/EloyB/coach-os/pull/289"
+      ],
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/privacyverklaring.md",
+      "occurrence": 4,
+      "line": 28,
+      "marker": "[TE BOUWEN: gecontroleerde uitrol/historische cutover; registratie, mailbezorging, bevestiging en opschoning gebouwd/getest in open PR #289, niet uitgerold]",
+      "classification": "onbeslist",
+      "assessment": "PR289: echte registratie→PG→SMTP→uitschrijfbevestiging, historischeimport/dryrun/idempotentie. Lancering15nov2026 goedgekeurd. Uitrol en historischecutover/operatorreplay blijven open.",
+      "pull_requests": [
+        "https://github.com/EloyB/coach-os/pull/289"
+      ],
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/verwerkersovereenkomst.md",
+      "occurrence": 1,
+      "line": 6,
+      "marker": "[TE BOUWEN]",
+      "classification": "tekstcorrectie",
+      "assessment": "Verklarende legenda/conceptwaarschuwing behouden; geen feature of publicatieautorisatie.",
+      "pull_requests": [],
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/verwerkersovereenkomst.md",
+      "occurrence": 2,
+      "line": 139,
+      "marker": "[TE BOUWEN: waarschuwing in de formulierbouwer]",
+      "classification": "gebouwd",
+      "assessment": "Waarschuwing gebouwd/getest in open PR288, desktop/mobiel4PASS; niet gemergd/uitgerold of juridisch goedgekeurd.",
+      "pull_requests": [
+        "https://github.com/EloyB/coach-os/pull/288"
+      ],
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/verwerkersovereenkomst.md",
+      "occurrence": 3,
+      "line": 151,
+      "marker": "[TE BOUWEN: gecontroleerde uitrol en financiële/hold-/herstelreview; echte niet-financiële spelerverwijdering, tenantgebonden adminroute, technische cleanup en UI gebouwd/getest in open PR #290, standaard uit, niet uitgerold]",
+      "classification": "onbeslist",
+      "assessment": "PR290: echte niet-financiële spelerdelete/adminUI/technischecleanup met tenant/FK/concurrencytests;959backendPASS/1BillitSKIP en echte UI/API/PG. Financieel/holdbeleid en onafhankelijke herstelledger/uitrol blijven gates; geen preview-only meer.",
+      "pull_requests": [
+        "https://github.com/EloyB/coach-os/pull/290"
+      ],
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/verwerkersovereenkomst.md",
+      "occurrence": 4,
+      "line": 152,
+      "marker": "[TE BOUWEN: gecontroleerde uitrol en financiële/Terms-/Billit-/herstelgates; echte ZIPexport, toegangsgates, notices/retries en niet-financiële organisatiedelete gebouwd/getest in open PR #291, standaard uit, niet uitgerold]",
+      "classification": "onbeslist",
+      "assessment": "Billit als primair eigen factuurarchief goedgekeurd; noodzakelijke lokale velden/financiële termijnen en garanties na beëindiging blijven externe juridische/accountgates; geen volledig dubbel archief.",
+      "pull_requests": [],
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/verwerkersovereenkomst.md",
+      "occurrence": 5,
+      "line": 193,
+      "marker": "[INVULLEN: bewaartermijn van de back-ups — staat nu op de standaardinstelling van Scaleway; expliciet instellen en hier vermelden]",
+      "classification": "tekstcorrectie",
+      "assessment": "Goedgekeurd dagelijks14d; PR292 wijzigt bronvoorstel en bevat echte lokale Restic/DB/keyringrestore+quarantaineguard. Werkelijke cloud/scheduler/ledger/kluis/operatorrestore niet bewezen; password_wo vóór apply verklaren. Zie afzonderlijke PR292-brondelta.",
+      "pull_requests": [
+        "https://github.com/EloyB/coach-os/pull/292"
+      ],
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/verwerkersovereenkomst.md",
+      "occurrence": 6,
+      "line": 203,
+      "marker": "[TE DOEN: eigenaar/advocaatreview en oefening van het incidentconcept; de contractuele 48 uur is geen wettelijke wachttijd en mag melding zonder onredelijke vertraging niet uitstellen.]",
+      "classification": "onbeslist",
+      "assessment": "Bruikbaar intern concept opgesteld met gedeeld info@coach-os.be en officieel gecontroleerde EDPBmeldregels. Eigenaars-/advocaatreview, bereikbaarheid/fallback en oefening nog niet bewezen; geen echte melding.",
+      "pull_requests": [],
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    }
+  ],
+  "baseline_occurrences": [
+    {
+      "source": "docs/legal/algemene-voorwaarden-clubs.md",
+      "occurrence": 1,
+      "line": 7,
+      "marker": "[TE BOUWEN]",
+      "classification": "tekstcorrectie",
+      "assessment": "Verklarende legenda, geen losse feature. Conceptwaarschuwing en marker behouden; niet na code-PR automatisch verwijderen.",
+      "pull_requests": [],
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/algemene-voorwaarden-clubs.md",
+      "occurrence": 2,
+      "line": 104,
+      "marker": "[TE BOUWEN: waarschuwing in de formulierbouwer bij zo'n vraag]",
+      "classification": "gebouwd",
+      "assessment": "Waarschuwing formulierbouwer gebouwd en getest in open PR #288 voor #263; niet gemergd of als productiegedrag geverifieerd. Juridische uitzondering blijft ter review.",
+      "pull_requests": [
+        "https://github.com/EloyB/coach-os/pull/288"
+      ],
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/privacyverklaring.md",
+      "occurrence": 1,
+      "line": 6,
+      "marker": "[TE BOUWEN]",
+      "classification": "tekstcorrectie",
+      "assessment": "Verklarende legenda. Conceptstatus en advocaatcontrole behouden, geen publicatie of ingangsdatum.",
+      "pull_requests": [],
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/privacyverklaring.md",
+      "occurrence": 2,
+      "line": 26,
+      "marker": "[TE BOUWEN: formulierdata worden nu zonder einddatum bewaard, met IP-adres; IP niet meer opslaan + automatisch verwijderen na 12 maanden]",
+      "classification": "onbeslist",
+      "assessment": "IP-scrubbing en twaalf kalendermaandenretentie in open draft #289. submittedAt versus laatste contact, persistente opslag/back-up en live opschoning nog onbeslist/niet geverifieerd. Niet volledig gereed.",
+      "pull_requests": [
+        "https://github.com/EloyB/coach-os/pull/289"
+      ],
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/privacyverklaring.md",
+      "occurrence": 3,
+      "line": 27,
+      "marker": "[TE BOUWEN, zie hierboven]",
+      "classification": "onbeslist",
+      "assessment": "Capability met expliciete POST en getoonde link gebouwd in #289; officiële lanceringsdatum ontbreekt, geen mailbezorging voor bestaande abonnees, volume/back-upuitrol niet bevestigd. Zesmaandenregel dus nog geen onvoorwaardelijke garantie.",
+      "pull_requests": [
+        "https://github.com/EloyB/coach-os/pull/289"
+      ],
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/verwerkersovereenkomst.md",
+      "occurrence": 1,
+      "line": 6,
+      "marker": "[TE BOUWEN]",
+      "classification": "tekstcorrectie",
+      "assessment": "Verklarende legenda binnen conceptwaarschuwing. Advocaatreview en conceptstatus ongewijzigd laten.",
+      "pull_requests": [],
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/verwerkersovereenkomst.md",
+      "occurrence": 2,
+      "line": 137,
+      "marker": "[TE BOUWEN: waarschuwing in de formulierbouwer]",
+      "classification": "gebouwd",
+      "assessment": "Dezelfde geteste waarschuwing #263 in open PR #288. Gebouwd in een branch is niet gemergd, gedeployed of juridisch goedgekeurd.",
+      "pull_requests": [
+        "https://github.com/EloyB/coach-os/pull/288"
+      ],
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/verwerkersovereenkomst.md",
+      "occurrence": 3,
+      "line": 149,
+      "marker": "[TE BOUWEN: de Dienst kan vandaag geen inschrijvingen of spelergegevens verwijderen, en de automatische verwijdering na 24 maanden bestaat nog niet]",
+      "classification": "onbeslist",
+      "assessment": "Alleen opt-in read-only preview voor een beperkte reeksselectie; geen 24-maandsdelete, anonimisering of admin-delete. Boekhouding, gedeelde speleridentiteit, afhankelijke records, globale tokens en outbox vereisen besluit. #261 blijft open.",
+      "pull_requests": [
+        "https://github.com/EloyB/coach-os/pull/290"
+      ],
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/verwerkersovereenkomst.md",
+      "occurrence": 4,
+      "line": 150,
+      "marker": "[TE BOUWEN: er bestaat nog geen proces om een organisatie volledig te verwijderen; tot dat gebouwd is, moet het manueel en gedocumenteerd gebeuren]",
+      "classification": "onbeslist",
+      "assessment": "Opt-in reviewpreview en voorlopige handmatige procedure gebouwd; volledige export, 30/90-dagenlifecycle, notices, financieel archief en echte organisatieverwijdering niet gebouwd. #262 blijft open; procedure is geen deleteautorisatie.",
+      "pull_requests": [
+        "https://github.com/EloyB/coach-os/pull/291"
+      ],
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/verwerkersovereenkomst.md",
+      "occurrence": 5,
+      "line": 189,
+      "marker": "[INVULLEN: bewaartermijn van de back-ups — staat nu op de standaardinstelling van Scaleway; expliciet instellen en hier vermelden]",
+      "classification": "tekstcorrectie",
+      "assessment": "Voorstel dagelijks/14dagen in open #292 en concepttekst expliciet nog te verifiëren. Echte CI-plan: 0 add/1 change/0 destroy, DB-retentie7→14 plus password_wo write-only reviewpunt. Keyringrestore lokaal bewezen, off-host encryptie/scheduler/managed DB-restore niet ingericht. Marker nog niet als actuele garantie invullen.",
+      "pull_requests": [
+        "https://github.com/EloyB/coach-os/pull/292"
+      ],
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/verwerkersovereenkomst.md",
+      "occurrence": 6,
+      "line": 199,
+      "marker": "[TE DOEN: korte interne procedure op papier zetten]",
+      "classification": "onbeslist",
+      "assessment": "Interne datalekprocedure nog niet opgesteld/goedgekeurd in deze batch. Eigenaar, bereikbaarheid, escalatie, meldklok/bewijs en oefening juridisch/organisatorisch vastleggen. Geen bestaande werkende procedure geclaimd.",
+      "pull_requests": [],
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    }
+  ],
+  "feature_document_deltas": [
+    {
+      "pr": 292,
+      "source": "docs/legal/verwerkersovereenkomst.md",
+      "sha256": "78f65f3d204e3d65e9a1eefd4fd70a5347f056d7a20c2a66cea630ea5d3ce868",
+      "markers": [
+        "[INVULLEN: na goedkeuring, uitrol en restorecontrole de daadwerkelijke frequentie en bewaartermijn bevestigen, inclusief historische/handmatige kopieën; dit voorstel is geen actuele garantie.]",
+        "[INVULLEN: daadwerkelijke off-host inrichting, beperkte toegang, kluis/herstelidentiteit, scheduler/monitoring, onafhankelijke actuele ledger en periodieke cloudrestore na bevoegde uitrol bevestigen.]"
+      ],
+      "assessment": "Afzonderlijke open PR292delta, geen aanname dat main/legalbranch dit al bevat; operatorgates blijven."
+    }
+  ],
+  "integration": "Eigen lokale detached validation-worktree;1010backendPASS/1externeBillitSKIP;legeDBmigrate+volledigeAPIseedPASS. Drie echte tekstconflicten expliciet opgelost: beide mailinterfaces/DIregistraties behouden en finale legalprivacytabel gekozen. Branchspecifieke snapshot/accessconfigtests bleken eerst niet composable; beide bekende bronsnapshots nu exact apart geïnventariseerd, accessinvariant isoleert uitsluitend onafhankelijke backupmetadata.",
+  "integration_source_sha256": {
+    "docs/legal/algemene-voorwaarden-clubs.md": "1879639cf1471419462ca177442eeaa12996543af1a3466d02053d1261218e2d",
+    "docs/legal/algemene-voorwaarden-inschrijving.md": "c5d24a511a856e5a39cefcdd42b75840ec5a300bf2c3898751143ea71bdd0d79",
+    "docs/legal/privacyverklaring.md": "6ac3a6eb289582cb80bb7414d5340908d7c78b5a40229d8a3fb5aac996a14f69",
+    "docs/legal/verwerkersovereenkomst.md": "1b7ed8988e3b3dee5338004e3728b3a9689f21175a4b64d62944197b7f252b82"
+  },
+  "integration_occurrences": [
+    {
+      "source": "docs/legal/algemene-voorwaarden-clubs.md",
+      "occurrence": 1,
+      "line": 7,
+      "marker": "[TE BOUWEN]",
+      "classification": "tekstcorrectie",
+      "assessment": "Verklarende legenda/conceptwaarschuwing behouden; geen feature of publicatieautorisatie.",
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/algemene-voorwaarden-clubs.md",
+      "occurrence": 2,
+      "line": 104,
+      "marker": "[TE BOUWEN: waarschuwing in de formulierbouwer bij zo'n vraag]",
+      "classification": "gebouwd",
+      "assessment": "Waarschuwing gebouwd/getest in open PR288, desktop/mobiel4PASS; niet gemergd/uitgerold of juridisch goedgekeurd.",
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/privacyverklaring.md",
+      "occurrence": 1,
+      "line": 6,
+      "marker": "[TE BOUWEN]",
+      "classification": "tekstcorrectie",
+      "assessment": "Verklarende legenda/conceptwaarschuwing behouden; geen feature of publicatieautorisatie.",
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/privacyverklaring.md",
+      "occurrence": 2,
+      "line": 25,
+      "marker": "[INVULLEN: noodzakelijke lokale velden, toepasselijke financiële termijnen en startmomenten juridisch/boekhoudkundig bevestigen; Billit-bewaar-/raadpleeg-/exportgarantie ook na beëindiging verifiëren. Geen termijn gegokt of volledig spelersdossier bewaard wegens één betaling.]",
+      "classification": "onbeslist",
+      "assessment": "Billit als primair eigen factuurarchief goedgekeurd; noodzakelijke lokale velden/financiële termijnen en garanties na beëindiging blijven externe juridische/accountgates; geen volledig dubbel archief.",
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/privacyverklaring.md",
+      "occurrence": 3,
+      "line": 26,
+      "marker": "[TE BOUWEN: gecontroleerde uitrol en historische cutover; contact-API/PostgreSQL, opschoning en offline import gebouwd/getest in open PR #289, niet uitgerold]",
+      "classification": "onbeslist",
+      "assessment": "Code geleverd in PR289: contact API→PG,12kalendermaanden vanaf ontvangst, echte cleanup/historische offlineimport en mailflow getest. Marker betreft resterende bevoegde livecutover/uitrol/restore, niet ontbrekende feature.",
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/privacyverklaring.md",
+      "occurrence": 4,
+      "line": 28,
+      "marker": "[TE BOUWEN: gecontroleerde uitrol/historische cutover; registratie, mailbezorging, bevestiging en opschoning gebouwd/getest in open PR #289, niet uitgerold]",
+      "classification": "onbeslist",
+      "assessment": "PR289: echte registratie→PG→SMTP→uitschrijfbevestiging, historischeimport/dryrun/idempotentie. Lancering15nov2026 goedgekeurd. Uitrol en historischecutover/operatorreplay blijven open.",
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/verwerkersovereenkomst.md",
+      "occurrence": 1,
+      "line": 6,
+      "marker": "[TE BOUWEN]",
+      "classification": "tekstcorrectie",
+      "assessment": "Verklarende legenda/conceptwaarschuwing behouden; geen feature of publicatieautorisatie.",
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/verwerkersovereenkomst.md",
+      "occurrence": 2,
+      "line": 139,
+      "marker": "[TE BOUWEN: waarschuwing in de formulierbouwer]",
+      "classification": "gebouwd",
+      "assessment": "Waarschuwing gebouwd/getest in open PR288, desktop/mobiel4PASS; niet gemergd/uitgerold of juridisch goedgekeurd.",
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/verwerkersovereenkomst.md",
+      "occurrence": 3,
+      "line": 151,
+      "marker": "[TE BOUWEN: gecontroleerde uitrol en financiële/hold-/herstelreview; echte niet-financiële spelerverwijdering, tenantgebonden adminroute, technische cleanup en UI gebouwd/getest in open PR #290, standaard uit, niet uitgerold]",
+      "classification": "onbeslist",
+      "assessment": "PR290: echte niet-financiële spelerdelete/adminUI/technischecleanup met tenant/FK/concurrencytests;959backendPASS/1BillitSKIP en echte UI/API/PG. Financieel/holdbeleid en onafhankelijke herstelledger/uitrol blijven gates; geen preview-only meer.",
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/verwerkersovereenkomst.md",
+      "occurrence": 4,
+      "line": 152,
+      "marker": "[TE BOUWEN: gecontroleerde uitrol en financiële/Terms-/Billit-/herstelgates; echte ZIPexport, toegangsgates, notices/retries en niet-financiële organisatiedelete gebouwd/getest in open PR #291, standaard uit, niet uitgerold]",
+      "classification": "onbeslist",
+      "assessment": "Billit als primair eigen factuurarchief goedgekeurd; noodzakelijke lokale velden/financiële termijnen en garanties na beëindiging blijven externe juridische/accountgates; geen volledig dubbel archief.",
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/verwerkersovereenkomst.md",
+      "occurrence": 5,
+      "line": 193,
+      "marker": "[INVULLEN: na goedkeuring, uitrol en restorecontrole de daadwerkelijke frequentie en bewaartermijn bevestigen, inclusief historische/handmatige kopieën; dit voorstel is geen actuele garantie.]",
+      "classification": "tekstcorrectie",
+      "assessment": "Goedgekeurd dagelijks14d; PR292 wijzigt bronvoorstel en bevat echte lokale Restic/DB/keyringrestore+quarantaineguard. Werkelijke cloud/scheduler/ledger/kluis/operatorrestore niet bewezen; password_wo vóór apply verklaren. Zie afzonderlijke PR292-brondelta.",
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/verwerkersovereenkomst.md",
+      "occurrence": 6,
+      "line": 194,
+      "marker": "[INVULLEN: daadwerkelijke off-host inrichting, beperkte toegang, kluis/herstelidentiteit, scheduler/monitoring, onafhankelijke actuele ledger en periodieke cloudrestore na bevoegde uitrol bevestigen.]",
+      "classification": "tekstcorrectie",
+      "assessment": "Goedgekeurd dagelijks14d; PR292 wijzigt bronvoorstel en bevat echte lokale Restic/DB/keyringrestore+quarantaineguard. Werkelijke cloud/scheduler/ledger/kluis/operatorrestore niet bewezen; password_wo vóór apply verklaren. Zie afzonderlijke PR292-brondelta.",
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/verwerkersovereenkomst.md",
+      "occurrence": 7,
+      "line": 204,
+      "marker": "[TE DOEN: eigenaar/advocaatreview en oefening van het incidentconcept; de contractuele 48 uur is geen wettelijke wachttijd en mag melding zonder onredelijke vertraging niet uitstellen.]",
+      "classification": "onbeslist",
+      "assessment": "Bruikbaar intern concept opgesteld met gedeeld info@coach-os.be en officieel gecontroleerde EDPBmeldregels. Eigenaars-/advocaatreview, bereikbaarheid/fallback en oefening nog niet bewezen; geen echte melding.",
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    }
+  ],
+  "integration_source_heads": {
+    "288": "7475386b79f933e85dea91a2c96e9aded8a29d97",
+    "289": "3291c85683c147446d7a9fa46547610181adafbe",
+    "290": "2b54a29f471843e1aa6057c5438184bf54f7d841",
+    "291": "9a35aa7c49a8c4ab9ba8d0d4107e93ca2a26d766",
+    "292": "d04ebb8483327645b70325355bda5ab28f2818b8",
+    "293": "2e5a5cc264afc5b6e49aea29e804263ca86a363f"
+  },
+  "integration_joint_restore": {
+    "status": "PASS",
+    "full_combined_schema_restore": true,
+    "source_db_and_ring_removed": true,
+    "restored_organization_count": 2,
+    "fresh_process_decryption": true,
+    "wrong_ring_rejected": true,
+    "api_health_during_backup": [
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200
+    ],
+    "quarantine_manifest": true,
+    "production_access": false,
+    "cloud_restore_proven": false
+  },
+  "integration_scripts": "17 PASS / 0 FAIL",
+  "integration_product_trees": {
+    "backend": "b83997d57adbd75eaa1ee764798b1a1759521b7a",
+    "frontend": "f93ce656151bb3d2b433fed18ae4bdc51371b891",
+    "website": "c7d026b5db655b594d2b20e7ae9e2df9db0d20a4"
+  }
+}
