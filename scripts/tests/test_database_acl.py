@@ -1,18 +1,23 @@
-import re
+"""Regression for Lorenz's explicit decision: preserve direct dynamic-network DB access."""
 from pathlib import Path
+import re
+import subprocess
 import unittest
 
-class DatabaseAclTests(unittest.TestCase):
-    def test_database_acl_allows_only_reserved_vps_ipv4(self):
-        directory=Path(__file__).parents[2]/'infrastructure/terraform'
-        text='\n'.join(p.read_text() for p in directory.glob('*.tf'))
-        matches=re.findall(r'resource "scaleway_rdb_acl" "[^"]+"',text)
-        self.assertEqual(len(matches),1,'Exactly one resource owns ALL RDB ACL entries')
-        acl=(directory/'database-acl.tf').read_text()
-        self.assertIn('instance_id = scaleway_rdb_instance.coach_os.id',acl)
-        self.assertIn('"${scaleway_instance_ip.vps.address}/32"',acl)
-        self.assertEqual(acl.count('acl_rules {'),1)
-        self.assertNotIn('0.0.0.0/0',acl)
-        self.assertNotIn('variable ',acl,'No required configuration added')
+ROOT = Path(__file__).resolve().parents[2]
 
-if __name__=='__main__': unittest.main()
+class DatabaseAccessDecisionTests(unittest.TestCase):
+    def test_rejected_vps_only_acl_is_not_in_proposal(self):
+        directory = ROOT/'infrastructure/terraform'
+        source = '\n'.join(p.read_text() for p in directory.glob('*.tf'))
+        self.assertNotRegex(source, r'resource\s+"scaleway_rdb_acl"', 'Rejected authoritative ACL must not be deployed')
+
+    def test_database_network_and_runner_workflows_remain_identical_to_main(self):
+        for directory, glob in [('infrastructure/terraform', '*.tf'), ('.github/workflows', '*.yml')]:
+            for path in (ROOT/directory).glob(glob):
+                relative = str(path.relative_to(ROOT))
+                original = subprocess.run(['git', 'show', 'origin/main:' + relative], cwd=ROOT, capture_output=True)
+                self.assertEqual(original.returncode, 0, relative + ' must not introduce unapproved network resources')
+                self.assertEqual(path.read_bytes(), original.stdout, relative + ' must not alter current access or migration routes')
+
+if __name__ == '__main__': unittest.main()
