@@ -1,5 +1,5 @@
 {
-  "snapshot_utc": "2026-11-06T09:35:53.222946+00:00",
+  "snapshot_utc": "2026-11-06T09:46:11.594098+00:00",
   "base_commit": "ab03c68d5b44afbba73f42fe5314c67878406ab3",
   "publication_authorized": false,
   "concept_warnings_preserved": true,
@@ -115,7 +115,7 @@
       "state": "open",
       "merged": false,
       "draft": true,
-      "sha": "1d095ecefe989fd7d3f810050a6c0ac576c3855a",
+      "sha": "2e5a5cc264afc5b6e49aea29e804263ca86a363f",
       "checks": []
     }
   ],
@@ -524,5 +524,151 @@
       "assessment": "Afzonderlijke open PR292delta, geen aanname dat main/legalbranch dit al bevat; operatorgates blijven."
     }
   ],
-  "integration": "Nog uit te voeren op eigen tijdelijke validation-worktree; geen featurebranches gestapeld."
+  "integration": "Eigen lokale detached validation-worktree;1010backendPASS/1externeBillitSKIP;legeDBmigrate+volledigeAPIseedPASS. Drie echte tekstconflicten expliciet opgelost: beide mailinterfaces/DIregistraties behouden en finale legalprivacytabel gekozen. Branchspecifieke snapshot/accessconfigtests bleken eerst niet composable; beide bekende bronsnapshots nu exact apart geïnventariseerd, accessinvariant isoleert uitsluitend onafhankelijke backupmetadata.",
+  "integration_source_sha256": {
+    "docs/legal/algemene-voorwaarden-clubs.md": "1879639cf1471419462ca177442eeaa12996543af1a3466d02053d1261218e2d",
+    "docs/legal/algemene-voorwaarden-inschrijving.md": "c5d24a511a856e5a39cefcdd42b75840ec5a300bf2c3898751143ea71bdd0d79",
+    "docs/legal/privacyverklaring.md": "6ac3a6eb289582cb80bb7414d5340908d7c78b5a40229d8a3fb5aac996a14f69",
+    "docs/legal/verwerkersovereenkomst.md": "1b7ed8988e3b3dee5338004e3728b3a9689f21175a4b64d62944197b7f252b82"
+  },
+  "integration_occurrences": [
+    {
+      "source": "docs/legal/algemene-voorwaarden-clubs.md",
+      "occurrence": 1,
+      "line": 7,
+      "marker": "[TE BOUWEN]",
+      "classification": "tekstcorrectie",
+      "assessment": "Verklarende legenda/conceptwaarschuwing behouden; geen feature of publicatieautorisatie.",
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/algemene-voorwaarden-clubs.md",
+      "occurrence": 2,
+      "line": 104,
+      "marker": "[TE BOUWEN: waarschuwing in de formulierbouwer bij zo'n vraag]",
+      "classification": "gebouwd",
+      "assessment": "Waarschuwing gebouwd/getest in open PR288, desktop/mobiel4PASS; niet gemergd/uitgerold of juridisch goedgekeurd.",
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/privacyverklaring.md",
+      "occurrence": 1,
+      "line": 6,
+      "marker": "[TE BOUWEN]",
+      "classification": "tekstcorrectie",
+      "assessment": "Verklarende legenda/conceptwaarschuwing behouden; geen feature of publicatieautorisatie.",
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/privacyverklaring.md",
+      "occurrence": 2,
+      "line": 25,
+      "marker": "[INVULLEN: noodzakelijke lokale velden, toepasselijke financiële termijnen en startmomenten juridisch/boekhoudkundig bevestigen; Billit-bewaar-/raadpleeg-/exportgarantie ook na beëindiging verifiëren. Geen termijn gegokt of volledig spelersdossier bewaard wegens één betaling.]",
+      "classification": "onbeslist",
+      "assessment": "Billit als primair eigen factuurarchief goedgekeurd; noodzakelijke lokale velden/financiële termijnen en garanties na beëindiging blijven externe juridische/accountgates; geen volledig dubbel archief.",
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/privacyverklaring.md",
+      "occurrence": 3,
+      "line": 26,
+      "marker": "[TE BOUWEN: gecontroleerde uitrol en historische cutover; contact-API/PostgreSQL, opschoning en offline import gebouwd/getest in open PR #289, niet uitgerold]",
+      "classification": "onbeslist",
+      "assessment": "Code geleverd in PR289: contact API→PG,12kalendermaanden vanaf ontvangst, echte cleanup/historische offlineimport en mailflow getest. Marker betreft resterende bevoegde livecutover/uitrol/restore, niet ontbrekende feature.",
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/privacyverklaring.md",
+      "occurrence": 4,
+      "line": 28,
+      "marker": "[TE BOUWEN: gecontroleerde uitrol/historische cutover; registratie, mailbezorging, bevestiging en opschoning gebouwd/getest in open PR #289, niet uitgerold]",
+      "classification": "onbeslist",
+      "assessment": "PR289: echte registratie→PG→SMTP→uitschrijfbevestiging, historischeimport/dryrun/idempotentie. Lancering15nov2026 goedgekeurd. Uitrol en historischecutover/operatorreplay blijven open.",
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/verwerkersovereenkomst.md",
+      "occurrence": 1,
+      "line": 6,
+      "marker": "[TE BOUWEN]",
+      "classification": "tekstcorrectie",
+      "assessment": "Verklarende legenda/conceptwaarschuwing behouden; geen feature of publicatieautorisatie.",
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/verwerkersovereenkomst.md",
+      "occurrence": 2,
+      "line": 139,
+      "marker": "[TE BOUWEN: waarschuwing in de formulierbouwer]",
+      "classification": "gebouwd",
+      "assessment": "Waarschuwing gebouwd/getest in open PR288, desktop/mobiel4PASS; niet gemergd/uitgerold of juridisch goedgekeurd.",
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/verwerkersovereenkomst.md",
+      "occurrence": 3,
+      "line": 151,
+      "marker": "[TE BOUWEN: gecontroleerde uitrol en financiële/hold-/herstelreview; echte niet-financiële spelerverwijdering, tenantgebonden adminroute, technische cleanup en UI gebouwd/getest in open PR #290, standaard uit, niet uitgerold]",
+      "classification": "onbeslist",
+      "assessment": "PR290: echte niet-financiële spelerdelete/adminUI/technischecleanup met tenant/FK/concurrencytests;959backendPASS/1BillitSKIP en echte UI/API/PG. Financieel/holdbeleid en onafhankelijke herstelledger/uitrol blijven gates; geen preview-only meer.",
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/verwerkersovereenkomst.md",
+      "occurrence": 4,
+      "line": 152,
+      "marker": "[TE BOUWEN: gecontroleerde uitrol en financiële/Terms-/Billit-/herstelgates; echte ZIPexport, toegangsgates, notices/retries en niet-financiële organisatiedelete gebouwd/getest in open PR #291, standaard uit, niet uitgerold]",
+      "classification": "onbeslist",
+      "assessment": "Billit als primair eigen factuurarchief goedgekeurd; noodzakelijke lokale velden/financiële termijnen en garanties na beëindiging blijven externe juridische/accountgates; geen volledig dubbel archief.",
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/verwerkersovereenkomst.md",
+      "occurrence": 5,
+      "line": 193,
+      "marker": "[INVULLEN: na goedkeuring, uitrol en restorecontrole de daadwerkelijke frequentie en bewaartermijn bevestigen, inclusief historische/handmatige kopieën; dit voorstel is geen actuele garantie.]",
+      "classification": "tekstcorrectie",
+      "assessment": "Goedgekeurd dagelijks14d; PR292 wijzigt bronvoorstel en bevat echte lokale Restic/DB/keyringrestore+quarantaineguard. Werkelijke cloud/scheduler/ledger/kluis/operatorrestore niet bewezen; password_wo vóór apply verklaren. Zie afzonderlijke PR292-brondelta.",
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/verwerkersovereenkomst.md",
+      "occurrence": 6,
+      "line": 194,
+      "marker": "[INVULLEN: daadwerkelijke off-host inrichting, beperkte toegang, kluis/herstelidentiteit, scheduler/monitoring, onafhankelijke actuele ledger en periodieke cloudrestore na bevoegde uitrol bevestigen.]",
+      "classification": "tekstcorrectie",
+      "assessment": "Goedgekeurd dagelijks14d; PR292 wijzigt bronvoorstel en bevat echte lokale Restic/DB/keyringrestore+quarantaineguard. Werkelijke cloud/scheduler/ledger/kluis/operatorrestore niet bewezen; password_wo vóór apply verklaren. Zie afzonderlijke PR292-brondelta.",
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    },
+    {
+      "source": "docs/legal/verwerkersovereenkomst.md",
+      "occurrence": 7,
+      "line": 204,
+      "marker": "[TE DOEN: eigenaar/advocaatreview en oefening van het incidentconcept; de contractuele 48 uur is geen wettelijke wachttijd en mag melding zonder onredelijke vertraging niet uitstellen.]",
+      "classification": "onbeslist",
+      "assessment": "Bruikbaar intern concept opgesteld met gedeeld info@coach-os.be en officieel gecontroleerde EDPBmeldregels. Eigenaars-/advocaatreview, bereikbaarheid/fallback en oefening nog niet bewezen; geen echte melding.",
+      "merged": false,
+      "production_verification": "niet uitgevoerd"
+    }
+  ],
+  "integration_source_heads": {
+    "288": "7475386b79f933e85dea91a2c96e9aded8a29d97",
+    "289": "3291c85683c147446d7a9fa46547610181adafbe",
+    "290": "2b54a29f471843e1aa6057c5438184bf54f7d841",
+    "291": "9a35aa7c49a8c4ab9ba8d0d4107e93ca2a26d766",
+    "292": "d04ebb8483327645b70325355bda5ab28f2818b8",
+    "293": "2e5a5cc264afc5b6e49aea29e804263ca86a363f"
+  }
 }

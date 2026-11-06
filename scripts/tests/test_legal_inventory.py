@@ -19,10 +19,14 @@ class LegalInventoryTests(unittest.TestCase):
             hashes[relative]=hashlib.sha256(source.read_bytes()).hexdigest()
             for index,match in enumerate(PATTERN.finditer(text),1):
                 found.append((relative,index,text.count('\n',0,match.start())+1,match.group(0)))
-        recorded=[(row['source'],row['occurrence'],row['line'],row['marker']) for row in data['occurrences']]
+        if hashes == data['source_sha256']:
+            records=data['occurrences']
+        else:
+            self.assertEqual(hashes,data.get('integration_source_sha256'), 'Unexpected source outside independently audited branch/integration snapshots')
+            records=data['integration_occurrences']
+        recorded=[(row['source'],row['occurrence'],row['line'],row['marker']) for row in records]
         self.assertEqual(recorded,found,'Every occurrence, including explanatory legends, must appear exactly once')
-        self.assertEqual(data['source_sha256'],hashes)
-        for row in data['occurrences']:
+        for row in records:
             self.assertIn(row['classification'],['gebouwd','tekstcorrectie','onbeslist'])
             self.assertTrue(row['assessment'])
             self.assertFalse(row['merged'])
@@ -42,7 +46,7 @@ class LegalInventoryTests(unittest.TestCase):
         self.assertTrue(heads[290].startswith('2b54a29'))
         self.assertTrue(heads[291].startswith('9a35aa7'))
         self.assertTrue(heads[292].startswith('d04ebb8'))
-        self.assertTrue(heads[293].startswith('1d095ec'))
+        self.assertTrue(heads[293].startswith('2e5a5cc'))
         report=(ROOT/'docs/legal-readiness-inventory.md').read_text()
         self.assertNotIn('uitsluitend opt-in beperkte read-only preview',report)
         self.assertIn('974',report)

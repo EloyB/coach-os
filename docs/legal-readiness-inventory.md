@@ -2,7 +2,7 @@
 
 > CONCEPT — eigenaar/advocaatreview blijft verplicht; geen complianceverklaring of publicatiemachtiging. Geen juridische versie of ingangsdatum ingesteld. Open PR is niet gemergd, deployed of enabled.
 
-Werkelijk gecontroleerde snapshot: 2026-11-06T09:35:53.222946+00:00. Basis `ab03c68d5b44afbba73f42fe5314c67878406ab3`. Onafhankelijke branches op main, geen featurebranchstack. Alle18 besluiten hieronder zijn productinput, geen juridische goedkeuring of productiebevoegdheid.
+Werkelijk gecontroleerde snapshot: 2026-11-06T09:46:11.594098+00:00. Basis `ab03c68d5b44afbba73f42fe5314c67878406ab3`. Onafhankelijke branches op main, geen featurebranchstack. Alle18 besluiten hieronder zijn productinput, geen juridische goedkeuring of productiebevoegdheid.
 
 ## Betekenis en volledige broninventaris
 
@@ -33,7 +33,7 @@ Gebouwd = code in open PR met echt lokaal bewijs; tekstcorrectie = concept of ve
 | [#290](https://github.com/EloyB/coach-os/pull/290) | `2b54a29f471843e1aa6057c5438184bf54f7d841`; build-and-test:success, typecheck-test-build:success; open, draft=True, merged=False | 959backendPASS/1BillitSKIP;legeDBmigrate/seed;echte UI/API/PGles/kampdelete;UI4PASS/unit25PASS/build/types/changedlint. Financieel/hold/restoregates;17 bestaande lintfouten elders. |
 | [#291](https://github.com/EloyB/coach-os/pull/291) | `9a35aa7c49a8c4ab9ba8d0d4107e93ca2a26d766`; build-and-test:success, typecheck-test-build:success; open, draft=True, merged=False | 974backendPASS/1BillitSKIP;legeDBmigrate/seed;echte ZIPexport/UI/API/PG/Mailpit/delete/noticeconcurrency. UI3PASS/unit25PASS/build/types/changedlint. Brede browsersuite NIET groen:22PASS20FAIL1onderbroken102nietgerund;17 bestaande lintfouten. Externe factuurPDF/Terms/financial/restoregates. |
 | [#292](https://github.com/EloyB/coach-os/pull/292) | `d04ebb8483327645b70325355bda5ab28f2818b8`; apply:skipped, plan:success; open, draft=True, merged=False | 12scriptsPASS;echte pg_dump/Restic/pg_restore+fresh-processdecryption;verkeerde key/app/passwordgeweigerd;echte forget/prune/read-data;restoreguard blokkeert resurrectie.937backendPASS/1skip+legeDBseed. CIplan0add/1change/0destroy,retentie7→14 plus password_wo-reviewgate. Cloud/ledger/kluis/scheduler/alerting/managedrestore niet geverifieerd. |
-| [#293](https://github.com/EloyB/coach-os/pull/293) | `1d095ecefe989fd7d3f810050a6c0ac576c3855a`; geen checks op deze head; open, draft=True, merged=False | Afgewezen VPS-only ACL daadwerkelijk verwijderd.2configtestsRED→GREEN;alleTF/workflowsidentiek aanmain. Geen nieuwe exacte-headCI:pathsfilter alleenTF/workflow;oud1ACLaddplan is NIET geldig. Geen no-opcloudplan geclaimd. Onderliggende hardening blijft open;directe dynamischetoegang behouden. |
+| [#293](https://github.com/EloyB/coach-os/pull/293) | `2e5a5cc264afc5b6e49aea29e804263ca86a363f`; geen checks op deze head; open, draft=True, merged=False | Afgewezen VPS-only ACL daadwerkelijk verwijderd.2configtestsRED→GREEN;alleTF/workflowsidentiek aanmain. Geen nieuwe exacte-headCI:pathsfilter alleenTF/workflow;oud1ACLaddplan is NIET geldig. Geen no-opcloudplan geclaimd. Onderliggende hardening blijft open;directe dynamischetoegang behouden. |
 
 Geen brede frontendgroenclaim. Echte lokale PostgreSQLtests zijn geen bewijs dat CI dezelfde opt-ins uitvoert. Empty-DBmigrate+APIseed is geen Dockerreset/cloudrestore. Graphify module ontbreekt, niet groen. Geen prodHTTP/DB/SSH/cloudcredentials/echte mail/merge/deploy/apply/workflowwijziging.
 
@@ -70,7 +70,11 @@ Studio Swyft BV, Molenzicht17,2380Ravels,België;ondernemingsnummer1032.227.379,
 
 ## Lokale gecombineerde integratie
 
-Nog uit te voeren op een eigen tijdelijke validation-worktree. Finale bewijsverwijzing wordt vóór levering toegevoegd. Geen branchmerges naar featurebranches of main.
+Eigen detached validation-worktree combineert PR288–294 lokaal, nooit naar main/featurebranch gepusht. **1010backendPASS/1externeBillitSKIP**, legeDBmigrate+volledigeAPIseed inclhoofdtrainerPASS;geen schema-/migratiefout aangetroffen. Beide mailinterfaces en DIregistraties behouden bij2codeconflicten;1privacytabelconflict opgelost met finale goedgekeurde legaltekst. Deze3tekstconflicten moeten ook bij menselijke merge expliciet worden opgelost.
+
+Gecombineerdfrontendunit25PASS/build/typesPASS;website21PASS72assertions/build/types/lintPASS. Frontendfull-lintFAIL17bestaandeerrors14warnings, geen groeneallesclaim. Eerste gecombineerde scriptsuite15PASS/2FAIL:branchspecifiekeTFbytevergelijkingbotsteopgoedgekeurdebackupmetadataenlegalhashsnapshotbotsteopPR292DPAtoevoeging. Accessinvariant is nu beperkt tot access (niet backupinstellingen);branch en gecombineerde legalbronsnapshots zijn beide exact gehashd/geïnventariseerd, onbekende drift blijft fout. Definitieve rerunbewijs staat in de PRbody/task-evidence.
+
+Lokale gecombineerde full-schemaResticrestore en APIbeschikbaarheidsproef wordt in de PRbody met echte uitkomst gerapporteerd; geen cloudrestoreclaim. Bewijs: /opt/data/task-evidence/coachos-privacy/finish-combined-nov6-rerun/ en finish-prs/integration/.
 
 ## Inventariscontrole
 
