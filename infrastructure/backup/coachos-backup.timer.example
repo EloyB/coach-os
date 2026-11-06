@@ -1,0 +1,12 @@
+# REVIEW PROPOSAL ONLY: operator must first complete all restore/secret/ledger gates.
+[Unit]
+Description=Daily CoachOS backup proposal
+
+[Timer]
+OnCalendar=daily
+RandomizedDelaySec=30m
+Persistent=true
+Unit=coachos-backup.service
+
+[Install]
+WantedBy=timers.target

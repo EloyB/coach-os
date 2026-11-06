@@ -186,7 +186,8 @@ De verwerker slaat **geen** betaalkaart- of bankrekeninggegevens van spelers op.
 - **[TE VERBETEREN, aanbevolen vóór inwerkingtreding: aparte database-gebruikers met minimale rechten, inclusief een read-only rol voor support; SSH niet als `root`; logviewer en monitoring niet publiek bereikbaar of extra afgeschermd.]**
 
 **Beschikbaarheid en back-ups**
-- De beheerde database maakt automatisch back-ups bij Scaleway. **[INVULLEN: bewaartermijn van de back-ups — staat nu op de standaardinstelling van Scaleway; expliciet instellen en hier vermelden]**
+- De beheerde database heeft in de bronconfiguratie back-ups ingeschakeld bij Scaleway. **Voorstel #265: dagelijks (elke 24 uur), 14 dagen bewaren**; nog niet operationeel geverifieerd. **[INVULLEN: na goedkeuring, uitrol en restorecontrole de daadwerkelijke frequentie en bewaartermijn bevestigen, inclusief historische/handmatige kopieën; dit voorstel is geen actuele garantie.]**
+- De volledige DataProtection-keyring is nodig om versleutelde Mollie-tokens na herstel te kunnen lezen. #265 bevat lokaal werkelijk geteste versleutelde Restic-opname en gezamenlijk database-/keyringherstel zonder dagelijkse API-stop; dit is geen bewijs van een Scaleway-upload of productieherstel. Restic naar Scaleway Object Storage in de EU, runtimewachtwoord via Secret Manager en een onafhankelijke herstelkopie bij Lorenz/Eloy zijn als ontwerp goedgekeurd. Herstel blijft in quarantaine totdat actuele verwijderingen/uitschrijvingen zijn gereconcilieerd. **[INVULLEN: daadwerkelijke off-host inrichting, beperkte toegang, kluis/herstelidentiteit, scheduler/monitoring, onafhankelijke actuele ledger en periodieke cloudrestore na bevoegde uitrol bevestigen.]**
 - E-mails worden via een wachtrij met herhaalpogingen verstuurd, zodat een tijdelijke storing geen berichten doet verloren gaan.
 
 **Logging en monitoring**
