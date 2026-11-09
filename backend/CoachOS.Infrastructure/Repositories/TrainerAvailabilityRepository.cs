@@ -20,13 +20,23 @@ public class TrainerAvailabilityRepository(ApplicationDbContext db) : ITrainerAv
         => await db.TrainerAvailabilities
             .FirstOrDefaultAsync(a => a.Id == id && a.OrganizationId == organizationId && a.IsActive, ct);
 
-    public async Task<bool> HasOverlapAsync(Guid trainerId, Guid organizationId, int dayOfWeek, TimeOnly startTime, TimeOnly endTime, CancellationToken ct = default)
+    public async Task<IReadOnlyList<TrainerAvailability>> GetByTrainerAsync(Guid organizationId, Guid trainerId, CancellationToken ct = default)
+        => await db.TrainerAvailabilities
+            .AsNoTracking()
+            .Include(a => a.TennisClub)
+            .Where(a => a.OrganizationId == organizationId && a.TrainerId == trainerId && a.IsActive)
+            .OrderBy(a => a.DayOfWeek)
+            .ThenBy(a => a.StartTime)
+            .ToListAsync(ct);
+
+    public async Task<bool> HasOverlapAsync(Guid trainerId, Guid organizationId, int dayOfWeek, TimeOnly startTime, TimeOnly endTime, Guid? excludeId = null, CancellationToken ct = default)
         => await db.TrainerAvailabilities
             .AsNoTracking()
             .AnyAsync(a => a.TrainerId == trainerId
                 && a.OrganizationId == organizationId
                 && a.DayOfWeek == dayOfWeek
                 && a.IsActive
+                && (excludeId == null || a.Id != excludeId)
                 && a.StartTime < endTime
                 && a.EndTime > startTime, ct);
 
