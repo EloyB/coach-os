@@ -8,28 +8,33 @@ export interface CampDayTrainerDto {
   endTime: string;
 }
 
-export interface CampDayDto {
+/** Voormiddag en namiddag van een kampdag; null = dat dagdeel bestaat niet op die dag. */
+export interface CampDayPartsDto {
+  morningStart: string | null; // "HH:mm"
+  morningEnd: string | null;
+  afternoonStart: string | null;
+  afternoonEnd: string | null;
+}
+
+export interface CampDayDto extends CampDayPartsDto {
   id: string;
   date: string; // "yyyy-MM-dd"
-  startTime: string;
-  endTime: string;
   trainers: CampDayTrainerDto[];
 }
 
-/** Extra tarief naast de hoofdprijs; publiek ter referentie, de beheerder kiest per inschrijving. */
-export interface CampPriceDto {
+/** Publieke kampdag: dagdelen plus of ze het maximum aantal deelnemers bereikt hebben. */
+export interface PublicCampDayDto extends CampDayPartsDto {
   id: string;
-  label: string;
-  description: string | null;
-  amount: number;
+  date: string;
+  morningFull: boolean;
+  afternoonFull: boolean;
 }
 
-export interface SaveCampPriceRequest {
-  /** Gevuld = bestaand tarief bijwerken, leeg = nieuw tarief. */
-  id?: string;
-  label: string;
-  description?: string;
-  amount: number;
+/** Gekozen dagdelen van één kampdag. */
+export interface CampDaySelection {
+  campDayId: string;
+  morning: boolean;
+  afternoon: boolean;
 }
 
 export interface CampDto {
@@ -38,7 +43,9 @@ export interface CampDto {
   tennisClubId: string;
   tennisClubName: string;
   level: number | null;
-  price: number;
+  dayPrice: number;
+  halfDayPrice: number;
+  allowHalfDays: boolean;
   startDate: string;
   endDate: string;
   maxParticipants: number | null;
@@ -54,7 +61,9 @@ export interface CampDetailDto {
   tennisClubId: string;
   tennisClubName: string;
   level: number | null;
-  price: number;
+  dayPrice: number;
+  halfDayPrice: number;
+  allowHalfDays: boolean;
   startDate: string;
   endDate: string;
   registrationDeadline: string;
@@ -62,7 +71,6 @@ export interface CampDetailDto {
   participantCount: number;
   isActive: boolean;
   days: CampDayDto[];
-  prices: CampPriceDto[];
 }
 
 export interface PublicCampDto {
@@ -70,15 +78,16 @@ export interface PublicCampDto {
   name: string;
   description: string | null;
   level: number | null;
-  price: number;
+  dayPrice: number;
+  halfDayPrice: number;
+  allowHalfDays: boolean;
   startDate: string;
   endDate: string;
   registrationDeadline: string;
   tennisClubName: string;
   maxParticipants: number | null;
   participantCount: number;
-  days: CampDayDto[];
-  prices: CampPriceDto[];
+  days: PublicCampDayDto[];
 }
 
 export interface CreateCampDayTrainerRequest {
@@ -87,10 +96,10 @@ export interface CreateCampDayTrainerRequest {
   endTime: string;
 }
 
-export interface CreateCampDayRequest {
+export interface CreateCampDayRequest extends CampDayPartsDto {
+  /** Gevuld = bestaande dag bijwerken, leeg = nieuwe dag. */
+  id?: string;
   date: string;
-  startTime: string;
-  endTime: string;
   trainers: CreateCampDayTrainerRequest[];
 }
 
@@ -99,14 +108,15 @@ export interface CreateCampRequest {
   description?: string;
   tennisClubId: string;
   level?: number | null;
-  price: number;
+  dayPrice: number;
+  halfDayPrice: number;
+  allowHalfDays: boolean;
   startDate: string;
   endDate: string;
   registrationDeadline: string;
+  /** Maximum per dagdeel (elke dag apart geteld); null = onbeperkt. */
   maxParticipants?: number | null;
   days: CreateCampDayRequest[];
-  /** Weglaten laat de bestaande prijsopties ongemoeid. */
-  prices?: SaveCampPriceRequest[];
 }
 
 export type UpdateCampRequest = CreateCampRequest & { isActive: boolean };
@@ -149,6 +159,8 @@ export interface SubmitCampEnrollmentRequest {
   responses: { campFormFieldId: string; value: string }[];
   enrollmentType?: string; // "solo" | "group"
   groupMembers?: CampGroupMemberRequest[];
+  /** Gekozen dagdelen per kampdag; geldt voor de leider en alle groepsleden. */
+  days: CampDaySelection[];
 }
 
 export interface SubmitCampEnrollmentResult {
@@ -157,6 +169,7 @@ export interface SubmitCampEnrollmentResult {
 }
 
 export interface CampPaymentOptions {
+  /** Te betalen bedrag: totaal van de inschrijving of de hele groep. */
   price: number;
   onlineAvailable: boolean;
 }
@@ -179,8 +192,8 @@ export interface CampEnrollmentDto {
   /** Mollie-referentie (tr_...) om de betaling in het Mollie-dashboard terug te vinden. */
   molliePaymentId: string | null;
   formResponses: { fieldId: string; fieldLabel: string; value: string }[];
-  campPriceId: string | null;
-  campPriceLabel: string | null;
+  days: CampDaySelection[];
+  totalAmount: number;
 }
 
 // ── Admin ──
@@ -220,8 +233,7 @@ export interface CreateManualCampEnrollmentRequest {
   participantPhone: string | null;
   /** true = cash al ontvangen (bevestigd); false = nog te betalen. Enkel relevant voor betaalde kampen. */
   paid: boolean;
-  /** Gekozen tarief; null = hoofdprijs. */
-  campPriceId?: string | null;
+  days: CampDaySelection[];
   responses: { campFormFieldId: string; value: string }[];
 }
 export async function createManualCampEnrollment(
@@ -238,8 +250,6 @@ export interface AddCampGroupMemberRequest {
   participantName: string;
   participantEmail: string;
   participantPhone: string | null;
-  /** Gekozen tarief; null = hoofdprijs. */
-  campPriceId?: string | null;
   responses: { campFormFieldId: string; value: string }[];
 }
 export async function addCampGroupMember(
@@ -257,8 +267,8 @@ export interface UpdateCampEnrollmentRequest {
   participantName: string;
   participantEmail: string;
   participantPhone: string | null;
-  /** Gekozen tarief; null = hoofdprijs. */
-  campPriceId?: string | null;
+  /** Volledige set gekozen dagdelen; vervangt de bestaande keuze. */
+  days: CampDaySelection[];
   responses: { campFormFieldId: string; value: string }[];
 }
 export async function updateCampEnrollment(
@@ -304,8 +314,11 @@ export async function submitCampEnrollment(
   const { data } = await publicApiClient.post<SubmitCampEnrollmentResult>(`/public/camps/${campId}/enroll`, request);
   return data;
 }
-export async function getCampPaymentOptions(campId: string): Promise<CampPaymentOptions> {
-  const { data } = await publicApiClient.get<CampPaymentOptions>(`/public/camps/${campId}/payment-options`);
+export async function getCampPaymentOptions(
+  campId: string, enrollmentId: string
+): Promise<CampPaymentOptions> {
+  const { data } = await publicApiClient.get<CampPaymentOptions>(
+    `/public/camps/${campId}/payment-options`, { params: { enrollmentId } });
   return data;
 }
 export async function chooseCampPayment(

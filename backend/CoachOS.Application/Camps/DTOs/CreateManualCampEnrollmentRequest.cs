@@ -10,8 +10,8 @@ public record CreateManualCampEnrollmentRequest
     public string ParticipantEmail { get; init; } = string.Empty;
     public string? ParticipantPhone { get; init; }
 
-    /// <summary>Gekozen tarief; null = hoofdprijs van het kamp.</summary>
-    public Guid? CampPriceId { get; init; }
+    /// <summary>Gekozen dagdelen per kampdag.</summary>
+    public List<CampDaySelectionDto> Days { get; init; } = new();
 
     /// <summary>true = cash al ontvangen (meteen bevestigd); false = nog te betalen (PendingPayment).</summary>
     public bool Paid { get; init; }

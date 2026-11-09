@@ -24,6 +24,7 @@ import {
   type CampDayDraft,
   type CampStep1Data,
 } from "../_types";
+import { formatPrice } from "@/lib/camp-day-selection";
 
 interface Step3Props {
   step1Data: CampStep1Data;
@@ -94,16 +95,15 @@ export function Step3Review({ step1Data, days, onBack }: Step3Props) {
         )}
         <div className="flex flex-wrap gap-2">
           <Chip icon={<Euro size={11} className="text-tennis-green" />}>
-            {step1Data.price > 0 ? `€${step1Data.price}` : t("priceFree")}
+            {step1Data.dayPrice > 0
+              ? t("pricePerDay", { price: formatPrice(step1Data.dayPrice) })
+              : t("priceFree")}
           </Chip>
-          {step1Data.prices.map((p, i) => (
-            <Chip
-              key={i}
-              icon={<Euro size={11} className="text-tennis-green" />}
-            >
-              {p.label}: €{p.amount}
-            </Chip>
-          ))}
+          <Chip icon={<Euro size={11} className="text-tennis-green" />}>
+            {step1Data.allowHalfDays
+              ? t("pricePerHalfDay", { price: formatPrice(step1Data.halfDayPrice) })
+              : t("halfDaysNotAllowed")}
+          </Chip>
           <Chip icon={<CalendarDays size={11} className="text-tennis-green" />}>
             {formatDateNL(step1Data.startDate)} -{" "}
             {formatDateNL(step1Data.endDate)}
@@ -151,8 +151,17 @@ export function Step3Review({ step1Data, days, onBack }: Step3Props) {
                 <span className="text-[13px] font-bold text-tennis-green">
                   {formatDayHeading(day.date)}
                 </span>
-                <span className="text-xs text-gray-500 font-mono">
-                  {day.startTime} - {day.endTime}
+                <span className="text-xs text-gray-500 font-mono text-right">
+                  {day.morningStart && day.morningEnd && (
+                    <span className="block">
+                      {t("morning")} {day.morningStart} - {day.morningEnd}
+                    </span>
+                  )}
+                  {day.afternoonStart && day.afternoonEnd && (
+                    <span className="block">
+                      {t("afternoon")} {day.afternoonStart} - {day.afternoonEnd}
+                    </span>
+                  )}
                 </span>
               </div>
               {day.trainers.length === 0 ? (

@@ -8,7 +8,7 @@ import {
   buildCampRequest,
   detailToDays,
   toDateOnly,
-  detailToPrices,
+  DEFAULT_DAY_PARTS,
   type CampDayDraft,
 } from "../new/_types";
 import { getTrainers, isAssignableTrainer } from "@/lib/api/trainers";
@@ -41,18 +41,19 @@ export function CampDaysCard({ camp }: CampDaysCardProps) {
             description: camp.description ?? "",
             tennisClubId: camp.tennisClubId,
             level: camp.level,
-            price: camp.price,
+            dayPrice: camp.dayPrice,
+            halfDayPrice: camp.halfDayPrice,
+            allowHalfDays: camp.allowHalfDays,
             maxParticipants: camp.maxParticipants,
             startDate: toDateOnly(camp.startDate),
             endDate: toDateOnly(camp.endDate),
             registrationDeadline: toDateOnly(camp.registrationDeadline),
-            prices: detailToPrices(camp),
+            defaultParts: DEFAULT_DAY_PARTS,
           },
           daysToSave,
         ),
         // Volledig tijdstip bewaren: buildCampRequest kapt de deadline af op middernacht.
         registrationDeadline: camp.registrationDeadline,
-        prices: undefined,
         isActive: camp.isActive,
       }),
     onSuccess: () => {

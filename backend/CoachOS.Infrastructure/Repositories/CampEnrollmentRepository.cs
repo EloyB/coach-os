@@ -36,6 +36,29 @@ public class CampEnrollmentRepository(ApplicationDbContext context) : ICampEnrol
                 (e.Status == EnrollmentStatus.Pending || e.Status == EnrollmentStatus.Confirmed || e.Status == EnrollmentStatus.PendingPayment), ct);
     }
 
+    public async Task<Dictionary<(Guid CampDayId, CampDayPart Part), int>> CountActivePerDayPartAsync(
+        Guid campId, CancellationToken ct = default)
+    {
+        List<DayPartRow> rows = await context.CampEnrollmentDays
+            .AsNoTracking()
+            .Where(d => d.CampEnrollment.CampId == campId
+                && (d.CampEnrollment.Status == EnrollmentStatus.Pending
+                    || d.CampEnrollment.Status == EnrollmentStatus.Confirmed
+                    || d.CampEnrollment.Status == EnrollmentStatus.PendingPayment))
+            .Select(d => new DayPartRow(d.CampDayId, d.Morning, d.Afternoon))
+            .ToListAsync(ct);
+
+        Dictionary<(Guid CampDayId, CampDayPart Part), int> counts = new();
+        foreach (DayPartRow row in rows)
+        {
+            if (row.Morning)
+                counts[(row.CampDayId, CampDayPart.Morning)] = counts.GetValueOrDefault((row.CampDayId, CampDayPart.Morning)) + 1;
+            if (row.Afternoon)
+                counts[(row.CampDayId, CampDayPart.Afternoon)] = counts.GetValueOrDefault((row.CampDayId, CampDayPart.Afternoon)) + 1;
+        }
+        return counts;
+    }
+
     public async Task<Dictionary<Guid, int>> CountActiveByCampsAsync(
         IEnumerable<Guid> campIds, CancellationToken ct = default)
     {
@@ -79,12 +102,18 @@ public class CampEnrollmentRepository(ApplicationDbContext context) : ICampEnrol
     {
         return await context.CampEnrollments
             .Include(e => e.FormResponses)
+            .Include(e => e.Days)
             .FirstOrDefaultAsync(e => e.Id == id && e.OrganizationId == organizationId, ct);
     }
 
     public void RemoveFormResponse(CampFormResponse response)
     {
         context.CampFormResponses.Remove(response);
+    }
+
+    public void RemoveEnrollmentDays(IEnumerable<CampEnrollmentDay> days)
+    {
+        context.CampEnrollmentDays.RemoveRange(days);
     }
 
     public async Task<int> CountActiveByCampGroupsAsync(
@@ -103,7 +132,7 @@ public class CampEnrollmentRepository(ApplicationDbContext context) : ICampEnrol
             .Include(e => e.FormResponses)
                 .ThenInclude(r => r.CampFormField)
             .Include(e => e.Group)
-            .Include(e => e.Price)
+            .Include(e => e.Days)
             .Where(e => e.CampId == campId && e.OrganizationId == organizationId)
             .OrderByDescending(e => e.EnrolledAt)
             .ToListAsync(ct);
@@ -114,14 +143,8 @@ public class CampEnrollmentRepository(ApplicationDbContext context) : ICampEnrol
     {
         return await context.CampEnrollmentGroups
             .Include(g => g.Members)
+                .ThenInclude(m => m.Days)
             .FirstOrDefaultAsync(g => g.Id == groupId && g.OrganizationId == organizationId, ct);
-    }
-
-    public async Task<bool> AnyUsingPricesAsync(IEnumerable<Guid> priceIds, CancellationToken ct = default)
-    {
-        List<Guid> ids = priceIds.ToList();
-        return ids.Count > 0
-            && await context.CampEnrollments.AnyAsync(e => e.CampPriceId != null && ids.Contains(e.CampPriceId.Value), ct);
     }
 
     public async Task AddAsync(CampEnrollment enrollment, CancellationToken ct = default)
@@ -138,4 +161,6 @@ public class CampEnrollmentRepository(ApplicationDbContext context) : ICampEnrol
     {
         await context.CampFormResponses.AddAsync(response, ct);
     }
+
+    private sealed record DayPartRow(Guid CampDayId, bool Morning, bool Afternoon);
 }

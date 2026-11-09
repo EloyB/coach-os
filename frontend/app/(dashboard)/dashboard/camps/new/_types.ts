@@ -7,21 +7,43 @@ export type CampStep1Data = {
   description: string;
   tennisClubId: string;
   level: number | null;
-  price: number;
+  dayPrice: number;
+  /** Alleen betekenisvol als `allowHalfDays`; anders kost elke aangeboden dag de dagprijs. */
+  halfDayPrice: number;
+  allowHalfDays: boolean;
+  /** Maximum per dagdeel (elke dag apart geteld); null = onbeperkt. */
   maxParticipants: number | null;
   startDate: string; // yyyy-MM-dd
   endDate: string; // yyyy-MM-dd
   registrationDeadline: string; // yyyy-MM-dd
-  prices: CampPriceDraft[];
+  /** Standaarduren die nieuwe kampdagen krijgen. */
+  defaultParts: CampDayParts;
 };
 
-/** Prijsoptie in het formulier; `amount` is NaN zolang het veld leeg is. */
-export type CampPriceDraft = {
-  id?: string;
-  label: string;
-  description: string;
-  amount: number;
+/** Voormiddag en namiddag van een kampdag (HH:mm); null = dat dagdeel bestaat niet op die dag. */
+export type CampDayParts = {
+  morningStart: string | null;
+  morningEnd: string | null;
+  afternoonStart: string | null;
+  afternoonEnd: string | null;
 };
+
+export const DEFAULT_DAY_PARTS: CampDayParts = {
+  morningStart: "09:15",
+  morningEnd: "12:00",
+  afternoonStart: "13:15",
+  afternoonEnd: "16:00",
+};
+
+/** Vroegste start van de bestaande dagdelen van een dag. */
+export function dayStart(parts: CampDayParts): string {
+  return parts.morningStart ?? parts.afternoonStart ?? "09:00";
+}
+
+/** Laatste einde van de bestaande dagdelen van een dag. */
+export function dayEnd(parts: CampDayParts): string {
+  return parts.afternoonEnd ?? parts.morningEnd ?? "16:00";
+}
 
 export type CampTrainerDraft = {
   trainerId: string;
@@ -31,10 +53,10 @@ export type CampTrainerDraft = {
   trainerName?: string;
 };
 
-export type CampDayDraft = {
+export type CampDayDraft = CampDayParts & {
+  /** Gevuld voor een bestaande dag van een opgeslagen kamp. */
+  id?: string;
   date: string; // yyyy-MM-dd
-  startTime: string; // HH:mm
-  endTime: string;
   trainers: CampTrainerDraft[];
 };
 
@@ -52,6 +74,7 @@ export function buildDays(
   end: string,
   existing: CampDayDraft[],
   previousRange?: DateRange | null,
+  defaultParts: CampDayParts = DEFAULT_DAY_PARTS,
 ): CampDayDraft[] {
   if (!start || !end || end < start) return [];
   const byDate = new Map(existing.map((d) => [d.date, d]));
@@ -67,33 +90,21 @@ export function buildDays(
       iso <= previousRange.end;
     if (kept) result.push(kept);
     else if (!wasDropped)
-      result.push({
-        date: iso,
-        startTime: "09:00",
-        endTime: "16:00",
-        trainers: [],
-      });
+      result.push({ date: iso, ...defaultParts, trainers: [] });
     cur.setDate(cur.getDate() + 1);
   }
   return result;
 }
 
-/** Map the price options of an existing camp into form drafts. */
-export function detailToPrices(detail: CampDetailDto): CampPriceDraft[] {
-  return detail.prices.map((p) => ({
-    id: p.id,
-    label: p.label,
-    description: p.description ?? "",
-    amount: p.amount,
-  }));
-}
-
 /** Map an existing camp detail into editable day drafts. */
 export function detailToDays(detail: CampDetailDto): CampDayDraft[] {
   return detail.days.map((d) => ({
+    id: d.id,
     date: d.date,
-    startTime: d.startTime,
-    endTime: d.endTime,
+    morningStart: d.morningStart,
+    morningEnd: d.morningEnd,
+    afternoonStart: d.afternoonStart,
+    afternoonEnd: d.afternoonEnd,
     trainers: d.trainers.map((tr) => ({
       trainerId: tr.trainerId,
       startTime: tr.startTime,
@@ -126,7 +137,10 @@ export function buildCampRequest(
     description: step1.description.trim() || undefined,
     tennisClubId: step1.tennisClubId,
     level: step1.level,
-    price: step1.price,
+    dayPrice: step1.dayPrice,
+    // Zonder halve dagen kost elke aangeboden dag (ook een dag met één dagdeel) de dagprijs.
+    halfDayPrice: step1.allowHalfDays ? step1.halfDayPrice : step1.dayPrice,
+    allowHalfDays: step1.allowHalfDays,
     startDate: step1.startDate,
     endDate: step1.endDate,
     // Backend expects an ISO timestamp; the deadline is a date (UTC start of day).
@@ -134,16 +148,13 @@ export function buildCampRequest(
     // would shift the date by the UTC offset and land on the wrong day in CET).
     registrationDeadline: step1.registrationDeadline + "T00:00:00Z",
     maxParticipants: step1.maxParticipants,
-    prices: step1.prices.map((p) => ({
-      id: p.id,
-      label: p.label.trim(),
-      description: p.description.trim() || undefined,
-      amount: p.amount,
-    })),
     days: days.map((d) => ({
+      id: d.id,
       date: d.date,
-      startTime: d.startTime,
-      endTime: d.endTime,
+      morningStart: d.morningStart,
+      morningEnd: d.morningEnd,
+      afternoonStart: d.afternoonStart,
+      afternoonEnd: d.afternoonEnd,
       trainers: d.trainers.map((tr) => ({
         trainerId: tr.trainerId,
         startTime: tr.startTime,

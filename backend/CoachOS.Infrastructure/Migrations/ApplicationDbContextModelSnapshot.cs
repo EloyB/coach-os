@@ -133,8 +133,14 @@ namespace CoachOS.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("AllowHalfDays")
+                        .HasColumnType("boolean");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("DayPrice")
+                        .HasColumnType("numeric(10,2)");
 
                     b.Property<string>("Description")
                         .HasMaxLength(2000)
@@ -142,6 +148,9 @@ namespace CoachOS.Infrastructure.Migrations
 
                     b.Property<DateOnly>("EndDate")
                         .HasColumnType("date");
+
+                    b.Property<decimal>("HalfDayPrice")
+                        .HasColumnType("numeric(10,2)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
@@ -159,9 +168,6 @@ namespace CoachOS.Infrastructure.Migrations
 
                     b.Property<Guid>("OrganizationId")
                         .HasColumnType("uuid");
-
-                    b.Property<decimal>("Price")
-                        .HasColumnType("numeric(10,2)");
 
                     b.Property<DateTime>("RegistrationDeadline")
                         .HasColumnType("timestamp with time zone");
@@ -190,6 +196,12 @@ namespace CoachOS.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<TimeOnly?>("AfternoonEnd")
+                        .HasColumnType("time without time zone");
+
+                    b.Property<TimeOnly?>("AfternoonStart")
+                        .HasColumnType("time without time zone");
+
                     b.Property<Guid>("CampId")
                         .HasColumnType("uuid");
 
@@ -199,14 +211,14 @@ namespace CoachOS.Infrastructure.Migrations
                     b.Property<DateOnly>("Date")
                         .HasColumnType("date");
 
-                    b.Property<TimeOnly>("EndTime")
+                    b.Property<TimeOnly?>("MorningEnd")
+                        .HasColumnType("time without time zone");
+
+                    b.Property<TimeOnly?>("MorningStart")
                         .HasColumnType("time without time zone");
 
                     b.Property<Guid>("OrganizationId")
                         .HasColumnType("uuid");
-
-                    b.Property<TimeOnly>("StartTime")
-                        .HasColumnType("time without time zone");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -268,9 +280,6 @@ namespace CoachOS.Infrastructure.Migrations
                     b.Property<Guid>("CampId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid?>("CampPriceId")
-                        .HasColumnType("uuid");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -301,6 +310,9 @@ namespace CoachOS.Infrastructure.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("integer");
 
+                    b.Property<decimal>("TotalAmount")
+                        .HasColumnType("numeric(10,2)");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -309,8 +321,6 @@ namespace CoachOS.Infrastructure.Migrations
                     b.HasIndex("CampEnrollmentGroupId");
 
                     b.HasIndex("CampId");
-
-                    b.HasIndex("CampPriceId");
 
                     b.HasIndex("OrganizationId");
 
@@ -321,6 +331,48 @@ namespace CoachOS.Infrastructure.Migrations
                         .HasFilter("\"Status\" IN (1, 2, 5)");
 
                     b.ToTable("CampEnrollments");
+                });
+
+            modelBuilder.Entity("CoachOS.Domain.Entities.CampEnrollmentDay", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("Afternoon")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("CampDayId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CampEnrollmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("Morning")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CampDayId");
+
+                    b.HasIndex("OrganizationId");
+
+                    b.HasIndex("CampEnrollmentId", "CampDayId")
+                        .IsUnique();
+
+                    b.ToTable("CampEnrollmentDays", t =>
+                        {
+                            t.HasCheckConstraint("CK_CampEnrollmentDays_AtLeastOnePart", "\"Morning\" OR \"Afternoon\"");
+                        });
                 });
 
             modelBuilder.Entity("CoachOS.Domain.Entities.CampEnrollmentForm", b =>
@@ -458,49 +510,6 @@ namespace CoachOS.Infrastructure.Migrations
                     b.HasIndex("CampFormFieldId");
 
                     b.ToTable("CampFormResponses");
-                });
-
-            modelBuilder.Entity("CoachOS.Domain.Entities.CampPrice", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<decimal>("Amount")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("numeric(10,2)");
-
-                    b.Property<Guid>("CampId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<string>("Label")
-                        .IsRequired()
-                        .HasMaxLength(120)
-                        .HasColumnType("character varying(120)");
-
-                    b.Property<Guid>("OrganizationId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("SortOrder")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("OrganizationId");
-
-                    b.HasIndex("CampId", "SortOrder");
-
-                    b.ToTable("CampPrices");
                 });
 
             modelBuilder.Entity("CoachOS.Domain.Entities.EmailOutboxMessage", b =>
@@ -2330,16 +2339,28 @@ namespace CoachOS.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("CoachOS.Domain.Entities.CampPrice", "Price")
-                        .WithMany()
-                        .HasForeignKey("CampPriceId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.Navigation("Camp");
 
                     b.Navigation("Group");
+                });
 
-                    b.Navigation("Price");
+            modelBuilder.Entity("CoachOS.Domain.Entities.CampEnrollmentDay", b =>
+                {
+                    b.HasOne("CoachOS.Domain.Entities.CampDay", "CampDay")
+                        .WithMany()
+                        .HasForeignKey("CampDayId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CoachOS.Domain.Entities.CampEnrollment", "CampEnrollment")
+                        .WithMany("Days")
+                        .HasForeignKey("CampEnrollmentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CampDay");
+
+                    b.Navigation("CampEnrollment");
                 });
 
             modelBuilder.Entity("CoachOS.Domain.Entities.CampEnrollmentForm", b =>
@@ -2400,25 +2421,6 @@ namespace CoachOS.Infrastructure.Migrations
                     b.Navigation("CampEnrollment");
 
                     b.Navigation("CampFormField");
-                });
-
-            modelBuilder.Entity("CoachOS.Domain.Entities.CampPrice", b =>
-                {
-                    b.HasOne("CoachOS.Domain.Entities.Camp", "Camp")
-                        .WithMany("Prices")
-                        .HasForeignKey("CampId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("CoachOS.Domain.Entities.Organization", "Organization")
-                        .WithMany()
-                        .HasForeignKey("OrganizationId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Camp");
-
-                    b.Navigation("Organization");
                 });
 
             modelBuilder.Entity("CoachOS.Domain.Entities.Enrollment", b =>
@@ -2939,8 +2941,6 @@ namespace CoachOS.Infrastructure.Migrations
                     b.Navigation("EnrollmentForm");
 
                     b.Navigation("Enrollments");
-
-                    b.Navigation("Prices");
                 });
 
             modelBuilder.Entity("CoachOS.Domain.Entities.CampDay", b =>
@@ -2950,6 +2950,8 @@ namespace CoachOS.Infrastructure.Migrations
 
             modelBuilder.Entity("CoachOS.Domain.Entities.CampEnrollment", b =>
                 {
+                    b.Navigation("Days");
+
                     b.Navigation("FormResponses");
 
                     b.Navigation("Payments");

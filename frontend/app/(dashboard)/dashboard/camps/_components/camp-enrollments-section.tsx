@@ -616,7 +616,6 @@ function PersonRow({
       />
       <CampEnrollmentDetailDialog
         campId={campId}
-        canEditPrice={canEdit && !isCancelled}
         enrollment={shown}
         markPaidLabel={markPaidLabel}
         open={detailOpen}

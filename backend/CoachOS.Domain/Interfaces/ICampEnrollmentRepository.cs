@@ -13,6 +13,13 @@ public interface ICampEnrollmentRepository
     Task<int> CountActiveByCampAsync(Guid campId, CancellationToken ct = default);
 
     /// <summary>Actieve deelnemertellingen per kamp in één query (vermijdt N+1 in lijst-overzicht).</summary>
+    /// <summary>
+    /// Actieve deelnemers per dagdeel van elke kampdag (hele dag telt in beide dagdelen; geannuleerde
+    /// inschrijvingen tellen niet mee). Dagdelen zonder deelnemers ontbreken in het resultaat.
+    /// </summary>
+    Task<Dictionary<(Guid CampDayId, CoachOS.Domain.Enums.CampDayPart Part), int>> CountActivePerDayPartAsync(
+        Guid campId, CancellationToken ct = default);
+
     Task<Dictionary<Guid, int>> CountActiveByCampsAsync(IEnumerable<Guid> campIds, CancellationToken ct = default);
 
     Task<bool> IsDuplicateAsync(Guid campId, string participantEmail, CancellationToken ct = default);
@@ -27,6 +34,9 @@ public interface ICampEnrollmentRepository
 
     void RemoveFormResponse(CampFormResponse response);
 
+    /// <summary>Verwijdert gekozen dagdelen van een inschrijving (Restrict FK: geen auto-cascade).</summary>
+    void RemoveEnrollmentDays(IEnumerable<CampEnrollmentDay> days);
+
     Task<int> CountActiveByCampGroupsAsync(Guid campId, Guid organizationId, CancellationToken ct = default);
 
     /// <summary>Alle inschrijvingen van een kamp incl. FormResponses (admin-overzicht).</summary>
@@ -34,9 +44,6 @@ public interface ICampEnrollmentRepository
 
     /// <summary>Tracked groep incl. leden (voor annuleren); org-gescoped.</summary>
     Task<CampEnrollmentGroup?> GetGroupWithMembersAsync(Guid groupId, Guid organizationId, CancellationToken ct = default);
-
-    /// <summary>Of minstens één inschrijving (ook geannuleerd) een van deze tarieven gekozen heeft.</summary>
-    Task<bool> AnyUsingPricesAsync(IEnumerable<Guid> priceIds, CancellationToken ct = default);
 
     Task AddAsync(CampEnrollment enrollment, CancellationToken ct = default);
     Task AddGroupAsync(CampEnrollmentGroup group, CancellationToken ct = default);

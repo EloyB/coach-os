@@ -78,8 +78,8 @@ function PaymentChoiceView({ campEnrollmentId, campId, t }: PaymentChoiceViewPro
   const [cashConfirmed, setCashConfirmed] = useState(false);
 
   const { data, isLoading, isError } = useQuery<CampPaymentOptions>({
-    queryKey: ["campPaymentOptions", campId],
-    queryFn: () => getCampPaymentOptions(campId),
+    queryKey: ["campPaymentOptions", campId, campEnrollmentId],
+    queryFn: () => getCampPaymentOptions(campId, campEnrollmentId),
   });
 
   async function choose(method: number) {

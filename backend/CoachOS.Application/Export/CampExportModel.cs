@@ -30,14 +30,30 @@ public sealed record CampEnrollmentRow(
     string? PaymentMethod,
     DateTime EnrolledAt,
     string? Notes,
-    IReadOnlyDictionary<string, string> FormResponses);
+    IReadOnlyDictionary<string, string> FormResponses,
+    string DaysSummary,
+    decimal TotalAmount);
 
-/// <summary>Tab 2 — één kampdag met de kampuren en de aanwezige trainers.</summary>
+/// <summary>
+/// Tab 2 — één kampdag met de dagdelen (null = dagdeel bestaat niet), het aantal deelnemers per
+/// dagdeel (een hele dag telt in beide) en de aanwezige trainers.
+/// </summary>
 public sealed record CampDayRow(
     DateOnly Date,
     string DayName,
-    TimeOnly StartTime,
-    TimeOnly EndTime,
-    IReadOnlyList<CampDayTrainerRow> Trainers);
+    TimeOnly? MorningStart,
+    TimeOnly? MorningEnd,
+    TimeOnly? AfternoonStart,
+    TimeOnly? AfternoonEnd,
+    int MorningCount,
+    int AfternoonCount,
+    IReadOnlyList<CampDayTrainerRow> Trainers)
+{
+    /// <summary>Vroegste start van de bestaande dagdelen.</summary>
+    public TimeOnly FirstStart => MorningStart ?? AfternoonStart ?? default;
+
+    /// <summary>Laatste einde van de bestaande dagdelen.</summary>
+    public TimeOnly LastEnd => AfternoonEnd ?? MorningEnd ?? default;
+}
 
 public sealed record CampDayTrainerRow(string Name, TimeOnly StartTime, TimeOnly EndTime);

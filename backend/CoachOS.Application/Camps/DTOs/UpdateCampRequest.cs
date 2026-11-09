@@ -5,11 +5,12 @@ public record UpdateCampRequest(
     string? Description,
     Guid TennisClubId,
     int? Level,
-    decimal Price,
+    decimal DayPrice,
+    decimal HalfDayPrice,
+    bool AllowHalfDays,
     string StartDate,
     string EndDate,
     DateTime RegistrationDeadline,
     int? MaxParticipants,
     bool IsActive,
-    List<CreateCampDayRequest> Days,
-    List<SaveCampPriceRequest>? Prices = null);
+    List<CreateCampDayRequest> Days);
