@@ -11,6 +11,7 @@ using CoachOS.Application.Onboarding;
 using CoachOS.Application.OrganizationSettings;
 using CoachOS.Application.Payments;
 using CoachOS.Application.Planning;
+using CoachOS.Application.Privacy;
 using CoachOS.Application.RescheduleRequests;
 using CoachOS.Application.StandaloneLessons;
 using CoachOS.Application.StudentConfirmation;
@@ -61,6 +62,8 @@ public static class DependencyInjection
         services.AddScoped<IBillingPaymentSyncService, BillingPaymentSyncService>();
         services.AddScoped<IBillingMaintenanceService, BillingMaintenanceService>();
         services.AddScoped<ITrialReminderService, TrialReminderService>();
+        services.AddScoped<IClubExportService, ClubExportService>();
+        services.AddScoped<IOrganizationOffboardingService, OrganizationOffboardingService>();
 
         return services;
     }
