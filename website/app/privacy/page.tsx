@@ -26,8 +26,8 @@ export default function PrivacyPage() {
             <p>
               CoachOS is in pre-launch. Een definitieve privacyverklaring volgt
               vóór algemene beschikbaarheid en zal voldoen aan de GDPR. We
-              werken uitsluitend met dataverwerkers binnen de Europese Unie en
-              verzamelen alleen wat strikt nodig is om lessen te plannen.
+              bewaren gegevens binnen de Europese Unie (Frankrijk en Nederland)
+              en verzamelen alleen wat strikt nodig is om lessen te plannen.
             </p>
             <p>
               Vragen over gegevensverwerking?{" "}

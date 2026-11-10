@@ -137,13 +137,13 @@ In deze algemene voorwaarden wordt verstaan onder:
 
 11.4. **Verwerkte gegevens:** identificatiegegevens (voornaam, achternaam), contactgegevens (e-mail, telefoon), inschrijvingsgegevens (gekozen reeks, beschikbaarheden, antwoorden op de inschrijvingsvragen van de Club), betalingsgegevens (via Mollie — CoachOS bewaart geen kaartgegevens).
 
-11.5. **Bewaartermijnen.** Inschrijvings- en betaalgegevens worden bewaard gedurende de wettelijke termijn van **7 jaar** (boekhoudkundige verplichting, art. III.86 WER). Contactgegevens worden uiterlijk **24 maanden** na het einde van de Lessenreeks verwijderd, tenzij de Speler vraagt om eerder te worden verwijderd of om langer in contact te blijven.
+11.5. **Bewaartermijnen.** De persoonsgegevens van de Speler (naam, contactgegevens, geboortedatum, beschikbaarheden en antwoorden op de inschrijvingsvragen) worden uiterlijk **24 maanden** na het einde van de laatste Lessenreeks, les of kamp waarvoor de Speler ingeschreven was verwijderd, tenzij de Speler vraagt om eerder te worden verwijderd. Werd er voor een inschrijving betaald, dan blijft de betaling zelf (bedrag, datum, status en referentie) bewaard zonder naam of contactgegevens, zolang de Club die nodig heeft voor haar boekhouding (wettelijke termijn van **7 jaar**, art. III.86 WER). Back-ups worden niet afzonderlijk bewerkt: verwijderde gegevens verdwijnen daaruit uiterlijk na ongeveer 8 weken.
 
 11.6. **Rechten van de Speler:** recht op inzage, rectificatie, wissing, beperking, overdraagbaarheid en bezwaar. Verzoeken kunnen ingediend worden bij **[CONTACT CoachOS]** of rechtstreeks bij de Club.
 
 11.7. **Klacht.** De Speler heeft het recht een klacht in te dienen bij de Belgische **Gegevensbeschermingsautoriteit**, Drukpersstraat 35, 1000 Brussel — [www.gegevensbeschermingsautoriteit.be](https://www.gegevensbeschermingsautoriteit.be).
 
-11.8. **Internationale doorgifte.** Persoonsgegevens worden binnen de Europese Economische Ruimte verwerkt. Eventuele doorgifte buiten de EER gebeurt enkel op basis van passende waarborgen (modelcontractbepalingen, adequaatheidsbesluit).
+11.8. **Internationale doorgifte.** Persoonsgegevens worden opgeslagen binnen de Europese Economische Ruimte (Frankrijk en Nederland). Bij het uitrollen van een nieuwe versie heeft een dienstverlener in de Verenigde Staten (GitHub) kortstondig technische toegang tot de database. Die doorgifte, en elke andere doorgifte buiten de EER, gebeurt enkel op basis van passende waarborgen (modelcontractbepalingen, EU-US Data Privacy Framework).
 
 ## 12. Klachtenregeling en buitengerechtelijke geschillenbeslechting
 
