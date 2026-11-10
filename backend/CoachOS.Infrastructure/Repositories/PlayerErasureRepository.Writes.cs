@@ -13,6 +13,8 @@ namespace CoachOS.Infrastructure.Repositories;
 public sealed partial class PlayerErasureRepository
 {
     private const string NeutralGroupName = "Groep";
+    private const string AnonymizedName = "Geanonimiseerd";
+    private const string AnonymizedPaymentDescription = "Inschrijving (geanonimiseerd)";
 
     public async Task<ErasureLockOutcome> LockForErasureAsync(
         Guid organizationId, PrivacyErasureKind kind, Guid enrollmentId, CancellationToken ct = default)
@@ -65,6 +67,67 @@ public sealed partial class PlayerErasureRepository
     public async Task AddReceiptAsync(PrivacyErasureReceipt receipt, CancellationToken ct = default)
         => await db.PrivacyErasureReceipts.AddAsync(receipt, ct);
 
+    public async Task<ErasureDeleteOutcome> AnonymizeAsync(
+        Guid organizationId, PlayerErasurePlan plan, DateTime anonymizedAt, CancellationToken ct = default)
+    {
+        // Enkel voor een inschrijving buiten een groep: groepen met betalingen blokkeren altijd.
+        if (plan.GroupId is not null || plan.GroupEffect != ErasureGroupEffect.None)
+            throw new InvalidOperationException("Anonimiseren van een groepslid wordt niet ondersteund.");
+        try
+        {
+            if (plan.Kind == PrivacyErasureKind.CampEnrollment) await AnonymizeCampEnrollmentAsync(organizationId, plan.EnrollmentId, anonymizedAt, ct);
+            else await AnonymizeLessonEnrollmentAsync(organizationId, plan.EnrollmentId, anonymizedAt, ct);
+            return ErasureDeleteOutcome.Deleted;
+        }
+        catch (Exception ex) when (HasSqlState(ex, PostgresErrorCodes.ForeignKeyViolation))
+        {
+            return ErasureDeleteOutcome.DependencyConflict;
+        }
+    }
+
+    public async Task<IReadOnlyList<Guid>> GetOrganizationIdsAsync(CancellationToken ct = default)
+        => await db.Organizations.AsNoTracking().OrderBy(x => x.Id).Select(x => x.Id).ToListAsync(ct);
+
+    /// <summary>Uniek per rij: unieke indexen op (kamp, e-mail) mogen niet botsen tussen geanonimiseerde rijen.</summary>
+    private static string AnonymizedEmail(Guid id) => $"geanonimiseerd-{id:N}@anonymized.invalid";
+
+    private async Task AnonymizeLessonEnrollmentAsync(Guid organizationId, Guid id, DateTime anonymizedAt, CancellationToken ct)
+    {
+        await DeleteLessonSideRecordsAsync(organizationId, id, null, removeGroup: false, ct);
+        string email = AnonymizedEmail(id);
+        await db.Enrollments.Where(x => x.OrganizationId == organizationId && x.Id == id)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(x => x.StudentName, AnonymizedName)
+                .SetProperty(x => x.ContactEmail, email)
+                .SetProperty(x => x.StudentEmail, (string?)null)
+                .SetProperty(x => x.StudentPhone, (string?)null)
+                .SetProperty(x => x.DateOfBirth, (DateOnly?)null)
+                .SetProperty(x => x.Notes, (string?)null)
+                .SetProperty(x => x.AnonymizedAt, anonymizedAt)
+                .SetProperty(x => x.UpdatedAt, anonymizedAt), ct);
+        // De Mollie-omschrijving bevat de namen van de deelnemers.
+        await db.Payments.Where(x => x.OrganizationId == organizationId && x.EnrollmentId == id)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.Description, AnonymizedPaymentDescription)
+                .SetProperty(x => x.UpdatedAt, anonymizedAt), ct);
+    }
+
+    private async Task AnonymizeCampEnrollmentAsync(Guid organizationId, Guid id, DateTime anonymizedAt, CancellationToken ct)
+    {
+        await DeleteCampSideRecordsAsync(organizationId, id, ct);
+        string email = AnonymizedEmail(id);
+        await db.CampEnrollments.Where(x => x.OrganizationId == organizationId && x.Id == id)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(x => x.ParticipantName, AnonymizedName)
+                .SetProperty(x => x.ParticipantEmail, email)
+                .SetProperty(x => x.ParticipantPhone, (string?)null)
+                .SetProperty(x => x.Notes, (string?)null)
+                .SetProperty(x => x.AnonymizedAt, anonymizedAt)
+                .SetProperty(x => x.UpdatedAt, anonymizedAt), ct);
+        await db.Payments.Where(x => x.OrganizationId == organizationId && x.CampEnrollmentId == id)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.Description, AnonymizedPaymentDescription)
+                .SetProperty(x => x.UpdatedAt, anonymizedAt), ct);
+    }
+
     private async Task DeleteLessonEnrollmentAsync(Guid organizationId, PlayerErasurePlan plan, CancellationToken ct)
     {
         Guid id = plan.EnrollmentId;
@@ -75,17 +138,7 @@ public sealed partial class PlayerErasureRepository
                 .ExecuteUpdateAsync(s => s.SetProperty(x => x.LeaderEnrollmentId, plan.NewGroupLeaderId!.Value)
                     .SetProperty(x => x.Name, NeutralGroupName), ct);
 
-        IQueryable<Guid> assignmentIds = AssignmentIds(organizationId, id, groupId, removeGroup);
-        await db.FormResponses.Where(x => x.EnrollmentId == id && x.Enrollment.OrganizationId == organizationId &&
-            x.FormField.EnrollmentForm.OrganizationId == organizationId).ExecuteDeleteAsync(ct);
-        await db.TimeSlotPreferences.Where(x => x.OrganizationId == organizationId && x.EnrollmentId == id).ExecuteDeleteAsync(ct);
-        await db.RescheduleRequests.Where(x => x.OrganizationId == organizationId && (x.EnrollmentId == id ||
-            assignmentIds.Contains(x.ScheduleAssignmentId) || (removeGroup && x.EnrollmentGroupId == groupId))).ExecuteDeleteAsync(ct);
-        await db.AssignmentConfirmationTokens.Where(x => x.OrganizationId == organizationId &&
-            (x.EnrollmentId == id || assignmentIds.Contains(x.ScheduleAssignmentId))).ExecuteDeleteAsync(ct);
-        await db.ScheduleAssignments.Where(x => x.OrganizationId == organizationId &&
-            (x.EnrollmentId == id || (removeGroup && x.EnrollmentGroupId == groupId))).ExecuteDeleteAsync(ct);
-        await DeleteCompletedMailAsync(organizationId, id, ct);
+        await DeleteLessonSideRecordsAsync(organizationId, id, groupId, removeGroup, ct);
 
         if (removeGroup)
         {
@@ -97,6 +150,23 @@ public sealed partial class PlayerErasureRepository
         await db.Enrollments.Where(x => x.OrganizationId == organizationId && x.Id == id).ExecuteDeleteAsync(ct);
     }
 
+    /// <summary>Persoonlijke nevenrecords van een lesinschrijving (gedeeld door wissen en anonimiseren).</summary>
+    private async Task DeleteLessonSideRecordsAsync(
+        Guid organizationId, Guid id, Guid? groupId, bool removeGroup, CancellationToken ct)
+    {
+        IQueryable<Guid> assignmentIds = AssignmentIds(organizationId, id, groupId, removeGroup);
+        await db.FormResponses.Where(x => x.EnrollmentId == id && x.Enrollment.OrganizationId == organizationId &&
+            x.FormField.EnrollmentForm.OrganizationId == organizationId).ExecuteDeleteAsync(ct);
+        await db.TimeSlotPreferences.Where(x => x.OrganizationId == organizationId && x.EnrollmentId == id).ExecuteDeleteAsync(ct);
+        await db.RescheduleRequests.Where(x => x.OrganizationId == organizationId && (x.EnrollmentId == id ||
+            assignmentIds.Contains(x.ScheduleAssignmentId) || (removeGroup && x.EnrollmentGroupId == groupId))).ExecuteDeleteAsync(ct);
+        await db.AssignmentConfirmationTokens.Where(x => x.OrganizationId == organizationId &&
+            (x.EnrollmentId == id || assignmentIds.Contains(x.ScheduleAssignmentId))).ExecuteDeleteAsync(ct);
+        await db.ScheduleAssignments.Where(x => x.OrganizationId == organizationId &&
+            (x.EnrollmentId == id || (removeGroup && x.EnrollmentGroupId == groupId))).ExecuteDeleteAsync(ct);
+        await DeleteCompletedMailAsync(organizationId, id, ct);
+    }
+
     private async Task DeleteCampEnrollmentAsync(Guid organizationId, PlayerErasurePlan plan, CancellationToken ct)
     {
         Guid id = plan.EnrollmentId;
@@ -106,9 +176,7 @@ public sealed partial class PlayerErasureRepository
                 .ExecuteUpdateAsync(s => s.SetProperty(x => x.LeaderEnrollmentId, plan.NewGroupLeaderId!.Value)
                     .SetProperty(x => x.Name, NeutralGroupName), ct);
 
-        await db.CampFormResponses.Where(x => x.CampEnrollmentId == id && x.CampEnrollment.OrganizationId == organizationId &&
-            x.CampFormField.CampEnrollmentForm.OrganizationId == organizationId).ExecuteDeleteAsync(ct);
-        await DeleteCompletedMailAsync(organizationId, id, ct);
+        await DeleteCampSideRecordsAsync(organizationId, id, ct);
 
         if (plan.GroupEffect == ErasureGroupEffect.RemoveEmptyGroup)
         {
@@ -117,6 +185,13 @@ public sealed partial class PlayerErasureRepository
             await db.CampEnrollmentGroups.Where(x => x.OrganizationId == organizationId && x.Id == groupId).ExecuteDeleteAsync(ct);
         }
         await db.CampEnrollments.Where(x => x.OrganizationId == organizationId && x.Id == id).ExecuteDeleteAsync(ct);
+    }
+
+    private async Task DeleteCampSideRecordsAsync(Guid organizationId, Guid id, CancellationToken ct)
+    {
+        await db.CampFormResponses.Where(x => x.CampEnrollmentId == id && x.CampEnrollment.OrganizationId == organizationId &&
+            x.CampFormField.CampEnrollmentForm.OrganizationId == organizationId).ExecuteDeleteAsync(ct);
+        await DeleteCompletedMailAsync(organizationId, id, ct);
     }
 
     private async Task DeleteCompletedMailAsync(Guid organizationId, Guid enrollmentId, CancellationToken ct)

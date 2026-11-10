@@ -26,5 +26,14 @@ public interface IPlayerErasureRepository
     /// <summary>Wist de doelinschrijving en haar persoonlijke nevenrecords. Vereist een actieve transactie.</summary>
     Task<ErasureDeleteOutcome> DeleteAsync(Guid organizationId, PlayerErasurePlan plan, CancellationToken ct = default);
 
+    /// <summary>
+    /// Wist de persoonsgegevens van de doelinschrijving en haar persoonlijke nevenrecords, maar
+    /// laat de inschrijving en haar betalingen bestaan. Vereist een actieve transactie.
+    /// </summary>
+    Task<ErasureDeleteOutcome> AnonymizeAsync(Guid organizationId, PlayerErasurePlan plan, DateTime anonymizedAt, CancellationToken ct = default);
+
     Task AddReceiptAsync(PrivacyErasureReceipt receipt, CancellationToken ct = default);
+
+    /// <summary>Alle organisaties, voor de dagelijkse bewaartermijn-run.</summary>
+    Task<IReadOnlyList<Guid>> GetOrganizationIdsAsync(CancellationToken ct = default);
 }

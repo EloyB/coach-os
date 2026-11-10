@@ -177,6 +177,7 @@ public static class DependencyInjection
 
         // Spelerverwijdering (#261). De retentiejob staat standaard uit en is dry-run.
         services.AddScoped<IPlayerErasureRepository, PlayerErasureRepository>();
+        services.AddScoped<IPrivacyCleanupRepository, PrivacyCleanupRepository>();
         services.Configure<PlayerRetentionOptions>(configuration.GetSection(PlayerRetentionOptions.Section));
         services.AddHostedService<PlayerRetentionWorker>();
 

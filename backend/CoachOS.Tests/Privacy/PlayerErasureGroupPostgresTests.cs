@@ -120,7 +120,7 @@ public class PlayerErasureGroupPostgresTests : PlayerErasurePostgresBase
         await db.SaveChangesAsync();
 
         PlayerRetentionReport dry = (await Retention(db).RunAsync(org, dryRun: true)).Value!;
-        dry.Should().Be(new PlayerRetentionReport(2, 1, 0), "family shares the contact address but is a different player");
+        dry.Should().Be(new PlayerRetentionReport(2, 1, 0, 0, 0, 0), "family shares the contact address but is a different player");
         (await db.Enrollments.AnyAsync(x => x.Id == expired.Id)).Should().BeTrue();
 
         PlayerRetentionReport applied = (await Retention(db).RunAsync(org, dryRun: false)).Value!;

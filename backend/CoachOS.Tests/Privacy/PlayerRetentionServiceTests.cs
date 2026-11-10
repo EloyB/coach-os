@@ -55,7 +55,7 @@ public class PlayerRetentionServiceTests
     {
         Result<PlayerRetentionReport> result = await _service.RunAsync(OrgId, dryRun: true);
 
-        result.Value.Should().Be(new PlayerRetentionReport(3, 1, 0));
+        result.Value.Should().Be(new PlayerRetentionReport(3, 1, 0, 1, 0, 0), "the group leader is due but needs a human choice");
         _repo.Verify(r => r.DeleteAsync(It.IsAny<Guid>(), It.IsAny<PlayerErasurePlan>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -64,7 +64,7 @@ public class PlayerRetentionServiceTests
     {
         Result<PlayerRetentionReport> result = await _service.RunAsync(OrgId, dryRun: false);
 
-        result.Value.Should().Be(new PlayerRetentionReport(3, 1, 1));
+        result.Value.Should().Be(new PlayerRetentionReport(3, 1, 0, 1, 1, 0));
         _repo.Verify(r => r.DeleteAsync(OrgId, It.Is<PlayerErasurePlan>(p => p.EnrollmentId == _due.Target.Id), It.IsAny<CancellationToken>()), Times.Once);
         _repo.Verify(r => r.DeleteAsync(It.IsAny<Guid>(), It.IsAny<PlayerErasurePlan>(), It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -73,7 +73,7 @@ public class PlayerRetentionServiceTests
     public async Task Worker_Disabled_DoesNotResolveAnyScope()
     {
         Mock<IServiceScopeFactory> scopes = new(MockBehavior.Strict);
-        using PlayerRetentionWorker worker = new(scopes.Object, Options.Create(new PlayerRetentionOptions()),
+        using PlayerRetentionWorker worker = new(scopes.Object, Options.Create(new PlayerRetentionOptions { CleanupEnabled = false }),
             NullLogger<PlayerRetentionWorker>.Instance);
 
         await worker.StartAsync(CancellationToken.None);
@@ -89,6 +89,7 @@ public class PlayerRetentionServiceTests
         options.Enabled.Should().BeFalse();
         options.DryRun.Should().BeTrue();
         options.OrganizationIds.Should().BeEmpty();
+        options.CleanupEnabled.Should().BeTrue();
     }
 
     [TestCase("", false)]
