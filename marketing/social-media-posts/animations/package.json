@@ -13,7 +13,7 @@
     "render:all": "npm run render:auto-planner && npm run render:create-lessenreeks && npm run render:enrollment-form && npm run render:student-enrollment"
   },
   "dependencies": {
-    "@remotion/cli": "^4.0.260",
+    "@remotion/cli": "^4.0.542",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "remotion": "^4.0.260"
