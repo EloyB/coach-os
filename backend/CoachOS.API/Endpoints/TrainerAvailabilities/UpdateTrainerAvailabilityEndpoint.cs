@@ -15,7 +15,7 @@ public class UpdateTrainerAvailabilityEndpoint : IEndpoint
             Result result = await service.UpdateAsync(id, ctx.GetOrganizationId(), request, ct);
             return result.IsSuccess ? Results.NoContent() : result.ToErrorResult();
         })
-        .RequireAuthorization()
+        .RequireAuthorization(policy => policy.RequireRole("Admin"))
         .AddEndpointFilter<ValidationFilter<CreateTrainerAvailabilityRequest>>()
         .WithTags("TrainerAvailabilities");
     }
