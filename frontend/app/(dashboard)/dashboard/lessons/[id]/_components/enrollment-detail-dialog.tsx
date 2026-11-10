@@ -1,7 +1,5 @@
 "use client";
 
-import Link from "next/link";
-
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
@@ -22,6 +20,7 @@ import { collapseParallelPrefs, MIXED_PREF } from "@/lib/preferences";
 import { canEditEnrollment, isHeadTrainerViewer } from "@/lib/auth";
 import type { TimeSlotDto } from "@/lib/api/timeSlots";
 import { MolliePaymentId } from "@/components/dashboard/mollie-payment-id";
+import { PlayerErasureAction } from "@/components/dashboard/player-erasure-action";
 
 const DAY_NAMES_SHORT = ["Ma", "Di", "Wo", "Do", "Vr", "Za", "Zo"];
 
@@ -75,7 +74,6 @@ export function EnrollmentDetailDialog({
   onMarkGroupPaid?: () => void;
 }) {
   const t = useTranslations("enrollmentDetail");
-  const tPrivacy = useTranslations("playerErasure");
 
   const { data: prefsData, isLoading: prefsLoading } = useQuery({
     queryKey: ["enrollmentPrefs", seriesId],
@@ -157,7 +155,6 @@ export function EnrollmentDetailDialog({
             />
           </DialogTitle>
         </DialogHeader>
-          {canEdit && <Link className="text-sm text-tennis-green underline" href={`/dashboard/privacy?kind=enrollments&id=${enrollment.id}`}>{tPrivacy("link")}</Link>}
 
         {/* Tab-balk */}
         <div role="tablist" className="flex gap-1 border-b border-gray-100">
@@ -464,7 +461,16 @@ export function EnrollmentDetailDialog({
         </div>
 
         {/* Footer (vast onderaan; scrollt niet mee) */}
-        <div className="flex shrink-0 justify-end gap-2 border-t border-gray-100 bg-background px-6 py-4">
+        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-gray-100 bg-background px-6 py-4">
+          {canEdit && !groupMembers && onEdit && (
+            <div className="mr-auto">
+              <PlayerErasureAction
+                kind="enrollments"
+                enrollmentId={enrollment.id}
+                onErased={() => onOpenChange(false)}
+              />
+            </div>
+          )}
           <button
             type="button"
             onClick={() => onOpenChange(false)}

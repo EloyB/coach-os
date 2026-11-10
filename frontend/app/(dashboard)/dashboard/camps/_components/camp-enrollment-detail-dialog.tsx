@@ -1,8 +1,5 @@
 "use client";
 
-import Link from "next/link";
-import { canEditEnrollment } from "@/lib/auth";
-
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
@@ -20,6 +17,7 @@ import { updateCampEnrollment, type CampEnrollmentDto } from "@/lib/api/camps";
 import { getAxiosErrorMessages } from "@/lib/utils/api-errors";
 import { MolliePaymentId } from "@/components/dashboard/mollie-payment-id";
 import { CampPriceSelect } from "./camp-price-select";
+import { PlayerErasureAction } from "@/components/dashboard/player-erasure-action";
 
 function DetailRow({
   label,
@@ -71,7 +69,6 @@ export function CampEnrollmentDetailDialog({
   markPaidLabel,
 }: CampEnrollmentDetailDialogProps) {
   const t = useTranslations("campEnrollmentsTable");
-  const tPrivacy = useTranslations("playerErasure");
   const queryClient = useQueryClient();
   const priceMutation = useMutation({
     mutationFn: (campPriceId: string | null) =>
@@ -125,7 +122,6 @@ export function CampEnrollmentDetailDialog({
               )}
             </DialogTitle>
           </DialogHeader>
-          {canEditEnrollment() && <Link className="text-sm text-tennis-green underline" href={`/dashboard/privacy?kind=camp-enrollments&id=${enrollment.id}`}>{tPrivacy("link")}</Link>}
 
           <div className="flex flex-wrap gap-2">
             <a
@@ -266,6 +262,12 @@ export function CampEnrollmentDetailDialog({
               {markPaidLabel}
             </button>
           )}
+
+          <PlayerErasureAction
+            kind="camp-enrollments"
+            enrollmentId={enrollment.id}
+            onErased={() => onOpenChange(false)}
+          />
         </div>
       </DialogContent>
     </Dialog>

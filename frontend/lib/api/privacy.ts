@@ -1,22 +1,56 @@
-import apiClient from '@/lib/api-client';
+import apiClient from "@/lib/api-client";
 
-export type ErasureKind = 'enrollments' | 'camp-enrollments';
-export interface ErasureRequest {
-  early: boolean;
+export type ErasureKind = "enrollments" | "camp-enrollments";
+
+export type ErasureGroupEffect = "None" | "LeaveGroup" | "RemoveEmptyGroup" | "TransferLeader";
+
+export interface ErasureGroupMember {
+  id: string;
+  name: string;
+}
+
+export interface PlayerErasurePreview {
+  enrollmentId: string;
+  participantName: string;
+  lastParticipation: string | null;
+  retentionPeriodPassed: boolean;
+  canErase: boolean;
+  blockingReasons: string[];
+  formAnswerCount: number;
+  groupEffect: ErasureGroupEffect;
+  otherGroupMembers: ErasureGroupMember[];
+  updatedAt: string;
+}
+
+export interface ErasePlayerRequest {
+  confirmationName: string;
   newGroupLeaderId: string | null;
-  apply?: boolean;
-  previewHash?: string;
-  confirmation?: string;
-  verifiedRequest?: boolean;
+  expectedUpdatedAt: string;
 }
-export interface ErasureResult {
-  eligible: boolean;
-  deleted: boolean;
-  previewHash: string | null;
-  holds: string[];
-  personalRecords: number;
+
+export interface PlayerErasureResult {
+  enrollmentId: string;
+  erasedAt: string;
 }
-export async function processPlayerErasure(kind: ErasureKind, id: string, request: ErasureRequest): Promise<ErasureResult> {
-  const { data } = await apiClient.post<ErasureResult>(`/privacy/${kind}/${encodeURIComponent(id)}/erasure`, request);
+
+export async function getPlayerErasurePreview(
+  kind: ErasureKind,
+  id: string,
+): Promise<PlayerErasurePreview> {
+  const { data } = await apiClient.get<PlayerErasurePreview>(
+    `/privacy/${kind}/${encodeURIComponent(id)}/erasure-preview`,
+  );
+  return data;
+}
+
+export async function erasePlayer(
+  kind: ErasureKind,
+  id: string,
+  request: ErasePlayerRequest,
+): Promise<PlayerErasureResult> {
+  const { data } = await apiClient.post<PlayerErasureResult>(
+    `/privacy/${kind}/${encodeURIComponent(id)}/erasure`,
+    request,
+  );
   return data;
 }

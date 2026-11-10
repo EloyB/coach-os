@@ -1,63 +1,141 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page, type Route } from "@playwright/test";
+import { loginViaStorage, TEST_USER } from "./helpers";
 
-const id = '11111111-1111-4111-8111-111111111111';
-async function login(page: import('@playwright/test').Page, role = 'Admin') {
-  await page.context().addCookies([{ name: 'has_token', value: '1', domain: 'localhost', path: '/' }, { name: 'user_role', value: role, domain: 'localhost', path: '/' }]);
-  await page.addInitScript((role) => {
-    localStorage.setItem('token', 'synthetic-browser-token');
-    localStorage.setItem('auth_user', JSON.stringify({ role, email: 'admin@example.test', organizationId: 'synthetic-club', emailVerified: true }));
-  }, role);
-  await page.route('**/api/**', route => route.fulfill({ json: {} }));
+// "Speler verwijderen" vanuit het kampinschrijvingsdetail, volledig tegen gemockte API's.
+const CAMP_ID = "c1111111-1111-4111-8111-111111111111";
+const ENROLLMENT_ID = "e1111111-1111-4111-8111-111111111111";
+const NAME = "Synthetic Camper";
+
+const camp = {
+  id: CAMP_ID, name: "Herfstkamp", description: null, tennisClubId: "55555555-5555-5555-5555-555555555555",
+  tennisClubName: "TC De Aces", level: null, price: 0, startDate: "2024-10-28", endDate: "2024-10-31",
+  registrationDeadline: "2024-10-20", maxParticipants: 20, participantCount: 1, isActive: true, days: [], prices: [],
+};
+
+const enrollment = {
+  id: ENROLLMENT_ID, participantName: NAME, participantEmail: "camper@example.test", participantPhone: null,
+  status: "Confirmed", enrolledAt: "2024-10-01T10:00:00Z", groupName: null, enrollmentGroupId: null,
+  isGroupLeader: false, paymentMethod: null, paymentStatus: null, paymentAmount: null, paidAt: null,
+  molliePaymentId: null, formResponses: [], campPriceId: null, campPriceLabel: null,
+};
+
+function preview(overrides: Record<string, unknown> = {}) {
+  return {
+    enrollmentId: ENROLLMENT_ID, participantName: NAME, lastParticipation: "2024-10-31", retentionPeriodPassed: true,
+    canErase: true, blockingReasons: [], formAnswerCount: 2, groupEffect: "None", otherGroupMembers: [],
+    updatedAt: "2024-10-01T10:00:00.123456Z", ...overrides,
+  };
 }
-for (const kind of ['enrollments', 'camp-enrollments']) {
-  test(`${kind}: explicit preview, verified confirmation, actual success only`, async ({ page }) => {
-    await login(page);
-    const requests: Record<string, unknown>[] = [];
-    await page.route(`**/privacy/${kind}/${id}/erasure`, route => {
-      const body = route.request().postDataJSON(); requests.push(body);
-      return route.fulfill({ json: { eligible: true, deleted: body.apply === true, previewHash: 'a'.repeat(64), holds: [], personalRecords: 2 } });
-    });
-    await page.goto(`/dashboard/privacy?kind=${kind}&id=${id}`);
-    await page.getByRole('button', { name: 'Verwijderoverzicht ophalen' }).click();
-    await expect(page.getByText('2 persoonlijke records')).toBeVisible();
-    expect(requests).toEqual([{ early: false, newGroupLeaderId: null }]);
-    const apply = page.getByRole('button', { name: 'Definitief verwijderen', exact: true });
-    await expect(apply).toBeDisabled();
-    await page.getByLabel('Exacte deelnemersnaam').fill('Synthetic Player');
-    await page.getByLabel('Ik heb de bevoegde aanvraag en spelersidentiteit gecontroleerd').check();
-    if (kind === 'enrollments') {
-      await page.setViewportSize({ width: 1280, height: 1100 });
-      await page.locator('main').evaluate(el => { el.scrollTop = 0; });
-      await page.screenshot({ path: '../pr-screenshots/issue-261-player-erasure-desktop.png', fullPage: true });
-      await page.setViewportSize({ width: 390, height: 1500 });
-      await page.screenshot({ path: '../pr-screenshots/issue-261-player-erasure-mobile.png', fullPage: true });
+
+interface Mocks {
+  preview: Record<string, unknown>;
+  eraseRequests: unknown[];
+  eraseStatus: number;
+}
+
+async function mockCampPage(page: Page, mocks: Mocks): Promise<void> {
+  await page.route("**/api/**", (route: Route) => {
+    const url = new URL(route.request().url());
+    const path = url.pathname.replace(/^\/api/, "");
+    const method = route.request().method();
+    if (path === `/privacy/camp-enrollments/${ENROLLMENT_ID}/erasure-preview`) return route.fulfill({ json: mocks.preview });
+    if (path === `/privacy/camp-enrollments/${ENROLLMENT_ID}/erasure` && method === "POST") {
+      mocks.eraseRequests.push(route.request().postDataJSON());
+      return mocks.eraseStatus === 200
+        ? route.fulfill({ json: { enrollmentId: ENROLLMENT_ID, erasedAt: "2026-11-10T12:00:00Z" } })
+        : route.fulfill({ status: mocks.eraseStatus, json: ["De ingevoerde naam komt niet exact overeen met de naam van de speler."] });
     }
-    await apply.click();
-    await expect(page.getByRole('status').filter({ hasText: 'Verwijdering voltooid' })).toBeVisible();
-    expect(requests[1]).toMatchObject({ apply: true, early: false, previewHash: 'a'.repeat(64), confirmation: 'Synthetic Player', verifiedRequest: true });
+    if (path === `/camps/${CAMP_ID}`) return route.fulfill({ json: camp });
+    if (path === `/camps/${CAMP_ID}/enrollments`) return route.fulfill({ json: [enrollment] });
+    if (path.endsWith("/form")) return route.fulfill({ status: 404, json: [] });
+    return route.fulfill({ json: [] });
   });
 }
 
-test('blocked preview and changed scope cannot be applied; failures do not look successful', async ({ page }) => {
-  await login(page);
-  let blocked = true;
-  await page.route(`**/privacy/enrollments/${id}/erasure`, route => route.fulfill({ json: { eligible: !blocked, deleted: false, holds: blocked ? ['financial_review_required'] : [], previewHash: 'a'.repeat(64), personalRecords: 1 } }));
-  await page.goto(`/dashboard/privacy?kind=enrollments&id=${id}`);
-  await page.getByRole('button', { name: 'Verwijderoverzicht ophalen' }).click();
-  await expect(page.getByText('Financiële beoordeling vereist', { exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Definitief verwijderen', exact: true })).not.toBeVisible();
-  blocked = false;
-  await page.getByRole('button', { name: 'Verwijderoverzicht ophalen' }).click();
-  await page.getByLabel('Vroegtijdig clubverzoek').check();
-  await expect(page.getByText('1 persoonlijke records')).not.toBeVisible();
-  await page.route(`**/privacy/enrollments/${id}/erasure`, route => route.fulfill({ status: 403, json: {} }));
-  await page.getByRole('button', { name: 'Verwijderoverzicht ophalen' }).click();
-  await expect(page.getByRole('alert').filter({ hasText: 'Overzicht of verwijdering mislukt' })).toBeVisible();
-});
+async function openErasureDialog(page: Page): Promise<void> {
+  await page.goto(`/dashboard/camps/${CAMP_ID}`);
+  await page.getByText(NAME, { exact: true }).filter({ visible: true }).first().click();
+  await page.getByRole("button", { name: "Speler verwijderen" }).click();
+  await expect(page.getByRole("heading", { name: "Speler definitief verwijderen" })).toBeVisible();
+}
 
-test('trainer cannot use erasure controls', async ({ page }) => {
-  await login(page, 'Trainer');
-  await page.goto(`/dashboard/privacy?kind=enrollments&id=${id}`);
-  await expect(page.getByText('Alleen clubbeheerders kunnen deze verwijderroute gebruiken.')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Verwijderoverzicht ophalen' })).not.toBeVisible();
+test.describe("speler verwijderen vanuit kampinschrijving", () => {
+  test.beforeEach(async ({ page }) => {
+    await loginViaStorage(page);
+  });
+
+  test("toont overzicht en vereist exacte naam vóór verwijderen", async ({ page }) => {
+    const mocks: Mocks = { preview: preview(), eraseRequests: [], eraseStatus: 200 };
+    await mockCampPage(page, mocks);
+    await openErasureDialog(page);
+
+    await expect(page.getByText("2 formulierantwoorden")).toBeVisible();
+    const confirm = page.getByRole("button", { name: "Definitief verwijderen" });
+    await expect(confirm).toBeDisabled();
+    await page.getByLabel(`Typ ter bevestiging de naam van de speler: ${NAME}`).fill("synthetic camper");
+    await expect(confirm).toBeDisabled();
+    await page.getByLabel(`Typ ter bevestiging de naam van de speler: ${NAME}`).fill(NAME);
+    await confirm.click();
+
+    await expect(page.getByText("Speler verwijderd")).toBeVisible();
+    expect(mocks.eraseRequests).toEqual([
+      { confirmationName: NAME, newGroupLeaderId: null, expectedUpdatedAt: "2024-10-01T10:00:00.123456Z" },
+    ]);
+  });
+
+  test("geblokkeerde speler toont redenen en geen verwijderknop", async ({ page }) => {
+    const mocks: Mocks = {
+      preview: preview({ canErase: false, blockingReasons: ["financial_records_present", "pending_mail"] }),
+      eraseRequests: [], eraseStatus: 200,
+    };
+    await mockCampPage(page, mocks);
+    await openErasureDialog(page);
+
+    await expect(page.getByText("Er zijn betalingen gekoppeld; financiële gegevens moeten bewaard blijven")).toBeVisible();
+    await expect(page.getByText("Er staat nog een mail klaar of een mail is mislukt")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Definitief verwijderen" })).toHaveCount(0);
+  });
+
+  test("groepsleider moet een nieuwe leider kiezen", async ({ page }) => {
+    const other = { id: "e2222222-2222-4222-8222-222222222222", name: "Other Camper" };
+    const mocks: Mocks = {
+      preview: preview({ groupEffect: "TransferLeader", otherGroupMembers: [other] }),
+      eraseRequests: [], eraseStatus: 200,
+    };
+    await mockCampPage(page, mocks);
+    await openErasureDialog(page);
+
+    await page.getByLabel(`Typ ter bevestiging de naam van de speler: ${NAME}`).fill(NAME);
+    const confirm = page.getByRole("button", { name: "Definitief verwijderen" });
+    await expect(confirm).toBeDisabled();
+    await page.getByLabel("Nieuwe groepsleider").selectOption(other.id);
+    await confirm.click();
+
+    await expect.poll(() => mocks.eraseRequests).toEqual([
+      { confirmationName: NAME, newGroupLeaderId: other.id, expectedUpdatedAt: "2024-10-01T10:00:00.123456Z" },
+    ]);
+  });
+
+  test("serverfout toont melding en geen succes", async ({ page }) => {
+    const mocks: Mocks = { preview: preview(), eraseRequests: [], eraseStatus: 400 };
+    await mockCampPage(page, mocks);
+    await openErasureDialog(page);
+
+    await page.getByLabel(`Typ ter bevestiging de naam van de speler: ${NAME}`).fill(NAME);
+    await page.getByRole("button", { name: "Definitief verwijderen" }).click();
+
+    await expect(page.getByText("De ingevoerde naam komt niet exact overeen met de naam van de speler.")).toBeVisible();
+    await expect(page.getByText("Speler verwijderd")).toHaveCount(0);
+  });
+
+  test("trainer ziet de actie niet", async ({ page }) => {
+    await page.evaluate((user) => {
+      localStorage.setItem("auth_user", JSON.stringify({ ...user, role: "Trainer" }));
+    }, { userId: TEST_USER.userId, email: TEST_USER.email, organizationId: TEST_USER.organizationId });
+    await mockCampPage(page, { preview: preview(), eraseRequests: [], eraseStatus: 200 });
+    await page.goto(`/dashboard/camps/${CAMP_ID}`);
+    await page.getByText(NAME, { exact: true }).filter({ visible: true }).first().click();
+
+    await expect(page.getByRole("button", { name: "Speler verwijderen" })).toHaveCount(0);
+  });
 });
