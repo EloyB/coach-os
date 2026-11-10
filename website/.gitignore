@@ -35,5 +35,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# runtime form submissions
-data/*.json
+# runtime form submissions, locks and temporary snapshots (never commit personal data)
+data/*
+!data/.gitkeep
