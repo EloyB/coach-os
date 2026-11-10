@@ -217,22 +217,8 @@ public static class ConfigurationExtensions
                             QueueLimit = 0,
                         }));
 
-                // Global mail-volume cap across all IPs on this API instance. The
-                // global per-IP limiter also applies. Never persist IP addresses.
-                options.AddFixedWindowLimiter("website-waitlist", limiter =>
-                {
-                    limiter.PermitLimit = 10;
-                    limiter.Window = TimeSpan.FromHours(1);
-                    limiter.QueueLimit = 0;
-                });
-
-                // Independent contact quota: contact traffic cannot spend mail capacity.
-                options.AddFixedWindowLimiter("website-contact", limiter =>
-                {
-                    limiter.PermitLimit = 10;
-                    limiter.Window = TimeSpan.FromHours(1);
-                    limiter.QueueLimit = 0;
-                });
+                // Websiteformulieren: per IP, plus een globale noodrem in de GlobalLimiter hieronder.
+                options.AddWebsitePolicies();
 
                 options.AddFixedWindowLimiter("public", limiter =>
                 {
@@ -248,14 +234,16 @@ public static class ConfigurationExtensions
                     limiter.QueueLimit = 0;
                 });
 
-                options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
-                    RateLimitPartition.GetFixedWindowLimiter(
-                        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-                        _ => new FixedWindowRateLimiterOptions
-                        {
-                            PermitLimit = 300,
-                            Window = TimeSpan.FromMinutes(1),
-                        }));
+                options.GlobalLimiter = PartitionedRateLimiter.CreateChained(
+                    PartitionedRateLimiter.Create<HttpContext, string>(context =>
+                        RateLimitPartition.GetFixedWindowLimiter(
+                            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                            _ => new FixedWindowRateLimiterOptions
+                            {
+                                PermitLimit = 300,
+                                Window = TimeSpan.FromMinutes(1),
+                            })),
+                    PartitionedRateLimiter.Create<HttpContext, string>(WebsiteRateLimits.BackstopPartition));
             });
 
             return services;
