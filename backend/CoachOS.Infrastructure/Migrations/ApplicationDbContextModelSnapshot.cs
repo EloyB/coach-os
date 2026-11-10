@@ -298,9 +298,6 @@ namespace CoachOS.Infrastructure.Migrations
                         .HasMaxLength(30)
                         .HasColumnType("character varying(30)");
 
-                    b.Property<bool>("PrivacyHold")
-                        .HasColumnType("boolean");
-
                     b.Property<int>("Status")
                         .HasColumnType("integer");
 
@@ -601,9 +598,6 @@ namespace CoachOS.Infrastructure.Migrations
 
                     b.Property<Guid>("OrganizationId")
                         .HasColumnType("uuid");
-
-                    b.Property<bool>("PrivacyHold")
-                        .HasColumnType("boolean");
 
                     b.Property<Guid?>("SelectedPriceOptionId")
                         .HasColumnType("uuid");
@@ -1466,6 +1460,34 @@ namespace CoachOS.Infrastructure.Migrations
                     b.HasIndex("OrganizationId");
 
                     b.ToTable("Payments");
+                });
+
+            modelBuilder.Entity("CoachOS.Domain.Entities.PrivacyErasureReceipt", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("ErasedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("SubjectId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId", "Kind", "SubjectId")
+                        .IsUnique();
+
+                    b.ToTable("PrivacyErasureReceipts", (string)null);
                 });
 
             modelBuilder.Entity("CoachOS.Domain.Entities.RescheduleRequest", b =>

@@ -68,6 +68,7 @@ public class ApplicationDbContext(
     public DbSet<CampFormResponse> CampFormResponses { get; set; } = null!;
     public DbSet<TrainerAvailability> TrainerAvailabilities { get; set; } = null!;
     public DbSet<EmailOutboxMessage> EmailOutboxMessages { get; set; } = null!;
+    public DbSet<PrivacyErasureReceipt> PrivacyErasureReceipts { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -111,6 +112,7 @@ public class ApplicationDbContext(
         builder.ApplyConfiguration(new CampFormResponseConfiguration());
         builder.ApplyConfiguration(new TrainerAvailabilityConfiguration());
         builder.ApplyConfiguration(new EmailOutboxMessageConfiguration());
+        builder.ApplyConfiguration(new PrivacyErasureReceiptConfiguration());
 
         ApplyTenantFilters(builder);
     }

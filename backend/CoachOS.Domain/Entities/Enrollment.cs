@@ -50,8 +50,6 @@ public class Enrollment : BaseEntity
     public EnrollmentStatus Status { get; set; }
     public DateTime EnrolledAt { get; set; }
     public string? Notes { get; set; }
-    /// <summary>Explicit dispute/legal-review hold; never bypassed by erasure confirmation.</summary>
-    public bool PrivacyHold { get; set; }
     public Guid? EnrollmentGroupId { get; set; }
     public bool IsOpenToGrouping { get; set; }
 

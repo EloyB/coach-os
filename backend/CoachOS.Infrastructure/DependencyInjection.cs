@@ -15,6 +15,7 @@ using CoachOS.Infrastructure.Mollie;
 using CoachOS.Infrastructure.Vat;
 using CoachOS.Infrastructure.MultiTenancy;
 using CoachOS.Infrastructure.Persistence;
+using CoachOS.Infrastructure.Privacy;
 using CoachOS.Infrastructure.Repositories;
 using CoachOS.Infrastructure.Security;
 using CoachOS.Infrastructure.Subscriptions;
@@ -130,7 +131,6 @@ public static class DependencyInjection
         services.AddScoped<ISuperAdminService, SuperAdminService>();
         services.AddHostedService<SuperAdminBootstrapHostedService>();
         services.AddScoped<ITrainerService, TrainerService>();
-        services.AddScoped<CoachOS.Application.Privacy.IPlayerErasureService, CoachOS.Infrastructure.Privacy.PlayerErasureService>();
         services.AddScoped<IUserLookupService, UserLookupService>();
         services.AddSingleton<IMjmlTemplateRenderer, MjmlTemplateRenderer>();
         services.AddScoped<IEmailService, EmailService>();
@@ -169,10 +169,10 @@ public static class DependencyInjection
         services.AddScoped<ICampEnrollmentRepository, CampEnrollmentRepository>();
         services.AddScoped<ICampEnrollmentFormRepository, CampEnrollmentFormRepository>();
 
-        services.Configure<CoachOS.Infrastructure.Privacy.PlayerRetentionOptions>(
-            configuration.GetSection(CoachOS.Infrastructure.Privacy.PlayerRetentionOptions.Section));
-        services.AddScoped<CoachOS.Infrastructure.Privacy.PlayerRetentionPreview>();
-        services.AddHostedService<CoachOS.Infrastructure.Privacy.PlayerRetentionWorker>();
+        // Spelerverwijdering (#261). De retentiejob staat standaard uit en is dry-run.
+        services.AddScoped<IPlayerErasureRepository, PlayerErasureRepository>();
+        services.Configure<PlayerRetentionOptions>(configuration.GetSection(PlayerRetentionOptions.Section));
+        services.AddHostedService<PlayerRetentionWorker>();
 
         return services;
     }
