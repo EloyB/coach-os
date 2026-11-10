@@ -33,6 +33,12 @@ public class TrainerAvailabilityService(
         return Result<Guid>.Ok(availability.Id);
     }
 
+    // Een tijdvak kan niet naar een andere trainer verhuizen: een afwijkend TrainerId geeft NotFound.
+    public Task<Result> UpdateAsync(Guid id, Guid organizationId, CreateTrainerAvailabilityRequest request, CancellationToken ct = default)
+        => UpdateForTrainerAsync(id, organizationId, request.TrainerId,
+            new SaveOwnTrainerAvailabilityRequest(request.TennisClubId, request.DayOfWeek, request.StartTime, request.EndTime),
+            ct);
+
     public async Task<Result<List<TrainerAvailabilityDto>>> GetForTrainerAsync(Guid organizationId, Guid trainerId, CancellationToken ct = default)
     {
         IReadOnlyList<TrainerAvailability> availabilities = await repo.GetByTrainerAsync(organizationId, trainerId, ct);

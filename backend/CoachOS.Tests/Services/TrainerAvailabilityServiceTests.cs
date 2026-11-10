@@ -317,6 +317,40 @@ public class TrainerAvailabilityServiceTests
     }
 
     [Test]
+    public async Task UpdateAsync_Valid_UpdatesFieldsAndExcludesItselfFromOverlap()
+    {
+        SetupHappyPath();
+        TrainerAvailability entity = OwnEntity();
+        _repo.Setup(r => r.GetByIdAsync(entity.Id, _orgId, It.IsAny<CancellationToken>())).ReturnsAsync(entity);
+        _repo.Setup(r => r.HasOverlapAsync(_trainerId, _orgId, 0, new TimeOnly(17, 0), new TimeOnly(21, 0), entity.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        Result result = await _sut.UpdateAsync(entity.Id, _orgId,
+            new CreateTrainerAvailabilityRequest(_trainerId, _clubId, 0, "17:00", "21:00"), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        entity.DayOfWeek.Should().Be(0);
+        entity.StartTime.Should().Be(new TimeOnly(17, 0));
+        entity.EndTime.Should().Be(new TimeOnly(21, 0));
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task UpdateAsync_TrainerIdDiffersFromOwner_ReturnsNotFoundAndChangesNothing()
+    {
+        SetupHappyPath();
+        TrainerAvailability entity = OwnEntity();
+        _repo.Setup(r => r.GetByIdAsync(entity.Id, _orgId, It.IsAny<CancellationToken>())).ReturnsAsync(entity);
+
+        Result result = await _sut.UpdateAsync(entity.Id, _orgId,
+            new CreateTrainerAvailabilityRequest(Guid.NewGuid(), _clubId, 0, "17:00", "21:00"), CancellationToken.None);
+
+        result.Errors.Should().Contain(e => e.Code == ErrorCodes.NotFound);
+        entity.DayOfWeek.Should().Be(1);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
     public async Task DeleteForTrainerAsync_Own_SetsIsActiveFalse()
     {
         TrainerAvailability entity = OwnEntity();
