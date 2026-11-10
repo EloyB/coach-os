@@ -5,6 +5,12 @@
 # cooldown: nieuwe versies pas voorstellen als ze een tijd uit zijn. Zo vangen
 # we gekaapte of teruggetrokken releases op voor ze bij ons terechtkomen.
 # Geldt niet voor beveiligingsupdates.
+#
+# ignore: we volgen LTS-versies van .NET en Node. Tussenversies (.NET 11/13,
+# oneven Node) worden overgeslagen; de volgende LTS komt gewoon als PR.
+# Grote sprongen die een bewuste upgrade vragen, staan als issue op de lijst
+# (#327 TypeScript 7, #328 ESLint 10, #329 Node 24). Haal de regel hier weg
+# zodra zo'n upgrade gedaan is.
 version: 2
 
 updates:
@@ -34,6 +40,14 @@ updates:
     groups:
       frontend-minor-patch:
         update-types: [minor, patch]
+    ignore:
+      # @types/node volgt de Node-versie in Docker (22); mee omhoog met #329.
+      - dependency-name: "@types/node"
+        versions: [">= 23"]
+      - dependency-name: typescript # #327
+        update-types: [version-update:semver-major]
+      - dependency-name: eslint # #328
+        update-types: [version-update:semver-major]
     labels: [dependencies, frontend]
 
   - package-ecosystem: bun
@@ -48,6 +62,14 @@ updates:
     groups:
       website-minor-patch:
         update-types: [minor, patch]
+    ignore:
+      # @types/node volgt de Node-versie in Docker (22); mee omhoog met #329.
+      - dependency-name: "@types/node"
+        versions: [">= 23"]
+      - dependency-name: typescript # #327
+        update-types: [version-update:semver-major]
+      - dependency-name: eslint # #328
+        update-types: [version-update:semver-major]
     labels: [dependencies, website]
 
   - package-ecosystem: docker
@@ -61,6 +83,14 @@ updates:
     groups:
       base-images:
         patterns: ["*"]
+    ignore:
+      # Enkel LTS: .NET 10 -> 12, Node 22 -> 24 -> 26.
+      - dependency-name: dotnet/sdk
+        versions: [">= 11, < 12", ">= 13, < 14"]
+      - dependency-name: dotnet/aspnet
+        versions: [">= 11, < 12", ">= 13, < 14"]
+      - dependency-name: node
+        versions: [">= 23, < 24", ">= 25, < 26", ">= 27, < 28"]
     labels: [dependencies, docker]
 
   - package-ecosystem: github-actions
