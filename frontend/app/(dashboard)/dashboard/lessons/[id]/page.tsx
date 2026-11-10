@@ -68,6 +68,7 @@ import { useTranslations } from "next-intl";
 import { getAuthUser } from "@/lib/auth";
 import { useClientValue } from "@/lib/hooks/use-client-value";
 import { FieldError } from "@/components/forms/field-error";
+import { FormPrivacyWarning } from "@/components/forms/form-privacy-warning";
 import { DatePicker } from "@/components/ui/date-picker";
 import { NativeSelect } from "@/components/ui/native-select";
 import {
@@ -1420,6 +1421,8 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
       </div>
 
       <div className="p-5 space-y-4">
+        <FormPrivacyWarning />
+
         {/* Predefined fields badge list */}
         <div>
           <p className="text-xs text-gray-400 mb-2">
