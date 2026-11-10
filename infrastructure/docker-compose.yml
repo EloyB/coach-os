@@ -74,8 +74,8 @@ services:
         max-file: "3"
 
   # Marketing website served on coach-os.be (apex + www).
-  # Pure SSR Next.js — has its own /api/contact and /api/waitlist server routes,
-  # no calls to the CoachOS backend.
+  # SSR Next.js. Its /api/contact and /api/waitlist server routes proxy to the
+  # api container (/api/website/*), forwarding only the nginx-set visitor IP.
   website:
     image: ${REGISTRY_ENDPOINT}/website:latest
     container_name: coach-os-website

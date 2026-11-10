@@ -217,6 +217,9 @@ public static class ConfigurationExtensions
                             QueueLimit = 0,
                         }));
 
+                // Websiteformulieren: per IP, plus een globale noodrem in de GlobalLimiter hieronder.
+                options.AddWebsitePolicies();
+
                 options.AddFixedWindowLimiter("public", limiter =>
                 {
                     limiter.PermitLimit = 30;
@@ -231,14 +234,16 @@ public static class ConfigurationExtensions
                     limiter.QueueLimit = 0;
                 });
 
-                options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
-                    RateLimitPartition.GetFixedWindowLimiter(
-                        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-                        _ => new FixedWindowRateLimiterOptions
-                        {
-                            PermitLimit = 300,
-                            Window = TimeSpan.FromMinutes(1),
-                        }));
+                options.GlobalLimiter = PartitionedRateLimiter.CreateChained(
+                    PartitionedRateLimiter.Create<HttpContext, string>(context =>
+                        RateLimitPartition.GetFixedWindowLimiter(
+                            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                            _ => new FixedWindowRateLimiterOptions
+                            {
+                                PermitLimit = 300,
+                                Window = TimeSpan.FromMinutes(1),
+                            })),
+                    PartitionedRateLimiter.Create<HttpContext, string>(WebsiteRateLimits.BackstopPartition));
             });
 
             return services;

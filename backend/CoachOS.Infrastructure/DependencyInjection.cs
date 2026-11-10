@@ -15,6 +15,7 @@ using CoachOS.Infrastructure.Mollie;
 using CoachOS.Infrastructure.Vat;
 using CoachOS.Infrastructure.MultiTenancy;
 using CoachOS.Infrastructure.Persistence;
+using CoachOS.Infrastructure.Privacy;
 using CoachOS.Infrastructure.Repositories;
 using CoachOS.Infrastructure.Security;
 using CoachOS.Infrastructure.Subscriptions;
@@ -68,6 +69,7 @@ public static class DependencyInjection
         services.Configure<RegistrationOptions>(configuration.GetSection(RegistrationOptions.Section));
         services.Configure<BillingOptions>(configuration.GetSection(BillingOptions.Section));
         services.Configure<SuperAdminOptions>(configuration.GetSection(SuperAdminOptions.Section));
+        services.Configure<WebsiteOptions>(configuration.GetSection(WebsiteOptions.Section));
 
         // TimeProvider is in .NET 8+ ingebouwd; testen kunnen FakeTimeProvider injecteren.
         services.AddSingleton(TimeProvider.System);
@@ -145,7 +147,10 @@ public static class DependencyInjection
         services.AddScoped<IEnrollmentGroupRepository, EnrollmentGroupRepository>();
         services.AddScoped<ITimeSlotPreferenceRepository, TimeSlotPreferenceRepository>();
         services.AddScoped<IEmailOutboxRepository, EmailOutboxRepository>();
+        services.AddScoped<IWebsiteContactRepository, WebsiteContactRepository>();
+        services.AddScoped<IWebsiteWaitlistRepository, WebsiteWaitlistRepository>();
         services.AddHostedService<EmailOutboxWorker>();
+        services.AddHostedService<WebsiteWaitlistMailWorker>();
         services.AddScoped<ITrainerAvailabilityRepository, TrainerAvailabilityRepository>();
         services.AddScoped<IScheduleAssignmentRepository, ScheduleAssignmentRepository>();
         services.AddScoped<IAssignmentConfirmationTokenRepository, AssignmentConfirmationTokenRepository>();
@@ -169,6 +174,11 @@ public static class DependencyInjection
         services.AddScoped<ICampRepository, CampRepository>();
         services.AddScoped<ICampEnrollmentRepository, CampEnrollmentRepository>();
         services.AddScoped<ICampEnrollmentFormRepository, CampEnrollmentFormRepository>();
+
+        // Spelerverwijdering (#261). De retentiejob staat standaard uit en is dry-run.
+        services.AddScoped<IPlayerErasureRepository, PlayerErasureRepository>();
+        services.Configure<PlayerRetentionOptions>(configuration.GetSection(PlayerRetentionOptions.Section));
+        services.AddHostedService<PlayerRetentionWorker>();
 
         return services;
     }

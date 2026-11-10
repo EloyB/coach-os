@@ -1643,5 +1643,45 @@
     "confirmLabel": "Typ de exacte naam \"{name}\" om te bevestigen",
     "deleteCta": "Organisatie definitief verwijderen",
     "deleted": "Organisatie verwijderd."
+  },
+  "playerErasure": {
+    "action": "Speler verwijderen",
+    "title": "Speler definitief verwijderen",
+    "description": "Verwijdert deze inschrijving en de bijbehorende persoonsgegevens definitief. Dit kan niet ongedaan gemaakt worden.",
+    "loading": "Overzicht laden…",
+    "previewError": "Het overzicht kon niet geladen worden.",
+    "willDelete": "Wat wordt verwijderd",
+    "deleteEnrollment": "De inschrijving met naam, contactgegevens en notities",
+    "deleteAnswers": "{count, plural, =0 {Geen formulierantwoorden} one {1 formulierantwoord} other {# formulierantwoorden}}",
+    "deleteRelated": "Tijdslotvoorkeuren, toewijzingen, verplaatsingsverzoeken, bevestigingslinks en verstuurde mails van deze inschrijving",
+    "group": {
+      "LeaveGroup": "De speler verlaat de groep; de andere groepsleden blijven ingeschreven",
+      "RemoveEmptyGroup": "De groep verdwijnt (de speler is het enige lid)",
+      "TransferLeader": "De speler is groepsleider: kies hieronder wie de groep overneemt"
+    },
+    "keeps": "Andere inschrijvingen van dezelfde speler of familie, andere clubs en accounts blijven ongewijzigd.",
+    "lastParticipation": "Laatste deelname: {date}",
+    "retentionPassed": "bewaartermijn van 24 maanden verstreken",
+    "retentionNotPassed": "vroegtijdige verwijdering (bewaartermijn nog niet verstreken)",
+    "newLeader": "Nieuwe groepsleider",
+    "chooseLeader": "Kies een groepslid…",
+    "confirmLabel": "Typ ter bevestiging de naam van de speler: {name}",
+    "cancel": "Annuleren",
+    "confirm": "Definitief verwijderen",
+    "busy": "Bezig…",
+    "done": "Speler verwijderd",
+    "blockedTitle": "Deze speler kan nu niet verwijderd worden:",
+    "reasons": {
+      "active_or_future_participation": "De speler neemt nog deel of heeft nog toekomstige lessen of kampen",
+      "participation_unknown": "Er is geen deelnamedatum bekend",
+      "participation_chain_incomplete": "Een verplaatste les kon niet volledig gevolgd worden",
+      "financial_records_present": "Er zijn betalingen gekoppeld; financiële gegevens moeten bewaard blijven",
+      "open_payment": "Er staat nog een betaling open",
+      "group_payments_present": "Er zijn betalingen gekoppeld aan de groep",
+      "group_inconsistent": "De groepsgegevens zijn niet consistent",
+      "pending_mail": "Er staat nog een mail klaar of een mail is mislukt",
+      "unresolved_reschedule_request": "Er is een openstaand verplaatsingsverzoek",
+      "unknown": "Deze inschrijving vraagt een aparte controle"
+    }
   }
 }

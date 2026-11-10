@@ -19,4 +19,7 @@ public static class ErrorCodes
     /// Mappet op HTTP 502 Bad Gateway in <c>ResultExtensions</c>.
     /// </summary>
     public const string ExternalService = "external_service";
+
+    /// <summary>Bron bestaat niet meer en komt niet terug (bv. gesloten wachtlijst). Mappet op HTTP 410.</summary>
+    public const string Gone = "gone";
 }

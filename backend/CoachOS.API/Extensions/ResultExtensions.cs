@@ -33,6 +33,7 @@ public static class ResultExtensions
             ErrorCodes.Unexpected => StatusCodes.Status500InternalServerError,
             ErrorCodes.TooManyRequests => StatusCodes.Status429TooManyRequests,
             ErrorCodes.ExternalService => StatusCodes.Status502BadGateway,
+            ErrorCodes.Gone => StatusCodes.Status410Gone,
             _ => StatusCodes.Status400BadRequest,
         };
     }

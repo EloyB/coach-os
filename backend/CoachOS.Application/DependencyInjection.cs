@@ -31,6 +31,8 @@ public static class DependencyInjection
     {
         services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
         services.AddScoped<ApplicationMapper>();
+        services.AddScoped<WebsiteContact.IWebsiteContactService, WebsiteContact.WebsiteContactService>();
+        services.AddScoped<WebsiteWaitlist.IWebsiteWaitlistService, WebsiteWaitlist.WebsiteWaitlistService>();
 
         services.AddScoped<ICampService, CampService>();
         services.AddScoped<ICampEnrollmentService, CampEnrollmentService>();
@@ -59,6 +61,9 @@ public static class DependencyInjection
         services.AddScoped<ICampExportService, CampExportService>();
         services.AddScoped<ISubscriptionAccessService, SubscriptionAccessService>();
         services.AddScoped<IBillingService, BillingService>();
+        services.AddScoped<PlayerErasureExecutor>();
+        services.AddScoped<IPlayerErasureService, PlayerErasureService>();
+        services.AddScoped<IPlayerRetentionService, PlayerRetentionService>();
         services.AddScoped<IBillingPaymentSyncService, BillingPaymentSyncService>();
         services.AddScoped<IBillingMaintenanceService, BillingMaintenanceService>();
         services.AddScoped<ITrialReminderService, TrialReminderService>();
