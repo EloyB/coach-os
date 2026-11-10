@@ -7,7 +7,7 @@ using CoachOS.Infrastructure.Email;
 using CoachOS.Infrastructure.Persistence;
 using CoachOS.Infrastructure.Repositories;
 using CoachOS.Tests.TestHelpers;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;

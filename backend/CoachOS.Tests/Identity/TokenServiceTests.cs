@@ -2,7 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
 using CoachOS.Infrastructure.Identity;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.Extensions.Configuration;
 using NUnit.Framework;
 

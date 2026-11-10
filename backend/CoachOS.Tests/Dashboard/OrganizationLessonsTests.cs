@@ -7,7 +7,7 @@ using CoachOS.Domain.Interfaces;
 using CoachOS.Domain.Models;
 using CoachOS.Infrastructure.Persistence;
 using CoachOS.Infrastructure.Repositories;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
 using Moq;
 using NUnit.Framework;

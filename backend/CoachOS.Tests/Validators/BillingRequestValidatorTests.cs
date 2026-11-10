@@ -1,6 +1,6 @@
 using CoachOS.Application.Billing.DTOs;
 using CoachOS.Application.Billing.Validators;
-using FluentAssertions;
+using AwesomeAssertions;
 using FluentValidation.Results;
 using NUnit.Framework;
 

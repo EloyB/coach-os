@@ -3,7 +3,7 @@ using System.Net.Mime;
 using System.Text;
 using System.Text.RegularExpressions;
 using CoachOS.Infrastructure.Email;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;

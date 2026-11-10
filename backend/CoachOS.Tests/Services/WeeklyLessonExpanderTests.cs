@@ -1,5 +1,5 @@
 using CoachOS.Application.LessonSerie;
-using FluentAssertions;
+using AwesomeAssertions;
 using NUnit.Framework;
 
 namespace CoachOS.Tests.Services;

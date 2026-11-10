@@ -1,6 +1,6 @@
 using CoachOS.Application.Enrollments.DTOs;
 using CoachOS.Application.Enrollments.Validators;
-using FluentAssertions;
+using AwesomeAssertions;
 using FluentValidation.Results;
 using NUnit.Framework;
 

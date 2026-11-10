@@ -1,6 +1,6 @@
 using CoachOS.Application.Planning;
 using CoachOS.Domain.Enums;
-using FluentAssertions;
+using AwesomeAssertions;
 using NUnit.Framework;
 using static CoachOS.Application.Planning.SchedulingAlgorithm;
 

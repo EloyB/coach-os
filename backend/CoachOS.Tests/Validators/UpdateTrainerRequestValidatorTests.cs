@@ -1,6 +1,6 @@
 using CoachOS.Application.Trainers.DTOs;
 using CoachOS.Application.Trainers.Validators;
-using FluentAssertions;
+using AwesomeAssertions;
 using NUnit.Framework;
 
 namespace CoachOS.Tests.Validators;

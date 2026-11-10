@@ -2,7 +2,7 @@ using CoachOS.Application.LessonSerie.DTOs;
 using CoachOS.Application.Mappings;
 using CoachOS.Application.TrainerAvailabilities.DTOs;
 using CoachOS.Domain.Entities;
-using FluentAssertions;
+using AwesomeAssertions;
 using NUnit.Framework;
 
 namespace CoachOS.Tests.Mappings;

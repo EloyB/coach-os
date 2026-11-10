@@ -2,7 +2,7 @@ using CoachOS.Application.WebsiteContact.DTOs;
 using CoachOS.Application.WebsiteContact.Validators;
 using CoachOS.Application.WebsiteWaitlist.DTOs;
 using CoachOS.Application.WebsiteWaitlist.Validators;
-using FluentAssertions;
+using AwesomeAssertions;
 using FluentValidation.Results;
 using NUnit.Framework;
 

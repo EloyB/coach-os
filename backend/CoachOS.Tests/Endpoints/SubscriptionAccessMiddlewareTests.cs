@@ -4,7 +4,7 @@ using CoachOS.API.Middleware;
 using CoachOS.Application.Subscriptions;
 using CoachOS.Application.Subscriptions.DTOs;
 using CoachOS.Domain.Models;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;

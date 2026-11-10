@@ -3,7 +3,7 @@ using CoachOS.Application.OrganizationSettings;
 using CoachOS.Application.OrganizationSettings.DTOs;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Interfaces;
-using FluentAssertions;
+using AwesomeAssertions;
 using Moq;
 using NUnit.Framework;
 

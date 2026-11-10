@@ -1,5 +1,5 @@
 using CoachOS.Infrastructure.Email;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using NUnit.Framework;
 

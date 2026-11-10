@@ -2,7 +2,7 @@ using CoachOS.Application.Abstractions;
 using CoachOS.Application.Configuration;
 using CoachOS.Domain.Models;
 using CoachOS.Infrastructure.Invoicing;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NUnit.Framework;

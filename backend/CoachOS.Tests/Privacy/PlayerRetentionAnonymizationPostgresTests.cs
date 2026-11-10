@@ -4,7 +4,7 @@ using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
 using CoachOS.Infrastructure.Persistence;
 using CoachOS.Infrastructure.Repositories;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
 using NUnit.Framework;
 

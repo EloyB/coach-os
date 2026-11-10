@@ -2,7 +2,7 @@ using CoachOS.Application.Onboarding;
 using CoachOS.Application.Onboarding.DTOs;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Interfaces;
-using FluentAssertions;
+using AwesomeAssertions;
 using Moq;
 using NUnit.Framework;
 

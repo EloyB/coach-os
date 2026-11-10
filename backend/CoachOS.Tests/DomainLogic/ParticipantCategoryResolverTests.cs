@@ -1,6 +1,6 @@
 using CoachOS.Domain.Common;
 using CoachOS.Domain.Enums;
-using FluentAssertions;
+using AwesomeAssertions;
 using NUnit.Framework;
 
 namespace CoachOS.Tests.DomainLogic;
