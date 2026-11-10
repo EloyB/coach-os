@@ -17,6 +17,7 @@ import { updateCampEnrollment, type CampEnrollmentDto } from "@/lib/api/camps";
 import { getAxiosErrorMessages } from "@/lib/utils/api-errors";
 import { MolliePaymentId } from "@/components/dashboard/mollie-payment-id";
 import { CampPriceSelect } from "./camp-price-select";
+import { PlayerErasureAction } from "@/components/dashboard/player-erasure-action";
 
 function DetailRow({
   label,
@@ -261,6 +262,12 @@ export function CampEnrollmentDetailDialog({
               {markPaidLabel}
             </button>
           )}
+
+          <PlayerErasureAction
+            kind="camp-enrollments"
+            enrollmentId={enrollment.id}
+            onErased={() => onOpenChange(false)}
+          />
         </div>
       </DialogContent>
     </Dialog>
