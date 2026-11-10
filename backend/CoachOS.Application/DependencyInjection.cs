@@ -67,6 +67,8 @@ public static class DependencyInjection
         services.AddScoped<IBillingPaymentSyncService, BillingPaymentSyncService>();
         services.AddScoped<IBillingMaintenanceService, BillingMaintenanceService>();
         services.AddScoped<ITrialReminderService, TrialReminderService>();
+        services.AddScoped<IClubExportService, ClubExportService>();
+        services.AddScoped<IOrganizationOffboardingService, OrganizationOffboardingService>();
 
         return services;
     }

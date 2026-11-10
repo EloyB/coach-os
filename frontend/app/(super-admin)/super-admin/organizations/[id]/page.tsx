@@ -34,6 +34,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { OrganizationOffboardingCard } from "./organization-offboarding-card";
 
 const TRIAL_EXTENSION_DAYS = 14;
 
@@ -301,6 +302,8 @@ export default function OrganizationDetailPage() {
               </ul>
             )}
           </Card>
+
+          <OrganizationOffboardingCard organizationId={organizationId} />
         </>
       )}
 

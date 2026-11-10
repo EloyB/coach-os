@@ -1608,6 +1608,42 @@
     "fakeFailed": "Betaling mislukt",
     "checkoutUnavailable": "Zelf een abonnement afsluiten kan binnenkort. Neem intussen contact op via info@coach-os.be, dan regelen we het samen."
   },
+  "privacy": {
+    "exportTitle": "Clubgegevens exporteren",
+    "exportBody": "Download alle gegevens van je club als ZIP met CSV- en JSON-bestanden.",
+    "exportPrivacy": "Het bestand bevat persoonsgegevens van leerlingen en trainers. Bewaar het veilig. Wachtwoorden en toegangscodes zitten er niet in.",
+    "exportCta": "Download ZIP",
+    "exportBusy": "Bezig…",
+    "exportError": "De export is mislukt. Enkel een beheerder met een bevestigd e-mailadres kan exporteren.",
+    "loading": "Laden...",
+    "offboardingTitle": "Organisatie verwijderen",
+    "offboardingSubtitle": "Verwijdert alle gegevens van deze club definitief, ten vroegste 90 dagen na het einde van proef of abonnement. Accounts die ook bij een andere club horen blijven bestaan.",
+    "endedOn": "Einde proef/abonnement",
+    "deletableFrom": "Verwijderen mag vanaf",
+    "noEnd": "Geen einde (loopt nog)",
+    "counts": {
+      "tennisClubs": "Locaties",
+      "lessonSeries": "Lessenreeksen",
+      "lessons": "Lessen",
+      "enrollments": "Inschrijvingen",
+      "camps": "Kampen",
+      "campEnrollments": "Kampinschrijvingen",
+      "payments": "Betalingen leerlingen",
+      "memberships": "Lidmaatschappen",
+      "accountsToDelete": "Te verwijderen accounts",
+      "subscriptionPayments": "Abonnementsbetalingen"
+    },
+    "blockedTitle": "Verwijderen kan nu niet:",
+    "blockers": {
+      "subscription_running": "Het abonnement of de proef loopt nog.",
+      "retention_period": "De bewaartermijn van 90 dagen loopt nog tot {date}.",
+      "financial_records": "Financiële gegevens: wettelijke bewaarplicht, handmatig afhandelen."
+    },
+    "deleteWarning": "Dit kan niet ongedaan gemaakt worden. Laat de club eerst haar gegevens exporteren.",
+    "confirmLabel": "Typ de exacte naam \"{name}\" om te bevestigen",
+    "deleteCta": "Organisatie definitief verwijderen",
+    "deleted": "Organisatie verwijderd."
+  },
   "playerErasure": {
     "action": "Speler verwijderen",
     "title": "Speler definitief verwijderen",

@@ -160,6 +160,8 @@ public static class DependencyInjection
         services.AddScoped<IBillingProfileRepository, BillingProfileRepository>();
         services.AddScoped<IActiveStudentCounter, ActiveStudentCounter>();
         services.AddScoped<IOrganizationRepository, OrganizationRepository>();
+        services.AddScoped<IOrganizationExportRepository, OrganizationExportRepository>();
+        services.AddScoped<IOrganizationOffboardingRepository, OrganizationOffboardingRepository>();
         services.AddScoped<IMagicLinkTokenRepository, MagicLinkTokenRepository>();
         services.AddScoped<IStudentMagicLinkService, StudentMagicLinkService>();
         services.AddScoped<IRescheduleRequestRepository, RescheduleRequestRepository>();
