@@ -5,7 +5,7 @@ using CoachOS.Domain.Enums;
 using CoachOS.Domain.Interfaces;
 using CoachOS.Domain.Models;
 using CoachOS.Domain.Models.Privacy;
-using FluentAssertions;
+using AwesomeAssertions;
 using Moq;
 using NUnit.Framework;
 using static CoachOS.Tests.Privacy.PlayerErasureTestData;

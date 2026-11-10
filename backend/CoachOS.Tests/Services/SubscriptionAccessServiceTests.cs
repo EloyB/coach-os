@@ -6,7 +6,7 @@ using CoachOS.Domain.Enums;
 using CoachOS.Domain.Interfaces;
 using CoachOS.Domain.Models;
 using CoachOS.Tests.TestHelpers;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.Extensions.Options;
 using Moq;
 using NUnit.Framework;

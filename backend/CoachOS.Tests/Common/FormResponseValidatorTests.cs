@@ -1,6 +1,6 @@
 using CoachOS.Application.Common;
 using CoachOS.Domain.Models;
-using FluentAssertions;
+using AwesomeAssertions;
 using NUnit.Framework;
 
 namespace CoachOS.Tests.Common;

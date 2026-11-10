@@ -1,7 +1,7 @@
 using ClosedXML.Excel;
 using CoachOS.Application.Export;
 using CoachOS.Infrastructure.Export;
-using FluentAssertions;
+using AwesomeAssertions;
 using NUnit.Framework;
 
 namespace CoachOS.Tests.Export;

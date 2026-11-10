@@ -1,7 +1,7 @@
 using CoachOS.Application.Auth;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
-using FluentAssertions;
+using AwesomeAssertions;
 using NUnit.Framework;
 
 namespace CoachOS.Tests.DomainLogic;

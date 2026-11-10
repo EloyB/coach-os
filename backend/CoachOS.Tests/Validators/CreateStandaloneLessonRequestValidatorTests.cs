@@ -1,6 +1,6 @@
 using CoachOS.Application.StandaloneLessons.DTOs;
 using CoachOS.Application.StandaloneLessons.Validators;
-using FluentAssertions;
+using AwesomeAssertions;
 using FluentValidation.Results;
 using NUnit.Framework;
 

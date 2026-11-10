@@ -2294,7 +2294,7 @@ dotnet add package Swashbuckle.AspNetCore
 # Testing
 dotnet add package xunit
 dotnet add package Moq
-dotnet add package FluentAssertions
+dotnet add package AwesomeAssertions
 dotnet add package Microsoft.AspNetCore.Mvc.Testing
 ```
 

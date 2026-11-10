@@ -6,7 +6,7 @@ using CoachOS.Domain.Interfaces;
 using CoachOS.Domain.Models;
 using CoachOS.Domain.Models.Privacy;
 using CoachOS.Infrastructure.Privacy;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;

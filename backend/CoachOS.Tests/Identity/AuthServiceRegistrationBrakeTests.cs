@@ -6,7 +6,7 @@ using CoachOS.Domain.Models;
 using CoachOS.Infrastructure.Identity;
 using CoachOS.Infrastructure.Persistence;
 using CoachOS.Tests.TestHelpers;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;

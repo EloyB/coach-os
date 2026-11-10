@@ -1,7 +1,7 @@
 using System.Security.Claims;
 using CoachOS.API.Auth;
 using CoachOS.Domain.Models;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.AspNetCore.Http;
 using NUnit.Framework;
 

@@ -1,7 +1,7 @@
 using CoachOS.Application.Privacy;
 using CoachOS.Domain.Enums;
 using CoachOS.Domain.Models.Privacy;
-using FluentAssertions;
+using AwesomeAssertions;
 using NUnit.Framework;
 using static CoachOS.Tests.Privacy.PlayerErasureTestData;
 

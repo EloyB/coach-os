@@ -1,7 +1,7 @@
 using CoachOS.Application.Camps;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
-using FluentAssertions;
+using AwesomeAssertions;
 using NUnit.Framework;
 
 namespace CoachOS.Tests.Services;

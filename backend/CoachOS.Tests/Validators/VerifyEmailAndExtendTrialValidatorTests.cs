@@ -2,7 +2,7 @@ using CoachOS.Application.Auth.DTOs;
 using CoachOS.Application.Auth.Validators;
 using CoachOS.Application.SuperAdmin.DTOs;
 using CoachOS.Application.SuperAdmin.Validators;
-using FluentAssertions;
+using AwesomeAssertions;
 using NUnit.Framework;
 
 namespace CoachOS.Tests.Validators;

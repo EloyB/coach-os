@@ -1,6 +1,6 @@
 using System.Text;
 using CoachOS.API.Endpoints.StudentConfirmation;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using NUnit.Framework;

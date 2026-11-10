@@ -1,5 +1,5 @@
 using CoachOS.Domain.Subscriptions;
-using FluentAssertions;
+using AwesomeAssertions;
 using NUnit.Framework;
 
 namespace CoachOS.Tests.DomainLogic;

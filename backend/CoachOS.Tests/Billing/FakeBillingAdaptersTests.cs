@@ -6,7 +6,7 @@ using CoachOS.Infrastructure.Invoicing;
 using CoachOS.Infrastructure.Mollie;
 using CoachOS.Infrastructure.Vat;
 using CoachOS.Tests.TestHelpers;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NUnit.Framework;

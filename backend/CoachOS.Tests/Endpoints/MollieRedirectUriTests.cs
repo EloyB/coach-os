@@ -1,6 +1,6 @@
 using CoachOS.API.Endpoints.MollieConnect;
 using CoachOS.Application.Configuration;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.AspNetCore.Http;
 using NUnit.Framework;
 
