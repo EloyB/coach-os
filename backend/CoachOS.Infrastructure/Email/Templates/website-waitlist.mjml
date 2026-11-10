@@ -1,0 +1,18 @@
+<mjml>
+  <mj-head>
+    <mj-title>Je staat op de CoachOS-wachtlijst</mj-title>
+    <mj-preview>Je wachtlijstinschrijving en je persoonlijke uitschrijflink</mj-preview>
+    <mj-attributes><mj-all font-family="Arial, sans-serif" /><mj-text color="#111827" font-size="15px" line-height="1.6" /></mj-attributes>
+  </mj-head>
+  <mj-body background-color="#FAFAF8">
+    <mj-section background-color="#ffffff"><mj-column>
+      <mj-image src="cid:coachos-logo" width="130px" alt="CoachOS" />
+      <mj-text font-size="22px" font-weight="bold">Je staat op de wachtlijst</mj-text>
+      <mj-text>Bedankt voor je interesse in CoachOS. Dit bericht bevestigt je wachtlijstinschrijving.</mj-text>
+      <mj-text>Wil je niet langer op de wachtlijst staan? Open je persoonlijke link en bevestig daar je verwijdering. Alleen de link openen verwijdert niets.</mj-text>
+      <mj-button background-color="#2D5016" href="{{unsubscribeUrl}}">Verwijder mij van de wachtlijst</mj-button>
+      <mj-text font-size="13px">Deze link geldt uitsluitend voor deze wachtlijstinschrijving. Account-, les- en betaalmails blijven ongewijzigd. Bewaar deze persoonlijke link en deel hem niet.</mj-text>
+      <mj-text font-size="12px" color="#6b7280">CoachOS · {{year}}</mj-text>
+    </mj-column></mj-section>
+  </mj-body>
+</mjml>

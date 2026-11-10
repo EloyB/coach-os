@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { contactSchema } from "@/lib/schemas";
-import { appendSubmission } from "@/lib/submissions";
+import { postContact } from "@/lib/contact-api";
 
 export const runtime = "nodejs";
 
@@ -21,15 +21,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  const { website: _hp, ...clean } = parsed.data;
-  await appendSubmission("contact", {
-    ...clean,
-    submittedAt: new Date().toISOString(),
-    ip: req.headers.get("x-forwarded-for") ?? null,
+  return postContact(req, {
+    name: parsed.data.name, email: parsed.data.email,
+    message: parsed.data.message, organization: parsed.data.organization,
   });
-
-  // TODO: replace with email service (Resend/Loops/SMTP) before production deploy.
-  console.info("[contact]", clean.email, clean.organization ?? "—");
-
-  return NextResponse.json({ ok: true });
 }
