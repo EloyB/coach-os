@@ -45,7 +45,7 @@ export function AvailabilityDayList({
                 <span
                   className={`h-2.5 w-2.5 shrink-0 rounded-full ${dotColorClass(clubColorIndex(availability.tennisClubId, clubIds))}`}
                 />
-                <span className="font-medium">
+                <span className="font-medium whitespace-nowrap">
                   {availability.startTime} - {availability.endTime}
                 </span>
                 <span className="text-gray-500 truncate">
