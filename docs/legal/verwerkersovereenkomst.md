@@ -146,8 +146,8 @@ De verwerker slaat **geen** betaalkaart- of bankrekeninggegevens van spelers op.
 - Technische logging voor beveiliging en foutopsporing.
 
 **Duur en bewaring**
-- Zolang de Klant een account heeft, beslist de Klant zelf over het bewaren van zijn gegevens, binnen de mogelijkheden van de Dienst. De persoonsgegevens van spelers worden automatisch verwijderd of geanonimiseerd 24 maanden na het einde van de laatste lessenreeks, les of kamp waarvoor ze ingeschreven waren. Dat stemt overeen met de voorwaarden voor spelers (`algemene-voorwaarden-inschrijving.md`, art. 11.5). De Klant kan inschrijvingen ook eerder laten verwijderen. **[TE BOUWEN: de Dienst kan vandaag geen inschrijvingen of spelergegevens verwijderen, en de automatische verwijdering na 24 maanden bestaat nog niet]**
-- Na het einde van de dienstverlening: zie artikel 10. **[TE BOUWEN: er bestaat nog geen proces om een organisatie volledig te verwijderen; tot dat gebouwd is, moet het manueel en gedocumenteerd gebeuren]**
+- Zolang de Klant een account heeft, beslist de Klant zelf over het bewaren van zijn gegevens, binnen de mogelijkheden van de Dienst. De persoonsgegevens van spelers worden automatisch verwijderd of geanonimiseerd 24 maanden na het einde van de laatste lessenreeks, les of kamp waarvoor ze ingeschreven waren. Dat stemt overeen met de voorwaarden voor spelers (`algemene-voorwaarden-inschrijving.md`, art. 11.5). Is er voor die inschrijving een betaling geregistreerd, dan worden naam, contactgegevens, geboortedatum, notities en antwoorden gewist, en blijft alleen de betaling zelf (bedrag, datum, status en referentie) bewaard, zonder gegevens die naar de speler verwijzen. Zo kan de Klant zijn boekhoudkundige verplichtingen nakomen. De Klant kan inschrijvingen ook eerder laten verwijderen, via de functie "Speler verwijderen" in de Dienst. **[TE ACTIVEREN: de automatische verwijdering na 24 maanden is gebouwd (issue #261), maar staat in productie nog uit. Eerst een proefrun die alleen telt. Bij de huidige gegevens valt de eerste speler pas rond april 2028 onder die termijn.]**
+- Na het einde van de dienstverlening: zie artikel 10. De Klant kan zijn gegevens vooraf exporteren (ZIP met alle gegevens van de organisatie). De verwerker verwijdert de organisatie met een gedocumenteerde functie, ten vroegste 90 dagen na het einde van de proefperiode of het abonnement.
 - Technische logs: 7 dagen.
 - Eenmalige links en codes verlopen automatisch:
 
@@ -163,8 +163,9 @@ De verwerker slaat **geen** betaalkaart- of bankrekeninggegevens van spelers op.
 ## Bijlage II — Technische en organisatorische maatregelen
 
 **Locatie en hosting**
-- Alle applicatiegegevens staan in datacenters van Scaleway in Parijs, Frankrijk (regio `fr-par`).
-- De database is een beheerde PostgreSQL-database. De server staat in een afgeschermd netwerk: de firewall en de security group laten alleen HTTPS, HTTP (dat doorverwijst naar HTTPS) en SSH binnen. fail2ban is actief.
+- Alle applicatiegegevens staan in datacenters van Scaleway in Parijs, Frankrijk (regio `fr-par`). Een versleutelde back-up staat bij Scaleway in Amsterdam, Nederland (regio `nl-ams`); zie "Beschikbaarheid en back-ups".
+- De server staat in een afgeschermd netwerk: de firewall en de security group laten alleen HTTPS, HTTP (dat doorverwijst naar HTTPS) en SSH binnen. fail2ban is actief.
+- De database is een beheerde PostgreSQL-database. Ze is niet beperkt tot het netwerk van de server, zodat de ontwikkelaars van de verwerker ook op afstand beheer en support kunnen doen. Toegang vereist altijd een databasegebruiker met wachtwoord en een versleutelde verbinding (TLS).
 
 **Versleuteling**
 - Al het verkeer met de Dienst loopt over HTTPS (TLS 1.2/1.3, HSTS).
@@ -186,7 +187,10 @@ De verwerker slaat **geen** betaalkaart- of bankrekeninggegevens van spelers op.
 - **[TE VERBETEREN, aanbevolen vóór inwerkingtreding: aparte database-gebruikers met minimale rechten, inclusief een read-only rol voor support; SSH niet als `root`; logviewer en monitoring niet publiek bereikbaar of extra afgeschermd.]**
 
 **Beschikbaarheid en back-ups**
-- De beheerde database maakt automatisch back-ups bij Scaleway. **[INVULLEN: bewaartermijn van de back-ups — staat nu op de standaardinstelling van Scaleway; expliciet instellen en hier vermelden]**
+- De beheerde database maakt elke dag automatisch een back-up bij Scaleway in Parijs. Die back-ups worden 14 dagen bewaard.
+- Daarnaast maakt de server elke nacht een versleutelde kopie van de database en van de encryptiesleutels van de Dienst. Die kopie gaat naar een aparte opslag bij Scaleway in Amsterdam, in een afzonderlijk project met eigen toegangssleutels. Ze is versleuteld met een sleutel die ook buiten Scaleway bewaard wordt. Van die kopieën worden de laatste 14 dagelijkse en 8 wekelijkse bewaard.
+- Gewiste gegevens verdwijnen dus uiterlijk na ongeveer 8 weken uit alle back-ups. Tot dan worden ze niet gebruikt, behalve om de Dienst na een incident te herstellen.
+- Het terugzetten van een back-up is getest.
 - E-mails worden via een wachtrij met herhaalpogingen verstuurd, zodat een tijdelijke storing geen berichten doet verloren gaan.
 
 **Logging en monitoring**
@@ -196,16 +200,16 @@ De verwerker slaat **geen** betaalkaart- of bankrekeninggegevens van spelers op.
 - Elke wijziging gaat via code review en geautomatiseerde tests voor ze in productie komt. Testomgevingen gebruiken fictieve gegevens.
 
 **Organisatorisch**
-- Er is een procedure voor datalekken, met melding binnen 48 uur (artikel 8). **[TE DOEN: korte interne procedure op papier zetten]**
+- Er is een schriftelijke interne procedure voor datalekken, met melding aan de Klant binnen 48 uur (artikel 8).
 - De Dienst bevat geen trackers, advertenties of analysediensten van derden.
 
 ## Bijlage III — Subverwerkers
 
 | Subverwerker | Vestiging | Wat | Locatie van de gegevens | Waarborg |
 |---|---|---|---|---|
-| **Scaleway SAS** | Frankrijk | Hosting van server en database, opslag van geheime sleutels, DNS en het versturen van e-mails (Transactional Email) | Parijs, Frankrijk (EU) | Verwerkersovereenkomst van Scaleway |
+| **Scaleway SAS** | Frankrijk | Hosting van server en database, opslag van geheime sleutels, DNS, het versturen van e-mails (Transactional Email) en opslag van versleutelde back-ups | Parijs, Frankrijk (EU); versleutelde back-ups in Amsterdam, Nederland (EU) | Verwerkersovereenkomst van Scaleway |
 | **Google Ireland Ltd** (Google Workspace) | Ierland | Ontvangst en opslag van e-mail naar @coach-os.be-adressen, zoals supportvragen van de Klant die persoonsgegevens kunnen bevatten | EU/wereldwijd | Cloud Data Processing Addendum van Google, met standaardcontractbepalingen en EU-US Data Privacy Framework |
-| **GitHub Inc.** | Verenigde Staten | Uitvoeren van database-updates bij een nieuwe versie van de Dienst. Er worden geen gegevens gekopieerd, maar er is tijdens die stap wel technische toegang. | VS | GitHub Data Protection Agreement, met standaardcontractbepalingen en EU-US Data Privacy Framework. **[WORDT GESCHRAPT: de database-updates verhuizen naar de eigen server in Frankrijk, waarna GitHub geen subverwerker meer is — issue #260]** |
+| **GitHub Inc.** | Verenigde Staten | Uitvoeren van database-updates bij een nieuwe versie van de Dienst. Er worden geen gegevens gekopieerd, maar er is tijdens die stap wel technische toegang. | VS | GitHub Data Protection Agreement, met standaardcontractbepalingen en EU-US Data Privacy Framework. |
 
 **Geen subverwerker: de betaalprovider van de Klant.** Online betalingen van spelers verlopen via het eigen Mollie-account van de Klant, dat de Klant zelf aan CoachOS koppelt. Mollie B.V. (Nederland) handelt die betalingen af op basis van de overeenkomst tussen de Klant en Mollie. CoachOS stuurt Mollie alleen het bedrag, een omschrijving en technische referenties. Naam en e-mailadres vult de betaler zelf in bij Mollie.
 

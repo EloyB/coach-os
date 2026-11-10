@@ -42,11 +42,11 @@ We werken met deze dienstverleners, die gegevens alleen in onze opdracht verwerk
 
 | Dienstverlener | Waarvoor | Waar |
 |---|---|---|
-| Scaleway SAS | Hosting, database, versturen van e-mails | Frankrijk (EU) |
+| Scaleway SAS | Hosting, database, versturen van e-mails, versleutelde back-ups | Frankrijk (EU); back-ups in Nederland (EU) |
 | Google Ireland Ltd (Google Workspace) | Onze mailbox | EU/wereldwijd. Bij doorgifte buiten de EER gelden standaardcontractbepalingen en het EU-US Data Privacy Framework. |
 | Mollie B.V. | Betaling van abonnementen **[vanaf de start van betaalde abonnementen]** | Nederland (EU) |
 | Billit NV | Facturatie en verzending van facturen via Peppol **[vanaf de start van betaalde abonnementen]** | België (EU) |
-| GitHub Inc. | Ontwikkeling en uitrol van nieuwe versies | VS (standaardcontractbepalingen, EU-US Data Privacy Framework) **[wordt geschrapt na issue #260]** |
+| GitHub Inc. | Ontwikkeling en uitrol van nieuwe versies, inclusief database-updates (tijdens die stap is er technische toegang tot de database, er worden geen gegevens gekopieerd) | VS (standaardcontractbepalingen, EU-US Data Privacy Framework) |
 
 Daarnaast geven we gegevens alleen door als de wet ons daartoe verplicht, bijvoorbeeld op vraag van een gerechtelijke instantie.
 
