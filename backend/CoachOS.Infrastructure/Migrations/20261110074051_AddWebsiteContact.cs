@@ -16,10 +16,10 @@ namespace CoachOS.Infrastructure.Migrations
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    Name = table.Column<string>(type: "text", nullable: false),
-                    Email = table.Column<string>(type: "text", nullable: false),
-                    Organization = table.Column<string>(type: "text", nullable: true),
-                    Message = table.Column<string>(type: "text", nullable: false),
+                    Name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    Email = table.Column<string>(type: "character varying(254)", maxLength: 254, nullable: false),
+                    Organization = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    Message = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
@@ -27,6 +27,11 @@ namespace CoachOS.Infrastructure.Migrations
                 {
                     table.PrimaryKey("PK_WebsiteContactEntries", x => x.Id);
                 });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_WebsiteContactEntries_CreatedAt",
+                table: "WebsiteContactEntries",
+                column: "CreatedAt");
         }
 
         /// <inheritdoc />
