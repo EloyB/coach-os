@@ -12,6 +12,7 @@ import {
   ClipboardList,
 } from "lucide-react";
 import { NativeSelect } from "@/components/ui/native-select";
+import { FormPrivacyWarning } from "@/components/forms/form-privacy-warning";
 import {
   getCampForm,
   saveCampForm,
@@ -160,6 +161,8 @@ export function CampFormBuilder({ campId }: { campId: string }) {
       </div>
 
       <div className="p-5 space-y-4">
+        <FormPrivacyWarning />
+
         {/* Predefined fields badge list */}
         <div>
           <p className="text-xs text-ink-3 mb-2">{t("formFixedFields")}</p>
