@@ -18,6 +18,7 @@ export interface NavItem {
   icon: LucideIcon;
   exact?: boolean;
   adminOnly?: boolean;
+  trainerOnly?: boolean;
 }
 
 export const navItems: NavItem[] = [
@@ -71,5 +72,12 @@ export const navItems: NavItem[] = [
     icon: Settings,
     exact: false,
     adminOnly: true,
+  },
+  {
+    label: "Instellingen",
+    href: "/dashboard/trainer-settings",
+    icon: Settings,
+    exact: false,
+    trainerOnly: true,
   },
 ];
