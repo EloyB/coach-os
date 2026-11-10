@@ -14,8 +14,10 @@
 # het pad /offsite-backup en zonder "__" in de naam, zodat de API ze niet als
 # configuratie gebruikt.
 #
-# Vereist voor de CI-key van Terraform: ProjectManager (projecten aanmaken) naast
-# IAMManager en ObjectStorageFullAccess.
+# Vereist voor de CI-key van Terraform: ProjectManager (projecten aanmaken) en
+# IAMManager. Object Storage-rechten in het nieuwe project geeft Terraform zichzelf
+# hieronder (scaleway_iam_policy.terraform_ci_offsite_backup), want de handmatige
+# policy van de CI-key geldt enkel voor het hoofdproject.
 
 resource "scaleway_account_project" "offsite_backup" {
   name        = "coach-os-offsite-backup"
@@ -26,7 +28,35 @@ resource "scaleway_account_project" "offsite_backup" {
   }
 }
 
+# De CI-key van Terraform moet de bucket in het nieuwe project kunnen aanmaken
+# en beheren. Zijn handmatige policy (coach-os-terraform-ci-policy) dekt enkel
+# het hoofdproject, dus deze extra policy geeft hem Object Storage in het
+# backupproject. IAM-wijzigingen hebben even nodig, vandaar de korte wachttijd.
+data "scaleway_iam_application" "terraform_ci" {
+  name = var.terraform_ci_application_name
+}
+
+resource "scaleway_iam_policy" "terraform_ci_offsite_backup" {
+  name           = "coach-os-terraform-ci-offsite-backup"
+  description    = "Terraform CI: Object Storage in het off-site backupproject"
+  application_id = data.scaleway_iam_application.terraform_ci.id
+
+  rule {
+    project_ids          = [scaleway_account_project.offsite_backup.id]
+    permission_set_names = ["ObjectStorageFullAccess"]
+  }
+}
+
+resource "time_sleep" "terraform_ci_offsite_backup_propagation" {
+  create_duration = "30s"
+  triggers = {
+    policy_id = scaleway_iam_policy.terraform_ci_offsite_backup.id
+  }
+}
+
 resource "scaleway_object_bucket" "offsite_backup" {
+  depends_on = [time_sleep.terraform_ci_offsite_backup_propagation]
+
   name       = var.offsite_backup_bucket_name
   project_id = scaleway_account_project.offsite_backup.id
   region     = var.offsite_backup_region

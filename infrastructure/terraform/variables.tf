@@ -102,3 +102,9 @@ variable "offsite_backup_bucket_name" {
   type        = string
   default     = "coach-os-offsite-backup"
 }
+
+variable "terraform_ci_application_name" {
+  description = "Naam van de IAM-applicatie waarmee CI Terraform draait. Krijgt Object Storage-rechten in het off-site backupproject."
+  type        = string
+  default     = "coach-os-terraform-ci"
+}
