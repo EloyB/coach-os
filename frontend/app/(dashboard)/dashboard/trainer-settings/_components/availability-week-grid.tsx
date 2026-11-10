@@ -103,6 +103,11 @@ export function AvailabilityWeekGrid({
     });
   }
 
+  function handlePointerCancel() {
+    dragRef.current = null;
+    setDrag(null);
+  }
+
   const dragTop = drag ? Math.min(drag.startY, drag.currentY) : 0;
   const dragHeight = drag ? Math.abs(drag.currentY - drag.startY) : 0;
 
@@ -138,6 +143,7 @@ export function AvailabilityWeekGrid({
             onPointerDown={(event) => handlePointerDown(event, day)}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerCancel}
           >
             {hours.slice(1, -1).map((hour) => (
               <div
