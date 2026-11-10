@@ -13,6 +13,9 @@ public class PrivacyErasureReceipt
     public Guid OrganizationId { get; set; }
     public PrivacyErasureKind Kind { get; set; }
 
+    /// <summary>Gewist of geanonimiseerd. Bestaande bewijzen zijn allemaal <see cref="PrivacyErasureMethod.Deleted"/>.</summary>
+    public PrivacyErasureMethod Method { get; set; } = PrivacyErasureMethod.Deleted;
+
     /// <summary>Id van het gewiste record (een willekeurige GUID, geen persoonsgegeven).</summary>
     public Guid SubjectId { get; set; }
 

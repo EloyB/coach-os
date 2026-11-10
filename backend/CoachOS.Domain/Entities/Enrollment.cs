@@ -59,6 +59,12 @@ public class Enrollment : BaseEntity
     /// </summary>
     public Guid? SelectedPriceOptionId { get; set; }
 
+    /// <summary>
+    /// Tijdstip waarop de bewaartermijn de persoonsgegevens van deze inschrijving wiste. De rij
+    /// blijft enkel bestaan omdat er betalingen aan hangen (boekhouding van de club).
+    /// </summary>
+    public DateTime? AnonymizedAt { get; set; }
+
     // Navigation properties
     public Organization Organization { get; set; } = null!;
     public Lesson? Lesson { get; set; }

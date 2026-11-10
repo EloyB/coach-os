@@ -17,6 +17,20 @@ public static class PlayerErasureBlockReasons
     public const string UnresolvedRescheduleRequest = "unresolved_reschedule_request";
 }
 
+/// <summary>Wat de automatische bewaartermijn met één inschrijving doet.</summary>
+public enum RetentionDecision
+{
+    /// <summary>Termijn nog niet verstreken (of deelname onbekend).</summary>
+    NotDue = 0,
+    Erase = 1,
+
+    /// <summary>Enkel betalingen blokkeren: persoonsgegevens wissen, betalingen bewaren.</summary>
+    Anonymize = 2,
+
+    /// <summary>Termijn verstreken, maar een andere blokkering of een groepskeuze houdt het tegen.</summary>
+    Blocked = 3,
+}
+
 public sealed record PlayerErasureEvaluation(
     DateOnly? LastParticipation,
     IReadOnlyList<string> BlockingReasons,
@@ -36,6 +50,21 @@ public static class PlayerErasureRules
 
     public static bool IsRetentionDue(DateOnly? lastParticipation, DateOnly today) =>
         lastParticipation is not null && lastParticipation.Value.AddMonths(RetentionMonths) <= today;
+
+    /// <summary>
+    /// Beslissing van de automatische bewaartermijn. Strenger dan de handmatige verwijdering:
+    /// een groepsleider wordt nooit automatisch vervangen. Anonimiseren gebeurt enkel als
+    /// voltooide betalingen van de speler zelf de énige blokkering zijn en hij in geen groep zit;
+    /// open betalingen en groepsbetalingen blijven blokkeren.
+    /// </summary>
+    public static RetentionDecision DecideRetention(PlayerErasureFacts facts, PlayerErasureEvaluation evaluation, DateOnly today)
+    {
+        if (!IsRetentionDue(evaluation.LastParticipation, today)) return RetentionDecision.NotDue;
+        if (evaluation.GroupEffect == ErasureGroupEffect.TransferLeader) return RetentionDecision.Blocked;
+        if (evaluation.CanErase) return RetentionDecision.Erase;
+        bool onlyOwnPayments = evaluation.BlockingReasons.All(r => r == PlayerErasureBlockReasons.FinancialRecords);
+        return onlyOwnPayments && facts.Group is null ? RetentionDecision.Anonymize : RetentionDecision.Blocked;
+    }
 
     public static PlayerErasureEvaluation Evaluate(PlayerErasureFacts facts, DateOnly today)
     {

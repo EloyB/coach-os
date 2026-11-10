@@ -22,6 +22,9 @@ public class CampEnrollment : BaseEntity
     /// <summary>Door de beheerder gekozen tarief; null = hoofdprijs van het kamp.</summary>
     public Guid? CampPriceId { get; set; }
 
+    /// <summary>Zie <see cref="Enrollment.AnonymizedAt"/>.</summary>
+    public DateTime? AnonymizedAt { get; set; }
+
     // Navigation
     public Camp Camp { get; set; } = null!;
     public CampPrice? Price { get; set; }

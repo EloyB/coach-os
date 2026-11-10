@@ -15,7 +15,8 @@ public delegate Result<Guid?> ErasureGuard(PlayerErasureFacts facts, PlayerErasu
 
 /// <summary>
 /// Transactionele kern: lock → feiten opnieuw lezen → regels → guard → wissen → receipt.
-/// Gedeeld door de handmatige verwijdering en de retentiejob. Een preview neemt geen lock.
+/// Gedeeld door de handmatige verwijdering en de retentiejob (die ook kan anonimiseren).
+/// Een preview neemt geen lock.
 /// </summary>
 public sealed class PlayerErasureExecutor(
     IPlayerErasureRepository repository,
@@ -27,13 +28,28 @@ public sealed class PlayerErasureExecutor(
     public async Task<Result<PlayerErasureResultDto>> ExecuteAsync(
         Guid organizationId, PrivacyErasureKind kind, Guid enrollmentId, ErasureGuard guard,
         CancellationToken ct = default)
+        => await InTransactionAsync(result => result.IsSuccess,
+            () => ExecuteLockedAsync(organizationId, kind, enrollmentId, guard, ct), ct);
+
+    /// <summary>
+    /// Bewaartermijn voor één inschrijving: binnen dezelfde lock en met verse feiten opnieuw
+    /// beslissen (<see cref="PlayerErasureRules.DecideRetention"/>), dan wissen of anonimiseren.
+    /// Niets doen (niet verstreken / geblokkeerd) is een geslaagd resultaat zonder wijziging.
+    /// </summary>
+    public async Task<Result<RetentionDecision>> ExecuteRetentionAsync(
+        Guid organizationId, PrivacyErasureKind kind, Guid enrollmentId, CancellationToken ct = default)
+        => await InTransactionAsync(
+            result => result.IsSuccess && result.Value is RetentionDecision.Erase or RetentionDecision.Anonymize,
+            () => ExecuteRetentionLockedAsync(organizationId, kind, enrollmentId, ct), ct);
+
+    private async Task<Result<T>> InTransactionAsync<T>(
+        Func<Result<T>, bool> commit, Func<Task<Result<T>>> work, CancellationToken ct)
     {
         await unitOfWork.BeginTransactionAsync(ct);
         try
         {
-            Result<PlayerErasureResultDto> result =
-                await ExecuteLockedAsync(organizationId, kind, enrollmentId, guard, ct);
-            if (result.IsSuccess) await unitOfWork.CommitTransactionAsync(ct);
+            Result<T> result = await work();
+            if (commit(result)) await unitOfWork.CommitTransactionAsync(ct);
             else await unitOfWork.RollbackTransactionAsync(ct);
             return result;
         }
@@ -44,16 +60,26 @@ public sealed class PlayerErasureExecutor(
         }
     }
 
+    /// <summary>Lock nemen en daarna de feiten opnieuw lezen: alles wat sinds de preview veranderde telt mee.</summary>
+    private async Task<Result<PlayerErasureFacts>> LockAndReadAsync(
+        Guid organizationId, PrivacyErasureKind kind, Guid enrollmentId, CancellationToken ct)
+    {
+        ErasureLockOutcome lockOutcome = await repository.LockForErasureAsync(organizationId, kind, enrollmentId, ct);
+        if (lockOutcome == ErasureLockOutcome.LockTimeout) return Result<PlayerErasureFacts>.Fail(PlayerErasureErrors.LockTimeout);
+        if (lockOutcome == ErasureLockOutcome.NotFound) return Result<PlayerErasureFacts>.Fail(PlayerErasureErrors.NotFound);
+
+        PlayerErasureFacts? facts = await repository.GetFactsAsync(organizationId, kind, enrollmentId, ct);
+        return facts is null
+            ? Result<PlayerErasureFacts>.Fail(PlayerErasureErrors.NotFound)
+            : Result<PlayerErasureFacts>.Ok(facts);
+    }
+
     private async Task<Result<PlayerErasureResultDto>> ExecuteLockedAsync(
         Guid organizationId, PrivacyErasureKind kind, Guid enrollmentId, ErasureGuard guard, CancellationToken ct)
     {
-        ErasureLockOutcome lockOutcome = await repository.LockForErasureAsync(organizationId, kind, enrollmentId, ct);
-        if (lockOutcome == ErasureLockOutcome.LockTimeout) return Fail(PlayerErasureErrors.LockTimeout);
-        if (lockOutcome == ErasureLockOutcome.NotFound) return Fail(PlayerErasureErrors.NotFound);
-
-        // Na de lock opnieuw lezen: alles wat sinds de preview veranderde telt mee.
-        PlayerErasureFacts? facts = await repository.GetFactsAsync(organizationId, kind, enrollmentId, ct);
-        if (facts is null) return Fail(PlayerErasureErrors.NotFound);
+        Result<PlayerErasureFacts> read = await LockAndReadAsync(organizationId, kind, enrollmentId, ct);
+        if (!read.IsSuccess) return Result<PlayerErasureResultDto>.Fail(read.Errors);
+        PlayerErasureFacts facts = read.Value!;
 
         PlayerErasureEvaluation evaluation = PlayerErasureRules.Evaluate(facts, Today());
         if (!evaluation.CanErase) return Fail(PlayerErasureErrors.Blocked);
@@ -65,11 +91,37 @@ public sealed class PlayerErasureExecutor(
         ErasureDeleteOutcome deleteOutcome = await repository.DeleteAsync(organizationId, plan, ct);
         if (deleteOutcome == ErasureDeleteOutcome.DependencyConflict) return Fail(PlayerErasureErrors.DependencyConflict);
 
-        return Result<PlayerErasureResultDto>.Ok(await WriteReceiptAsync(organizationId, kind, enrollmentId, ct));
+        return Result<PlayerErasureResultDto>.Ok(
+            await WriteReceiptAsync(organizationId, kind, enrollmentId, PrivacyErasureMethod.Deleted, ct));
+    }
+
+    private async Task<Result<RetentionDecision>> ExecuteRetentionLockedAsync(
+        Guid organizationId, PrivacyErasureKind kind, Guid enrollmentId, CancellationToken ct)
+    {
+        Result<PlayerErasureFacts> read = await LockAndReadAsync(organizationId, kind, enrollmentId, ct);
+        if (!read.IsSuccess) return Result<RetentionDecision>.Fail(read.Errors);
+        PlayerErasureFacts facts = read.Value!;
+
+        PlayerErasureEvaluation evaluation = PlayerErasureRules.Evaluate(facts, Today());
+        RetentionDecision decision = PlayerErasureRules.DecideRetention(facts, evaluation, Today());
+        if (decision is RetentionDecision.NotDue or RetentionDecision.Blocked) return Result<RetentionDecision>.Ok(decision);
+
+        PlayerErasurePlan plan = new(kind, enrollmentId, facts.Target.GroupId, evaluation.GroupEffect, null);
+        ErasureDeleteOutcome outcome = decision == RetentionDecision.Erase
+            ? await repository.DeleteAsync(organizationId, plan, ct)
+            : await repository.AnonymizeAsync(organizationId, plan, time.GetUtcNow().UtcDateTime, ct);
+        if (outcome == ErasureDeleteOutcome.DependencyConflict)
+            return Result<RetentionDecision>.Fail(PlayerErasureErrors.DependencyConflict);
+
+        PrivacyErasureMethod method = decision == RetentionDecision.Erase
+            ? PrivacyErasureMethod.Deleted
+            : PrivacyErasureMethod.Anonymized;
+        await WriteReceiptAsync(organizationId, kind, enrollmentId, method, ct);
+        return Result<RetentionDecision>.Ok(decision);
     }
 
     private async Task<PlayerErasureResultDto> WriteReceiptAsync(
-        Guid organizationId, PrivacyErasureKind kind, Guid enrollmentId, CancellationToken ct)
+        Guid organizationId, PrivacyErasureKind kind, Guid enrollmentId, PrivacyErasureMethod method, CancellationToken ct)
     {
         DateTime erasedAt = time.GetUtcNow().UtcDateTime;
         await repository.AddReceiptAsync(new PrivacyErasureReceipt
@@ -77,6 +129,7 @@ public sealed class PlayerErasureExecutor(
             Id = Guid.NewGuid(),
             OrganizationId = organizationId,
             Kind = kind,
+            Method = method,
             SubjectId = enrollmentId,
             ErasedAt = erasedAt,
         }, ct);

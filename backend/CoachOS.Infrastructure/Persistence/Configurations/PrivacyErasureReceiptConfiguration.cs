@@ -1,4 +1,5 @@
 using CoachOS.Domain.Entities;
+using CoachOS.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -16,6 +17,13 @@ public class PrivacyErasureReceiptConfiguration : IEntityTypeConfiguration<Priva
             .IsRequired()
             .HasConversion<string>()
             .HasMaxLength(30);
+        // Bestaande bewijzen (van vóór anonimiseren bestond) zijn allemaal verwijderingen.
+        builder.Property(r => r.Method)
+            .IsRequired()
+            .HasConversion<string>()
+            .HasMaxLength(20)
+            .HasDefaultValue(PrivacyErasureMethod.Deleted)
+            .HasSentinel((PrivacyErasureMethod)0);
         builder.Property(r => r.SubjectId).IsRequired();
         builder.Property(r => r.ErasedAt).IsRequired();
 

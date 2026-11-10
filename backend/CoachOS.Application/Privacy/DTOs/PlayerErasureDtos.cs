@@ -25,4 +25,27 @@ public sealed record ErasePlayerRequest(
 
 public sealed record PlayerErasureResultDto(Guid EnrollmentId, DateTime ErasedAt);
 
-public sealed record PlayerRetentionReport(int Candidates, int RetentionDue, int Erased);
+/// <summary>
+/// Resultaat van één bewaartermijn-run voor één organisatie. Bij een dry-run blijven
+/// <paramref name="Erased"/> en <paramref name="Anonymized"/> 0 en tonen de andere velden wat er zou gebeuren.
+/// </summary>
+/// <param name="Candidates">Inschrijvingen die nog persoonsgegevens bevatten.</param>
+/// <param name="DueForErasure">Termijn verstreken, mag volledig gewist worden.</param>
+/// <param name="DueForAnonymization">Termijn verstreken, maar er hangen betalingen aan: enkel anonimiseren.</param>
+/// <param name="DueButBlocked">Termijn verstreken, maar iets blokkeert (open betaling, groep, onverwerkte mail, ...).</param>
+public sealed record PlayerRetentionReport(
+    int Candidates,
+    int DueForErasure,
+    int DueForAnonymization,
+    int DueButBlocked,
+    int Erased,
+    int Anonymized)
+{
+    public int Due => DueForErasure + DueForAnonymization + DueButBlocked;
+}
+
+/// <summary>Aantal opgeruimde (of bij een dry-run: op te ruimen) technische records.</summary>
+public sealed record PrivacyCleanupReport(int CompletedMails, int ExpiredMagicLinks, int ExpiredConfirmationTokens)
+{
+    public int Total => CompletedMails + ExpiredMagicLinks + ExpiredConfirmationTokens;
+}

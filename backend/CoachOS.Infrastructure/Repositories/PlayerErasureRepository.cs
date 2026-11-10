@@ -34,10 +34,13 @@ public sealed partial class PlayerErasureRepository(ApplicationDbContext db) : I
 
     public async Task<IReadOnlyList<ErasureCandidate>> GetCandidatesAsync(Guid organizationId, CancellationToken ct = default)
     {
+        // Geanonimiseerde rijen bevatten geen persoonsgegevens meer: geen kandidaat.
         List<Guid> lessonIds = await db.Enrollments.AsNoTracking()
-            .Where(e => e.OrganizationId == organizationId).OrderBy(e => e.Id).Select(e => e.Id).ToListAsync(ct);
+            .Where(e => e.OrganizationId == organizationId && e.AnonymizedAt == null)
+            .OrderBy(e => e.Id).Select(e => e.Id).ToListAsync(ct);
         List<Guid> campIds = await db.CampEnrollments.AsNoTracking()
-            .Where(e => e.OrganizationId == organizationId).OrderBy(e => e.Id).Select(e => e.Id).ToListAsync(ct);
+            .Where(e => e.OrganizationId == organizationId && e.AnonymizedAt == null)
+            .OrderBy(e => e.Id).Select(e => e.Id).ToListAsync(ct);
         return lessonIds.Select(id => new ErasureCandidate(id, PrivacyErasureKind.Enrollment))
             .Concat(campIds.Select(id => new ErasureCandidate(id, PrivacyErasureKind.CampEnrollment)))
             .ToList();
@@ -97,7 +100,9 @@ public sealed partial class PlayerErasureRepository(ApplicationDbContext db) : I
         string name = subject.NormalizedName;
         string email = subject.NormalizedEmail;
         DateOnly? birth = subject.BirthDate;
+        // Geanonimiseerde rijen horen bij niemand meer (ze delen bovendien dezelfde vaste naam).
         List<Enrollment> lessons = await db.Enrollments.AsNoTracking().Where(x => x.OrganizationId == organizationId &&
+            x.AnonymizedAt == null &&
             x.StudentName.Trim().ToLower() == name &&
             (birth != null
                 ? x.DateOfBirth == birth
@@ -105,6 +110,7 @@ public sealed partial class PlayerErasureRepository(ApplicationDbContext db) : I
                     ? x.StudentEmail.Trim().ToLower()
                     : x.ContactEmail.Trim().ToLower()) == email)).ToListAsync(ct);
         List<CampEnrollment> camps = await db.CampEnrollments.AsNoTracking().Where(x => x.OrganizationId == organizationId &&
+            x.AnonymizedAt == null &&
             x.ParticipantName.Trim().ToLower() == name && x.ParticipantEmail.Trim().ToLower() == email).ToListAsync(ct);
 
         return new RelatedPlayer(

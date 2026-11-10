@@ -64,6 +64,7 @@ public static class DependencyInjection
         services.AddScoped<PlayerErasureExecutor>();
         services.AddScoped<IPlayerErasureService, PlayerErasureService>();
         services.AddScoped<IPlayerRetentionService, PlayerRetentionService>();
+        services.AddScoped<IPrivacyCleanupService, PrivacyCleanupService>();
         services.AddScoped<IBillingPaymentSyncService, BillingPaymentSyncService>();
         services.AddScoped<IBillingMaintenanceService, BillingMaintenanceService>();
         services.AddScoped<ITrialReminderService, TrialReminderService>();
