@@ -46,3 +46,14 @@ output "scw_organization_id_for_secrets" {
 output "scw_project_id_for_secrets" {
   value = var.scw_project_id
 }
+
+output "offsite_backup_repository" {
+  description = "restic-repository van de off-site backup (zie scripts/backup/restore.md)."
+  value       = "s3:https://s3.${var.offsite_backup_region}.scw.cloud/${scaleway_object_bucket.offsite_backup.name}/restic"
+}
+
+output "offsite_backup_restic_password" {
+  description = "restic-wachtwoord. Eenmalig opvragen met `tofu output -raw offsite_backup_restic_password` en in de wachtwoordkluis zetten."
+  value       = random_password.restic.result
+  sensitive   = true
+}

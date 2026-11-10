@@ -10,6 +10,7 @@ name: Terraform — Plan & Apply
 #       — API key from a dedicated `coach-os-terraform-ci` IAM application
 #         with the same broad permissions as the local terraform key
 #         (Block/Object Storage, Instances, Registry, RDB, TEM, Domains,
+#          ProjectManager voor het off-site backupproject,
 #          Secret Manager, IAMManager at org level)
 #   GHA_DEPLOY_SSH_PUBLIC_KEY
 #       — contents of `~/.ssh/coach-os-gha.pub` (public, safe to store)

@@ -11,7 +11,11 @@ Postgres, transactional email domain, secret manager entries, and DNS records.
 3. **A new Scaleway organization + project** for coach-os (separate from amare)
 4. **An IAM API key** in that org with `IAMFullAccess` + `RegistryFullAccess` +
    `RDBFullAccess` + `InstanceFullAccess` + `TEMFullAccess` + `SecretManagerFullAccess`
-   + `DomainsFullAccess` + `ObjectStorageFullAccess`
+   + `DomainsFullAccess` + `ObjectStorageFullAccess` + `ProjectManager`
+   (`ProjectManager` is nodig voor het aparte backupproject in `offsite-backup.tf`;
+   de CI-key `SCALEWAY_TF_*` heeft dezelfde rechten nodig. Object Storage in het
+   backupproject geeft Terraform zelf aan de CI-applicatie `coach-os-terraform-ci`;
+   wie lokaal `tofu apply` draait met een andere key, moet die rechten zelf hebben)
 5. **`coach-os.be` registered in Scaleway Domains**
 
 ## One-time bootstrap

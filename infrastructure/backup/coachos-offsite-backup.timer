@@ -1,0 +1,12 @@
+# Geïnstalleerd en geactiveerd door infrastructure/backup/install-offsite-backup.sh.
+[Unit]
+Description=Nachtelijke CoachOS off-site backup
+
+[Timer]
+OnCalendar=*-*-* 03:15:00
+RandomizedDelaySec=30m
+Persistent=true
+Unit=coachos-offsite-backup.service
+
+[Install]
+WantedBy=timers.target

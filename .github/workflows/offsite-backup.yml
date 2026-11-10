@@ -1,0 +1,65 @@
+name: Infrastructure — Off-site backup installeren
+
+# Installeert of actualiseert de restic off-site backup op de VPS
+# (infrastructure/backup/install-offsite-backup.sh). Idempotent.
+#
+# - Push naar main die het script, de units of deze workflow raakt.
+# - Na een geslaagde Terraform-run op main: daar worden de bucket, de key en de
+#   secrets aangemaakt of gewijzigd. Zo pikt de VPS die meteen op.
+# - Manueel, optioneel met meteen een eerste backup.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'infrastructure/backup/**'
+      - 'scripts/backup/offsite-backup.sh'
+      - '.github/workflows/offsite-backup.yml'
+  workflow_run:
+    workflows: ["Terraform — Plan & Apply"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      run_now:
+        description: "Meteen een backup starten na de installatie"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: offsite-backup
+  cancel-in-progress: false
+
+jobs:
+  install:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Installeren op de VPS
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          SCW_SECRET_KEY: ${{ secrets.SCALEWAY_SECRET_KEY }}
+          SCW_DEFAULT_PROJECT_ID: ${{ secrets.SCALEWAY_PROJECT_ID }}
+          SCW_REGION: fr-par
+          RUN_NOW: ${{ github.event_name == 'workflow_dispatch' && inputs.run_now }}
+        with:
+          host: ${{ secrets.VPS_IP }}
+          username: root
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: 22
+          envs: SCW_SECRET_KEY,SCW_DEFAULT_PROJECT_ID,SCW_REGION,RUN_NOW
+          script: |
+            set -euo pipefail
+            src=/tmp/coachos-backup-src
+            rm -rf "$src"
+            git clone --quiet --depth 1 --branch main https://github.com/${{ github.repository }}.git "$src"
+            bash "$src/infrastructure/backup/install-offsite-backup.sh" "$src"
+            rm -rf "$src"
+            if [ "$RUN_NOW" = "true" ]; then
+              systemctl start --no-block coachos-offsite-backup.service
+              echo "Backup gestart; volg met: journalctl -u coachos-offsite-backup -f"
+            fi
