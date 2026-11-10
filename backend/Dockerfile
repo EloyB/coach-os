@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:11.0 AS build
 WORKDIR /src
 
 # Copy solution and project files first for layer caching
@@ -19,7 +19,7 @@ RUN find . -type d -name '*\\*' -exec rm -rf {} + 2>/dev/null || true
 
 RUN dotnet publish CoachOS.API/CoachOS.API.csproj -c Release -o /app
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:11.0 AS runtime
 WORKDIR /app
 
 # aspnet:10.0 is Debian-based and ships neither wget nor curl. The compose
