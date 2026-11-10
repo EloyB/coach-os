@@ -36,6 +36,13 @@ export async function createTrainerAvailability(
   return data;
 }
 
+export async function updateTrainerAvailability(
+  id: string,
+  request: CreateTrainerAvailabilityRequest
+): Promise<void> {
+  await apiClient.put(`/trainer-availabilities/${id}`, request);
+}
+
 export async function deleteTrainerAvailability(id: string): Promise<void> {
   await apiClient.delete(`/trainer-availabilities/${id}`);
 }
