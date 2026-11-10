@@ -153,5 +153,21 @@ jobs:
               [ $i -lt 3 ] && sleep 10 || exit 1
             done
             docker compose up -d --no-deps --force-recreate api
-            sleep 5
+            # Wacht tot de nieuwe container echt antwoordt (max 120 s). Zonder deze
+            # check bleef de deploy groen terwijl de API crashte bij het opstarten.
+            wait_healthy() {
+              svc="$1"; shift
+              for i in $(seq 1 24); do
+                if docker compose exec -T "$svc" "$@" >/dev/null 2>&1; then
+                  echo "$svc is gezond na ongeveer $((i * 5)) s"
+                  return 0
+                fi
+                sleep 5
+              done
+              echo "::error::$svc is 120 s na de deploy nog niet gezond"
+              docker compose ps "$svc" || true
+              docker compose logs --tail=100 "$svc" || true
+              return 1
+            }
+            wait_healthy api curl --fail --silent --output /dev/null http://localhost:8080/health
             docker compose ps api
