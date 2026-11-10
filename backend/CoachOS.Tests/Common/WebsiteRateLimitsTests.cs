@@ -66,4 +66,22 @@ public class WebsiteRateLimitsTests
 
         Enumerable.Range(0, 1000).All(_ => limiter.AttemptAcquire().IsAcquired).Should().BeTrue();
     }
+
+    [Test]
+    public void PerClientPartition_UnsubscribeHasOwnBucketPerIp()
+    {
+        DefaultHttpContext context = Request("203.0.113.1", null);
+
+        WebsiteRateLimits.PerClientPartition(context, WebsiteRateLimits.UnsubscribePolicy).PartitionKey
+            .Should().NotBe(WebsiteRateLimits.PerClientPartition(context, WebsiteRateLimits.WaitlistPolicy).PartitionKey)
+            .And.Contain("203.0.113.1");
+    }
+
+    [Test]
+    public void BackstopPartition_Unsubscribe_IsNotGloballyLimited()
+    {
+        RateLimitPartition<string> partition = WebsiteRateLimits.BackstopPartition(Request("203.0.113.1", WebsiteRateLimits.UnsubscribePolicy));
+
+        partition.PartitionKey.Should().Be("none");
+    }
 }

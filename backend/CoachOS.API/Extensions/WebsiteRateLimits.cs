@@ -13,6 +13,7 @@ public static class WebsiteRateLimits
 {
     public const string ContactPolicy = "website-contact";
     public const string WaitlistPolicy = "website-waitlist";
+    public const string UnsubscribePolicy = "website-waitlist-unsubscribe";
     public const string SuperAdminMailPolicy = "super-admin-website-mail";
 
     internal const int PerClientPermits = 5;
@@ -31,6 +32,8 @@ public static class WebsiteRateLimits
     {
         options.AddPolicy(ContactPolicy, context => PerClientPartition(context, ContactPolicy));
         options.AddPolicy(WaitlistPolicy, context => PerClientPartition(context, WaitlistPolicy));
+        // Geen globale noodrem: echte uitschrijvingen mogen nooit door andermans verkeer geblokkeerd worden.
+        options.AddPolicy(UnsubscribePolicy, context => PerClientPartition(context, UnsubscribePolicy));
         options.AddPolicy(SuperAdminMailPolicy, context => RateLimitPartition.GetFixedWindowLimiter(
             $"{SuperAdminMailPolicy}:{ClientKey(context)}",
             _ => FixedWindow(SuperAdminPermits, SuperAdminWindow)));

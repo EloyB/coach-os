@@ -44,7 +44,7 @@ public sealed class WebsiteWaitlistEndpoint : IEndpoint
             return result.IsSuccess ? Results.Ok(new { ok = true }) : result.ToErrorResult();
         })
         .AllowAnonymous()
-        .RequireRateLimiting("public")
+        .RequireRateLimiting(WebsiteRateLimits.UnsubscribePolicy)
         .AddEndpointFilter<ValidationFilter<UnsubscribeWebsiteWaitlistRequest>>()
         .WithTags("Website");
     }
