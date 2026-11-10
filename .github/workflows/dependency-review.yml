@@ -1,0 +1,23 @@
+name: Dependency Review
+
+# Blokkeert een PR die een pakket met een bekende kwetsbaarheid (high of
+# critical) toevoegt of naar zo'n versie bijwerkt. Kijkt enkel naar wat de PR
+# verandert, niet naar wat al op main staat.
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  dependency-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/dependency-review-action@v5
+        with:
+          fail-on-severity: high
+          comment-summary-in-pr: on-failure
