@@ -8,13 +8,15 @@ namespace CoachOS.Tests.Common;
 [TestFixture]
 public class FormResponseValidatorTests
 {
-    private static (Guid Id, bool IsRequired, string Label) Field(Guid id, bool required, string label) => (id, required, label);
+    private static (Guid Id, bool IsRequired, string Label, IReadOnlyList<string>? AllowedValues) Field(
+        Guid id, bool required, string label, IReadOnlyList<string>? allowed = null)
+        => (id, required, label, allowed);
 
     [Test]
     public void Validate_NoForm_ReturnsNull()
     {
         Error? error = FormResponseValidator.Validate(
-            new List<(Guid, bool, string)>(),
+            new List<(Guid, bool, string, IReadOnlyList<string>?)>(),
             new List<(Guid, string)>());
         error.Should().BeNull();
     }
@@ -60,5 +62,79 @@ public class FormResponseValidatorTests
             new[] { Field(req, true, "Allergieën") },
             new[] { (req, "   ") });
         error.Should().NotBeNull();
+    }
+
+    // ── Choice-value validation (MultipleChoice / AgeCategory) ────────────────
+
+    [Test]
+    public void Validate_ChoiceValueInOptions_ReturnsNull()
+    {
+        Guid age = Guid.NewGuid();
+        Error? error = FormResponseValidator.Validate(
+            new[] { Field(age, true, "Leeftijdscategorie", new[] { "8-10 jaar", "Volwassenen" }) },
+            new[] { (age, "Volwassenen") });
+        error.Should().BeNull();
+    }
+
+    [Test]
+    public void Validate_ChoiceValueNotInOptions_ReturnsValidationError()
+    {
+        Guid age = Guid.NewGuid();
+        Error? error = FormResponseValidator.Validate(
+            new[] { Field(age, true, "Leeftijdscategorie", new[] { "8-10 jaar", "Volwassenen" }) },
+            new[] { (age, "verzonnen-bucket") });
+        error.Should().NotBeNull();
+        error!.Code.Should().Be(ErrorCodes.Validation);
+        error.Message.Should().Be("Ongeldige keuze voor veld 'Leeftijdscategorie'.");
+    }
+
+    [Test]
+    public void Validate_OptionalChoiceLeftEmpty_ReturnsNull()
+    {
+        // An unanswered optional choice field must not trip the option check.
+        Guid choice = Guid.NewGuid();
+        Error? error = FormResponseValidator.Validate(
+            new[] { Field(choice, false, "Niveau", new[] { "Beginner", "Gevorderd" }) },
+            new[] { (choice, "") });
+        error.Should().BeNull();
+    }
+
+    // ── enforceRequired: false (group members) ────────────────────────────────
+
+    [Test]
+    public void Validate_MemberMissingRequired_AllowedWhenNotEnforcingRequired()
+    {
+        // A group member may omit the (required) age answer — the public form does not collect it.
+        Guid age = Guid.NewGuid();
+        Error? error = FormResponseValidator.Validate(
+            new[] { Field(age, true, "Leeftijdscategorie", new[] { "8-10 jaar", "Volwassenen" }) },
+            new List<(Guid, string)>(),
+            enforceRequired: false);
+        error.Should().BeNull();
+    }
+
+    [Test]
+    public void Validate_MemberInvalidBucket_RejectedEvenWhenNotEnforcingRequired()
+    {
+        // But a forged/invalid bucket from a member is still rejected.
+        Guid age = Guid.NewGuid();
+        Error? error = FormResponseValidator.Validate(
+            new[] { Field(age, true, "Leeftijdscategorie", new[] { "8-10 jaar", "Volwassenen" }) },
+            new[] { (age, "verzonnen-bucket") },
+            enforceRequired: false);
+        error.Should().NotBeNull();
+        error!.Message.Should().Be("Ongeldige keuze voor veld 'Leeftijdscategorie'.");
+    }
+
+    [Test]
+    public void Validate_MemberUnknownFieldId_RejectedEvenWhenNotEnforcingRequired()
+    {
+        Guid age = Guid.NewGuid();
+        Error? error = FormResponseValidator.Validate(
+            new[] { Field(age, true, "Leeftijdscategorie", new[] { "8-10 jaar", "Volwassenen" }) },
+            new[] { (Guid.NewGuid(), "8-10 jaar") },
+            enforceRequired: false);
+        error.Should().NotBeNull();
+        error!.Message.Should().Be("Ongeldig formulierveld.");
     }
 }
