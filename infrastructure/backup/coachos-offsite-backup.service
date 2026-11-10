@@ -1,0 +1,48 @@
+# Voorbeeld. Installatie: zie scripts/backup/restore.md (sectie "Installatie").
+# Kopieer naar /etc/systemd/system/.
+[Unit]
+Description=CoachOS versleutelde off-site backup (keyring + database, restic)
+Wants=network-online.target
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+User=coachos-backup
+Group=coachos-backup
+UMask=0077
+EnvironmentFile=/etc/coachos-backup/offsite-backup.env
+Environment=RESTIC_CACHE_DIR=/var/cache/coachos-backup
+CacheDirectory=coachos-backup
+StateDirectory=coachos-backup
+ExecStart=/usr/local/bin/coachos-offsite-backup
+# Netwerk-uploads mogen even duren; daarna hard falen i.p.v. eeuwig hangen.
+TimeoutStartSec=2h
+Nice=10
+IOSchedulingClass=idle
+
+# De keyring staat in een Docker-volume (alleen root mag erin). In plaats van
+# als root te draaien krijgt de backupgebruiker uitsluitend leesrecht op alle
+# bestanden (CAP_DAC_READ_SEARCH); schrijven blijft onmogelijk.
+AmbientCapabilities=CAP_DAC_READ_SEARCH
+CapabilityBoundingSet=CAP_DAC_READ_SEARCH
+
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+SystemCallArchitectures=native
+SystemCallFilter=@system-service

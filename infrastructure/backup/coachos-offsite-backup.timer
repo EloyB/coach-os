@@ -1,0 +1,13 @@
+# Voorbeeld — kopieer naar /etc/systemd/system/ en activeer met
+#   systemctl enable --now coachos-offsite-backup.timer
+[Unit]
+Description=Nachtelijke CoachOS off-site backup
+
+[Timer]
+OnCalendar=*-*-* 03:15:00
+RandomizedDelaySec=30m
+Persistent=true
+Unit=coachos-offsite-backup.service
+
+[Install]
+WantedBy=timers.target
