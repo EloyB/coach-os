@@ -57,6 +57,36 @@
     "clubIndex": 0,
     "password": "Demo1234!"
   },
+  "plainTrainer": {
+    "trainerIndex": 1,
+    "password": "Demo1234!",
+    "availabilities": [
+      {
+        "dayOfWeek": 1,
+        "clubIndex": 0,
+        "startTime": "17:00",
+        "endTime": "21:00"
+      },
+      {
+        "dayOfWeek": 3,
+        "clubIndex": null,
+        "startTime": "09:00",
+        "endTime": "12:00"
+      },
+      {
+        "dayOfWeek": 3,
+        "clubIndex": 1,
+        "startTime": "14:00",
+        "endTime": "18:00"
+      },
+      {
+        "dayOfWeek": 5,
+        "clubIndex": null,
+        "startTime": "10:00",
+        "endTime": "13:00"
+      }
+    ]
+  },
   "simpleSeries": [
     {
       "name": "Voorjaarslessen Beginners",
