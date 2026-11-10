@@ -131,10 +131,12 @@ public class PlayerRetentionAnonymizationPostgresTests : PlayerErasurePostgresBa
         db.EmailOutboxMessages.AddRange(oldSent, recentSent, oldFailed);
         db.MagicLinkTokens.AddRange(expiredLink, validLink);
         await db.SaveChangesAsync();
-        ScheduleAssignment assignment = await SeedAssignmentAsync(db, player);
+        ScheduleAssignment assignment = await SeedAssignmentAsync(db, player, ScheduleAssignmentStatus.Confirmed);
+        ScheduleAssignment waiting = await SeedAssignmentAsync(db, player, ScheduleAssignmentStatus.AwaitingConfirmation);
         AssignmentConfirmationToken oldToken = Token(org, assignment, player.Id, now.AddDays(-31));
         AssignmentConfirmationToken recentToken = Token(org, assignment, player.Id, now.AddDays(-5));
-        db.AssignmentConfirmationTokens.AddRange(oldToken, recentToken);
+        AssignmentConfirmationToken oldUnanswered = Token(org, waiting, player.Id, now.AddDays(-60));
+        db.AssignmentConfirmationTokens.AddRange(oldToken, recentToken, oldUnanswered);
         await db.SaveChangesAsync();
         PrivacyCleanupService service = new(new PrivacyCleanupRepository(db), new UnitOfWork(db), TimeProvider.System);
 
@@ -151,6 +153,8 @@ public class PlayerRetentionAnonymizationPostgresTests : PlayerErasurePostgresBa
         (await db.MagicLinkTokens.AnyAsync(x => x.Id == validLink.Id)).Should().BeTrue();
         (await db.AssignmentConfirmationTokens.AnyAsync(x => x.Id == oldToken.Id)).Should().BeFalse();
         (await db.AssignmentConfirmationTokens.AnyAsync(x => x.Id == recentToken.Id)).Should().BeTrue();
+        (await db.AssignmentConfirmationTokens.AnyAsync(x => x.Id == oldUnanswered.Id))
+            .Should().BeTrue("the non-responder list still needs unanswered links of a waiting assignment");
     }
 
     private static EmailOutboxMessage Mail(Guid org, Guid enrollmentId, string status, DateTime processedAt) => new()
@@ -165,7 +169,8 @@ public class PlayerRetentionAnonymizationPostgresTests : PlayerErasurePostgresBa
         TokenHash = Guid.NewGuid().ToString("N"), ExpiresAt = expiresAt,
     };
 
-    private static async Task<ScheduleAssignment> SeedAssignmentAsync(ApplicationDbContext db, Enrollment player)
+    private static async Task<ScheduleAssignment> SeedAssignmentAsync(
+        ApplicationDbContext db, Enrollment player, ScheduleAssignmentStatus status = ScheduleAssignmentStatus.Confirmed)
     {
         WeeklyTemplateEntry entry = new()
         {
@@ -175,7 +180,7 @@ public class PlayerRetentionAnonymizationPostgresTests : PlayerErasurePostgresBa
         ScheduleAssignment assignment = new()
         {
             OrganizationId = player.OrganizationId, LessonSerieId = player.LessonSerieId!.Value,
-            WeeklyTemplateEntry = entry, EnrollmentId = player.Id,
+            WeeklyTemplateEntry = entry, EnrollmentId = player.Id, Status = status,
         };
         db.ScheduleAssignments.Add(assignment);
         await db.SaveChangesAsync();

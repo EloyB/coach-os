@@ -1,4 +1,5 @@
 using CoachOS.Domain.Entities;
+using CoachOS.Domain.Enums;
 using CoachOS.Domain.Interfaces;
 using CoachOS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -29,7 +30,11 @@ public sealed class PrivacyCleanupRepository(ApplicationDbContext db) : IPrivacy
     public async Task<int> CleanupExpiredConfirmationTokensAsync(DateTime expiredBefore, bool apply, CancellationToken ct = default)
     {
         IQueryable<AssignmentConfirmationToken> query = db.AssignmentConfirmationTokens.IgnoreQueryFilters()
-            .Where(x => x.ExpiresAt < expiredBefore);
+            .Where(x => x.ExpiresAt < expiredBefore)
+            // Onbeantwoorde links van een toewijzing die nog op bevestiging wacht, blijven:
+            // de lijst "niet gereageerd" en het afronden van de reeks lezen ze nog.
+            .Where(x => x.Response != ConfirmationResponse.Pending ||
+                        x.ScheduleAssignment.Status != ScheduleAssignmentStatus.AwaitingConfirmation);
         return apply ? await query.ExecuteDeleteAsync(ct) : await query.CountAsync(ct);
     }
 }

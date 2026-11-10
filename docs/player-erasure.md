@@ -57,7 +57,7 @@ Platformbreed, dagelijks, enkel op leeftijd en status (`PrivacyCleanupPolicy`):
 
 - verstuurde outboxmails (`completed`), 30 dagen na verzending — mislukte mails blijven voor onderzoek;
 - inloglinks voor spelers (bevatten een e-mailadres), zodra verlopen;
-- bevestigingslinks voor lesmomenten, 30 dagen na het verlopen (beantwoorde, nog geldige links blijven: de planning leest er de status uit).
+- bevestigingslinks voor lesmomenten, 30 dagen na het verlopen. Beantwoorde, nog geldige links blijven (de planning leest er de status uit), en ook onbeantwoorde links van een toewijzing die nog op bevestiging wacht (de lijst "niet gereageerd" en het afronden van de reeks hebben ze nodig).
 
 ### Aanzetten op productie
 
