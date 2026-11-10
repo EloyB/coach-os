@@ -14,6 +14,7 @@ import {
 import { NativeSelect } from "@/components/ui/native-select";
 import { btnSecondary, inputClass } from "@/lib/styles";
 import { getAxiosErrorMessages } from "@/lib/utils/api-errors";
+import { isAboutErasedEnrollment } from "@/lib/erasure-queries";
 import {
   erasePlayer,
   getPlayerErasurePreview,
@@ -104,8 +105,13 @@ function ErasureBody({ kind, preview, onCancel, onErased, onStale }: ErasureBody
       }),
     onSuccess: () => {
       toast.success(t("done"));
-      queryClient.invalidateQueries();
       onErased();
+      // Alles vernieuwen behalve queries over de net verwijderde inschrijving: het
+      // (nog open) overzicht zou anders opnieuw laden, een 404 krijgen en de globale
+      // API-interceptor een foutmelding laten tonen naast "Speler verwijderd".
+      void queryClient.invalidateQueries({
+        predicate: (query) => !isAboutErasedEnrollment(query.queryKey, preview.enrollmentId),
+      });
     },
     // De foutmelding zelf toont de globale API-interceptor al als toast; hier alleen het
     // overzicht vernieuwen zodat nieuwe blokkades meteen zichtbaar worden.
