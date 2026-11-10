@@ -65,7 +65,7 @@ export function TrainerAvailabilityDialog({
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent
-        className="max-w-4xl max-h-[90vh] overflow-y-auto"
+        className="sm:max-w-4xl overflow-y-auto"
         aria-describedby={undefined}
         // Voorkom dat Radix bij openen de eerste focusbare control autofocust.
         onOpenAutoFocus={(e) => e.preventDefault()}
