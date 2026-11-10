@@ -1,0 +1,90 @@
+# Dependabot: wekelijkse update-PR's per onderdeel, gegroepeerd zodat het
+# beheersbaar blijft. Beveiligingsupdates (Dependabot security updates) komen
+# los van dit schema, zodra er een melding is.
+#
+# cooldown: nieuwe versies pas voorstellen als ze een tijd uit zijn. Zo vangen
+# we gekaapte of teruggetrokken releases op voor ze bij ons terechtkomen.
+# Geldt niet voor beveiligingsupdates.
+version: 2
+
+updates:
+  - package-ecosystem: nuget
+    directory: /backend
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Europe/Brussels
+    cooldown:
+      default-days: 14
+    open-pull-requests-limit: 5
+    groups:
+      backend-minor-patch:
+        update-types: [minor, patch]
+    labels: [dependencies, backend]
+
+  - package-ecosystem: bun
+    directory: /frontend
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Europe/Brussels
+    cooldown:
+      default-days: 14
+    open-pull-requests-limit: 5
+    groups:
+      frontend-minor-patch:
+        update-types: [minor, patch]
+    labels: [dependencies, frontend]
+
+  - package-ecosystem: bun
+    directory: /website
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Europe/Brussels
+    cooldown:
+      default-days: 14
+    open-pull-requests-limit: 5
+    groups:
+      website-minor-patch:
+        update-types: [minor, patch]
+    labels: [dependencies, website]
+
+  - package-ecosystem: docker
+    directories: [/backend, /frontend, /website]
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Europe/Brussels
+    cooldown:
+      default-days: 14
+    groups:
+      base-images:
+        patterns: ["*"]
+    labels: [dependencies, docker]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Europe/Brussels
+    cooldown:
+      default-days: 14
+    groups:
+      github-actions:
+        patterns: ["*"]
+    labels: [dependencies, ci]
+
+  - package-ecosystem: terraform
+    directory: /infrastructure/terraform
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Europe/Brussels
+    cooldown:
+      default-days: 14
+    groups:
+      terraform-providers:
+        patterns: ["*"]
+    labels: [dependencies, infra]
