@@ -1,5 +1,5 @@
-# Voorbeeld. Installatie: zie scripts/backup/restore.md (sectie "Installatie").
-# Kopieer naar /etc/systemd/system/.
+# Geïnstalleerd door infrastructure/backup/install-offsite-backup.sh
+# (via .github/workflows/offsite-backup.yml). Niet met de hand kopiëren.
 [Unit]
 Description=CoachOS versleutelde off-site backup (keyring + database, restic)
 Wants=network-online.target

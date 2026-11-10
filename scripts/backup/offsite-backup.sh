@@ -9,7 +9,7 @@
 #                                     schrijft niets (alias: --dry-run)
 #
 # Alle configuratie komt uit de omgeving (systemd EnvironmentFile), zie
-# infrastructure/backup/offsite-backup.env.example. Geen secrets op argv of in
+# infrastructure/terraform/offsite-backup.tf (offsite-backup-env). Geen secrets op argv of in
 # de logs: restic leest het wachtwoord uit RESTIC_PASSWORD_FILE, pg_dump leest
 # PGPASSWORD/PGPASSFILE uit de omgeving. Alle stderr gaat naar de journal.
 #

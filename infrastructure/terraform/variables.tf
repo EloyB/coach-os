@@ -90,3 +90,15 @@ variable "jwt_expiry_minutes" {
   type        = number
   default     = 60
 }
+
+variable "offsite_backup_region" {
+  description = "Regio van de off-site backupbucket. Bewust een andere regio dan de database (scw_region)."
+  type        = string
+  default     = "nl-ams"
+}
+
+variable "offsite_backup_bucket_name" {
+  description = "Naam van de off-site backupbucket (wereldwijd uniek binnen Scaleway Object Storage)."
+  type        = string
+  default     = "coach-os-offsite-backup"
+}

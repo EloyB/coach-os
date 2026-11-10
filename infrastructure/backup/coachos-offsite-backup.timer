@@ -1,5 +1,4 @@
-# Voorbeeld — kopieer naar /etc/systemd/system/ en activeer met
-#   systemctl enable --now coachos-offsite-backup.timer
+# Geïnstalleerd en geactiveerd door infrastructure/backup/install-offsite-backup.sh.
 [Unit]
 Description=Nachtelijke CoachOS off-site backup
 
