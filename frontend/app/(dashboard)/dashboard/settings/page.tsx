@@ -30,6 +30,7 @@ import { inputClass } from "@/lib/styles";
 import { OrganizationSection } from "./organization-section";
 import { MollieSection } from "./mollie-section";
 import { SubscriptionLinkCard } from "./subscription-link-card";
+import { ClubExportCard } from "./club-export-card";
 
 // ─── Form Schema ──────────────────────────────────────────────────────────────
 
@@ -158,6 +159,9 @@ export default function SettingsPage() {
 
       {/* Abonnement */}
       <SubscriptionLinkCard />
+
+      {/* Clubgegevens exporteren */}
+      <ClubExportCard />
 
       {/* Organisatie-instellingen */}
       <OrganizationSection />
