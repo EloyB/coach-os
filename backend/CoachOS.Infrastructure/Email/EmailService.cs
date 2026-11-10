@@ -46,6 +46,22 @@ public class EmailService(
         await SendAsync(email, "", "Je staat op de CoachOS-wachtlijst", html, ct, privateDelivery: true);
     }
 
+    public async Task SendWebsiteContactNotificationAsync(
+        string toEmail, WebsiteContactNotification notification, CancellationToken ct = default)
+    {
+        // Renderer HTML-encodeert elke token: de inhoud komt van een publiek formulier.
+        string html = renderer.Render("website-contact-notification", new Dictionary<string, string>
+        {
+            ["name"] = notification.Name,
+            ["email"] = notification.Email,
+            ["organization"] = notification.Organization ?? "-",
+            ["message"] = notification.Message,
+            ["receivedAt"] = notification.ReceivedAtUtc.ToString("dd/MM/yyyy HH:mm", System.Globalization.CultureInfo.InvariantCulture),
+        });
+        // Onderwerp zonder persoonsgegevens: het verschijnt in de verzendlog.
+        await SendAsync(toEmail, "CoachOS", "Nieuw contactbericht via coach-os.be", html, ct);
+    }
+
     public async Task SendTrainerInviteAsync(
         string toEmail, string firstName, string inviteUrl, CancellationToken ct = default)
     {

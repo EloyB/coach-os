@@ -7,9 +7,10 @@ namespace CoachOS.Infrastructure.Repositories;
 
 public sealed class WebsiteContactRepository(ApplicationDbContext db) : IWebsiteContactRepository
 {
-    public async Task AddAsync(WebsiteContactEntry entry, CancellationToken ct) => await db.WebsiteContactEntries.AddAsync(entry, ct);
-    public Task<int> CleanupAsync(DateTime now, CancellationToken ct) => db.Database.ExecuteSqlInterpolatedAsync($"""
-        DELETE FROM "WebsiteContactEntries"
-        WHERE ("CreatedAt" AT TIME ZONE 'UTC') + INTERVAL '12 months' <= ({now} AT TIME ZONE 'UTC')
-        """, ct);
+    public async Task AddAsync(WebsiteContactEntry entry, CancellationToken ct = default)
+        => await db.WebsiteContactEntries.AddAsync(entry, ct);
+
+    // Eenvoudige vergelijking op de kolom zelf, zodat de CreatedAt-index bruikbaar blijft.
+    public Task<int> DeleteReceivedOnOrBeforeAsync(DateTime cutoffUtc, CancellationToken ct = default)
+        => db.WebsiteContactEntries.Where(x => x.CreatedAt <= cutoffUtc).ExecuteDeleteAsync(ct);
 }

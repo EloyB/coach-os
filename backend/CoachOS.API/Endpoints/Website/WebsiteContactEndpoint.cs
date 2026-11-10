@@ -1,5 +1,8 @@
+using CoachOS.API.Extensions;
 using CoachOS.API.Filters;
 using CoachOS.Application.WebsiteContact;
+using CoachOS.Application.WebsiteContact.DTOs;
+using CoachOS.Domain.Models;
 
 namespace CoachOS.API.Endpoints.Website;
 
@@ -7,12 +10,17 @@ public sealed class WebsiteContactEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapPost("/website/contact", async (SubmitWebsiteContactRequest request, IWebsiteContactService service, HttpContext context, CancellationToken ct) =>
+        // Publiek formulier van de marketingsite: bewust anoniem, wel per IP begrensd.
+        app.MapPost("/website/contact", async (SubmitWebsiteContactRequest request,
+            IWebsiteContactService service, HttpContext context, CancellationToken ct) =>
         {
             context.Response.Headers.CacheControl = "no-store";
-            await service.SubmitAsync(request, ct);
-            return Results.Ok(new { ok = true });
-        }).AllowAnonymous().RequireRateLimiting("website-contact")
-            .AddEndpointFilter<ValidationFilter<SubmitWebsiteContactRequest>>().WithTags("Website");
+            Result result = await service.SubmitAsync(request, ct);
+            return result.IsSuccess ? Results.Ok(new { ok = true }) : result.ToErrorResult();
+        })
+        .AllowAnonymous()
+        .RequireRateLimiting(WebsiteRateLimits.ContactPolicy)
+        .AddEndpointFilter<ValidationFilter<SubmitWebsiteContactRequest>>()
+        .WithTags("Website");
     }
 }

@@ -68,6 +68,7 @@ public static class DependencyInjection
         services.Configure<RegistrationOptions>(configuration.GetSection(RegistrationOptions.Section));
         services.Configure<BillingOptions>(configuration.GetSection(BillingOptions.Section));
         services.Configure<SuperAdminOptions>(configuration.GetSection(SuperAdminOptions.Section));
+        services.Configure<WebsiteOptions>(configuration.GetSection(WebsiteOptions.Section));
 
         // TimeProvider is in .NET 8+ ingebouwd; testen kunnen FakeTimeProvider injecteren.
         services.AddSingleton(TimeProvider.System);

@@ -1,5 +1,7 @@
 using CoachOS.Application.Abstractions;
+using CoachOS.Application.WebsiteContact;
 using CoachOS.Application.WebsiteWaitlist;
+using CoachOS.Application.WebsiteWaitlist.DTOs;
 using CoachOS.Domain.Entities;
 using CoachOS.Infrastructure.Email;
 using CoachOS.Infrastructure.Persistence;
@@ -14,6 +16,10 @@ using NUnit.Framework;
 
 namespace CoachOS.Tests.Services;
 
+/// <summary>
+/// Integratie tegen echte PostgreSQL (advisory locks, unieke indexen, ExecuteDelete); opt-in via
+/// COACHOS_TEST_PG. Pure logica staat in WebsiteWaitlistServiceTests en draait altijd.
+/// </summary>
 [TestFixture, NonParallelizable]
 public class WebsiteWaitlistTests
 {
@@ -34,7 +40,7 @@ public class WebsiteWaitlistTests
     public async Task CreateDatabase()
     {
         _admin = Environment.GetEnvironmentVariable("COACHOS_TEST_PG");
-        if (string.IsNullOrWhiteSpace(_admin)) Assert.Ignore("COACHOS_TEST_PG not set; isolated PostgreSQL required");
+        if (string.IsNullOrWhiteSpace(_admin)) Assert.Ignore("COACHOS_TEST_PG niet gezet: PostgreSQL-integratietests overgeslagen.");
         _database = "waitlist_" + Guid.NewGuid().ToString("N");
         await using NpgsqlConnection admin = new(_admin);
         await admin.OpenAsync();
@@ -67,7 +73,7 @@ public class WebsiteWaitlistTests
     }
 
     [Test]
-    public async Task ContactAnniversaryUsesUtcEvenWhenDatabaseSessionUsesDstZone()
+    public async Task ContactCleanupIsUtcEvenWhenDatabaseSessionUsesDstZone()
     {
         _clock = new(new DateTimeOffset(2025, 3, 30, 11, 30, 0, TimeSpan.Zero));
         await using ApplicationDbContext db = Db();
@@ -76,7 +82,7 @@ public class WebsiteWaitlistTests
         db.WebsiteContactEntries.Add(new WebsiteContactEntry { Name = "DST", Email = "dst@example.test", Message = "Synthetic DST contact" });
         await db.SaveChangesAsync();
         await db.WebsiteContactEntries.Where(x => x.Email == "dst@example.test").ExecuteUpdateAsync(s => s.SetProperty(x => x.CreatedAt, new DateTime(2024, 3, 30, 12, 0, 0, DateTimeKind.Utc)));
-        await WebsiteWaitlistMailWorker.ProcessNextAsync(db, new Mock<IEmailService>().Object, _clock, NullLogger.Instance, default);
+        await new WebsiteContactRepository(db).DeleteReceivedOnOrBeforeAsync(WebsiteContactRetention.CutoffFor(_clock.GetUtcNow().UtcDateTime), default);
         (await db.WebsiteContactEntries.CountAsync()).Should().Be(1, "UTC receipt anniversary is still thirty minutes away");
     }
 
@@ -88,7 +94,7 @@ public class WebsiteWaitlistTests
         db.WebsiteContactEntries.Add(new WebsiteContactEntry { Name = "Leap", Email = "leap@example.test", Message = "Synthetic leap contact" });
         await db.SaveChangesAsync();
         await db.WebsiteContactEntries.Where(x => x.Email == "leap@example.test").ExecuteUpdateAsync(s => s.SetProperty(x => x.CreatedAt, new DateTime(2024, 2, 29, 12, 0, 0, DateTimeKind.Utc)));
-        await WebsiteWaitlistMailWorker.ProcessNextAsync(db, new Mock<IEmailService>().Object, _clock, NullLogger.Instance, default);
+        await new WebsiteContactRepository(db).DeleteReceivedOnOrBeforeAsync(WebsiteContactRetention.CutoffFor(_clock.GetUtcNow().UtcDateTime), default);
         (await db.WebsiteContactEntries.CountAsync()).Should().Be(0);
     }
 
@@ -104,7 +110,7 @@ public class WebsiteWaitlistTests
         // Audit fields are stamped on insert; age fixtures through actual PostgreSQL.
         await db.WebsiteContactEntries.Where(x => x.Email == "old@example.test").ExecuteUpdateAsync(s => s.SetProperty(x => x.CreatedAt, now.AddMonths(-12)).SetProperty(x => x.UpdatedAt, now));
         await db.WebsiteContactEntries.Where(x => x.Email == "fresh@example.test").ExecuteUpdateAsync(s => s.SetProperty(x => x.CreatedAt, now.AddMonths(-12).AddTicks(10)));
-        await WebsiteWaitlistMailWorker.ProcessNextAsync(db, new Mock<IEmailService>().Object, _clock, NullLogger.Instance, default);
+        await new WebsiteContactRepository(db).DeleteReceivedOnOrBeforeAsync(WebsiteContactRetention.CutoffFor(_clock.GetUtcNow().UtcDateTime), default);
         (await db.WebsiteContactEntries.Select(x => x.Email).ToListAsync()).Should().Equal("fresh@example.test");
         await db.WebsiteContactEntries.ExecuteDeleteAsync();
     }
@@ -115,7 +121,7 @@ public class WebsiteWaitlistTests
         await Task.WhenAll(Enumerable.Range(0, 8).Select(async _ =>
         {
             await using ApplicationDbContext db = Db();
-            (await Service(db).RegisterAsync(new("OWNER@example.test", "club"), default)).Should().BeTrue();
+            (await Service(db).RegisterAsync(new("OWNER@example.test", "club"), default)).IsSuccess.Should().BeTrue();
         }));
         await using ApplicationDbContext verify = Db();
         WebsiteWaitlistEntry entry = await verify.WebsiteWaitlistEntries.SingleAsync();
@@ -194,7 +200,7 @@ public class WebsiteWaitlistTests
         await using ApplicationDbContext db = Db();
         await Service(db).RegisterAsync(new("before@example.test"), default);
         _clock.Advance(WebsiteWaitlistService.RetentionDeadline - _clock.GetUtcNow().UtcDateTime);
-        (await Service(db).RegisterAsync(new("after@example.test"), default)).Should().BeFalse();
+        (await Service(db).RegisterAsync(new("after@example.test"), default)).IsSuccess.Should().BeFalse();
         Mock<IEmailService> sender = new();
         await WebsiteWaitlistMailWorker.ProcessNextAsync(db, sender.Object, _clock, NullLogger.Instance, default);
         (await db.WebsiteWaitlistEntries.CountAsync()).Should().Be(0);
@@ -229,21 +235,16 @@ public class WebsiteWaitlistTests
         }
         await using (ApplicationDbContext dry = Db())
         {
-            (await Service(dry).QueueManagedMailAsync(id, false, default)).Should().Be(new ManagedWebsiteWaitlistMailResult(true, false));
+            (await Service(dry).QueueManagedMailAsync(id, false, default)).Value.Should().Be(new ManagedWebsiteWaitlistMailResult(true, false));
             (await dry.WebsiteWaitlistMails.CountAsync()).Should().Be(0);
         }
         await using (ApplicationDbContext apply = Db())
-            (await Service(apply).QueueManagedMailAsync(id, true, default)).Queued.Should().BeTrue();
+            (await Service(apply).QueueManagedMailAsync(id, true, default)).Value!.Queued.Should().BeTrue();
         await using (ApplicationDbContext twice = Db())
         {
-            (await Service(twice).QueueManagedMailAsync(id, true, default)).Queued.Should().BeFalse();
+            (await Service(twice).QueueManagedMailAsync(id, true, default)).Value!.Queued.Should().BeFalse();
             (await twice.WebsiteWaitlistMails.CountAsync()).Should().Be(1);
         }
     }
 
-    [TestCase("bad", "club", false)]
-    [TestCase("safe@example.test", "https://attacker.invalid", false)]
-    [TestCase("safe@example.test", "anders", true)]
-    public void RegistrationValidatorRestrictsPayload(string email, string role, bool valid) =>
-        new RegisterWebsiteWaitlistValidator().Validate(new RegisterWebsiteWaitlistRequest(email, role)).IsValid.Should().Be(valid);
 }

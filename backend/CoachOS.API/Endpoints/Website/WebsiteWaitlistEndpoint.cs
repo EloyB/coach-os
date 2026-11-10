@@ -1,5 +1,8 @@
+using CoachOS.API.Extensions;
 using CoachOS.API.Filters;
 using CoachOS.Application.WebsiteWaitlist;
+using CoachOS.Application.WebsiteWaitlist.DTOs;
+using CoachOS.Domain.Models;
 
 namespace CoachOS.API.Endpoints.Website;
 
@@ -11,34 +14,34 @@ public sealed class WebsiteWaitlistEndpoint : IEndpoint
             IWebsiteWaitlistService service, HttpContext context, CancellationToken ct) =>
         {
             context.Response.Headers.CacheControl = "no-store";
-            bool accepted = await service.RegisterAsync(request, ct);
-            return accepted ? Results.Ok(new { ok = true }) : Results.StatusCode(410);
+            Result result = await service.RegisterAsync(request, ct);
+            return result.IsSuccess ? Results.Ok(new { ok = true }) : result.ToErrorResult();
         })
         .AllowAnonymous()
-        .RequireRateLimiting("website-waitlist")
+        .RequireRateLimiting(WebsiteRateLimits.WaitlistPolicy)
         .AddEndpointFilter<ValidationFilter<RegisterWebsiteWaitlistRequest>>()
         .WithTags("Website");
 
-        // Operator-only, one existing entry by ID, dry-run unless explicitly applied.
-        // No public resend/token issuance and no arbitrary recipient/body/URL.
+        // Enkel superadmin, een bestaande entry per ID, standaard dry-run.
         app.MapPost("/super-admin/website-waitlist/{entryId:guid}/mail", async (Guid entryId,
             ManagedWebsiteWaitlistMailRequest request, IWebsiteWaitlistService service,
             HttpContext context, CancellationToken ct) =>
         {
             context.Response.Headers.CacheControl = "no-store";
-            return Results.Ok(await service.QueueManagedMailAsync(entryId, request.Apply, ct));
+            Result<ManagedWebsiteWaitlistMailResult> result = await service.QueueManagedMailAsync(entryId, request.Apply, ct);
+            return result.IsSuccess ? Results.Ok(result.Value) : result.ToErrorResult();
         })
         .RequireAuthorization(CoachOS.API.Auth.AuthorizationPolicies.SuperAdmin)
-        .RequireRateLimiting("website-waitlist")
+        .RequireRateLimiting(WebsiteRateLimits.SuperAdminMailPolicy)
         .WithTags("Website");
 
-        // No GET route: link scanners and prefetch cannot delete an entry.
+        // Geen GET-route: linkscanners en prefetch kunnen niets verwijderen.
         app.MapPost("/website/waitlist/unsubscribe", async (UnsubscribeWebsiteWaitlistRequest request,
             IWebsiteWaitlistService service, HttpContext context, CancellationToken ct) =>
         {
             context.Response.Headers.CacheControl = "no-store";
-            await service.UnsubscribeAsync(request, ct);
-            return Results.Ok(new { ok = true });
+            Result result = await service.UnsubscribeAsync(request, ct);
+            return result.IsSuccess ? Results.Ok(new { ok = true }) : result.ToErrorResult();
         })
         .AllowAnonymous()
         .RequireRateLimiting("public")
