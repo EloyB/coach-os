@@ -21,5 +21,5 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  return postWaitlist("", { email: parsed.data.email, ...(parsed.data.role ? { role: parsed.data.role } : {}) });
+  return postWaitlist(req, "", { email: parsed.data.email, ...(parsed.data.role ? { role: parsed.data.role } : {}) });
 }

@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
+import { forwardedClientHeaders } from "./client-ip";
 
-// Fixed server-only endpoint. Never forward auth, client IP, or upstream bodies.
-export async function postContact(payload: object) {
+// Vaste server-only endpoint. Nooit auth-headers of upstream-bodies doorgeven.
+export async function postContact(req: Request, payload: object) {
   try {
     const base = process.env.WEBSITE_API_URL || "http://api:8080/api";
     const response = await fetch(`${base.replace(/\/$/, "")}/website/contact`, {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...forwardedClientHeaders(req) },
+      body: JSON.stringify(payload),
       cache: "no-store", signal: AbortSignal.timeout(10_000),
     });
     const status = response.ok ? 200 : [400, 429].includes(response.status) ? response.status : 503;

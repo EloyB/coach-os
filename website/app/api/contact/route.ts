@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  return postContact({
+  return postContact(req, {
     name: parsed.data.name, email: parsed.data.email,
     message: parsed.data.message, organization: parsed.data.organization,
   });
