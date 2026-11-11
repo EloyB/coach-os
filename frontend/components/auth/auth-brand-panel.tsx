@@ -34,14 +34,14 @@ export function AuthBrandPanel({
 
       <div className="relative z-10">
         <SlashLabel className="text-tennis-lime mb-2.5">{eyebrow}</SlashLabel>
-        <h1 className="text-[34px] font-extrabold text-white leading-[1.05] tracking-tight mb-3">
+        <h1 className="text-[42px] font-extrabold text-white leading-[1.05] tracking-tight mb-3">
           {headline[0]}
           <br />
           {headline[1]}
           <br />
           <span className="text-tennis-lime">{headline[2]}</span>
         </h1>
-        <p className="text-[13px] text-[#a8a195] max-w-[300px] leading-relaxed">{tagline}</p>
+        <p className="text-base text-[#a8a195] max-w-[460px] leading-relaxed">{tagline}</p>
       </div>
 
       <div className="relative z-10">{children}</div>

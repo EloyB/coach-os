@@ -70,12 +70,12 @@ export default function StudentLoginPage() {
           <SlashLabel className="text-tennis-lime mb-2.5">
             /leerlingen
           </SlashLabel>
-          <h1 className="text-[34px] font-extrabold text-white leading-[1.05] tracking-tight mb-3">
+          <h1 className="text-[42px] font-extrabold text-white leading-[1.05] tracking-tight mb-3">
             {t("heroLine1")}
             <br />
             <span className="text-tennis-lime">{t("heroLine2")}</span>
           </h1>
-          <p className="text-[13px] text-[#a8a195] max-w-[300px] leading-relaxed">
+          <p className="text-base text-[#a8a195] max-w-[460px] leading-relaxed">
             {t("tagline")}
           </p>
         </div>
