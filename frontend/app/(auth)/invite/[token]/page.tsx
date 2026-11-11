@@ -136,9 +136,9 @@ export default function InvitePage({
         />
 
         {/* Logo */}
-        <div className="relative z-10 flex items-center gap-2.5">
-          <LogoMark className="h-[30px] w-[30px]" markPx={22} />
-          <span className="text-white font-bold text-base">CoachOS</span>
+        <div className="relative z-10 flex items-center gap-3">
+          <LogoMark className="h-[44px] w-[44px] rounded-lg" markPx={32} />
+          <span className="text-white font-bold text-xl">CoachOS</span>
         </div>
 
         {/* Hero copy */}

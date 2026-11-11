@@ -124,16 +124,13 @@ function LoginForm() {
         />
 
         {/* Logo */}
-        <div className="relative z-10 flex items-center gap-2.5">
-          <LogoMark className="h-[30px] w-[30px]" markPx={22} />
-          <span className="text-white font-bold text-base">CoachOS</span>
+        <div className="relative z-10 flex items-center gap-3">
+          <LogoMark className="h-[44px] w-[44px] rounded-lg" markPx={32} />
+          <span className="text-white font-bold text-xl">CoachOS</span>
         </div>
 
         {/* Hero copy */}
         <div className="relative z-10">
-          <SlashLabel className="text-tennis-lime mb-2.5">
-            {t("heroRelease")}
-          </SlashLabel>
           <h1 className="text-[34px] font-extrabold text-white leading-[1.05] tracking-tight mb-3">
             {t("heroHeadline1")}
             <br />
