@@ -10,7 +10,6 @@ import * as z from "zod";
 import { requestMagicLink } from "@/lib/api/auth";
 import { CourtLines } from "@/components/ui/court-lines";
 import { LogoMark } from "@/components/ui/logo-mark";
-import { Mono } from "@/components/ui/mono";
 import { SlashLabel } from "@/components/ui/slash-label";
 import {
   Form,
@@ -61,12 +60,9 @@ export default function StudentLoginPage() {
         />
 
         {/* Logo */}
-        <div className="relative z-10 flex items-center gap-2.5">
-          <LogoMark className="h-[30px] w-[30px]" markPx={22} />
-          <span className="text-white font-bold text-base">CoachOS</span>
-          <Mono className="ml-auto text-[10.5px] text-[#8a8377]">
-            {tAuth("heroVersion")}
-          </Mono>
+        <div className="relative z-10 flex items-center gap-3">
+          <LogoMark className="h-[44px] w-[44px] rounded-lg" markPx={32} />
+          <span className="text-white font-bold text-xl">CoachOS</span>
         </div>
 
         {/* Hero copy — student-focused */}
@@ -74,12 +70,12 @@ export default function StudentLoginPage() {
           <SlashLabel className="text-tennis-lime mb-2.5">
             /leerlingen
           </SlashLabel>
-          <h1 className="text-[34px] font-extrabold text-white leading-[1.05] tracking-tight mb-3">
+          <h1 className="text-[42px] font-extrabold text-white leading-[1.05] tracking-tight mb-3">
             {t("heroLine1")}
             <br />
             <span className="text-tennis-lime">{t("heroLine2")}</span>
           </h1>
-          <p className="text-[13px] text-[#a8a195] max-w-[300px] leading-relaxed">
+          <p className="text-base text-[#a8a195] max-w-[460px] leading-relaxed">
             {t("tagline")}
           </p>
         </div>
