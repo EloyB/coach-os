@@ -123,13 +123,10 @@ function LoginForm() {
           style={{ background: "radial-gradient(closest-side, rgba(45,80,22,.55), transparent)" }}
         />
 
-        {/* Logo + version */}
+        {/* Logo */}
         <div className="relative z-10 flex items-center gap-2.5">
           <LogoMark className="h-[30px] w-[30px]" markPx={22} />
           <span className="text-white font-bold text-base">CoachOS</span>
-          <Mono className="ml-auto text-[10.5px] text-[#8a8377]">
-            {t("heroVersion")}
-          </Mono>
         </div>
 
         {/* Hero copy */}

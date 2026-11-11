@@ -155,7 +155,6 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen flex">
       <AuthBrandPanel
-        version={t("heroVersion")}
         eyebrow={t("registerEyebrow")}
         headline={[t("registerHeroLine1"), t("registerHeroLine2"), t("registerHeroLine3")]}
         tagline={t("registerTagline")}

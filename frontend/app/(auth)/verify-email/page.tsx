@@ -127,7 +127,6 @@ function VerifyEmailForm() {
   return (
     <div className="min-h-screen flex">
       <AuthBrandPanel
-        version={t("heroVersion")}
         eyebrow={t("registerEyebrow")}
         headline={[t("verifyHeroLine1"), t("verifyHeroLine2"), t("verifyHeroLine3")]}
         tagline={t("verifyTagline")}
