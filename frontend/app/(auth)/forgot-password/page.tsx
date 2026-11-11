@@ -130,25 +130,6 @@ export default function ForgotPasswordPage() {
           </p>
         </div>
 
-        {/* Testimonial */}
-        <div className="relative z-10 p-4 bg-white/[.04] rounded-[10px] border border-white/[.08]">
-          <p className="text-[13px] leading-relaxed text-[#e9e4db] font-medium m-0">
-            &ldquo;{t("testimonialQuote")}&rdquo;
-          </p>
-          <div className="flex items-center gap-2.5 mt-3">
-            <div className="w-6 h-6 rounded-full bg-tennis-lime grid place-items-center">
-              <Mono className="text-ink text-[10px] font-bold">SD</Mono>
-            </div>
-            <div>
-              <p className="text-[11px] text-white font-semibold m-0">
-                {t("testimonialName")}
-              </p>
-              <Mono className="text-[10.5px] text-[#8a8377]">
-                {t("testimonialClub")}
-              </Mono>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Right panel — form */}
