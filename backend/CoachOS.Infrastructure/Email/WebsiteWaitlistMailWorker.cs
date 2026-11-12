@@ -64,8 +64,11 @@ public sealed class WebsiteWaitlistMailWorker(
     private async Task RunMailIterationAsync(CancellationToken ct)
     {
         await using AsyncServiceScope scope = scopes.CreateAsyncScope();
+        // Rechtstreeks via SMTP: deze worker is zelf al een duurzame wachtrij met eigen
+        // pogingen en markeert een mail pas als verstuurd na echte aflevering. Via
+        // IEmailService zou hij enkel in de outbox belanden en te vroeg als verstuurd gelden.
         await ProcessNextAsync(scope.ServiceProvider.GetRequiredService<ApplicationDbContext>(),
-            scope.ServiceProvider.GetRequiredService<IEmailService>(), clock, logger, ct);
+            scope.ServiceProvider.GetRequiredService<EmailService>(), clock, logger, ct);
     }
 
     internal static async Task ProcessNextAsync(ApplicationDbContext db, IEmailService emailService,
