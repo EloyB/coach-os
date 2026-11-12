@@ -51,7 +51,7 @@ public class PlayerErasurePostgresTests : PlayerErasurePostgresBase
         Enrollment player = Solo(org, Today.AddDays(1));
         db.Enrollments.Add(player);
         await db.SaveChangesAsync();
-        db.EmailOutboxMessages.Add(new EmailOutboxMessage { OrganizationId = org, EnrollmentId = player.Id, Payload = "{}", Status = EmailOutboxStatuses.Failed });
+        db.EmailOutboxMessages.Add(new EmailOutboxMessage { OrganizationId = org, EnrollmentId = player.Id, Payload = "{}", Status = EmailOutboxStatuses.Pending });
         await db.SaveChangesAsync();
         Guid admin = await SeedAdminAsync(db, org);
 
@@ -266,22 +266,50 @@ public class PlayerErasurePostgresTests : PlayerErasurePostgresBase
     }
 
     [Test]
-    public async Task Preview_UnlinkedFailedMailToCamper_Blocks()
+    public async Task Preview_UnlinkedMailBeingSent_Blocks()
     {
-        // Een definitief mislukte mail houdt zijn inhoud (naam, adres): wissen mag dan niet doorgaan.
+        // De worker is deze mail net aan het versturen: even wachten, niet wissen.
+        Guid org = Guid.NewGuid();
+        await using ApplicationDbContext db = Db();
+        Enrollment player = Solo(org, Today.AddYears(-3));
+        db.Enrollments.Add(player);
+        db.EmailOutboxMessages.Add(UnlinkedMail(org, "solo@example.test", EmailOutboxStatuses.Processing));
+        await db.SaveChangesAsync();
+        Guid admin = await SeedAdminAsync(db, org);
+
+        PlayerErasurePreviewDto preview = (await Service(db).PreviewAsync(org, admin, Lesson, player.Id)).Value!;
+
+        preview.BlockingReasons.Should().Equal(PlayerErasureBlockReasons.PendingMail);
+    }
+
+    [Test]
+    public async Task Erase_FailedMailToCamper_DoesNotBlockAndIsDeletedWithTheCamper()
+    {
+        // Een definitief mislukte mail wordt nooit meer verstuurd maar houdt naam en adres bij.
+        // Blokkeren zou het wissen voorgoed tegenhouden; daarom gaat hij mee weg.
         Guid org = Guid.NewGuid();
         await using ApplicationDbContext db = Db();
         Enrollment blueprint = Solo(org, Today.AddYears(-3));
         Camp camp = new() { Organization = blueprint.Organization, TennisClub = blueprint.LessonSerie!.TennisClub, Name = "Old camp", StartDate = Today.AddYears(-3).AddDays(-5), EndDate = Today.AddYears(-3) };
         CampEnrollment camper = new() { OrganizationId = org, Camp = camp, ParticipantName = "Camper", ParticipantEmail = "camper@example.test", Status = EnrollmentStatus.Confirmed };
         db.CampEnrollments.Add(camper);
-        db.EmailOutboxMessages.Add(UnlinkedMail(org, "camper@example.test", EmailOutboxStatuses.Failed));
+        await db.SaveChangesAsync();
+        EmailOutboxMessage unlinked = UnlinkedMail(org, "camper@example.test", EmailOutboxStatuses.Failed);
+        EmailOutboxMessage linked = new() { OrganizationId = org, EnrollmentId = camper.Id, Type = "enrollment-confirmation", Payload = "{}", Status = EmailOutboxStatuses.Failed };
+        db.EmailOutboxMessages.AddRange(unlinked, linked);
         await db.SaveChangesAsync();
         Guid admin = await SeedAdminAsync(db, org);
+        PlayerErasureService service = Service(db);
 
-        PlayerErasurePreviewDto preview = (await Service(db).PreviewAsync(org, admin, PrivacyErasureKind.CampEnrollment, camper.Id)).Value!;
+        PlayerErasurePreviewDto preview = (await service.PreviewAsync(org, admin, PrivacyErasureKind.CampEnrollment, camper.Id)).Value!;
+        preview.CanErase.Should().BeTrue("a failed mail is never retried and must not block erasure forever");
 
-        preview.BlockingReasons.Should().Equal(PlayerErasureBlockReasons.PendingMail);
+        Result<PlayerErasureResultDto> erased = await service.EraseAsync(org, admin, PrivacyErasureKind.CampEnrollment, camper.Id,
+            new ErasePlayerRequest(camper.ParticipantName, null, preview.UpdatedAt));
+
+        erased.IsSuccess.Should().BeTrue();
+        (await db.EmailOutboxMessages.IgnoreQueryFilters().AnyAsync(x => x.Id == unlinked.Id || x.Id == linked.Id))
+            .Should().BeFalse("the failed mails held the camper's name and address");
     }
 
     [Test]

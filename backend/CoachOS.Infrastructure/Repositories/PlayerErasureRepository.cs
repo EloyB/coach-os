@@ -211,13 +211,17 @@ public sealed partial class PlayerErasureRepository(ApplicationDbContext db) : I
             ((x.EnrollmentId != null && related.EnrollmentIds.Contains(x.EnrollmentId.Value)) ||
              (x.CampEnrollmentId != null && related.CampEnrollmentIds.Contains(x.CampEnrollmentId.Value))), ct);
 
-    /// <summary>Een mail over deze speler die nog niet afgeleverd is (wachtend, bezig of mislukt).</summary>
+    /// <summary>
+    /// Een mail over deze speler die nog verstuurd gaat worden (wachtend of bezig). Lost zichzelf
+    /// op: binnen seconden afgeleverd, of na de laatste poging mislukt. Een mislukte mail wordt
+    /// nooit meer opnieuw geprobeerd en blokkeert dus niet; die wist het wissen mee.
+    /// </summary>
     private async Task<bool> HasPendingMailAsync(
         Guid organizationId, PrivacyErasureKind kind, Guid enrollmentId, CancellationToken ct)
     {
         List<string> addresses = await LoadMailAddressesAsync(organizationId, kind, enrollmentId, ct);
         return await MailAbout(organizationId, enrollmentId, addresses).AsNoTracking()
-            .AnyAsync(x => x.Status != EmailOutboxStatuses.Completed, ct);
+            .AnyAsync(x => x.Status == EmailOutboxStatuses.Pending || x.Status == EmailOutboxStatuses.Processing, ct);
     }
 
     /// <summary>
