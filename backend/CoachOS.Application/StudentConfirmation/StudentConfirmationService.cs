@@ -22,6 +22,7 @@ public class StudentConfirmationService(
     IEnrollmentRepository enrollmentRepo,
     IUnitOfWork unitOfWork,
     IEmailService emailService,
+    Planning.IConfirmationOrchestrationService confirmationOrchestration,
     ILogger<StudentConfirmationService> logger,
     TimeProvider timeProvider) : IStudentConfirmationService
 {
@@ -398,8 +399,19 @@ public class StudentConfirmationService(
         DateTime now = timeProvider.GetUtcNow().UtcDateTime;
         bool settled = await TrySettleMemberPaymentAsync(enrollmentId, organizationId, now, ct);
         if (!settled)
-            return Result.Fail(new Error(
+        {
+            // Nog geen betaling: de leerling heeft het aangeboden lesmoment niet zelf
+            // bevestigd. Wie de betaling draagt (solo of groepsleider), mag dan namens de
+            // leerling bevestigd worden. Een gewoon groepslid niet: dat zou ongemerkt de
+            // hele groep bevestigen.
+            var ownsPayment = enrollment.EnrollmentGroupId is null
+                || enrollment.EnrollmentGroup?.LeaderEnrollmentId == enrollment.Id;
+            var adminConfirmed = ownsPayment
+                ? await TryConfirmAwaitingAssignmentAsPaidAsync(enrollment, organizationId, ct)
+                : null;
+            return adminConfirmed ?? Result.Fail(new Error(
                 ErrorCodes.NotFound, "Geen openstaande betaling gevonden voor deze inschrijving."));
+        }
 
         if (enrollment.Status != EnrollmentStatus.Confirmed)
             enrollment.Status = EnrollmentStatus.Confirmed;
@@ -439,13 +451,23 @@ public class StudentConfirmationService(
         {
             if (await TrySettleMemberPaymentAsync(m.Id, organizationId, now, ct))
                 anyPaid = true;
-            if (m.Status != EnrollmentStatus.Confirmed)
-                m.Status = EnrollmentStatus.Confirmed;
         }
 
         if (!anyPaid)
-            return Result.Fail(new Error(
+        {
+            // Nog geen betaling: de groep heeft het aangeboden lesmoment niet zelf
+            // bevestigd. Bevestig namens de groep met één betaalde cash-betaling.
+            var adminConfirmed = await TryConfirmAwaitingAssignmentAsPaidAsync(
+                enrollment, organizationId, ct);
+            return adminConfirmed ?? Result.Fail(new Error(
                 ErrorCodes.NotFound, "Geen openstaande betaling gevonden voor deze groep."));
+        }
+
+        foreach (Enrollment m in members)
+        {
+            if (m.Status != EnrollmentStatus.Confirmed)
+                m.Status = EnrollmentStatus.Confirmed;
+        }
 
         await unitOfWork.SaveChangesAsync(ct);
 
@@ -454,6 +476,48 @@ public class StudentConfirmationService(
 
         await SendConfirmationEmailSafeAsync(
             enrollment, organizationId, members.Select(m => m.StudentName).ToList(), ct);
+        return Result.Ok();
+    }
+
+    /// <summary>
+    /// "Markeer als betaald" voor een inschrijving die nog geen betaling heeft omdat de
+    /// leerling het aangeboden lesmoment nog niet bevestigde. Zoekt de toewijzing die op
+    /// bevestiging wacht en bevestigt die namens de leerling, met een betaalde cash-
+    /// betaling: exact wat "Bevestig namens leerling" op de planningspagina doet.
+    /// Geeft <c>null</c> wanneer er geen wachtende toewijzing is (niets te bevestigen).
+    /// </summary>
+    private async Task<Result?> TryConfirmAwaitingAssignmentAsPaidAsync(
+        Enrollment enrollment, Guid organizationId, CancellationToken ct)
+    {
+        if (enrollment.LessonSerieId is not { } serieId)
+            return null;
+
+        if (enrollment.Status == EnrollmentStatus.Cancelled)
+            return Result.Fail(new Error(
+                ErrorCodes.Validation, "Deze inschrijving is geannuleerd en kan niet als betaald gemarkeerd worden."));
+
+        // Een groep heeft één toewijzing op groepsniveau; solo een op de inschrijving zelf.
+        var participantId = enrollment.EnrollmentGroupId ?? enrollment.Id;
+        var assignments = await assignmentRepo.GetBySeriesAsync(serieId, organizationId, ct);
+        var awaiting = assignments.FirstOrDefault(a =>
+            a.Status == ScheduleAssignmentStatus.AwaitingConfirmation
+            && (a.EnrollmentGroupId ?? a.EnrollmentId) == participantId);
+        if (awaiting is null)
+            return null;
+
+        var confirmed = await confirmationOrchestration.AdminConfirmAssignmentAsync(
+            serieId, awaiting.Id, organizationId, ct);
+        if (!confirmed.IsSuccess)
+            return Result.Fail(confirmed.Errors);
+
+        List<string> participantNames =
+            enrollment.EnrollmentGroup is { Members.Count: > 0 } group
+                ? group.Members
+                    .Where(m => m.Status != EnrollmentStatus.Cancelled)
+                    .Select(m => m.StudentName)
+                    .ToList()
+                : [enrollment.StudentName];
+        await SendConfirmationEmailSafeAsync(enrollment, organizationId, participantNames, ct);
         return Result.Ok();
     }
 

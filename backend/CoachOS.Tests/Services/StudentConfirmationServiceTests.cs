@@ -37,6 +37,7 @@ public class StudentConfirmationServiceTests
     private Mock<IPricingService> _pricingService = null!;
     private Mock<IEnrollmentRepository> _enrollmentRepo = null!;
     private Mock<IEmailService> _emailService = null!;
+    private Mock<CoachOS.Application.Planning.IConfirmationOrchestrationService> _confirmationOrchestration = null!;
     private Mock<ILogger<StudentConfirmationService>> _logger = null!;
     private Mock<IUnitOfWork> _unitOfWork = null!;
     private StudentConfirmationService _sut = null!;
@@ -91,12 +92,17 @@ public class StudentConfirmationServiceTests
     {
         _tokenRepo = new Mock<IAssignmentConfirmationTokenRepository>();
         _assignmentRepo = new Mock<IScheduleAssignmentRepository>();
+        // Default: geen toewijzingen (Moq gaf anders null voor de lijst). Tests die
+        // toewijzingen nodig hebben, overschrijven dit met een specifiekere setup.
+        _assignmentRepo.Setup(r => r.GetBySeriesAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
         _seriesRepo = new Mock<ILessonSerieRepository>();
         _paymentRepo = new Mock<IPaymentRepository>();
         _paymentService = new Mock<CoachOS.Application.Payments.IPaymentService>();
         _pricingService = new Mock<IPricingService>();
         _enrollmentRepo = new Mock<IEnrollmentRepository>();
         _emailService = new Mock<IEmailService>();
+        _confirmationOrchestration = new Mock<CoachOS.Application.Planning.IConfirmationOrchestrationService>();
         _logger = new Mock<ILogger<StudentConfirmationService>>();
         _unitOfWork = new Mock<IUnitOfWork>();
 
@@ -115,6 +121,7 @@ public class StudentConfirmationServiceTests
             _enrollmentRepo.Object,
             _unitOfWork.Object,
             _emailService.Object,
+            _confirmationOrchestration.Object,
             _logger.Object,
             TimeProvider.System);
     }
@@ -182,6 +189,7 @@ public class StudentConfirmationServiceTests
             _enrollmentRepo.Object,
             _unitOfWork.Object,
             _emailService.Object,
+            _confirmationOrchestration.Object,
             _logger.Object,
             fixedTime);
 
@@ -1243,6 +1251,194 @@ public class StudentConfirmationServiceTests
         result.IsSuccess.Should().BeTrue();
         payments.Values.Should().OnlyContain(p => p.Status == PaymentStatus.Paid);
         members.Should().OnlyContain(m => m.Status == EnrollmentStatus.Confirmed);
+    }
+
+    // ── Markeer als betaald vóór de leerling bevestigde ──────────────────────
+
+    [Test]
+    public async Task MarkEnrollmentCashPaid_without_payment_confirms_awaiting_assignment_on_behalf_of_student()
+    {
+        // Leerling kreeg een lesmoment aangeboden maar klikte (nog) niet op de link:
+        // er is geen betaling. Markeren als betaald = bevestigen namens de leerling.
+        Guid orgId = Guid.NewGuid();
+        Guid serieId = Guid.NewGuid();
+        Enrollment enrollment = PlanningServiceTests.BuildEnrollment("Sofie", orgId, serieId);
+        enrollment.Status = EnrollmentStatus.Pending;
+        ScheduleAssignment awaiting = new()
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = orgId,
+            LessonSerieId = serieId,
+            EnrollmentId = enrollment.Id,
+            Status = ScheduleAssignmentStatus.AwaitingConfirmation,
+        };
+        ArrangeNoPayments(enrollment.Id, orgId);
+        _enrollmentRepo.Setup(r => r.GetByIdWithGroupAsync(enrollment.Id, orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(enrollment);
+        _assignmentRepo.Setup(r => r.GetBySeriesAsync(serieId, orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([awaiting]);
+        _confirmationOrchestration
+            .Setup(c => c.AdminConfirmAssignmentAsync(serieId, awaiting.Id, orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<bool>.Ok(true));
+
+        // Act
+        Result result = await _sut.MarkEnrollmentCashPaidAsync(enrollment.Id, orgId, CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        _confirmationOrchestration.Verify(c => c.AdminConfirmAssignmentAsync(
+            serieId, awaiting.Id, orgId, It.IsAny<CancellationToken>()), Times.Once);
+        _emailService.Verify(e => e.SendEnrollmentConfirmationAsync(
+            enrollment.ContactEmail, It.IsAny<string>(), It.IsAny<string>(),
+            It.IsAny<IReadOnlyList<string>?>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task MarkEnrollmentCashPaid_without_payment_ignores_assignment_that_is_not_awaiting_confirmation()
+    {
+        // Een concepttoewijzing (planning nog niet verstuurd) telt niet: dan valt er
+        // niets namens de leerling te bevestigen.
+        Guid orgId = Guid.NewGuid();
+        Guid serieId = Guid.NewGuid();
+        Enrollment enrollment = PlanningServiceTests.BuildEnrollment("Sofie", orgId, serieId);
+        enrollment.Status = EnrollmentStatus.Pending;
+        ScheduleAssignment proposed = new()
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = orgId,
+            LessonSerieId = serieId,
+            EnrollmentId = enrollment.Id,
+            Status = ScheduleAssignmentStatus.Proposed,
+        };
+        ArrangeNoPayments(enrollment.Id, orgId);
+        _enrollmentRepo.Setup(r => r.GetByIdWithGroupAsync(enrollment.Id, orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(enrollment);
+        _assignmentRepo.Setup(r => r.GetBySeriesAsync(serieId, orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([proposed]);
+
+        // Act
+        Result result = await _sut.MarkEnrollmentCashPaidAsync(enrollment.Id, orgId, CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.Code == ErrorCodes.NotFound);
+        _confirmationOrchestration.Verify(c => c.AdminConfirmAssignmentAsync(
+            It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task MarkEnrollmentCashPaid_without_payment_does_not_confirm_group_via_plain_member()
+    {
+        // Een gewoon groepslid draagt de betaling niet: via dat lid mag de hele groep
+        // niet ongemerkt bevestigd worden.
+        Guid orgId = Guid.NewGuid();
+        Guid serieId = Guid.NewGuid();
+        (EnrollmentGroup group, Enrollment leader, List<Enrollment> members) = BuildPendingGroup(orgId, serieId);
+        Enrollment member = members.First(m => m.Id != leader.Id);
+        ScheduleAssignment awaiting = new()
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = orgId,
+            LessonSerieId = serieId,
+            EnrollmentGroupId = group.Id,
+            Status = ScheduleAssignmentStatus.AwaitingConfirmation,
+        };
+        ArrangeNoPayments(member.Id, orgId);
+        _enrollmentRepo.Setup(r => r.GetByIdWithGroupAsync(member.Id, orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(member);
+        _assignmentRepo.Setup(r => r.GetBySeriesAsync(serieId, orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([awaiting]);
+
+        // Act
+        Result result = await _sut.MarkEnrollmentCashPaidAsync(member.Id, orgId, CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        _confirmationOrchestration.Verify(c => c.AdminConfirmAssignmentAsync(
+            It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task MarkGroupCashPaid_without_payments_confirms_awaiting_group_assignment()
+    {
+        Guid orgId = Guid.NewGuid();
+        Guid serieId = Guid.NewGuid();
+        (EnrollmentGroup group, Enrollment leader, List<Enrollment> members) = BuildPendingGroup(orgId, serieId);
+        foreach (Enrollment m in members)
+        {
+            m.Status = EnrollmentStatus.Pending;
+            ArrangeNoPayments(m.Id, orgId);
+        }
+        ScheduleAssignment awaiting = new()
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = orgId,
+            LessonSerieId = serieId,
+            EnrollmentGroupId = group.Id,
+            Status = ScheduleAssignmentStatus.AwaitingConfirmation,
+        };
+        _enrollmentRepo.Setup(r => r.GetByIdWithGroupAsync(leader.Id, orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(leader);
+        _assignmentRepo.Setup(r => r.GetBySeriesAsync(serieId, orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([awaiting]);
+        _confirmationOrchestration
+            .Setup(c => c.AdminConfirmAssignmentAsync(serieId, awaiting.Id, orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<bool>.Ok(true));
+
+        // Act
+        Result result = await _sut.MarkGroupCashPaidAsync(leader.Id, orgId, CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        _confirmationOrchestration.Verify(c => c.AdminConfirmAssignmentAsync(
+            serieId, awaiting.Id, orgId, It.IsAny<CancellationToken>()), Times.Once);
+        _emailService.Verify(e => e.SendEnrollmentConfirmationAsync(
+            leader.ContactEmail, It.IsAny<string>(), It.IsAny<string>(),
+            It.Is<IReadOnlyList<string>?>(names => names != null && names.Count == 3),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task MarkEnrollmentCashPaid_without_payment_passes_admin_confirm_failure_through()
+    {
+        Guid orgId = Guid.NewGuid();
+        Guid serieId = Guid.NewGuid();
+        Enrollment enrollment = PlanningServiceTests.BuildEnrollment("Sofie", orgId, serieId);
+        enrollment.Status = EnrollmentStatus.Pending;
+        ScheduleAssignment awaiting = new()
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = orgId,
+            LessonSerieId = serieId,
+            EnrollmentId = enrollment.Id,
+            Status = ScheduleAssignmentStatus.AwaitingConfirmation,
+        };
+        ArrangeNoPayments(enrollment.Id, orgId);
+        _enrollmentRepo.Setup(r => r.GetByIdWithGroupAsync(enrollment.Id, orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(enrollment);
+        _assignmentRepo.Setup(r => r.GetBySeriesAsync(serieId, orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([awaiting]);
+        _confirmationOrchestration
+            .Setup(c => c.AdminConfirmAssignmentAsync(serieId, awaiting.Id, orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<bool>.Fail(new Error(ErrorCodes.Validation, "Prijs ontbreekt.")));
+
+        // Act
+        Result result = await _sut.MarkEnrollmentCashPaidAsync(enrollment.Id, orgId, CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.Message == "Prijs ontbreekt.");
+        _emailService.Verify(e => e.SendEnrollmentConfirmationAsync(
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+            It.IsAny<IReadOnlyList<string>?>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    private void ArrangeNoPayments(Guid enrollmentId, Guid orgId)
+    {
+        _paymentRepo.Setup(r => r.GetLatestPendingByEnrollmentIdAsync(enrollmentId, orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Payment?)null);
+        _paymentRepo.Setup(r => r.GetLatestFailedByEnrollmentIdAsync(enrollmentId, orgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Payment?)null);
     }
 
     /// <summary>Bouwt een groep van 3 (leider + 2 leden) op PendingPayment; leden delen de leider-groep.</summary>

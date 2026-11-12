@@ -57,5 +57,12 @@ public class LessonSerieEnrollmentDto
     /// <summary>Mollie-referentie (tr_...) om de betaling in het Mollie-dashboard terug te vinden.</summary>
     public string? MolliePaymentId { get; set; }
 
+    /// <summary>
+    /// True als deze inschrijving (of haar groep) een aangeboden lesmoment heeft dat nog
+    /// op bevestiging van de leerling wacht. "Markeer als betaald" bevestigt het dan
+    /// namens de leerling, ook al bestaat er nog geen betaling.
+    /// </summary>
+    public bool IsAwaitingConfirmation { get; set; }
+
     public List<EnrollmentResponseItemDto> FormResponses { get; set; } = new();
 }
