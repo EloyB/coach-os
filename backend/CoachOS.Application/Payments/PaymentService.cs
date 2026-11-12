@@ -632,19 +632,39 @@ public class PaymentService(
             return Result.Fail(new Error(
                 ErrorCodes.Validation, "Deze inschrijving is geannuleerd en kan niet als betaald gemarkeerd worden."));
 
-        PaymentEntity? payment = await payments.GetLatestPendingCashByCampEnrollmentIdAsync(
+        // Methode-onafhankelijk, zoals bij lessenreeksen: ook een online-betaling die
+        // bleef openstaan of mislukte, kan later cash of via overschrijving betaald zijn.
+        PaymentEntity? payment = await payments.GetLatestOpenOrFailedByCampEnrollmentIdAsync(
             campEnrollmentId, organizationId, ct);
         if (payment is null)
             return Result.Fail(new Error(
-                ErrorCodes.NotFound, "Geen openstaande cash-betaling gevonden voor deze inschrijving."));
+                ErrorCodes.NotFound, "Geen openstaande betaling gevonden voor deze inschrijving."));
 
         // Atomiciteit: de payment-mutatie wordt NIET apart opgeslagen. We muteren de
         // (getrackte) payment, muteren daarna de enrollment(s) en laten één enkele
         // unitOfWork.SaveChangesAsync in ConfirmCampEnrollmentAndNotifyAsync beide
         // wegschrijven (de unit of work flusht de volledige change-set). Zo kan een
         // crash niet langer een Paid-payment achterlaten met een PendingPayment-enrollment.
-        payment.Status = PaymentStatus.Paid;
-        payment.PaidAt = DateTime.UtcNow;
+        if (payment.Status == PaymentStatus.Failed)
+        {
+            // De mislukte poging blijft als historiek staan (traceerbaar naar Mollie);
+            // de handmatige betaling komt er als nieuwe rij bij met hetzelfde bedrag.
+            await payments.AddAsync(new PaymentEntity
+            {
+                OrganizationId = payment.OrganizationId,
+                CampEnrollmentId = campEnrollmentId,
+                Amount = payment.Amount,
+                Status = PaymentStatus.Paid,
+                Method = PaymentMethod.Transfer,
+                PaidAt = DateTime.UtcNow,
+                Description = "Handmatige overschrijving (na mislukte online-betaling)",
+            }, ct);
+        }
+        else
+        {
+            payment.Status = PaymentStatus.Paid;
+            payment.PaidAt = DateTime.UtcNow;
+        }
 
         if (enrollment is null)
         {

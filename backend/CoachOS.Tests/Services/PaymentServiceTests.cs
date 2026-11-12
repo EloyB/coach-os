@@ -745,7 +745,7 @@ public class PaymentServiceTests
             Status = EnrollmentStatus.PendingPayment,
             Camp = new Camp { Id = campId, Name = "Paaskamp" },
         };
-        _payments.Setup(p => p.GetLatestPendingCashByCampEnrollmentIdAsync(campEnrollmentId, OrgId, It.IsAny<CancellationToken>()))
+        _payments.Setup(p => p.GetLatestOpenOrFailedByCampEnrollmentIdAsync(campEnrollmentId, OrgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(cash);
         _campEnrollments.Setup(c => c.GetByIdWithGroupAsync(campEnrollmentId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(enrollment);
@@ -777,7 +777,7 @@ public class PaymentServiceTests
             ParticipantEmail = "emma@example.com", ParticipantName = "Emma",
             Status = EnrollmentStatus.Cancelled,
         };
-        _payments.Setup(p => p.GetLatestPendingCashByCampEnrollmentIdAsync(campEnrollmentId, OrgId, It.IsAny<CancellationToken>()))
+        _payments.Setup(p => p.GetLatestOpenOrFailedByCampEnrollmentIdAsync(campEnrollmentId, OrgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(cash);
         _campEnrollments.Setup(c => c.GetByIdWithGroupAsync(campEnrollmentId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(enrollment);
@@ -825,7 +825,7 @@ public class PaymentServiceTests
         {
             Id = groupId, LeaderEnrollmentId = leaderId, Members = [leader, active, cancelled],
         };
-        _payments.Setup(p => p.GetLatestPendingCashByCampEnrollmentIdAsync(leaderId, OrgId, It.IsAny<CancellationToken>()))
+        _payments.Setup(p => p.GetLatestOpenOrFailedByCampEnrollmentIdAsync(leaderId, OrgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(cash);
         _campEnrollments.Setup(c => c.GetByIdWithGroupAsync(leaderId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(leader);
@@ -881,7 +881,7 @@ public class PaymentServiceTests
                 OrganizationId = OrgId,
                 CampId = campId,
             });
-        _payments.Setup(p => p.GetLatestPendingCashByCampEnrollmentIdAsync(campEnrollmentId, OrgId, It.IsAny<CancellationToken>()))
+        _payments.Setup(p => p.GetLatestOpenOrFailedByCampEnrollmentIdAsync(campEnrollmentId, OrgId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Payment?)null);
 
         Result result = await _sut.MarkCampCashPaidAsync(campId, campEnrollmentId, OrgId);
@@ -889,6 +889,85 @@ public class PaymentServiceTests
         result.IsSuccess.Should().BeFalse();
         result.Errors[0].Code.Should().Be(ErrorCodes.NotFound);
     }
+
+    [Test]
+    public async Task MarkCampCashPaid_PendingOnlinePayment_MarksItPaidAndConfirms()
+    {
+        // Online gekozen maar de checkout nooit afgerond, en daarna cash betaald.
+        Guid campEnrollmentId = Guid.NewGuid();
+        Guid campId = Guid.NewGuid();
+        Payment online = new()
+        {
+            OrganizationId = OrgId,
+            CampEnrollmentId = campEnrollmentId,
+            Amount = 150m,
+            Method = PaymentMethod.Online,
+            MolliePaymentId = "tr_open",
+            Status = PaymentStatus.Pending,
+        };
+        CampEnrollment enrollment = BuildCampEnrollment(campEnrollmentId, campId);
+        _payments.Setup(p => p.GetLatestOpenOrFailedByCampEnrollmentIdAsync(campEnrollmentId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(online);
+        _campEnrollments.Setup(c => c.GetByIdWithGroupAsync(campEnrollmentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(enrollment);
+
+        Result result = await _sut.MarkCampCashPaidAsync(campId, campEnrollmentId, OrgId);
+
+        result.IsSuccess.Should().BeTrue();
+        online.Status.Should().Be(PaymentStatus.Paid);
+        online.PaidAt.Should().NotBeNull();
+        enrollment.Status.Should().Be(EnrollmentStatus.Confirmed);
+        _payments.Verify(p => p.AddAsync(It.IsAny<Payment>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task MarkCampCashPaid_FailedOnlinePayment_AddsManualTransferAndKeepsFailedAttempt()
+    {
+        // Mislukte/verlopen online-betaling, later via overschrijving betaald: de mislukte
+        // poging blijft staan (traceerbaar naar Mollie), er komt een handmatige bij.
+        Guid campEnrollmentId = Guid.NewGuid();
+        Guid campId = Guid.NewGuid();
+        Payment failed = new()
+        {
+            OrganizationId = OrgId,
+            CampEnrollmentId = campEnrollmentId,
+            Amount = 150m,
+            Method = PaymentMethod.Online,
+            MolliePaymentId = "tr_failed",
+            Status = PaymentStatus.Failed,
+        };
+        CampEnrollment enrollment = BuildCampEnrollment(campEnrollmentId, campId);
+        _payments.Setup(p => p.GetLatestOpenOrFailedByCampEnrollmentIdAsync(campEnrollmentId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(failed);
+        _campEnrollments.Setup(c => c.GetByIdWithGroupAsync(campEnrollmentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(enrollment);
+
+        Result result = await _sut.MarkCampCashPaidAsync(campId, campEnrollmentId, OrgId);
+
+        result.IsSuccess.Should().BeTrue();
+        failed.Status.Should().Be(PaymentStatus.Failed);
+        enrollment.Status.Should().Be(EnrollmentStatus.Confirmed);
+        _payments.Verify(p => p.AddAsync(It.Is<Payment>(np =>
+                np.CampEnrollmentId == campEnrollmentId
+                && np.OrganizationId == OrgId
+                && np.Amount == 150m
+                && np.Status == PaymentStatus.Paid
+                && np.Method == PaymentMethod.Transfer
+                && np.PaidAt != null
+                && np.MolliePaymentId == null),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    private static CampEnrollment BuildCampEnrollment(Guid campEnrollmentId, Guid campId) => new()
+    {
+        Id = campEnrollmentId,
+        OrganizationId = OrgId,
+        CampId = campId,
+        ParticipantEmail = "emma@example.com",
+        ParticipantName = "Emma",
+        Status = EnrollmentStatus.PendingPayment,
+        Camp = new Camp { Id = campId, Name = "Paaskamp" },
+    };
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
