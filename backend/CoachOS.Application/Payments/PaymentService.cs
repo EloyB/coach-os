@@ -616,6 +616,55 @@ public class PaymentService(
         return Result.Ok();
     }
 
+    /// <summary>
+    /// Betaalde cash-betaling voor een kamp-inschrijving die nog geen enkele betaling heeft.
+    /// Enkel voor wie de betaling draagt (solo of groepsleider) en enkel zolang de
+    /// inschrijving op betaling wacht. Geeft een fout terug, of null bij succes (nog niet
+    /// opgeslagen: de caller bevestigt en bewaart alles in één save).
+    /// </summary>
+    private async Task<Error?> AddManualCampPaymentAsync(
+        CampEnrollmentEntity? enrollment, Guid campEnrollmentId, CancellationToken ct)
+    {
+        Error notFound = new(ErrorCodes.NotFound, "Geen openstaande betaling gevonden voor deze inschrijving.");
+        if (enrollment is null || enrollment.Status != EnrollmentStatus.PendingPayment)
+            return notFound;
+
+        // GetLatestOpenOrFailed… geeft ook null wanneer de laatste betaling al betaald is:
+        // dan valt er niets meer te registreren.
+        if (await payments.GetLatestByCampEnrollmentIdAsync(campEnrollmentId, ct) is not null)
+            return notFound;
+
+        var isPayer = enrollment.CampEnrollmentGroupId is null
+            || enrollment.Group?.LeaderEnrollmentId == enrollment.Id;
+        if (!isPayer)
+            return new Error(ErrorCodes.Validation,
+                "De groepsleider betaalt voor de hele groep. Markeer de groep als betaald via de leider.");
+
+        var camp = await camps.GetByIdPublicAsync(enrollment.CampId, ct);
+        if (camp is null)
+            return new Error(ErrorCodes.NotFound, "Kamp niet gevonden.");
+
+        // Zelfde berekening als de cash- en online-flow: groep = leider + leden, solo = 1.
+        var amount = CampAmount(camp, enrollment);
+        if (amount <= 0m)
+            return new Error(ErrorCodes.Validation, "Dit kamp is gratis; een betaling is niet nodig.");
+
+        var settings = await orgSettings.GetByOrganizationReadOnlyAsync(enrollment.OrganizationId, ct);
+
+        await payments.AddAsync(new PaymentEntity
+        {
+            OrganizationId = enrollment.OrganizationId,
+            CampEnrollmentId = campEnrollmentId,
+            Amount = amount,
+            Currency = settings?.PaymentCurrency ?? "EUR",
+            Status = PaymentStatus.Paid,
+            Method = PaymentMethod.Cash,
+            PaidAt = DateTime.UtcNow,
+            Description = $"Cash (admin) - {camp.Name}",
+        }, ct);
+        return null;
+    }
+
     public async Task<Result> MarkCampCashPaidAsync(
         Guid campId, Guid campEnrollmentId, Guid organizationId, CancellationToken ct = default)
     {
@@ -632,19 +681,47 @@ public class PaymentService(
             return Result.Fail(new Error(
                 ErrorCodes.Validation, "Deze inschrijving is geannuleerd en kan niet als betaald gemarkeerd worden."));
 
-        PaymentEntity? payment = await payments.GetLatestPendingCashByCampEnrollmentIdAsync(
+        // Methode-onafhankelijk, zoals bij lessenreeksen: ook een online-betaling die
+        // bleef openstaan of mislukte, kan later cash of via overschrijving betaald zijn.
+        PaymentEntity? payment = await payments.GetLatestOpenOrFailedByCampEnrollmentIdAsync(
             campEnrollmentId, organizationId, ct);
-        if (payment is null)
-            return Result.Fail(new Error(
-                ErrorCodes.NotFound, "Geen openstaande cash-betaling gevonden voor deze inschrijving."));
 
         // Atomiciteit: de payment-mutatie wordt NIET apart opgeslagen. We muteren de
         // (getrackte) payment, muteren daarna de enrollment(s) en laten één enkele
         // unitOfWork.SaveChangesAsync in ConfirmCampEnrollmentAndNotifyAsync beide
         // wegschrijven (de unit of work flusht de volledige change-set). Zo kan een
         // crash niet langer een Paid-payment achterlaten met een PendingPayment-enrollment.
-        payment.Status = PaymentStatus.Paid;
-        payment.PaidAt = DateTime.UtcNow;
+        if (payment is null)
+        {
+            // Nog geen betaling: de deelnemer koos nog geen betaalmethode (cash of online)
+            // via de mail, maar betaalde wel al aan de club. Registreer meteen een betaalde
+            // cash-betaling voor het kampbedrag.
+            Error? manualError = await AddManualCampPaymentAsync(enrollment, campEnrollmentId, ct);
+            if (manualError is not null)
+                return Result.Fail(manualError);
+        }
+        else if (payment.Status == PaymentStatus.Failed)
+        {
+            // De mislukte poging blijft als historiek staan (traceerbaar naar Mollie);
+            // de handmatige betaling komt er als nieuwe rij bij met hetzelfde bedrag.
+            await payments.AddAsync(new PaymentEntity
+            {
+                OrganizationId = payment.OrganizationId,
+                CampEnrollmentId = campEnrollmentId,
+                Amount = payment.Amount,
+                // Zelfde valuta als de mislukte poging; anders valt de rij terug op EUR.
+                Currency = payment.Currency,
+                Status = PaymentStatus.Paid,
+                Method = PaymentMethod.Transfer,
+                PaidAt = DateTime.UtcNow,
+                Description = "Handmatige overschrijving (na mislukte online-betaling)",
+            }, ct);
+        }
+        else
+        {
+            payment.Status = PaymentStatus.Paid;
+            payment.PaidAt = DateTime.UtcNow;
+        }
 
         if (enrollment is null)
         {

@@ -215,6 +215,13 @@ function PersonRow({
   const isCancelled = enrollment.status === "Cancelled";
   const isPendingPayment = enrollment.status === "PendingPayment";
   const ownsPayment = enrollment.enrollmentGroupId == null || enrollment.isGroupLeader;
+  // Afvinkbaar zodra er een openstaande betaling is (PendingPayment), of zodra er een
+  // lesmoment aangeboden werd dat de leerling nog niet bevestigde: dan bevestigt
+  // "Markeer als betaald" het namens de leerling.
+  const canMarkPaid =
+    ownsPayment &&
+    !isCancelled &&
+    (isPendingPayment || enrollment.isAwaitingConfirmation);
   const age = computeAge(enrollment.dateOfBirth);
 
   const cancelMutation = useMutation({
@@ -266,7 +273,7 @@ function PersonRow({
           <Eye size={13} />
           {t("viewDetails")}
         </button>
-        {!readOnly && isPendingPayment && ownsPayment && (
+        {!readOnly && canMarkPaid && (
           <button
             type="button"
             disabled={markPaidMutation.isPending}
@@ -539,6 +546,11 @@ function GroupBlockRows({
   const groupHasOpenPayment = members.some(
     (m) => m.paymentStatus === "Pending" || m.paymentStatus === "Failed",
   );
+  // Nog geen betaling, maar wel een aangeboden lesmoment dat de groep niet bevestigde:
+  // dan bevestigt "Markeer hele groep als betaald" het namens de groep.
+  const groupCanMarkPaid =
+    groupHasOpenPayment ||
+    (leader.isAwaitingConfirmation && leader.status !== "Cancelled");
 
   const markGroupPaidMutation = useMutation({
     mutationFn: () => markGroupCashPaid(leader.id),
@@ -650,7 +662,7 @@ function GroupBlockRows({
               {t("addMember")}
             </button>
           )}
-        {!readOnly && groupHasOpenPayment && (
+        {!readOnly && groupCanMarkPaid && (
           <button
             type="button"
             disabled={markGroupPaidMutation.isPending}
@@ -697,7 +709,7 @@ function GroupBlockRows({
           !readOnly ? (m) => markMemberPaidMutation.mutate(m.id) : undefined
         }
         onMarkGroupPaid={
-          !readOnly && groupHasOpenPayment
+          !readOnly && groupCanMarkPaid
             ? () => markGroupPaidMutation.mutate()
             : undefined
         }

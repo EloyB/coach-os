@@ -27,6 +27,7 @@ public class EnrollmentServiceTests
     private Mock<IEmailService> _emailService = null!;
     private Mock<IEmailOutboxRepository> _emailOutboxRepository = null!;
     private Mock<ILessonSeriePriceRepository> _priceRepo = null!;
+    private Mock<IScheduleAssignmentRepository> _scheduleAssignmentRepo = null!;
     private ApplicationMapper _mapper = null!;
     private Mock<ILogger<EnrollmentService>> _logger = null!;
     private Mock<IUnitOfWork> _unitOfWork = null!;
@@ -54,6 +55,11 @@ public class EnrollmentServiceTests
         _emailService = new Mock<IEmailService>();
         _emailOutboxRepository = new Mock<IEmailOutboxRepository>();
         _priceRepo = new Mock<ILessonSeriePriceRepository>();
+        _scheduleAssignmentRepo = new Mock<IScheduleAssignmentRepository>();
+        _scheduleAssignmentRepo
+            .Setup(r => r.GetAwaitingConfirmationParticipantIdsAsync(
+                It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
         _mapper = new ApplicationMapper();
         _logger = new Mock<ILogger<EnrollmentService>>();
         _unitOfWork = new Mock<IUnitOfWork>();
@@ -69,6 +75,7 @@ public class EnrollmentServiceTests
             _userLookup.Object,
             _emailOutboxRepository.Object,
             _priceRepo.Object,
+            _scheduleAssignmentRepo.Object,
             _unitOfWork.Object,
             _mapper,
             _logger.Object,
@@ -322,6 +329,58 @@ public class EnrollmentServiceTests
         dto.PaymentAmount.Should().Be(780m);
         dto.PaidAt.Should().Be(paidAt);
         dto.MolliePaymentId.Should().Be("tr_abc123");
+    }
+
+    [Test]
+    public async Task GetSeriesEnrollments_FlagsSoloAndGroupMembersAwaitingConfirmation()
+    {
+        // Solo: toewijzing op de inschrijving; groep: toewijzing op de groep → elk lid
+        // erft de vlag. Inschrijvingen zonder wachtende toewijzing blijven false.
+        Guid awaitingSoloId = Guid.NewGuid();
+        Guid otherSoloId = Guid.NewGuid();
+        Guid groupId = Guid.NewGuid();
+        Guid leaderId = Guid.NewGuid();
+        Guid memberId = Guid.NewGuid();
+
+        Enrollment Build(Guid id, string name, Guid? group = null) => new()
+        {
+            Id = id,
+            OrganizationId = OrgId,
+            LessonSerieId = SeriesId,
+            StudentName = name,
+            Status = EnrollmentStatus.Pending,
+            EnrolledAt = DateTime.UtcNow,
+            EnrollmentGroupId = group,
+            FormResponses = new List<FormResponse>(),
+        };
+
+        _enrollmentRepo
+            .Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Enrollment>
+            {
+                Build(awaitingSoloId, "Solo wacht"),
+                Build(otherSoloId, "Solo zonder planning"),
+                Build(leaderId, "Leider", groupId),
+                Build(memberId, "Lid", groupId),
+            });
+        _enrollmentGroupRepo
+            .Setup(r => r.GetBySeriesAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<EnrollmentGroup>
+            {
+                new() { Id = groupId, OrganizationId = OrgId, LessonSerieId = SeriesId, LeaderEnrollmentId = leaderId },
+            });
+        _scheduleAssignmentRepo
+            .Setup(r => r.GetAwaitingConfirmationParticipantIdsAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([awaitingSoloId, groupId]);
+
+        var result = await _service.GetSeriesEnrollmentsAsync(SeriesId, OrgId);
+
+        result.IsSuccess.Should().BeTrue();
+        var byId = result.Value!.ToDictionary(d => d.Id);
+        byId[awaitingSoloId].IsAwaitingConfirmation.Should().BeTrue();
+        byId[otherSoloId].IsAwaitingConfirmation.Should().BeFalse();
+        byId[leaderId].IsAwaitingConfirmation.Should().BeTrue();
+        byId[memberId].IsAwaitingConfirmation.Should().BeTrue();
     }
 
     // ── SaveFormAsync ────────────────────────────────────────────────────────
@@ -1558,6 +1617,7 @@ public class EnrollmentServiceTests
             _userLookup.Object,
             _emailOutboxRepository.Object,
             _priceRepo.Object,
+            _scheduleAssignmentRepo.Object,
             _unitOfWork.Object,
             _mapper,
             _logger.Object,

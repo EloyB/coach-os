@@ -45,11 +45,12 @@ public interface IPaymentRepository
     Task<Payment?> GetLatestTrackedByCampEnrollmentIdAsync(Guid campEnrollmentId, CancellationToken ct = default);
 
     /// <summary>
-    /// Meest recente openstaande (Pending) cash-betaling voor een kamp-inschrijving,
-    /// getrackt en gescoped op organisatie. Gebruikt wanneer de coach een cash-betaling
-    /// als betaald markeert. Tracked zodat de status-mutatie wordt opgeslagen.
+    /// Meest recente betaling voor een kamp-inschrijving, maar enkel wanneer die nog
+    /// openstaat (Pending) of mislukt is (Failed), ongeacht methode (cash of online).
+    /// Getrackt en gescoped op organisatie. Gebruikt voor "markeer als betaald": een
+    /// openstaande betaling wordt afgevinkt, bij een mislukte komt er een handmatige bij.
     /// </summary>
-    Task<Payment?> GetLatestPendingCashByCampEnrollmentIdAsync(
+    Task<Payment?> GetLatestOpenOrFailedByCampEnrollmentIdAsync(
         Guid campEnrollmentId, Guid organizationId, CancellationToken ct = default);
 
     /// <summary>
