@@ -666,6 +666,8 @@ public class StudentConfirmationService(
                 OrganizationId = organizationId,
                 EnrollmentId = enrollmentId,
                 Amount = failed.Amount,
+                // Zelfde valuta als de mislukte poging; anders valt de rij terug op EUR.
+                Currency = failed.Currency,
                 Status = PaymentStatus.Paid,
                 Method = PaymentMethod.Transfer,
                 PaidAt = now,

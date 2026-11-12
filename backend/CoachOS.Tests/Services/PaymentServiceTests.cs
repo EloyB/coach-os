@@ -932,6 +932,8 @@ public class PaymentServiceTests
             OrganizationId = OrgId,
             CampEnrollmentId = campEnrollmentId,
             Amount = 150m,
+            // Niet-EUR: de handmatige betaling moet de valuta overnemen, niet terugvallen op EUR.
+            Currency = "GBP",
             Method = PaymentMethod.Online,
             MolliePaymentId = "tr_failed",
             Status = PaymentStatus.Failed,
@@ -951,6 +953,7 @@ public class PaymentServiceTests
                 np.CampEnrollmentId == campEnrollmentId
                 && np.OrganizationId == OrgId
                 && np.Amount == 150m
+                && np.Currency == "GBP"
                 && np.Status == PaymentStatus.Paid
                 && np.Method == PaymentMethod.Transfer
                 && np.PaidAt != null

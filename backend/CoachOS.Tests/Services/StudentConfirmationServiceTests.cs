@@ -1099,6 +1099,8 @@ public class StudentConfirmationServiceTests
             Method = PaymentMethod.Online,
             Status = PaymentStatus.Failed,
             Amount = 120m,
+            // Niet-EUR: de handmatige betaling moet de valuta overnemen, niet terugvallen op EUR.
+            Currency = "GBP",
         };
         Enrollment enrollment = new()
         {
@@ -1132,6 +1134,7 @@ public class StudentConfirmationServiceTests
         added!.Status.Should().Be(PaymentStatus.Paid);
         added.Method.Should().Be(PaymentMethod.Transfer);
         added.Amount.Should().Be(120m);
+        added.Currency.Should().Be("GBP");
         added.EnrollmentId.Should().Be(enrollmentId);
         enrollment.Status.Should().Be(EnrollmentStatus.Confirmed);
     }

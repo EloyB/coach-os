@@ -709,6 +709,8 @@ public class PaymentService(
                 OrganizationId = payment.OrganizationId,
                 CampEnrollmentId = campEnrollmentId,
                 Amount = payment.Amount,
+                // Zelfde valuta als de mislukte poging; anders valt de rij terug op EUR.
+                Currency = payment.Currency,
                 Status = PaymentStatus.Paid,
                 Method = PaymentMethod.Transfer,
                 PaidAt = DateTime.UtcNow,
