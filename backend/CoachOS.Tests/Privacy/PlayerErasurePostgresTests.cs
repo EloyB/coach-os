@@ -242,4 +242,102 @@ public class PlayerErasurePostgresTests : PlayerErasurePostgresBase
 
         preview.BlockingReasons.Should().Equal(PlayerErasureBlockReasons.PendingMail);
     }
+
+    // ── Mails zonder inschrijving (outbox-mailservice), herkend aan het adres ──
+
+    [Test]
+    public async Task Preview_UnlinkedPendingMailToContactAddressWithoutOrganization_Blocks()
+    {
+        // Bv. "Bevestig je lesmoment" naar de ouder, ingepland vanuit een publieke flow
+        // (geen tenant, dus geen organisatie) en zonder inschrijving.
+        Guid org = Guid.NewGuid();
+        await using ApplicationDbContext db = Db();
+        Enrollment player = Solo(org, Today.AddYears(-3));
+        player.ContactEmail = "Parent@Example.test";
+        player.StudentEmail = "student@example.test";
+        db.Enrollments.Add(player);
+        db.EmailOutboxMessages.Add(UnlinkedMail(null, "parent@example.test", EmailOutboxStatuses.Pending));
+        await db.SaveChangesAsync();
+        Guid admin = await SeedAdminAsync(db, org);
+
+        PlayerErasurePreviewDto preview = (await Service(db).PreviewAsync(org, admin, Lesson, player.Id)).Value!;
+
+        preview.BlockingReasons.Should().Equal(PlayerErasureBlockReasons.PendingMail);
+    }
+
+    [Test]
+    public async Task Preview_UnlinkedFailedMailToCamper_Blocks()
+    {
+        // Een definitief mislukte mail houdt zijn inhoud (naam, adres): wissen mag dan niet doorgaan.
+        Guid org = Guid.NewGuid();
+        await using ApplicationDbContext db = Db();
+        Enrollment blueprint = Solo(org, Today.AddYears(-3));
+        Camp camp = new() { Organization = blueprint.Organization, TennisClub = blueprint.LessonSerie!.TennisClub, Name = "Old camp", StartDate = Today.AddYears(-3).AddDays(-5), EndDate = Today.AddYears(-3) };
+        CampEnrollment camper = new() { OrganizationId = org, Camp = camp, ParticipantName = "Camper", ParticipantEmail = "camper@example.test", Status = EnrollmentStatus.Confirmed };
+        db.CampEnrollments.Add(camper);
+        db.EmailOutboxMessages.Add(UnlinkedMail(org, "camper@example.test", EmailOutboxStatuses.Failed));
+        await db.SaveChangesAsync();
+        Guid admin = await SeedAdminAsync(db, org);
+
+        PlayerErasurePreviewDto preview = (await Service(db).PreviewAsync(org, admin, PrivacyErasureKind.CampEnrollment, camper.Id)).Value!;
+
+        preview.BlockingReasons.Should().Equal(PlayerErasureBlockReasons.PendingMail);
+    }
+
+    [Test]
+    public async Task Preview_UnlinkedPendingMailToOtherAddressOrOtherClub_DoesNotBlock()
+    {
+        Guid org = Guid.NewGuid();
+        await using ApplicationDbContext db = Db();
+        Enrollment player = Solo(org, Today.AddYears(-3));
+        db.Enrollments.Add(player);
+        db.EmailOutboxMessages.AddRange(
+            UnlinkedMail(org, "someone-else@example.test", EmailOutboxStatuses.Pending),
+            // Zelfde adres, maar ingepland binnen een andere club: hoort niet bij deze speler.
+            UnlinkedMail(Guid.NewGuid(), "solo@example.test", EmailOutboxStatuses.Pending));
+        await db.SaveChangesAsync();
+        Guid admin = await SeedAdminAsync(db, org);
+
+        PlayerErasurePreviewDto preview = (await Service(db).PreviewAsync(org, admin, Lesson, player.Id)).Value!;
+
+        preview.CanErase.Should().BeTrue();
+    }
+
+    [Test]
+    public async Task Erase_DeletesDeliveredUnlinkedMailToPlayerAddresses_AndKeepsOthers()
+    {
+        Guid org = Guid.NewGuid();
+        await using ApplicationDbContext db = Db();
+        Enrollment player = Solo(org, Today.AddYears(-3));
+        player.ContactEmail = "parent@example.test";
+        player.StudentEmail = "student@example.test";
+        db.Enrollments.Add(player);
+        EmailOutboxMessage toParent = UnlinkedMail(null, "parent@example.test", EmailOutboxStatuses.Completed);
+        EmailOutboxMessage toStudent = UnlinkedMail(org, "student@example.test", EmailOutboxStatuses.Completed);
+        EmailOutboxMessage toOther = UnlinkedMail(org, "other@example.test", EmailOutboxStatuses.Completed);
+        db.EmailOutboxMessages.AddRange(toParent, toStudent, toOther);
+        await db.SaveChangesAsync();
+        Guid admin = await SeedAdminAsync(db, org);
+        PlayerErasureService service = Service(db);
+        PlayerErasurePreviewDto preview = (await service.PreviewAsync(org, admin, Lesson, player.Id)).Value!;
+        preview.CanErase.Should().BeTrue("delivered mail does not block erasure");
+
+        Result<PlayerErasureResultDto> erased = await service.EraseAsync(org, admin, Lesson, player.Id,
+            new ErasePlayerRequest(player.StudentName, null, preview.UpdatedAt));
+
+        erased.IsSuccess.Should().BeTrue();
+        List<Guid> remaining = await db.EmailOutboxMessages.IgnoreQueryFilters().Select(x => x.Id).ToListAsync();
+        remaining.Should().Contain(toOther.Id);
+        remaining.Should().NotContain([toParent.Id, toStudent.Id]);
+    }
+
+    private static EmailOutboxMessage UnlinkedMail(Guid? organizationId, string recipient, string status) => new()
+    {
+        OrganizationId = organizationId,
+        EnrollmentId = null,
+        RecipientEmail = recipient,
+        Type = "mail:schedule-confirmation",
+        Payload = "{}",
+        Status = status,
+    };
 }

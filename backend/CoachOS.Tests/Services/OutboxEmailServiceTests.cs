@@ -198,7 +198,7 @@ public class OutboxEmailServiceTests
         (IServiceProvider services, DbContextOptions<ApplicationDbContext> options) = BuildServices();
         EmailOutboxWriter writer = new(services.GetRequiredService<IServiceScopeFactory>(), new FixedTenant(orgId));
 
-        await writer.EnqueueAsync(new PasswordResetMail("pr@x.be", "Pieter", "https://x/reset/r1"));
+        await writer.EnqueueAsync(new PasswordResetMail(" Pieter.R@X.be ", "Pieter", "https://x/reset/r1"));
 
         await using ApplicationDbContext db = new(options, new FixedTenant(Guid.Empty));
         EmailOutboxMessage row = await db.EmailOutboxMessages.SingleAsync();
@@ -206,8 +206,11 @@ public class OutboxEmailServiceTests
         row.Status.Should().Be(EmailOutboxStatuses.Pending);
         row.OrganizationId.Should().Be(orgId);
         row.EnrollmentId.Should().BeNull();
+        // Genormaliseerd zodat "speler wissen" de mail via het adres terugvindt.
+        row.RecipientEmail.Should().Be("pieter.r@x.be");
+        row.Payload.Should().NotContain("Recipient", "het adres staat al in de argumenten van de aanroep");
         OutboxEmails.TryDeserialize(row.Type, row.Payload, out IOutboxEmail? mail).Should().BeTrue();
-        mail.Should().Be(new PasswordResetMail("pr@x.be", "Pieter", "https://x/reset/r1"));
+        mail.Should().Be(new PasswordResetMail(" Pieter.R@X.be ", "Pieter", "https://x/reset/r1"));
     }
 
     [Test]

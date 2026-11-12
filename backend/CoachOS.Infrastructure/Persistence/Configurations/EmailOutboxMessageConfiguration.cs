@@ -19,5 +19,7 @@ public class EmailOutboxMessageConfiguration : IEntityTypeConfiguration<EmailOut
         builder.Property(e => e.LastError).HasMaxLength(2000);
         builder.HasIndex(e => new { e.Status, e.AvailableAt });
         builder.HasIndex(e => e.EnrollmentId);
+        builder.Property(e => e.RecipientEmail).HasMaxLength(320);
+        builder.HasIndex(e => e.RecipientEmail);
     }
 }

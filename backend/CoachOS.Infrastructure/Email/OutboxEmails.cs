@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using CoachOS.Application.Abstractions;
 
 namespace CoachOS.Infrastructure.Email;
@@ -10,6 +11,9 @@ namespace CoachOS.Infrastructure.Email;
 /// </summary>
 internal interface IOutboxEmail
 {
+    /// <summary>Adres waar de mail naartoe gaat (eerste argument van de aanroep).</summary>
+    string Recipient { get; }
+
     Task SendAsync(IEmailService sender, CancellationToken ct);
 }
 
@@ -78,6 +82,8 @@ internal static class OutboxEmails
 
 internal sealed record WebsiteWaitlistOutboxMail(string Email, string Token) : IOutboxEmail
 {
+    [JsonIgnore] public string Recipient => Email;
+
     public Task SendAsync(IEmailService sender, CancellationToken ct)
         => sender.SendWebsiteWaitlistAsync(Email, Token, ct);
 }
@@ -85,12 +91,16 @@ internal sealed record WebsiteWaitlistOutboxMail(string Email, string Token) : I
 internal sealed record WebsiteContactNotificationMail(
     string ToEmail, WebsiteContactNotification Notification) : IOutboxEmail
 {
+    [JsonIgnore] public string Recipient => ToEmail;
+
     public Task SendAsync(IEmailService sender, CancellationToken ct)
         => sender.SendWebsiteContactNotificationAsync(ToEmail, Notification, ct);
 }
 
 internal sealed record TrainerInviteMail(string ToEmail, string FirstName, string InviteUrl) : IOutboxEmail
 {
+    [JsonIgnore] public string Recipient => ToEmail;
+
     public Task SendAsync(IEmailService sender, CancellationToken ct)
         => sender.SendTrainerInviteAsync(ToEmail, FirstName, InviteUrl, ct);
 }
@@ -98,6 +108,8 @@ internal sealed record TrainerInviteMail(string ToEmail, string FirstName, strin
 internal sealed record AdminInviteMail(
     string ToEmail, string FirstName, string OrganizationName, string InviteUrl) : IOutboxEmail
 {
+    [JsonIgnore] public string Recipient => ToEmail;
+
     public Task SendAsync(IEmailService sender, CancellationToken ct)
         => sender.SendAdminInviteAsync(ToEmail, FirstName, OrganizationName, InviteUrl, ct);
 }
@@ -106,6 +118,8 @@ internal sealed record EnrollmentConfirmationMail(
     string StudentEmail, string StudentName, string SeriesName,
     IReadOnlyList<string>? ParticipantNames) : IOutboxEmail
 {
+    [JsonIgnore] public string Recipient => StudentEmail;
+
     public Task SendAsync(IEmailService sender, CancellationToken ct)
         => sender.SendEnrollmentConfirmationAsync(StudentEmail, StudentName, SeriesName, ParticipantNames, ct);
 }
@@ -113,6 +127,8 @@ internal sealed record EnrollmentConfirmationMail(
 internal sealed record GroupMemberAddedMail(
     string StudentEmail, string StudentName, string SeriesName, string GroupName) : IOutboxEmail
 {
+    [JsonIgnore] public string Recipient => StudentEmail;
+
     public Task SendAsync(IEmailService sender, CancellationToken ct)
         => sender.SendGroupMemberAddedAsync(StudentEmail, StudentName, SeriesName, GroupName, ct);
 }
@@ -121,6 +137,8 @@ internal sealed record EnrollmentPendingCashMail(
     string StudentEmail, string StudentName, string SeriesName, decimal Amount,
     IReadOnlyList<string>? ParticipantNames) : IOutboxEmail
 {
+    [JsonIgnore] public string Recipient => StudentEmail;
+
     public Task SendAsync(IEmailService sender, CancellationToken ct)
         => sender.SendEnrollmentPendingCashAsync(StudentEmail, StudentName, SeriesName, Amount, ParticipantNames, ct);
 }
@@ -133,6 +151,8 @@ internal sealed record TrainerEnrollmentNotificationMail(
     string TrainerEmail, string TrainerName, string StudentName, string StudentEmail,
     string SeriesName, IReadOnlyList<EmailResponseItem> Responses) : IOutboxEmail
 {
+    [JsonIgnore] public string Recipient => TrainerEmail;
+
     public Task SendAsync(IEmailService sender, CancellationToken ct)
         => sender.SendEnrollmentNotificationToTrainerAsync(
             TrainerEmail, TrainerName, StudentName, StudentEmail, SeriesName,
@@ -144,6 +164,8 @@ internal sealed record ScheduleConfirmationMail(
     string StartTime, string EndTime, string? CourtName, string ConfirmationUrl,
     IReadOnlyList<string>? ParticipantNames) : IOutboxEmail
 {
+    [JsonIgnore] public string Recipient => StudentEmail;
+
     public Task SendAsync(IEmailService sender, CancellationToken ct)
         => sender.SendScheduleConfirmationAsync(
             StudentEmail, StudentName, SeriesName, DayOfWeek, StartTime, EndTime,
@@ -153,12 +175,16 @@ internal sealed record ScheduleConfirmationMail(
 internal sealed record ScheduleConfirmationBundleMail(
     string ContactEmail, string SeriesName, IReadOnlyList<ScheduleConfirmationItem> Items) : IOutboxEmail
 {
+    [JsonIgnore] public string Recipient => ContactEmail;
+
     public Task SendAsync(IEmailService sender, CancellationToken ct)
         => sender.SendScheduleConfirmationBundleAsync(ContactEmail, SeriesName, Items, ct);
 }
 
 internal sealed record StudentMagicLinkMail(string ToEmail, string MagicLinkUrl) : IOutboxEmail
 {
+    [JsonIgnore] public string Recipient => ToEmail;
+
     public Task SendAsync(IEmailService sender, CancellationToken ct)
         => sender.SendStudentMagicLinkAsync(ToEmail, MagicLinkUrl, ct);
 }
@@ -167,6 +193,8 @@ internal sealed record LessonCancellationMail(
     string StudentEmail, string StudentName, string SeriesName, DateOnly LessonDate,
     TimeOnly StartTime, string? CancellationReason) : IOutboxEmail
 {
+    [JsonIgnore] public string Recipient => StudentEmail;
+
     public Task SendAsync(IEmailService sender, CancellationToken ct)
         => sender.SendLessonCancellationAsync(
             StudentEmail, StudentName, SeriesName, LessonDate, StartTime, CancellationReason, ct);
@@ -177,6 +205,8 @@ internal sealed record LessonRescheduledMail(
     DateOnly NewDate, TimeOnly NewStartTime, TimeOnly NewEndTime, string? CourtName,
     string? Reason) : IOutboxEmail
 {
+    [JsonIgnore] public string Recipient => ToEmail;
+
     public Task SendAsync(IEmailService sender, CancellationToken ct)
         => sender.SendLessonRescheduledAsync(
             ToEmail, ToName, SeriesName, OldDate, OldStartTime, NewDate, NewStartTime,
@@ -187,6 +217,8 @@ internal sealed record ScheduleInfoMail(
     string ToEmail, string ToName, string SeriesName, string GroupName, int DayOfWeek,
     string StartTime, string EndTime, string? CourtName) : IOutboxEmail
 {
+    [JsonIgnore] public string Recipient => ToEmail;
+
     public Task SendAsync(IEmailService sender, CancellationToken ct)
         => sender.SendScheduleInfoAsync(
             ToEmail, ToName, SeriesName, GroupName, DayOfWeek, StartTime, EndTime, CourtName, ct);
@@ -197,6 +229,8 @@ internal sealed record AssignmentMovedMail(
     string OldEndTime, int NewDayOfWeek, string NewStartTime, string NewEndTime,
     string? NewCourtName, IReadOnlyList<string>? ParticipantNames) : IOutboxEmail
 {
+    [JsonIgnore] public string Recipient => ToEmail;
+
     public Task SendAsync(IEmailService sender, CancellationToken ct)
         => sender.SendAssignmentMovedAsync(
             ToEmail, ToName, SeriesName, OldDayOfWeek, OldStartTime, OldEndTime,
@@ -207,6 +241,8 @@ internal sealed record StandaloneLessonInvitationMail(
     string ToEmail, string? FirstName, DateOnly Date, TimeOnly StartTime, TimeOnly EndTime,
     string? CourtName, string? LevelText, string? Notes, string InvitationUrl) : IOutboxEmail
 {
+    [JsonIgnore] public string Recipient => ToEmail;
+
     public Task SendAsync(IEmailService sender, CancellationToken ct)
         => sender.SendStandaloneLessonInvitationAsync(
             ToEmail, FirstName, Date, StartTime, EndTime, CourtName, LevelText, Notes, InvitationUrl, ct);
@@ -214,6 +250,8 @@ internal sealed record StandaloneLessonInvitationMail(
 
 internal sealed record PasswordResetMail(string ToEmail, string FirstName, string ResetUrl) : IOutboxEmail
 {
+    [JsonIgnore] public string Recipient => ToEmail;
+
     public Task SendAsync(IEmailService sender, CancellationToken ct)
         => sender.SendPasswordResetAsync(ToEmail, FirstName, ResetUrl, ct);
 }
@@ -222,6 +260,8 @@ internal sealed record CampEnrollmentPaymentLinkMail(
     string ParticipantEmail, string ParticipantName, string CampName, DateOnly StartDate,
     DateOnly EndDate, string CheckoutUrl) : IOutboxEmail
 {
+    [JsonIgnore] public string Recipient => ParticipantEmail;
+
     public Task SendAsync(IEmailService sender, CancellationToken ct)
         => sender.SendCampEnrollmentPaymentLinkAsync(
             ParticipantEmail, ParticipantName, CampName, StartDate, EndDate, CheckoutUrl, ct);
@@ -231,6 +271,8 @@ internal sealed record CampEnrollmentConfirmedMail(
     string ParticipantEmail, string ParticipantName, string CampName, DateOnly StartDate,
     DateOnly EndDate) : IOutboxEmail
 {
+    [JsonIgnore] public string Recipient => ParticipantEmail;
+
     public Task SendAsync(IEmailService sender, CancellationToken ct)
         => sender.SendCampEnrollmentConfirmedAsync(
             ParticipantEmail, ParticipantName, CampName, StartDate, EndDate, ct);
@@ -238,6 +280,8 @@ internal sealed record CampEnrollmentConfirmedMail(
 
 internal sealed record EmailVerificationMail(string ToEmail, string FirstName, string Code) : IOutboxEmail
 {
+    [JsonIgnore] public string Recipient => ToEmail;
+
     public Task SendAsync(IEmailService sender, CancellationToken ct)
         => sender.SendEmailVerificationAsync(ToEmail, FirstName, Code, ct);
 }
@@ -246,6 +290,8 @@ internal sealed record TrialReminderMail(
     string ToEmail, string OrganizationName, int DaysRemaining, DateOnly TrialEndsAt,
     string AppUrl) : IOutboxEmail
 {
+    [JsonIgnore] public string Recipient => ToEmail;
+
     public Task SendAsync(IEmailService sender, CancellationToken ct)
         => sender.SendTrialReminderAsync(ToEmail, OrganizationName, DaysRemaining, TrialEndsAt, AppUrl, ct);
 }
@@ -255,6 +301,8 @@ internal sealed record SubscriptionStartedMail(
     decimal AmountInclVat, DateOnly PeriodStart, bool BankTransfer, DateOnly? DueDate,
     string ManageUrl) : IOutboxEmail
 {
+    [JsonIgnore] public string Recipient => ToEmail;
+
     public Task SendAsync(IEmailService sender, CancellationToken ct)
         => sender.SendSubscriptionStartedAsync(
             ToEmail, OrganizationName, PlanName, IntervalLabel, AmountInclVat, PeriodStart,
@@ -264,6 +312,8 @@ internal sealed record SubscriptionStartedMail(
 internal sealed record SubscriptionPaymentFailedMail(
     string ToEmail, string OrganizationName, decimal AmountInclVat, string PaymentUrl) : IOutboxEmail
 {
+    [JsonIgnore] public string Recipient => ToEmail;
+
     public Task SendAsync(IEmailService sender, CancellationToken ct)
         => sender.SendSubscriptionPaymentFailedAsync(ToEmail, OrganizationName, AmountInclVat, PaymentUrl, ct);
 }
@@ -271,6 +321,8 @@ internal sealed record SubscriptionPaymentFailedMail(
 internal sealed record SubscriptionInvitationMail(
     string ToEmail, string OrganizationName, string SubscribeUrl) : IOutboxEmail
 {
+    [JsonIgnore] public string Recipient => ToEmail;
+
     public Task SendAsync(IEmailService sender, CancellationToken ct)
         => sender.SendSubscriptionInvitationAsync(ToEmail, OrganizationName, SubscribeUrl, ct);
 }
@@ -278,6 +330,8 @@ internal sealed record SubscriptionInvitationMail(
 internal sealed record BillingSuperAdminNoticeMail(
     string ToEmail, string Subject, string Body, string? Link) : IOutboxEmail
 {
+    [JsonIgnore] public string Recipient => ToEmail;
+
     public Task SendAsync(IEmailService sender, CancellationToken ct)
         => sender.SendBillingSuperAdminNoticeAsync(ToEmail, Subject, Body, Link, ct);
 }

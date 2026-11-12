@@ -67,7 +67,7 @@ public sealed partial class PlayerErasureRepository(ApplicationDbContext db) : I
             await HasPaymentsAsync(organizationId, kind, enrollmentId, ct),
             await HasOpenPaymentsAsync(organizationId, related, ct),
             group.Facts, group.Missing, group.OrphanLeader,
-            await HasPendingMailAsync(organizationId, enrollmentId, ct),
+            await HasPendingMailAsync(organizationId, kind, enrollmentId, ct),
             kind == PrivacyErasureKind.Enrollment &&
                 await HasUnresolvedRequestAsync(organizationId, enrollmentId, subject.Target.GroupId, soleMember, ct),
             await CountAnswersAsync(organizationId, kind, enrollmentId, ct));
@@ -211,10 +211,53 @@ public sealed partial class PlayerErasureRepository(ApplicationDbContext db) : I
             ((x.EnrollmentId != null && related.EnrollmentIds.Contains(x.EnrollmentId.Value)) ||
              (x.CampEnrollmentId != null && related.CampEnrollmentIds.Contains(x.CampEnrollmentId.Value))), ct);
 
-    /// <summary>De outbox wordt vandaag enkel voor lesinschrijvingen gebruikt; de check geldt voor beide soorten.</summary>
-    private async Task<bool> HasPendingMailAsync(Guid organizationId, Guid enrollmentId, CancellationToken ct)
-        => await db.EmailOutboxMessages.AsNoTracking().AnyAsync(x => x.OrganizationId == organizationId &&
-            x.EnrollmentId == enrollmentId && x.Status != EmailOutboxStatuses.Completed, ct);
+    /// <summary>Een mail over deze speler die nog niet afgeleverd is (wachtend, bezig of mislukt).</summary>
+    private async Task<bool> HasPendingMailAsync(
+        Guid organizationId, PrivacyErasureKind kind, Guid enrollmentId, CancellationToken ct)
+    {
+        List<string> addresses = await LoadMailAddressesAsync(organizationId, kind, enrollmentId, ct);
+        return await MailAbout(organizationId, enrollmentId, addresses).AsNoTracking()
+            .AnyAsync(x => x.Status != EmailOutboxStatuses.Completed, ct);
+    }
+
+    /// <summary>
+    /// Adressen waarnaar mails over deze speler vertrokken: bij een lesinschrijving het eigen
+    /// adres én het contactadres (planning- en betaalmails gaan naar de contactpersoon), bij een
+    /// kamp het deelnemersadres. Genormaliseerd zoals <c>EmailOutboxMessage.RecipientEmail</c>.
+    /// </summary>
+    private async Task<List<string>> LoadMailAddressesAsync(
+        Guid organizationId, PrivacyErasureKind kind, Guid enrollmentId, CancellationToken ct)
+    {
+        List<string?> raw = kind == PrivacyErasureKind.Enrollment
+            ? (await db.Enrollments.AsNoTracking()
+                .Where(x => x.OrganizationId == organizationId && x.Id == enrollmentId)
+                .Select(x => new { x.StudentEmail, x.ContactEmail })
+                .ToListAsync(ct))
+                .SelectMany(x => new[] { x.StudentEmail, x.ContactEmail })
+                .ToList()
+            : await db.CampEnrollments.AsNoTracking()
+                .Where(x => x.OrganizationId == organizationId && x.Id == enrollmentId)
+                .Select(x => (string?)x.ParticipantEmail)
+                .ToListAsync(ct);
+
+        return raw.Where(a => !string.IsNullOrWhiteSpace(a))
+            .Select(a => a!.Trim().ToLowerInvariant())
+            .Distinct()
+            .ToList();
+    }
+
+    /// <summary>
+    /// Outbox-rijen over deze speler: gekoppeld aan de inschrijving (inschrijvingsmails), of
+    /// zonder inschrijving maar naar een van haar adressen (alle andere mails, die via de
+    /// outbox-mailservice zonder inschrijving ingepland worden). Zonder tenantfilter: rijen uit
+    /// publieke flows (bevestigingslink, Mollie-webhook) hebben geen organisatie.
+    /// </summary>
+    private IQueryable<EmailOutboxMessage> MailAbout(
+        Guid organizationId, Guid enrollmentId, IReadOnlyCollection<string> addresses)
+        => db.EmailOutboxMessages.IgnoreQueryFilters().Where(x =>
+            (x.OrganizationId == organizationId && x.EnrollmentId == enrollmentId) ||
+            (x.EnrollmentId == null && x.RecipientEmail != null && addresses.Contains(x.RecipientEmail) &&
+             (x.OrganizationId == organizationId || x.OrganizationId == null)));
 
     private async Task<bool> HasUnresolvedRequestAsync(
         Guid organizationId, Guid enrollmentId, Guid? groupId, bool soleMember, CancellationToken ct)

@@ -32,6 +32,8 @@ internal sealed class EmailOutboxWriter(
             // Tenant van het verzoek dat de mail veroorzaakte, zodat offboarding van een
             // organisatie ook haar wachtende mails opruimt. Publiek/achtergrond: geen tenant.
             OrganizationId = tenant.OrganizationId == Guid.Empty ? null : tenant.OrganizationId,
+            // Geen inschrijving gekend: via het adres vindt "speler wissen" deze mail terug.
+            RecipientEmail = mail.Recipient.Trim().ToLowerInvariant(),
             Type = type,
             Payload = payload,
             Status = EmailOutboxStatuses.Pending,

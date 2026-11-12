@@ -15,6 +15,12 @@ public class EmailOutboxMessage : BaseEntity
 
     /// <summary>Inschrijving waartoe de mail hoort, of null voor mails zonder inschrijving.</summary>
     public Guid? EnrollmentId { get; set; }
+
+    /// <summary>
+    /// Ontvanger in kleine letters, voor mails zonder <see cref="EnrollmentId"/>. Laat
+    /// "speler wissen" die mails terugvinden: de inhoud bevat het adres en de naam van de speler.
+    /// </summary>
+    public string? RecipientEmail { get; set; }
     public string Type { get; set; } = string.Empty;
     public string Payload { get; set; } = string.Empty;
     public string Status { get; set; } = EmailOutboxStatuses.Pending;
