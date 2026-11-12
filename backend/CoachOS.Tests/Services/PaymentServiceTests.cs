@@ -958,6 +958,82 @@ public class PaymentServiceTests
             It.IsAny<CancellationToken>()), Times.Once);
     }
 
+    [Test]
+    public async Task MarkCampCashPaid_NoPaymentYet_AddsPaidCashPaymentForCampAmountAndConfirms()
+    {
+        // Deelnemer koos nog geen betaalmethode via de mail, maar betaalde aan de club.
+        Guid campEnrollmentId = Guid.NewGuid();
+        Guid campId = Guid.NewGuid();
+        CampEnrollment enrollment = BuildCampEnrollment(campEnrollmentId, campId);
+        _campEnrollments.Setup(c => c.GetByIdWithGroupAsync(campEnrollmentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(enrollment);
+        _payments.Setup(p => p.GetLatestOpenOrFailedByCampEnrollmentIdAsync(campEnrollmentId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Payment?)null);
+        _payments.Setup(p => p.GetLatestByCampEnrollmentIdAsync(campEnrollmentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Payment?)null);
+        _camps.Setup(c => c.GetByIdPublicAsync(campId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Camp { Id = campId, Name = "Paaskamp", Price = 150m });
+
+        Result result = await _sut.MarkCampCashPaidAsync(campId, campEnrollmentId, OrgId);
+
+        result.IsSuccess.Should().BeTrue();
+        enrollment.Status.Should().Be(EnrollmentStatus.Confirmed);
+        _payments.Verify(p => p.AddAsync(It.Is<Payment>(np =>
+                np.CampEnrollmentId == campEnrollmentId
+                && np.OrganizationId == OrgId
+                && np.Amount == 150m
+                && np.Status == PaymentStatus.Paid
+                && np.Method == PaymentMethod.Cash
+                && np.PaidAt != null),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task MarkCampCashPaid_NoPaymentYet_PlainGroupMember_IsRefused()
+    {
+        // Groepsleden hebben geen eigen betaling: de leider betaalt voor de groep.
+        Guid campId = Guid.NewGuid();
+        Guid leaderId = Guid.NewGuid();
+        Guid memberId = Guid.NewGuid();
+        CampEnrollmentGroup group = new() { Id = Guid.NewGuid(), OrganizationId = OrgId, CampId = campId, LeaderEnrollmentId = leaderId };
+        CampEnrollment member = BuildCampEnrollment(memberId, campId);
+        member.CampEnrollmentGroupId = group.Id;
+        member.Group = group;
+        group.Members = [BuildCampEnrollment(leaderId, campId), member];
+        _campEnrollments.Setup(c => c.GetByIdWithGroupAsync(memberId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(member);
+        _payments.Setup(p => p.GetLatestOpenOrFailedByCampEnrollmentIdAsync(memberId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Payment?)null);
+        _payments.Setup(p => p.GetLatestByCampEnrollmentIdAsync(memberId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Payment?)null);
+
+        Result result = await _sut.MarkCampCashPaidAsync(campId, memberId, OrgId);
+
+        result.IsSuccess.Should().BeFalse();
+        member.Status.Should().Be(EnrollmentStatus.PendingPayment);
+        _payments.Verify(p => p.AddAsync(It.IsAny<Payment>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task MarkCampCashPaid_LatestPaymentAlreadyPaid_DoesNotAddAnother()
+    {
+        Guid campEnrollmentId = Guid.NewGuid();
+        Guid campId = Guid.NewGuid();
+        CampEnrollment enrollment = BuildCampEnrollment(campEnrollmentId, campId);
+        _campEnrollments.Setup(c => c.GetByIdWithGroupAsync(campEnrollmentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(enrollment);
+        _payments.Setup(p => p.GetLatestOpenOrFailedByCampEnrollmentIdAsync(campEnrollmentId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Payment?)null);
+        _payments.Setup(p => p.GetLatestByCampEnrollmentIdAsync(campEnrollmentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Payment { CampEnrollmentId = campEnrollmentId, Status = PaymentStatus.Paid, Amount = 150m });
+
+        Result result = await _sut.MarkCampCashPaidAsync(campId, campEnrollmentId, OrgId);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.NotFound);
+        _payments.Verify(p => p.AddAsync(It.IsAny<Payment>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     private static CampEnrollment BuildCampEnrollment(Guid campEnrollmentId, Guid campId) => new()
     {
         Id = campEnrollmentId,

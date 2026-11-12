@@ -176,11 +176,16 @@ function DuplicateBadge() {
 
 // Methode-onafhankelijk, zoals bij lessenreeksen: ook een online-betaling die bleef
 // openstaan of mislukte, kan nadien cash of via overschrijving betaald zijn. Bij een
-// mislukte betaling registreert de backend een nieuwe handmatige betaling.
+// mislukte betaling registreert de backend een nieuwe handmatige betaling. Wacht de
+// inschrijving op betaling zonder dat er al een betaling is (nog geen betaalmethode
+// gekozen), dan registreert de backend meteen een betaalde cash-betaling; enkel voor
+// wie betaalt (solo of groepsleider), want groepsleden hebben geen eigen betaling.
 function canMarkCampPaid(e: CampEnrollmentDto): boolean {
+  if (e.status === "Cancelled") return false;
+  if (e.paymentStatus === "Pending" || e.paymentStatus === "Failed") return true;
+  const ownsPayment = e.enrollmentGroupId == null || e.isGroupLeader;
   return (
-    e.status !== "Cancelled" &&
-    (e.paymentStatus === "Pending" || e.paymentStatus === "Failed")
+    ownsPayment && e.status === "PendingPayment" && e.paymentStatus == null
   );
 }
 
