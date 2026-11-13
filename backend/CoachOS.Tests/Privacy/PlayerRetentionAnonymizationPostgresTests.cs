@@ -163,6 +163,10 @@ public class PlayerRetentionAnonymizationPostgresTests : PlayerErasurePostgresBa
         Guid org = Guid.NewGuid();
         await using ApplicationDbContext db = Db();
         DateTime now = DateTime.UtcNow;
+        PrivacyCleanupService service = new(new PrivacyCleanupRepository(db), new UnitOfWork(db), TimeProvider.System);
+        // De fixture deelt één database: nulmeting, zodat de telling hieronder exact kan zijn
+        // ongeacht wat andere tests al achterlieten.
+        int baseline = (await service.RunAsync(dryRun: true)).Value!.ScrubbedFailedMails;
         const string secret = """{"ToEmail":"parent@example.test","ResetUrl":"https://app/reset?token=abc"}""";
         EmailOutboxMessage oldFailed = UnlinkedFailedMail(org, secret, "parent@example.test", now.AddDays(-31));
         EmailOutboxMessage recentFailed = UnlinkedFailedMail(org, secret, "parent@example.test", now.AddDays(-5));
@@ -170,10 +174,9 @@ public class PlayerRetentionAnonymizationPostgresTests : PlayerErasurePostgresBa
         oldPending.Status = EmailOutboxStatuses.Pending;
         db.EmailOutboxMessages.AddRange(oldFailed, recentFailed, oldPending);
         await db.SaveChangesAsync();
-        PrivacyCleanupService service = new(new PrivacyCleanupRepository(db), new UnitOfWork(db), TimeProvider.System);
 
         PrivacyCleanupReport dry = (await service.RunAsync(dryRun: true)).Value!;
-        dry.ScrubbedFailedMails.Should().BeGreaterThanOrEqualTo(1);
+        dry.ScrubbedFailedMails.Should().Be(baseline + 1, "only the old failed mail counts, not the recent or pending one");
         (await Reload(db, oldFailed.Id)).Payload.Should().Contain("parent@example.test", "a dry-run only counts");
 
         await service.RunAsync(dryRun: false);
