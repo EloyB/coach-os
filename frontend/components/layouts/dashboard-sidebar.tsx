@@ -219,6 +219,9 @@ export function DashboardSidebar() {
         <button
           onClick={() => {
             clearAuth();
+            // Bewust een volledige page load: zo verdwijnen ook de React Query-cache en
+            // alle in-memory state van de vorige gebruiker.
+            // eslint-disable-next-line @next/next/no-location-assign-relative-destination
             window.location.href = "/login";
           }}
           className="text-white/40 hover:text-white/80 transition-colors cursor-pointer"
