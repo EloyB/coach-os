@@ -729,6 +729,9 @@ namespace CoachOS.Infrastructure.Migrations
                     b.Property<Guid>("EnrollmentFormId")
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("IsForEachGroupMember")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("IsRequired")
                         .HasColumnType("boolean");
 

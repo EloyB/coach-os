@@ -102,6 +102,7 @@ public class EnrollmentService(
                 Label = f.Label,
                 Type = (int)f.Type,
                 IsRequired = f.IsRequired,
+                IsForEachGroupMember = f.IsForEachGroupMember,
                 Order = f.Order,
                 Options = DeserializeOptions(f.Options),
             }).ToList(),
@@ -218,6 +219,7 @@ public class EnrollmentService(
                     existing.Label = dto.Label;
                     existing.Type = (FormFieldType)dto.Type;
                     existing.IsRequired = dto.IsRequired;
+                    existing.IsForEachGroupMember = dto.IsForEachGroupMember;
                     existing.Order = order;
                     existing.Options = optionsJson;
                 }
@@ -230,6 +232,7 @@ public class EnrollmentService(
                     Label = dto.Label,
                     Type = (FormFieldType)dto.Type,
                     IsRequired = dto.IsRequired,
+                    IsForEachGroupMember = dto.IsForEachGroupMember,
                     Order = order,
                     Options = optionsJson,
                 };
