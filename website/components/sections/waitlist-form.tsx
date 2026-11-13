@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowRight } from "lucide-react";
 import {
@@ -38,7 +38,7 @@ export function WaitlistForm() {
     },
   });
 
-  const selectedRole = form.watch("role");
+  const selectedRole = useWatch({ control: form.control, name: "role" });
 
   async function onSubmit(values: WaitlistValues) {
     setSubmitting(true);
