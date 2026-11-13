@@ -38,6 +38,18 @@ public class SubscriptionPaymentRepository(ApplicationDbContext context) : ISubs
             .OrderByDescending(p => p.CreatedAt)
             .FirstOrDefaultAsync(ct);
 
+    public async Task<SubscriptionPayment?> GetLatestOpenCheckoutAsync(Guid organizationId, CancellationToken ct = default)
+        => await context.SubscriptionPayments
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(p => p.OrganizationId == organizationId
+                        && (p.Kind == SubscriptionPaymentKind.First || p.Kind == SubscriptionPaymentKind.OneOff)
+                        && p.Method == BillingPaymentMethod.Mollie
+                        && p.Status == SubscriptionPaymentStatus.Open
+                        && p.MolliePaymentId != null)
+            .OrderByDescending(p => p.CreatedAt)
+            .FirstOrDefaultAsync(ct);
+
     public async Task<DateOnly?> GetLatestBilledPeriodEndAsync(Guid subscriptionId, CancellationToken ct = default)
         => await context.SubscriptionPayments
             .IgnoreQueryFilters()

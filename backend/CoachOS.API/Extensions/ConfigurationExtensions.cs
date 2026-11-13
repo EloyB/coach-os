@@ -220,6 +220,9 @@ public static class ConfigurationExtensions
                 // Websiteformulieren: per IP, plus een globale noodrem in de GlobalLimiter hieronder.
                 options.AddWebsitePolicies();
 
+                // Mollie-webhooks: eigen, ruime limiet (niet de gedeelde "public").
+                options.AddWebhookPolicies();
+
                 options.AddFixedWindowLimiter("public", limiter =>
                 {
                     limiter.PermitLimit = 30;

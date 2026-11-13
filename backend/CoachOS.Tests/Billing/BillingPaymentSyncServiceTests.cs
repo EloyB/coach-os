@@ -240,4 +240,23 @@ public class BillingPaymentSyncServiceTests
         overview.Value.Plan.Should().Be("Set");
         (await _ctx.ReloadSubscriptionAsync(org.Id)).MollieSubscriptionId.Should().NotBeNull();
     }
+
+    [Test]
+    public async Task SyncLatestCheckout_OneOffPaidWithoutWebhook_AdvancesPeriod()
+    {
+        (Organization org, Subscription subscription) = await ActiveMollieSubscriptionAsync();
+        string recurringId = _ctx.FakeMollie.AddFakeRecurringPayment(
+            subscription.MollieSubscriptionId!, subscription.MollieCustomerId!, 59.29m, "failed");
+        await _sut.SyncAsync(recurringId);
+        _ctx.Db.ChangeTracker.Clear();
+        SubscriptionPayment oneOff = (await _ctx.ReloadPaymentsAsync(org.Id)).Single(p => p.Kind == SubscriptionPaymentKind.OneOff);
+        _ctx.FakeMollie.SetFakeStatus(oneOff.MolliePaymentId!, "paid");
+
+        Result<BillingOverviewDto> overview = await _sut.SyncLatestCheckoutAsync(org.Id);
+
+        overview.IsSuccess.Should().BeTrue();
+        SubscriptionPayment paid = (await _ctx.ReloadPaymentsAsync(org.Id)).Single(p => p.Kind == SubscriptionPaymentKind.OneOff);
+        paid.Status.Should().Be(SubscriptionPaymentStatus.Paid);
+        (await _ctx.ReloadSubscriptionAsync(org.Id)).CurrentPeriodEnd.Should().Be(new DateOnly(2027, 1, 4));
+    }
 }

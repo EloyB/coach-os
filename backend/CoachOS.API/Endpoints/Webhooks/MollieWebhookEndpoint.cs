@@ -1,3 +1,4 @@
+using CoachOS.API.Extensions;
 using CoachOS.Application.Payments;
 using CoachOS.Domain.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -38,7 +39,7 @@ public class MollieWebhookEndpoint : IEndpoint
             return Results.Ok();
         })
         .AllowAnonymous()
-        .RequireRateLimiting("public")
+        .RequireRateLimiting(WebhookRateLimits.MolliePolicy)
         .DisableAntiforgery()
         .WithTags("Webhooks");
     }

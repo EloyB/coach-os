@@ -11,6 +11,9 @@ public class AssignDealRequestValidator : AbstractValidator<AssignDealRequest>
     {
         RuleFor(x => x.Plan).Must(v => Enum.IsDefined(typeof(SubscriptionPlan), v)).WithMessage("Ongeldig plan");
         RuleFor(x => x.Price).InclusiveBetween(0m, 100_000m).WithMessage("Prijs moet tussen 0 en 100000 liggen");
+        // Meer dan 2 decimalen geeft een afrondingsverschil tussen het bedrag excl. en incl. btw.
+        RuleFor(x => x.Price).PrecisionScale(8, 2, ignoreTrailingZeros: true)
+            .WithMessage("Prijs mag maximaal 2 decimalen hebben");
         RuleFor(x => x.EndDate)
             .Must(v => DateOnly.TryParseExact(v, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out _))
             .WithMessage("Einddatum moet in het formaat jjjj-mm-dd");
