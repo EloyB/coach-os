@@ -17,13 +17,13 @@ jobs:
       contents: read
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Compute REGISTRY_ENDPOINT
         run: echo "REGISTRY_ENDPOINT=rg.fr-par.scw.cloud/coach-os" >> "$GITHUB_ENV"
 
       - name: Deploy to VPS
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@v1.2.5
         env:
           SCW_ACCESS_KEY: ${{ secrets.SCALEWAY_ACCESS_KEY }}
           SCW_SECRET_KEY: ${{ secrets.SCALEWAY_SECRET_KEY }}
