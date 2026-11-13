@@ -55,7 +55,7 @@ test.describe("Live UI — wizard stap 1: inschrijfwijze en betaalmethodes", () 
       name: "Online betalen (Mollie)",
     });
     const manualCheckbox = page.getByRole("checkbox", {
-      name: "Overschrijving",
+      name: "Cash of overschrijving",
     });
     await expect(onlineCheckbox).toBeVisible();
     await expect(manualCheckbox).toBeVisible();

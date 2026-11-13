@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/popover";
 import { EditEnrollmentDialog } from "./edit-enrollment-dialog";
 import { EnrollmentStatusBadge } from "./enrollment-status-badge";
+import { PaymentMethodBadge } from "./payment-method-badge";
 import {
   getLessonSeriesEnrollments,
   cancelEnrollment,
@@ -405,11 +406,14 @@ function PersonRow({
                   {enrollment.studentPhone}
                 </p>
               )}
-              <EnrollmentStatusBadge
-                status={enrollment.status}
-                paymentStatus={enrollment.paymentStatus}
-                className="mt-1.5 text-xs"
-              />
+              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                <EnrollmentStatusBadge
+                  status={enrollment.status}
+                  paymentStatus={enrollment.paymentStatus}
+                  className="text-xs"
+                />
+                <PaymentMethodBadge method={enrollment.paymentMethod} />
+              </div>
             </div>
             <div onClick={(e) => e.stopPropagation()} className="shrink-0">
               {actionsMenu}
@@ -474,11 +478,14 @@ function PersonRow({
 
         {/* Status */}
         <td className="px-4 py-2.5">
-          <EnrollmentStatusBadge
-            status={enrollment.status}
-            paymentStatus={enrollment.paymentStatus}
-            className="text-xs"
-          />
+          <div className="flex flex-wrap items-center gap-1.5">
+            <EnrollmentStatusBadge
+              status={enrollment.status}
+              paymentStatus={enrollment.paymentStatus}
+              className="text-xs"
+            />
+            <PaymentMethodBadge method={enrollment.paymentMethod} />
+          </div>
         </td>
 
         {/* Acties */}
@@ -820,11 +827,14 @@ function GroupBlockRows({
               <p className="mt-1 text-xs text-gray-500">
                 {formatEnrolledAt(leader.enrolledAt)}
               </p>
-              <EnrollmentStatusBadge
-                status={leader.status}
-                paymentStatus={leader.paymentStatus}
-                className="mt-1.5 text-xs"
-              />
+              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                <EnrollmentStatusBadge
+                  status={leader.status}
+                  paymentStatus={leader.paymentStatus}
+                  className="text-xs"
+                />
+                <PaymentMethodBadge method={leader.paymentMethod} />
+              </div>
             </div>
             <div onClick={(e) => e.stopPropagation()} className="shrink-0">
               {groupActionsMenu}
@@ -880,11 +890,14 @@ function GroupBlockRows({
 
         {/* Status (leider) */}
         <td className="px-4 py-2.5">
-          <EnrollmentStatusBadge
-            status={leader.status}
-            paymentStatus={leader.paymentStatus}
-            className="text-xs"
-          />
+          <div className="flex flex-wrap items-center gap-1.5">
+            <EnrollmentStatusBadge
+              status={leader.status}
+              paymentStatus={leader.paymentStatus}
+              className="text-xs"
+            />
+            <PaymentMethodBadge method={leader.paymentMethod} />
+          </div>
         </td>
 
         {/* Acties — groepsniveau */}
@@ -1024,11 +1037,14 @@ function MemberRow({
         {formatEnrolledAt(enrollment.enrolledAt)}
       </td>
       <td className="px-4 py-2.5">
-        <EnrollmentStatusBadge
-          status={enrollment.status}
-          paymentStatus={enrollment.paymentStatus}
-          className="text-xs"
-        />
+        <div className="flex flex-wrap items-center gap-1.5">
+          <EnrollmentStatusBadge
+            status={enrollment.status}
+            paymentStatus={enrollment.paymentStatus}
+            className="text-xs"
+          />
+          <PaymentMethodBadge method={enrollment.paymentMethod} />
+        </div>
       </td>
       <td className="px-4 py-2.5 text-right whitespace-nowrap">
         {hasActions && (
@@ -1288,13 +1304,13 @@ function EnrollmentsTable({
 
           {/* Desktop: tabel */}
           <div className="hidden overflow-x-auto sm:block">
-            <table className="w-full min-w-[640px] table-fixed border-collapse text-left [&_td]:border-r [&_td]:border-gray-100 [&_th]:border-r [&_th]:border-gray-100 [&_td:last-child]:border-r-0 [&_th:last-child]:border-r-0">
+            <table className="w-full min-w-[820px] table-fixed border-collapse text-left [&_td]:border-r [&_td]:border-gray-100 [&_th]:border-r [&_th]:border-gray-100 [&_td:last-child]:border-r-0 [&_th:last-child]:border-r-0">
             <colgroup>
-              <col style={{ width: "36%" }} />
-              <col style={{ width: "26%" }} />
+              <col style={{ width: "30%" }} />
+              <col style={{ width: "22%" }} />
               <col style={{ width: "8%" }} />
               <col style={{ width: "12%" }} />
-              <col style={{ width: "12%" }} />
+              <col style={{ width: "22%" }} />
               <col style={{ width: "6%" }} />
             </colgroup>
             <thead>

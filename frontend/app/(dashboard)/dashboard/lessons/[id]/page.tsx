@@ -124,6 +124,7 @@ function EditSeriesForm({
   onCancel: () => void;
   onSaved: () => void;
 }) {
+  const tPayment = useTranslations("lessonWizard.paymentMethods");
   const queryClient = useQueryClient();
   const { data: tennisClubs } = useQuery({
     queryKey: ["tennisClubs"],
@@ -333,13 +334,13 @@ function EditSeriesForm({
               {...register("acceptOnlinePayment")}
               className="w-4 h-4 accent-tennis-green"
             />
-            Online betalen (Mollie)
+            {tPayment("online")}
           </label>
           {!mollieConnected && (
             <p className="text-xs text-gray-500 mt-1">
-              Online betalen kan pas nadat je met Mollie verbonden bent.{" "}
+              {tPayment("mollieRequired")}{" "}
               <Link href="/dashboard/settings" className="underline">
-                Verbind Mollie in instellingen
+                {tPayment("connectLink")}
               </Link>
             </p>
           )}
@@ -349,7 +350,7 @@ function EditSeriesForm({
               {...register("acceptManualPayment")}
               className="w-4 h-4 accent-tennis-green"
             />
-            Overschrijving
+            {tPayment("manual")}
           </label>
           <FieldError message={errors.acceptManualPayment?.message} />
         </fieldset>
