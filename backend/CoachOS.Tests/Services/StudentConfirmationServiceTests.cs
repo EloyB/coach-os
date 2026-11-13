@@ -37,6 +37,7 @@ public class StudentConfirmationServiceTests
     private Mock<IPricingService> _pricingService = null!;
     private Mock<IEnrollmentRepository> _enrollmentRepo = null!;
     private Mock<IEmailService> _emailService = null!;
+    private Mock<IEmailOrganizationContext> _mailOrganization = null!;
     private Mock<CoachOS.Application.Planning.IConfirmationOrchestrationService> _confirmationOrchestration = null!;
     private Mock<ILogger<StudentConfirmationService>> _logger = null!;
     private Mock<IUnitOfWork> _unitOfWork = null!;
@@ -102,6 +103,7 @@ public class StudentConfirmationServiceTests
         _pricingService = new Mock<IPricingService>();
         _enrollmentRepo = new Mock<IEnrollmentRepository>();
         _emailService = new Mock<IEmailService>();
+        _mailOrganization = new Mock<IEmailOrganizationContext>();
         _confirmationOrchestration = new Mock<CoachOS.Application.Planning.IConfirmationOrchestrationService>();
         _logger = new Mock<ILogger<StudentConfirmationService>>();
         _unitOfWork = new Mock<IUnitOfWork>();
@@ -121,6 +123,7 @@ public class StudentConfirmationServiceTests
             _enrollmentRepo.Object,
             _unitOfWork.Object,
             _emailService.Object,
+            _mailOrganization.Object,
             _confirmationOrchestration.Object,
             _logger.Object,
             TimeProvider.System);
@@ -189,6 +192,7 @@ public class StudentConfirmationServiceTests
             _enrollmentRepo.Object,
             _unitOfWork.Object,
             _emailService.Object,
+            _mailOrganization.Object,
             _confirmationOrchestration.Object,
             _logger.Object,
             fixedTime);
@@ -578,6 +582,9 @@ public class StudentConfirmationServiceTests
 
         group.Members.Should().OnlyContain(m => m.Status == EnrollmentStatus.PendingPayment,
             "de groep moet op PendingPayment staan, niet Confirmed, tot de club de betaling bevestigt");
+
+        // Publieke link zonder tenant: de cash-mail hoort bij de club van het token.
+        _mailOrganization.Verify(m => m.Use(token.OrganizationId), Times.Once);
 
         // De volledige groep (leider inbegrepen) moet aan de per-deelnemer-berekening gevoerd zijn.
         _pricingService.Verify(p => p.CalculatePerParticipantAsync(

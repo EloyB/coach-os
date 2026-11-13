@@ -22,6 +22,7 @@ public class StudentConfirmationService(
     IEnrollmentRepository enrollmentRepo,
     IUnitOfWork unitOfWork,
     IEmailService emailService,
+    IEmailOrganizationContext mailOrganization,
     Planning.IConfirmationOrchestrationService confirmationOrchestration,
     ILogger<StudentConfirmationService> logger,
     TimeProvider timeProvider) : IStudentConfirmationService
@@ -564,6 +565,8 @@ public class StudentConfirmationService(
         if (token.ExpiresAt < timeProvider.GetUtcNow().UtcDateTime)
             return (null, new Error(ErrorCodes.Validation, "Deze link is verlopen."));
 
+        // Publieke link zonder tenant: mails die deze flow inplant, horen bij de club van de link.
+        mailOrganization.Use(token.OrganizationId);
         return (token, null);
     }
 

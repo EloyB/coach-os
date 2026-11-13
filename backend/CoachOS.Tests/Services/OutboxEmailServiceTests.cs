@@ -7,6 +7,7 @@ using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Moq;
 using NUnit.Framework;
 
@@ -196,7 +197,7 @@ public class OutboxEmailServiceTests
     {
         Guid orgId = Guid.NewGuid();
         (IServiceProvider services, DbContextOptions<ApplicationDbContext> options) = BuildServices();
-        EmailOutboxWriter writer = new(services.GetRequiredService<IServiceScopeFactory>(), new FixedTenant(orgId));
+        EmailOutboxWriter writer = Writer(services, new EmailOrganizationContext(new FixedTenant(orgId)));
 
         await writer.EnqueueAsync(new PasswordResetMail(" Pieter.R@X.be ", "Pieter", "https://x/reset/r1"));
 
@@ -214,16 +215,118 @@ public class OutboxEmailServiceTests
     }
 
     [Test]
-    public async Task Writer_leaves_organization_empty_without_tenant()
+    public async Task Writer_leaves_organization_empty_for_platform_mail_without_tenant()
     {
-        // Publieke verzoeken (Mollie-webhook, bevestigingslink) en achtergrondtaken hebben geen tenant.
+        // Platformmails (inloglink, wachtwoordreset) horen bij geen club.
         (IServiceProvider services, DbContextOptions<ApplicationDbContext> options) = BuildServices();
-        EmailOutboxWriter writer = new(services.GetRequiredService<IServiceScopeFactory>(), new FixedTenant(Guid.Empty));
+        CapturingLogger logger = new();
+        EmailOutboxWriter writer = Writer(services, new EmailOrganizationContext(new FixedTenant(Guid.Empty)), logger);
 
         await writer.EnqueueAsync(new StudentMagicLinkMail("m@x.be", "https://x/magic/zz"));
 
         await using ApplicationDbContext db = new(options, new FixedTenant(Guid.Empty));
         (await db.EmailOutboxMessages.SingleAsync()).OrganizationId.Should().BeNull();
+        logger.Warnings.Should().Be(0);
+    }
+
+    [Test]
+    public async Task Writer_uses_organization_given_by_public_flow_without_tenant()
+    {
+        // Bevestigingslink of Mollie-webhook: geen tenant, de flow geeft de club expliciet mee.
+        Guid orgId = Guid.NewGuid();
+        (IServiceProvider services, DbContextOptions<ApplicationDbContext> options) = BuildServices();
+        CapturingLogger logger = new();
+        EmailOrganizationContext organization = new(new FixedTenant(Guid.Empty));
+        organization.Use(orgId);
+        EmailOutboxWriter writer = Writer(services, organization, logger);
+
+        await writer.EnqueueAsync(new EnrollmentConfirmationMail("ouder@x.be", "Emma", "Reeks A", null));
+
+        await using ApplicationDbContext db = new(options, new FixedTenant(Guid.Empty));
+        (await db.EmailOutboxMessages.SingleAsync()).OrganizationId.Should().Be(orgId);
+        logger.Warnings.Should().Be(0);
+    }
+
+    [Test]
+    public void Explicit_organization_wins_over_tenant()
+    {
+        Guid tenantOrg = Guid.NewGuid();
+        Guid linkOrg = Guid.NewGuid();
+        EmailOrganizationContext organization = new(new FixedTenant(tenantOrg));
+
+        organization.Current.Should().Be(tenantOrg);
+        organization.Use(linkOrg);
+        organization.Current.Should().Be(linkOrg);
+    }
+
+    [Test]
+    public void Use_rejects_empty_organization()
+    {
+        EmailOrganizationContext organization = new(new FixedTenant(Guid.Empty));
+
+        Action act = () => organization.Use(Guid.Empty);
+
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Test]
+    public async Task Writer_warns_when_club_mail_has_no_organization()
+    {
+        // Een vergeten publieke flow: de mail gaat nog altijd weg, maar valt op in de logs.
+        (IServiceProvider services, DbContextOptions<ApplicationDbContext> options) = BuildServices();
+        CapturingLogger logger = new();
+        EmailOutboxWriter writer = Writer(services, new EmailOrganizationContext(new FixedTenant(Guid.Empty)), logger);
+
+        await writer.EnqueueAsync(new CampEnrollmentConfirmedMail(
+            "kamp@x.be", "Emma", "Paaskamp", new DateOnly(2026, 4, 14), new DateOnly(2026, 4, 16)));
+
+        await using ApplicationDbContext db = new(options, new FixedTenant(Guid.Empty));
+        (await db.EmailOutboxMessages.SingleAsync()).OrganizationId.Should().BeNull();
+        logger.Warnings.Should().Be(1);
+    }
+
+    [Test]
+    public void Every_mail_about_a_player_or_lesson_is_marked_as_club_mail()
+    {
+        // Wie een spelersmail toevoegt, moet ze als clubmail markeren; anders blijft een
+        // ontbrekende organisatie onopgemerkt (offboarding, speler wissen).
+        string[] platformMails =
+        [
+            "mail:website-waitlist", "mail:website-contact-notification", "mail:trainer-invite",
+            "mail:admin-invite", "mail:student-magic-link", "mail:password-reset",
+            "mail:email-verification", "mail:trial-reminder", "mail:subscription-started",
+            "mail:subscription-payment-failed", "mail:subscription-invitation",
+            "mail:billing-super-admin-notice",
+        ];
+
+        foreach (string key in OutboxEmails.Keys)
+        {
+            bool isClubMail = OutboxEmails.TypeOf(key).IsAssignableTo(typeof(IClubOutboxEmail));
+            isClubMail.Should().Be(!platformMails.Contains(key), $"{key} moet juist ingedeeld zijn");
+        }
+    }
+
+    private static EmailOutboxWriter Writer(
+        IServiceProvider services, EmailOrganizationContext organization, CapturingLogger? logger = null)
+        => new(services.GetRequiredService<IServiceScopeFactory>(), organization, logger ?? new CapturingLogger());
+
+    /// <summary>
+    /// Moq kan geen <c>ILogger</c> van een internal klasse namaken (strong-named assembly);
+    /// deze logger telt enkel de waarschuwingen.
+    /// </summary>
+    private sealed class CapturingLogger : ILogger<EmailOutboxWriter>
+    {
+        public int Warnings { get; private set; }
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
+            Func<TState, Exception?, string> formatter)
+        {
+            if (logLevel == LogLevel.Warning) Warnings++;
+        }
     }
 
     private static string ArgumentsJson(IInvocation invocation)

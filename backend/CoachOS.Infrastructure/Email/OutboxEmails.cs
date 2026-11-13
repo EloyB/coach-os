@@ -18,6 +18,13 @@ internal interface IOutboxEmail
 }
 
 /// <summary>
+/// Mail over een speler of les van een club. Hoort altijd bij een organisatie: ofwel de tenant
+/// van het verzoek, ofwel expliciet meegegeven via <see cref="IEmailOrganizationContext"/>.
+/// Zonder organisatie logt de <see cref="EmailOutboxWriter"/> een waarschuwing.
+/// </summary>
+internal interface IClubOutboxEmail : IOutboxEmail;
+
+/// <summary>
 /// Register van alle mails die via de outbox gaan: een vaste typenaam per mail (zo blijven
 /// rijen die al in de wachtrij staan leesbaar, ook als een record ooit hernoemd wordt) en
 /// (de)serialisatie van de argumenten.
@@ -60,6 +67,8 @@ internal static class OutboxEmails
         Registrations.ToDictionary(r => r.Key, r => r.Type);
 
     public static IReadOnlyCollection<string> Keys => TypeByKey.Keys;
+
+    public static Type TypeOf(string key) => TypeByKey[key];
 
     public static (string Type, string Payload) Serialize(IOutboxEmail mail)
     {
@@ -116,7 +125,7 @@ internal sealed record AdminInviteMail(
 
 internal sealed record EnrollmentConfirmationMail(
     string StudentEmail, string StudentName, string SeriesName,
-    IReadOnlyList<string>? ParticipantNames) : IOutboxEmail
+    IReadOnlyList<string>? ParticipantNames) : IClubOutboxEmail
 {
     [JsonIgnore] public string Recipient => StudentEmail;
 
@@ -125,7 +134,7 @@ internal sealed record EnrollmentConfirmationMail(
 }
 
 internal sealed record GroupMemberAddedMail(
-    string StudentEmail, string StudentName, string SeriesName, string GroupName) : IOutboxEmail
+    string StudentEmail, string StudentName, string SeriesName, string GroupName) : IClubOutboxEmail
 {
     [JsonIgnore] public string Recipient => StudentEmail;
 
@@ -135,7 +144,7 @@ internal sealed record GroupMemberAddedMail(
 
 internal sealed record EnrollmentPendingCashMail(
     string StudentEmail, string StudentName, string SeriesName, decimal Amount,
-    IReadOnlyList<string>? ParticipantNames) : IOutboxEmail
+    IReadOnlyList<string>? ParticipantNames) : IClubOutboxEmail
 {
     [JsonIgnore] public string Recipient => StudentEmail;
 
@@ -149,7 +158,7 @@ internal sealed record EnrollmentPendingCashMail(
 /// </remarks>
 internal sealed record TrainerEnrollmentNotificationMail(
     string TrainerEmail, string TrainerName, string StudentName, string StudentEmail,
-    string SeriesName, IReadOnlyList<EmailResponseItem> Responses) : IOutboxEmail
+    string SeriesName, IReadOnlyList<EmailResponseItem> Responses) : IClubOutboxEmail
 {
     [JsonIgnore] public string Recipient => TrainerEmail;
 
@@ -162,7 +171,7 @@ internal sealed record TrainerEnrollmentNotificationMail(
 internal sealed record ScheduleConfirmationMail(
     string StudentEmail, string StudentName, string SeriesName, int DayOfWeek,
     string StartTime, string EndTime, string? CourtName, string ConfirmationUrl,
-    IReadOnlyList<string>? ParticipantNames) : IOutboxEmail
+    IReadOnlyList<string>? ParticipantNames) : IClubOutboxEmail
 {
     [JsonIgnore] public string Recipient => StudentEmail;
 
@@ -173,7 +182,7 @@ internal sealed record ScheduleConfirmationMail(
 }
 
 internal sealed record ScheduleConfirmationBundleMail(
-    string ContactEmail, string SeriesName, IReadOnlyList<ScheduleConfirmationItem> Items) : IOutboxEmail
+    string ContactEmail, string SeriesName, IReadOnlyList<ScheduleConfirmationItem> Items) : IClubOutboxEmail
 {
     [JsonIgnore] public string Recipient => ContactEmail;
 
@@ -191,7 +200,7 @@ internal sealed record StudentMagicLinkMail(string ToEmail, string MagicLinkUrl)
 
 internal sealed record LessonCancellationMail(
     string StudentEmail, string StudentName, string SeriesName, DateOnly LessonDate,
-    TimeOnly StartTime, string? CancellationReason) : IOutboxEmail
+    TimeOnly StartTime, string? CancellationReason) : IClubOutboxEmail
 {
     [JsonIgnore] public string Recipient => StudentEmail;
 
@@ -203,7 +212,7 @@ internal sealed record LessonCancellationMail(
 internal sealed record LessonRescheduledMail(
     string ToEmail, string ToName, string? SeriesName, DateOnly OldDate, TimeOnly OldStartTime,
     DateOnly NewDate, TimeOnly NewStartTime, TimeOnly NewEndTime, string? CourtName,
-    string? Reason) : IOutboxEmail
+    string? Reason) : IClubOutboxEmail
 {
     [JsonIgnore] public string Recipient => ToEmail;
 
@@ -215,7 +224,7 @@ internal sealed record LessonRescheduledMail(
 
 internal sealed record ScheduleInfoMail(
     string ToEmail, string ToName, string SeriesName, string GroupName, int DayOfWeek,
-    string StartTime, string EndTime, string? CourtName) : IOutboxEmail
+    string StartTime, string EndTime, string? CourtName) : IClubOutboxEmail
 {
     [JsonIgnore] public string Recipient => ToEmail;
 
@@ -227,7 +236,7 @@ internal sealed record ScheduleInfoMail(
 internal sealed record AssignmentMovedMail(
     string ToEmail, string ToName, string SeriesName, int OldDayOfWeek, string OldStartTime,
     string OldEndTime, int NewDayOfWeek, string NewStartTime, string NewEndTime,
-    string? NewCourtName, IReadOnlyList<string>? ParticipantNames) : IOutboxEmail
+    string? NewCourtName, IReadOnlyList<string>? ParticipantNames) : IClubOutboxEmail
 {
     [JsonIgnore] public string Recipient => ToEmail;
 
@@ -239,7 +248,7 @@ internal sealed record AssignmentMovedMail(
 
 internal sealed record StandaloneLessonInvitationMail(
     string ToEmail, string? FirstName, DateOnly Date, TimeOnly StartTime, TimeOnly EndTime,
-    string? CourtName, string? LevelText, string? Notes, string InvitationUrl) : IOutboxEmail
+    string? CourtName, string? LevelText, string? Notes, string InvitationUrl) : IClubOutboxEmail
 {
     [JsonIgnore] public string Recipient => ToEmail;
 
@@ -258,7 +267,7 @@ internal sealed record PasswordResetMail(string ToEmail, string FirstName, strin
 
 internal sealed record CampEnrollmentPaymentLinkMail(
     string ParticipantEmail, string ParticipantName, string CampName, DateOnly StartDate,
-    DateOnly EndDate, string CheckoutUrl) : IOutboxEmail
+    DateOnly EndDate, string CheckoutUrl) : IClubOutboxEmail
 {
     [JsonIgnore] public string Recipient => ParticipantEmail;
 
@@ -269,7 +278,7 @@ internal sealed record CampEnrollmentPaymentLinkMail(
 
 internal sealed record CampEnrollmentConfirmedMail(
     string ParticipantEmail, string ParticipantName, string CampName, DateOnly StartDate,
-    DateOnly EndDate) : IOutboxEmail
+    DateOnly EndDate) : IClubOutboxEmail
 {
     [JsonIgnore] public string Recipient => ParticipantEmail;
 

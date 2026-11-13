@@ -137,6 +137,8 @@ public static class DependencyInjection
         // De applicatie verstuurt geen mail zelf: IEmailService zet elke mail in de outbox,
         // de EmailOutboxWorker levert hem af via de SMTP-EmailService (met nieuwe pogingen).
         services.AddScoped<EmailService>();
+        services.AddScoped<EmailOrganizationContext>();
+        services.AddScoped<IEmailOrganizationContext>(sp => sp.GetRequiredService<EmailOrganizationContext>());
         services.AddScoped<IEmailOutboxWriter, EmailOutboxWriter>();
         services.AddScoped<IEmailService, OutboxEmailService>();
         services.AddSingleton<IPlanningWorkbookBuilder, ClosedXmlPlanningWorkbookBuilder>();
