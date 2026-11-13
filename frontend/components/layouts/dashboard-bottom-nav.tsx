@@ -15,7 +15,9 @@ export function MobileBottomNav() {
   }, []);
 
   const visibleItems = navItems.filter(
-    (item) => !("adminOnly" in item && item.adminOnly) || role === "Admin"
+    (item) =>
+      (!item.adminOnly || role === "Admin") &&
+      (!item.trainerOnly || role === "Trainer")
   );
 
   return (

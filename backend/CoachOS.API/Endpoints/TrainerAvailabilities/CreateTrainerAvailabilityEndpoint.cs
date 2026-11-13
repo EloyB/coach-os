@@ -17,7 +17,7 @@ public class CreateTrainerAvailabilityEndpoint : IEndpoint
                 ? Results.Created($"/api/trainer-availabilities/{result.Value}", result.Value)
                 : result.ToErrorResult();
         })
-        .RequireAuthorization()
+        .RequireAuthorization(policy => policy.RequireRole("Admin"))
         .AddEndpointFilter<ValidationFilter<CreateTrainerAvailabilityRequest>>()
         .WithTags("TrainerAvailabilities");
     }
