@@ -6,6 +6,8 @@ import {
   authHeaders,
   createTestSeries,
   loginUi,
+  publicRequest,
+  gotoPublic,
   type LoginResult,
 } from "./live-helpers";
 
@@ -127,8 +129,7 @@ test.describe("Live UI — lessenreeks detailpagina", () => {
     const stamp = Date.now();
     const studentName = `E2E UI Annuleren ${stamp}`;
     const email = `e2e-ui-cancel-${stamp}@test.be`;
-    const submit = await request.post(
-      `${API_URL}/public/lessonseries/${seriesId}/enroll`,
+    const submit = await publicRequest(request, "post", `/public/lessonseries/${seriesId}/enroll`,
       {
         data: {
           studentName,
@@ -177,8 +178,7 @@ test.describe("Live UI — lessenreeks detailpagina", () => {
     const child = new Date();
     child.setFullYear(child.getFullYear() - 11);
 
-    const submit = await request.post(
-      `${API_URL}/public/lessonseries/${seriesId}/enroll`,
+    const submit = await publicRequest(request, "post", `/public/lessonseries/${seriesId}/enroll`,
       {
         data: {
           studentName,
@@ -212,7 +212,7 @@ test.describe("Live UI — publiek inschrijfformulier", () => {
   });
 
   test("geboortedatumveld is aanwezig met uitleg", async ({ page }) => {
-    await page.goto(`/enroll/${seriesId}`);
+    await gotoPublic(page, `/enroll/${seriesId}`);
 
     await expect(page.getByLabel("Geboortedatum")).toBeVisible();
     await expect(
@@ -221,7 +221,7 @@ test.describe("Live UI — publiek inschrijfformulier", () => {
   });
 
   test("lege geboortedatum blokkeert verzenden", async ({ page }) => {
-    await page.goto(`/enroll/${seriesId}`);
+    await gotoPublic(page, `/enroll/${seriesId}`);
 
     // Voornaam/achternaam/e-mail hebben geen htmlFor-koppeling op deze pagina,
     // dus net als in e2e/enrollment.spec.ts via input-locators.
@@ -241,7 +241,7 @@ test.describe("Live UI — publiek inschrijfformulier", () => {
   }) => {
     const email = `e2e-form-${Date.now()}@test.be`;
 
-    await page.goto(`/enroll/${seriesId}`);
+    await gotoPublic(page, `/enroll/${seriesId}`);
 
     const textInputs = page.locator('input[type="text"]');
     await textInputs.nth(0).fill("E2E");

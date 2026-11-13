@@ -29,6 +29,9 @@ export default defineConfig({
       // Opt-in: `bun run test:e2e:live`. Needs the docker stack + seed data.
       name: "live",
       testMatch: "live/**/*.spec.ts",
+      // Publieke endpoints delen één rate-limitvenster van 30/min; de live-helpers
+      // wachten bij een 429 tot het volgende venster, wat tot een minuut kan duren.
+      timeout: 120_000,
       use: { ...devices["Desktop Chrome"] },
     },
   ],

@@ -8,6 +8,7 @@ import {
   futureDate,
   priceOption,
   uniqueCourt,
+  publicRequest,
   type LoginResult,
 } from "./live-helpers";
 import type { LessonSeriePriceDto } from "@/lib/api/lessonSeriePrices";
@@ -30,8 +31,7 @@ test.describe("Live API — inschrijving annuleren", () => {
 
     // Eigen inschrijvingen aanmaken: de reeks is vers, dus leeg.
     for (let i = 0; i < 3; i++) {
-      const response = await request.post(
-        `${API_URL}/public/lessonseries/${seriesId}/enroll`,
+      const response = await publicRequest(request, "post", `/public/lessonseries/${seriesId}/enroll`,
         {
           data: {
             studentName: `E2E Annuleerbaar ${i}`,
@@ -426,8 +426,7 @@ test.describe("Live API — geboortedatum en tariefcategorie", () => {
   test("inschrijving zonder geboortedatum wordt geweigerd", async ({
     request,
   }) => {
-    const response = await request.post(
-      `${API_URL}/public/lessonseries/${seriesId}/enroll`,
+    const response = await publicRequest(request, "post", `/public/lessonseries/${seriesId}/enroll`,
       {
         data: {
           studentName: "E2E Zonder Geboortedatum",
@@ -440,8 +439,7 @@ test.describe("Live API — geboortedatum en tariefcategorie", () => {
   });
 
   test("toekomstige geboortedatum wordt geweigerd", async ({ request }) => {
-    const response = await request.post(
-      `${API_URL}/public/lessonseries/${seriesId}/enroll`,
+    const response = await publicRequest(request, "post", `/public/lessonseries/${seriesId}/enroll`,
       {
         data: {
           studentName: "E2E Toekomst",
@@ -456,8 +454,7 @@ test.describe("Live API — geboortedatum en tariefcategorie", () => {
 
   test("volwassene krijgt categorie Volwassenen", async ({ request }) => {
     const email = `e2e-adult-${Date.now()}@test.be`;
-    const submit = await request.post(
-      `${API_URL}/public/lessonseries/${seriesId}/enroll`,
+    const submit = await publicRequest(request, "post", `/public/lessonseries/${seriesId}/enroll`,
       {
         data: {
           studentName: "E2E Volwassene",
@@ -490,8 +487,7 @@ test.describe("Live API — geboortedatum en tariefcategorie", () => {
     twelveYearsAgo.setFullYear(twelveYearsAgo.getFullYear() - 12);
     const dob = twelveYearsAgo.toISOString().slice(0, 10);
 
-    const submit = await request.post(
-      `${API_URL}/public/lessonseries/${seriesId}/enroll`,
+    const submit = await publicRequest(request, "post", `/public/lessonseries/${seriesId}/enroll`,
       {
         data: {
           studentName: "E2E Jeugdlid",
@@ -527,8 +523,7 @@ test.describe("Live API — geboortedatum en tariefcategorie", () => {
     const tenYearsAgo = new Date();
     tenYearsAgo.setFullYear(tenYearsAgo.getFullYear() - 10);
 
-    const submit = await request.post(
-      `${API_URL}/public/lessonseries/${seriesId}/enroll`,
+    const submit = await publicRequest(request, "post", `/public/lessonseries/${seriesId}/enroll`,
       {
         data: {
           studentName: "E2E Ouder",
