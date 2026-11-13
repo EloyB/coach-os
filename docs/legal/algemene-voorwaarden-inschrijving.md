@@ -1,10 +1,9 @@
 # Algemene voorwaarden — Inschrijving lessenreeksen via CoachOS
 
-**Versie:** 0.1 (concept)
-**Laatst bijgewerkt:** [DATUM]
+**Versie:** 2026-12-01
+**In werking vanaf:** 01/12/2026
+**Laatst bijgewerkt:** 01/12/2026
 **Taal:** Nederlands (Belgisch). Bij vertaling primeert de Nederlandstalige versie.
-
-> ⚠️ **Sjabloon — nog te valideren door een advocaat gespecialiseerd in Belgisch consumenten- en privacyrecht voordat dit live gaat.** Met name de bedingen rond herroepingsrecht (artikel 7), aansprakelijkheid (artikel 10) en rechtsmacht (artikel 14) verdienen externe nazicht. Plaatshouders staan tussen `[VIERKANTE HAKEN]`.
 
 ---
 
@@ -46,7 +45,7 @@ In deze algemene voorwaarden wordt verstaan onder:
 
 4.2. Voor alle vragen of klachten over de lessen, de trainer of de locatie wendt de Speler zich rechtstreeks tot de Club.
 
-4.3. Voor vragen of klachten over de werking van het Platform (inschrijvingsformulier, bevestigingsmails, betalingsmodule, etc.) kan de Speler terecht bij CoachOS via **[CONTACTADRES CoachOS]**.
+4.3. Voor vragen of klachten over de werking van het Platform (inschrijvingsformulier, bevestigingsmails, betalingsmodule, etc.) kan de Speler terecht bij CoachOS via **info@coach-os.be**.
 
 ## 5. Toewijzing van het tijdslot en gegevensdeling met medespelers
 
@@ -139,7 +138,7 @@ In deze algemene voorwaarden wordt verstaan onder:
 
 11.5. **Bewaartermijnen.** De persoonsgegevens van de Speler (naam, contactgegevens, geboortedatum, beschikbaarheden en antwoorden op de inschrijvingsvragen) worden uiterlijk **24 maanden** na het einde van de laatste Lessenreeks, les of kamp waarvoor de Speler ingeschreven was verwijderd, tenzij de Speler vraagt om eerder te worden verwijderd. Werd er voor een inschrijving betaald, dan blijft de betaling zelf (bedrag, datum, status en referentie) bewaard zonder naam of contactgegevens, zolang de Club die nodig heeft voor haar boekhouding (wettelijke termijn van **7 jaar**, art. III.86 WER). Back-ups worden niet afzonderlijk bewerkt: verwijderde gegevens verdwijnen daaruit uiterlijk na ongeveer 8 weken.
 
-11.6. **Rechten van de Speler:** recht op inzage, rectificatie, wissing, beperking, overdraagbaarheid en bezwaar. Verzoeken kunnen ingediend worden bij **[CONTACT CoachOS]** of rechtstreeks bij de Club.
+11.6. **Rechten van de Speler:** recht op inzage, rectificatie, wissing, beperking, overdraagbaarheid en bezwaar. Verzoeken kunnen ingediend worden bij **info@coach-os.be** of rechtstreeks bij de Club.
 
 11.7. **Klacht.** De Speler heeft het recht een klacht in te dienen bij de Belgische **Gegevensbeschermingsautoriteit**, Drukpersstraat 35, 1000 Brussel — [www.gegevensbeschermingsautoriteit.be](https://www.gegevensbeschermingsautoriteit.be).
 
@@ -147,7 +146,7 @@ In deze algemene voorwaarden wordt verstaan onder:
 
 ## 12. Klachtenregeling en buitengerechtelijke geschillenbeslechting
 
-12.1. Klachten over de lessen worden eerst rechtstreeks aan de Club gericht. Klachten over het Platform worden aan CoachOS gericht via **[CONTACT CoachOS]**. Beide partijen verbinden zich ertoe binnen **30 kalenderdagen** een gemotiveerd antwoord te bezorgen.
+12.1. Klachten over de lessen worden eerst rechtstreeks aan de Club gericht. Klachten over het Platform worden aan CoachOS gericht via **info@coach-os.be**. Beide partijen verbinden zich ertoe binnen **30 kalenderdagen** een gemotiveerd antwoord te bezorgen.
 
 12.2. De Speler heeft het recht een klacht in te dienen bij de **Consumentenombudsdienst** (Koning Albert II-laan 8, 1000 Brussel — [consumentenombudsdienst.be](https://consumentenombudsdienst.be)).
 
@@ -192,16 +191,3 @@ Ik/Wij (*) deel/delen (*) u hierbij mede dat ik/wij (*) onze overeenkomst betref
 - **Datum:** ______________________________________
 
 (*) Doorhalen wat niet van toepassing is.
-
----
-
-## Open beslissingen voor je advocaat / interne validatie
-
-1. **Naamformaat in artikel 5.** Huidig sjabloon = **enkel voornaam**. Alternatieven om te bespreken:
-   a. Voornaam + eerste letter achternaam (*"Eloy B."*) — meer onderscheidbaar bij dubbele voornamen, maar marginaal meer identificeerbaar;
-   b. Door de Speler zelf gekozen weergave-naam (nickname) — meest privacy-vriendelijk, vereist een extra veld in het inschrijvingsformulier.
-2. **Rechtsgrond in 5.5.** Strikt genomen kan ook expliciete toestemming (Art. 6.1.a AVG) gehanteerd worden. Nadeel: toestemming is intrekbaar, wat het product structureel breekt. Huidig sjabloon kiest voor uitvoering van de overeenkomst + gerechtvaardigd belang — defensief verdedigbaar, maar wel een keuze die best gedragen wordt door de DPIA.
-3. **Aansprakelijkheid voor lesinhoud (artikel 10).** Bevestigen dat CoachOS in geen geval mede-aansprakelijk wordt geacht voor sportongevallen tijdens een les — bij voorkeur ook expliciet vastleggen in de verwerkersovereenkomst tussen CoachOS en de Club.
-4. **Minderjarigen.** Huidig sjabloon vermeldt enkel dat een ouder/voogd handelt namens een minderjarige. Te bekijken: aparte ouderlijke-toestemmingsverklaring, met name voor het tonen van de voornaam aan andere (mogelijk eveneens minderjarige) Deelnemers.
-5. **Joint controllership.** Indien CoachOS in praktijk meer dan zuiver technisch verwerken doet (bijvoorbeeld bij het algoritmisch matchen van groepen, of bij analytics die meerdere clubs overspannen), is een Art. 26 AVG joint-controller-arrangement passender dan een zuivere verwerker-relatie.
-6. **Btw-positie.** Op pure lesgeldfacturatie door erkende sportclubs is een btw-vrijstelling mogelijk (art. 44 Btw-Wetboek). Vermelding van *"incl. btw waar van toepassing"* houdt rekening met clubs die wel én niet onder die vrijstelling vallen.
