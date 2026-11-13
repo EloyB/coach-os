@@ -248,6 +248,30 @@ public class OutboxEmailServiceTests
     }
 
     [Test]
+    public void Delivered_mail_loses_its_content_but_keeps_its_recipient()
+    {
+        // Inhoud (naam, links, codes) weg; het adres blijft voor support en voor "speler wissen",
+        // tot de privacy-opruiming de verstuurde mail na 30 dagen verwijdert.
+        DateTime now = new(2026, 11, 13, 10, 0, 0, DateTimeKind.Utc);
+        EmailOutboxMessage message = new()
+        {
+            RecipientEmail = "ouder@x.be",
+            Type = "mail:password-reset",
+            Payload = """{"ToEmail":"ouder@x.be","ResetUrl":"https://x/reset/r1"}""",
+            Status = EmailOutboxStatuses.Processing,
+            LastError = "eerdere poging mislukt",
+        };
+
+        EmailOutboxWorker.MarkDelivered(message, now);
+
+        message.Status.Should().Be(EmailOutboxStatuses.Completed);
+        message.ProcessedAt.Should().Be(now);
+        message.LastError.Should().BeNull();
+        message.Payload.Should().Be(EmailOutboxMessage.ScrubbedPayload);
+        message.RecipientEmail.Should().Be("ouder@x.be");
+    }
+
+    [Test]
     public void Explicit_organization_wins_over_tenant()
     {
         Guid tenantOrg = Guid.NewGuid();

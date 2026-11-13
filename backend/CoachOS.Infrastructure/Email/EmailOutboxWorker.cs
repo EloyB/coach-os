@@ -63,13 +63,7 @@ public sealed class EmailOutboxWorker(
         try
         {
             await DispatchAsync(message.Type, message.Payload, smtp, ct);
-            message.Status = EmailOutboxStatuses.Completed;
-            message.ProcessedAt = DateTime.UtcNow;
-            message.LastError = null;
-            // Na het versturen zijn inhoud en ontvanger (adres, naam, inloglinks, codes) niet
-            // meer nodig: gewist, zodat er geen persoonsgegevens of geheimen achterblijven.
-            message.Payload = EmailOutboxMessage.ScrubbedPayload;
-            message.RecipientEmail = null;
+            MarkDelivered(message, DateTime.UtcNow);
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
@@ -123,6 +117,19 @@ public sealed class EmailOutboxWorker(
         await db.SaveChangesAsync(ct);
         await transaction.CommitAsync(ct);
         return message;
+    }
+
+    /// <summary>
+    /// Afgeleverd: de inhoud (naam, inloglinks, codes) is niet meer nodig en wordt gewist. Het
+    /// ontvangeradres blijft staan, voor support ("heb ik die mail gekregen?"); de privacy-
+    /// opruiming verwijdert de rij na 30 dagen, en "speler wissen" vindt hem via dat adres terug.
+    /// </summary>
+    internal static void MarkDelivered(EmailOutboxMessage message, DateTime now)
+    {
+        message.Status = EmailOutboxStatuses.Completed;
+        message.ProcessedAt = now;
+        message.LastError = null;
+        message.Payload = EmailOutboxMessage.ScrubbedPayload;
     }
 
     /// <summary>

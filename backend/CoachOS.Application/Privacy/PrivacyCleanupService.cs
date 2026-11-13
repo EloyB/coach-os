@@ -7,7 +7,10 @@ namespace CoachOS.Application.Privacy;
 /// <summary>Termijnen voor het opruimen van technische records (zie <see cref="PrivacyCleanupService"/>).</summary>
 public static class PrivacyCleanupPolicy
 {
-    /// <summary>Een verstuurde mail blijft 30 dagen staan, voor support ("heb ik die mail gekregen?").</summary>
+    /// <summary>
+    /// Een verstuurde mail blijft 30 dagen staan, met ontvanger maar zonder inhoud, voor support
+    /// ("heb ik die mail gekregen?"). Daarna gaat de hele rij weg.
+    /// </summary>
     public const int CompletedMailRetentionDays = 30;
 
     /// <summary>

@@ -11,8 +11,8 @@ namespace CoachOS.Domain.Entities;
 public class EmailOutboxMessage : BaseEntity
 {
     /// <summary>
-    /// Inhoud na het wissen (afgeleverd, of lang genoeg mislukt): geen adressen, namen,
-    /// inloglinks of codes meer in de database.
+    /// Inhoud na het wissen (afgeleverd, of lang genoeg mislukt): geen namen, inloglinks of
+    /// codes meer in de inhoud. Het adres staat dan enkel nog in <see cref="RecipientEmail"/>.
     /// </summary>
     public const string ScrubbedPayload = "{}";
 
@@ -29,6 +29,9 @@ public class EmailOutboxMessage : BaseEntity
     /// <summary>
     /// Ontvanger in kleine letters, voor mails zonder <see cref="EnrollmentId"/>. Laat
     /// "speler wissen" die mails terugvinden: de inhoud bevat het adres en de naam van de speler.
+    /// Blijft na aflevering staan voor support ("heb ik die mail gekregen?"), tot de privacy-
+    /// opruiming de verstuurde mail na 30 dagen verwijdert. Bij een mislukte mail wist de
+    /// opruiming hem na 30 dagen samen met de inhoud.
     /// </summary>
     public string? RecipientEmail { get; set; }
     public string Type { get; set; } = string.Empty;
