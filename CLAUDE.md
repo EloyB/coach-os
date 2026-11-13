@@ -161,7 +161,7 @@ Als seed faalt: drift in DTO/validator/migratie → eerst `seed-data.json` + `se
 
 ## graphify
 
-This project has a graphify knowledge graph at `graphify-out/`.
+This project has a graphify knowledge graph at `graphify-out/`. It is generated locally (by `graphify update` / the stop hook) and is **not tracked in git** — a fresh worktree may not have it yet; in that case read the code directly or run `graphify update .` first.
 
 Rules:
 
