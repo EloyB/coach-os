@@ -24,6 +24,7 @@ public class CampEnrollmentService(
     IUnitOfWork unitOfWork,
     IMollieConnectService mollieConnect,
     IEmailService emailService,
+    IEmailOrganizationContext mailOrganization,
     ILogger<CampEnrollmentService> logger) : ICampEnrollmentService
 {
     private const string DateFormat = "yyyy-MM-dd";
@@ -69,6 +70,9 @@ public class CampEnrollmentService(
         Camp? camp = await camps.GetByIdPublicAsync(campId, ct);
         if (camp is null)
             return Result<SubmitCampEnrollmentResultDto>.Fail(new Error(ErrorCodes.NotFound, "Kamp niet gevonden."));
+
+        // Publiek formulier zonder tenant: de bevestigingsmail hoort bij de club van het kamp.
+        mailOrganization.Use(camp.OrganizationId);
 
         if (DateTime.UtcNow > camp.RegistrationDeadline)
             return Result<SubmitCampEnrollmentResultDto>.Fail(new Error(ErrorCodes.Validation, "De inschrijvingsdeadline is verstreken."));

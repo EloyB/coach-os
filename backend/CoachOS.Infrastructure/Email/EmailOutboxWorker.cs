@@ -27,10 +27,6 @@ public sealed class EmailOutboxWorker(
     // de worker midden in het versturen, dan komt het na deze termijn opnieuw aan de beurt.
     private static readonly TimeSpan ProcessingLease = TimeSpan.FromMinutes(5);
 
-    // Na het versturen is de inhoud (adres, naam, inloglinks, codes) niet meer nodig:
-    // gewist, zodat er geen persoonsgegevens of geheimen in de database achterblijven.
-    internal const string ScrubbedPayload = "{}";
-
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         while (!stoppingToken.IsCancellationRequested)
@@ -67,16 +63,17 @@ public sealed class EmailOutboxWorker(
         try
         {
             await DispatchAsync(message.Type, message.Payload, smtp, ct);
-            message.Status = EmailOutboxStatuses.Completed;
-            message.ProcessedAt = DateTime.UtcNow;
-            message.LastError = null;
-            message.Payload = ScrubbedPayload;
+            MarkDelivered(message, DateTime.UtcNow);
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
             message.Status = message.Attempts >= MaxAttempts
                 ? EmailOutboxStatuses.Failed
                 : EmailOutboxStatuses.Pending;
+            // Moment van definitief mislukken: vanaf hier telt de termijn waarna de privacy-
+            // opruiming de inhoud wist (de rij zelf blijft voor onderzoek).
+            if (message.Status == EmailOutboxStatuses.Failed)
+                message.ProcessedAt = DateTime.UtcNow;
             message.AvailableAt = DateTime.UtcNow.Add(GetRetryDelay(message.Attempts));
             message.LastError = ex.Message[..Math.Min(ex.Message.Length, 2000)];
             logger.LogError(ex,
@@ -120,6 +117,19 @@ public sealed class EmailOutboxWorker(
         await db.SaveChangesAsync(ct);
         await transaction.CommitAsync(ct);
         return message;
+    }
+
+    /// <summary>
+    /// Afgeleverd: de inhoud (naam, inloglinks, codes) is niet meer nodig en wordt gewist. Het
+    /// ontvangeradres blijft staan, voor support ("heb ik die mail gekregen?"); de privacy-
+    /// opruiming verwijdert de rij na 30 dagen, en "speler wissen" vindt hem via dat adres terug.
+    /// </summary>
+    internal static void MarkDelivered(EmailOutboxMessage message, DateTime now)
+    {
+        message.Status = EmailOutboxStatuses.Completed;
+        message.ProcessedAt = now;
+        message.LastError = null;
+        message.Payload = EmailOutboxMessage.ScrubbedPayload;
     }
 
     /// <summary>

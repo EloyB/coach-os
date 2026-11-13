@@ -2,6 +2,7 @@ using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
 using CoachOS.Domain.Interfaces;
 using CoachOS.Domain.Models.Privacy;
+using CoachOS.Infrastructure.Email;
 using CoachOS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -253,15 +254,22 @@ public sealed partial class PlayerErasureRepository(ApplicationDbContext db) : I
     /// <summary>
     /// Outbox-rijen over deze speler: gekoppeld aan de inschrijving (inschrijvingsmails), of
     /// zonder inschrijving maar naar een van haar adressen (alle andere mails, die via de
-    /// outbox-mailservice zonder inschrijving ingepland worden). Zonder tenantfilter: rijen uit
-    /// publieke flows (bevestigingslink, Mollie-webhook) hebben geen organisatie.
+    /// outbox-mailservice zonder inschrijving ingepland worden).
     /// </summary>
+    /// <remarks>
+    /// Zonder inschrijving telt enkel een rij van deze club, of een platformmail zonder club
+    /// (bv. inloglink naar het spelersadres). Clubmails krijgen altijd een organisatie, ook uit
+    /// publieke flows (bevestigingslink, kampformulier, Mollie-webhook). Een clubmail zonder
+    /// organisatie is dus niet aan een club toe te wijzen; die laat wissen in deze club ongemoeid,
+    /// want ze kan van een andere club zijn. Tenantfilter uit: platformmails hebben geen organisatie.
+    /// </remarks>
     private IQueryable<EmailOutboxMessage> MailAbout(
         Guid organizationId, Guid enrollmentId, IReadOnlyCollection<string> addresses)
         => db.EmailOutboxMessages.IgnoreQueryFilters().Where(x =>
             (x.OrganizationId == organizationId && x.EnrollmentId == enrollmentId) ||
             (x.EnrollmentId == null && x.RecipientEmail != null && addresses.Contains(x.RecipientEmail) &&
-             (x.OrganizationId == organizationId || x.OrganizationId == null)));
+             (x.OrganizationId == organizationId ||
+              (x.OrganizationId == null && OutboxEmails.PlatformKeys.Contains(x.Type)))));
 
     private async Task<bool> HasUnresolvedRequestAsync(
         Guid organizationId, Guid enrollmentId, Guid? groupId, bool soleMember, CancellationToken ct)

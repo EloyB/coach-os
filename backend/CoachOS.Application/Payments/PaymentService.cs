@@ -33,6 +33,7 @@ public class PaymentService(
     IMollieClient mollieClient,
     IMollieConnectService mollieConnect,
     IEmailService emailService,
+    IEmailOrganizationContext mailOrganization,
     IPricingService pricingService,
     IOptions<MollieOptions> mollieOptions,
     IOptions<AppOptions> appOptions,
@@ -440,6 +441,9 @@ public class PaymentService(
 
     private async Task ConfirmEnrollmentAfterPaymentAsync(PaymentEntity payment, CancellationToken ct)
     {
+        // Ook vanuit de Mollie-webhook (geen tenant): de bevestigingsmail hoort bij de club van de betaling.
+        mailOrganization.Use(payment.OrganizationId);
+
         // Kamp-betalingen (CampEnrollmentId gezet) krijgen hun eigen confirm-flow.
         if (payment.CampEnrollmentId is { } campEnrollmentId)
         {

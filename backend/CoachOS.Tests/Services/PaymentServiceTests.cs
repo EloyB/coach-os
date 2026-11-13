@@ -28,6 +28,7 @@ public class PaymentServiceTests
     private Mock<IMollieClient> _mollie = null!;
     private Mock<IMollieConnectService> _connect = null!;
     private Mock<IEmailService> _email = null!;
+    private Mock<IEmailOrganizationContext> _mailOrganization = null!;
     private Mock<IPricingService> _pricing = null!;
     private Mock<IUnitOfWork> _unitOfWork = null!;
     private PaymentService _sut = null!;
@@ -69,6 +70,7 @@ public class PaymentServiceTests
         _mollie = new Mock<IMollieClient>();
         _connect = new Mock<IMollieConnectService>();
         _email = new Mock<IEmailService>();
+        _mailOrganization = new Mock<IEmailOrganizationContext>();
         _pricing = new Mock<IPricingService>();
         _unitOfWork = new Mock<IUnitOfWork>();
         SetupPrice(MatrixTotal, groupSize: 1);
@@ -97,6 +99,7 @@ public class PaymentServiceTests
             _mollie.Object,
             _connect.Object,
             _email.Object,
+            _mailOrganization.Object,
             _pricing.Object,
             mollieOptions,
             appOptions,
@@ -482,6 +485,8 @@ public class PaymentServiceTests
             "student@example.com", "Test Student", "Voorjaar 2026",
             It.IsAny<IReadOnlyList<string>?>(), It.IsAny<CancellationToken>()),
             Times.Once);
+        // Webhook zonder tenant: de bevestigingsmail hoort bij de club van de betaling.
+        _mailOrganization.Verify(m => m.Use(OrgId), Times.Once);
     }
 
     [Test]

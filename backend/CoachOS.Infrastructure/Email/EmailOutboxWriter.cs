@@ -1,7 +1,7 @@
-using CoachOS.Application.Abstractions;
 using CoachOS.Domain.Entities;
 using CoachOS.Infrastructure.Persistence;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace CoachOS.Infrastructure.Email;
 
@@ -19,19 +19,24 @@ internal interface IEmailOutboxWriter
 /// </summary>
 internal sealed class EmailOutboxWriter(
     IServiceScopeFactory scopeFactory,
-    ITenantContext tenant) : IEmailOutboxWriter
+    EmailOrganizationContext organization,
+    ILogger<EmailOutboxWriter> logger) : IEmailOutboxWriter
 {
     public async Task EnqueueAsync(IOutboxEmail mail)
     {
         (string type, string payload) = OutboxEmails.Serialize(mail);
+        // Organisatie van het verzoek (tenant), of die een publieke flow expliciet meegaf, zodat
+        // offboarding haar mails opruimt en "speler wissen" binnen de eigen club blijft.
+        Guid? organizationId = organization.Current;
+        if (organizationId is null && mail is IClubOutboxEmail)
+            logger.LogWarning(
+                "Clubmail {Type} ingepland zonder organisatie; geef ze mee via IEmailOrganizationContext", type);
 
-        await using var scope = scopeFactory.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        await using AsyncServiceScope scope = scopeFactory.CreateAsyncScope();
+        ApplicationDbContext db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         db.EmailOutboxMessages.Add(new EmailOutboxMessage
         {
-            // Tenant van het verzoek dat de mail veroorzaakte, zodat offboarding van een
-            // organisatie ook haar wachtende mails opruimt. Publiek/achtergrond: geen tenant.
-            OrganizationId = tenant.OrganizationId == Guid.Empty ? null : tenant.OrganizationId,
+            OrganizationId = organizationId,
             // Geen inschrijving gekend: via het adres vindt "speler wissen" deze mail terug.
             RecipientEmail = mail.Recipient.Trim().ToLowerInvariant(),
             Type = type,

@@ -246,15 +246,35 @@ public class PlayerErasurePostgresTests : PlayerErasurePostgresBase
     // ── Mails zonder inschrijving (outbox-mailservice), herkend aan het adres ──
 
     [Test]
-    public async Task Preview_UnlinkedPendingMailToContactAddressWithoutOrganization_Blocks()
+    public async Task Preview_UnlinkedPendingPlatformMailToContactAddressWithoutOrganization_Blocks()
     {
-        // Bv. "Bevestig je lesmoment" naar de ouder, ingepland vanuit een publieke flow
-        // (geen tenant, dus geen organisatie) en zonder inschrijving.
+        // Bv. een inloglink naar de ouder: platformmail, hoort bij geen club en heeft dus geen
+        // organisatie, maar bevat wel het adres van deze speler.
         Guid org = Guid.NewGuid();
         await using ApplicationDbContext db = Db();
         Enrollment player = Solo(org, Today.AddYears(-3));
         player.ContactEmail = "Parent@Example.test";
         player.StudentEmail = "student@example.test";
+        db.Enrollments.Add(player);
+        db.EmailOutboxMessages.Add(UnlinkedMail(null, "parent@example.test", EmailOutboxStatuses.Pending, PlatformMailType));
+        await db.SaveChangesAsync();
+        Guid admin = await SeedAdminAsync(db, org);
+
+        PlayerErasurePreviewDto preview = (await Service(db).PreviewAsync(org, admin, Lesson, player.Id)).Value!;
+
+        preview.BlockingReasons.Should().Equal(PlayerErasureBlockReasons.PendingMail);
+    }
+
+    [Test]
+    public async Task Preview_UnlinkedClubMailWithoutOrganization_DoesNotBlock()
+    {
+        // Een clubmail ("Bevestig je lesmoment") krijgt altijd een organisatie, ook uit publieke
+        // flows. Zonder organisatie is niet te zeggen van welke club ze is: misschien een andere
+        // club met dezelfde ouder. Wissen in deze club blijft er dus af.
+        Guid org = Guid.NewGuid();
+        await using ApplicationDbContext db = Db();
+        Enrollment player = Solo(org, Today.AddYears(-3));
+        player.ContactEmail = "parent@example.test";
         db.Enrollments.Add(player);
         db.EmailOutboxMessages.Add(UnlinkedMail(null, "parent@example.test", EmailOutboxStatuses.Pending));
         await db.SaveChangesAsync();
@@ -262,7 +282,7 @@ public class PlayerErasurePostgresTests : PlayerErasurePostgresBase
 
         PlayerErasurePreviewDto preview = (await Service(db).PreviewAsync(org, admin, Lesson, player.Id)).Value!;
 
-        preview.BlockingReasons.Should().Equal(PlayerErasureBlockReasons.PendingMail);
+        preview.CanErase.Should().BeTrue();
     }
 
     [Test]
@@ -340,10 +360,13 @@ public class PlayerErasurePostgresTests : PlayerErasurePostgresBase
         player.ContactEmail = "parent@example.test";
         player.StudentEmail = "student@example.test";
         db.Enrollments.Add(player);
-        EmailOutboxMessage toParent = UnlinkedMail(null, "parent@example.test", EmailOutboxStatuses.Completed);
+        EmailOutboxMessage toParent = UnlinkedMail(org, "parent@example.test", EmailOutboxStatuses.Completed);
         EmailOutboxMessage toStudent = UnlinkedMail(org, "student@example.test", EmailOutboxStatuses.Completed);
+        EmailOutboxMessage platformToParent = UnlinkedMail(null, "parent@example.test", EmailOutboxStatuses.Failed, PlatformMailType);
         EmailOutboxMessage toOther = UnlinkedMail(org, "other@example.test", EmailOutboxStatuses.Completed);
-        db.EmailOutboxMessages.AddRange(toParent, toStudent, toOther);
+        // Clubmail zonder organisatie naar hetzelfde adres: kan van een andere club zijn, blijft.
+        EmailOutboxMessage clubMailWithoutOrganization = UnlinkedMail(null, "parent@example.test", EmailOutboxStatuses.Failed);
+        db.EmailOutboxMessages.AddRange(toParent, toStudent, platformToParent, toOther, clubMailWithoutOrganization);
         await db.SaveChangesAsync();
         Guid admin = await SeedAdminAsync(db, org);
         PlayerErasureService service = Service(db);
@@ -355,16 +378,20 @@ public class PlayerErasurePostgresTests : PlayerErasurePostgresBase
 
         erased.IsSuccess.Should().BeTrue();
         List<Guid> remaining = await db.EmailOutboxMessages.IgnoreQueryFilters().Select(x => x.Id).ToListAsync();
-        remaining.Should().Contain(toOther.Id);
-        remaining.Should().NotContain([toParent.Id, toStudent.Id]);
+        remaining.Should().Contain([toOther.Id, clubMailWithoutOrganization.Id]);
+        remaining.Should().NotContain([toParent.Id, toStudent.Id, platformToParent.Id]);
     }
 
-    private static EmailOutboxMessage UnlinkedMail(Guid? organizationId, string recipient, string status) => new()
+    /// <summary>Platformmail (geen clubmail): staat terecht zonder organisatie in de outbox.</summary>
+    private const string PlatformMailType = "mail:student-magic-link";
+
+    private static EmailOutboxMessage UnlinkedMail(
+        Guid? organizationId, string recipient, string status, string type = "mail:schedule-confirmation") => new()
     {
         OrganizationId = organizationId,
         EnrollmentId = null,
         RecipientEmail = recipient,
-        Type = "mail:schedule-confirmation",
+        Type = type,
         Payload = "{}",
         Status = status,
     };
