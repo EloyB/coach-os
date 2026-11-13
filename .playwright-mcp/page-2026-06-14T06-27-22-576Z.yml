@@ -1,0 +1,17 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e122]:
+    - generic [ref=e123]:
+      - heading "Je inschrijving afronden" [level=1] [ref=e124]
+      - paragraph [ref=e125]: Te betalen bedrag
+      - paragraph [ref=e126]: € 120,00
+    - generic [ref=e128]:
+      - generic [ref=e129]:
+        - img [ref=e131]
+        - generic [ref=e134]:
+          - paragraph [ref=e135]: Cash betalen
+          - paragraph [ref=e136]: Voor dit kamp betaal je cash ter plaatse. Je plek wordt gereserveerd in afwachting van je betaling.
+      - button "Kiezen" [ref=e137]
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e11] [cursor=pointer]:
+    - img [ref=e12]
+  - alert [ref=e15]

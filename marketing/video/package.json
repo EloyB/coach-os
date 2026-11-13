@@ -5,6 +5,8 @@
   "scripts": {
     "start": "remotion studio",
     "render": "remotion render MainVideo out/coachos.mp4",
+    "render:promo": "remotion render Promo out/promo.mp4 --codec=h264",
+    "render:promo-vertical": "remotion render PromoVertical out/promo-vertical.mp4 --codec=h264",
     "render:problem": "remotion render Problem out/problem.mp4",
     "render:transition": "remotion render Transition out/transition.mp4",
     "render:planning": "remotion render Planning out/planning.mp4",

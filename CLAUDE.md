@@ -1,3 +1,9 @@
+---
+name: CoachOS
+summary: SaaS-lessenplanning voor tennis- en padeltrainers in de Benelux (multi-tenant; NL nu, FR later).
+# url:
+---
+
 # CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.

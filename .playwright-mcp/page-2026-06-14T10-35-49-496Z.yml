@@ -1,0 +1,864 @@
+- generic [active] [ref=e1]:
+  - link "PILOT PROGRAMMA nog 1 van 5 plekken vrij · gratis tijdens pilot · lifetime korting Reserveer plek" [ref=e2] [cursor=pointer]:
+    - /url: "#pilot"
+    - generic [ref=e3]:
+      - generic [ref=e4]: PILOT PROGRAMMA
+      - generic [ref=e6]: nog 1 van 5 plekken vrij
+      - generic [ref=e7]: ·
+      - generic [ref=e8]: gratis tijdens pilot · lifetime korting
+      - generic [ref=e9]:
+        - text: Reserveer plek
+        - img [ref=e10]
+  - banner [ref=e12]:
+    - generic [ref=e13]:
+      - link "CoachOS — naar boven" [ref=e14] [cursor=pointer]:
+        - /url: /
+        - generic "CoachOS" [ref=e15]:
+          - img [ref=e16]
+        - generic [ref=e20]: CoachOS
+      - navigation [ref=e21]:
+        - link "Voor wie" [ref=e22] [cursor=pointer]:
+          - /url: /#voor-wie
+        - link "Hoe het werkt" [ref=e23] [cursor=pointer]:
+          - /url: /#hoe-het-werkt
+        - link "Features" [ref=e24] [cursor=pointer]:
+          - /url: /#features
+        - link "FAQ" [ref=e25] [cursor=pointer]:
+          - /url: /#faq
+      - generic [ref=e26]:
+        - link "Inloggen" [ref=e27] [cursor=pointer]:
+          - /url: http://localhost:5317/login
+        - link "Boek een demo" [ref=e28] [cursor=pointer]:
+          - /url: "#contact"
+  - main [ref=e29]:
+    - generic [ref=e31]:
+      - generic [ref=e32]:
+        - img [ref=e33]
+        - generic [ref=e35]:
+          - text: LESPLANNING
+          - heading "Lessenplanning, inschrijvingen en betalingen — één systeem." [level=1] [ref=e36]
+          - paragraph [ref=e37]: Lessenplanning, eindelijk eenvoudig.
+          - paragraph [ref=e38]: Stop met heen-en-weer mailen over beschikbaarheid. Stel je lessenreeks één keer in, deel een publieke link, en CoachOS plant de rest.
+          - link "Boek een demo" [ref=e40] [cursor=pointer]:
+            - /url: "#contact"
+            - text: Boek een demo
+            - img [ref=e41]
+      - generic [ref=e44]:
+        - generic [ref=e45]:
+          - generic [ref=e46]: WEEK 23 / TC COACHOS
+          - generic [ref=e47]: Voorstel klaar
+        - heading "Voorjaarslessen" [level=3] [ref=e49]
+        - text: 12 lessen · 6 trainers · 48 leerlingen
+        - generic [ref=e50]:
+          - generic [ref=e51]:
+            - generic [ref=e52]:
+              - generic [ref=e53]: MAA
+              - generic [ref=e54]: "06"
+            - generic [ref=e55]:
+              - generic [ref=e56]:
+                - generic [ref=e57]:
+                  - generic [ref=e58]: 16:00
+                  - generic [ref=e59]: Beginner
+                - generic [ref=e60]:
+                  - generic [ref=e61]: 4 / 4
+                  - img [ref=e62]
+              - generic [ref=e64]:
+                - generic [ref=e65]:
+                  - generic [ref=e66]: 17:00
+                  - generic [ref=e67]: Junior
+                - generic [ref=e68]:
+                  - generic [ref=e69]: 3 / 4
+                  - img [ref=e70]
+              - generic [ref=e73]:
+                - generic [ref=e74]:
+                  - generic [ref=e75]: 18:00
+                  - generic [ref=e76]: Comp.
+                - generic [ref=e78]: 2 / 4
+          - generic [ref=e80]:
+            - generic [ref=e81]:
+              - generic [ref=e82]: WOE
+              - generic [ref=e83]: "08"
+            - generic [ref=e84]:
+              - generic [ref=e85]:
+                - generic [ref=e86]:
+                  - generic [ref=e87]: 14:00
+                  - generic [ref=e88]: Mini
+                - generic [ref=e89]:
+                  - generic [ref=e90]: 6 / 6
+                  - img [ref=e91]
+              - generic [ref=e93]:
+                - generic [ref=e94]:
+                  - generic [ref=e95]: 15:00
+                  - generic [ref=e96]: Beginner
+                - generic [ref=e97]:
+                  - generic [ref=e98]: 4 / 4
+                  - img [ref=e99]
+              - generic [ref=e101]:
+                - generic [ref=e102]:
+                  - generic [ref=e103]: 16:00
+                  - generic [ref=e104]: Junior
+                - generic [ref=e106]: 1 / 4
+          - generic [ref=e108]:
+            - generic [ref=e109]:
+              - generic [ref=e110]: ZAT
+              - generic [ref=e111]: "11"
+            - generic [ref=e112]:
+              - generic [ref=e113]:
+                - generic [ref=e114]:
+                  - generic [ref=e115]: 09:00
+                  - generic [ref=e116]: Volwassen
+                - generic [ref=e117]:
+                  - generic [ref=e118]: 4 / 4
+                  - img [ref=e119]
+              - generic [ref=e121]:
+                - generic [ref=e122]:
+                  - generic [ref=e123]: 10:00
+                  - generic [ref=e124]: Volwassen
+                - generic [ref=e125]:
+                  - generic [ref=e126]: 3 / 4
+                  - img [ref=e127]
+        - generic [ref=e130]:
+          - generic [ref=e131]:
+            - generic [ref=e132]: BEVESTIGD
+            - text: 34 / 48
+          - generic [ref=e133]:
+            - generic [ref=e134]: WACHT
+            - text: "14"
+    - generic [ref=e136]:
+      - generic [ref=e137]:
+        - text: VOOR WIE
+        - heading "Voor alle tennis- en padeltrainers?" [level=2] [ref=e138]
+        - paragraph [ref=e139]: Of je nu een club met 10 trainers runt of solo lesgeeft — CoachOS doet het werk.
+      - generic [ref=e140]:
+        - link "Tennisclubs Van eerste inschrijving tot laatste les van het seizoen — één dashboard voor je hele club. Lessenreeksen voor jeugd en volwassenen Onbeperkt aantal banen en trainers Magic-link bevestigingen per leerling Lees meer" [ref=e141] [cursor=pointer]:
+          - /url: /voor-tennisclubs
+          - generic [ref=e142]:
+            - img [ref=e144]
+            - img [ref=e150]
+          - heading "Tennisclubs" [level=3] [ref=e152]
+          - paragraph [ref=e153]: Van eerste inschrijving tot laatste les van het seizoen — één dashboard voor je hele club.
+          - list [ref=e154]:
+            - listitem [ref=e155]:
+              - img [ref=e156]
+              - generic [ref=e158]: Lessenreeksen voor jeugd en volwassenen
+            - listitem [ref=e159]:
+              - img [ref=e160]
+              - generic [ref=e162]: Onbeperkt aantal banen en trainers
+            - listitem [ref=e163]:
+              - img [ref=e164]
+              - generic [ref=e166]: Magic-link bevestigingen per leerling
+          - generic [ref=e167]:
+            - text: Lees meer
+            - img [ref=e168]
+        - link "Padelclubs Mobile-first inschrijvingen voor je spelers, automatische groepering op niveau achter de schermen. Geen app of account voor leden Voorkeur- en niveaumatch Schaalt mee met snelle groei Lees meer" [ref=e170] [cursor=pointer]:
+          - /url: /voor-padelclubs
+          - generic [ref=e171]:
+            - img [ref=e173]
+            - img [ref=e177]
+          - heading "Padelclubs" [level=3] [ref=e179]
+          - paragraph [ref=e180]: Mobile-first inschrijvingen voor je spelers, automatische groepering op niveau achter de schermen.
+          - list [ref=e181]:
+            - listitem [ref=e182]:
+              - img [ref=e183]
+              - generic [ref=e185]: Geen app of account voor leden
+            - listitem [ref=e186]:
+              - img [ref=e187]
+              - generic [ref=e189]: Voorkeur- en niveaumatch
+            - listitem [ref=e190]:
+              - img [ref=e191]
+              - generic [ref=e193]: Schaalt mee met snelle groei
+          - generic [ref=e194]:
+            - text: Lees meer
+            - img [ref=e195]
+        - link "Zelfstandige trainers Eén tool voor inschrijvingen, planning en bevestigingen. Lesgeven in plaats van administreren. Publieke inschrijflink per reeks Multi-club via één account Gratis tijdens pilot Lees meer" [ref=e197] [cursor=pointer]:
+          - /url: /voor-trainers
+          - generic [ref=e198]:
+            - img [ref=e200]
+            - img [ref=e203]
+          - heading "Zelfstandige trainers" [level=3] [ref=e205]
+          - paragraph [ref=e206]: Eén tool voor inschrijvingen, planning en bevestigingen. Lesgeven in plaats van administreren.
+          - list [ref=e207]:
+            - listitem [ref=e208]:
+              - img [ref=e209]
+              - generic [ref=e211]: Publieke inschrijflink per reeks
+            - listitem [ref=e212]:
+              - img [ref=e213]
+              - generic [ref=e215]: Multi-club via één account
+            - listitem [ref=e216]:
+              - img [ref=e217]
+              - generic [ref=e219]: Gratis tijdens pilot
+          - generic [ref=e220]:
+            - text: Lees meer
+            - img [ref=e221]
+    - generic [ref=e224]:
+      - generic [ref=e225]:
+        - text: HOE HET WERKT
+        - heading "Eenvoudig inschrijven en automatisch plannen" [level=2] [ref=e226]
+        - paragraph [ref=e227]: Drie stappen — van lege agenda naar bevestigde planning.
+      - generic [ref=e228]:
+        - generic [ref=e229]:
+          - text: /01
+          - heading "Maak een lessenreeks aan" [level=3] [ref=e230]
+          - paragraph [ref=e231]: Bepaal data, prijs en capaciteit. Personaliseer je inschrijvingsformulier met alle vragen die jij wil stellen — tekst, meerkeuze, ja/nee.
+        - generic [ref=e232]:
+          - text: /02
+          - heading "Leerlingen schrijven zich in" [level=3] [ref=e233]
+          - paragraph [ref=e234]: Deel een publieke link. Leerlingen vullen het formulier in zonder account te maken en geven hun voorkeurstijden door.
+        - generic [ref=e235]:
+          - text: /03
+          - heading "Algoritme plant, leerlingen bevestigen" [level=3] [ref=e236]
+          - paragraph [ref=e237]: CoachOS verdeelt leerlingen over je weekplanning. Iedereen krijgt zijn lestijd via e-mail en bevestigt met één klik.
+    - generic [ref=e239]:
+      - generic [ref=e240]:
+        - text: HOE HET ERUITZIET
+        - heading "Overzichtelijk, eenvoudig en intuïtief" [level=2] [ref=e241]
+        - paragraph [ref=e242]: Eén gebruiksvriendelijke tool voor inschrijven, plannen en betalen.
+      - generic [ref=e243]:
+        - generic [ref=e244]:
+          - generic [ref=e245]:
+            - generic [ref=e246]:
+              - img [ref=e248]
+              - generic [ref=e250]: LESREEKSEN
+            - heading "Eén lessenreeks. Een heel seizoen vooruit." [level=3] [ref=e251]
+            - paragraph [ref=e252]: Stel een lessenreeks één keer in en laat je agenda automatisch vullen. — elke maandag voor de komende 8 weken, zaterdagochtenden tot eind juni? CoachOS plant het naar jouw wensen.
+            - list [ref=e253]:
+              - listitem [ref=e254]:
+                - img [ref=e256]
+                - generic [ref=e258]: Wekelijkse, tweewekelijkse of losse trainingen
+              - listitem [ref=e259]:
+                - img [ref=e261]
+                - generic [ref=e263]: Voor 1 of meerdere trainers
+              - listitem [ref=e264]:
+                - img [ref=e266]
+                - generic [ref=e268]: Aantal deelnemers naar keuze
+          - generic [ref=e270]:
+            - generic [ref=e275]: coach-os.be / dashboard
+            - generic [ref=e277]:
+              - generic [ref=e278]:
+                - generic [ref=e279]: WEEK 23 / TC COACHOS
+                - generic [ref=e280]: Live planning
+              - heading "Voorjaarslessen" [level=3] [ref=e282]
+              - generic [ref=e283]: 12 lessen · 6 trainers · 48 leerlingen
+              - generic [ref=e284]:
+                - generic [ref=e285]:
+                  - generic [ref=e286]:
+                    - generic [ref=e287]: MAA
+                    - generic [ref=e288]: "06"
+                  - generic [ref=e289]:
+                    - generic [ref=e291]:
+                      - generic [ref=e292]:
+                        - generic [ref=e293]: 16:00
+                        - generic [ref=e294]: Beginner
+                      - generic [ref=e295]:
+                        - generic [ref=e296]: 4 / 4
+                        - img [ref=e298]
+                    - generic [ref=e301]:
+                      - generic [ref=e302]:
+                        - generic [ref=e303]: 17:00
+                        - generic [ref=e304]: Junior
+                      - generic [ref=e305]:
+                        - generic [ref=e306]: 3 / 4
+                        - img [ref=e308]
+                    - generic [ref=e312]:
+                      - generic [ref=e313]:
+                        - generic [ref=e314]: 18:00
+                        - generic [ref=e315]: Comp.
+                      - generic [ref=e317]: 2 / 4
+                - generic [ref=e320]:
+                  - generic [ref=e321]:
+                    - generic [ref=e322]: WOE
+                    - generic [ref=e323]: "08"
+                  - generic [ref=e324]:
+                    - generic [ref=e326]:
+                      - generic [ref=e327]:
+                        - generic [ref=e328]: 14:00
+                        - generic [ref=e329]: Mini
+                      - generic [ref=e330]:
+                        - generic [ref=e331]: 6 / 6
+                        - img [ref=e333]
+                    - generic [ref=e336]:
+                      - generic [ref=e337]:
+                        - generic [ref=e338]: 15:00
+                        - generic [ref=e339]: Beginner
+                      - generic [ref=e340]:
+                        - generic [ref=e341]: 4 / 4
+                        - img [ref=e343]
+                    - generic [ref=e346]:
+                      - generic [ref=e347]:
+                        - generic [ref=e348]: 16:00
+                        - generic [ref=e349]: Junior
+                      - generic [ref=e351]: 1 / 4
+                - generic [ref=e354]:
+                  - generic [ref=e355]:
+                    - generic [ref=e356]: ZAT
+                    - generic [ref=e357]: "11"
+                  - generic [ref=e358]:
+                    - generic [ref=e360]:
+                      - generic [ref=e361]:
+                        - generic [ref=e362]: 09:00
+                        - generic [ref=e363]: Volwassen
+                      - generic [ref=e364]:
+                        - generic [ref=e365]: 4 / 4
+                        - img [ref=e367]
+                    - generic [ref=e370]:
+                      - generic [ref=e371]:
+                        - generic [ref=e372]: 10:00
+                        - generic [ref=e373]: Volwassen
+                      - generic [ref=e374]:
+                        - generic [ref=e375]: 3 / 4
+                        - img [ref=e377]
+              - generic [ref=e380]:
+                - generic [ref=e381]:
+                  - generic [ref=e382]: BEVESTIGD
+                  - generic [ref=e383]:
+                    - generic [ref=e384]: "34"
+                    - generic [ref=e385]: / 48
+                - generic [ref=e386]:
+                  - generic [ref=e387]: WACHT
+                  - generic [ref=e389]: "14"
+        - generic [ref=e390]:
+          - generic [ref=e391]:
+            - generic [ref=e392]:
+              - img [ref=e394]
+              - generic [ref=e398]: KAMPEN
+            - heading "Meerdaagse kampen en stages, zonder gedoe." [level=3] [ref=e399]
+            - paragraph [ref=e400]: "Naast lessenreeksen organiseer je ook tenniskampen en stages: een aaneengesloten periode waarvoor spelers zich eenmalig inschrijven. Stel per dag de uren in en wijs trainers toe met hun eigen aanwezigheidsuren."
+            - list [ref=e401]:
+              - listitem [ref=e402]:
+                - img [ref=e404]
+                - generic [ref=e406]: Een kamp over meerdere dagen, met eigen uren per dag
+              - listitem [ref=e407]:
+                - img [ref=e409]
+                - generic [ref=e411]: Meerdere trainers per kamp, elk met hun eigen uren per dag
+              - listitem [ref=e412]:
+                - img [ref=e414]
+                - generic [ref=e416]: "Publieke inschrijving en betaling: cash of online"
+          - generic [ref=e418]:
+            - generic [ref=e423]: coach-os.be / dashboard
+            - generic [ref=e425]:
+              - generic [ref=e426]:
+                - generic [ref=e427]: PAASKAMP 2026 / TC COACHOS
+                - generic [ref=e428]: Inschrijvingen open
+              - heading "Paaskamp Gevorderden" [level=3] [ref=e430]
+              - generic [ref=e431]: 3 dagen · 14 tot 16 april · €95
+              - generic [ref=e432]:
+                - generic [ref=e433]:
+                  - generic [ref=e434]:
+                    - generic [ref=e435]: MA
+                    - generic [ref=e436]: 14 apr
+                  - generic [ref=e437]:
+                    - generic [ref=e438]:
+                      - img [ref=e439]
+                      - generic [ref=e442]: 09:00 - 16:00
+                    - generic [ref=e443]:
+                      - generic [ref=e444]:
+                        - img [ref=e445]
+                        - generic [ref=e448]: Jan J.
+                        - generic [ref=e449]: 09:00 - 12:00
+                      - generic [ref=e450]:
+                        - img [ref=e451]
+                        - generic [ref=e454]: Pieter M.
+                        - generic [ref=e455]: 12:00 - 16:00
+                - generic [ref=e456]:
+                  - generic [ref=e457]:
+                    - generic [ref=e458]: DI
+                    - generic [ref=e459]: 15 apr
+                  - generic [ref=e460]:
+                    - generic [ref=e461]:
+                      - img [ref=e462]
+                      - generic [ref=e465]: 09:00 - 16:00
+                    - generic [ref=e467]:
+                      - img [ref=e468]
+                      - generic [ref=e471]: Jan J.
+                      - generic [ref=e472]: 09:00 - 16:00
+                - generic [ref=e473]:
+                  - generic [ref=e474]:
+                    - generic [ref=e475]: WO
+                    - generic [ref=e476]: 16 apr
+                  - generic [ref=e477]:
+                    - generic [ref=e478]:
+                      - img [ref=e479]
+                      - generic [ref=e482]: 10:00 - 15:00
+                    - generic [ref=e484]:
+                      - img [ref=e485]
+                      - generic [ref=e488]: Sophie D.
+                      - generic [ref=e489]: 10:00 - 15:00
+              - generic [ref=e490]:
+                - generic [ref=e491]:
+                  - generic [ref=e492]: INGESCHREVEN
+                  - generic [ref=e493]:
+                    - generic [ref=e494]: "14"
+                    - generic [ref=e495]: / 20
+                - generic [ref=e496]:
+                  - generic [ref=e497]: PLEKKEN VRIJ
+                  - generic [ref=e499]: "6"
+        - generic [ref=e500]:
+          - generic [ref=e501]:
+            - generic [ref=e502]:
+              - img [ref=e504]
+              - generic [ref=e506]: FORMULIEREN
+            - heading "Vraag exact wat je nodig hebt." [level=3] [ref=e507]
+            - paragraph [ref=e508]: Bouw per lessenreeks een formulier uit tekstvelden, meerkeuze-opties en ja/nee-vragen. De antwoorden zie je direct bij de inschrijving in het overzicht.
+            - list [ref=e509]:
+              - listitem [ref=e510]:
+                - img [ref=e512]
+                - generic [ref=e514]: "Personaliseer je formulier: tekst, meerkeuze, ja/nee"
+              - listitem [ref=e515]:
+                - img [ref=e517]
+                - generic [ref=e519]: Per lessenreeks aanpasbaar
+              - listitem [ref=e520]:
+                - img [ref=e522]
+                - generic [ref=e524]: Bekijk de antwoorden in een handig overzicht
+          - generic [ref=e526]:
+            - generic [ref=e531]: coach-os.be / dashboard
+            - generic [ref=e533]:
+              - generic [ref=e534]:
+                - img [ref=e536]
+                - heading "Inschrijvingsformulier" [level=3] [ref=e539]
+              - generic [ref=e540]:
+                - text: VASTE VELDEN (ALTIJD ZICHTBAAR)
+                - generic [ref=e541]:
+                  - generic [ref=e542]: Voornaam
+                  - generic [ref=e543]: Achternaam
+                  - generic [ref=e544]: E-mailadres
+                  - generic [ref=e545]: Inschrijvingstype
+                  - generic [ref=e546]: Beschikbaarheid
+              - generic [ref=e547]:
+                - text: AANGEPASTE VELDEN
+                - generic [ref=e549]: Nog geen aangepaste velden. Klik "Veld toevoegen" om te beginnen.
+              - generic [ref=e550]:
+                - generic [ref=e551]:
+                  - img [ref=e552]
+                  - text: Veld toevoegen
+                - generic [ref=e554]: Formulier opslaan
+        - generic [ref=e555]:
+          - generic [ref=e556]:
+            - generic [ref=e557]:
+              - img [ref=e559]
+              - generic [ref=e562]: INSCHRIJVING
+            - heading "Geen accounts. Geen wachtwoorden. Geen drempel." [level=3] [ref=e563]
+            - paragraph [ref=e564]: Leerlingen schrijven zich eenvoudig in via een link naar het inschrijvingsformulier en ontvangen een automatische bevestiging per mail.
+            - list [ref=e565]:
+              - listitem [ref=e566]:
+                - img [ref=e568]
+                - generic [ref=e570]: Unieke link per lessenreeks, deelbaar via e-mail of socials
+              - listitem [ref=e571]:
+                - img [ref=e573]
+                - generic [ref=e575]: Werkt op je smartphone zonder app of registratie
+              - listitem [ref=e576]:
+                - img [ref=e578]
+                - generic [ref=e580]: "GDPR-conform: enkel wat strikt nodig is voor lessenplanning"
+          - generic [ref=e588]:
+            - generic [ref=e589]:
+              - generic [ref=e590]:
+                - generic [ref=e591]: JUNIOR
+                - generic [ref=e592]: TC COACHOS
+              - heading "Voorjaarslessen" [level=4] [ref=e593]
+              - paragraph [ref=e594]: 12 lessen · spel & techniek 12-15j
+            - generic [ref=e595]:
+              - text: PERSOONLIJKE GEGEVENS
+              - generic [ref=e596]:
+                - generic [ref=e598]: Voornaam
+                - generic [ref=e602]: Achternaam
+                - generic [ref=e605]: E-mailadres
+            - generic [ref=e607]:
+              - text: INSCHRIJVINGSTYPE
+              - generic [ref=e608]:
+                - generic [ref=e609]:
+                  - img [ref=e610]
+                  - generic [ref=e613]: Solo
+                  - generic [ref=e614]: Mezelf
+                - generic [ref=e615]:
+                  - img [ref=e616]
+                  - generic [ref=e621]: Groep
+                  - generic [ref=e622]: Meer
+            - generic [ref=e623]:
+              - text: BESCHIKBAARHEID
+              - generic [ref=e624]:
+                - generic [ref=e626]:
+                  - generic [ref=e627]: Ma 18:00
+                  - generic [ref=e628]: Baan 2
+                - generic [ref=e634]:
+                  - generic [ref=e635]: Wo 14:00
+                  - generic [ref=e636]: Baan 1
+                - generic [ref=e642]:
+                  - generic [ref=e643]: Za 10:00
+                  - generic [ref=e644]: Baan 3
+            - generic [ref=e651]: Inschrijven
+        - generic [ref=e652]:
+          - generic [ref=e653]:
+            - generic [ref=e654]:
+              - img [ref=e656]
+              - generic [ref=e668]: PLANNING
+            - heading "Honderden inschrijvingen. Eén klik en je planning is klaar." [level=3] [ref=e669]
+            - paragraph [ref=e670]: De automatische planningstool verdeelt leerlingen over slots op basis van hun beschikbaarheden, voorkeuren en niveau. De planning kan steeds handmatig worden aangepast waar nodig.
+            - list [ref=e671]:
+              - listitem [ref=e672]:
+                - img [ref=e674]
+                - generic [ref=e676]: Rekening houdend met beschikbaarheden, niveaus en groepen
+              - listitem [ref=e677]:
+                - img [ref=e679]
+                - generic [ref=e681]: Altijd mogelijkheid tot handmatig verfijnen
+              - listitem [ref=e682]:
+                - img [ref=e684]
+                - generic [ref=e686]: Conflict-detectie bij beperkte beschikbaarheden
+          - generic [ref=e688]:
+            - generic [ref=e693]: coach-os.be / dashboard
+            - generic [ref=e697]:
+              - generic [ref=e698]:
+                - generic [ref=e699]:
+                  - text: VOORJAARSLESSEN
+                  - heading "8 inschrijvingen" [level=3] [ref=e700]
+                - generic [ref=e701]: Wacht op planning
+              - generic [ref=e704]:
+                - generic [ref=e705]:
+                  - generic [ref=e706]: JV
+                  - generic [ref=e707]:
+                    - generic [ref=e708]: Jan de Vries
+                    - generic [ref=e709]: jan@example.be
+                  - generic [ref=e710]: Solo
+                - generic [ref=e711]:
+                  - generic [ref=e712]: MV
+                  - generic [ref=e713]:
+                    - generic [ref=e714]: Maria Verhoeven
+                    - generic [ref=e715]: maria@example.be
+                  - generic [ref=e716]: Solo
+                - generic [ref=e717]:
+                  - generic [ref=e718]: PB
+                  - generic [ref=e719]:
+                    - generic [ref=e720]: Pieter Bakker
+                    - generic [ref=e721]: pieter@example.be
+                  - generic [ref=e722]: Solo
+                - generic [ref=e723]:
+                  - generic [ref=e724]: AV
+                  - generic [ref=e725]:
+                    - generic [ref=e726]: Anke Vandenberghe
+                    - generic [ref=e727]: anke@example.be
+                  - generic [ref=e728]: Solo
+                - generic [ref=e729]:
+                  - generic [ref=e730]: LD
+                  - generic [ref=e731]:
+                    - generic [ref=e732]: Luc Desmet
+                    - generic [ref=e733]: luc@example.be
+                  - generic [ref=e734]: Solo
+                - generic [ref=e735]:
+                  - generic [ref=e736]: SG
+                  - generic [ref=e737]:
+                    - generic [ref=e738]: Sofie Geerts
+                    - generic [ref=e739]: sofie@example.be
+                  - generic [ref=e740]: Solo
+                - generic [ref=e741]:
+                  - generic [ref=e742]: TJ
+                  - generic [ref=e743]:
+                    - generic [ref=e744]: Tim Janssens
+                    - generic [ref=e745]: tim@example.be
+                  - generic [ref=e746]: Solo
+                - generic [ref=e747]:
+                  - generic [ref=e748]: ES
+                  - generic [ref=e749]:
+                    - generic [ref=e750]: Eva De Smet
+                    - generic [ref=e751]: eva@example.be
+                  - generic [ref=e752]: Solo
+              - generic [ref=e754]:
+                - img [ref=e755]
+                - text: Plan lessen
+                - img [ref=e757]
+    - generic [ref=e760]:
+      - generic [ref=e761]:
+        - text: FEATURES
+        - heading "Alles wat je nodig hebt om een lesseizoen te runnen" [level=2] [ref=e762]
+        - paragraph [ref=e763]: Geen losse tools, geen koppelingen onderhouden, geen Excel meer.
+      - generic [ref=e764]:
+        - generic [ref=e765]:
+          - img [ref=e767]
+          - heading "Lessenreeksen" [level=3] [ref=e769]
+          - paragraph [ref=e770]: Plan een lessenreeks op jouw maat. Kies je tijdslots, trainers en speelniveau.
+        - generic [ref=e771]:
+          - img [ref=e773]
+          - heading "Tenniskampen & stages" [level=3] [ref=e777]
+          - paragraph [ref=e778]: Organiseer meerdaagse kampen waarvoor spelers zich eenmalig inschrijven. Stel per dag de uren in, wijs trainers toe en laat deelnemers cash of online betalen.
+        - generic [ref=e779]:
+          - img [ref=e781]
+          - heading "Anonieme inschrijving" [level=3] [ref=e784]
+          - paragraph [ref=e785]: Leerlingen schrijven zich in via een publieke link. Geen account, geen wachtwoord, geen drempel.
+        - generic [ref=e786]:
+          - img [ref=e788]
+          - heading "Formulierbouwer" [level=3] [ref=e790]
+          - paragraph [ref=e791]: "Voeg per lessenreeks eigen vragen toe: tekstvelden, meerkeuze, voorkeurstijden. Verzamel exact wat je nodig hebt."
+        - generic [ref=e792]:
+          - img [ref=e794]
+          - heading "Planningsalgoritme" [level=3] [ref=e806]
+          - paragraph [ref=e807]: Verdeel leerlingen automatisch over de tijdslots op basis van hun voorkeuren en groepsverbanden. Handmatige aanpassingen blijven bewaard.
+        - generic [ref=e808]:
+          - img [ref=e810]
+          - heading "Bevestiging via een link" [level=3] [ref=e814]
+          - paragraph [ref=e815]: Leerlingen bevestigen hun lestijd met één klik in een e-mail. Geen telefoontjes of Whatsapps nodig.
+        - generic [ref=e816]:
+          - img [ref=e818]
+          - heading "Betalingen (op de roadmap)" [level=3] [ref=e820]
+          - paragraph [ref=e821]: Mollie-integratie voor Bancontact en iDEAL. Cash betalingen handmatig registreren kan vandaag al.
+    - generic [ref=e823]:
+      - generic [ref=e824]:
+        - text: EXCEL VS COACHOS
+        - heading "Hetzelfde werk, zonder Excel" [level=2] [ref=e825]
+        - paragraph [ref=e826]: Wat verandert er concreet als je je lessenreeks met CoachOS plant?
+      - generic [ref=e827]:
+        - generic [ref=e828]:
+          - heading "Inschrijvingen verzamelen" [level=3] [ref=e830]
+          - generic [ref=e831]:
+            - generic [ref=e832]:
+              - generic [ref=e833]:
+                - img [ref=e834]
+                - text: EXCEL
+              - paragraph [ref=e837]: Mail per mail uitlezen, voorkeuren in een aparte kolom bijhouden, hopen dat niemand iets overslaat.
+            - generic [ref=e838]:
+              - generic [ref=e839]:
+                - img [ref=e840]
+                - text: COACHOS
+              - paragraph [ref=e842]: Eén link per lessenreeks. Leerlingen vullen naam, voorkeurstijden en niveau zelf in.
+        - generic [ref=e843]:
+          - heading "Niveaugroepen vormen" [level=3] [ref=e845]
+          - generic [ref=e846]:
+            - generic [ref=e847]:
+              - generic [ref=e848]:
+                - img [ref=e849]
+                - text: EXCEL
+              - paragraph [ref=e852]: Met de hand puzzelen tot het past. Eén niveauwissel betekent het hele schema opnieuw doorlopen.
+            - generic [ref=e853]:
+              - generic [ref=e854]:
+                - img [ref=e855]
+                - text: COACHOS
+              - paragraph [ref=e857]: Algoritme verdeelt op niveau, voorkeurstijd en groepsverband in seconden. Manuele aanpassingen blijven bewaard.
+        - generic [ref=e858]:
+          - heading "Bevestigingen sturen" [level=3] [ref=e860]
+          - generic [ref=e861]:
+            - generic [ref=e862]:
+              - generic [ref=e863]:
+                - img [ref=e864]
+                - text: EXCEL
+              - paragraph [ref=e867]: Massamail met een Excel-export als bijlage. Hopen dat iedereen de juiste rij leest. En iedereen die elkaars lessen kan zien.
+            - generic [ref=e868]:
+              - generic [ref=e869]:
+                - img [ref=e870]
+                - text: COACHOS
+              - paragraph [ref=e872]: Per leerling een persoonlijke link met hun concrete dag, tijdslot en baan.
+        - generic [ref=e873]:
+          - heading "Wijziging midden in het seizoen" [level=3] [ref=e875]
+          - generic [ref=e876]:
+            - generic [ref=e877]:
+              - generic [ref=e878]:
+                - img [ref=e879]
+                - text: EXCEL
+              - paragraph [ref=e882]: Eén afzegging en alle formules en kleurcodes opnieuw nakijken om te zien of alles nog klopt.
+            - generic [ref=e883]:
+              - generic [ref=e884]:
+                - img [ref=e885]
+                - text: COACHOS
+              - paragraph [ref=e887]: Eén klik herverdeling. Het algoritme stelt voor wat verandert, de rest van de groep blijft ongemoeid.
+        - generic [ref=e888]:
+          - heading "Meerdere trainers of clubs" [level=3] [ref=e890]
+          - generic [ref=e891]:
+            - generic [ref=e892]:
+              - generic [ref=e893]:
+                - img [ref=e894]
+                - text: EXCEL
+              - paragraph [ref=e897]: versie_v3, versie_definitief, versie_definitief_v2. Niemand weet welke kopie de meest recente is.
+            - generic [ref=e898]:
+              - generic [ref=e899]:
+                - img [ref=e900]
+                - text: COACHOS
+              - paragraph [ref=e902]: Eén centrale bron. Rollen per club, en wisselen tussen organisaties met één klik.
+      - paragraph [ref=e903]: Excel werkt prima tot je rond de 50 leerlingen zit. Daarboven worden de kleine pijnpunten het seizoen lang het echte werk. CoachOS vervangt die routine zonder dat je nieuwe kennis moet opbouwen — de taken blijven dezelfde, alleen de uitvoering verschuift naar het systeem.
+    - generic [ref=e906]:
+      - img [ref=e908]
+      - generic [ref=e914]:
+        - text: BESPAAR TIJD
+        - heading "Bespaar uren per week op administratie" [level=2] [ref=e915]
+        - paragraph [ref=e916]: Wat trainers nu kwijt zijn aan plannen, mailen en bellen — daar loste CoachOS de hele cyclus voor op.
+      - generic [ref=e917]:
+        - generic [ref=e918]:
+          - generic [ref=e919]: 1 middag
+          - generic [ref=e920]: Hele seizoen ingepland
+        - generic [ref=e921]:
+          - generic [ref=e922]: "0"
+          - generic [ref=e923]: Excel-sheets nodig
+        - generic [ref=e924]:
+          - generic [ref=e925]: 1 tool
+          - generic [ref=e926]: Plan · inschrijf · betaal
+      - paragraph [ref=e927]: Geen Excel-sheets, geen losse formulieren, geen heen-en-weer over wie wanneer kan.
+    - generic [ref=e930]:
+      - generic [ref=e931]:
+        - text: PILOT PROGRAMMA
+        - heading "Word één van onze eerste vijf clubs" [level=2] [ref=e932]
+        - paragraph [ref=e933]: We zoeken vijf clubs of zelfstandige trainers die mee bouwen aan CoachOS. Jouw feedback bepaalt waar we als eerste op inzetten — en jij krijgt er meer dan een plek voor terug.
+        - generic [ref=e934]:
+          - generic [ref=e935]:
+            - generic [ref=e936]:
+              - img [ref=e937]
+              - generic [ref=e939]: BEZET
+            - generic [ref=e940]:
+              - img [ref=e941]
+              - generic [ref=e943]: BEZET
+            - generic [ref=e944]:
+              - img [ref=e945]
+              - generic [ref=e947]: BEZET
+            - generic [ref=e948]:
+              - img [ref=e949]
+              - generic [ref=e951]: BEZET
+            - generic [ref=e952]:
+              - generic [ref=e953]: "#5"
+              - generic [ref=e954]: VRIJ
+          - paragraph [ref=e955]:
+            - generic [ref=e956]: 4 van 5 plekken bezet
+            - text: · nog 1 plek beschikbaar.
+        - generic [ref=e957]:
+          - link "Reserveer je pilotplek" [ref=e958] [cursor=pointer]:
+            - /url: "#contact"
+            - text: Reserveer je pilotplek
+            - img [ref=e959]
+          - generic [ref=e961]: Geen creditcard nodig · plek geldt tot eind seizoen
+      - generic [ref=e962]:
+        - generic [ref=e963]:
+          - img [ref=e965]
+          - generic [ref=e969]:
+            - heading "Gratis tijdens de pilot" [level=3] [ref=e970]
+            - paragraph [ref=e971]: Geen kosten zolang we in de pilotfase zitten. Niet voor de set-up, niet per seizoen, niet per leerling.
+        - generic [ref=e972]:
+          - img [ref=e974]
+          - generic [ref=e977]:
+            - heading "Lifetime korting" [level=3] [ref=e978]
+            - paragraph [ref=e979]: Wanneer de pricing publiek wordt, behoud je 25% korting op je tarief zolang je klant blijft.
+        - generic [ref=e980]:
+          - img [ref=e982]
+          - generic [ref=e984]:
+            - heading "Directe lijn naar de founder" [level=3] [ref=e985]
+            - paragraph [ref=e986]: Je hebt rechtstreeks contact met Eloy. Wensen en bugfixes gaan direct in de roadmap.
+    - generic [ref=e988]:
+      - text: VRAGEN
+      - heading "Veelgestelde vragen" [level=2] [ref=e989]
+      - generic [ref=e990]:
+        - group [ref=e991]:
+          - generic "Wat is CoachOS?" [ref=e992] [cursor=pointer]:
+            - generic [ref=e993]: Wat is CoachOS?
+            - img [ref=e994]
+        - group [ref=e995]:
+          - generic "Voor welke sporten is CoachOS gemaakt?" [ref=e996] [cursor=pointer]:
+            - generic [ref=e997]: Voor welke sporten is CoachOS gemaakt?
+            - img [ref=e998]
+        - group [ref=e999]:
+          - generic "Hoe lang duurt het om te starten met CoachOS?" [ref=e1000] [cursor=pointer]:
+            - generic [ref=e1001]: Hoe lang duurt het om te starten met CoachOS?
+            - img [ref=e1002]
+        - group [ref=e1003]:
+          - generic "Moeten mijn leerlingen een account aanmaken?" [ref=e1004] [cursor=pointer]:
+            - generic [ref=e1005]: Moeten mijn leerlingen een account aanmaken?
+            - img [ref=e1006]
+        - group [ref=e1007]:
+          - generic "Werkt CoachOS op de gsm?" [ref=e1008] [cursor=pointer]:
+            - generic [ref=e1009]: Werkt CoachOS op de gsm?
+            - img [ref=e1010]
+        - group [ref=e1011]:
+          - generic "Wat kost CoachOS?" [ref=e1012] [cursor=pointer]:
+            - generic [ref=e1013]: Wat kost CoachOS?
+            - img [ref=e1014]
+        - group [ref=e1015]:
+          - generic "In welke talen is CoachOS beschikbaar?" [ref=e1016] [cursor=pointer]:
+            - generic [ref=e1017]: In welke talen is CoachOS beschikbaar?
+            - img [ref=e1018]
+        - group [ref=e1019]:
+          - generic "Kan ik meerdere clubs of locaties beheren vanuit één account?" [ref=e1020] [cursor=pointer]:
+            - generic [ref=e1021]: Kan ik meerdere clubs of locaties beheren vanuit één account?
+            - img [ref=e1022]
+        - group [ref=e1023]:
+          - generic "Hoe zit het met betalingen?" [ref=e1024] [cursor=pointer]:
+            - generic [ref=e1025]: Hoe zit het met betalingen?
+            - img [ref=e1026]
+        - group [ref=e1027]:
+          - generic "Wat doen jullie met de gegevens van leerlingen?" [ref=e1028] [cursor=pointer]:
+            - generic [ref=e1029]: Wat doen jullie met de gegevens van leerlingen?
+            - img [ref=e1030]
+        - group [ref=e1031]:
+          - generic "Welke integraties zijn beschikbaar?" [ref=e1032] [cursor=pointer]:
+            - generic [ref=e1033]: Welke integraties zijn beschikbaar?
+            - img [ref=e1034]
+        - group [ref=e1035]:
+          - generic "Kan ik mijn eigen formulier-vragen stellen per lessenreeks?" [ref=e1036] [cursor=pointer]:
+            - generic [ref=e1037]: Kan ik mijn eigen formulier-vragen stellen per lessenreeks?
+            - img [ref=e1038]
+        - group [ref=e1039]:
+          - generic "Wie heeft toegang tot de data binnen mijn club?" [ref=e1040] [cursor=pointer]:
+            - generic [ref=e1041]: Wie heeft toegang tot de data binnen mijn club?
+            - img [ref=e1042]
+        - group [ref=e1043]:
+          - generic "Wat is het verschil met een algemene clubadministratie-tool?" [ref=e1044] [cursor=pointer]:
+            - generic [ref=e1045]: Wat is het verschil met een algemene clubadministratie-tool?
+            - img [ref=e1046]
+    - generic [ref=e1048]:
+      - generic [ref=e1049]:
+        - text: CONTACT
+        - heading "Klaar om je lessenplanning te automatiseren?" [level=2] [ref=e1050]
+        - paragraph [ref=e1051]: Bel of mail rechtstreeks — we plannen een korte demo in en beantwoorden je vragen.
+        - paragraph [ref=e1052]: Pilot-fase · nog 1 van 5 plekken — gratis tijdens pilot, lifetime korting
+      - generic [ref=e1054]:
+        - link "BEL ONS +32 478 77 44 97 Ma–zo · 9.00–21.00" [ref=e1055] [cursor=pointer]:
+          - /url: tel:+32478774497
+          - generic [ref=e1056]:
+            - img [ref=e1058]
+            - img [ref=e1060]
+          - generic [ref=e1063]:
+            - text: BEL ONS
+            - generic [ref=e1064]: +32 478 77 44 97
+          - generic [ref=e1065]: Ma–zo · 9.00–21.00
+        - link "STUUR EEN E-MAIL info@coach-os.be Reactie binnen één werkdag" [ref=e1066] [cursor=pointer]:
+          - /url: mailto:info@coach-os.be
+          - generic [ref=e1067]:
+            - img [ref=e1069]
+            - img [ref=e1072]
+          - generic [ref=e1075]:
+            - text: STUUR EEN E-MAIL
+            - generic [ref=e1076]: info@coach-os.be
+          - generic [ref=e1077]: Reactie binnen één werkdag
+  - contentinfo [ref=e1078]:
+    - generic [ref=e1079]:
+      - generic [ref=e1080]:
+        - generic [ref=e1081]:
+          - generic "CoachOS" [ref=e1082]:
+            - img [ref=e1083]
+          - generic [ref=e1087]: CoachOS
+        - paragraph [ref=e1088]: Lessenplanning, eindelijk eenvoudig.
+        - generic [ref=e1089]: NEDERLANDS · FRANÇAIS BINNENKORT
+      - generic [ref=e1090]:
+        - generic [ref=e1091]: PRODUCT
+        - list [ref=e1092]:
+          - listitem [ref=e1093]:
+            - link "Hoe het werkt" [ref=e1094] [cursor=pointer]:
+              - /url: /#hoe-het-werkt
+          - listitem [ref=e1095]:
+            - link "Features" [ref=e1096] [cursor=pointer]:
+              - /url: /#features
+          - listitem [ref=e1097]:
+            - link "FAQ" [ref=e1098] [cursor=pointer]:
+              - /url: /#faq
+      - generic [ref=e1099]:
+        - generic [ref=e1100]: BEDRIJF
+        - list [ref=e1101]:
+          - listitem [ref=e1102]:
+            - link "Boek een demo" [ref=e1103] [cursor=pointer]:
+              - /url: "#contact"
+          - listitem [ref=e1104]:
+            - link "Neem contact op" [ref=e1105] [cursor=pointer]:
+              - /url: "#contact"
+      - generic [ref=e1106]:
+        - generic [ref=e1107]: JURIDISCH
+        - list [ref=e1108]:
+          - listitem [ref=e1109]:
+            - link "Privacy" [ref=e1110] [cursor=pointer]:
+              - /url: /privacy
+          - listitem [ref=e1111]:
+            - link "Voorwaarden" [ref=e1112] [cursor=pointer]:
+              - /url: /voorwaarden
+    - generic [ref=e1114]:
+      - generic [ref=e1115]: © 2026 CoachOS
+      - generic [ref=e1116]: info@coach-os.be
+  - button "Open Next.js Dev Tools" [ref=e1122] [cursor=pointer]:
+    - img [ref=e1123]

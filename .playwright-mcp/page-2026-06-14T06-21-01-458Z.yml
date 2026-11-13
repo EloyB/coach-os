@@ -1,0 +1,62 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - img [ref=e4]
+      - generic [ref=e6]:
+        - generic [ref=e7]:
+          - generic "CoachOS" [ref=e8]:
+            - img [ref=e9]
+          - generic [ref=e13]: CoachOS
+        - button "T Organisatie TC De Aces" [ref=e15] [cursor=pointer]:
+          - generic [ref=e17]: T
+          - generic [ref=e18]:
+            - paragraph [ref=e19]: Organisatie
+            - paragraph [ref=e20]: TC De Aces
+          - img [ref=e21]
+      - navigation [ref=e23]:
+        - paragraph [ref=e24]: Werk
+        - link "Vandaag" [ref=e25] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e26]
+          - generic [ref=e31]: Vandaag
+        - link "Lesreeksen" [ref=e32] [cursor=pointer]:
+          - /url: /dashboard/lessons
+          - img [ref=e33]
+          - generic [ref=e35]: Lesreeksen
+        - link "Losse lessen" [ref=e36] [cursor=pointer]:
+          - /url: /dashboard/standalone-lessons
+          - img [ref=e37]
+          - generic [ref=e39]: Losse lessen
+        - link "Kampen" [ref=e40] [cursor=pointer]:
+          - /url: /dashboard/camps
+          - img [ref=e41]
+          - generic [ref=e45]: Kampen
+        - link "Trainers" [ref=e46] [cursor=pointer]:
+          - /url: /dashboard/trainers
+          - img [ref=e47]
+          - generic [ref=e50]: Trainers
+        - link "Instellingen" [ref=e51] [cursor=pointer]:
+          - /url: /dashboard/settings
+          - img [ref=e52]
+          - generic [ref=e55]: Instellingen
+      - generic [ref=e56]:
+        - generic [ref=e58]: JJ
+        - generic [ref=e59]:
+          - paragraph [ref=e60]: Jan Janssen
+          - paragraph [ref=e61]: Beheerder
+        - button "Uitloggen" [ref=e62] [cursor=pointer]:
+          - img [ref=e63]
+    - generic [ref=e66]:
+      - banner [ref=e67]:
+        - paragraph [ref=e68]: ZO · 14 JUN 2026 · WEEK 24
+      - main [ref=e69]:
+        - generic [ref=e70]:
+          - generic [ref=e71]:
+            - paragraph [ref=e72]: 0 actief · 0 concept
+            - heading "Kampen" [level=1] [ref=e73]
+          - link "+ Nieuw kamp" [ref=e75] [cursor=pointer]:
+            - /url: /dashboard/camps/new
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e86] [cursor=pointer]:
+    - img [ref=e87]
+  - alert [ref=e90]

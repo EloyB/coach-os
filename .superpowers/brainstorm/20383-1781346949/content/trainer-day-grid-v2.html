@@ -1,0 +1,64 @@
+<h2>Dagen &amp; trainers — per trainer eigen uren per dag</h2>
+<p class="subtitle">Kamp "Paaskamp Gevorderden", 3 dagen. Per dag: de kampuren (wat de deelnemer ziet) + per aanwezige trainer een eigen start/einduur. Zo kan een trainer ook maar een halve dag of een paar uur doen.</p>
+
+<style>
+  .gm { font-size: 13px; max-width: 560px; }
+  .daycard { border: 1px solid #e2e2dc; border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; background:#fff; }
+  .dayhead { font-weight: 700; color:#2D5016; margin-bottom: 10px; font-size:14px; }
+  .lbl { font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:#9a9a90; margin-bottom:5px; }
+  .t-in { border:1px solid #d8d8d2; border-radius:7px; padding:4px 8px; background:#faf9f6; min-width:60px; text-align:center; display:inline-block; }
+  .camprow { display:flex; gap:8px; align-items:center; margin-bottom:14px; padding-bottom:12px; border-bottom:1px dashed #eee; }
+
+  .trow { display:flex; align-items:center; gap:10px; padding:7px 0; }
+  .trow .tname { flex:1; font-weight:600; color:#23303a; }
+  .trow .ttime { display:flex; gap:6px; align-items:center; color:#555; }
+  .trow .ttime .t-in { background:#fff; min-width:54px; }
+  .trow .x { color:#c0392b; opacity:.55; cursor:pointer; width:18px; text-align:center; }
+  .badge-half { font-size:11px; color:#b9770e; background:#fdf3e2; border:1px solid #f4dcae; border-radius:999px; padding:1px 8px; margin-left:8px; }
+  .addtrainer { margin-top:8px; display:inline-flex; align-items:center; gap:6px; font-size:12px; color:#2D5016; border:1px dashed #cfe0c2; background:#f6faf2; border-radius:8px; padding:5px 10px; }
+</style>
+
+<div class="cards">
+  <div class="card" data-choice="per-trainer-times" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:16px; background:#fbfbf9;">
+      <div class="gm">
+
+        <div class="daycard">
+          <div class="dayhead">Maandag 14 april</div>
+          <div class="lbl">Kampuren (zichtbaar voor deelnemer)</div>
+          <div class="camprow"><span class="t-in">09:00</span><span>tot</span><span class="t-in">16:00</span></div>
+          <div class="lbl">Trainers aanwezig</div>
+          <div class="trow"><span class="tname">Pieter Mertens</span><span class="ttime"><span class="t-in">09:00</span>–<span class="t-in">16:00</span></span><span class="x">✕</span></div>
+          <div class="trow"><span class="tname">Sophie De Vries <span class="badge-half">halve dag</span></span><span class="ttime"><span class="t-in">09:00</span>–<span class="t-in">12:00</span></span><span class="x">✕</span></div>
+          <div class="addtrainer">+ trainer toevoegen ▾</div>
+        </div>
+
+        <div class="daycard">
+          <div class="dayhead">Dinsdag 15 april</div>
+          <div class="lbl">Kampuren</div>
+          <div class="camprow"><span class="t-in">09:00</span><span>tot</span><span class="t-in">16:00</span></div>
+          <div class="lbl">Trainers aanwezig</div>
+          <div class="trow"><span class="tname">Pieter Mertens</span><span class="ttime"><span class="t-in">09:00</span>–<span class="t-in">16:00</span></span><span class="x">✕</span></div>
+          <div class="trow"><span class="tname">Jan Janssens <span class="badge-half">paar uur</span></span><span class="ttime"><span class="t-in">13:30</span>–<span class="t-in">16:00</span></span><span class="x">✕</span></div>
+          <div class="addtrainer">+ trainer toevoegen ▾</div>
+        </div>
+
+        <div class="daycard">
+          <div class="dayhead">Woensdag 16 april</div>
+          <div class="lbl">Kampuren</div>
+          <div class="camprow"><span class="t-in">10:00</span><span>tot</span><span class="t-in">15:00</span></div>
+          <div class="lbl">Trainers aanwezig</div>
+          <div class="trow"><span class="tname">Sophie De Vries</span><span class="ttime"><span class="t-in">10:00</span>–<span class="t-in">15:00</span></span><span class="x">✕</span></div>
+          <div class="addtrainer">+ trainer toevoegen ▾</div>
+        </div>
+
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Dag-centrisch met per-trainer uren</h3>
+      <p>Per dag de kampuren bovenaan; daaronder elke aanwezige trainer met een eigen start–einduur (standaard = kampuren, vrij aanpasbaar). "+ trainer toevoegen" kiest uit de actieve trainers; die krijgt meteen de kampuren die je kan inkorten.</p>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:16px;">Klopt dit? Een paar detailvragen: (1) standaard krijgt een toegevoegde trainer de volledige kampuren van die dag — goed? (2) moet ik toelaten dat een trainer-venster buiten de kampuren valt (bv. trainer 08:30 terwijl kamp 09:00 start), of altijd binnen de kampuren klemmen?</p>

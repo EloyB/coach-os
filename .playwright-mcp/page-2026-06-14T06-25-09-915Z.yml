@@ -1,0 +1,175 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - img [ref=e4]
+      - generic [ref=e6]:
+        - generic [ref=e7]:
+          - generic "CoachOS" [ref=e8]:
+            - img [ref=e9]
+          - generic [ref=e13]: CoachOS
+        - button "T Organisatie TC De Aces" [ref=e15] [cursor=pointer]:
+          - generic [ref=e17]: T
+          - generic [ref=e18]:
+            - paragraph [ref=e19]: Organisatie
+            - paragraph [ref=e20]: TC De Aces
+          - img [ref=e21]
+      - navigation [ref=e23]:
+        - paragraph [ref=e24]: Werk
+        - link "Vandaag" [ref=e25] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e26]
+          - generic [ref=e31]: Vandaag
+        - link "Lesreeksen" [ref=e32] [cursor=pointer]:
+          - /url: /dashboard/lessons
+          - img [ref=e33]
+          - generic [ref=e35]: Lesreeksen
+        - link "Losse lessen" [ref=e36] [cursor=pointer]:
+          - /url: /dashboard/standalone-lessons
+          - img [ref=e37]
+          - generic [ref=e39]: Losse lessen
+        - link "Kampen" [ref=e40] [cursor=pointer]:
+          - /url: /dashboard/camps
+          - img [ref=e41]
+          - generic [ref=e45]: Kampen
+        - link "Trainers" [ref=e46] [cursor=pointer]:
+          - /url: /dashboard/trainers
+          - img [ref=e47]
+          - generic [ref=e50]: Trainers
+        - link "Instellingen" [ref=e51] [cursor=pointer]:
+          - /url: /dashboard/settings
+          - img [ref=e52]
+          - generic [ref=e55]: Instellingen
+      - generic [ref=e56]:
+        - generic [ref=e58]: JJ
+        - generic [ref=e59]:
+          - paragraph [ref=e60]: Jan Janssen
+          - paragraph [ref=e61]: Beheerder
+        - button "Uitloggen" [ref=e62] [cursor=pointer]:
+          - img [ref=e63]
+    - generic [ref=e66]:
+      - banner [ref=e67]:
+        - paragraph [ref=e68]: ZO · 14 JUN 2026 · WEEK 24
+      - main [ref=e69]:
+        - generic [ref=e70]:
+          - link "Terug naar kampen" [ref=e71] [cursor=pointer]:
+            - /url: /dashboard/camps
+            - img [ref=e72]
+            - text: Terug naar kampen
+          - generic [ref=e74]:
+            - heading "Nieuw kamp aanmaken" [level=1] [ref=e75]
+            - paragraph [ref=e76]: Plan een meerdaags kamp met dagen, trainers en inschrijfformulier.
+          - generic [ref=e77]:
+            - generic [ref=e79]:
+              - img [ref=e719]
+              - generic [ref=e81]: Basis
+            - generic [ref=e84]:
+              - generic [ref=e85]: "2"
+              - generic [ref=e86]: Dagen & trainers
+            - generic [ref=e89]:
+              - generic [ref=e90]: "3"
+              - generic [ref=e91]: Controle
+          - generic [ref=e721]:
+            - generic [ref=e722]:
+              - generic [ref=e723]:
+                - img [ref=e725]
+                - generic [ref=e728]:
+                  - heading "Dagen & trainers" [level=2] [ref=e729]
+                  - paragraph [ref=e730]: Voeg per kampdag een datum, kampuren en de aanwezige trainers toe.
+              - generic [ref=e731]:
+                - generic [ref=e732]:
+                  - generic [ref=e733]: maandag 20 juli
+                  - paragraph [ref=e734]: Kampuren
+                  - generic [ref=e735]:
+                    - textbox [ref=e736]: 09:00
+                    - generic [ref=e737]: Tot
+                    - textbox [ref=e738]: 16:00
+                  - paragraph [ref=e739]: Trainers
+                  - generic [ref=e800]:
+                    - generic [ref=e801]: Jan Janssen
+                    - textbox [ref=e802]: 09:00
+                    - generic [ref=e803]: "-"
+                    - textbox [ref=e804]: 16:00
+                    - button "Trainer verwijderen" [ref=e805]:
+                      - img [ref=e806]
+                  - generic [ref=e740]:
+                    - img [ref=e741]
+                    - generic [ref=e742]:
+                      - combobox [ref=e743] [cursor=pointer]:
+                        - option "Trainer toevoegen" [selected]
+                        - option "Pieter Mertens"
+                      - img
+                - generic [ref=e744]:
+                  - generic [ref=e745]: dinsdag 21 juli
+                  - paragraph [ref=e746]: Kampuren
+                  - generic [ref=e747]:
+                    - textbox [ref=e748]: 09:00
+                    - generic [ref=e749]: Tot
+                    - textbox [ref=e750]: 16:00
+                  - paragraph [ref=e751]: Trainers
+                  - generic [ref=e752]:
+                    - img [ref=e753]
+                    - generic [ref=e754]:
+                      - combobox [ref=e755] [cursor=pointer]:
+                        - option "Trainer toevoegen" [selected]
+                        - option "Jan Janssen"
+                        - option "Pieter Mertens"
+                      - img
+                - generic [ref=e756]:
+                  - generic [ref=e757]: woensdag 22 juli
+                  - paragraph [ref=e758]: Kampuren
+                  - generic [ref=e759]:
+                    - textbox [ref=e760]: 09:00
+                    - generic [ref=e761]: Tot
+                    - textbox [ref=e762]: 16:00
+                  - paragraph [ref=e763]: Trainers
+                  - generic [ref=e764]:
+                    - img [ref=e765]
+                    - generic [ref=e766]:
+                      - combobox [ref=e767] [cursor=pointer]:
+                        - option "Trainer toevoegen" [selected]
+                        - option "Jan Janssen"
+                        - option "Pieter Mertens"
+                      - img
+                - generic [ref=e768]:
+                  - generic [ref=e769]: donderdag 23 juli
+                  - paragraph [ref=e770]: Kampuren
+                  - generic [ref=e771]:
+                    - textbox [ref=e772]: 09:00
+                    - generic [ref=e773]: Tot
+                    - textbox [ref=e774]: 16:00
+                  - paragraph [ref=e775]: Trainers
+                  - generic [ref=e776]:
+                    - img [ref=e777]
+                    - generic [ref=e778]:
+                      - combobox [ref=e779] [cursor=pointer]:
+                        - option "Trainer toevoegen" [selected]
+                        - option "Jan Janssen"
+                        - option "Pieter Mertens"
+                      - img
+                - generic [ref=e780]:
+                  - generic [ref=e781]: vrijdag 24 juli
+                  - paragraph [ref=e782]: Kampuren
+                  - generic [ref=e783]:
+                    - textbox [ref=e784]: 09:00
+                    - generic [ref=e785]: Tot
+                    - textbox [ref=e786]: 16:00
+                  - paragraph [ref=e787]: Trainers
+                  - generic [ref=e788]:
+                    - img [ref=e789]
+                    - generic [ref=e790]:
+                      - combobox [ref=e791] [cursor=pointer]:
+                        - option "Trainer toevoegen" [selected]
+                        - option "Jan Janssen"
+                        - option "Pieter Mertens"
+                      - img
+            - generic [ref=e792]:
+              - button "Terug" [ref=e793]:
+                - img [ref=e794]
+                - text: Terug
+              - button "Volgende" [ref=e796]:
+                - text: Volgende
+                - img [ref=e797]
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e148] [cursor=pointer]:
+    - img [ref=e149]
+  - alert [ref=e152]
