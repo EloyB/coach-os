@@ -74,10 +74,10 @@ test.describe("Lesson Series", () => {
     test("shows lesson series cards", async ({ page }) => {
       await page.goto("/dashboard/lessons");
 
-      await expect(page.getByRole("heading", { name: "Lessen", exact: true })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Lesreeksen", exact: true })).toBeVisible();
       await expect(page.getByText("Voorjaarslessen Beginners")).toBeVisible();
-      await expect(page.getByText("Jan Janssen").first()).toBeVisible();
-      await expect(page.getByText("Actief")).toBeVisible();
+      await expect(page.getByText("5/16")).toBeVisible(); // enrolledCount/totalCapacity
+      await expect(page.getByText("1 actief · 0 concept")).toBeVisible();
     });
 
     test("shows empty state when no series exist", async ({ page }) => {
@@ -103,7 +103,7 @@ test.describe("Lesson Series", () => {
 
       await page.goto("/dashboard/lessons");
 
-      await page.getByRole("link", { name: "Bekijken" }).click();
+      await page.getByRole("link", { name: /Voorjaarslessen Beginners/ }).click();
 
       await expect(page).toHaveURL(/\/dashboard\/lessons\/66666666/);
     });
@@ -171,18 +171,15 @@ test.describe("Lesson Series", () => {
           .click();
 
         await expect(page.locator("div[data-slot-id]")).toHaveCount(2);
-        await expect(page.getByText("Parallel veld 1 van 2")).toBeVisible();
-        await expect(page.getByText("Parallel veld 2 van 2")).toBeVisible();
         await expect(page.getByText("Dubbele les op di om")).toBeVisible();
 
         await page.locator("div[data-slot-id]").nth(1).click();
         await page.getByLabel("Naam baan").fill("Baan 2");
         await page.getByRole("button", { name: "Slot opslaan" }).click();
 
-        await expect(page.getByText("Baan 1")).toBeVisible();
-        await expect(page.getByText("Baan 2")).toBeVisible();
-        await expect(page.getByText("Parallel veld 1 van 2")).toBeVisible();
-        await expect(page.getByText("Parallel veld 2 van 2")).toBeVisible();
+        const slots = page.locator("div[data-slot-id]");
+        await expect(slots.filter({ hasText: "Baan 1" })).toHaveCount(1);
+        await expect(slots.filter({ hasText: "Baan 2" })).toHaveCount(1);
         await expect(page.getByText("Overlappende lesmomenten")).not.toBeVisible();
       });
 
@@ -312,8 +309,10 @@ test.describe("Lesson Series", () => {
     test("shows series details and lessons", async ({ page }) => {
       await page.goto("/dashboard/lessons/66666666-6666-6666-6666-666666666666");
 
-      await expect(page.getByText("Voorjaarslessen Beginners")).toBeVisible();
-      await expect(page.getByText("Baan 1").first()).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Voorjaarslessen Beginners" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Lesmomenten" })).toBeVisible();
+      // De lesmomenten staan zowel in een (verborgen) mobiele als desktopweergave.
+      await expect(page.getByText("Baan 1").filter({ visible: true }).first()).toBeVisible();
     });
   });
 });
