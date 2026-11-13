@@ -23,6 +23,12 @@ public interface ISubscriptionPaymentRepository
     Task<SubscriptionPayment?> GetLatestOpenFirstAsync(Guid organizationId, CancellationToken ct = default);
 
     /// <summary>
+    /// AsNoTracking: de laatst aangemaakte openstaande Mollie-betaling waar de club zelf langs de
+    /// checkout gaat (eerste betaling of losse betaallink), met een Mollie payment-id; of null.
+    /// </summary>
+    Task<SubscriptionPayment?> GetLatestOpenCheckoutAsync(Guid organizationId, CancellationToken ct = default);
+
+    /// <summary>
     /// Laatste einddatum van een periode die echt aangerekend werd: betaald, of een automatische
     /// verlenging die nog loopt of mislukte (die periode wordt dan via een losse betaallink gedekt).
     /// Afgebroken, verlopen en terugbetaalde betalingen tellen niet mee.

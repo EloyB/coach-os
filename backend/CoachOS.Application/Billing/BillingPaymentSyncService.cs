@@ -77,7 +77,9 @@ public class BillingPaymentSyncService(
 
     public async Task<Result<BillingOverviewDto>> SyncLatestCheckoutAsync(Guid organizationId, CancellationToken ct = default)
     {
-        SubscriptionPayment? open = await payments.GetLatestOpenFirstAsync(organizationId, ct);
+        // Eerste betaling én losse betaallink na een mislukte verlenging keren terug naar dezelfde
+        // pagina: beide verwerken, zodat een uitblijvende webhook de club niet laat wachten.
+        SubscriptionPayment? open = await payments.GetLatestOpenCheckoutAsync(organizationId, ct);
         if (open?.MolliePaymentId is string molliePaymentId)
         {
             Result synced = await SyncAsync(molliePaymentId, ct);
