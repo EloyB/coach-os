@@ -9,7 +9,7 @@
 # ignore: we volgen LTS-versies van .NET en Node. Tussenversies (.NET 11/13,
 # oneven Node) worden overgeslagen; de volgende LTS komt gewoon als PR.
 # Grote sprongen die een bewuste upgrade vragen, staan als issue op de lijst
-# (#327 TypeScript 7, #328 ESLint 10). Haal de regel hier weg
+# (#327 TypeScript 7). Haal de regel hier weg
 # zodra zo'n upgrade gedaan is.
 version: 2
 
@@ -46,8 +46,6 @@ updates:
         versions: [">= 25"]
       - dependency-name: typescript # #327
         update-types: [version-update:semver-major]
-      - dependency-name: eslint # #328
-        update-types: [version-update:semver-major]
     labels: [dependencies, frontend]
 
   - package-ecosystem: bun
@@ -67,8 +65,6 @@ updates:
       - dependency-name: "@types/node"
         versions: [">= 25"]
       - dependency-name: typescript # #327
-        update-types: [version-update:semver-major]
-      - dependency-name: eslint # #328
         update-types: [version-update:semver-major]
     labels: [dependencies, website]
 
