@@ -7,7 +7,8 @@ import { DashboardSidebar } from "@/components/layouts/dashboard-sidebar";
 import { MobileBottomNav } from "@/components/layouts/dashboard-bottom-nav";
 import { SlashLabel } from "@/components/ui/slash-label";
 import { AccountBanners } from "@/components/dashboard/account-banners";
-import { isAuthenticated } from "@/lib/auth";
+import { clearAuth, isAuthenticated, syncRoleCookie } from "@/lib/auth";
+import { isStudentRole, STUDENT_HOME } from "@/lib/role-routing";
 import { useAuthUser } from "@/lib/hooks/use-auth-user";
 import { useClientValue } from "@/lib/hooks/use-client-value";
 
@@ -37,11 +38,25 @@ export default function DashboardLayout({
   const authenticated = useClientValue(isAuthenticated);
   const user = useAuthUser();
 
-  useEffect(() => {
-    if (authenticated === false) router.replace("/login");
-  }, [authenticated, router]);
+  const isStudent = isStudentRole(user?.role);
 
-  if (!authenticated || !user) return null;
+  useEffect(() => {
+    if (authenticated === false) {
+      // Achtergebleven cookies opruimen, anders stuurt de middleware /login meteen terug.
+      clearAuth();
+      router.replace("/login");
+      return;
+    }
+    if (user && isStudent) {
+      // Student op een staffpagina: naar zijn lessen, zonder uitloggen. Rolcookie eerst
+      // rechtzetten zodat de middleware dezelfde beslissing neemt.
+      syncRoleCookie(user.role);
+      router.replace(STUDENT_HOME);
+    }
+  }, [authenticated, user, isStudent, router]);
+
+  // Niets renderen voor een student: zo vertrekken er geen staff-API-calls (401 → uitloggen).
+  if (!authenticated || !user || isStudent) return null;
 
   return (
     <div className="flex h-screen bg-canvas overflow-hidden">

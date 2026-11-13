@@ -7,7 +7,8 @@ import Link from "next/link";
 import axios from "axios";
 
 import { resendEmailVerification, verifyEmail } from "@/lib/api/auth";
-import { markEmailVerified } from "@/lib/auth";
+import { clearAuth, markEmailVerified, syncRoleCookie } from "@/lib/auth";
+import { isStudentRole, STUDENT_HOME, STUDENT_ROLE } from "@/lib/role-routing";
 import { useAuthUser } from "@/lib/hooks/use-auth-user";
 import { AuthBrandPanel } from "@/components/auth/auth-brand-panel";
 import { LogoMark } from "@/components/ui/logo-mark";
@@ -44,9 +45,11 @@ function VerifyEmailForm() {
       ? "unknown"
       : user === null
         ? "none"
-        : user.emailVerified === false
-          ? "unverified"
-          : "verified";
+        : isStudentRole(user.role)
+          ? "student"
+          : user.emailVerified === false
+            ? "unverified"
+            : "verified";
   const [code, setCode] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResending, setIsResending] = useState(false);
@@ -59,7 +62,15 @@ function VerifyEmailForm() {
     // Wacht tot localStorage gelezen is (na hydration).
     if (userStatus === "unknown") return;
     if (userStatus === "none") {
+      // Achtergebleven cookies opruimen, anders stuurt de middleware /login meteen terug.
+      clearAuth();
       router.replace("/login");
+      return;
+    }
+    if (userStatus === "student") {
+      // E-mailverificatie is enkel voor staff; de staff-API zou een student uitloggen (401).
+      syncRoleCookie(STUDENT_ROLE);
+      router.replace(STUDENT_HOME);
       return;
     }
     if (userStatus === "verified") {

@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 
 import { redeemMagicLink } from "@/lib/api/auth";
-import { setToken, setAuthUser } from "@/lib/auth";
+import { setToken, setAuthUser, setSuperAdminCookie } from "@/lib/auth";
 
 function MagicRedeem() {
   const t = useTranslations("studentAuth");
@@ -21,6 +21,8 @@ function MagicRedeem() {
     redeemMagicLink(token)
       .then((res) => {
         setToken(res.token);
+        // Een achtergebleven super-admin-cookie van een vorige sessie mag de routing niet sturen.
+        setSuperAdminCookie(false);
         setAuthUser({ email: res.email, role: res.role });
         router.replace("/student/lessons");
       })
