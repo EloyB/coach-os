@@ -1,5 +1,11 @@
 import { defineConfig, devices } from "@playwright/test";
 
+// Mocked specs intercept calls to this URL (see e2e/helpers.ts); live specs talk
+// to the real backend on it. Pinned here so the suite does not depend on an
+// untracked .env.local — without it apiClient would call /api on the Next
+// server itself and every mock would miss.
+const API_URL = "http://localhost:5142/api";
+
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
@@ -14,14 +20,23 @@ export default defineConfig({
   },
   projects: [
     {
+      // Default run: all API calls are mocked, no backend needed.
       name: "chromium",
+      testIgnore: "live/**",
+      use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      // Opt-in: `bun run test:e2e:live`. Needs the docker stack + seed data.
+      name: "live",
+      testMatch: "live/**/*.spec.ts",
       use: { ...devices["Desktop Chrome"] },
     },
   ],
   webServer: {
-    command: "npm run dev",
+    command: "bun run dev",
     url: "http://localhost:5317",
     reuseExistingServer: !process.env.CI,
-    timeout: 30_000,
+    timeout: 120_000,
+    env: { NEXT_PUBLIC_API_URL: API_URL },
   },
 });

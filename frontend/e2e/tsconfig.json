@@ -1,0 +1,12 @@
+{
+  // The root tsconfig excludes e2e/ (Next build must not pick up Playwright specs).
+  // This config typechecks the specs on their own, so mock data typed against
+  // the DTOs in lib/api/*.ts fails `bun run typecheck:e2e` when the API drifts.
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "incremental": false,
+    "plugins": []
+  },
+  "include": ["**/*.ts"],
+  "exclude": []
+}
