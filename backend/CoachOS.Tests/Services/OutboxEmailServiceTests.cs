@@ -219,14 +219,14 @@ public class OutboxEmailServiceTests
     {
         // Platformmails (inloglink, wachtwoordreset) horen bij geen club.
         (IServiceProvider services, DbContextOptions<ApplicationDbContext> options) = BuildServices();
-        CapturingLogger logger = new();
+        Mock<ILogger<EmailOutboxWriter>> logger = new();
         EmailOutboxWriter writer = Writer(services, new EmailOrganizationContext(new FixedTenant(Guid.Empty)), logger);
 
         await writer.EnqueueAsync(new StudentMagicLinkMail("m@x.be", "https://x/magic/zz"));
 
         await using ApplicationDbContext db = new(options, new FixedTenant(Guid.Empty));
         (await db.EmailOutboxMessages.SingleAsync()).OrganizationId.Should().BeNull();
-        logger.Warnings.Should().Be(0);
+        VerifyWarnings(logger, Times.Never());
     }
 
     [Test]
@@ -235,7 +235,7 @@ public class OutboxEmailServiceTests
         // Bevestigingslink of Mollie-webhook: geen tenant, de flow geeft de club expliciet mee.
         Guid orgId = Guid.NewGuid();
         (IServiceProvider services, DbContextOptions<ApplicationDbContext> options) = BuildServices();
-        CapturingLogger logger = new();
+        Mock<ILogger<EmailOutboxWriter>> logger = new();
         EmailOrganizationContext organization = new(new FixedTenant(Guid.Empty));
         organization.Use(orgId);
         EmailOutboxWriter writer = Writer(services, organization, logger);
@@ -244,7 +244,7 @@ public class OutboxEmailServiceTests
 
         await using ApplicationDbContext db = new(options, new FixedTenant(Guid.Empty));
         (await db.EmailOutboxMessages.SingleAsync()).OrganizationId.Should().Be(orgId);
-        logger.Warnings.Should().Be(0);
+        VerifyWarnings(logger, Times.Never());
     }
 
     [Test]
@@ -274,7 +274,7 @@ public class OutboxEmailServiceTests
     {
         // Een vergeten publieke flow: de mail gaat nog altijd weg, maar valt op in de logs.
         (IServiceProvider services, DbContextOptions<ApplicationDbContext> options) = BuildServices();
-        CapturingLogger logger = new();
+        Mock<ILogger<EmailOutboxWriter>> logger = new();
         EmailOutboxWriter writer = Writer(services, new EmailOrganizationContext(new FixedTenant(Guid.Empty)), logger);
 
         await writer.EnqueueAsync(new CampEnrollmentConfirmedMail(
@@ -282,7 +282,7 @@ public class OutboxEmailServiceTests
 
         await using ApplicationDbContext db = new(options, new FixedTenant(Guid.Empty));
         (await db.EmailOutboxMessages.SingleAsync()).OrganizationId.Should().BeNull();
-        logger.Warnings.Should().Be(1);
+        VerifyWarnings(logger, Times.Once());
     }
 
     [Test]
@@ -304,30 +304,21 @@ public class OutboxEmailServiceTests
             bool isClubMail = OutboxEmails.TypeOf(key).IsAssignableTo(typeof(IClubOutboxEmail));
             isClubMail.Should().Be(!platformMails.Contains(key), $"{key} moet juist ingedeeld zijn");
         }
+
+        // Speler wissen neemt zonder organisatie enkel deze typen mee.
+        OutboxEmails.PlatformKeys.Should().BeEquivalentTo(platformMails);
     }
 
     private static EmailOutboxWriter Writer(
-        IServiceProvider services, EmailOrganizationContext organization, CapturingLogger? logger = null)
-        => new(services.GetRequiredService<IServiceScopeFactory>(), organization, logger ?? new CapturingLogger());
+        IServiceProvider services, EmailOrganizationContext organization,
+        Mock<ILogger<EmailOutboxWriter>>? logger = null)
+        => new(services.GetRequiredService<IServiceScopeFactory>(), organization,
+            (logger ?? new Mock<ILogger<EmailOutboxWriter>>()).Object);
 
-    /// <summary>
-    /// Moq kan geen <c>ILogger</c> van een internal klasse namaken (strong-named assembly);
-    /// deze logger telt enkel de waarschuwingen.
-    /// </summary>
-    private sealed class CapturingLogger : ILogger<EmailOutboxWriter>
-    {
-        public int Warnings { get; private set; }
-
-        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-
-        public bool IsEnabled(LogLevel logLevel) => true;
-
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
-            Func<TState, Exception?, string> formatter)
-        {
-            if (logLevel == LogLevel.Warning) Warnings++;
-        }
-    }
+    private static void VerifyWarnings(Mock<ILogger<EmailOutboxWriter>> logger, Times times)
+        => logger.Verify(l => l.Log(
+            LogLevel.Warning, It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(), It.IsAny<Exception?>(),
+            It.IsAny<Func<It.IsAnyType, Exception?, string>>()), times);
 
     private static string ArgumentsJson(IInvocation invocation)
         => JsonSerializer.Serialize(
