@@ -157,6 +157,46 @@ public class PlayerRetentionAnonymizationPostgresTests : PlayerErasurePostgresBa
             .Should().BeTrue("the non-responder list still needs unanswered links of a waiting assignment");
     }
 
+    [Test]
+    public async Task Cleanup_ScrubsContentOfOldFailedMail_AndKeepsTheRowForInvestigation()
+    {
+        Guid org = Guid.NewGuid();
+        await using ApplicationDbContext db = Db();
+        DateTime now = DateTime.UtcNow;
+        const string secret = """{"ToEmail":"parent@example.test","ResetUrl":"https://app/reset?token=abc"}""";
+        EmailOutboxMessage oldFailed = UnlinkedFailedMail(org, secret, "parent@example.test", now.AddDays(-31));
+        EmailOutboxMessage recentFailed = UnlinkedFailedMail(org, secret, "parent@example.test", now.AddDays(-5));
+        EmailOutboxMessage oldPending = UnlinkedFailedMail(org, secret, "parent@example.test", now.AddDays(-31));
+        oldPending.Status = EmailOutboxStatuses.Pending;
+        db.EmailOutboxMessages.AddRange(oldFailed, recentFailed, oldPending);
+        await db.SaveChangesAsync();
+        PrivacyCleanupService service = new(new PrivacyCleanupRepository(db), new UnitOfWork(db), TimeProvider.System);
+
+        PrivacyCleanupReport dry = (await service.RunAsync(dryRun: true)).Value!;
+        dry.ScrubbedFailedMails.Should().BeGreaterThanOrEqualTo(1);
+        (await Reload(db, oldFailed.Id)).Payload.Should().Contain("parent@example.test", "a dry-run only counts");
+
+        await service.RunAsync(dryRun: false);
+
+        EmailOutboxMessage scrubbed = await Reload(db, oldFailed.Id);
+        scrubbed.Payload.Should().Be(EmailOutboxMessage.ScrubbedPayload);
+        scrubbed.RecipientEmail.Should().BeNull();
+        scrubbed.Status.Should().Be(EmailOutboxStatuses.Failed, "the row stays: who did not get which mail type");
+        scrubbed.LastError.Should().Be("smtp down");
+        (await Reload(db, recentFailed.Id)).Payload.Should().Contain("parent@example.test", "kept 30 days for support");
+        (await Reload(db, oldPending.Id)).Payload.Should().Contain("parent@example.test", "still to be delivered");
+        (await service.RunAsync(dryRun: true)).Value!.ScrubbedFailedMails.Should().Be(0, "already scrubbed rows are not counted again");
+    }
+
+    private static async Task<EmailOutboxMessage> Reload(ApplicationDbContext db, Guid id)
+        => await db.EmailOutboxMessages.IgnoreQueryFilters().AsNoTracking().SingleAsync(x => x.Id == id);
+
+    private static EmailOutboxMessage UnlinkedFailedMail(Guid org, string payload, string recipient, DateTime failedAt) => new()
+    {
+        OrganizationId = org, RecipientEmail = recipient, Type = "mail:password-reset", Payload = payload,
+        Status = EmailOutboxStatuses.Failed, LastError = "smtp down", ProcessedAt = failedAt,
+    };
+
     private static EmailOutboxMessage Mail(Guid org, Guid enrollmentId, string status, DateTime processedAt) => new()
     {
         OrganizationId = org, EnrollmentId = enrollmentId, Payload = "{}", Status = status,

@@ -10,7 +10,17 @@ namespace CoachOS.Domain.Entities;
 /// </summary>
 public class EmailOutboxMessage : BaseEntity
 {
-    /// <summary>Organisatie waartoe de mail hoort, of null zonder tenant (publiek, achtergrondtaak).</summary>
+    /// <summary>
+    /// Inhoud na het wissen (afgeleverd, of lang genoeg mislukt): geen adressen, namen,
+    /// inloglinks of codes meer in de database.
+    /// </summary>
+    public const string ScrubbedPayload = "{}";
+
+    /// <summary>
+    /// Organisatie waartoe de mail hoort: de tenant van het verzoek, of de organisatie die een
+    /// publieke flow (bevestigingslink, webhook) expliciet meegeeft. Null voor platformmails
+    /// (wachtwoordreset, verificatie, website) die bij geen organisatie horen.
+    /// </summary>
     public Guid? OrganizationId { get; set; }
 
     /// <summary>Inschrijving waartoe de mail hoort, of null voor mails zonder inschrijving.</summary>

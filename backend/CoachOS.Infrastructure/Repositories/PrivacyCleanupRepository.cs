@@ -20,6 +20,19 @@ public sealed class PrivacyCleanupRepository(ApplicationDbContext db) : IPrivacy
         return apply ? await query.ExecuteDeleteAsync(ct) : await query.CountAsync(ct);
     }
 
+    public async Task<int> ScrubFailedMailAsync(DateTime failedBefore, bool apply, CancellationToken ct = default)
+    {
+        IQueryable<EmailOutboxMessage> query = db.EmailOutboxMessages.IgnoreQueryFilters()
+            .Where(x => x.Status == EmailOutboxStatuses.Failed &&
+                        (x.ProcessedAt ?? x.UpdatedAt) < failedBefore &&
+                        (x.Payload != EmailOutboxMessage.ScrubbedPayload || x.RecipientEmail != null));
+        return apply
+            ? await query.ExecuteUpdateAsync(s => s
+                .SetProperty(x => x.Payload, EmailOutboxMessage.ScrubbedPayload)
+                .SetProperty(x => x.RecipientEmail, (string?)null), ct)
+            : await query.CountAsync(ct);
+    }
+
     public async Task<int> CleanupExpiredMagicLinksAsync(DateTime expiredBefore, bool apply, CancellationToken ct = default)
     {
         IQueryable<MagicLinkToken> query = db.MagicLinkTokens.IgnoreQueryFilters()

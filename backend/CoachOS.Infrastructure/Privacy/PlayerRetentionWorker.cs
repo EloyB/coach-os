@@ -114,8 +114,8 @@ public sealed class PlayerRetentionWorker(
             if (!result.IsSuccess || result.Value is null) return;
             PrivacyCleanupReport report = result.Value;
             logger.LogInformation(
-                "Privacy-opruiming: {Mails} verstuurde mails, {MagicLinks} inloglinks, {Tokens} bevestigingslinks (dry-run: {DryRun})",
-                report.CompletedMails, report.ExpiredMagicLinks, report.ExpiredConfirmationTokens, dryRun);
+                "Privacy-opruiming: {Mails} verstuurde mails, {FailedMails} mislukte mails gewist, {MagicLinks} inloglinks, {Tokens} bevestigingslinks (dry-run: {DryRun})",
+                report.CompletedMails, report.ScrubbedFailedMails, report.ExpiredMagicLinks, report.ExpiredConfirmationTokens, dryRun);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

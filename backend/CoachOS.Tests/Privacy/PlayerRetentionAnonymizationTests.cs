@@ -136,7 +136,7 @@ public class PlayerRetentionAnonymizationTests
             .ReturnsAsync(Result<PlayerRetentionReport>.Ok(new PlayerRetentionReport(0, 0, 0, 0, 0, 0)));
         Mock<IPrivacyCleanupService> cleanup = new();
         cleanup.Setup(s => s.RunAsync(true, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result<PrivacyCleanupReport>.Ok(new PrivacyCleanupReport(0, 0, 0)));
+            .ReturnsAsync(Result<PrivacyCleanupReport>.Ok(new PrivacyCleanupReport(0, 0, 0, 0)));
 
         await RunWorkerOnceAsync(new PlayerRetentionOptions { Enabled = true }, retention, cleanup);
 
@@ -167,7 +167,7 @@ public class PlayerRetentionAnonymizationTests
         Mock<IPlayerRetentionService> retention = new(MockBehavior.Strict);
         Mock<IPrivacyCleanupService> cleanup = new();
         cleanup.Setup(s => s.RunAsync(true, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result<PrivacyCleanupReport>.Ok(new PrivacyCleanupReport(1, 2, 3)));
+            .ReturnsAsync(Result<PrivacyCleanupReport>.Ok(new PrivacyCleanupReport(1, 0, 2, 3)));
 
         await RunWorkerOnceAsync(new PlayerRetentionOptions(), retention, cleanup);
 
@@ -181,14 +181,16 @@ public class PlayerRetentionAnonymizationTests
         DateTime now = Clock().GetUtcNow().UtcDateTime;
         Mock<IPrivacyCleanupRepository> repo = new();
         repo.Setup(r => r.CleanupCompletedMailAsync(It.IsAny<DateTime>(), It.IsAny<bool>(), It.IsAny<CancellationToken>())).ReturnsAsync(4);
+        repo.Setup(r => r.ScrubFailedMailAsync(It.IsAny<DateTime>(), It.IsAny<bool>(), It.IsAny<CancellationToken>())).ReturnsAsync(7);
         repo.Setup(r => r.CleanupExpiredMagicLinksAsync(It.IsAny<DateTime>(), It.IsAny<bool>(), It.IsAny<CancellationToken>())).ReturnsAsync(5);
         repo.Setup(r => r.CleanupExpiredConfirmationTokensAsync(It.IsAny<DateTime>(), It.IsAny<bool>(), It.IsAny<CancellationToken>())).ReturnsAsync(6);
         PrivacyCleanupService service = new(repo.Object, new Mock<IUnitOfWork>().Object, Clock());
 
         Result<PrivacyCleanupReport> result = await service.RunAsync(dryRun);
 
-        result.Value.Should().Be(new PrivacyCleanupReport(4, 5, 6));
+        result.Value.Should().Be(new PrivacyCleanupReport(4, 7, 5, 6));
         repo.Verify(r => r.CleanupCompletedMailAsync(now.AddDays(-30), apply, It.IsAny<CancellationToken>()), Times.Once);
+        repo.Verify(r => r.ScrubFailedMailAsync(now.AddDays(-30), apply, It.IsAny<CancellationToken>()), Times.Once);
         repo.Verify(r => r.CleanupExpiredMagicLinksAsync(now, apply, It.IsAny<CancellationToken>()), Times.Once);
         repo.Verify(r => r.CleanupExpiredConfirmationTokensAsync(now.AddDays(-30), apply, It.IsAny<CancellationToken>()), Times.Once);
     }

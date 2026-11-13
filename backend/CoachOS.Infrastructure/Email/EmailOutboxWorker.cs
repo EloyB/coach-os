@@ -27,10 +27,6 @@ public sealed class EmailOutboxWorker(
     // de worker midden in het versturen, dan komt het na deze termijn opnieuw aan de beurt.
     private static readonly TimeSpan ProcessingLease = TimeSpan.FromMinutes(5);
 
-    // Na het versturen is de inhoud (adres, naam, inloglinks, codes) niet meer nodig:
-    // gewist, zodat er geen persoonsgegevens of geheimen in de database achterblijven.
-    internal const string ScrubbedPayload = "{}";
-
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         while (!stoppingToken.IsCancellationRequested)
@@ -70,13 +66,20 @@ public sealed class EmailOutboxWorker(
             message.Status = EmailOutboxStatuses.Completed;
             message.ProcessedAt = DateTime.UtcNow;
             message.LastError = null;
-            message.Payload = ScrubbedPayload;
+            // Na het versturen zijn inhoud en ontvanger (adres, naam, inloglinks, codes) niet
+            // meer nodig: gewist, zodat er geen persoonsgegevens of geheimen achterblijven.
+            message.Payload = EmailOutboxMessage.ScrubbedPayload;
+            message.RecipientEmail = null;
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
             message.Status = message.Attempts >= MaxAttempts
                 ? EmailOutboxStatuses.Failed
                 : EmailOutboxStatuses.Pending;
+            // Moment van definitief mislukken: vanaf hier telt de termijn waarna de privacy-
+            // opruiming de inhoud wist (de rij zelf blijft voor onderzoek).
+            if (message.Status == EmailOutboxStatuses.Failed)
+                message.ProcessedAt = DateTime.UtcNow;
             message.AvailableAt = DateTime.UtcNow.Add(GetRetryDelay(message.Attempts));
             message.LastError = ex.Message[..Math.Min(ex.Message.Length, 2000)];
             logger.LogError(ex,

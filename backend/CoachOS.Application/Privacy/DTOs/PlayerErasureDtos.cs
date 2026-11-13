@@ -45,7 +45,8 @@ public sealed record PlayerRetentionReport(
 }
 
 /// <summary>Aantal opgeruimde (of bij een dry-run: op te ruimen) technische records.</summary>
-public sealed record PrivacyCleanupReport(int CompletedMails, int ExpiredMagicLinks, int ExpiredConfirmationTokens)
+public sealed record PrivacyCleanupReport(
+    int CompletedMails, int ScrubbedFailedMails, int ExpiredMagicLinks, int ExpiredConfirmationTokens)
 {
-    public int Total => CompletedMails + ExpiredMagicLinks + ExpiredConfirmationTokens;
+    public int Total => CompletedMails + ScrubbedFailedMails + ExpiredMagicLinks + ExpiredConfirmationTokens;
 }
