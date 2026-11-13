@@ -141,6 +141,7 @@ public static class DependencyInjection
         services.AddScoped<IEmailOrganizationContext>(sp => sp.GetRequiredService<EmailOrganizationContext>());
         services.AddScoped<IEmailOutboxWriter, EmailOutboxWriter>();
         services.AddScoped<IEmailService, OutboxEmailService>();
+        services.AddScoped<IOrganizationDeletionNoticeStatus, OrganizationDeletionNoticeStatus>();
         services.AddSingleton<IPlanningWorkbookBuilder, ClosedXmlPlanningWorkbookBuilder>();
         services.AddSingleton<ICampWorkbookBuilder, ClosedXmlCampWorkbookBuilder>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();

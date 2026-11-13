@@ -42,6 +42,13 @@ public class Subscription : BaseEntity
     /// <summary>Stand van de automatische verwijdering; null zolang er niets gepland is.</summary>
     public OrganizationDeletionStage? DeletionStage { get; set; }
 
+    /// <summary>
+    /// Tijdstip (UTC) waarop de verwijderplanning het laatst wijzigde. De mail van de huidige
+    /// stap werd daarna ingepland; zo herkent de job de laatste mail in de outbox, ook als de
+    /// inhoud er na verzending al uit gewist is.
+    /// </summary>
+    public DateTime? DeletionStageChangedAt { get; set; }
+
     public bool IsActive { get; set; } = true;
 
     /// <summary>Snapshot van het aangerekende bedrag (EUR, excl. btw) voor het gekozen interval.</summary>
@@ -118,6 +125,7 @@ public class Subscription : BaseEntity
     {
         ScheduledDeletionOn = null;
         DeletionStage = null;
+        DeletionStageChangedAt = null;
     }
 
     /// <summary>

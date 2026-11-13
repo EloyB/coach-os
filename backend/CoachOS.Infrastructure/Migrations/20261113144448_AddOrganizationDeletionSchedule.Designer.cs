@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CoachOS.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20261113135028_AddOrganizationDeletionSchedule")]
+    [Migration("20261113144448_AddOrganizationDeletionSchedule")]
     partial class AddOrganizationDeletionSchedule
     {
         /// <inheritdoc />
@@ -1658,6 +1658,9 @@ namespace CoachOS.Infrastructure.Migrations
 
                     b.Property<int?>("DeletionStage")
                         .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeletionStageChangedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateOnly?>("EndDate")
                         .HasColumnType("date");

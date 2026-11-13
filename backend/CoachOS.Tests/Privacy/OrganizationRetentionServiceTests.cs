@@ -29,6 +29,7 @@ public class OrganizationRetentionServiceTests
     private Mock<IOrganizationOffboardingService> _offboarding = null!;
     private Mock<IEmailService> _email = null!;
     private Mock<IEmailOrganizationContext> _mailOrganization = null!;
+    private Mock<IOrganizationDeletionNoticeStatus> _noticeStatus = null!;
 
     [SetUp]
     public void SetUp()
@@ -38,8 +39,11 @@ public class OrganizationRetentionServiceTests
         _offboarding = new Mock<IOrganizationOffboardingService>();
         _email = new Mock<IEmailService>();
         _mailOrganization = new Mock<IEmailOrganizationContext>();
+        _noticeStatus = new Mock<IOrganizationDeletionNoticeStatus>();
 
-        // Default: elke claim lukt en geen enkele club heeft facturen.
+        // Default: elke claim lukt, geen enkele club heeft facturen en de laatste mail is verstuurd.
+        _noticeStatus.Setup(s => s.GetAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(EmailDeliveryStatus.Sent);
         _subscriptions.Setup(r => r.TrySetDeletionScheduleAsync(
                 It.IsAny<Guid>(), It.IsAny<DateOnly?>(), It.IsAny<OrganizationDeletionStage?>(),
                 It.IsAny<DateOnly?>(), It.IsAny<OrganizationDeletionStage?>(), It.IsAny<CancellationToken>()))
@@ -51,10 +55,13 @@ public class OrganizationRetentionServiceTests
                 Result<OrganizationDeletedDto>.Ok(new OrganizationDeletedDto(id, 1, DayTime.UtcDateTime)));
     }
 
-    private OrganizationRetentionService Sut(DateTimeOffset? now = null, string superAdminEmail = SuperAdmin) => new(
-        _subscriptions.Object, _offboardingData.Object, _offboarding.Object, _email.Object, _mailOrganization.Object,
+    private OrganizationRetentionService Sut(
+        DateTimeOffset? now = null, string superAdminEmail = SuperAdmin, bool enforceTrialExpiry = true) => new(
+        _subscriptions.Object, _offboardingData.Object, _offboarding.Object, _noticeStatus.Object,
+        _email.Object, _mailOrganization.Object,
         Options.Create(new AppOptions { FrontendBaseUrl = AppUrl }),
         Options.Create(new SuperAdminOptions { Email = superAdminEmail }),
+        Options.Create(new BillingOptions { EnforceTrialExpiry = enforceTrialExpiry }),
         new FixedTimeProvider(now ?? DayTime),
         NullLogger<OrganizationRetentionService>.Instance);
 
@@ -72,6 +79,7 @@ public class OrganizationRetentionServiceTests
         TrialEndsAt = Today.AddDays(-endedDaysAgo),
         ScheduledDeletionOn = scheduledOn,
         DeletionStage = stage,
+        DeletionStageChangedAt = stage is null ? null : DayTime.UtcDateTime.AddDays(-7),
         Organization = new Organization { Name = "TC Brederode", Email = "info@brederode.be" }
     };
 
@@ -82,7 +90,7 @@ public class OrganizationRetentionServiceTests
     private void VerifyNotice(DateOnly deletionDate, bool finalNotice, Times times)
         => _email.Verify(e => e.SendOrganizationDeletionNoticeAsync(
             "info@brederode.be", "TC Brederode", deletionDate, finalNotice,
-            $"{AppUrl}/dashboard/settings", It.IsAny<CancellationToken>()), times);
+            It.Is<string>(u => u.StartsWith($"{AppUrl}/dashboard/settings?org=")), It.IsAny<CancellationToken>()), times);
 
     private void VerifyNoMail()
     {
@@ -463,7 +471,7 @@ public class OrganizationRetentionServiceTests
 
         Result<OrganizationRetentionReport> result = await Sut().RunAsync(dryRun: true);
 
-        result.Value.Should().Be(new OrganizationRetentionReport(1, 1, 1, 0, 0, 0));
+        result.Value.Should().Be(new OrganizationRetentionReport(1, 1, 1, 0, 0, 0, 0));
         VerifyNoClaim();
         VerifyNoMail();
         VerifyNoDelete();
@@ -481,5 +489,233 @@ public class OrganizationRetentionServiceTests
         result.Value.Should().Be(OrganizationRetentionReport.Empty);
         _subscriptions.Verify(r => r.ListForRetentionReadOnlyAsync(It.IsAny<CancellationToken>()), Times.Never);
         VerifyNoDelete();
+    }
+
+    // --- Proefvervaldag niet afgedwongen (Billing:EnforceTrialExpiry uit) ---
+
+    [Test]
+    public async Task RunAsync_TrialExpiryNotEnforced_SkipsExpiredTrialWithoutPlanning()
+    {
+        Arrange(EndedTrial(endedDaysAgo: 200), EndedTrial(endedDaysAgo: 300));
+
+        Result<OrganizationRetentionReport> result = await Sut(enforceTrialExpiry: false).RunAsync(dryRun: false);
+
+        result.Value!.Skipped.Should().Be(2);
+        result.Value.FirstNotices.Should().Be(0);
+        VerifyNoClaim();
+        VerifyNoMail();
+        VerifyNoDelete();
+    }
+
+    [Test]
+    public async Task RunAsync_TrialExpiryNotEnforced_CancelsExistingScheduleInsteadOfDeleting()
+    {
+        Subscription trial = EndedTrial(endedDaysAgo: 130, Today, OrganizationDeletionStage.FinalNotice);
+        Arrange(trial);
+
+        Result<OrganizationRetentionReport> result = await Sut(enforceTrialExpiry: false).RunAsync(dryRun: false);
+
+        result.Value!.Cancelled.Should().Be(1);
+        _subscriptions.Verify(r => r.TrySetDeletionScheduleAsync(
+            trial.Id, Today, OrganizationDeletionStage.FinalNotice, null, null, It.IsAny<CancellationToken>()), Times.Once);
+        VerifyNoDelete();
+    }
+
+    [Test]
+    public async Task RunAsync_TrialExpiryNotEnforced_LockedClubStillProcessed()
+    {
+        // Vergrendeld (proef stopgezet na opzegging) is altijd enkel-lezen: dat einde telt wel.
+        Subscription locked = EndedTrial(endedDaysAgo: 60);
+        locked.Status = SubscriptionStatus.Locked;
+        Arrange(locked);
+
+        Result<OrganizationRetentionReport> result = await Sut(enforceTrialExpiry: false).RunAsync(dryRun: false);
+
+        result.Value!.FirstNotices.Should().Be(1);
+    }
+
+    // --- Verwijderen pas na verstuurde laatste mail ---
+
+    [Test]
+    public async Task RunAsync_FinalNoticeSent_ChecksMailsQueuedSinceTheLastClaim()
+    {
+        Subscription trial = EndedTrial(endedDaysAgo: 130, Today, OrganizationDeletionStage.FinalNotice);
+        Arrange(trial);
+
+        await Sut().RunAsync(dryRun: false);
+
+        _noticeStatus.Verify(s => s.GetAsync(
+            trial.OrganizationId, trial.DeletionStageChangedAt!.Value, It.IsAny<CancellationToken>()), Times.Once);
+        _offboarding.Verify(s => s.DeleteExpiredAsync(trial.OrganizationId, Today, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task RunAsync_FinalNoticeWithoutClaimTime_TreatedAsMissingAndSentAgain()
+    {
+        Subscription trial = EndedTrial(endedDaysAgo: 130, Today, OrganizationDeletionStage.FinalNotice);
+        trial.DeletionStageChangedAt = null;
+        Arrange(trial);
+
+        await Sut().RunAsync(dryRun: false);
+
+        VerifyNoDelete();
+        VerifyNotice(Today.AddDays(7), finalNotice: true, Times.Once());
+    }
+
+    [Test]
+    public async Task RunAsync_FinalNoticeStillPending_WaitsWithoutDeleting()
+    {
+        Subscription trial = EndedTrial(endedDaysAgo: 130, Today, OrganizationDeletionStage.FinalNotice);
+        Arrange(trial);
+        _noticeStatus.Setup(s => s.GetAsync(trial.OrganizationId, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(EmailDeliveryStatus.Pending);
+
+        Result<OrganizationRetentionReport> result = await Sut().RunAsync(dryRun: false);
+
+        result.Value.Should().Be(OrganizationRetentionReport.Empty);
+        VerifyNoDelete();
+        VerifyNoMail();
+    }
+
+    [TestCase(EmailDeliveryStatus.Failed)]
+    [TestCase(EmailDeliveryStatus.Missing)]
+    public async Task RunAsync_FinalNoticeNotDelivered_PostponesAndSendsAgain(EmailDeliveryStatus status)
+    {
+        Subscription trial = EndedTrial(endedDaysAgo: 130, Today, OrganizationDeletionStage.FinalNotice);
+        Arrange(trial);
+        _noticeStatus.Setup(s => s.GetAsync(trial.OrganizationId, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(status);
+
+        Result<OrganizationRetentionReport> result = await Sut().RunAsync(dryRun: false);
+
+        result.Value!.FinalNotices.Should().Be(1);
+        _subscriptions.Verify(r => r.TrySetDeletionScheduleAsync(
+            trial.Id, Today, OrganizationDeletionStage.FinalNotice,
+            Today.AddDays(7), OrganizationDeletionStage.FinalNotice, It.IsAny<CancellationToken>()), Times.Once);
+        VerifyNotice(Today.AddDays(7), finalNotice: true, Times.Once());
+        VerifyNoDelete();
+    }
+
+    // --- Overdracht aan de superadmin na een verwijdermail ---
+
+    [Test]
+    public async Task RunAsync_HandedOverAfterNotice_TellsClubDeletionIsCancelled()
+    {
+        Subscription trial = EndedTrial(endedDaysAgo: 130, Today.AddDays(7), OrganizationDeletionStage.FirstNotice);
+        Arrange(trial);
+        _offboardingData.Setup(r => r.CountDataAsync(trial.OrganizationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Counts(subscriptionPayments: 1));
+
+        await Sut().RunAsync(dryRun: false);
+
+        _email.Verify(e => e.SendOrganizationDeletionCancelledAsync(
+            "info@brederode.be", "TC Brederode", It.IsAny<CancellationToken>()), Times.Once);
+        _mailOrganization.Verify(m => m.Use(trial.OrganizationId), Times.Once);
+        _email.Verify(e => e.SendBillingSuperAdminNoticeAsync(
+            SuperAdmin, It.IsAny<string>(), It.Is<string>(b => b.Contains("kreeg al een verwijdermail")),
+            It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task RunAsync_HandedOverWithoutEarlierNotice_SendsNoClubMail()
+    {
+        Subscription trial = EndedTrial(endedDaysAgo: 100);
+        Arrange(trial);
+        _offboardingData.Setup(r => r.CountDataAsync(trial.OrganizationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Counts(subscriptionPayments: 1));
+
+        await Sut().RunAsync(dryRun: false);
+
+        _email.Verify(e => e.SendOrganizationDeletionCancelledAsync(
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task RunAsync_CancelledMailFails_HandOverStaysAndNoFailure()
+    {
+        Subscription trial = EndedTrial(endedDaysAgo: 130, Today, OrganizationDeletionStage.FinalNotice);
+        Arrange(trial);
+        _offboardingData.Setup(r => r.CountDataAsync(trial.OrganizationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Counts(subscriptionPayments: 1));
+        _email.Setup(e => e.SendOrganizationDeletionCancelledAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("outbox"));
+
+        Result<OrganizationRetentionReport> result = await Sut().RunAsync(dryRun: false);
+
+        result.Value!.HandedToSuperAdmin.Should().Be(1);
+        result.Value.Failed.Should().Be(0);
+        _subscriptions.Verify(r => r.TrySetDeletionScheduleAsync(
+            trial.Id, Today, OrganizationDeletionStage.HandedToSuperAdmin, It.IsAny<DateOnly?>(),
+            It.IsAny<OrganizationDeletionStage?>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    // --- Superadmin-tekst ---
+
+    [Test]
+    public async Task RunAsync_SuperAdminNotice_UsesPastTenseForEndedRetention()
+    {
+        Subscription trial = EndedTrial(endedDaysAgo: 100);
+        Arrange(trial);
+        _offboardingData.Setup(r => r.CountDataAsync(trial.OrganizationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Counts(subscriptionPayments: 1));
+
+        await Sut().RunAsync(dryRun: false);
+
+        string expected = $"liep af op {Today.AddDays(-10):dd/MM/yyyy}";
+        _email.Verify(e => e.SendBillingSuperAdminNoticeAsync(
+            SuperAdmin, It.IsAny<string>(), It.Is<string>(b => b.Contains(expected) && !b.Contains("verstreken")),
+            It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task RunAsync_SuperAdminNotice_UsesFutureTenseWhenRetentionStillRuns()
+    {
+        // Betaling na de eerste mail, vóór het einde van de bewaartermijn.
+        Subscription trial = EndedTrial(endedDaysAgo: 85, Today.AddDays(7), OrganizationDeletionStage.FirstNotice);
+        Arrange(trial);
+        _offboardingData.Setup(r => r.CountDataAsync(trial.OrganizationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Counts(subscriptionPayments: 1));
+
+        await Sut().RunAsync(dryRun: false);
+
+        string expected = $"loopt af op {Today.AddDays(5):dd/MM/yyyy}";
+        _email.Verify(e => e.SendBillingSuperAdminNoticeAsync(
+            SuperAdmin, It.IsAny<string>(), It.Is<string>(b => b.Contains(expected)),
+            It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    // --- Geen mailadres ---
+
+    [Test]
+    public async Task RunAsync_OrganizationWithoutEmail_SkippedWithoutClaimOrFailure()
+    {
+        Subscription first = EndedTrial(endedDaysAgo: 60);
+        first.Organization.Email = "";
+        Subscription final = EndedTrial(endedDaysAgo: 130, Today.AddDays(7), OrganizationDeletionStage.FirstNotice);
+        final.Organization.Email = " ";
+        Arrange(first, final);
+
+        Result<OrganizationRetentionReport> result = await Sut().RunAsync(dryRun: false);
+
+        result.Value!.Skipped.Should().Be(2);
+        result.Value.Failed.Should().Be(0);
+        VerifyNoClaim();
+        VerifyNoMail();
+    }
+
+    // --- Exportlink ---
+
+    [Test]
+    public async Task RunAsync_ExportLink_OpensTheOrganizationOfTheMail()
+    {
+        Subscription trial = EndedTrial(endedDaysAgo: 60);
+        Arrange(trial);
+
+        await Sut().RunAsync(dryRun: false);
+
+        _email.Verify(e => e.SendOrganizationDeletionNoticeAsync(
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateOnly>(), It.IsAny<bool>(),
+            $"{AppUrl}/dashboard/settings?org={trial.OrganizationId}", It.IsAny<CancellationToken>()), Times.Once);
     }
 }

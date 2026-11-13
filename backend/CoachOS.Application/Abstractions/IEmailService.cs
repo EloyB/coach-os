@@ -193,6 +193,15 @@ public interface IEmailService
         string exportUrl,
         CancellationToken ct = default);
 
+    /// <summary>
+    /// De eerder aangekondigde verwijdering van de organisatie gaat niet door (de club wordt
+    /// manueel afgehandeld).
+    /// </summary>
+    Task SendOrganizationDeletionCancelledAsync(
+        string toEmail,
+        string organizationName,
+        CancellationToken ct = default);
+
     /// <summary>Bevestiging dat een betaald abonnement is afgesloten (Mollie of overschrijving).</summary>
     Task SendSubscriptionStartedAsync(
         string toEmail,

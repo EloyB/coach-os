@@ -1656,6 +1656,9 @@ namespace CoachOS.Infrastructure.Migrations
                     b.Property<int?>("DeletionStage")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime?>("DeletionStageChangedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateOnly?>("EndDate")
                         .HasColumnType("date");
 

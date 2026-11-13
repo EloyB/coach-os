@@ -101,6 +101,8 @@ public class OutboxEmailServiceTests
             "tr2@x.be", "TC Ace", 3, D2, "https://app.x"));
         yield return Case("OrganizationDeletionNotice", s => s.SendOrganizationDeletionNoticeAsync(
             "od@x.be", "TC Ace", D2, true, "https://app.x/dashboard/settings"));
+        yield return Case("OrganizationDeletionCancelled", s => s.SendOrganizationDeletionCancelledAsync(
+            "oc@x.be", "TC Ace"));
         yield return Case("SubscriptionStarted", s => s.SendSubscriptionStartedAsync(
             "ss@x.be", "TC Ace", "Set", "jaarlijks", 1199.88m, D1, true, D2, "https://x/manage"));
         yield return Case("SubscriptionStartedWithoutDueDate", s => s.SendSubscriptionStartedAsync(

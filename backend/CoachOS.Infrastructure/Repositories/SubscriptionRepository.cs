@@ -99,6 +99,9 @@ public class SubscriptionRepository(ApplicationDbContext context) : ISubscriptio
         DateOnly? newScheduledOn, OrganizationDeletionStage? newStage,
         CancellationToken ct = default)
     {
+        // Zelfde klok als CreatedAt van de outbox-rijen (DateTime.UtcNow in SaveChanges): de mail
+        // van deze stap wordt pas na dit tijdstip ingepland.
+        DateTime? changedAt = newStage is null ? null : DateTime.UtcNow;
         int affected = await context.Subscriptions
             .IgnoreQueryFilters()
             .Where(s => s.Id == subscriptionId
@@ -110,6 +113,7 @@ public class SubscriptionRepository(ApplicationDbContext context) : ISubscriptio
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(s => s.ScheduledDeletionOn, newScheduledOn)
                 .SetProperty(s => s.DeletionStage, newStage)
+                .SetProperty(s => s.DeletionStageChangedAt, changedAt)
                 .SetProperty(s => s.ConcurrencyStamp, Guid.NewGuid()), ct);
 
         return affected == 1;

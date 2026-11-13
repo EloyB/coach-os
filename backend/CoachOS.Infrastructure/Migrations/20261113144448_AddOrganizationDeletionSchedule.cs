@@ -17,6 +17,12 @@ namespace CoachOS.Infrastructure.Migrations
                 type: "integer",
                 nullable: true);
 
+            migrationBuilder.AddColumn<DateTime>(
+                name: "DeletionStageChangedAt",
+                table: "Subscriptions",
+                type: "timestamp with time zone",
+                nullable: true);
+
             migrationBuilder.AddColumn<DateOnly>(
                 name: "ScheduledDeletionOn",
                 table: "Subscriptions",
@@ -29,6 +35,10 @@ namespace CoachOS.Infrastructure.Migrations
         {
             migrationBuilder.DropColumn(
                 name: "DeletionStage",
+                table: "Subscriptions");
+
+            migrationBuilder.DropColumn(
+                name: "DeletionStageChangedAt",
                 table: "Subscriptions");
 
             migrationBuilder.DropColumn(

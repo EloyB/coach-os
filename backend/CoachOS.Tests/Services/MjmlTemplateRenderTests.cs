@@ -114,6 +114,20 @@ public class MjmlTemplateRenderTests
         html.Should().Contain("Gegevens exporteren");
         html.Should().NotContain("{{");
     }
+
+    [Test]
+    public void OrganizationDeletionCancelled_RendersWithoutPlaceholders()
+    {
+        string html = _renderer.Render("organization-deletion-cancelled", new Dictionary<string, string>
+        {
+            ["organizationName"] = "TC Brederode",
+            ["year"] = "2026",
+        });
+
+        html.Should().Contain("TC Brederode");
+        html.Should().Contain("gaat niet door");
+        html.Should().NotContain("{{");
+    }
     /// <summary>
     /// MJML voegt standaard een Google Fonts-include toe zodra de font-stack een
     /// "bekend" font (bv. Roboto) noemt. Externe font-requests kosten privacy en
