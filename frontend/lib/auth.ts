@@ -104,10 +104,19 @@ export function getAuthUser(): AuthUser | null {
 export function setAuthUser(user: AuthUser): void {
   if (typeof window === 'undefined') return;
   localStorage.setItem(USER_KEY, JSON.stringify(user));
-  // Spiegel de rol in een cookie zodat de Next-middleware role-based redirects
-  // kan doen zonder localStorage te kunnen lezen. NIET security-kritisch — de
-  // backend blijft de uiteindelijke autoriteit (RequireRole/RequireAuthorization).
-  document.cookie = `${ROLE_COOKIE}=${encodeURIComponent(user.role)}; path=/; SameSite=Lax`;
+  syncRoleCookie(user.role);
+}
+
+/**
+ * Spiegel de rol in een cookie zodat de Next-middleware role-based redirects
+ * kan doen zonder localStorage te kunnen lezen. NIET security-kritisch — de
+ * backend blijft de uiteindelijke autoriteit (RequireRole/RequireAuthorization).
+ * De layouts roepen dit ook aan om een verouderde of ontbrekende cookie recht te
+ * zetten vóór ze doorsturen, zodat middleware en layout nooit tegen elkaar in sturen.
+ */
+export function syncRoleCookie(role: string): void {
+  if (typeof window === 'undefined') return;
+  document.cookie = `${ROLE_COOKIE}=${encodeURIComponent(role)}; path=/; SameSite=Lax`;
 }
 
 export function markEmailVerified(): void {

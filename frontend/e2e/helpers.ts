@@ -7,7 +7,7 @@ import type { LessonSeriesDto } from "@/lib/api/lessonSeries";
 import type { TennisClubDto } from "@/lib/api/tennisClubs";
 import type { TrainerDto } from "@/lib/api/trainers";
 
-const API_URL = "http://localhost:5142/api";
+export const API_URL = "http://localhost:5142/api";
 
 // ─── Mock data ──────────────────────────────────────────────────────────────
 // Typed against the DTOs in lib/api/*.ts: when the API contract changes,
