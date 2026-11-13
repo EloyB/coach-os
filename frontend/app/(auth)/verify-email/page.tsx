@@ -7,7 +7,7 @@ import Link from "next/link";
 import axios from "axios";
 
 import { resendEmailVerification, verifyEmail } from "@/lib/api/auth";
-import { getAuthUser, markEmailVerified } from "@/lib/auth";
+import { markEmailVerified } from "@/lib/auth";
 import { useAuthUser } from "@/lib/hooks/use-auth-user";
 import { AuthBrandPanel } from "@/components/auth/auth-brand-panel";
 import { LogoMark } from "@/components/ui/logo-mark";
@@ -37,7 +37,16 @@ function VerifyEmailForm() {
   const justSent = searchParams.get("sent") === "1";
 
   const user = useAuthUser();
-  const userKnown = user !== undefined;
+  // Primitieve status als effect-dependency: het effect hoeft enkel opnieuw te lopen
+  // als de status wijzigt, niet bij elke nieuwe user-referentie.
+  const userStatus =
+    user === undefined
+      ? "unknown"
+      : user === null
+        ? "none"
+        : user.emailVerified === false
+          ? "unverified"
+          : "verified";
   const [code, setCode] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResending, setIsResending] = useState(false);
@@ -47,14 +56,13 @@ function VerifyEmailForm() {
   const codeInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // Wacht tot localStorage gelezen is (na hydration); daarna eenmalig beslissen.
-    if (!userKnown) return;
-    const user = getAuthUser();
-    if (!user) {
+    // Wacht tot localStorage gelezen is (na hydration).
+    if (userStatus === "unknown") return;
+    if (userStatus === "none") {
       router.replace("/login");
       return;
     }
-    if (user.emailVerified !== false) {
+    if (userStatus === "verified") {
       router.replace("/dashboard");
       return;
     }
@@ -75,7 +83,7 @@ function VerifyEmailForm() {
     return () => {
       cancelled = true;
     };
-  }, [userKnown, router, justSent, t]);
+  }, [userStatus, router, justSent, t]);
 
   useEffect(() => {
     if (cooldown <= 0) return;
