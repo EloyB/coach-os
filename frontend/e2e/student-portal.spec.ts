@@ -81,7 +81,7 @@ test.describe("Student portal — magic-link auth", () => {
     await page.route("**/auth/magic/redeem*", (route) => {
       if (route.request().method() === "POST") {
         return route.fulfill({
-          status: 400,
+          status: 410,
           contentType: "application/json",
           body: JSON.stringify(["Ongeldige of verlopen link"]),
         });
