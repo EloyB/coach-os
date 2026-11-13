@@ -70,6 +70,15 @@ internal static class OutboxEmails
 
     public static Type TypeOf(string key) => TypeByKey[key];
 
+    /// <summary>
+    /// Typenamen van platformmails: geen <see cref="IClubOutboxEmail"/>, horen bij geen club en
+    /// staan dus terecht zonder organisatie in de outbox (wachtwoordreset, inloglink, website, ...).
+    /// </summary>
+    public static IReadOnlyList<string> PlatformKeys { get; } = Registrations
+        .Where(r => !r.Type.IsAssignableTo(typeof(IClubOutboxEmail)))
+        .Select(r => r.Key)
+        .ToList();
+
     public static (string Type, string Payload) Serialize(IOutboxEmail mail)
     {
         Type type = mail.GetType();
