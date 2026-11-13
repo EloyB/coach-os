@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { format, parse } from "date-fns";
@@ -21,13 +21,9 @@ import { useClientValue } from "@/lib/hooks/use-client-value";
 
 function AdminDashboard() {
   const t = useTranslations("dashboard");
-  const [isAdmin, setIsAdmin] = useState(false);
-
-  // getAuthUser leest localStorage en mag pas na mount draaien om SSR-hydration mismatches
-  // te vermijden. Tot dan houden we isAdmin op false zodat de checklist niets rendert.
-  useEffect(() => {
-    setIsAdmin(getAuthUser()?.role === "Admin");
-  }, []);
+  // getAuthUser leest localStorage en mag pas na hydration gelezen worden om SSR-mismatches
+  // te vermijden. Tot dan is isAdmin false zodat de checklist niets rendert.
+  const isAdmin = useClientValue(() => getAuthUser()?.role === "Admin") ?? false;
 
   // Vooruit ophalen zodat de WelcomeModal direct kan beslissen of hij open mag.
   const { data: onboarding } = useQuery({

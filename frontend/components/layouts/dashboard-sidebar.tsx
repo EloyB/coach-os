@@ -12,21 +12,18 @@ import { TrialSidebarCard } from "@/components/dashboard/trial-sidebar-card";
 import { OnboardingSidebarCard } from "@/components/dashboard/onboarding/onboarding-sidebar-card";
 import { navItems } from "@/lib/nav-items";
 import { switchOrganization } from "@/lib/api/auth";
-import { getAuthUser, setAuthUser, setToken, clearAuth, type AuthUser } from "@/lib/auth";
+import { getAuthUser, setAuthUser, setToken, clearAuth } from "@/lib/auth";
+import { useAuthUser } from "@/lib/hooks/use-auth-user";
 import { getInitials } from "@/lib/utils/initials";
 
 export function DashboardSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const tSwitcher = useTranslations("orgSwitcher");
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const user = useAuthUser() ?? null;
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [isSwitching, setIsSwitching] = useState(false);
   const switcherRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setUser(getAuthUser());
-  }, []);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {

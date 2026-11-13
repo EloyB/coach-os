@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import {
   Dialog,
@@ -11,7 +11,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { btnPrimary } from "@/lib/styles";
-import { getAuthUser } from "@/lib/auth";
+import { useAuthUser } from "@/lib/hooks/use-auth-user";
+import { useClientValue } from "@/lib/hooks/use-client-value";
 
 const SEEN_KEY = "coachos.welcome.seen";
 
@@ -21,23 +22,17 @@ interface WelcomeModalProps {
 
 export function WelcomeModal({ shouldShow }: WelcomeModalProps) {
   const t = useTranslations("onboarding");
-  const [open, setOpen] = useState(false);
-  const [firstName, setFirstName] = useState<string | null>(null);
-
-  // LocalStorage en getAuthUser zijn enkel beschikbaar na mount. Doen we dit synchroon
-  // tijdens render, dan triggert React een hydration-mismatch op de eerste SSR pass.
-  useEffect(() => {
-    if (!shouldShow) return;
-    const seen = localStorage.getItem(SEEN_KEY);
-    if (seen) return;
-    const user = getAuthUser();
-    setFirstName(user?.firstName ?? null);
-    setOpen(true);
-  }, [shouldShow]);
+  const [dismissed, setDismissed] = useState(false);
+  // localStorage is enkel beschikbaar na hydration: tot dan `null`/`undefined`, zodat de
+  // eerste render gelijk is aan de SSR-pass en er geen hydration-mismatch ontstaat.
+  const seen = useClientValue(() => localStorage.getItem(SEEN_KEY) !== null);
+  const user = useAuthUser();
+  const firstName = user?.firstName ?? null;
+  const open = shouldShow && seen === false && !dismissed;
 
   function handleClose() {
     localStorage.setItem(SEEN_KEY, "1");
-    setOpen(false);
+    setDismissed(true);
   }
 
   const title = firstName

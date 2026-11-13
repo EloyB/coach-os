@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 
-import { clearAuth, getAuthUser } from "@/lib/auth";
+import { clearAuth } from "@/lib/auth";
+import { useAuthUser } from "@/lib/hooks/use-auth-user";
 import { LogoMark } from "@/components/ui/logo-mark";
 
 export default function StudentLayout({
@@ -15,16 +16,14 @@ export default function StudentLayout({
 }) {
   const router = useRouter();
   const t = useTranslations("studentPortal");
-  const [firstName, setFirstName] = useState<string | null>(null);
+  const user = useAuthUser();
+  const isStudent = user?.role === "Student";
+  const firstName = isStudent ? (user.firstName ?? null) : null;
 
   useEffect(() => {
-    const user = getAuthUser();
-    if (!user || user.role !== "Student") {
-      router.replace("/student-login");
-      return;
-    }
-    setFirstName(user.firstName ?? null);
-  }, [router]);
+    // undefined = nog onbekend (SSR/hydration): dan nog niet doorsturen.
+    if (user !== undefined && !isStudent) router.replace("/student-login");
+  }, [user, isStudent, router]);
 
   function logout() {
     clearAuth();

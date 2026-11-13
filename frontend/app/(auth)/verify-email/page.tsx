@@ -8,6 +8,7 @@ import axios from "axios";
 
 import { resendEmailVerification, verifyEmail } from "@/lib/api/auth";
 import { getAuthUser, markEmailVerified } from "@/lib/auth";
+import { useAuthUser } from "@/lib/hooks/use-auth-user";
 import { AuthBrandPanel } from "@/components/auth/auth-brand-panel";
 import { LogoMark } from "@/components/ui/logo-mark";
 import { SlashLabel } from "@/components/ui/slash-label";
@@ -35,7 +36,8 @@ function VerifyEmailForm() {
   // Komt de gebruiker recht van de registratie, dan is er net een code verstuurd.
   const justSent = searchParams.get("sent") === "1";
 
-  const [email, setEmail] = useState<string | null>(null);
+  const user = useAuthUser();
+  const userKnown = user !== undefined;
   const [code, setCode] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResending, setIsResending] = useState(false);
@@ -45,6 +47,8 @@ function VerifyEmailForm() {
   const codeInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    // Wacht tot localStorage gelezen is (na hydration); daarna eenmalig beslissen.
+    if (!userKnown) return;
     const user = getAuthUser();
     if (!user) {
       router.replace("/login");
@@ -54,7 +58,6 @@ function VerifyEmailForm() {
       router.replace("/dashboard");
       return;
     }
-    setEmail(user.email);
 
     // Wie later terugkeert (via de banner) heeft mogelijk een verlopen code. De server stuurt
     // dan zelf een verse; een nog geldige code blijft ongemoeid.
@@ -72,7 +75,7 @@ function VerifyEmailForm() {
     return () => {
       cancelled = true;
     };
-  }, [router, justSent, t]);
+  }, [userKnown, router, justSent, t]);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -122,6 +125,9 @@ function VerifyEmailForm() {
     }
   }
 
+  // Na een geslaagde bevestiging is de gebruiker al "verified" in localStorage, maar blijft
+  // isSubmitting true tot de navigatie klaar is: het formulier blijft dan staan.
+  const email = user && (user.emailVerified === false || isSubmitting) ? user.email : null;
   if (!email) return null;
 
   return (

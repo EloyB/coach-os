@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import {
@@ -40,25 +40,24 @@ export function CampFormBuilder({ campId }: { campId: string }) {
     queryFn: () => getCampForm(campId),
   });
 
-  // Initialise draft fields from loaded form
-  useEffect(() => {
-    if (!loaded && existingForm !== undefined) {
-      if (existingForm) {
-        setFields(
-          existingForm.fields.map((f) => ({
-            _key: f.id,
-            id: f.id,
-            label: f.label,
-            type: f.type,
-            isRequired: f.isRequired,
-            order: f.order,
-            options: f.options ?? undefined,
-          })),
-        );
-      }
-      setLoaded(true);
+  // Initialise draft fields from loaded form (eenmalig, tijdens render i.p.v. in een effect:
+  // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes)
+  if (!loaded && existingForm !== undefined) {
+    setLoaded(true);
+    if (existingForm) {
+      setFields(
+        existingForm.fields.map((f) => ({
+          _key: f.id,
+          id: f.id,
+          label: f.label,
+          type: f.type,
+          isRequired: f.isRequired,
+          order: f.order,
+          options: f.options ?? undefined,
+        })),
+      );
     }
-  }, [existingForm, loaded]);
+  }
 
   const saveMutation = useMutation({
     mutationFn: () => {
