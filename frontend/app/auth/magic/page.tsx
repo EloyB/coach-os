@@ -18,15 +18,23 @@ function MagicRedeem() {
 
   useEffect(() => {
     if (!token) return;
+    // Cleanup-vlag: in dev draait dit effect twee keer; de afgebroken run mag geen foutstate zetten.
+    let ignore = false;
     redeemMagicLink(token)
       .then((res) => {
+        if (ignore) return;
         setToken(res.token);
         // Een achtergebleven super-admin-cookie van een vorige sessie mag de routing niet sturen.
         setSuperAdminCookie(false);
         setAuthUser({ email: res.email, role: res.role });
         router.replace("/student/lessons");
       })
-      .catch(() => setRedeemFailed(true));
+      .catch(() => {
+        if (!ignore) setRedeemFailed(true);
+      });
+    return () => {
+      ignore = true;
+    };
   }, [token, router]);
 
   return (
