@@ -7,7 +7,8 @@ import Link from "next/link";
 import axios from "axios";
 
 import { resendEmailVerification, verifyEmail } from "@/lib/api/auth";
-import { getAuthUser, markEmailVerified } from "@/lib/auth";
+import { markEmailVerified } from "@/lib/auth";
+import { useAuthUser } from "@/lib/hooks/use-auth-user";
 import { AuthBrandPanel } from "@/components/auth/auth-brand-panel";
 import { LogoMark } from "@/components/ui/logo-mark";
 import { SlashLabel } from "@/components/ui/slash-label";
@@ -35,7 +36,17 @@ function VerifyEmailForm() {
   // Komt de gebruiker recht van de registratie, dan is er net een code verstuurd.
   const justSent = searchParams.get("sent") === "1";
 
-  const [email, setEmail] = useState<string | null>(null);
+  const user = useAuthUser();
+  // Primitieve status als effect-dependency: het effect hoeft enkel opnieuw te lopen
+  // als de status wijzigt, niet bij elke nieuwe user-referentie.
+  const userStatus =
+    user === undefined
+      ? "unknown"
+      : user === null
+        ? "none"
+        : user.emailVerified === false
+          ? "unverified"
+          : "verified";
   const [code, setCode] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResending, setIsResending] = useState(false);
@@ -45,16 +56,16 @@ function VerifyEmailForm() {
   const codeInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const user = getAuthUser();
-    if (!user) {
+    // Wacht tot localStorage gelezen is (na hydration).
+    if (userStatus === "unknown") return;
+    if (userStatus === "none") {
       router.replace("/login");
       return;
     }
-    if (user.emailVerified !== false) {
+    if (userStatus === "verified") {
       router.replace("/dashboard");
       return;
     }
-    setEmail(user.email);
 
     // Wie later terugkeert (via de banner) heeft mogelijk een verlopen code. De server stuurt
     // dan zelf een verse; een nog geldige code blijft ongemoeid.
@@ -72,7 +83,7 @@ function VerifyEmailForm() {
     return () => {
       cancelled = true;
     };
-  }, [router, justSent, t]);
+  }, [userStatus, router, justSent, t]);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -122,6 +133,9 @@ function VerifyEmailForm() {
     }
   }
 
+  // Na een geslaagde bevestiging is de gebruiker al "verified" in localStorage, maar blijft
+  // isSubmitting true tot de navigatie klaar is: het formulier blijft dan staan.
+  const email = user && (user.emailVerified === false || isSubmitting) ? user.email : null;
   if (!email) return null;
 
   return (

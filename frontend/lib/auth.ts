@@ -35,14 +35,12 @@ export function isStudent(): boolean {
  * De frontend gebruikt dit om bewerk-/actieknoppen te verbergen (de backend blijft
  * de echte poortwachter).
  */
-export function isHeadTrainerViewer(): boolean {
-  const u = getAuthUser();
+export function isHeadTrainerViewer(u: AuthUser | null = getAuthUser()): boolean {
   return u?.role === "Trainer" && (u?.headTrainerClubIds?.length ?? 0) > 0;
 }
 
-export function isEnrollmentManager(): boolean {
-  const u = getAuthUser();
-  return u?.role === "Admin" || isHeadTrainerViewer();
+export function isEnrollmentManager(u: AuthUser | null = getAuthUser()): boolean {
+  return u?.role === "Admin" || isHeadTrainerViewer(u);
 }
 
 /**
@@ -50,8 +48,8 @@ export function isEnrollmentManager(): boolean {
  * onderliggende endpoint is Admin-only, dus hoofdtrainers krijgen deze knoppen
  * niet te zien i.p.v. een gegarandeerde 403 bij het opslaan.
  */
-export function canEditEnrollment(): boolean {
-  return getAuthUser()?.role === "Admin";
+export function canEditEnrollment(u: AuthUser | null = getAuthUser()): boolean {
+  return u?.role === "Admin";
 }
 
 export function isSuperAdmin(): boolean {
@@ -84,15 +82,23 @@ export function removeToken(): void {
   document.cookie = `${AUTH_COOKIE}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
 }
 
-export function getAuthUser(): AuthUser | null {
+/** Ruwe JSON van de ingelogde gebruiker zoals bewaard in localStorage. */
+export function getAuthUserRaw(): string | null {
   if (typeof window === 'undefined') return null;
-  const raw = localStorage.getItem(USER_KEY);
+  return localStorage.getItem(USER_KEY);
+}
+
+export function parseAuthUser(raw: string | null): AuthUser | null {
   if (!raw) return null;
   try {
     return JSON.parse(raw) as AuthUser;
   } catch {
     return null;
   }
+}
+
+export function getAuthUser(): AuthUser | null {
+  return parseAuthUser(getAuthUserRaw());
 }
 
 export function setAuthUser(user: AuthUser): void {

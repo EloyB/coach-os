@@ -1,8 +1,6 @@
 import {
   LayoutDashboard,
-  CalendarDays,
   BookOpen,
-  Users,
   GraduationCap,
   Settings,
   Ticket,

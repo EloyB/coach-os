@@ -1,40 +1,41 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Mono } from "@/components/ui/mono";
 import { SlashLabel } from "@/components/ui/slash-label";
 import { Button } from "@/components/ui/button";
-import { clearAuth, getAuthUser, isAuthenticated, isSuperAdmin, type AuthUser } from "@/lib/auth";
+import { clearAuth, isAuthenticated } from "@/lib/auth";
+import { useAuthUser } from "@/lib/hooks/use-auth-user";
+import { useClientValue } from "@/lib/hooks/use-client-value";
 
 export default function SuperAdminLayout({ children }: { children: React.ReactNode }) {
   const t = useTranslations("superAdmin");
   const router = useRouter();
   const pathname = usePathname();
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [checked, setChecked] = useState(false);
+  // Beide zijn "onbekend" (null/undefined) tijdens SSR/hydration.
+  const authenticated = useClientValue(isAuthenticated);
+  const user = useAuthUser();
+  const known = authenticated !== null && user !== undefined;
+  const allowed = authenticated === true && user?.isSuperAdmin === true;
 
   useEffect(() => {
-    if (!isAuthenticated()) {
+    if (!known) return;
+    if (!authenticated) {
       router.replace("/login");
       return;
     }
-    if (!isSuperAdmin()) {
-      router.replace("/dashboard");
-      return;
-    }
-    setUser(getAuthUser());
-    setChecked(true);
-  }, [router]);
+    if (!allowed) router.replace("/dashboard");
+  }, [known, authenticated, allowed, router]);
 
   function handleLogout() {
     clearAuth();
     router.replace("/login");
   }
 
-  if (!checked || !user) return null;
+  if (!allowed || !user) return null;
 
   const navItems = [
     { href: "/super-admin/dashboard", label: t("navDashboard") },

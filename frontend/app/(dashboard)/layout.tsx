@@ -1,13 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { InboxBell } from "@/components/dashboard/inbox-bell";
 import { DashboardSidebar } from "@/components/layouts/dashboard-sidebar";
 import { MobileBottomNav } from "@/components/layouts/dashboard-bottom-nav";
 import { SlashLabel } from "@/components/ui/slash-label";
 import { AccountBanners } from "@/components/dashboard/account-banners";
-import { getAuthUser, isAuthenticated, type AuthUser } from "@/lib/auth";
+import { isAuthenticated } from "@/lib/auth";
+import { useAuthUser } from "@/lib/hooks/use-auth-user";
+import { useClientValue } from "@/lib/hooks/use-client-value";
 
 function formatDayHeader(): string {
   const now = new Date();
@@ -31,19 +33,15 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [checked, setChecked] = useState(false);
+  // null tijdens SSR/hydration; daarna true/false.
+  const authenticated = useClientValue(isAuthenticated);
+  const user = useAuthUser();
 
   useEffect(() => {
-    if (!isAuthenticated()) {
-      router.replace("/login");
-    } else {
-      setUser(getAuthUser());
-    }
-    setChecked(true);
-  }, [router]);
+    if (authenticated === false) router.replace("/login");
+  }, [authenticated, router]);
 
-  if (!checked || !user) return null;
+  if (!authenticated || !user) return null;
 
   return (
     <div className="flex h-screen bg-canvas overflow-hidden">

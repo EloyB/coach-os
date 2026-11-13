@@ -1,7 +1,6 @@
 import { test, expect } from "@playwright/test";
 import {
   API_URL,
-  SEED_ADMIN,
   SEED_SECOND_ORG_ADMIN,
   apiLogin,
   authHeaders,

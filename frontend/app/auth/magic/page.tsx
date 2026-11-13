@@ -12,22 +12,20 @@ function MagicRedeem() {
   const t = useTranslations("studentAuth");
   const router = useRouter();
   const params = useSearchParams();
-  const [error, setError] = useState<string | null>(null);
+  const token = params.get("token");
+  const [redeemFailed, setRedeemFailed] = useState(false);
+  const error = !token || redeemFailed ? t("invalidLink") : null;
 
   useEffect(() => {
-    const token = params.get("token");
-    if (!token) {
-      setError(t("invalidLink"));
-      return;
-    }
+    if (!token) return;
     redeemMagicLink(token)
       .then((res) => {
         setToken(res.token);
         setAuthUser({ email: res.email, role: res.role });
         router.replace("/student/lessons");
       })
-      .catch(() => setError(t("invalidLink")));
-  }, [params, router, t]);
+      .catch(() => setRedeemFailed(true));
+  }, [token, router]);
 
   return (
     <div className="min-h-screen flex items-center justify-center p-8 bg-[#FAFAF8]">
