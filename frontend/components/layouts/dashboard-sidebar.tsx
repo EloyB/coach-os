@@ -11,8 +11,8 @@ import { Mono } from "@/components/ui/mono";
 import { TrialSidebarCard } from "@/components/dashboard/trial-sidebar-card";
 import { OnboardingSidebarCard } from "@/components/dashboard/onboarding/onboarding-sidebar-card";
 import { navItems } from "@/lib/nav-items";
-import { switchOrganization } from "@/lib/api/auth";
-import { getAuthUser, setAuthUser, setToken, clearAuth, type AuthUser } from "@/lib/auth";
+import { getAuthUser, clearAuth, type AuthUser } from "@/lib/auth";
+import { switchToOrganization } from "@/lib/organization-switch";
 import { getInitials } from "@/lib/utils/initials";
 
 export function DashboardSidebar() {
@@ -45,20 +45,7 @@ export function DashboardSidebar() {
     }
     setIsSwitching(true);
     try {
-      const response = await switchOrganization(organizationId);
-      setToken(response.token);
-      const current = getAuthUser();
-      setAuthUser({
-        userId: response.userId,
-        email: response.email,
-        firstName: response.firstName ?? current?.firstName,
-        lastName: response.lastName ?? current?.lastName,
-        organizationId: response.organizationId,
-        role: response.role,
-        memberships: response.memberships,
-        headTrainerClubIds: response.headTrainerClubIds,
-        emailVerified: response.emailVerified,
-      });
+      await switchToOrganization(organizationId);
       setSwitcherOpen(false);
       router.refresh();
       window.location.reload();

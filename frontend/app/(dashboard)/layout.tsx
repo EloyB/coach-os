@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { InboxBell } from "@/components/dashboard/inbox-bell";
+import { OrganizationParamSwitch } from "@/components/dashboard/organization-param-switch";
 import { DashboardSidebar } from "@/components/layouts/dashboard-sidebar";
 import { MobileBottomNav } from "@/components/layouts/dashboard-bottom-nav";
 import { SlashLabel } from "@/components/ui/slash-label";
@@ -47,6 +48,9 @@ export default function DashboardLayout({
 
   return (
     <div className="flex h-screen bg-canvas overflow-hidden">
+      <Suspense fallback={null}>
+        <OrganizationParamSwitch />
+      </Suspense>
       <DashboardSidebar />
 
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
