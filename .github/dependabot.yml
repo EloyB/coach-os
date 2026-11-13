@@ -44,8 +44,9 @@ updates:
       # @types/node volgt de Node-versie in Docker (24); mee omhoog bij de volgende LTS (26).
       - dependency-name: "@types/node"
         versions: [">= 25"]
-      - dependency-name: typescript # #327
-        update-types: [version-update:semver-major]
+      # TS 7 wacht op typescript-eslint (geen JS-API in TS 7.0), zie #327.
+      - dependency-name: typescript
+        versions: [">= 7"]
     labels: [dependencies, frontend]
 
   - package-ecosystem: bun
@@ -64,8 +65,9 @@ updates:
       # @types/node volgt de Node-versie in Docker (24); mee omhoog bij de volgende LTS (26).
       - dependency-name: "@types/node"
         versions: [">= 25"]
-      - dependency-name: typescript # #327
-        update-types: [version-update:semver-major]
+      # TS 7 wacht op typescript-eslint (geen JS-API in TS 7.0), zie #327.
+      - dependency-name: typescript
+        versions: [">= 7"]
     labels: [dependencies, website]
 
   - package-ecosystem: docker

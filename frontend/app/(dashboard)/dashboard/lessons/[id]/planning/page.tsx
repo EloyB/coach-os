@@ -297,7 +297,7 @@ export default function PlanningPage({
   const [addingSlot, setAddingSlot] = useState(false);
   const [editingSlot, setEditingSlot] = useState<WeekSlotEditData | null>(null);
   // Geselecteerde dag voor de mobiele dag-weergave (0=Ma .. 6=Zo).
-  const [pickedDay, setSelectedDay] = useState(0);
+  const [pickedDay, setPickedDay] = useState(0);
   // Mobiele weergave (< sm): toont één dag i.p.v. de volledige week-grid.
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
@@ -1117,7 +1117,7 @@ export default function PlanningPage({
                 <button
                   key={d}
                   type="button"
-                  onClick={() => setSelectedDay(d)}
+                  onClick={() => setPickedDay(d)}
                   className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
                     d === selectedDay
                       ? "bg-tennis-green text-white"
