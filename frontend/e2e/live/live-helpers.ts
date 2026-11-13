@@ -28,6 +28,7 @@ export const SEED_SECOND_ORG_ADMIN = {
 
 export interface LoginResult {
   token: string;
+  expiresAt: string;
   userId: string;
   organizationId: string;
   role: string;

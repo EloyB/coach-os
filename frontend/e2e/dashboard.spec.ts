@@ -7,55 +7,61 @@ test.describe("Dashboard", () => {
     await mockAllDashboardApis(page);
   });
 
-  test("shows stat cards with real data from API", async ({ page }) => {
+  test("shows stat strip with real data from API", async ({ page }) => {
     await page.goto("/dashboard");
 
-    await expect(page.getByText("Actieve lesreeksen")).toBeVisible();
-    await expect(page.getByText("Lessen deze week")).toBeVisible();
-    await expect(page.getByText("Inschrijvingen")).toBeVisible();
-    // "Trainers" appears in sidebar + stat card, just check the stat label exists
-    await expect(page.locator("text=Trainers").first()).toBeVisible();
-
-    // Verify actual values from mock
-    await expect(page.getByText("1").first()).toBeVisible(); // activeSeriesCount
-    await expect(page.getByText("5")).toBeVisible(); // totalEnrollmentCount
+    await expect(page.getByRole("heading", { name: "Vandaag", level: 1 })).toBeVisible();
+    // Waarden uit TEST_DASHBOARD_SUMMARY; waarde en label zijn aparte elementen.
+    const stat = (label: string) => page.getByText(label, { exact: true }).locator("..");
+    await expect(stat("lessen vandaag")).toHaveText(/^0\s*lessen vandaag$/);
+    await expect(stat("deze week")).toHaveText(/^2\s*deze week$/);
+    await expect(stat("inschrijvingen")).toHaveText(/^5\s*inschrijvingen$/);
+    await expect(stat("trainers")).toHaveText(/^2\s*trainers$/);
+    await expect(stat("reeks")).toHaveText(/^1\s*reeks$/);
   });
 
-  test("shows upcoming lessons from API", async ({ page }) => {
+  test("shows empty state for today's lessons", async ({ page }) => {
     await page.goto("/dashboard");
 
-    await expect(page.getByText("Komende lessen")).toBeVisible();
-    await expect(page.getByText("Voorjaarslessen Beginners")).toBeVisible();
-    await expect(page.getByText("10:00 – 11:00")).toBeVisible();
-    await expect(page.getByText("Jan Janssen")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Lessen van vandaag" })).toBeVisible();
+    await expect(page.getByText("Geen lessen vandaag")).toBeVisible();
   });
 
-  test("shows quick actions section", async ({ page }) => {
+  test("shows quick actions", async ({ page }) => {
     await page.goto("/dashboard");
 
-    await expect(page.getByText("Snelle acties")).toBeVisible();
+    const main = page.getByRole("main");
+    await expect(main.getByRole("link", { name: /^Nieuwe lesreeks/ })).toBeVisible();
+    await expect(main.getByRole("link", { name: /^Nieuwe losse les/ })).toBeVisible();
+    await expect(main.getByRole("link", { name: /^Trainer uitnodigen/ })).toBeVisible();
   });
 
   test("has navigation sidebar with all menu items", async ({ page }) => {
     await page.goto("/dashboard");
 
-    await expect(page.getByRole("link", { name: /Dashboard/ })).toBeVisible();
-    await expect(page.getByRole("link", { name: /Lessen/ })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Instellingen", exact: true })).toBeVisible();
+    const nav = page.getByRole("navigation");
+    await expect(nav.getByRole("link", { name: "Vandaag" })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "Lesreeksen" })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "Losse lessen" })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "Kampen" })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "Trainers" })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "Instellingen", exact: true })).toBeVisible();
   });
 
-  test("quick action navigates to create lesson page", async ({ page }) => {
+  test("quick action navigates to create lesson series page", async ({ page }) => {
     await page.goto("/dashboard");
 
-    await page.getByRole("link", { name: "Nieuwe les" }).first().click();
+    await page.getByRole("main").getByRole("link", { name: /^Nieuwe lesreeks/ }).click();
 
     await expect(page).toHaveURL(/\/dashboard\/lessons\/new/);
   });
 
-  test("tip links to settings page", async ({ page }) => {
+  test("invite quick action opens the invite form on the trainers page", async ({ page }) => {
     await page.goto("/dashboard");
 
-    await expect(page.getByText("Tip")).toBeVisible();
-    await expect(page.getByRole("link", { name: "Instellingen →" })).toBeVisible();
+    await page.getByRole("main").getByRole("link", { name: /^Trainer uitnodigen/ }).click();
+
+    await expect(page).toHaveURL(/\/dashboard\/trainers\?invite=1/);
+    await expect(page.getByRole("heading", { name: "Trainer uitnodigen" })).toBeVisible();
   });
 });
