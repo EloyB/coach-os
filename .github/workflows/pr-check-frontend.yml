@@ -21,10 +21,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Zelfde major als het productie-image (frontend/Dockerfile.prod: node:22-alpine).
+      # Zelfde major als het productie-image (frontend/Dockerfile.prod: node:24-alpine).
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
 
       - uses: oven-sh/setup-bun@v2
         with:

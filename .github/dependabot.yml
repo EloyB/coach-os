@@ -9,7 +9,7 @@
 # ignore: we volgen LTS-versies van .NET en Node. Tussenversies (.NET 11/13,
 # oneven Node) worden overgeslagen; de volgende LTS komt gewoon als PR.
 # Grote sprongen die een bewuste upgrade vragen, staan als issue op de lijst
-# (#327 TypeScript 7, #328 ESLint 10, #329 Node 24). Haal de regel hier weg
+# (#327 TypeScript 7, #328 ESLint 10). Haal de regel hier weg
 # zodra zo'n upgrade gedaan is.
 version: 2
 
@@ -41,9 +41,9 @@ updates:
       frontend-minor-patch:
         update-types: [minor, patch]
     ignore:
-      # @types/node volgt de Node-versie in Docker (22); mee omhoog met #329.
+      # @types/node volgt de Node-versie in Docker (24); mee omhoog bij de volgende LTS (26).
       - dependency-name: "@types/node"
-        versions: [">= 23"]
+        versions: [">= 25"]
       - dependency-name: typescript # #327
         update-types: [version-update:semver-major]
       - dependency-name: eslint # #328
@@ -63,9 +63,9 @@ updates:
       website-minor-patch:
         update-types: [minor, patch]
     ignore:
-      # @types/node volgt de Node-versie in Docker (22); mee omhoog met #329.
+      # @types/node volgt de Node-versie in Docker (24); mee omhoog bij de volgende LTS (26).
       - dependency-name: "@types/node"
-        versions: [">= 23"]
+        versions: [">= 25"]
       - dependency-name: typescript # #327
         update-types: [version-update:semver-major]
       - dependency-name: eslint # #328
@@ -84,7 +84,7 @@ updates:
       base-images:
         patterns: ["*"]
     ignore:
-      # Enkel LTS: .NET 10 -> 12, Node 22 -> 24 -> 26.
+      # Enkel LTS: .NET 10 -> 12, Node 24 -> 26.
       - dependency-name: dotnet/sdk
         versions: [">= 11, < 12", ">= 13, < 14"]
       - dependency-name: dotnet/aspnet
