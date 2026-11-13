@@ -1674,7 +1674,7 @@
       "open_payment": "Er staat nog een betaling open",
       "group_payments_present": "Er zijn betalingen gekoppeld aan de groep",
       "group_inconsistent": "De groepsgegevens zijn niet consistent",
-      "pending_mail": "Er staat nog een mail klaar of een mail is mislukt",
+      "pending_mail": "Er wordt nog een mail verstuurd. Probeer het binnen enkele minuten opnieuw",
       "unresolved_reschedule_request": "Er is een openstaand verplaatsingsverzoek",
       "unknown": "Deze inschrijving vraagt een aparte controle"
     }

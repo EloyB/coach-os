@@ -3,13 +3,24 @@ using CoachOS.Domain.Common;
 namespace CoachOS.Domain.Entities;
 
 /// <summary>
-/// Durable email work item. It is created in the same transaction as the business change
-/// that caused it, so a successful enrollment cannot lose its notifications.
+/// Durable email work item, delivered by a background worker with retries. Enrollment
+/// notifications are created in the same transaction as the business change that caused
+/// them; every other mail is queued by the outbox-backed email service instead of being
+/// sent inside the request.
 /// </summary>
 public class EmailOutboxMessage : BaseEntity
 {
-    public Guid OrganizationId { get; set; }
-    public Guid EnrollmentId { get; set; }
+    /// <summary>Organisatie waartoe de mail hoort, of null zonder tenant (publiek, achtergrondtaak).</summary>
+    public Guid? OrganizationId { get; set; }
+
+    /// <summary>Inschrijving waartoe de mail hoort, of null voor mails zonder inschrijving.</summary>
+    public Guid? EnrollmentId { get; set; }
+
+    /// <summary>
+    /// Ontvanger in kleine letters, voor mails zonder <see cref="EnrollmentId"/>. Laat
+    /// "speler wissen" die mails terugvinden: de inhoud bevat het adres en de naam van de speler.
+    /// </summary>
+    public string? RecipientEmail { get; set; }
     public string Type { get; set; } = string.Empty;
     public string Payload { get; set; } = string.Empty;
     public string Status { get; set; } = EmailOutboxStatuses.Pending;

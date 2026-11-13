@@ -18,8 +18,18 @@ public sealed class EmailOutboxWorker(
     IServiceScopeFactory scopeFactory,
     ILogger<EmailOutboxWorker> logger) : BackgroundService
 {
-    private const int MaxAttempts = 8;
+    // Met de backoff hieronder blijft een mail zo'n 2,5 uur proberen voor hij als mislukt
+    // blijft staan: genoeg om een storing bij de mailprovider te overbruggen.
+    private const int MaxAttempts = 12;
     private static readonly TimeSpan IdleDelay = TimeSpan.FromSeconds(2);
+
+    // Zolang een bericht in behandeling is, mag geen andere instantie het oppikken. Crasht
+    // de worker midden in het versturen, dan komt het na deze termijn opnieuw aan de beurt.
+    private static readonly TimeSpan ProcessingLease = TimeSpan.FromMinutes(5);
+
+    // Na het versturen is de inhoud (adres, naam, inloglinks, codes) niet meer nodig:
+    // gewist, zodat er geen persoonsgegevens of geheimen in de database achterblijven.
+    internal const string ScrubbedPayload = "{}";
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -47,7 +57,8 @@ public sealed class EmailOutboxWorker(
     {
         await using var scope = scopeFactory.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
+        // De echte SMTP-service, niet IEmailService: die zet mails net in de outbox.
+        var smtp = scope.ServiceProvider.GetRequiredService<EmailService>();
 
         EmailOutboxMessage? message = await ClaimNextAsync(db, ct);
         if (message is null)
@@ -55,10 +66,11 @@ public sealed class EmailOutboxWorker(
 
         try
         {
-            await DispatchAsync(message, emailService, ct);
+            await DispatchAsync(message.Type, message.Payload, smtp, ct);
             message.Status = EmailOutboxStatuses.Completed;
             message.ProcessedAt = DateTime.UtcNow;
             message.LastError = null;
+            message.Payload = ScrubbedPayload;
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
@@ -68,8 +80,8 @@ public sealed class EmailOutboxWorker(
             message.AvailableAt = DateTime.UtcNow.Add(GetRetryDelay(message.Attempts));
             message.LastError = ex.Message[..Math.Min(ex.Message.Length, 2000)];
             logger.LogError(ex,
-                "Email outbox message {MessageId} failed on attempt {Attempt}; status {Status}",
-                message.Id, message.Attempts, message.Status);
+                "Email outbox message {MessageId} ({Type}) failed on attempt {Attempt}; status {Status}",
+                message.Id, message.Type, message.Attempts, message.Status);
         }
 
         await db.SaveChangesAsync(ct);
@@ -101,48 +113,60 @@ public sealed class EmailOutboxWorker(
 
         message.Status = EmailOutboxStatuses.Processing;
         message.Attempts++;
-        message.AvailableAt = now;
+        // Lease: een bericht in behandeling is pas na deze termijn opnieuw te claimen.
+        // Voorheen kwam het meteen weer in aanmerking (AvailableAt = nu), waardoor een
+        // tweede instantie dezelfde mail tegelijk kon versturen.
+        message.AvailableAt = now.Add(ProcessingLease);
         await db.SaveChangesAsync(ct);
         await transaction.CommitAsync(ct);
         return message;
     }
 
-    private static async Task DispatchAsync(
-        EmailOutboxMessage message,
-        IEmailService emailService,
-        CancellationToken ct)
+    /// <summary>
+    /// Verstuurt één outbox-bericht via <paramref name="sender"/>: de mails die de
+    /// <see cref="OutboxEmailService"/> inplande, en de inschrijvingsmails die
+    /// <c>EnrollmentService</c> in de eigen transactie aanmaakt.
+    /// </summary>
+    internal static async Task DispatchAsync(
+        string type, string payload, IEmailService sender, CancellationToken ct)
     {
-        switch (message.Type)
+        if (OutboxEmails.TryDeserialize(type, payload, out IOutboxEmail? mail))
+        {
+            await mail!.SendAsync(sender, ct);
+            return;
+        }
+
+        switch (type)
         {
             case EmailOutboxMessageTypes.EnrollmentConfirmation:
             {
-                var payload = JsonSerializer.Deserialize<EnrollmentConfirmationEmailPayload>(message.Payload)
+                var data = JsonSerializer.Deserialize<EnrollmentConfirmationEmailPayload>(payload)
                     ?? throw new InvalidOperationException("Invalid enrollment confirmation payload");
-                await emailService.SendEnrollmentConfirmationAsync(
-                    payload.Email, payload.Name, payload.SeriesName,
-                    payload.ParticipantNames, ct);
+                await sender.SendEnrollmentConfirmationAsync(
+                    data.Email, data.Name, data.SeriesName,
+                    data.ParticipantNames, ct);
                 break;
             }
             case EmailOutboxMessageTypes.GroupMemberAdded:
             {
-                var payload = JsonSerializer.Deserialize<GroupMemberAddedEmailPayload>(message.Payload)
+                var data = JsonSerializer.Deserialize<GroupMemberAddedEmailPayload>(payload)
                     ?? throw new InvalidOperationException("Invalid group member added payload");
-                await emailService.SendGroupMemberAddedAsync(
-                    payload.Email, payload.Name, payload.SeriesName, payload.GroupName, ct);
+                await sender.SendGroupMemberAddedAsync(
+                    data.Email, data.Name, data.SeriesName, data.GroupName, ct);
                 break;
             }
             case EmailOutboxMessageTypes.TrainerNotification:
             {
-                var payload = JsonSerializer.Deserialize<TrainerEnrollmentNotificationEmailPayload>(message.Payload)
+                var data = JsonSerializer.Deserialize<TrainerEnrollmentNotificationEmailPayload>(payload)
                     ?? throw new InvalidOperationException("Invalid trainer notification payload");
-                await emailService.SendEnrollmentNotificationToTrainerAsync(
-                    payload.TrainerEmail, payload.TrainerName, payload.StudentName,
-                    payload.StudentEmail, payload.SeriesName,
-                    payload.Responses.Select(r => (r.FieldLabel, r.Value)).ToList(), ct);
+                await sender.SendEnrollmentNotificationToTrainerAsync(
+                    data.TrainerEmail, data.TrainerName, data.StudentName,
+                    data.StudentEmail, data.SeriesName,
+                    data.Responses.Select(r => (r.FieldLabel, r.Value)).ToList(), ct);
                 break;
             }
             default:
-                throw new InvalidOperationException($"Unknown email outbox message type '{message.Type}'");
+                throw new InvalidOperationException($"Unknown email outbox message type '{type}'");
         }
     }
 

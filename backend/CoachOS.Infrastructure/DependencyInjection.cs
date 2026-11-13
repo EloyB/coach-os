@@ -134,7 +134,11 @@ public static class DependencyInjection
         services.AddScoped<ITrainerService, TrainerService>();
         services.AddScoped<IUserLookupService, UserLookupService>();
         services.AddSingleton<IMjmlTemplateRenderer, MjmlTemplateRenderer>();
-        services.AddScoped<IEmailService, EmailService>();
+        // De applicatie verstuurt geen mail zelf: IEmailService zet elke mail in de outbox,
+        // de EmailOutboxWorker levert hem af via de SMTP-EmailService (met nieuwe pogingen).
+        services.AddScoped<EmailService>();
+        services.AddScoped<IEmailOutboxWriter, EmailOutboxWriter>();
+        services.AddScoped<IEmailService, OutboxEmailService>();
         services.AddSingleton<IPlanningWorkbookBuilder, ClosedXmlPlanningWorkbookBuilder>();
         services.AddSingleton<ICampWorkbookBuilder, ClosedXmlCampWorkbookBuilder>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();

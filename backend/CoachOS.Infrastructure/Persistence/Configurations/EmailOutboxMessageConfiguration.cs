@@ -9,13 +9,17 @@ public class EmailOutboxMessageConfiguration : IEntityTypeConfiguration<EmailOut
     public void Configure(EntityTypeBuilder<EmailOutboxMessage> builder)
     {
         builder.HasKey(e => e.Id);
-        builder.Property(e => e.OrganizationId).IsRequired();
-        builder.Property(e => e.EnrollmentId).IsRequired();
+        // Optioneel: mails via de outbox-mailservice (wachtwoordreset, uitnodiging,
+        // planning, ...) horen niet altijd bij een organisatie of een inschrijving.
+        builder.Property(e => e.OrganizationId);
+        builder.Property(e => e.EnrollmentId);
         builder.Property(e => e.Type).IsRequired().HasMaxLength(100);
         builder.Property(e => e.Payload).IsRequired().HasColumnType("jsonb");
         builder.Property(e => e.Status).IsRequired().HasMaxLength(20);
         builder.Property(e => e.LastError).HasMaxLength(2000);
         builder.HasIndex(e => new { e.Status, e.AvailableAt });
         builder.HasIndex(e => e.EnrollmentId);
+        builder.Property(e => e.RecipientEmail).HasMaxLength(320);
+        builder.HasIndex(e => e.RecipientEmail);
     }
 }
