@@ -1,4 +1,5 @@
 using CoachOS.Application.Abstractions;
+using CoachOS.Application.Configuration;
 using CoachOS.Application.Privacy;
 using CoachOS.Application.Privacy.DTOs;
 using CoachOS.Domain.Entities;
@@ -12,6 +13,8 @@ using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using Moq;
 using Npgsql;
 using NUnit.Framework;
 
@@ -164,6 +167,101 @@ public class OrganizationOffboardingPostgresTests
             foreach (ApplicationDbContext context in contexts)
                 await context.DisposeAsync();
         }
+    }
+
+    [Test]
+    public async Task RetentionJob_FullFlow_TwoNoticesThenDeletesOnlyTarget()
+    {
+        ApplicationUser shared;
+        SeededOrg target;
+        SeededOrg other;
+        string targetEmail;
+        await using (ApplicationDbContext db = CreateDb())
+        {
+            shared = await AddUserAsync(db, "retentie");
+            // Proef 60 dagen geleden afgelopen: over 30 dagen verwijderbaar → nu de eerste mail.
+            target = await SeedOrganizationAsync(db, "TC Retentie", trialEndedDaysAgo: 60, shared);
+            other = await SeedOrganizationAsync(db, "TC Recent", trialEndedDaysAgo: 5, shared);
+            targetEmail = (await db.Organizations.AsNoTracking().SingleAsync(o => o.Id == target.OrgId)).Email;
+        }
+        Mock<IEmailService> email = new();
+        DateOnly deletionOn = Today.AddDays(30);
+
+        await RunRetentionAsync(Today, email.Object);
+        Subscription afterFirst = await ReadSubscriptionAsync(target.OrgId);
+        afterFirst.ScheduledDeletionOn.Should().Be(deletionOn);
+        afterFirst.DeletionStage.Should().Be(OrganizationDeletionStage.FirstNotice);
+        (await ReadSubscriptionAsync(other.OrgId)).ScheduledDeletionOn.Should().BeNull();
+
+        // Tweede run op dezelfde dag: niets dubbel.
+        await RunRetentionAsync(Today, email.Object);
+        email.Verify(e => e.SendOrganizationDeletionNoticeAsync(
+            targetEmail, "TC Retentie", deletionOn, false, It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
+
+        await RunRetentionAsync(deletionOn.AddDays(-7), email.Object);
+        (await ReadSubscriptionAsync(target.OrgId)).DeletionStage.Should().Be(OrganizationDeletionStage.FinalNotice);
+        email.Verify(e => e.SendOrganizationDeletionNoticeAsync(
+            targetEmail, "TC Retentie", deletionOn, true, It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
+
+        await RunRetentionAsync(deletionOn.AddDays(-1), email.Object);
+        await using (ApplicationDbContext db = CreateDb())
+            (await db.Organizations.AsNoTracking().AnyAsync(o => o.Id == target.OrgId)).Should().BeTrue("datum nog niet bereikt");
+
+        await RunRetentionAsync(deletionOn, email.Object);
+        await using (ApplicationDbContext db = CreateDb())
+        {
+            (await CountRowsPerTableAsync(db, target.OrgId)).Values.Should().AllSatisfy(c => c.Should().Be(0));
+            (await db.Organizations.AsNoTracking().AnyAsync(o => o.Id == target.OrgId)).Should().BeFalse();
+            (await db.Organizations.AsNoTracking().AnyAsync(o => o.Id == other.OrgId)).Should().BeTrue();
+            (await db.Users.AsNoTracking().AnyAsync(u => u.Id == shared.Id)).Should().BeTrue("ook lid van een andere club");
+        }
+    }
+
+    [Test]
+    public async Task TrySetDeletionScheduleAsync_StaleExpectation_SecondClaimLoses()
+    {
+        Guid subscriptionId;
+        await using (ApplicationDbContext db = CreateDb())
+        {
+            ApplicationUser shared = await AddUserAsync(db, "claim");
+            SeededOrg org = await SeedOrganizationAsync(db, "TC Claim", trialEndedDaysAgo: 70, shared);
+            subscriptionId = (await db.Subscriptions.AsNoTracking().SingleAsync(s => s.OrganizationId == org.OrgId)).Id;
+        }
+
+        await using ApplicationDbContext first = CreateDb();
+        await using ApplicationDbContext second = CreateDb();
+        bool won = await new SubscriptionRepository(first).TrySetDeletionScheduleAsync(
+            subscriptionId, null, null, Today.AddDays(30), OrganizationDeletionStage.FirstNotice);
+        bool lost = await new SubscriptionRepository(second).TrySetDeletionScheduleAsync(
+            subscriptionId, null, null, Today.AddDays(30), OrganizationDeletionStage.FirstNotice);
+
+        won.Should().BeTrue();
+        lost.Should().BeFalse();
+    }
+
+    private async Task RunRetentionAsync(DateOnly day, IEmailService email)
+    {
+        FixedTimeProvider clock = new(new DateTimeOffset(day.ToDateTime(new TimeOnly(10, 0)), TimeSpan.Zero));
+        await using ApplicationDbContext db = CreateDb();
+        OrganizationOffboardingService offboarding = new(
+            new OrganizationRepository(db), new SubscriptionRepository(db), new OrganizationOffboardingRepository(db),
+            new UnitOfWork(db), clock, NullLogger<OrganizationOffboardingService>.Instance);
+        OrganizationRetentionService retention = new(
+            new SubscriptionRepository(db), new OrganizationOffboardingRepository(db), offboarding, email,
+            Mock.Of<IEmailOrganizationContext>(),
+            Options.Create(new AppOptions { FrontendBaseUrl = "https://app.coach-os.be" }),
+            Options.Create(new SuperAdminOptions { Email = "admin@coach-os.be" }),
+            clock, NullLogger<OrganizationRetentionService>.Instance);
+
+        Result<OrganizationRetentionReport> result = await retention.RunAsync(dryRun: false);
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Failed.Should().Be(0);
+    }
+
+    private async Task<Subscription> ReadSubscriptionAsync(Guid organizationId)
+    {
+        await using ApplicationDbContext db = CreateDb();
+        return await db.Subscriptions.AsNoTracking().SingleAsync(s => s.OrganizationId == organizationId);
     }
 
     private sealed record SeededOrg(Guid OrgId, Guid AdminId);

@@ -13,4 +13,10 @@ namespace CoachOS.Application.Abstractions;
 public interface IEmailOrganizationContext
 {
     void Use(Guid organizationId);
+
+    /// <summary>
+    /// Vergeet de expliciet gezette organisatie (terug naar de tenant van het verzoek). Voor
+    /// systeemjobs die in één scope mails voor meerdere organisaties én platformmails inplannen.
+    /// </summary>
+    void Clear();
 }

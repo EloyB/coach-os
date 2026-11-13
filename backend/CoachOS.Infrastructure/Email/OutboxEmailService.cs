@@ -134,6 +134,12 @@ internal sealed class OutboxEmailService(IEmailOutboxWriter outbox) : IEmailServ
         => outbox.EnqueueAsync(new TrialReminderMail(
             toEmail, organizationName, daysRemaining, trialEndsAt, appUrl));
 
+    public Task SendOrganizationDeletionNoticeAsync(
+        string toEmail, string organizationName, DateOnly deletionDate, bool finalNotice,
+        string exportUrl, CancellationToken ct = default)
+        => outbox.EnqueueAsync(new OrganizationDeletionNoticeMail(
+            toEmail, organizationName, deletionDate, finalNotice, exportUrl));
+
     public Task SendSubscriptionStartedAsync(
         string toEmail, string organizationName, string planName, string intervalLabel,
         decimal amountInclVat, DateOnly periodStart, bool bankTransfer, DateOnly? dueDate,

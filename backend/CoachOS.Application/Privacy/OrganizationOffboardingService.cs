@@ -17,6 +17,9 @@ public class OrganizationOffboardingService(
     TimeProvider timeProvider,
     ILogger<OrganizationOffboardingService> logger) : IOrganizationOffboardingService
 {
+    private const string ManualTrigger = "Manual";
+    private const string RetentionTrigger = "Retention";
+
     public async Task<Result<OrganizationOffboardingPreviewDto>> GetPreviewAsync(
         Guid organizationId, CancellationToken ct = default)
     {
@@ -40,8 +43,38 @@ public class OrganizationOffboardingService(
             ToDto(counts)));
     }
 
-    public async Task<Result<OrganizationDeletedDto>> DeleteAsync(
+    public Task<Result<OrganizationDeletedDto>> DeleteAsync(
         Guid organizationId, DeleteOrganizationRequest request, CancellationToken ct = default)
+        => DeleteLockedAsync(organizationId, ManualTrigger,
+            (organization, _) => string.Equals(request.ConfirmationName, organization.Name, StringComparison.Ordinal)
+                ? Result.Ok()
+                : Result.Fail(new Error(ErrorCodes.Validation,
+                    "De bevestigingsnaam komt niet exact overeen met de naam van de organisatie.")),
+            ct);
+
+    public Task<Result<OrganizationDeletedDto>> DeleteExpiredAsync(
+        Guid organizationId, DateOnly scheduledOn, CancellationToken ct = default)
+        => DeleteLockedAsync(organizationId, RetentionTrigger,
+            (_, subscription) => IsDueForRetention(subscription, scheduledOn, timeProvider.GetBrusselsToday())
+                ? Result.Ok()
+                : Result.Fail(new Error(ErrorCodes.Conflict,
+                    "De geplande verwijdering is gewijzigd of nog niet aan de beurt.")),
+            ct);
+
+    /// <summary>
+    /// De club kreeg de laatste mail voor exact deze datum, en die datum is bereikt.
+    /// </summary>
+    private static bool IsDueForRetention(Subscription? subscription, DateOnly scheduledOn, DateOnly today)
+        => subscription is not null
+           && subscription.ScheduledDeletionOn == scheduledOn
+           && subscription.DeletionStage == OrganizationDeletionStage.FinalNotice
+           && today >= scheduledOn;
+
+    private async Task<Result<OrganizationDeletedDto>> DeleteLockedAsync(
+        Guid organizationId,
+        string trigger,
+        Func<Organization, Subscription?, Result> precondition,
+        CancellationToken ct)
     {
         await unitOfWork.BeginTransactionAsync(ct);
         try
@@ -49,7 +82,7 @@ public class OrganizationOffboardingService(
             // Eerst vergrendelen, dan pas lezen: zo beslissen we op de toestand na een
             // gelijktijdige wijziging (bv. een heractivatie) en niet op een verouderde kopie.
             await offboarding.LockOrganizationAsync(organizationId, ct);
-            Result checks = await CheckDeletableAsync(organizationId, request, ct);
+            Result checks = await CheckDeletableAsync(organizationId, precondition, ct);
             if (!checks.IsSuccess)
             {
                 await unitOfWork.RollbackTransactionAsync(ct);
@@ -60,10 +93,10 @@ public class OrganizationOffboardingService(
             await unitOfWork.CommitTransactionAsync(ct);
 
             DateTime erasedAtUtc = timeProvider.GetUtcNow().UtcDateTime;
-            // Bewijs van verwijdering zonder persoonsgegevens: enkel id, soort en tijdstip.
+            // Bewijs van verwijdering zonder persoonsgegevens: enkel id, soort, aanleiding en tijdstip.
             logger.LogInformation(
-                "Offboarding: organisatie {OrganizationId} verwijderd op {ErasedAtUtc:O} (Kind=Organization, {DeletedAccounts} accounts)",
-                organizationId, erasedAtUtc, deletedAccounts);
+                "Offboarding: organisatie {OrganizationId} verwijderd op {ErasedAtUtc:O} (Kind=Organization, Trigger={Trigger}, {DeletedAccounts} accounts)",
+                organizationId, erasedAtUtc, trigger, deletedAccounts);
             return Result<OrganizationDeletedDto>.Ok(new OrganizationDeletedDto(organizationId, deletedAccounts, erasedAtUtc));
         }
         catch
@@ -74,19 +107,17 @@ public class OrganizationOffboardingService(
     }
 
     private async Task<Result> CheckDeletableAsync(
-        Guid organizationId, DeleteOrganizationRequest request, CancellationToken ct)
+        Guid organizationId, Func<Organization, Subscription?, Result> precondition, CancellationToken ct)
     {
         Organization? organization = await organizations.GetByIdAsync(organizationId, tracked: false, ct);
         if (organization is null)
             return Result.Fail(NotFound());
 
-        if (!string.Equals(request.ConfirmationName, organization.Name, StringComparison.Ordinal))
-        {
-            return Result.Fail(new Error(ErrorCodes.Validation,
-                "De bevestigingsnaam komt niet exact overeen met de naam van de organisatie."));
-        }
-
         Subscription? subscription = await subscriptions.GetByOrganizationReadOnlyAsync(organizationId, ct);
+        Result preconditionResult = precondition(organization, subscription);
+        if (!preconditionResult.IsSuccess)
+            return preconditionResult;
+
         OrganizationDataCounts counts = await offboarding.CountDataAsync(organizationId, ct);
         IReadOnlyList<OffboardingBlockerDto> blockers =
             OffboardingBlockers.Evaluate(subscription, counts, timeProvider.GetBrusselsToday());

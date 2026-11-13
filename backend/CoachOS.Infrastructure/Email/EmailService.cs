@@ -505,6 +505,28 @@ public class EmailService(
         await SendAsync(toEmail, organizationName, subject, html, ct);
     }
 
+    public async Task SendOrganizationDeletionNoticeAsync(
+        string toEmail, string organizationName, DateOnly deletionDate, bool finalNotice,
+        string exportUrl, CancellationToken ct = default)
+    {
+        string date = deletionDate.ToString("dd/MM/yyyy");
+        (string subject, string heading) = finalNotice
+            ? ($"Laatste herinnering: je CoachOS-gegevens worden verwijderd op {date}",
+               $"Je gegevens worden verwijderd op {date}")
+            : ($"Je CoachOS-gegevens worden verwijderd op {date}",
+               $"Je gegevens worden verwijderd op {date}");
+
+        string html = renderer.Render("organization-deletion-notice", new Dictionary<string, string>
+        {
+            ["organizationName"] = organizationName,
+            ["heading"] = heading,
+            ["deletionDate"] = date,
+            ["exportUrl"] = exportUrl,
+            ["year"] = DateTime.UtcNow.Year.ToString(),
+        });
+        await SendAsync(toEmail, organizationName, subject, html, ct);
+    }
+
     public Task SendSubscriptionStartedAsync(
         string toEmail, string organizationName, string planName, string intervalLabel,
         decimal amountInclVat, DateOnly periodStart, bool bankTransfer, DateOnly? dueDate,

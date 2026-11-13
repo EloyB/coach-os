@@ -187,6 +187,10 @@ public static class DependencyInjection
         services.Configure<PlayerRetentionOptions>(configuration.GetSection(PlayerRetentionOptions.Section));
         services.AddHostedService<PlayerRetentionWorker>();
 
+        // Organisatie verwijderen na de bewaartermijn (#262). Standaard uit en dry-run.
+        services.Configure<OrganizationRetentionOptions>(configuration.GetSection(OrganizationRetentionOptions.Section));
+        services.AddHostedService<OrganizationRetentionWorker>();
+
         return services;
     }
 }

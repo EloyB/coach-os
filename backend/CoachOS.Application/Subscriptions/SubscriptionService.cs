@@ -85,6 +85,7 @@ public class SubscriptionService(
 
         subscription.Status = SubscriptionStatus.Active;
         subscription.IsDeal = true;
+        subscription.ClearDeletionSchedule();
         subscription.Plan = plan;
         subscription.Interval = null;
         subscription.PaymentMethod = request.Price > 0 ? BillingPaymentMethod.BankTransfer : null;

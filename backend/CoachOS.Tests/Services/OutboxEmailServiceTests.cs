@@ -99,6 +99,8 @@ public class OutboxEmailServiceTests
         yield return Case("EmailVerification", s => s.SendEmailVerificationAsync("ev@x.be", "Eva", "482913"));
         yield return Case("TrialReminder", s => s.SendTrialReminderAsync(
             "tr2@x.be", "TC Ace", 3, D2, "https://app.x"));
+        yield return Case("OrganizationDeletionNotice", s => s.SendOrganizationDeletionNoticeAsync(
+            "od@x.be", "TC Ace", D2, true, "https://app.x/dashboard/settings"));
         yield return Case("SubscriptionStarted", s => s.SendSubscriptionStartedAsync(
             "ss@x.be", "TC Ace", "Set", "jaarlijks", 1199.88m, D1, true, D2, "https://x/manage"));
         yield return Case("SubscriptionStartedWithoutDueDate", s => s.SendSubscriptionStartedAsync(
@@ -307,6 +309,22 @@ public class OutboxEmailServiceTests
         await using ApplicationDbContext db = new(options, new FixedTenant(Guid.Empty));
         (await db.EmailOutboxMessages.SingleAsync()).OrganizationId.Should().BeNull();
         VerifyWarnings(logger, Times.Once());
+    }
+
+    [Test]
+    public void Organization_context_clear_falls_back_to_the_request_tenant()
+    {
+        Guid tenantOrg = Guid.NewGuid();
+        EmailOrganizationContext withTenant = new(new FixedTenant(tenantOrg));
+        EmailOrganizationContext withoutTenant = new(new FixedTenant(Guid.Empty));
+
+        withTenant.Use(Guid.NewGuid());
+        withTenant.Clear();
+        withoutTenant.Use(Guid.NewGuid());
+        withoutTenant.Clear();
+
+        withTenant.Current.Should().Be(tenantOrg);
+        withoutTenant.Current.Should().BeNull();
     }
 
     [Test]

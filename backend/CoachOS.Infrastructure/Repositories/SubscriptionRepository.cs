@@ -80,4 +80,38 @@ public class SubscriptionRepository(ApplicationDbContext context) : ISubscriptio
 
         return affected == 1;
     }
+
+    public async Task<IReadOnlyList<Subscription>> ListForRetentionReadOnlyAsync(CancellationToken ct = default)
+        // Bewust cross-tenant: de retentiejob draait buiten een request en bedient alle organisaties.
+        => await context.Subscriptions
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Include(s => s.Organization)
+            .Where(s => (s.Status == SubscriptionStatus.Trialing && s.Plan == null)
+                        || s.Status == SubscriptionStatus.Locked
+                        || s.Status == SubscriptionStatus.Cancelled
+                        || s.ScheduledDeletionOn != null)
+            .ToListAsync(ct);
+
+    public async Task<bool> TrySetDeletionScheduleAsync(
+        Guid subscriptionId,
+        DateOnly? expectedScheduledOn, OrganizationDeletionStage? expectedStage,
+        DateOnly? newScheduledOn, OrganizationDeletionStage? newStage,
+        CancellationToken ct = default)
+    {
+        int affected = await context.Subscriptions
+            .IgnoreQueryFilters()
+            .Where(s => s.Id == subscriptionId
+                        && s.ScheduledDeletionOn == expectedScheduledOn
+                        && s.DeletionStage == expectedStage)
+            // Nieuwe ConcurrencyStamp: een gelijktijdige tracked save (bv. ActivatePaidPlan via de
+            // Mollie-webhook) krijgt dan een conflict en leest opnieuw, in plaats van de planning
+            // stil te laten staan.
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(s => s.ScheduledDeletionOn, newScheduledOn)
+                .SetProperty(s => s.DeletionStage, newStage)
+                .SetProperty(s => s.ConcurrencyStamp, Guid.NewGuid()), ct);
+
+        return affected == 1;
+    }
 }
