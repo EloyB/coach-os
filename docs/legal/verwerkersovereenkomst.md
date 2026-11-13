@@ -1,9 +1,10 @@
 # Verwerkersovereenkomst CoachOS
 
-**Versie:** concept 2026-10 (nog niet in werking)
-**Laatst bijgewerkt:** [DATUM INWERKINGTREDING]
+**Versie:** 2026-12-01
+**In werking vanaf:** 01/12/2026
+**Laatst bijgewerkt:** 01/12/2026
 
-> ⚠️ **Concept — na te lezen door een advocaat (privacyrecht) voor dit live gaat.** Opbouw en inhoud volgen de standaardcontractbepalingen van de Europese Commissie voor de verhouding tussen verwerkingsverantwoordelijke en verwerker (Uitvoeringsbesluit (EU) 2021/915, artikel 28, lid 7 AVG). Advies aan de advocaat: overweeg de officiële tekst van die bepalingen letterlijk over te nemen als Deel A en dit document te behouden als Bijlagen I–IV. Wat nog in de software gebouwd moet worden, staat als **[TE BOUWEN]**.
+Opbouw en inhoud volgen de standaardcontractbepalingen van de Europese Commissie voor de verhouding tussen verwerkingsverantwoordelijke en verwerker (Uitvoeringsbesluit (EU) 2021/915, artikel 28, lid 7 AVG).
 
 Deze verwerkersovereenkomst maakt deel uit van de [algemene voorwaarden](./algemene-voorwaarden-clubs.md). Ze wordt aanvaard bij de registratie van een account op CoachOS. We bewaren welke versie aanvaard werd en wanneer.
 
@@ -108,7 +109,7 @@ Wat nog niet bekend is, wordt aangevuld zodra het beschikbaar is.
 
 ## 11. Aansprakelijkheid
 
-Voor de aansprakelijkheid tussen partijen gelden de beperkingen uit artikel 12 van de algemene voorwaarden. Die beperkingen doen geen afbreuk aan de rechten van betrokkenen uit artikel 82 AVG. **[VRAAG VOOR DE ADVOCAAT: moet dit plafond ook gelden voor privacy-inbreuken, of is een apart, hoger plafond aangewezen?]**
+Voor de aansprakelijkheid tussen partijen gelden de beperkingen uit artikel 12 van de algemene voorwaarden. Die beperkingen doen geen afbreuk aan de rechten van betrokkenen uit artikel 82 AVG.
 
 ## 12. Toepasselijk recht
 
@@ -134,7 +135,7 @@ Op deze overeenkomst is Belgisch recht van toepassing. Bevoegd is de onderneming
 
 De verwerker slaat **geen** betaalkaart- of bankrekeninggegevens van spelers op. Die vult de betaler rechtstreeks in bij de betaalprovider van de Klant (zie Bijlage III).
 
-**Bijzondere categorieën van persoonsgegevens**: niet beoogd. Antwoorden op eigen formuliervragen van de Klant worden echter ongefilterd opgeslagen en komen ook in de exports terecht. Alleen een vraag naar allergieën of aandachtspunten is toegelaten, als de Klant die bewust toevoegt voor de veiligheid van de deelnemers. Daarvoor is de Klant verantwoordelijk (artikel 8.4 van de algemene voorwaarden). **[TE BOUWEN: waarschuwing in de formulierbouwer]**
+**Bijzondere categorieën van persoonsgegevens**: niet beoogd. Antwoorden op eigen formuliervragen van de Klant worden echter ongefilterd opgeslagen en komen ook in de exports terecht. Alleen een vraag naar allergieën of aandachtspunten is toegelaten, als de Klant die bewust toevoegt voor de veiligheid van de deelnemers. Daarvoor is de Klant verantwoordelijk (artikel 8.4 van de algemene voorwaarden). De formulierbouwer toont een waarschuwing zodra de Klant een eigen vraag toevoegt.
 
 **Aard en doeleinden van de verwerking**
 - Opslaan en beheren van inschrijvingen voor lessenreeksen, losse lessen en kampen.
@@ -146,8 +147,8 @@ De verwerker slaat **geen** betaalkaart- of bankrekeninggegevens van spelers op.
 - Technische logging voor beveiliging en foutopsporing.
 
 **Duur en bewaring**
-- Zolang de Klant een account heeft, beslist de Klant zelf over het bewaren van zijn gegevens, binnen de mogelijkheden van de Dienst. De persoonsgegevens van spelers worden automatisch verwijderd of geanonimiseerd 24 maanden na het einde van de laatste lessenreeks, les of kamp waarvoor ze ingeschreven waren. Dat stemt overeen met de voorwaarden voor spelers (`algemene-voorwaarden-inschrijving.md`, art. 11.5). Is er voor die inschrijving een betaling geregistreerd, dan worden naam, contactgegevens, geboortedatum, notities en antwoorden gewist, en blijft alleen de betaling zelf (bedrag, datum, status en referentie) bewaard, zonder gegevens die naar de speler verwijzen. Zo kan de Klant zijn boekhoudkundige verplichtingen nakomen. De betaalprovider van de Klant (Mollie) bewaart haar eigen gegevens over de betaling, zoals de oorspronkelijke omschrijving, onder de overeenkomst tussen de Klant en Mollie. De Klant kan inschrijvingen ook eerder laten verwijderen, via de functie "Speler verwijderen" in de Dienst. **[TE ACTIVEREN: de automatische verwijdering na 24 maanden is gebouwd (issue #261), maar staat in productie nog uit. Eerst een proefrun die alleen telt. Bij de huidige gegevens valt de eerste speler pas rond april 2028 onder die termijn.]**
-- Verstuurde service-e-mails worden 30 dagen na verzending uit de verzendwachtrij verwijderd; verlopen inloglinks meteen en verlopen bevestigingslinks na 30 dagen. **[TE ACTIVEREN: samen met de automatische verwijdering hierboven.]**
+- Zolang de Klant een account heeft, beslist de Klant zelf over het bewaren van zijn gegevens, binnen de mogelijkheden van de Dienst. De persoonsgegevens van spelers worden uiterlijk 24 maanden na het einde van de laatste lessenreeks, les of kamp waarvoor ze ingeschreven waren verwijderd of geanonimiseerd. Dat stemt overeen met de voorwaarden voor spelers (`algemene-voorwaarden-inschrijving.md`, art. 11.5). Is er voor die inschrijving een betaling geregistreerd, dan worden naam, contactgegevens, geboortedatum, notities en antwoorden gewist, en blijft alleen de betaling zelf (bedrag, datum, status en referentie) bewaard, zonder gegevens die naar de speler verwijzen. Zo kan de Klant zijn boekhoudkundige verplichtingen nakomen. De betaalprovider van de Klant (Mollie) bewaart haar eigen gegevens over de betaling, zoals de oorspronkelijke omschrijving, onder de overeenkomst tussen de Klant en Mollie. De Klant kan inschrijvingen ook eerder laten verwijderen, via de functie "Speler verwijderen" in de Dienst. De Dienst bevat een automatische verwijdering voor die termijn. Die staat nog niet aan, omdat nog geen enkele inschrijving de termijn van 24 maanden bereikt heeft; ze wordt ingeschakeld voor dat gebeurt.
+- Verstuurde service-e-mails blijven in de verzendwachtrij, en verlopen inlog- en bevestigingslinks blijven als hash bewaard, zolang de Klant een account heeft. Ze worden nog niet automatisch eerder opgeruimd.
 - Na het einde van de dienstverlening: zie artikel 10. De Klant kan zijn gegevens vooraf exporteren (ZIP met alle gegevens van de organisatie). De verwerker verwijdert de organisatie met een gedocumenteerde functie, ten vroegste 90 dagen na het einde van de proefperiode of het abonnement.
 - Technische logs: 7 dagen.
 - Eenmalige links en codes verlopen automatisch:
@@ -185,7 +186,7 @@ De verwerker slaat **geen** betaalkaart- of bankrekeninggegevens van spelers op.
 - Alleen de bestuurder en door Studio Swyft aangestelde ontwikkelaars, die gebonden zijn aan geheimhouding, hebben technische toegang tot de productieomgeving. Ze krijgen die toegang alleen als het nodig is voor beheer, support of het oplossen van fouten.
 - Toegang tot de server verloopt via SSH met sleutels, niet met wachtwoorden. De logviewer en de monitoring zijn afgeschermd met een login.
 - Geheime sleutels en wachtwoorden staan in Scaleway Secret Manager, niet in de broncode. Ze worden periodiek vernieuwd: de API-sleutel om de 90 dagen, de JWT-sleutel om de 180 dagen en het databasewachtwoord jaarlijks.
-- **[TE VERBETEREN, aanbevolen vóór inwerkingtreding: aparte database-gebruikers met minimale rechten, inclusief een read-only rol voor support; SSH niet als `root`; logviewer en monitoring niet publiek bereikbaar of extra afgeschermd.]**
+- De Dienst gebruikt één eigen databasegebruiker. Voor support en analyse bestaan aparte databasegebruikers die alleen kunnen lezen.
 
 **Beschikbaarheid en back-ups**
 - De beheerde database maakt elke dag automatisch een back-up bij Scaleway in Parijs. Die back-ups worden 14 dagen bewaard.
