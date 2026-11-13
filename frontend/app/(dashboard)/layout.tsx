@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { InboxBell } from "@/components/dashboard/inbox-bell";
 import { OrganizationParamSwitch } from "@/components/dashboard/organization-param-switch";
@@ -8,7 +8,10 @@ import { DashboardSidebar } from "@/components/layouts/dashboard-sidebar";
 import { MobileBottomNav } from "@/components/layouts/dashboard-bottom-nav";
 import { SlashLabel } from "@/components/ui/slash-label";
 import { AccountBanners } from "@/components/dashboard/account-banners";
-import { getAuthUser, isAuthenticated, type AuthUser } from "@/lib/auth";
+import { clearAuth, isAuthenticated, syncRoleCookie } from "@/lib/auth";
+import { isStudentRole, STUDENT_HOME } from "@/lib/role-routing";
+import { useAuthUser } from "@/lib/hooks/use-auth-user";
+import { useClientValue } from "@/lib/hooks/use-client-value";
 
 function formatDayHeader(): string {
   const now = new Date();
@@ -32,19 +35,29 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [checked, setChecked] = useState(false);
+  // null tijdens SSR/hydration; daarna true/false.
+  const authenticated = useClientValue(isAuthenticated);
+  const user = useAuthUser();
+
+  const isStudent = isStudentRole(user?.role);
 
   useEffect(() => {
-    if (!isAuthenticated()) {
+    if (authenticated === false) {
+      // Achtergebleven cookies opruimen, anders stuurt de middleware /login meteen terug.
+      clearAuth();
       router.replace("/login");
-    } else {
-      setUser(getAuthUser());
+      return;
     }
-    setChecked(true);
-  }, [router]);
+    if (user && isStudent) {
+      // Student op een staffpagina: naar zijn lessen, zonder uitloggen. Rolcookie eerst
+      // rechtzetten zodat de middleware dezelfde beslissing neemt.
+      syncRoleCookie(user.role);
+      router.replace(STUDENT_HOME);
+    }
+  }, [authenticated, user, isStudent, router]);
 
-  if (!checked || !user) return null;
+  // Niets renderen voor een student: zo vertrekken er geen staff-API-calls (401 → uitloggen).
+  if (!authenticated || !user || isStudent) return null;
 
   return (
     <div className="flex h-screen bg-canvas overflow-hidden">

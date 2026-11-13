@@ -5,6 +5,7 @@ import {
   authHeaders,
   futureDate,
   uniqueCourt,
+  publicRequest,
   type LoginResult,
 } from "./live-helpers";
 
@@ -176,8 +177,7 @@ test.describe("Live API — inschrijfwijze afdwingen op solo/group-only reeksen"
   test("GET publieke reeks toont allowSoloEnrollment/allowGroupEnrollment voor de solo-only reeks", async ({
     request,
   }) => {
-    const response = await request.get(
-      `${API_URL}/public/lessonseries/${soloOnlySeriesId}`,
+    const response = await publicRequest(request, "get", `/public/lessonseries/${soloOnlySeriesId}`,
     );
     expect(response.ok()).toBeTruthy();
     const dto = (await response.json()) as {
@@ -191,8 +191,7 @@ test.describe("Live API — inschrijfwijze afdwingen op solo/group-only reeksen"
   test("GET publieke reeks toont allowSoloEnrollment/allowGroupEnrollment voor de group-only reeks", async ({
     request,
   }) => {
-    const response = await request.get(
-      `${API_URL}/public/lessonseries/${groupOnlySeriesId}`,
+    const response = await publicRequest(request, "get", `/public/lessonseries/${groupOnlySeriesId}`,
     );
     expect(response.ok()).toBeTruthy();
     const dto = (await response.json()) as {
@@ -206,8 +205,7 @@ test.describe("Live API — inschrijfwijze afdwingen op solo/group-only reeksen"
   test("GROUP-inschrijving op de solo-only reeks geeft 400", async ({
     request,
   }) => {
-    const response = await request.post(
-      `${API_URL}/public/lessonseries/${soloOnlySeriesId}/enroll`,
+    const response = await publicRequest(request, "post", `/public/lessonseries/${soloOnlySeriesId}/enroll`,
       {
         data: {
           studentName: "E2E Groep Op Solo-Only",
@@ -233,8 +231,7 @@ test.describe("Live API — inschrijfwijze afdwingen op solo/group-only reeksen"
   test("SOLO-inschrijving op de group-only reeks geeft 400", async ({
     request,
   }) => {
-    const response = await request.post(
-      `${API_URL}/public/lessonseries/${groupOnlySeriesId}/enroll`,
+    const response = await publicRequest(request, "post", `/public/lessonseries/${groupOnlySeriesId}/enroll`,
       {
         data: {
           studentName: "E2E Solo Op Group-Only",

@@ -1,7 +1,14 @@
-import { Page, APIRequestContext, expect } from "@playwright/test";
+import {
+  Page,
+  APIRequestContext,
+  APIResponse,
+  Response,
+  expect,
+} from "@playwright/test";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import type { LessonSeriePriceRequest } from "@/lib/api/lessonSeriePrices";
 
 /**
  * Helpers voor de LIVE end-to-end suite.
@@ -127,6 +134,60 @@ export async function loginUi(page: Page, auth: LoginResult): Promise<void> {
   );
 }
 
+/**
+ * Rate limit op de publieke endpoints.
+ *
+ * De policy "public" is één fixed window van 30 requests per minuut voor álle
+ * bezoekers samen (niet per IP), zonder Retry-After-header. De volledige suite
+ * doet er meer dan 30 binnen een minuut, dus publieke calls en publieke pagina's
+ * wachten bij een 429 tot het volgende venster i.p.v. de test te laten falen.
+ */
+const PUBLIC_RATE_LIMIT_WAIT_MS = 75_000;
+const PUBLIC_RATE_LIMIT_POLL_MS = 5_000;
+
+/** Publieke API-call die bij een 429 wacht op het volgende rate-limitvenster. */
+export async function publicRequest(
+  request: APIRequestContext,
+  method: "get" | "post",
+  path: string,
+  options?: { data?: unknown },
+): Promise<APIResponse> {
+  const deadline = Date.now() + PUBLIC_RATE_LIMIT_WAIT_MS;
+  for (;;) {
+    const response = await request[method](`${API_URL}${path}`, options);
+    if (response.status() !== 429 || Date.now() > deadline) return response;
+    await new Promise((resolve) => setTimeout(resolve, PUBLIC_RATE_LIMIT_POLL_MS));
+  }
+}
+
+/**
+ * Opent een publieke pagina (bv. /enroll/{id}) en herlaadt zolang de pagina's
+ * eigen calls naar /api/public/ een 429 krijgen. Zonder dit toont de pagina
+ * "Lessenreeks niet gevonden" en faalt de test op iets wat geen bug is.
+ */
+export async function gotoPublic(page: Page, path: string): Promise<void> {
+  const deadline = Date.now() + PUBLIC_RATE_LIMIT_WAIT_MS;
+  for (;;) {
+    let limited = false;
+    const onResponse = (response: Response): void => {
+      if (response.status() === 429 && response.url().includes("/api/public/")) {
+        limited = true;
+      }
+    };
+    page.on("response", onResponse);
+    await page.goto(path);
+    await page.waitForLoadState("networkidle");
+    page.off("response", onResponse);
+
+    if (!limited) return;
+    expect(
+      Date.now() <= deadline,
+      `Publieke rate limit bleef 429 geven voor ${path}`,
+    ).toBeTruthy();
+    await page.waitForTimeout(PUBLIC_RATE_LIMIT_POLL_MS);
+  }
+}
+
 /** Geautoriseerde headers voor directe API-calls. */
 export function authHeaders(auth: LoginResult): Record<string, string> {
   return {
@@ -218,6 +279,19 @@ export async function firstSeries(
     "Geen lessenreeksen gevonden — is seed-demo-data.sh gedraaid?",
   ).toBeGreaterThan(0);
   return series[0];
+}
+
+/**
+ * Eén prijsoptie voor `PUT /lessonseries/{id}/prices`. Een reeks heeft een lijst
+ * benoemde tarieven (naam + optionele beschrijving + prijs per deelnemer).
+ */
+export function priceOption(
+  label: string,
+  totalPrice: number,
+  sortOrder: number,
+  description: string | null = null,
+): LessonSeriePriceRequest {
+  return { label, description, totalPrice, sortOrder, reusableKey: null };
 }
 
 /** Datum over N dagen als yyyy-MM-dd, voor lesmomenten in de toekomst. */

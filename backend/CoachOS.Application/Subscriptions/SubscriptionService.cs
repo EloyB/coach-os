@@ -76,6 +76,15 @@ public class SubscriptionService(
                 "Deze club heeft een lopend Mollie-abonnement. Zeg dat eerst op."));
         }
 
+        // Een deal vervangt de lopende periode. Zou ze een al betaalde periode vervangen, dan
+        // eindigt de toegang bij het stopzetten van de deal meteen, hoewel er betaald is.
+        DateOnly? paidUntil = await GetPaidPeriodEndAsync(organizationId, today, ct);
+        if (paidUntil is DateOnly paidEnd)
+        {
+            return Result<SubscriptionDto>.Fail(new Error(ErrorCodes.Conflict,
+                $"Deze club heeft een betaalde periode tot {paidEnd.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)}. Ken de deal toe nadat die periode afloopt, of regel het manueel."));
+        }
+
         SubscriptionPlan plan = (SubscriptionPlan)request.Plan;
         if (request.Price > 0 && await profiles.GetByOrganizationAsync(organizationId, tracked: false, ct) is null)
         {
@@ -110,6 +119,16 @@ public class SubscriptionService(
         logger.LogInformation("SuperAdmin kende deal {Plan} ({Price} excl. btw) tot {EndDate} toe aan {OrgId}",
             plan, request.Price, endDate, organizationId);
         return await ReloadAsync(organizationId, ct);
+    }
+
+    /// <summary>Einde van de laatste betaalde periode die vandaag nog loopt (of nog moet beginnen), of null.</summary>
+    private async Task<DateOnly?> GetPaidPeriodEndAsync(Guid organizationId, DateOnly today, CancellationToken ct)
+    {
+        IReadOnlyList<SubscriptionPayment> history = await payments.ListByOrganizationAsync(organizationId, ct);
+        return history
+            .Where(p => p.Status == SubscriptionPaymentStatus.Paid && p.PeriodEnd >= today)
+            .Select(p => (DateOnly?)p.PeriodEnd)
+            .Max();
     }
 
     public async Task<Result<SubscriptionDto>> MarkPaymentPaidAsync(

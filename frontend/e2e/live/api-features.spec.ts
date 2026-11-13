@@ -1,15 +1,17 @@
 import { test, expect } from "@playwright/test";
 import {
   API_URL,
-  SEED_ADMIN,
   SEED_SECOND_ORG_ADMIN,
   apiLogin,
   authHeaders,
   createTestSeries,
   futureDate,
+  priceOption,
   uniqueCourt,
+  publicRequest,
   type LoginResult,
 } from "./live-helpers";
+import type { LessonSeriePriceDto } from "@/lib/api/lessonSeriePrices";
 
 /**
  * Live API-tests tegen de draaiende backend en geseede database.
@@ -29,8 +31,7 @@ test.describe("Live API — inschrijving annuleren", () => {
 
     // Eigen inschrijvingen aanmaken: de reeks is vers, dus leeg.
     for (let i = 0; i < 3; i++) {
-      const response = await request.post(
-        `${API_URL}/public/lessonseries/${seriesId}/enroll`,
+      const response = await publicRequest(request, "post", `/public/lessonseries/${seriesId}/enroll`,
         {
           data: {
             studentName: `E2E Annuleerbaar ${i}`,
@@ -307,7 +308,7 @@ test.describe("Live API — baan-bezettingscheck", () => {
   });
 });
 
-test.describe("Live API — prijsmatrix", () => {
+test.describe("Live API — prijsopties", () => {
   let auth: LoginResult;
   let seriesId: string;
 
@@ -317,25 +318,23 @@ test.describe("Live API — prijsmatrix", () => {
   });
 
   test.afterAll(async ({ request }) => {
-    // Matrix weer wissen zodat andere tests de legacy prijs zien.
+    // Opties weer wissen zodat andere tests de standaardprijs zien.
     await request.put(`${API_URL}/lessonseries/${seriesId}/prices`, {
       headers: authHeaders(auth),
       data: { prices: [] },
     });
   });
 
-  test("matrix opslaan en teruglezen", async ({ request }) => {
+  test("opties opslaan en teruglezen", async ({ request }) => {
     const save = await request.put(
       `${API_URL}/lessonseries/${seriesId}/prices`,
       {
         headers: authHeaders(auth),
         data: {
           prices: [
-            { category: 1, groupSize: 4, totalPrice: 480 },
-            { category: 1, groupSize: 2, totalPrice: 400 },
-            { category: 1, groupSize: 1, totalPrice: 350 },
-            { category: 2, groupSize: 4, totalPrice: 360 },
-            { category: 2, groupSize: 2, totalPrice: 300 },
+            priceOption("Standaardtarief", 480, 0, "Volwassenen"),
+            priceOption("Jeugd", 360, 1),
+            priceOption("Duo", 400, 2),
           ],
         },
       },
@@ -345,29 +344,23 @@ test.describe("Live API — prijsmatrix", () => {
     const read = await request.get(`${API_URL}/lessonseries/${seriesId}/prices`, {
       headers: authHeaders(auth),
     });
-    const prices = (await read.json()) as {
-      category: number;
-      groupSize: number;
-      totalPrice: number;
-    }[];
+    const prices = (await read.json()) as LessonSeriePriceDto[];
 
-    expect(prices).toHaveLength(5);
-    const adultFour = prices.find((p) => p.category === 1 && p.groupSize === 4);
-    expect(adultFour?.totalPrice).toBe(480);
-    const youthTwo = prices.find((p) => p.category === 2 && p.groupSize === 2);
-    expect(youthTwo?.totalPrice).toBe(300);
+    expect(prices.map((p) => p.label)).toEqual(["Standaardtarief", "Jeugd", "Duo"]);
+    const standard = prices.find((p) => p.label === "Standaardtarief");
+    expect(standard?.totalPrice).toBe(480);
+    expect(standard?.description).toBe("Volwassenen");
+    expect(prices.find((p) => p.label === "Jeugd")?.totalPrice).toBe(360);
   });
 
-  test("dubbele cel wordt geweigerd", async ({ request }) => {
+  test("dubbele naam wordt geweigerd", async ({ request }) => {
+    // Hoofdletters en spaties tellen niet: de validator vergelijkt getrimd en lowercase.
     const response = await request.put(
       `${API_URL}/lessonseries/${seriesId}/prices`,
       {
         headers: authHeaders(auth),
         data: {
-          prices: [
-            { category: 1, groupSize: 4, totalPrice: 480 },
-            { category: 1, groupSize: 4, totalPrice: 500 },
-          ],
+          prices: [priceOption("Jeugd", 300, 0), priceOption(" jeugd ", 320, 1)],
         },
       },
     );
@@ -379,24 +372,24 @@ test.describe("Live API — prijsmatrix", () => {
       `${API_URL}/lessonseries/${seriesId}/prices`,
       {
         headers: authHeaders(auth),
-        data: { prices: [{ category: 1, groupSize: 4, totalPrice: -10 }] },
+        data: { prices: [priceOption("Standaardtarief", -10, 0)] },
       },
     );
     expect(response.status()).toBe(400);
   });
 
-  test("ongeldige groepsgrootte wordt geweigerd", async ({ request }) => {
+  test("optie zonder naam wordt geweigerd", async ({ request }) => {
     const response = await request.put(
       `${API_URL}/lessonseries/${seriesId}/prices`,
       {
         headers: authHeaders(auth),
-        data: { prices: [{ category: 1, groupSize: 99, totalPrice: 100 }] },
+        data: { prices: [priceOption("", 100, 0)] },
       },
     );
     expect(response.status()).toBe(400);
   });
 
-  test("andere organisatie krijgt geen toegang tot de matrix", async ({
+  test("andere organisatie krijgt geen toegang tot de prijsopties", async ({
     request,
   }) => {
     const otherAuth = await apiLogin(request, SEED_SECOND_ORG_ADMIN);
@@ -407,7 +400,7 @@ test.describe("Live API — prijsmatrix", () => {
     expect(response.status()).toBe(404);
   });
 
-  test("matrix wissen valt terug op legacy prijs", async ({ request }) => {
+  test("opties wissen valt terug op de standaardprijs", async ({ request }) => {
     const clear = await request.put(
       `${API_URL}/lessonseries/${seriesId}/prices`,
       { headers: authHeaders(auth), data: { prices: [] } },
@@ -433,8 +426,7 @@ test.describe("Live API — geboortedatum en tariefcategorie", () => {
   test("inschrijving zonder geboortedatum wordt geweigerd", async ({
     request,
   }) => {
-    const response = await request.post(
-      `${API_URL}/public/lessonseries/${seriesId}/enroll`,
+    const response = await publicRequest(request, "post", `/public/lessonseries/${seriesId}/enroll`,
       {
         data: {
           studentName: "E2E Zonder Geboortedatum",
@@ -447,8 +439,7 @@ test.describe("Live API — geboortedatum en tariefcategorie", () => {
   });
 
   test("toekomstige geboortedatum wordt geweigerd", async ({ request }) => {
-    const response = await request.post(
-      `${API_URL}/public/lessonseries/${seriesId}/enroll`,
+    const response = await publicRequest(request, "post", `/public/lessonseries/${seriesId}/enroll`,
       {
         data: {
           studentName: "E2E Toekomst",
@@ -463,8 +454,7 @@ test.describe("Live API — geboortedatum en tariefcategorie", () => {
 
   test("volwassene krijgt categorie Volwassenen", async ({ request }) => {
     const email = `e2e-adult-${Date.now()}@test.be`;
-    const submit = await request.post(
-      `${API_URL}/public/lessonseries/${seriesId}/enroll`,
+    const submit = await publicRequest(request, "post", `/public/lessonseries/${seriesId}/enroll`,
       {
         data: {
           studentName: "E2E Volwassene",
@@ -497,8 +487,7 @@ test.describe("Live API — geboortedatum en tariefcategorie", () => {
     twelveYearsAgo.setFullYear(twelveYearsAgo.getFullYear() - 12);
     const dob = twelveYearsAgo.toISOString().slice(0, 10);
 
-    const submit = await request.post(
-      `${API_URL}/public/lessonseries/${seriesId}/enroll`,
+    const submit = await publicRequest(request, "post", `/public/lessonseries/${seriesId}/enroll`,
       {
         data: {
           studentName: "E2E Jeugdlid",
@@ -534,8 +523,7 @@ test.describe("Live API — geboortedatum en tariefcategorie", () => {
     const tenYearsAgo = new Date();
     tenYearsAgo.setFullYear(tenYearsAgo.getFullYear() - 10);
 
-    const submit = await request.post(
-      `${API_URL}/public/lessonseries/${seriesId}/enroll`,
+    const submit = await publicRequest(request, "post", `/public/lessonseries/${seriesId}/enroll`,
       {
         data: {
           studentName: "E2E Ouder",

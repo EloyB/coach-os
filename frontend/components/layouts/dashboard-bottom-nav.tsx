@@ -1,18 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { navItems } from "@/lib/nav-items";
 import { getAuthUser } from "@/lib/auth";
+import { useClientValue } from "@/lib/hooks/use-client-value";
 
 export function MobileBottomNav() {
   const pathname = usePathname();
-  const [role, setRole] = useState<string | null>(null);
-
-  useEffect(() => {
-    setRole(getAuthUser()?.role ?? null);
-  }, []);
+  const role = useClientValue(() => getAuthUser()?.role ?? null);
 
   const visibleItems = navItems.filter(
     (item) => !("adminOnly" in item && item.adminOnly) || role === "Admin"

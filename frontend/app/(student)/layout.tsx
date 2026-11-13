@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 
-import { clearAuth, getAuthUser } from "@/lib/auth";
+import { clearAuth, syncRoleCookie } from "@/lib/auth";
+import { homePathFor, isStudentRole } from "@/lib/role-routing";
+import { useAuthUser } from "@/lib/hooks/use-auth-user";
 import { LogoMark } from "@/components/ui/logo-mark";
 
 export default function StudentLayout({
@@ -15,16 +17,28 @@ export default function StudentLayout({
 }) {
   const router = useRouter();
   const t = useTranslations("studentPortal");
-  const [firstName, setFirstName] = useState<string | null>(null);
+  const user = useAuthUser();
+  const isStudent = isStudentRole(user?.role);
+  const firstName = isStudent ? (user?.firstName ?? null) : null;
 
   useEffect(() => {
-    const user = getAuthUser();
-    if (!user || user.role !== "Student") {
+    // undefined = nog onbekend (SSR/hydration): dan nog niet doorsturen.
+    if (user === undefined || isStudent) return;
+    if (user === null) {
+      // Geen sessie meer: achtergebleven cookies opruimen, anders stuurt de middleware
+      // /student-login meteen terug.
+      clearAuth();
       router.replace("/student-login");
       return;
     }
-    setFirstName(user.firstName ?? null);
-  }, [router]);
+    // Staff op een studentpagina: naar de eigen startpagina. Rolcookie eerst rechtzetten
+    // zodat de middleware dezelfde beslissing neemt (geen heen-en-weer).
+    syncRoleCookie(user.role);
+    router.replace(homePathFor(user.role, user.isSuperAdmin === true));
+  }, [user, isStudent, router]);
+
+  // Niets renderen voor wie geen student is: zo vertrekken er geen student-API-calls.
+  if (!isStudent) return null;
 
   function logout() {
     clearAuth();
