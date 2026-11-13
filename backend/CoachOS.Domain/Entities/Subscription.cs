@@ -33,6 +33,22 @@ public class Subscription : BaseEntity
     /// </summary>
     public int? LastTrialReminderDay { get; set; }
 
+    /// <summary>
+    /// Datum waarop de organisatie automatisch verwijderd wordt (de datum uit de verwijdermail).
+    /// Null zolang er niets gepland is; vervalt als de club opnieuw een plan kiest.
+    /// </summary>
+    public DateOnly? ScheduledDeletionOn { get; set; }
+
+    /// <summary>Stand van de automatische verwijdering; null zolang er niets gepland is.</summary>
+    public OrganizationDeletionStage? DeletionStage { get; set; }
+
+    /// <summary>
+    /// Tijdstip (UTC) waarop de verwijderplanning het laatst wijzigde. De mail van de huidige
+    /// stap werd daarna ingepland; zo herkent de job de laatste mail in de outbox, ook als de
+    /// inhoud er na verzending al uit gewist is.
+    /// </summary>
+    public DateTime? DeletionStageChangedAt { get; set; }
+
     public bool IsActive { get; set; } = true;
 
     /// <summary>Snapshot van het aangerekende bedrag (EUR, excl. btw) voor het gekozen interval.</summary>
@@ -101,6 +117,15 @@ public class Subscription : BaseEntity
         Status = SubscriptionStatus.Active;
         CancelAt = null;
         IsDeal = false;
+        ClearDeletionSchedule();
+    }
+
+    /// <summary>De club gaat verder (plan, deal): een geplande verwijdering vervalt.</summary>
+    public void ClearDeletionSchedule()
+    {
+        ScheduledDeletionOn = null;
+        DeletionStage = null;
+        DeletionStageChangedAt = null;
     }
 
     /// <summary>

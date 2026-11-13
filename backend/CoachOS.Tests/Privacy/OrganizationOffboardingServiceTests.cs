@@ -243,4 +243,93 @@ public class OrganizationOffboardingServiceTests
         _unitOfWork.Verify(u => u.RollbackTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(u => u.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
+
+    private void GivenScheduledTrial(int endedDaysAgo, DateOnly? scheduledOn, OrganizationDeletionStage? stage)
+    {
+        Subscription subscription = new()
+        {
+            Id = Guid.NewGuid(), OrganizationId = _org.Id, Status = SubscriptionStatus.Trialing,
+            StartDate = Today.AddDays(-endedDaysAgo - 30), TrialEndsAt = Today.AddDays(-endedDaysAgo),
+            ScheduledDeletionOn = scheduledOn, DeletionStage = stage
+        };
+        _subscriptions.Setup(r => r.GetByOrganizationReadOnlyAsync(_org.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(subscription);
+    }
+
+    [Test]
+    public async Task DeleteExpiredAsync_FinalNoticeSentAndDateReached_DeletesWithoutConfirmationName()
+    {
+        GivenScheduledTrial(endedDaysAgo: 120, Today, OrganizationDeletionStage.FinalNotice);
+        List<string> calls = [];
+        _offboarding.Setup(r => r.LockOrganizationAsync(_org.Id, It.IsAny<CancellationToken>())).Callback(() => calls.Add("lock"));
+        _organizations.Setup(r => r.GetByIdAsync(_org.Id, false, It.IsAny<CancellationToken>()))
+            .Callback(() => calls.Add("read")).ReturnsAsync(_org);
+        _offboarding.Setup(r => r.DeleteOrganizationAsync(_org.Id, It.IsAny<CancellationToken>()))
+            .Callback(() => calls.Add("delete")).ReturnsAsync(1);
+
+        Result<OrganizationDeletedDto> result = await _sut.DeleteExpiredAsync(_org.Id, Today);
+
+        result.IsSuccess.Should().BeTrue();
+        calls.Should().Equal("lock", "read", "delete");
+        _unitOfWork.Verify(u => u.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task DeleteExpiredAsync_OnlyFirstNoticeSent_RollsBackWithoutDeleting()
+    {
+        GivenScheduledTrial(endedDaysAgo: 120, Today, OrganizationDeletionStage.FirstNotice);
+
+        Result<OrganizationDeletedDto> result = await _sut.DeleteExpiredAsync(_org.Id, Today);
+
+        result.Errors[0].Code.Should().Be(ErrorCodes.Conflict);
+        _offboarding.Verify(r => r.DeleteOrganizationAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.RollbackTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task DeleteExpiredAsync_ScheduleChangedMeanwhile_RollsBackWithoutDeleting()
+    {
+        // Onder de lock blijkt de planning vervallen (bv. de club koos net een plan).
+        GivenScheduledTrial(endedDaysAgo: 120, scheduledOn: null, stage: null);
+
+        Result<OrganizationDeletedDto> result = await _sut.DeleteExpiredAsync(_org.Id, Today);
+
+        result.IsSuccess.Should().BeFalse();
+        _offboarding.Verify(r => r.DeleteOrganizationAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task DeleteExpiredAsync_DateNotReached_RollsBackWithoutDeleting()
+    {
+        GivenScheduledTrial(endedDaysAgo: 120, Today.AddDays(1), OrganizationDeletionStage.FinalNotice);
+
+        Result<OrganizationDeletedDto> result = await _sut.DeleteExpiredAsync(_org.Id, Today.AddDays(1));
+
+        result.IsSuccess.Should().BeFalse();
+        _offboarding.Verify(r => r.DeleteOrganizationAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task DeleteExpiredAsync_StillInRetentionPeriod_BlockedByRules()
+    {
+        // Ook met een (foutieve) planning blijven de gewone blokkeringen gelden.
+        GivenScheduledTrial(endedDaysAgo: 30, Today, OrganizationDeletionStage.FinalNotice);
+
+        Result<OrganizationDeletedDto> result = await _sut.DeleteExpiredAsync(_org.Id, Today);
+
+        result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.Conflict && e.Message.Contains("bewaartermijn"));
+        _offboarding.Verify(r => r.DeleteOrganizationAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task DeleteExpiredAsync_FinancialRecords_BlockedByRules()
+    {
+        GivenScheduledTrial(endedDaysAgo: 120, Today, OrganizationDeletionStage.FinalNotice);
+        _offboarding.Setup(r => r.CountDataAsync(_org.Id, It.IsAny<CancellationToken>())).ReturnsAsync(Counts(subscriptionPayments: 1));
+
+        Result<OrganizationDeletedDto> result = await _sut.DeleteExpiredAsync(_org.Id, Today);
+
+        result.IsSuccess.Should().BeFalse();
+        _offboarding.Verify(r => r.DeleteOrganizationAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
 }

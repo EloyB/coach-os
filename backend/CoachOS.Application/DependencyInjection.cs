@@ -70,6 +70,7 @@ public static class DependencyInjection
         services.AddScoped<ITrialReminderService, TrialReminderService>();
         services.AddScoped<IClubExportService, ClubExportService>();
         services.AddScoped<IOrganizationOffboardingService, OrganizationOffboardingService>();
+        services.AddScoped<IOrganizationRetentionService, OrganizationRetentionService>();
 
         return services;
     }

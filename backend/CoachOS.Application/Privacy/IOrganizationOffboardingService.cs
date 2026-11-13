@@ -4,8 +4,9 @@ using CoachOS.Domain.Models;
 namespace CoachOS.Application.Privacy;
 
 /// <summary>
-/// Manuele offboarding door de superadmin: preview en definitieve verwijdering van een
-/// organisatie. Cross-org — enkel bereikbaar via endpoints achter de SuperAdmin-policy.
+/// Offboarding: preview en definitieve verwijdering van een organisatie, manueel door de
+/// superadmin of automatisch na de bewaartermijn. Cross-org — enkel bereikbaar via endpoints
+/// achter de SuperAdmin-policy of vanuit de retentiejob.
 /// </summary>
 public interface IOrganizationOffboardingService
 {
@@ -18,4 +19,13 @@ public interface IOrganizationOffboardingService
     /// </summary>
     Task<Result<OrganizationDeletedDto>> DeleteAsync(
         Guid organizationId, DeleteOrganizationRequest request, CancellationToken ct = default);
+
+    /// <summary>
+    /// Automatische verwijdering na de bewaartermijn (systeemjob). Zelfde transactie en
+    /// blokkeringen als <see cref="DeleteAsync"/>, maar in plaats van een bevestigingsnaam moet
+    /// de club de laatste mail voor exact <paramref name="scheduledOn"/> gekregen hebben en moet
+    /// die datum bereikt zijn. Wordt onder de lock opnieuw gecontroleerd.
+    /// </summary>
+    Task<Result<OrganizationDeletedDto>> DeleteExpiredAsync(
+        Guid organizationId, DateOnly scheduledOn, CancellationToken ct = default);
 }

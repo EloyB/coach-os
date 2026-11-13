@@ -95,6 +95,39 @@ public class MjmlTemplateRenderTests
         html.Should().Contain("https://app.coach-os.be/dashboard");
         html.Should().NotContain("{{");
     }
+
+    [Test]
+    public void OrganizationDeletionNotice_RendersDateAndExportLink()
+    {
+        string html = _renderer.Render("organization-deletion-notice", new Dictionary<string, string>
+        {
+            ["organizationName"] = "TC Brederode",
+            ["heading"] = "Je gegevens worden verwijderd op 12/12/2026",
+            ["deletionDate"] = "12/12/2026",
+            ["exportUrl"] = "https://app.coach-os.be/dashboard/settings",
+            ["year"] = "2026",
+        });
+
+        html.Should().Contain("TC Brederode");
+        html.Should().Contain("12/12/2026");
+        html.Should().Contain("https://app.coach-os.be/dashboard/settings");
+        html.Should().Contain("Gegevens exporteren");
+        html.Should().NotContain("{{");
+    }
+
+    [Test]
+    public void OrganizationDeletionCancelled_RendersWithoutPlaceholders()
+    {
+        string html = _renderer.Render("organization-deletion-cancelled", new Dictionary<string, string>
+        {
+            ["organizationName"] = "TC Brederode",
+            ["year"] = "2026",
+        });
+
+        html.Should().Contain("TC Brederode");
+        html.Should().Contain("gaat niet door");
+        html.Should().NotContain("{{");
+    }
     /// <summary>
     /// MJML voegt standaard een Google Fonts-include toe zodra de font-stack een
     /// "bekend" font (bv. Roboto) noemt. Externe font-requests kosten privacy en
