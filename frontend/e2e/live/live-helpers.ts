@@ -2,6 +2,7 @@ import { Page, APIRequestContext, expect } from "@playwright/test";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import type { LessonSeriePriceRequest } from "@/lib/api/lessonSeriePrices";
 
 /**
  * Helpers voor de LIVE end-to-end suite.
@@ -218,6 +219,19 @@ export async function firstSeries(
     "Geen lessenreeksen gevonden — is seed-demo-data.sh gedraaid?",
   ).toBeGreaterThan(0);
   return series[0];
+}
+
+/**
+ * Eén prijsoptie voor `PUT /lessonseries/{id}/prices`. Een reeks heeft een lijst
+ * benoemde tarieven (naam + optionele beschrijving + prijs per deelnemer).
+ */
+export function priceOption(
+  label: string,
+  totalPrice: number,
+  sortOrder: number,
+  description: string | null = null,
+): LessonSeriePriceRequest {
+  return { label, description, totalPrice, sortOrder, reusableKey: null };
 }
 
 /** Datum over N dagen als yyyy-MM-dd, voor lesmomenten in de toekomst. */
