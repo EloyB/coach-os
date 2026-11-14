@@ -101,6 +101,39 @@ resource "scaleway_secret" "mollie_billing_api_key" {
   tags        = ["coach-os", "manual", "mollie"]
 }
 
+# Billit — facturatie van CoachOS-abonnementen. In tegenstelling tot de manuele secrets
+# hierboven maakt Terraform hier meteen een eerste versie aan met de placeholder "NOT_SET":
+# een secret zonder versie laat de API crashen bij het opstarten (zie SECRETS.md). De API
+# behandelt "NOT_SET" als leeg, dus tot de echte waarde ingevuld is draait de fake-facturatie
+# en blijft self-service afrekenen uit. Vul de echte waarde in als NIEUWE versie:
+#   scw secret version create secret-id=<secret_id> data=<waarde>
+# Terraform negeert latere wijzigingen (ignore_changes), dus `tofu apply` overschrijft niets.
+locals {
+  billing_placeholder_secrets = {
+    "Billit__ApiKey"  = "API-key uit MyBillit (Mijn profiel) van het facturerende bedrijf"
+    "Billit__PartyId" = "Id van het facturerende bedrijf in Billit (URL van Mijn bedrijf)"
+  }
+}
+
+resource "scaleway_secret" "billing_placeholder" {
+  for_each    = local.billing_placeholder_secrets
+  project_id  = var.scw_project_id
+  region      = var.scw_region
+  name        = each.key
+  description = "${each.value} — manueel ingevuld (start als NOT_SET)"
+  tags        = ["coach-os", "manual", "billit"]
+}
+
+resource "scaleway_secret_version" "billing_placeholder" {
+  for_each  = local.billing_placeholder_secrets
+  secret_id = scaleway_secret.billing_placeholder[each.key].id
+  data      = "NOT_SET"
+
+  lifecycle {
+    ignore_changes = [data]
+  }
+}
+
 # Mollie Connect OAuth credentials — manueel ingevuld na het aanmaken van het
 # Mollie partner-account en het activeren van Mollie Connect in het Mollie
 # dashboard. De redirect URI die in het Mollie dashboard moet worden ingesteld
