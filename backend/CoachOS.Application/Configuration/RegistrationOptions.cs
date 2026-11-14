@@ -11,11 +11,17 @@ public class RegistrationOptions
     /// </summary>
     public bool AutoVerifyEmail { get; set; }
 
-    /// <summary>Versie van de algemene voorwaarden die bij registratie wordt vastgelegd.</summary>
-    public string TermsVersion { get; set; } = "concept";
+    /// <summary>
+    /// Versie van de algemene voorwaarden die bij registratie wordt vastgelegd. Moet gelijk zijn
+    /// aan de <c>Versie</c> bovenaan <c>docs/legal/algemene-voorwaarden-clubs.md</c>.
+    /// </summary>
+    public string TermsVersion { get; set; } = LegalDocumentVersions.Current;
 
-    /// <summary>Versie van de verwerkersovereenkomst die bij registratie wordt vastgelegd.</summary>
-    public string DataProcessingAgreementVersion { get; set; } = "concept";
+    /// <summary>
+    /// Versie van de verwerkersovereenkomst die bij registratie wordt vastgelegd. Moet gelijk
+    /// zijn aan de <c>Versie</c> bovenaan <c>docs/legal/verwerkersovereenkomst.md</c>.
+    /// </summary>
+    public string DataProcessingAgreementVersion { get; set; } = LegalDocumentVersions.Current;
 
     /// <summary>
     /// Noodrem: maximaal aantal nieuwe organisaties per uur, over alle IP's samen. Daarboven
@@ -26,4 +32,11 @@ public class RegistrationOptions
 
     /// <summary>Maximaal aantal registratiepogingen per IP-adres per uur (rate limiter).</summary>
     public int MaxAttemptsPerIpPerHour { get; set; } = 5;
+}
+
+/// <summary>Versie van de geldende juridische teksten in <c>docs/legal/</c>.</summary>
+public static class LegalDocumentVersions
+{
+    /// <summary>Definitieve teksten, in werking vanaf 01/12/2026.</summary>
+    public const string Current = "2026-12-01";
 }
