@@ -91,10 +91,19 @@ resource "scaleway_iam_policy" "offsite_backup" {
   }
 }
 
+# Scaleway geeft een nieuwe API-key een vervaldatum van 1 jaar. Stond die niet in de config,
+# dan wilde elke `tofu apply` de key vervangen (expires_at -> null forceert replacement).
+# Daarom staat de vervaldatum hier expliciet, gelijk aan wat Scaleway zette.
+#
+# Roteren vóór die datum: zet een nieuwe datum (max. 1 jaar vooruit) en merge naar main.
+# Terraform vervangt dan de key en de secret offsite-backup-env; de workflow
+# offsite-backup.yml draait na de Terraform-run en zet de nieuwe key op de VPS.
+# offsite-backup-key-reminder.yml opent 45 dagen vóór deze datum automatisch een issue.
 resource "scaleway_iam_api_key" "offsite_backup" {
   application_id     = scaleway_iam_application.offsite_backup.id
   description        = "restic off-site backup op de VPS — beheerd door Terraform"
   default_project_id = scaleway_account_project.offsite_backup.id
+  expires_at         = "2027-11-13T10:11:00Z"
 }
 
 # Het restic-wachtwoord versleutelt de hele repository. Kwijt = backup waardeloos,
