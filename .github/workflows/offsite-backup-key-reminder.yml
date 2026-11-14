@@ -1,0 +1,58 @@
+name: Infrastructure — Herinnering offsite-backup-key
+
+# De Scaleway API-key van de off-site backup vervalt op expires_at in
+# infrastructure/terraform/offsite-backup.tf. Daarna faalt de nachtelijke backup.
+# Deze workflow controleert dat maandelijks en opent vanaf REMIND_DAYS dagen vóór
+# de vervaldatum één issue met de stappen om te roteren (geen dubbels).
+
+on:
+  schedule:
+    - cron: '0 7 1 * *' # de 1e van elke maand, 07:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  REMIND_DAYS: 45
+  ISSUE_TITLE: 'chore(infra): offsite-backup-key roteren vóór hij vervalt'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Vervaldatum controleren
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          read -r days_left expires <<< "$(bash scripts/backup/offsite-key-days-left.sh)"
+          echo "Offsite-backup-key vervalt op $expires ($days_left dagen)."
+
+          if (( days_left > REMIND_DAYS )); then
+            echo "Nog ruim tijd, geen issue nodig."
+            exit 0
+          fi
+
+          existing=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open \
+            --search "\"$ISSUE_TITLE\" in:title" --json number --jq 'length')
+          if (( existing > 0 )); then
+            echo "Er staat al een open issue, niets te doen."
+            exit 0
+          fi
+
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "$ISSUE_TITLE" --body "$(cat <<EOF
+          De Scaleway API-key van de off-site backup vervalt op **$expires** (nog $days_left dagen). Daarna faalt de nachtelijke backup.
+
+          ## Roteren
+          1. Zet in \`infrastructure/terraform/offsite-backup.tf\` bij \`scaleway_iam_api_key.offsite_backup\` een nieuwe \`expires_at\`, maximaal 1 jaar vooruit (formaat \`YYYY-MM-DDTHH:MM:SSZ\`).
+          2. Open een PR. De \`Tofu plan\` moet de key en de secret \`offsite-backup-env\` vervangen, verder niets.
+          3. Merge naar main. Terraform maakt de nieuwe key aan, daarna zet \`offsite-backup.yml\` hem automatisch op de VPS.
+          4. Start \`offsite-backup.yml\` manueel met **run_now** en controleer dat de backup slaagt.
+
+          _Automatisch geopend door offsite-backup-key-reminder.yml._
+          EOF
+          )"

@@ -98,6 +98,7 @@ resource "scaleway_iam_policy" "offsite_backup" {
 # Roteren vóór die datum: zet een nieuwe datum (max. 1 jaar vooruit) en merge naar main.
 # Terraform vervangt dan de key en de secret offsite-backup-env; de workflow
 # offsite-backup.yml draait na de Terraform-run en zet de nieuwe key op de VPS.
+# offsite-backup-key-reminder.yml opent 45 dagen vóór deze datum automatisch een issue.
 resource "scaleway_iam_api_key" "offsite_backup" {
   application_id     = scaleway_iam_application.offsite_backup.id
   description        = "restic off-site backup op de VPS — beheerd door Terraform"
