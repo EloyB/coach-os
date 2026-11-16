@@ -59,11 +59,23 @@ TEM only issues SMTP credentials after DKIM/SPF DNS verification has propagated.
 | `Mollie__RedirectUri` | **manual** | `https://app.<domain_name>/api/oauth/mollie/callback` — must match Mollie dashboard exactly |
 | `MollieBilling__WebhookBaseUrl` | ✓ Terraform | `https://app.<domain_name>` — webhooks voor CoachOS-abonnementen op `/api/webhooks/mollie-billing` |
 | `MollieBilling__ApiKey` | **manual** | API-key van het **eigen** Mollie-account van Studio Swyft (`test_…`, later `live_…`), niet de Connect-app. Leeg = fake-client zonder echte betalingen. SEPA-domiciliëring + kaart voor recurring activeren op dat account. |
-| `Billit__ApiKey` | **manual** | API-key uit MyBillit (Mijn profiel) van het facturerende bedrijf. Leeg of afwezig = fake, self-service blijft uit. |
-| `Billit__PartyId` | **manual** | Id van dat bedrijf: staat in de URL van Mijn bedrijf. Sandbox en productie verschillen. |
+| `Billit__ApiKey` | ✓ Terraform (`NOT_SET`) → **manual** | API-key uit MyBillit (Mijn profiel) van het facturerende bedrijf. `NOT_SET`, leeg of afwezig = fake, self-service blijft uit. |
+| `Billit__PartyId` | ✓ Terraform (`NOT_SET`) → **manual** | Id van dat bedrijf: staat in de URL van Mijn bedrijf. Sandbox en productie verschillen. |
 | `SuperAdmin__Email` | **manual** | Email of the first system-level super admin (promoted at API startup) |
 
-> **Let op:** maak een manual secret altijd meteen aan **met een versie**. De API leest bij het opstarten van elk secret in het project de nieuwste versie; een secret zonder versie geeft een 404 en laat de API crashen. Daarom staan de Billit-secrets niet in Terraform: Terraform maakt het secret aan zonder waarde.
+> **Let op:** maak een manual secret altijd meteen aan **met een versie**. De API leest bij het opstarten van elk secret in het project de nieuwste versie; een secret zonder versie geeft een 404 en laat de API crashen.
+>
+> De Billit-secrets maakt Terraform daarom aan **met een eerste versie `NOT_SET`**. De API behandelt `NOT_SET` als "niet ingevuld" (fake-facturatie, self-service uit), dus de API start gewoon. Vul de echte waarde in als nieuwe versie; Terraform negeert latere wijzigingen:
+>
+> ```powershell
+> scw secret secret list project-id=$PROJECT_ID name=Billit__ApiKey
+> scw secret version create secret-id=<id> data="<billit-api-key>"
+> scw secret secret list project-id=$PROJECT_ID name=Billit__PartyId
+> scw secret version create secret-id=<id> data="<billit-party-id>"
+> ssh root@$VPS_IP "cd /app && docker compose restart api"
+> ```
+>
+> Bestaan de Billit-secrets al (manueel aangemaakt), importeer ze dan eerst met `tofu import` of verwijder ze, anders faalt `tofu apply` op de dubbele naam.
 
 ### Manual TEM creds setup
 
