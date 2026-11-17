@@ -284,6 +284,52 @@ def activate_and_promote_head_trainer(api: ApiClient, trainers: list[dict],
             "clubId": club_id}
 
 
+def activate_plain_trainer(api_base: str, trainers: list[dict],
+                           cfg: dict, club_ids: list[str]) -> dict | None:
+    """Activeert een gewone (niet-hoofd-)trainer via de Mailpit invite-mail en vult met zijn
+    eigen login enkele tijdvakken in via /me/trainer-availabilities. Levert een inlogbare
+    trainer op voor de trainer-beschikbaarheidspagina. Faalt nooit hard, zodat de rest van
+    de seed kan doorlopen."""
+    print("\n5b. Activating plain trainer and filling in own availability...")
+    trainer_spec = trainers[cfg["trainerIndex"]]
+    email = trainer_spec["email"]
+    password = cfg["password"]
+
+    token = fetch_invite_token_from_mailpit(email)
+    if not token:
+        print(f"   Could not find invite mail for {email} in Mailpit "
+              f"({MAILPIT_BASE}) - skipping plain trainer.", file=sys.stderr)
+        return None
+
+    trainer_api = ApiClient(api_base)
+    accepted = trainer_api.post("/trainers/accept-invite",
+                                {"token": token, "password": password}, auth=False)
+    if not accepted or not accepted.get("token"):
+        print(f"   accept-invite failed for {email} - skipping plain trainer.",
+              file=sys.stderr)
+        return None
+    trainer_api.token = accepted["token"]
+    print(f"   Activated: {email}")
+
+    created = 0
+    for plan in cfg.get("availabilities", []):
+        club_idx = plan.get("clubIndex")
+        tennis_club_id = None
+        if club_idx is not None and club_ids:
+            tennis_club_id = club_ids[min(club_idx, len(club_ids) - 1)]
+        result = trainer_api.post("/me/trainer-availabilities", {
+            "tennisClubId": tennis_club_id,
+            "dayOfWeek": plan["dayOfWeek"],
+            "startTime": plan["startTime"],
+            "endTime": plan["endTime"],
+        })
+        if result is not None:
+            created += 1
+    print(f"   Created {created} own availabilities for {email}")
+
+    return {"email": email, "password": password}
+
+
 def create_trainer_availabilities(api: ApiClient, club_ids: list[str]) -> None:
     """Legt per actieve trainer een paar vaste beschikbaarheden vast (demo-data).
     Club x weekdag x tijdvak. dayOfWeek: 0 = maandag ... 6 = zondag. De twee
@@ -737,6 +783,11 @@ def main() -> int:
         head_trainer = activate_and_promote_head_trainer(
             api, data["trainers"], data["headTrainer"], club_ids)
 
+    plain_trainer = None
+    if "plainTrainer" in data:
+        plain_trainer = activate_plain_trainer(
+            api_base, data["trainers"], data["plainTrainer"], club_ids)
+
     simple_ids = create_simple_series(
         api, data["simpleSeries"], club_ids, trainer_id, today, deadline_iso)
     simple_enrollments(api, data["simpleEnrollments"], simple_ids)
@@ -769,6 +820,9 @@ def main() -> int:
         print(f"\n  Head-trainer (club {head_trainer['clubId']}): "
               f"{head_trainer['email']}")
         print(f"  Password: {head_trainer['password']}")
+    if plain_trainer:
+        print(f"\n  Trainer (gewoon, met eigen beschikbaarheid): {plain_trainer['email']}")
+        print(f"  Password: {plain_trainer['password']}")
     print("\nURLs:")
     print("  Frontend:  http://localhost:5317")
     print("  API:       http://localhost:5142/swagger")

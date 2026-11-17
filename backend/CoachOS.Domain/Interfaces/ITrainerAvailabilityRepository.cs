@@ -10,12 +10,16 @@ public interface ITrainerAvailabilityRepository
     /// <summary>Tracked fetch voor soft delete. Enkel actieve records.</summary>
     Task<TrainerAvailability?> GetByIdAsync(Guid id, Guid organizationId, CancellationToken ct = default);
 
+    /// <summary>Alle actieve beschikbaarheden van één trainer, incl. TennisClub navigatie.</summary>
+    Task<IReadOnlyList<TrainerAvailability>> GetByTrainerAsync(Guid organizationId, Guid trainerId, CancellationToken ct = default);
+
     /// <summary>
     /// True wanneer de trainer op deze weekdag al een actieve beschikbaarheid heeft
     /// die overlapt met [startTime, endTime) - over alle clubs heen (een trainer kan
-    /// niet op twee plekken tegelijk staan).
+    /// niet op twee plekken tegelijk staan). <paramref name="excludeId"/> sluit één
+    /// beschikbaarheid uit (bij het wijzigen van die beschikbaarheid zelf).
     /// </summary>
-    Task<bool> HasOverlapAsync(Guid trainerId, Guid organizationId, int dayOfWeek, TimeOnly startTime, TimeOnly endTime, CancellationToken ct = default);
+    Task<bool> HasOverlapAsync(Guid trainerId, Guid organizationId, int dayOfWeek, TimeOnly startTime, TimeOnly endTime, Guid? excludeId = null, CancellationToken ct = default);
 
     /// <summary>
     /// Alle actieve beschikbaarheden waarvan het tijdvak [startTime, endTime] VOLLEDIG

@@ -1022,16 +1022,6 @@
   "trainers": {
     "availabilityButton": "Beschikbaarheid",
     "availabilityTitle": "Beschikbaarheid van {name}",
-    "availabilityEmpty": "Nog geen beschikbaarheden vastgelegd.",
-    "availabilityAdd": "Beschikbaarheid toevoegen",
-    "availabilityClub": "Club",
-    "availabilityDay": "Dag",
-    "availabilityFrom": "Van",
-    "availabilityUntil": "Tot",
-    "availabilityDelete": "Verwijderen",
-    "availabilitySaving": "Opslaan...",
-    "availabilityAnyClub": "Alle clubs",
-    "availabilityError": "Er ging iets mis. Probeer het opnieuw.",
     "title": "Trainers",
     "adminBadge": "Beheerder",
     "roleTrainer": "Trainer",
@@ -1678,5 +1668,48 @@
       "unresolved_reschedule_request": "Er is een openstaand verplaatsingsverzoek",
       "unknown": "Deze inschrijving vraagt een aparte controle"
     }
+  },
+  "trainerSettings": {
+    "title": "Instellingen",
+    "subtitle": "Beheer je eigen beschikbaarheid.",
+    "availabilityTitle": "Beschikbaarheid",
+    "availabilityIntro": "Geef per weekdag aan wanneer je kunt lesgeven. Je admin ziet dit en gebruikt het bij het plannen.",
+    "loadError": "Je beschikbaarheid kon niet geladen worden.",
+    "saveError": "Opslaan is mislukt. Probeer het opnieuw.",
+    "days": {
+      "0": "Maandag",
+      "1": "Dinsdag",
+      "2": "Woensdag",
+      "3": "Donderdag",
+      "4": "Vrijdag",
+      "5": "Zaterdag",
+      "6": "Zondag"
+    },
+    "daysShort": {
+      "0": "Ma",
+      "1": "Di",
+      "2": "Wo",
+      "3": "Do",
+      "4": "Vr",
+      "5": "Za",
+      "6": "Zo"
+    },
+    "anyClub": "Elke club",
+    "notAvailable": "Niet beschikbaar",
+    "addSlot": "Tijdvak toevoegen",
+    "editSlotTitle": "Tijdvak wijzigen",
+    "addSlotTitle": "Tijdvak toevoegen",
+    "fieldClub": "Club",
+    "fieldDay": "Dag",
+    "fieldFrom": "Van",
+    "fieldUntil": "Tot",
+    "save": "Opslaan",
+    "saving": "Opslaan...",
+    "delete": "Verwijderen",
+    "cancel": "Annuleren",
+    "endBeforeStart": "De eindtijd moet na de starttijd liggen.",
+    "overlapsExisting": "Dit tijdvak overlapt met een ander tijdvak op deze dag.",
+    "legendTitle": "Kleur per club",
+    "gridHint": "Klik op een leeg stuk of sleep over de dag om een tijdvak toe te voegen. Klik op een blok om het te wijzigen."
   }
 }

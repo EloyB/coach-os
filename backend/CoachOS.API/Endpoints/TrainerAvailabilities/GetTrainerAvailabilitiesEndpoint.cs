@@ -1,3 +1,4 @@
+using CoachOS.API.Auth;
 using CoachOS.API.Extensions;
 using CoachOS.Application.TrainerAvailabilities;
 using CoachOS.Application.TrainerAvailabilities.DTOs;
@@ -14,7 +15,7 @@ public class GetTrainerAvailabilitiesEndpoint : IEndpoint
             Result<List<TrainerAvailabilityDto>> result = await service.GetAllAsync(ctx.GetOrganizationId(), ct);
             return result.IsSuccess ? Results.Ok(result.Value) : result.ToErrorResult();
         })
-        .RequireAuthorization()
+        .RequireAuthorization(AuthorizationPolicies.EnrollmentsPlanningRead)
         .WithTags("TrainerAvailabilities");
     }
 }
