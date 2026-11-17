@@ -36,6 +36,10 @@ describe("tijdconversie", () => {
     expect(toTime(9 * 60 + 5)).toBe("09:05");
   });
 
+  it("geeft nooit 24:00 terug, maar begrenst op 23:59", () => {
+    expect(toTime(24 * 60)).toBe("23:59");
+  });
+
   it("snapt op kwartieren", () => {
     expect(snapToQuarter(7)).toBe(0);
     expect(snapToQuarter(8)).toBe(15);
