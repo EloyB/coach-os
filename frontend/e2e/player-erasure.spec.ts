@@ -92,7 +92,7 @@ test.describe("speler verwijderen vanuit kampinschrijving", () => {
     await openErasureDialog(page);
 
     await expect(page.getByText("Er zijn betalingen gekoppeld; financiële gegevens moeten bewaard blijven")).toBeVisible();
-    await expect(page.getByText("Er staat nog een mail klaar of een mail is mislukt")).toBeVisible();
+    await expect(page.getByText("Er wordt nog een mail verstuurd. Probeer het binnen enkele minuten opnieuw")).toBeVisible();
     await expect(page.getByRole("button", { name: "Definitief verwijderen" })).toHaveCount(0);
   });
 

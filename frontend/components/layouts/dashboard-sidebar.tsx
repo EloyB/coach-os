@@ -12,21 +12,18 @@ import { TrialSidebarCard } from "@/components/dashboard/trial-sidebar-card";
 import { OnboardingSidebarCard } from "@/components/dashboard/onboarding/onboarding-sidebar-card";
 import { navItems } from "@/lib/nav-items";
 import { switchOrganization } from "@/lib/api/auth";
-import { getAuthUser, setAuthUser, setToken, clearAuth, type AuthUser } from "@/lib/auth";
+import { getAuthUser, setAuthUser, setToken, clearAuth } from "@/lib/auth";
+import { useAuthUser } from "@/lib/hooks/use-auth-user";
 import { getInitials } from "@/lib/utils/initials";
 
 export function DashboardSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const tSwitcher = useTranslations("orgSwitcher");
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const user = useAuthUser() ?? null;
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [isSwitching, setIsSwitching] = useState(false);
   const switcherRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setUser(getAuthUser());
-  }, []);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -224,6 +221,9 @@ export function DashboardSidebar() {
         <button
           onClick={() => {
             clearAuth();
+            // Bewust een volledige page load: zo verdwijnen ook de React Query-cache en
+            // alle in-memory state van de vorige gebruiker.
+            // eslint-disable-next-line @next/next/no-location-assign-relative-destination
             window.location.href = "/login";
           }}
           className="text-white/40 hover:text-white/80 transition-colors cursor-pointer"

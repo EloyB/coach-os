@@ -1,10 +1,9 @@
 # Algemene voorwaarden CoachOS — voor clubs en scholen
 
-**Versie:** concept 2026-10 (nog niet in werking)
-**Laatst bijgewerkt:** [DATUM INWERKINGTREDING]
+**Versie:** 2026-12-01
+**In werking vanaf:** 01/12/2026
+**Laatst bijgewerkt:** 01/12/2026
 **Taal:** Nederlands. Bij een vertaling heeft de Nederlandstalige versie voorrang.
-
-> ⚠️ **Concept — na te lezen door een advocaat (Belgisch ondernemings- en contractenrecht) voor dit live gaat.** Bijzondere aandacht voor: aansprakelijkheid (art. 12), wijzigingen (art. 15) en de bepalingen die onder de B2B-regels over onrechtmatige bedingen vallen (Boek VI WER, art. VI.91/1 e.v.). Wat nog in de software gebouwd moet worden, staat als **[TE BOUWEN]**.
 
 Deze voorwaarden gelden tussen Studio Swyft en de organisatie die CoachOS gebruikt. Ze vormen samen met de [verwerkersovereenkomst](./verwerkersovereenkomst.md) één geheel. De voorwaarden voor spelers die zich via CoachOS inschrijven voor lessen staan in een apart document.
 
@@ -101,7 +100,7 @@ Bij een ernstige inbreuk mogen we het betrokken onderdeel of account tijdelijk b
 
 8.3. De Klant is verantwoordelijk voor de inhoud die hij in de Dienst zet. Dat omvat zijn lessenreeksen, prijzen, betaalvoorwaarden tegenover Spelers en de vragen in zijn inschrijfformulieren. De overeenkomst over de lessen zelf komt tot stand tussen de Klant en de Speler. Studio Swyft is daarin geen partij.
 
-8.4. **Gevoelige gegevens.** De Dienst is niet bedoeld voor bijzondere categorieën van persoonsgegevens (artikel 9 AVG), zoals medische informatie. De Klant vraagt die niet op in zijn inschrijfformulieren. Eén uitzondering: de Klant mag een vraag naar allergieën of aandachtspunten toevoegen als dat nodig is voor de veiligheid van de deelnemers, zoals bij jeugdkampen. Hij doet dat dan bewust, vraagt niet meer dan nodig, en is ervoor verantwoordelijk dat hij daarvoor een rechtsgrond heeft en de betrokkenen informeert. **[TE BOUWEN: waarschuwing in de formulierbouwer bij zo'n vraag]**
+8.4. **Gevoelige gegevens.** De Dienst is niet bedoeld voor bijzondere categorieën van persoonsgegevens (artikel 9 AVG), zoals medische informatie. De Klant vraagt die niet op in zijn inschrijfformulieren. Eén uitzondering: de Klant mag een vraag naar allergieën of aandachtspunten toevoegen als dat nodig is voor de veiligheid van de deelnemers, zoals bij jeugdkampen. Hij doet dat dan bewust, vraagt niet meer dan nodig, en is ervoor verantwoordelijk dat hij daarvoor een rechtsgrond heeft en de betrokkenen informeert. De formulierbouwer van de Dienst toont daarbij een waarschuwing.
 
 ## 9. Persoonsgegevens
 

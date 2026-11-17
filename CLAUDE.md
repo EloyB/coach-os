@@ -27,7 +27,9 @@ cd frontend && bun run build
 # Tests
 cd backend && dotnet test CoachOS.slnx
 cd backend && dotnet test --filter "FullyQualifiedName~SomeTest"
-cd frontend && bun run test:e2e               # Playwright E2E
+cd frontend && bun run test:e2e               # Playwright E2E (gemockte API, geen backend nodig)
+cd frontend && bun run test:e2e:live          # Live E2E tegen echte backend (docker-stack + seed vereist)
+cd frontend && bun run typecheck:e2e          # Typecheck e2e-specs (mocks getypeerd op lib/api DTO's)
 
 # Migrations
 cd backend
@@ -72,7 +74,7 @@ Dependency direction: `API → Infrastructure → Application → Domain`
 - Auth tokens stored via helpers in `lib/auth.ts` (key: `"token"`, user: `"auth_user"`).
 - React Query (`["trainers"]`, `["lessonSeries"]`, etc.) for client-side data with `QueryClientProvider` in `components/providers/query-provider.tsx`.
 - i18n: `next-intl` with Dutch strings in `messages/nl.json`; components use `useTranslations('namespace')`. Request config in `i18n/request.ts`.
-- E2E tests in `frontend/e2e/*.spec.ts` (Playwright); run with `bun run test:e2e`.
+- E2E tests in `frontend/e2e/*.spec.ts` (Playwright); run with `bun run test:e2e`. Mockdata in `e2e/helpers.ts` is getypeerd op de DTO's uit `lib/api/*.ts` — `bun run typecheck:e2e` vangt contract-drift. `e2e/live/` draait apart via `bun run test:e2e:live`.
 
 **Zod v4 + react-hook-form:** Never use `z.coerce.number()` — use `z.number()` with `valueAsNumber: true` on the `register()` call instead.
 
@@ -159,7 +161,7 @@ Als seed faalt: drift in DTO/validator/migratie → eerst `seed-data.json` + `se
 
 ## graphify
 
-This project has a graphify knowledge graph at `graphify-out/`.
+This project has a graphify knowledge graph at `graphify-out/`. It is generated locally (by `graphify update` / the stop hook) and is **not tracked in git** — a fresh worktree may not have it yet; in that case read the code directly or run `graphify update .` first.
 
 Rules:
 

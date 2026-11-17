@@ -26,6 +26,7 @@ public class CampEnrollmentServiceTests
     private Mock<IPaymentRepository> _paymentRepo = null!;
     private Mock<IMollieConnectService> _mollieConnect = null!;
     private Mock<IEmailService> _email = null!;
+    private Mock<IEmailOrganizationContext> _mailOrganization = null!;
     private Mock<IUnitOfWork> _unitOfWork = null!;
     private CampEnrollmentService _sut = null!;
 
@@ -42,10 +43,11 @@ public class CampEnrollmentServiceTests
         _paymentRepo = new Mock<IPaymentRepository>();
         _mollieConnect = new Mock<IMollieConnectService>();
         _email = new Mock<IEmailService>();
+        _mailOrganization = new Mock<IEmailOrganizationContext>();
         _unitOfWork = new Mock<IUnitOfWork>();
         _sut = new CampEnrollmentService(_camps.Object, _enrollments.Object, _forms.Object,
             _payments.Object, _paymentRepo.Object,
-            _unitOfWork.Object, _mollieConnect.Object, _email.Object,
+            _unitOfWork.Object, _mollieConnect.Object, _email.Object, _mailOrganization.Object,
             NullLogger<CampEnrollmentService>.Instance);
     }
 
@@ -101,6 +103,8 @@ public class CampEnrollmentServiceTests
         _email.Verify(e => e.SendCampEnrollmentConfirmedAsync(
             It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
             It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()), Times.Once);
+        // Publiek formulier zonder tenant: de bevestigingsmail hoort bij de club van het kamp.
+        _mailOrganization.Verify(m => m.Use(_orgId), Times.Once);
     }
 
     // ── ChoosePaymentAsync ───────────────────────────────────────────────────

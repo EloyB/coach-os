@@ -1,10 +1,8 @@
 import { CourtLines } from "@/components/ui/court-lines";
 import { LogoMark } from "@/components/ui/logo-mark";
-import { Mono } from "@/components/ui/mono";
 import { SlashLabel } from "@/components/ui/slash-label";
 
 interface AuthBrandPanelProps {
-  version: string;
   eyebrow: string;
   headline: [string, string, string];
   tagline: string;
@@ -14,7 +12,6 @@ interface AuthBrandPanelProps {
 
 /** Linker brandingpaneel van de auth-pagina's — zelfde opbouw als de login-pagina. */
 export function AuthBrandPanel({
-  version,
   eyebrow,
   headline,
   tagline,
@@ -30,22 +27,21 @@ export function AuthBrandPanel({
         style={{ background: "radial-gradient(closest-side, rgba(45,80,22,.55), transparent)" }}
       />
 
-      <div className="relative z-10 flex items-center gap-2.5">
-        <LogoMark className="h-[30px] w-[30px]" markPx={22} />
-        <span className="text-white font-bold text-base">CoachOS</span>
-        <Mono className="ml-auto text-[10.5px] text-[#8a8377]">{version}</Mono>
+      <div className="relative z-10 flex items-center gap-3">
+        <LogoMark className="h-[44px] w-[44px] rounded-lg" markPx={32} />
+        <span className="text-white font-bold text-xl">CoachOS</span>
       </div>
 
       <div className="relative z-10">
         <SlashLabel className="text-tennis-lime mb-2.5">{eyebrow}</SlashLabel>
-        <h1 className="text-[34px] font-extrabold text-white leading-[1.05] tracking-tight mb-3">
+        <h1 className="text-[42px] font-extrabold text-white leading-[1.05] tracking-tight mb-3">
           {headline[0]}
           <br />
           {headline[1]}
           <br />
           <span className="text-tennis-lime">{headline[2]}</span>
         </h1>
-        <p className="text-[13px] text-[#a8a195] max-w-[300px] leading-relaxed">{tagline}</p>
+        <p className="text-base text-[#a8a195] max-w-[460px] leading-relaxed">{tagline}</p>
       </div>
 
       <div className="relative z-10">{children}</div>

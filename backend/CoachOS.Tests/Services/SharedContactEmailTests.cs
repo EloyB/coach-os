@@ -96,6 +96,7 @@ public class SharedContactEmailTests
             _userLookup.Object,
             _emailOutboxRepository.Object,
             _priceRepo.Object,
+            CoachOS.Tests.TestHelpers.ScheduleAssignmentRepositoryStub.NoneAwaitingConfirmation(),
             _unitOfWork.Object,
             _mapper,
             _logger.Object,

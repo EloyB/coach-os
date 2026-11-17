@@ -1,5 +1,7 @@
 using CoachOS.Application.Billing.DTOs;
 using CoachOS.Application.Billing.Validators;
+using CoachOS.Application.Subscriptions.DTOs;
+using CoachOS.Application.Subscriptions.Validators;
 using AwesomeAssertions;
 using FluentValidation.Results;
 using NUnit.Framework;
@@ -50,4 +52,20 @@ public class BillingRequestValidatorTests
     [TestCase(1, 1, 3, false)]
     public void Checkout_ValidatesEnumValues(int plan, int interval, int method, bool valid)
         => new CheckoutRequestValidator().Validate(new CheckoutRequest(plan, interval, method)).IsValid.Should().Be(valid);
+
+    [TestCase("300", true)]
+    [TestCase("99.99", true)]
+    [TestCase("99.9", true)]
+    [TestCase("99.999", false)]
+    [TestCase("0.001", false)]
+    public void AssignDeal_PriceHasAtMostTwoDecimals(string price, bool valid)
+    {
+        AssignDealRequest request = new(2, decimal.Parse(price, System.Globalization.CultureInfo.InvariantCulture), "2027-06-30");
+
+        ValidationResult result = new AssignDealRequestValidator().Validate(request);
+
+        result.IsValid.Should().Be(valid);
+        if (!valid)
+            result.Errors.Should().Contain(e => e.PropertyName == nameof(AssignDealRequest.Price));
+    }
 }

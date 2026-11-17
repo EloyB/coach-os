@@ -115,6 +115,38 @@ function dateInputClass(hasError: boolean) {
   return `${inputClass(hasError)} appearance-none min-w-0`;
 }
 
+// Legende: icoon in een gekleurde ring + label, zodat elk niveau ook zonder
+// kleur (kleurenblindheid) herkenbaar is aan zijn vorm.
+function PrefLegend() {
+  const t = useTranslations("enrollments");
+  const items = [
+    { icon: "check", color: "#22c55e", label: t("pref_preferred") },
+    { icon: "question", color: "#f97316", label: t("pref_available") },
+    { icon: "x", color: "#ef4444", label: t("pref_unavailable") },
+  ] as const;
+  return (
+    <>
+      {items.map((it) => (
+        <div key={it.label} className="flex items-center gap-1.5">
+          <span
+            className="inline-flex h-5 w-5 items-center justify-center rounded-full border-2"
+            style={{ borderColor: it.color, color: it.color }}
+          >
+            {it.icon === "check" ? (
+              <Check size={11} strokeWidth={3} />
+            ) : it.icon === "question" ? (
+              <span className="text-[10px] font-bold leading-none">?</span>
+            ) : (
+              <X size={11} strokeWidth={3} />
+            )}
+          </span>
+          {it.label}
+        </div>
+      ))}
+    </>
+  );
+}
+
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function EnrollPage() {
@@ -542,37 +574,6 @@ export default function EnrollPage() {
   }
 
   // ─── Preference button component ────────────────────────────────────────
-
-  // Legende: icoon in een gekleurde ring + label, zodat elk niveau ook zonder
-  // kleur (kleurenblindheid) herkenbaar is aan zijn vorm.
-  function PrefLegend() {
-    const items = [
-      { icon: "check", color: "#22c55e", label: t("pref_preferred") },
-      { icon: "question", color: "#f97316", label: t("pref_available") },
-      { icon: "x", color: "#ef4444", label: t("pref_unavailable") },
-    ] as const;
-    return (
-      <>
-        {items.map((it) => (
-          <div key={it.label} className="flex items-center gap-1.5">
-            <span
-              className="inline-flex h-5 w-5 items-center justify-center rounded-full border-2"
-              style={{ borderColor: it.color, color: it.color }}
-            >
-              {it.icon === "check" ? (
-                <Check size={11} strokeWidth={3} />
-              ) : it.icon === "question" ? (
-                <span className="text-[10px] font-bold leading-none">?</span>
-              ) : (
-                <X size={11} strokeWidth={3} />
-              )}
-            </span>
-            {it.label}
-          </div>
-        ))}
-      </>
-    );
-  }
 
   function PrefButton({
     groupKey,

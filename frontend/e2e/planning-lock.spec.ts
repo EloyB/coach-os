@@ -92,7 +92,6 @@ test.describe("planning assignment locking", () => {
 
     await page.goto(`/dashboard/lessons/${SERIES_ID}/planning`);
 
-    await expect(page.getByText("Zet een volledige groep vast zodra het voorstel klopt")).toBeVisible();
     // Open de "Toegewezen"-sectie (default ingeklapt) en zet de groep vast.
     await page.getByRole("button", { name: /^Toegewezen/ }).click();
     await page.getByRole("button", { name: "Vastzetten" }).click();
@@ -108,11 +107,11 @@ test.describe("planning assignment locking", () => {
 
     await page.goto(`/dashboard/lessons/${SERIES_ID}/planning`);
 
-    // De vastzet-teller in de instructiebanner toont de vergrendelde groep.
-    await expect(page.getByText("1 vastgezet")).toBeVisible();
-    // In de "Toegewezen"-sectie kan een vergrendelde groep weer vrijgegeven worden.
+    // In de "Toegewezen"-sectie kan een vergrendelde groep weer vrijgegeven
+    // worden (en niet opnieuw vastgezet).
     await page.getByRole("button", { name: /^Toegewezen/ }).click();
     await expect(page.getByRole("button", { name: "Vrijgeven" }).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: "Vastzetten" })).toHaveCount(0);
   });
 
   test("offers a proposed group definitively and calls send-confirmation endpoint", async ({ page }) => {

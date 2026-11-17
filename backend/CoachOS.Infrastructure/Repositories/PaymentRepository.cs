@@ -85,17 +85,19 @@ public class PaymentRepository(ApplicationDbContext context) : IPaymentRepositor
             .FirstOrDefaultAsync(ct);
     }
 
-    public async Task<Payment?> GetLatestPendingCashByCampEnrollmentIdAsync(
+    public async Task<Payment?> GetLatestOpenOrFailedByCampEnrollmentIdAsync(
         Guid campEnrollmentId, Guid organizationId, CancellationToken ct = default)
     {
         // Getrackt (geen AsNoTracking): de caller muteert Status/PaidAt en slaat op.
-        return await context.Payments
+        // Bewust enkel de meest recente betaling: een mislukte poging die nadien alsnog
+        // online betaald werd, mag niet opnieuw afgerekend worden.
+        var latest = await context.Payments
             .Where(p => p.CampEnrollmentId == campEnrollmentId
-                && p.OrganizationId == organizationId
-                && p.Method == PaymentMethod.Cash
-                && p.Status == PaymentStatus.Pending)
+                && p.OrganizationId == organizationId)
             .OrderByDescending(p => p.CreatedAt)
             .FirstOrDefaultAsync(ct);
+
+        return latest?.Status is PaymentStatus.Pending or PaymentStatus.Failed ? latest : null;
     }
 
     public async Task<Payment?> GetLatestPendingCashByEnrollmentIdAsync(

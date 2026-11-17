@@ -84,4 +84,19 @@ public class ScheduleAssignmentRepository(ApplicationDbContext context) : ISched
                 .SetProperty(a => a.Status, ScheduleAssignmentStatus.AwaitingConfirmation)
                 .SetProperty(a => a.UpdatedAt, DateTime.UtcNow), ct);
     }
+
+    public async Task<HashSet<Guid>> GetAwaitingConfirmationParticipantIdsAsync(
+        Guid lessonSerieId, Guid organizationId, CancellationToken ct = default)
+    {
+        var ids = await context.ScheduleAssignments
+            .AsNoTracking()
+            .Where(a => a.LessonSerieId == lessonSerieId
+                && a.OrganizationId == organizationId
+                && a.Status == ScheduleAssignmentStatus.AwaitingConfirmation)
+            .Select(a => a.EnrollmentGroupId ?? a.EnrollmentId)
+            .Where(id => id != null)
+            .ToListAsync(ct);
+
+        return ids.Select(id => id!.Value).ToHashSet();
+    }
 }

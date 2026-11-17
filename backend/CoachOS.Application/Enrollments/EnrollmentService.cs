@@ -29,6 +29,7 @@ public class EnrollmentService(
     IUserLookupService userLookup,
     IEmailOutboxRepository emailOutboxRepository,
     ILessonSeriePriceRepository priceRepo,
+    IScheduleAssignmentRepository scheduleAssignmentRepo,
     IUnitOfWork unitOfWork,
     ApplicationMapper mapper,
     ILogger<EnrollmentService> logger,
@@ -123,6 +124,10 @@ public class EnrollmentService(
         var paymentByEnrollment = await paymentRepo.GetLatestByEnrollmentIdsAsync(
             enrollments.Select(e => e.Id), ct);
 
+        // Solo: id van de inschrijving; groep: id van de groep (één toewijzing per groep).
+        var awaitingConfirmation = await scheduleAssignmentRepo.GetAwaitingConfirmationParticipantIdsAsync(
+            lessonSeriesId, organizationId, ct);
+
         var dtos = enrollments.Select(e => new LessonSerieEnrollmentDto
         {
             Id = e.Id,
@@ -152,6 +157,7 @@ public class EnrollmentService(
             PaymentAmount = paymentByEnrollment.GetValueOrDefault(e.Id)?.Amount,
             PaidAt = paymentByEnrollment.GetValueOrDefault(e.Id)?.PaidAt,
             MolliePaymentId = paymentByEnrollment.GetValueOrDefault(e.Id)?.MolliePaymentId,
+            IsAwaitingConfirmation = awaitingConfirmation.Contains(e.EnrollmentGroupId ?? e.Id),
             FormResponses = e.FormResponses
                 .OrderBy(r => r.FormField.Order)
                 .Select(r => new EnrollmentResponseItemDto

@@ -4,6 +4,7 @@ import {
   apiLogin,
   authHeaders,
   loginUi,
+  gotoPublic,
   type LoginResult,
 } from "./live-helpers";
 
@@ -107,7 +108,7 @@ test.describe("Live UI — publiek inschrijfformulier toont enkel toegelaten ins
   test("solo-only reeks toont geen groepskeuze op de enroll-pagina", async ({
     page,
   }) => {
-    await page.goto(`/enroll/${soloOnlySeriesId}`);
+    await gotoPublic(page, `/enroll/${soloOnlySeriesId}`);
 
     // Formulier moet effectief geladen zijn.
     await expect(page.getByLabel("Geboortedatum")).toBeVisible();
@@ -123,7 +124,7 @@ test.describe("Live UI — publiek inschrijfformulier toont enkel toegelaten ins
   test("group-only reeks toont geen solokeuze op de enroll-pagina", async ({
     page,
   }) => {
-    await page.goto(`/enroll/${groupOnlySeriesId}`);
+    await gotoPublic(page, `/enroll/${groupOnlySeriesId}`);
 
     await expect(page.getByLabel("Geboortedatum")).toBeVisible();
 

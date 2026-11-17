@@ -75,6 +75,12 @@ export interface LessonSeriesEnrollmentDto {
   paidAt: string | null;
   /** Mollie-referentie (tr_...) om de betaling in het Mollie-dashboard terug te vinden. */
   molliePaymentId: string | null;
+  /**
+   * Heeft een aangeboden lesmoment dat nog op bevestiging van de leerling wacht (solo of
+   * via de groep). "Markeer als betaald" bevestigt het dan namens de leerling, ook al
+   * bestaat er nog geen betaling.
+   */
+  isAwaitingConfirmation: boolean;
   formResponses: EnrollmentResponseItem[];
 }
 

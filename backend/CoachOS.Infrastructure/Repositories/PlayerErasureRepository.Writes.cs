@@ -164,7 +164,7 @@ public sealed partial class PlayerErasureRepository
             (x.EnrollmentId == id || assignmentIds.Contains(x.ScheduleAssignmentId))).ExecuteDeleteAsync(ct);
         await db.ScheduleAssignments.Where(x => x.OrganizationId == organizationId &&
             (x.EnrollmentId == id || (removeGroup && x.EnrollmentGroupId == groupId))).ExecuteDeleteAsync(ct);
-        await DeleteCompletedMailAsync(organizationId, id, ct);
+        await DeleteFinishedMailAsync(organizationId, PrivacyErasureKind.Enrollment, id, ct);
     }
 
     private async Task DeleteCampEnrollmentAsync(Guid organizationId, PlayerErasurePlan plan, CancellationToken ct)
@@ -191,10 +191,22 @@ public sealed partial class PlayerErasureRepository
     {
         await db.CampFormResponses.Where(x => x.CampEnrollmentId == id && x.CampEnrollment.OrganizationId == organizationId &&
             x.CampFormField.CampEnrollmentForm.OrganizationId == organizationId).ExecuteDeleteAsync(ct);
-        await DeleteCompletedMailAsync(organizationId, id, ct);
+        await DeleteFinishedMailAsync(organizationId, PrivacyErasureKind.CampEnrollment, id, ct);
     }
 
-    private async Task DeleteCompletedMailAsync(Guid organizationId, Guid enrollmentId, CancellationToken ct)
-        => await db.EmailOutboxMessages.Where(x => x.OrganizationId == organizationId &&
-            x.EnrollmentId == enrollmentId && x.Status == EmailOutboxStatuses.Completed).ExecuteDeleteAsync(ct);
+    /// <summary>
+    /// Afgeronde mails over deze speler, ook die zonder inschrijving (via het adres): afgeleverd
+    /// én definitief mislukt. Een mislukte mail houdt naam en adres bij en wordt nooit meer
+    /// verstuurd, dus gaat hij mee weg. Wachtende mails blokkeren het wissen al vooraf
+    /// (<c>HasPendingMailAsync</c>). Moet vóór het wissen of anonimiseren van de inschrijving
+    /// lopen: daarna is het adres weg.
+    /// </summary>
+    private async Task DeleteFinishedMailAsync(
+        Guid organizationId, PrivacyErasureKind kind, Guid enrollmentId, CancellationToken ct)
+    {
+        List<string> addresses = await LoadMailAddressesAsync(organizationId, kind, enrollmentId, ct);
+        await MailAbout(organizationId, enrollmentId, addresses)
+            .Where(x => x.Status == EmailOutboxStatuses.Completed || x.Status == EmailOutboxStatuses.Failed)
+            .ExecuteDeleteAsync(ct);
+    }
 }

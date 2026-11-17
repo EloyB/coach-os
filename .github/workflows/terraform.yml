@@ -67,9 +67,9 @@ jobs:
       TF_VAR_ssh_public_key:       ${{ secrets.GHA_DEPLOY_SSH_PUBLIC_KEY }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: opentofu/setup-opentofu@v1
+      - uses: opentofu/setup-opentofu@v2
         with:
           tofu_version: "1.11.6"
 
@@ -94,7 +94,7 @@ jobs:
 
       - name: Upload plan artifact (consumed by apply job)
         if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.action == 'apply')
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: tfplan
           path: infrastructure/terraform/tfplan
@@ -102,7 +102,7 @@ jobs:
 
       - name: Post plan to PR
         if: github.event_name == 'pull_request' && always()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const fs = require('fs');
@@ -146,9 +146,9 @@ jobs:
       TF_VAR_ssh_public_key:       ${{ secrets.GHA_DEPLOY_SSH_PUBLIC_KEY }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: opentofu/setup-opentofu@v1
+      - uses: opentofu/setup-opentofu@v2
         with:
           tofu_version: "1.11.6"
 
@@ -156,7 +156,7 @@ jobs:
         run: tofu init -input=false
 
       - name: Download plan artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: tfplan
           path: infrastructure/terraform/

@@ -1,3 +1,4 @@
+using CoachOS.API.Extensions;
 using CoachOS.Application.Billing;
 using CoachOS.Domain.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -34,7 +35,7 @@ public class MollieBillingWebhookEndpoint : IEndpoint
                 return Results.StatusCode(BillingWebhookResponses.StatusCodeFor(result));
             })
             .AllowAnonymous()
-            .RequireRateLimiting("public")
+            .RequireRateLimiting(WebhookRateLimits.MolliePolicy)
             .DisableAntiforgery()
             .WithTags("Webhooks");
     }

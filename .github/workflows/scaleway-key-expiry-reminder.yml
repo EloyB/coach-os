@@ -1,0 +1,58 @@
+name: Infrastructure — Herinnering Scaleway API-keys
+
+# Scaleway geeft elke API-key een vervaldatum (standaard 1 jaar na aanmaak). Daarna
+# falen deploys, Terraform, mail, de backup of de API zelf. Deze workflow vraagt
+# maandelijks alle CoachOS-keys op (scripts/ci/scaleway_key_expiry.py) en opent per
+# key die binnen REMIND_DAYS dagen vervalt één issue met de stappen om te vervangen.
+#
+# Gebruikt de Terraform-CI-key (SCALEWAY_TF_*): die heeft IAM-rechten op
+# organisatieniveau, nodig om alle API-keys te kunnen lezen.
+
+on:
+  schedule:
+    - cron: '0 7 1 * *' # de 1e van elke maand, 07:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Vervaldata controleren
+        id: check
+        env:
+          SCW_SECRET_KEY: ${{ secrets.SCALEWAY_TF_SECRET_KEY }}
+          SCW_ORGANIZATION_ID: ${{ secrets.SCALEWAY_DEFAULT_ORGANIZATION_ID }}
+          SCW_PROJECT_ID: ${{ secrets.SCALEWAY_PROJECT_ID }}
+          REMIND_DAYS: '45'
+        run: python3 scripts/ci/scaleway_key_expiry.py > expiring.jsonl
+
+      - name: Issues openen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if [[ ! -s expiring.jsonl ]]; then
+            echo "Geen keys die binnen 45 dagen vervallen."
+            exit 0
+          fi
+
+          while IFS= read -r line; do
+            title=$(jq -r .title <<< "$line")
+            body=$(jq -r .body <<< "$line")
+
+            existing=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --limit 200 --json title \
+              | jq --arg t "$title" '[.[] | select(.title == $t)] | length')
+            if (( existing > 0 )); then
+              echo "Bestaat al: $title"
+              continue
+            fi
+
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body "$body"
+          done < expiring.jsonl

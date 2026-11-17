@@ -97,6 +97,54 @@ public class SuperAdminSubscriptionServiceTests
     }
 
     [Test]
+    public async Task AssignDeal_OverPaidRunningPeriod_Conflict()
+    {
+        (Organization org, _) = await _ctx.SeedOrganizationAsync(SubscriptionStatus.Legacy);
+        await _sut.AssignDealAsync(org.Id, Deal(300m, "2027-10-16"));
+        SubscriptionPayment payment = (await _ctx.ReloadPaymentsAsync(org.Id)).Single();
+        _ctx.Db.ChangeTracker.Clear();
+        await _sut.MarkPaymentPaidAsync(org.Id, payment.Id);
+        _ctx.Db.ChangeTracker.Clear();
+
+        Result<SubscriptionDto> result = await _sut.AssignDealAsync(org.Id, Deal(0m, "2027-12-31"));
+
+        result.Errors[0].Code.Should().Be(ErrorCodes.Conflict);
+        result.Errors[0].Message.Should().Contain("16/10/2027");
+        Subscription subscription = await _ctx.ReloadSubscriptionAsync(org.Id);
+        subscription.Price.Should().Be(300m);
+        subscription.CurrentPeriodEnd.Should().Be(new DateOnly(2027, 10, 16));
+    }
+
+    [Test]
+    public async Task AssignDeal_UnpaidRunningDeal_IsReplaced()
+    {
+        (Organization org, _) = await _ctx.SeedOrganizationAsync(SubscriptionStatus.Legacy);
+        await _sut.AssignDealAsync(org.Id, Deal(300m, "2027-10-16"));
+        _ctx.Db.ChangeTracker.Clear();
+
+        Result<SubscriptionDto> result = await _sut.AssignDealAsync(org.Id, Deal(0m, "2027-12-31"));
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Test]
+    public async Task AssignDeal_PaidPeriodAlreadyOver_IsAllowed()
+    {
+        (Organization org, _) = await _ctx.SeedOrganizationAsync(SubscriptionStatus.Legacy);
+        await _sut.AssignDealAsync(org.Id, Deal(300m, "2026-10-20"));
+        SubscriptionPayment payment = (await _ctx.ReloadPaymentsAsync(org.Id)).Single();
+        _ctx.Db.ChangeTracker.Clear();
+        await _sut.MarkPaymentPaidAsync(org.Id, payment.Id);
+        _ctx.Db.ChangeTracker.Clear();
+        _ctx.Time.Advance(TimeSpan.FromDays(4));
+
+        Result<SubscriptionDto> result = await _sut.AssignDealAsync(org.Id, Deal(0m, "2027-12-31"));
+
+        result.IsSuccess.Should().BeTrue();
+        (await _ctx.ReloadSubscriptionAsync(org.Id)).CurrentPeriodEnd.Should().Be(new DateOnly(2027, 12, 31));
+    }
+
+    [Test]
     public async Task AssignDeal_EndDateNotInFuture_Validation()
     {
         (Organization org, _) = await _ctx.SeedOrganizationAsync(SubscriptionStatus.Legacy);

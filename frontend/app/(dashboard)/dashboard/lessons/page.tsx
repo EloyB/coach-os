@@ -14,7 +14,7 @@ import { useClientValue } from "@/lib/hooks/use-client-value";
 
 function formatDateRange(start: string, end: string): string {
   const fmt = (d: string) => {
-    const [y, m, day] = d.split("-");
+    const [, m, day] = d.split("-");
     const months = ["jan", "feb", "mrt", "apr", "mei", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
     return `${day} ${months[parseInt(m, 10) - 1]}`;
   };

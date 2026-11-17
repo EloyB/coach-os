@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Euro, Info, Plus, Trash2 } from "lucide-react";
@@ -63,11 +63,14 @@ export function PriceMatrixSection({
     queryFn: () => getLessonSeriePrices(seriesId),
   });
 
-  useEffect(() => {
-    if (!prices) return;
+  // Drafts opnieuw vullen zodra er (nieuwe) serverdata is; tijdens render i.p.v. in een
+  // effect (https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes).
+  const [syncedPrices, setSyncedPrices] = useState<typeof prices>(undefined);
+  if (prices && prices !== syncedPrices) {
+    setSyncedPrices(prices);
     setDrafts(prices.map(toDraft));
     setDirty(false);
-  }, [prices]);
+  }
 
   function update(id: string, patch: Partial<PriceDraft>) {
     setDrafts((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));

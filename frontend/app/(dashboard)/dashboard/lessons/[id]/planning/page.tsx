@@ -82,6 +82,7 @@ import {
   canEditEnrollment,
   isEnrollmentManager,
 } from "@/lib/auth";
+import { useAuthUser } from "@/lib/hooks/use-auth-user";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -101,16 +102,12 @@ export default function PlanningPage({
   const router = useRouter();
   const queryClient = useQueryClient();
   // Hoofdtrainer = read-only: enkel de planning raadplegen, geen bewerkacties.
-  // Reactief via effect zodat het na hydration klopt (localStorage is er niet bij SSR).
-  const [readOnly, setReadOnly] = useState(false);
+  // useAuthUser is null tijdens SSR/hydration (localStorage is er dan niet), daarna de gebruiker.
+  const authUser = useAuthUser() ?? null;
+  const readOnly = isHeadTrainerViewer(authUser);
   // Prijs/inschrijving bewerken is Admin-only; lid verwijderen mag ook een hoofdtrainer.
-  const [canEdit, setCanEdit] = useState(false);
-  const [canManage, setCanManage] = useState(false);
-  useEffect(() => {
-    setReadOnly(isHeadTrainerViewer());
-    setCanEdit(canEditEnrollment());
-    setCanManage(isEnrollmentManager());
-  }, []);
+  const canEdit = canEditEnrollment(authUser);
+  const canManage = isEnrollmentManager(authUser);
 
   const { data: series } = useQuery({
     queryKey: ["lessonSeries", id],
@@ -300,7 +297,7 @@ export default function PlanningPage({
   const [addingSlot, setAddingSlot] = useState(false);
   const [editingSlot, setEditingSlot] = useState<WeekSlotEditData | null>(null);
   // Geselecteerde dag voor de mobiele dag-weergave (0=Ma .. 6=Zo).
-  const [selectedDay, setSelectedDay] = useState(0);
+  const [pickedDay, setPickedDay] = useState(0);
   // Mobiele weergave (< sm): toont één dag i.p.v. de volledige week-grid.
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
@@ -498,11 +495,10 @@ export default function PlanningPage({
   }, [planning]);
 
   // Houd de geselecteerde dag geldig zodra de slot-dagen bekend/gewijzigd zijn.
-  useEffect(() => {
-    if (daysWithSlots.length > 0 && !daysWithSlots.includes(selectedDay)) {
-      setSelectedDay(daysWithSlots[0]);
-    }
-  }, [daysWithSlots, selectedDay]);
+  const selectedDay =
+    daysWithSlots.length > 0 && !daysWithSlots.includes(pickedDay)
+      ? daysWithSlots[0]
+      : pickedDay;
 
   // Toegewezen eenheden (solo of groep), met hun slot(s) — één rij per persoon/groep.
   const assignedUnits = useMemo(() => {
@@ -1121,7 +1117,7 @@ export default function PlanningPage({
                 <button
                   key={d}
                   type="button"
-                  onClick={() => setSelectedDay(d)}
+                  onClick={() => setPickedDay(d)}
                   className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
                     d === selectedDay
                       ? "bg-tennis-green text-white"

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { ChevronRight, Clock } from "lucide-react";
 
-import { getMyLessons, type StudentLesson } from "@/lib/api/student";
+import { getMyLessons } from "@/lib/api/student";
 import { InkHeroCard } from "@/components/ui/ink-hero-card";
 import { SlashLabel } from "@/components/ui/slash-label";
 import { Mono } from "@/components/ui/mono";

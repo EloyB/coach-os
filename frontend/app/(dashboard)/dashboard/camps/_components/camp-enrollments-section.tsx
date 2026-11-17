@@ -174,8 +174,19 @@ function DuplicateBadge() {
   );
 }
 
-function isCashPending(e: CampEnrollmentDto): boolean {
-  return e.paymentMethod === "Cash" && e.paymentStatus === "Pending";
+// Methode-onafhankelijk, zoals bij lessenreeksen: ook een online-betaling die bleef
+// openstaan of mislukte, kan nadien cash of via overschrijving betaald zijn. Bij een
+// mislukte betaling registreert de backend een nieuwe handmatige betaling. Wacht de
+// inschrijving op betaling zonder dat er al een betaling is (nog geen betaalmethode
+// gekozen), dan registreert de backend meteen een betaalde cash-betaling; enkel voor
+// wie betaalt (solo of groepsleider), want groepsleden hebben geen eigen betaling.
+function canMarkCampPaid(e: CampEnrollmentDto): boolean {
+  if (e.status === "Cancelled") return false;
+  if (e.paymentStatus === "Pending" || e.paymentStatus === "Failed") return true;
+  const ownsPayment = e.enrollmentGroupId == null || e.isGroupLeader;
+  return (
+    ownsPayment && e.status === "PendingPayment" && e.paymentStatus == null
+  );
 }
 
 // ─── Section headers ─────────────────────────────────────────────────────────
@@ -383,7 +394,7 @@ function ActionsMenu({
           <Eye size={13} />
           {t("viewDetails")}
         </button>
-        {isCashPending(enrollment) && (
+        {canMarkCampPaid(enrollment) && (
           <button
             type="button"
             disabled={isMarkingPaid}
@@ -453,7 +464,7 @@ function GroupActionsMenu({
   onAddMember: () => void;
 }) {
   const t = useTranslations("campEnrollmentsTable");
-  const canMarkPaid = isCashPending(leader);
+  const canMarkPaid = canMarkCampPaid(leader);
   if (!canMarkPaid && !canCancel && !canAddMember) return null;
   return (
     <Popover
@@ -621,7 +632,7 @@ function PersonRow({
         markPaidLabel={markPaidLabel}
         open={detailOpen}
         onOpenChange={setDetailOpen}
-        canMarkPaid={isCashPending(enrollment)}
+        canMarkPaid={canMarkCampPaid(enrollment)}
         isMarkingPaid={markPaidMutation.isPending}
         onMarkPaid={() => markPaidMutation.mutate()}
       />

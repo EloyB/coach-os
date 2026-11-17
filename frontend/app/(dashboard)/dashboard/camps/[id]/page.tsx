@@ -1,6 +1,7 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useState } from "react";
+import { useClientValue } from "@/lib/hooks/use-client-value";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -116,11 +117,7 @@ export default function CampDetailPage({
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [deleteErrors, setDeleteErrors] = useState<string[]>([]);
-  const [isAdmin, setIsAdmin] = useState(false);
-
-  useEffect(() => {
-    setIsAdmin(getAuthUser()?.role === "Admin");
-  }, []);
+  const isAdmin = useClientValue(() => getAuthUser()?.role === "Admin") ?? false;
 
   const {
     data: camp,

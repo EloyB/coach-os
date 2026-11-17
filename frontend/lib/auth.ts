@@ -35,14 +35,12 @@ export function isStudent(): boolean {
  * De frontend gebruikt dit om bewerk-/actieknoppen te verbergen (de backend blijft
  * de echte poortwachter).
  */
-export function isHeadTrainerViewer(): boolean {
-  const u = getAuthUser();
+export function isHeadTrainerViewer(u: AuthUser | null = getAuthUser()): boolean {
   return u?.role === "Trainer" && (u?.headTrainerClubIds?.length ?? 0) > 0;
 }
 
-export function isEnrollmentManager(): boolean {
-  const u = getAuthUser();
-  return u?.role === "Admin" || isHeadTrainerViewer();
+export function isEnrollmentManager(u: AuthUser | null = getAuthUser()): boolean {
+  return u?.role === "Admin" || isHeadTrainerViewer(u);
 }
 
 /**
@@ -50,8 +48,8 @@ export function isEnrollmentManager(): boolean {
  * onderliggende endpoint is Admin-only, dus hoofdtrainers krijgen deze knoppen
  * niet te zien i.p.v. een gegarandeerde 403 bij het opslaan.
  */
-export function canEditEnrollment(): boolean {
-  return getAuthUser()?.role === "Admin";
+export function canEditEnrollment(u: AuthUser | null = getAuthUser()): boolean {
+  return u?.role === "Admin";
 }
 
 export function isSuperAdmin(): boolean {
@@ -84,9 +82,13 @@ export function removeToken(): void {
   document.cookie = `${AUTH_COOKIE}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
 }
 
-export function getAuthUser(): AuthUser | null {
+/** Ruwe JSON van de ingelogde gebruiker zoals bewaard in localStorage. */
+export function getAuthUserRaw(): string | null {
   if (typeof window === 'undefined') return null;
-  const raw = localStorage.getItem(USER_KEY);
+  return localStorage.getItem(USER_KEY);
+}
+
+export function parseAuthUser(raw: string | null): AuthUser | null {
   if (!raw) return null;
   try {
     return JSON.parse(raw) as AuthUser;
@@ -95,13 +97,26 @@ export function getAuthUser(): AuthUser | null {
   }
 }
 
+export function getAuthUser(): AuthUser | null {
+  return parseAuthUser(getAuthUserRaw());
+}
+
 export function setAuthUser(user: AuthUser): void {
   if (typeof window === 'undefined') return;
   localStorage.setItem(USER_KEY, JSON.stringify(user));
-  // Spiegel de rol in een cookie zodat de Next-middleware role-based redirects
-  // kan doen zonder localStorage te kunnen lezen. NIET security-kritisch — de
-  // backend blijft de uiteindelijke autoriteit (RequireRole/RequireAuthorization).
-  document.cookie = `${ROLE_COOKIE}=${encodeURIComponent(user.role)}; path=/; SameSite=Lax`;
+  syncRoleCookie(user.role);
+}
+
+/**
+ * Spiegel de rol in een cookie zodat de Next-middleware role-based redirects
+ * kan doen zonder localStorage te kunnen lezen. NIET security-kritisch — de
+ * backend blijft de uiteindelijke autoriteit (RequireRole/RequireAuthorization).
+ * De layouts roepen dit ook aan om een verouderde of ontbrekende cookie recht te
+ * zetten vóór ze doorsturen, zodat middleware en layout nooit tegen elkaar in sturen.
+ */
+export function syncRoleCookie(role: string): void {
+  if (typeof window === 'undefined') return;
+  document.cookie = `${ROLE_COOKIE}=${encodeURIComponent(role)}; path=/; SameSite=Lax`;
 }
 
 export function markEmailVerified(): void {

@@ -12,7 +12,6 @@ import axios from "axios";
 import { resetPassword } from "@/lib/api/auth";
 import { CourtLines } from "@/components/ui/court-lines";
 import { LogoMark } from "@/components/ui/logo-mark";
-import { Mono } from "@/components/ui/mono";
 import { SlashLabel } from "@/components/ui/slash-label";
 import {
   Form,
@@ -115,50 +114,25 @@ function ResetPasswordForm() {
           style={{ background: "radial-gradient(closest-side, rgba(45,80,22,.55), transparent)" }}
         />
 
-        {/* Logo + version */}
-        <div className="relative z-10 flex items-center gap-2.5">
-          <LogoMark className="h-[30px] w-[30px]" markPx={22} />
-          <span className="text-white font-bold text-base">CoachOS</span>
-          <Mono className="ml-auto text-[10.5px] text-[#8a8377]">
-            {t("heroVersion")}
-          </Mono>
+        {/* Logo */}
+        <div className="relative z-10 flex items-center gap-3">
+          <LogoMark className="h-[44px] w-[44px] rounded-lg" markPx={32} />
+          <span className="text-white font-bold text-xl">CoachOS</span>
         </div>
 
         {/* Hero copy */}
         <div className="relative z-10">
-          <SlashLabel className="text-tennis-lime mb-2.5">
-            {t("heroRelease")}
-          </SlashLabel>
-          <h1 className="text-[34px] font-extrabold text-white leading-[1.05] tracking-tight mb-3">
+          <h1 className="text-[42px] font-extrabold text-white leading-[1.05] tracking-tight mb-3">
             {t("heroHeadline1")}
             <br />
             {t("heroHeadline2")}{" "}
             <span className="text-tennis-lime">{t("heroHeadline3")}</span>
           </h1>
-          <p className="text-[13px] text-[#a8a195] max-w-[300px] leading-relaxed">
+          <p className="text-base text-[#a8a195] max-w-[460px] leading-relaxed">
             {t("tagline")}
           </p>
         </div>
 
-        {/* Testimonial */}
-        <div className="relative z-10 p-4 bg-white/[.04] rounded-[10px] border border-white/[.08]">
-          <p className="text-[13px] leading-relaxed text-[#e9e4db] font-medium m-0">
-            &ldquo;{t("testimonialQuote")}&rdquo;
-          </p>
-          <div className="flex items-center gap-2.5 mt-3">
-            <div className="w-6 h-6 rounded-full bg-tennis-lime grid place-items-center">
-              <Mono className="text-ink text-[10px] font-bold">SD</Mono>
-            </div>
-            <div>
-              <p className="text-[11px] text-white font-semibold m-0">
-                {t("testimonialName")}
-              </p>
-              <Mono className="text-[10.5px] text-[#8a8377]">
-                {t("testimonialClub")}
-              </Mono>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Right panel — form */}

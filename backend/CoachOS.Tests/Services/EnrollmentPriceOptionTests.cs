@@ -62,6 +62,7 @@ public class EnrollmentPriceOptionTests
             _enrollmentGroupRepo.Object, _paymentRepo.Object, _timeSlotPreferenceRepo.Object,
             _orgSettingsRepo.Object,
             _userLookup.Object, _emailOutboxRepository.Object, _priceRepo.Object,
+            CoachOS.Tests.TestHelpers.ScheduleAssignmentRepositoryStub.NoneAwaitingConfirmation(),
             _unitOfWork.Object, _mapper, _logger.Object,
             TimeProvider.System);
 

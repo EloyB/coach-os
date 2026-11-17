@@ -25,4 +25,12 @@ public interface IScheduleAssignmentRepository
     Task RemoveProposedBySeriesAsync(Guid lessonSerieId, Guid organizationId, CancellationToken ct = default);
 
     Task SetProposedToAwaitingConfirmationAsync(Guid lessonSerieId, Guid organizationId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Ids van de deelnemers met een toewijzing die op bevestiging van de leerling wacht
+    /// (<see cref="Enums.ScheduleAssignmentStatus.AwaitingConfirmation"/>): de
+    /// inschrijvings-id bij een solo-toewijzing, de groeps-id bij een groepstoewijzing.
+    /// </summary>
+    Task<HashSet<Guid>> GetAwaitingConfirmationParticipantIdsAsync(
+        Guid lessonSerieId, Guid organizationId, CancellationToken ct = default);
 }

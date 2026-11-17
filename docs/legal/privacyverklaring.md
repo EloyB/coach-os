@@ -1,9 +1,8 @@
 # Privacyverklaring CoachOS
 
-**Versie:** concept 2026-10 (nog niet in werking)
-**Laatst bijgewerkt:** [DATUM INWERKINGTREDING]
-
-> ⚠️ **Concept — na te lezen door een advocaat (privacyrecht).** Wat nog in de software gebouwd moet worden, staat als **[TE BOUWEN]**.
+**Versie:** 2026-12-01
+**In werking vanaf:** 01/12/2026
+**Laatst bijgewerkt:** 01/12/2026
 
 ## 1. Wie is verantwoordelijk?
 
@@ -23,9 +22,9 @@ Hoe de club je gegevens gebruikt, lees je in de privacyverklaring van de club en
 |---|---|---|---|---|
 | **Clubs en hun gebruikers** (beheerders, trainers) | Naam, e-mailadres, telefoon, naam en adres van de organisatie, rol, inloggegevens (wachtwoord enkel versleuteld), aanvaarde versie van onze voorwaarden | Het account aanmaken en beheren, de dienst leveren, service-e-mails sturen (verificatie, uitnodigingen, herinneringen over de proefperiode) | Uitvoering van de overeenkomst (art. 6.1.b AVG) | Zolang het account bestaat, daarna zoals in artikel 14 van de algemene voorwaarden (export tot 30 dagen, verwijdering na 90 dagen) |
 | **Klanten met een abonnement** | Facturatiegegevens: naam en adres van de organisatie, btw-nummer, contactpersoon, betaalhistoriek | Facturen opmaken en betalingen opvolgen | Uitvoering van de overeenkomst en wettelijke verplichting (boekhouding) | 10 jaar, zoals de boekhoud- en btw-wetgeving vereist |
-| **Wie het contactformulier gebruikt** | Naam, e-mailadres, organisatie en je bericht | Je vraag beantwoorden en je demo of contact opvolgen | Gerechtvaardigd belang (art. 6.1.f AVG): je vraag beantwoorden | Tot 12 maanden na ontvangst van de formulierinzending, niet na latere e-mailcorrespondentie **[TE BOUWEN: gecontroleerde uitrol van de opschoning en afzonderlijke migratie van contactformulierdata naar de CoachOS-API/PostgreSQL]** |
-| **Wie ons rechtstreeks mailt** | Naam, e-mailadres, organisatie en bericht | Je vraag beantwoorden en contact opvolgen | Gerechtvaardigd belang (art. 6.1.f AVG): je vraag beantwoorden | **[INVULLEN: afzonderlijke bewaartermijn voor mailboxcorrespondentie juridisch afstemmen; de goedgekeurde twaalf maanden na ontvangst geldt voor formulieropslag, niet automatisch voor de mailbox]** |
-| **Inschrijvers op de wachtlijst** | E-mailadres en eventueel naam en organisatie | Je verwittigen wanneer CoachOS beschikbaar is | Toestemming (art. 6.1.a AVG); je kan die altijd intrekken | Tot je je uitschrijft, en uiterlijk tot 6 maanden na de lancering **[TE BOUWEN: gecontroleerde uitrol en historische migratie; persoonlijke uitschrijfmail gebouwd in open PR #289, niet uitgerold]** |
+| **Wie het contactformulier gebruikt** | Naam, e-mailadres, organisatie en je bericht | Je vraag beantwoorden en je demo of contact opvolgen | Gerechtvaardigd belang (art. 6.1.f AVG): je vraag beantwoorden | Tot 12 maanden na ontvangst van de formulierinzending; daarna worden ze automatisch verwijderd. Mailen we daarna verder, dan geldt voor die mails de termijn hieronder |
+| **Wie ons rechtstreeks mailt** | Naam, e-mailadres, organisatie en bericht | Je vraag beantwoorden en contact opvolgen | Gerechtvaardigd belang (art. 6.1.f AVG): je vraag beantwoorden | Tot 12 maanden na de laatste uitwisseling. Mails die bij een contract, factuur of betaling horen, bewaren we zolang de wettelijke boekhoudkundige bewaarplicht loopt (10 jaar) |
+| **Inschrijvers op de wachtlijst** | E-mailadres en eventueel naam en organisatie | Je verwittigen wanneer CoachOS beschikbaar is | Toestemming (art. 6.1.a AVG); je kan die altijd intrekken | Tot je je uitschrijft (via de persoonlijke link in je bevestigingsmail), en uiterlijk tot 15/05/2027, zes maanden na de lancering. Daarna wordt de volledige wachtlijst automatisch verwijderd |
 | **Bezoekers van coach-os.be en app.coach-os.be** | IP-adres, browsertype, opgevraagde pagina, tijdstip | Beveiliging, misbruik tegengaan (zoals beperking van het aantal aanvragen) en foutopsporing | Gerechtvaardigd belang (art. 6.1.f AVG): een veilige en werkende dienst | 7 dagen in onze logs |
 
 We verkopen je gegevens niet en gebruiken ze niet voor reclame.

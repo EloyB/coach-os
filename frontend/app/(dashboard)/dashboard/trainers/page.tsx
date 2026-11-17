@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -43,7 +43,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { getAxiosErrorMessages } from "@/lib/utils/api-errors";
 import { getInitials } from "@/lib/utils/initials";
-import { getAuthUser, type AuthUser } from "@/lib/auth";
+import { useAuthUser } from "@/lib/hooks/use-auth-user";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -713,13 +713,9 @@ export default function TrainersPage() {
   const [editTrainer, setEditTrainer] = useState<TrainerDto | null>(null);
   const [roleChange, setRoleChange] = useState<{ trainer: TrainerDto; makeAdmin: boolean } | null>(null);
   const [availabilityTrainer, setAvailabilityTrainer] = useState<TrainerDto | null>(null);
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const user = useAuthUser() ?? null;
   const queryClient = useQueryClient();
   const t = useTranslations("trainers");
-
-  useEffect(() => {
-    setUser(getAuthUser());
-  }, []);
 
   const { data: trainers, isLoading } = useQuery({
     // Beheerpagina: altijd alle leden (ook extra beheerders). Prefix ["trainers"] blijft

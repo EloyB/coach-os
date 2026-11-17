@@ -6,28 +6,28 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 
 import { redeemMagicLink } from "@/lib/api/auth";
-import { setToken, setAuthUser } from "@/lib/auth";
+import { setToken, setAuthUser, setSuperAdminCookie } from "@/lib/auth";
 
 function MagicRedeem() {
   const t = useTranslations("studentAuth");
   const router = useRouter();
   const params = useSearchParams();
-  const [error, setError] = useState<string | null>(null);
+  const token = params.get("token");
+  const [redeemFailed, setRedeemFailed] = useState(false);
+  const error = !token || redeemFailed ? t("invalidLink") : null;
 
   useEffect(() => {
-    const token = params.get("token");
-    if (!token) {
-      setError(t("invalidLink"));
-      return;
-    }
+    if (!token) return;
     redeemMagicLink(token)
       .then((res) => {
         setToken(res.token);
+        // Een achtergebleven super-admin-cookie van een vorige sessie mag de routing niet sturen.
+        setSuperAdminCookie(false);
         setAuthUser({ email: res.email, role: res.role });
         router.replace("/student/lessons");
       })
-      .catch(() => setError(t("invalidLink")));
-  }, [params, router, t]);
+      .catch(() => setRedeemFailed(true));
+  }, [token, router]);
 
   return (
     <div className="min-h-screen flex items-center justify-center p-8 bg-[#FAFAF8]">

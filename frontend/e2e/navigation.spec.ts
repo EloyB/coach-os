@@ -7,19 +7,19 @@ test.describe("Navigation", () => {
     await mockAllDashboardApis(page);
   });
 
-  test("sidebar navigates to lessons page", async ({ page }) => {
+  test("sidebar navigates to lesson series page", async ({ page }) => {
     await page.goto("/dashboard");
 
-    await page.getByRole("link", { name: /Lessen/ }).click();
+    await page.getByRole("navigation").getByRole("link", { name: "Lesreeksen" }).click();
 
-    await expect(page).toHaveURL(/\/dashboard\/lessons/);
-    await expect(page.getByRole("heading", { name: "Lessen", exact: true })).toBeVisible();
+    await expect(page).toHaveURL(/\/dashboard\/lessons$/);
+    await expect(page.getByRole("heading", { name: "Lesreeksen", exact: true })).toBeVisible();
   });
 
   test("sidebar navigates to trainers page", async ({ page }) => {
     await page.goto("/dashboard");
 
-    await page.getByRole("link", { name: /Trainers/ }).click();
+    await page.getByRole("navigation").getByRole("link", { name: "Trainers" }).click();
 
     await expect(page).toHaveURL(/\/dashboard\/trainers/);
   });
@@ -35,17 +35,17 @@ test.describe("Navigation", () => {
   test("sidebar navigates back to dashboard", async ({ page }) => {
     await page.goto("/dashboard/lessons");
 
-    await page.getByRole("link", { name: /Dashboard/ }).click();
+    await page.getByRole("navigation").getByRole("link", { name: "Vandaag" }).click();
 
     await expect(page).toHaveURL(/\/dashboard$/);
   });
 
-  test("logout link exists in sidebar", async ({ page }) => {
+  test("logout button clears the session and returns to login", async ({ page }) => {
     await page.goto("/dashboard");
 
-    // Logout is a Link element in the sidebar
-    const logoutLink = page.getByRole("link", { name: /Uitloggen/ });
-    await expect(logoutLink).toBeVisible();
-    await expect(logoutLink).toHaveAttribute("href", "/login");
+    await page.getByRole("button", { name: "Uitloggen" }).click();
+
+    await expect(page).toHaveURL(/\/login/);
+    expect(await page.evaluate(() => localStorage.getItem("token"))).toBeNull();
   });
 });

@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 
 namespace CoachOS.API.Extensions;
 
@@ -47,14 +47,7 @@ public static class ConfigurationExtensions
             // colon form ("Email:SmtpHost"). Duplicate every "__"-key as
             // ":"-key so GetSection<T> / Bind<T> / configuration[...] all work
             // uniformly regardless of which form the caller uses.
-            var normalized = new Dictionary<string, string?>();
-            foreach (var kv in builder.Configuration.AsEnumerable())
-            {
-                if (kv.Key.Contains("__") && !string.IsNullOrEmpty(kv.Value))
-                {
-                    normalized[kv.Key.Replace("__", ":")] = kv.Value;
-                }
-            }
+            var normalized = NormalizeScalewaySecrets(builder.Configuration.AsEnumerable());
             if (normalized.Count > 0)
             {
                 builder.Configuration.AddInMemoryCollection(normalized);
@@ -62,6 +55,39 @@ public static class ConfigurationExtensions
         }
 
         return builder.Configuration;
+    }
+
+    /// <summary>
+    /// Waarde waarmee Terraform een manueel in te vullen secret aanmaakt. Een secret zonder
+    /// versie laat de API crashen bij het opstarten, dus elk manueel secret krijgt eerst deze
+    /// placeholder. De API behandelt hem als "niet ingevuld" (bv. fake-Mollie/fake-Billit).
+    /// </summary>
+    public const string UnsetSecretPlaceholder = "NOT_SET";
+
+    /// <summary>
+    /// Zet elke <c>Sectie__Sleutel</c> om naar <c>Sectie:Sleutel</c>, en maakt secrets die nog op
+    /// <see cref="UnsetSecretPlaceholder"/> staan leeg (in beide vormen).
+    /// </summary>
+    public static Dictionary<string, string?> NormalizeScalewaySecrets(
+        IEnumerable<KeyValuePair<string, string?>> configuration)
+    {
+        var normalized = new Dictionary<string, string?>();
+        foreach (var kv in configuration)
+        {
+            if (!kv.Key.Contains("__") || string.IsNullOrEmpty(kv.Value))
+                continue;
+
+            if (string.Equals(kv.Value.Trim(), UnsetSecretPlaceholder, StringComparison.Ordinal))
+            {
+                normalized[kv.Key] = string.Empty;
+                normalized[kv.Key.Replace("__", ":")] = string.Empty;
+                continue;
+            }
+
+            normalized[kv.Key.Replace("__", ":")] = kv.Value;
+        }
+
+        return normalized;
     }
 
     extension(IServiceCollection services)
@@ -220,6 +246,9 @@ public static class ConfigurationExtensions
                 // Websiteformulieren: per IP, plus een globale noodrem in de GlobalLimiter hieronder.
                 options.AddWebsitePolicies();
 
+                // Mollie-webhooks: eigen, ruime limiet (niet de gedeelde "public").
+                options.AddWebhookPolicies();
+
                 options.AddFixedWindowLimiter("public", limiter =>
                 {
                     limiter.PermitLimit = 30;
@@ -264,19 +293,9 @@ public static class ConfigurationExtensions
                     Description = "Voer je JWT token in. Voorbeeld: eyJhbGci..."
                 });
 
-                options.AddSecurityRequirement(new OpenApiSecurityRequirement
+                options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
                 {
-                    {
-                        new OpenApiSecurityScheme
-                        {
-                            Reference = new OpenApiReference
-                            {
-                                Type = ReferenceType.SecurityScheme,
-                                Id = "Bearer"
-                            }
-                        },
-                        Array.Empty<string>()
-                    }
+                    [new OpenApiSecuritySchemeReference("Bearer", document)] = []
                 });
             });
 
