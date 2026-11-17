@@ -297,6 +297,9 @@
   },
   "enrollmentsTable": {
     "title": "Inschrijvingen",
+    "paymentMethodOnline": "Online",
+    "paymentMethodCash": "Cash of overschrijving",
+    "paymentMethodTransfer": "Overschrijving",
     "searchPlaceholder": "Zoek op naam…",
     "colName": "Naam",
     "colContact": "Contact",
@@ -393,7 +396,7 @@
     "enrolledAt": "Ingeschreven op",
     "paymentMethod": "Betaalmethode",
     "paymentMethodOnline": "Online (Bancontact/iDEAL)",
-    "paymentMethodCash": "Overschrijving",
+    "paymentMethodCash": "Cash of overschrijving",
     "paymentMethodTransfer": "Overschrijving (handmatig)",
     "markGroupPaid": "Markeer hele groep als betaald",
     "markMemberPaidLabel": "Markeer {name} als betaald",
@@ -486,7 +489,7 @@
     "paymentMethods": {
       "label": "Betaalmethodes",
       "online": "Online betalen (Mollie)",
-      "manual": "Overschrijving",
+      "manual": "Cash of overschrijving",
       "mollieRequired": "Online betalen kan pas nadat je met Mollie verbonden bent.",
       "connectLink": "Verbind Mollie in instellingen"
     },
@@ -647,7 +650,7 @@
     "confirm": "Bevestigen",
     "decline": "Afwijzen",
     "paymentMethod": "Betaalmethode",
-    "cash": "Cash — betaal aan de club",
+    "cash": "Cash of overschrijving — regel je met de club",
     "online": "Online betalen (Mollie)",
     "onlineHelp": "iDEAL, Bancontact, kaart — direct na bevestigen",
     "onlineComingSoon": "binnenkort beschikbaar",
@@ -685,8 +688,8 @@
     "resendError": "E-mail kon niet verzonden worden. Probeer opnieuw of bevestig handmatig.",
     "adminConfirm": "Manueel bevestigen",
     "adminConfirmTitle": "Handmatig bevestigen?",
-    "adminConfirmDesc": "Je bevestigt {name} namens hen en registreert een cashbetaling. De student ontvangt geen e-mail meer. Deze actie kan niet ongedaan gemaakt worden.",
-    "adminConfirmDescGroup": "Je bevestigt {name} namens hen en registreert een cashbetaling (voor {size} personen). De student ontvangt geen e-mail meer. Deze actie kan niet ongedaan gemaakt worden.",
+    "adminConfirmDesc": "Je bevestigt {name} namens hen en registreert een betaling via cash of overschrijving. De student ontvangt geen e-mail meer. Deze actie kan niet ongedaan gemaakt worden.",
+    "adminConfirmDescGroup": "Je bevestigt {name} namens hen en registreert een betaling via cash of overschrijving (voor {size} personen). De student ontvangt geen e-mail meer. Deze actie kan niet ongedaan gemaakt worden.",
     "adminConfirmButton": "Bevestigen",
     "adminConfirmSuccess": "Toewijzing bevestigd."
   },
