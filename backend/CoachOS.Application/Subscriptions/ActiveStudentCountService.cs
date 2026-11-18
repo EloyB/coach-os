@@ -56,7 +56,7 @@ public partial class ActiveStudentCountService(
         return Result<ActiveStudentsDto>.Ok(new ActiveStudentsDto(count, subscription.StudentLimit, periodStart, periodEnd));
     }
 
-    internal static (DateOnly Start, DateOnly End) ResolvePeriod(Subscription subscription, DateOnly today)
+    public static (DateOnly Start, DateOnly End) ResolvePeriod(Subscription subscription, DateOnly today)
     {
         if (subscription.CurrentPeriodStart is DateOnly start && subscription.CurrentPeriodEnd is DateOnly end)
             return (start, end);
