@@ -93,6 +93,7 @@ const editSchema = z
     isActive: z.boolean(),
     minAge: z.number().int().min(0).max(120),
     maxAge: z.number().int().min(0).max(120),
+    minimumAvailableSlots: z.number().int().min(1).max(50),
     allowSoloEnrollment: z.boolean(),
     allowGroupEnrollment: z.boolean(),
     acceptOnlinePayment: z.boolean(),
@@ -124,6 +125,7 @@ function EditSeriesForm({
   onCancel: () => void;
   onSaved: () => void;
 }) {
+  const t = useTranslations("lessonSeries");
   const queryClient = useQueryClient();
   const { data: tennisClubs } = useQuery({
     queryKey: ["tennisClubs"],
@@ -146,6 +148,7 @@ function EditSeriesForm({
         isActive: data.isActive,
         minAge: data.minAge,
         maxAge: data.maxAge,
+        minimumAvailableSlots: data.minimumAvailableSlots,
         allowSoloEnrollment: data.allowSoloEnrollment,
         allowGroupEnrollment: data.allowGroupEnrollment,
         acceptOnlinePayment: data.acceptOnlinePayment,
@@ -282,6 +285,22 @@ function EditSeriesForm({
             />
             <FieldError message={errors.maxAge?.message} />
           </div>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">
+            {t("minimumAvailableSlots")}
+          </label>
+          <input
+            {...register("minimumAvailableSlots", { valueAsNumber: true })}
+            type="number"
+            min={1}
+            max={50}
+            className={inputClass}
+          />
+          <p className="text-xs text-gray-400 mt-1">
+            {t("minimumAvailableSlotsHint")}
+          </p>
+          <FieldError message={errors.minimumAvailableSlots?.message} />
         </div>
         <div className="flex items-center gap-2">
           <input
@@ -1849,6 +1868,7 @@ export default function LessonSeriesDetailPage({
                   isActive: series.isActive,
                   minAge: series.minAge ?? 3,
                   maxAge: series.maxAge ?? 99,
+                  minimumAvailableSlots: series.minimumAvailableSlots ?? 1,
                   allowSoloEnrollment: series.allowSoloEnrollment,
                   allowGroupEnrollment: series.allowGroupEnrollment,
                   acceptOnlinePayment: series.acceptOnlinePayment,

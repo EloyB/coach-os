@@ -26,6 +26,9 @@ public class LessonSerieConfiguration : IEntityTypeConfiguration<LessonSerie>
         builder.Property(ls => ls.MaxAge)
             .HasDefaultValue(99);
 
+        builder.Property(ls => ls.MinimumAvailableSlots)
+            .HasDefaultValue(1);
+
         builder.Property(ls => ls.PaymentMode)
             .IsRequired()
             .HasDefaultValue(Domain.Enums.PaymentMode.Immediate);

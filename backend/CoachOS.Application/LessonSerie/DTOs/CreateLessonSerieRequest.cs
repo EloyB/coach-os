@@ -12,6 +12,7 @@ public record CreateLessonSerieRequest
     public int? MaxRegistrations { get; init; }
     public int MinAge { get; init; } = 3;
     public int MaxAge { get; init; } = 99;
+    public int MinimumAvailableSlots { get; init; } = 1;
     public Guid TennisClubId { get; init; }
     public bool AllowSoloEnrollment { get; init; } = true;
     public bool AllowGroupEnrollment { get; init; } = true;

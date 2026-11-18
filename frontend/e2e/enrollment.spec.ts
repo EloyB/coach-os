@@ -274,6 +274,54 @@ test.describe("Public Enrollment", () => {
       ]);
   });
 
+  test("blocks enrollment below the series minimum of available time slots", async ({
+    page,
+  }) => {
+    const slots = [
+      { id: "cccccccc-0000-0000-0000-000000000001", dayOfWeek: 0, startTime: "10:00", endTime: "11:00", courtName: "Court A", maxStudents: 4 },
+      { id: "cccccccc-0000-0000-0000-000000000002", dayOfWeek: 1, startTime: "10:00", endTime: "11:00", courtName: "Court A", maxStudents: 4 },
+      { id: "cccccccc-0000-0000-0000-000000000003", dayOfWeek: 2, startTime: "10:00", endTime: "11:00", courtName: "Court A", maxStudents: 4 },
+    ];
+
+    await mockPublicApi(page, "GET", `/public/lessonseries/${seriesId}`, {
+      ...TEST_PUBLIC_SERIES,
+      minimumAvailableSlots: 2,
+    });
+    await mockPublicApi(page, "GET", `/public/lessonseries/${seriesId}/form`, null, 204);
+    await mockPublicApi(page, "GET", `/public/lessonseries/${seriesId}/timeslots`, slots);
+
+    let postCount = 0;
+    await page.route(`${API_BASE}/public/lessonseries/${seriesId}/enroll`, (route) => {
+      if (route.request().method() === "POST") {
+        postCount += 1;
+        return route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify("enrollment-id-123"),
+        });
+      }
+      return route.continue();
+    });
+
+    await page.goto(`/enroll/${seriesId}`);
+
+    await expect(page.getByText("Kies minstens 2 tijdvakken waarop je kunt.")).toBeVisible();
+
+    const inputs = page.locator('input[type="text"]');
+    await inputs.nth(0).fill("Sophie");
+    await inputs.nth(1).fill("De Vries");
+    await page.locator('input[type="email"]').fill("sophie@example.be");
+    await page.locator('input[type="tel"]').fill("0470 12 34 56");
+    await page.locator('input[type="date"]').fill("1990-05-12");
+
+    // Slechts één tijdvak gekozen: geblokkeerd met foutmelding.
+    const rows = page.locator(".sm\\:grid");
+    await rows.filter({ hasText: "10:00 — 11:00" }).first().getByRole("radio").first().check({ force: true });
+    await page.getByRole("button", { name: "Inschrijven" }).click();
+    await expect(page.getByRole("alert").filter({ hasText: "Kies minstens 2 tijdvakken" })).toBeVisible();
+    expect(postCount).toBe(0);
+  });
+
   test("shows enrollment form with custom fields", async ({ page }) => {
     const customForm = {
       id: "form-1",

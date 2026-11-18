@@ -405,6 +405,7 @@ def create_simple_series(api: ApiClient, series_specs: list[dict],
             "maxRegistrations": spec["maxRegistrations"],
             "minAge": spec.get("minAge", 3),
             "maxAge": spec.get("maxAge", 99),
+            "minimumAvailableSlots": spec.get("minimumAvailableSlots", 1),
             "weeklyTemplate": template,
             "lessons": lessons,
             "allowSoloEnrollment": spec.get("allowSoloEnrollment", True),
@@ -426,14 +427,27 @@ def simple_enrollments(api: ApiClient, students: list[dict],
         print("   No series created - skipping enrollments.")
         return
     count = 0
+    slot_cache: dict[str, list[str]] = {}
     for student in students:
         target = series_ids[student["seriesIndex"] % len(series_ids)]
+        # Publieke inschrijving vereist minstens `minimumAvailableSlots` tijdvakken
+        # met voorkeur Beschikbaar (1): kies de eerste N weekslots van de reeks.
+        if target not in slot_cache:
+            series = api.get(f"/public/lessonseries/{target}", auth=False) or {}
+            slots = api.get(f"/public/lessonseries/{target}/timeslots", auth=False) or []
+            minimum = series.get("minimumAvailableSlots", 1)
+            slots.sort(key=lambda sl: (sl["dayOfWeek"], sl["startTime"], sl.get("courtName") or ""))
+            slot_cache[target] = [sl["id"] for sl in slots][:minimum]
         body = {
             "studentName":    student["studentName"],
             "studentEmail":   student["studentEmail"],
             "studentPhone":   student["studentPhone"],
             "dateOfBirth":    student["dateOfBirth"],
             "enrollmentType": student.get("enrollmentType", "solo"),
+            "timeSlotPreferences": [
+                {"weeklyTemplateEntryId": slot_id, "preference": 1}
+                for slot_id in slot_cache[target]
+            ],
             "responses":      [],
         }
         # Groepsinschrijving (bv. voor een reeks met allowSoloEnrollment=false).

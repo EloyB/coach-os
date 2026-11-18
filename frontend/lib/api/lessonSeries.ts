@@ -38,6 +38,7 @@ export interface LessonSeriesDto {
   totalCapacity: number;
   minAge: number;
   maxAge: number;
+  minimumAvailableSlots: number;
   createdAt: string;
   lessons: LessonDto[];
   allowSoloEnrollment: boolean;
@@ -71,6 +72,7 @@ export interface UpdateLessonSeriesRequest {
   registrationDeadline?: string;
   minAge: number;
   maxAge: number;
+  minimumAvailableSlots: number;
   allowSoloEnrollment: boolean;
   allowGroupEnrollment: boolean;
   acceptOnlinePayment: boolean;
@@ -240,6 +242,7 @@ export interface CreateLessonSeriesWizardRequest {
   maxRegistrations: number;
   minAge: number;
   maxAge: number;
+  minimumAvailableSlots: number;
   tennisClubId: string;
   startDate: string;
   endDate: string;

@@ -161,6 +161,7 @@ export default function EnrollPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [slotsError, setSlotsError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   // Form values
@@ -300,8 +301,20 @@ export default function EnrollPage() {
     }
   }
 
+  // Minimum aantal tijdvakken (uur-groepen) met "Beschikbaar" (1) of "Voorkeur" (2);
+  // "Niet beschikbaar" (3) telt niet mee. Begrensd door het aantal tijdvakken.
+  const requiredSlots =
+    slotGroups.length > 0
+      ? Math.min(series?.minimumAvailableSlots ?? 1, slotGroups.length)
+      : 0;
+  const availableSlotCount = slotGroups.filter((group) => {
+    const pref = preferences[group.key];
+    return pref === 1 || pref === 2;
+  }).length;
+
   function setPreference(groupKey: string, pref: number) {
     setPreferences((prev) => ({ ...prev, [groupKey]: pref }));
+    setSlotsError(null);
   }
 
   function addGroupMember() {
@@ -425,6 +438,12 @@ export default function EnrollPage() {
       });
     }
     setMemberErrors(mErrors);
+
+    if (availableSlotCount < requiredSlots) {
+      setSlotsError(t("min_slots_error", { count: requiredSlots }));
+      return false;
+    }
+    setSlotsError(null);
 
     const requiresPriceChoice = priceOptions().length > 0;
     if (requiresPriceChoice && !selectedPriceOptionId) {
@@ -1165,6 +1184,11 @@ export default function EnrollPage() {
                       <p className="text-xs text-gray-500 mb-4">
                         {t("availability_desc")}
                       </p>
+                      {requiredSlots > 0 && (
+                        <p className="text-sm font-medium text-gray-800 mb-4">
+                          {t("min_slots_hint", { count: requiredSlots })}
+                        </p>
+                      )}
 
                       {/* Mobile legend — de bolletjes zijn ook kleurgecodeerd (zie PrefButton),
                           dus deze legende bevestigt enkel de betekenis van de kleuren. */}
@@ -1297,6 +1321,12 @@ export default function EnrollPage() {
                           ));
                         })()}
                       </div>
+
+                      {slotsError && (
+                        <p role="alert" className="text-sm text-red-600 mt-3">
+                          {slotsError}
+                        </p>
+                      )}
 
                       {/* Legend — desktop only (mobile has inline labels) */}
                       <div className="hidden sm:flex items-center gap-4 mt-3 text-xs text-gray-500">

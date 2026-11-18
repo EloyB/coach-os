@@ -78,6 +78,7 @@ export function Step3Validation({
   const t = useTranslations("lessonWizard");
   const router = useRouter();
   const [editingWeekIndex, setEditingWeekIndex] = useState<number | null>(null);
+  const [minimumSlotsError, setMinimumSlotsError] = useState(false);
 
   const { data: trainers = [] } = useQuery({
     queryKey: ["trainers"],
@@ -149,12 +150,18 @@ export function Step3Validation({
   }
 
   function handleSubmit() {
+    if (step1Data.minimumAvailableSlots > Math.max(1, weeklyTemplate.length)) {
+      setMinimumSlotsError(true);
+      return;
+    }
+    setMinimumSlotsError(false);
     mutation.mutate({
       name: step1Data.name,
       price: step1Data.price,
       maxRegistrations: step1Data.maxRegistrations,
       minAge: step1Data.minAge,
       maxAge: step1Data.maxAge,
+      minimumAvailableSlots: step1Data.minimumAvailableSlots,
       tennisClubId: step1Data.tennisClubId,
       startDate: step1Data.startDate,
       endDate: step1Data.endDate,
@@ -184,6 +191,14 @@ export function Step3Validation({
       </div>
 
       {/* Error banner */}
+      {minimumSlotsError && (
+        <div className="bg-red-50 border border-red-100 rounded-lg p-4 text-sm text-red-600">
+          {t("minimumAvailableSlotsTooHigh", {
+            minimum: step1Data.minimumAvailableSlots,
+            count: weeklyTemplate.length,
+          })}
+        </div>
+      )}
       {mutation.isError && (
         <div className="bg-red-50 border border-red-100 rounded-lg p-4 text-sm text-red-600">
           {t("errorDesc")}

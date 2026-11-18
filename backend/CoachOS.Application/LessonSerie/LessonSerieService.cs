@@ -200,6 +200,11 @@ public class LessonSerieService(
         if (onlinePaymentError is not null)
             return Result<LessonSerieDto>.Fail(onlinePaymentError);
 
+        // Bovengrens: niet hoger dan het aantal weekslots (zonder weekslots blijft 1 toegestaan).
+        if (request.MinimumAvailableSlots > Math.Max(1, series.WeeklyTemplate.Count))
+            return Result<LessonSerieDto>.Fail(new Error(ErrorCodes.Validation,
+                "Het minimum aantal beschikbare tijdvakken mag niet hoger zijn dan het aantal tijdvakken van de reeks."));
+
         series.Name = request.Name;
         series.Description = request.Description;
         series.Level = request.Level.HasValue ? (LessonLevel)request.Level.Value : null;
@@ -209,6 +214,7 @@ public class LessonSerieService(
         series.MaxRegistrations = request.MaxRegistrations;
         series.MinAge = request.MinAge;
         series.MaxAge = request.MaxAge;
+        series.MinimumAvailableSlots = request.MinimumAvailableSlots;
         series.TennisClubId = request.TennisClubId;
         series.AllowSoloEnrollment = request.AllowSoloEnrollment;
         series.AllowGroupEnrollment = request.AllowGroupEnrollment;
@@ -692,6 +698,13 @@ public class LessonSerieService(
             series.WeeklyTemplate.FirstOrDefault(w => w.Id == templateEntryId);
         if (entry is null)
             return Result.Fail(new Error(ErrorCodes.NotFound, "Weekslot niet gevonden."));
+
+        // Het minimum aantal beschikbare tijdvakken moet haalbaar blijven na het verwijderen.
+        if (series.MinimumAvailableSlots > Math.Max(1, series.WeeklyTemplate.Count - 1))
+            return Result.Fail(new Error(ErrorCodes.Conflict,
+                "Dit tijdvak verwijderen is niet mogelijk: het minimum aantal beschikbare tijdvakken van de reeks " +
+                $"({series.MinimumAvailableSlots}) zou hoger zijn dan het aantal resterende tijdvakken. " +
+                "Verlaag eerst het minimum in de reeksinstellingen."));
 
         List<Domain.Entities.ScheduleAssignment> assignments =
             (await scheduleAssignmentRepo.GetBySeriesAsync(seriesId, organizationId, ct))

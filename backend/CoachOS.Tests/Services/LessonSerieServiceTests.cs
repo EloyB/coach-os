@@ -1503,4 +1503,96 @@ public class LessonSerieServiceTests
             Times.Once);
     }
 
+    // ── MinimumAvailableSlots ─────────────────────────────────────────────────
+
+    private void SetupUpdateSeries(LessonSerie series)
+    {
+        _lessonSeriesRepo
+            .Setup(r => r.GetByIdAsync(series.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+        _tennisClubRepo
+            .Setup(r => r.ExistsAsync(ClubId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+    }
+
+    [Test]
+    public async Task UpdateAsync_SetsMinimumAvailableSlots_WhenWithinTemplateCount()
+    {
+        LessonSerie series = BuildSeries(templateEntries: 3);
+        SetupUpdateSeries(series);
+        UpdateLessonSerieRequest request = new()
+        {
+            Name = "Reeks",
+            TennisClubId = ClubId,
+            IsActive = true,
+            MinimumAvailableSlots = 3,
+        };
+
+        Result<LessonSerieDto> result = await _service.UpdateAsync(series.Id, OrgId, request);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.MinimumAvailableSlots.Should().Be(3);
+        series.MinimumAvailableSlots.Should().Be(3);
+    }
+
+    [Test]
+    public async Task UpdateAsync_ReturnsValidation_WhenMinimumExceedsTemplateCount()
+    {
+        LessonSerie series = BuildSeries(templateEntries: 2);
+        SetupUpdateSeries(series);
+        UpdateLessonSerieRequest request = new()
+        {
+            Name = "Reeks",
+            TennisClubId = ClubId,
+            IsActive = true,
+            MinimumAvailableSlots = 3,
+        };
+
+        Result<LessonSerieDto> result = await _service.UpdateAsync(series.Id, OrgId, request);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.Validation);
+        series.MinimumAvailableSlots.Should().Be(1);
+        _lessonSeriesRepo.Verify(r => r.UpdateAsync(It.IsAny<LessonSerie>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task DeleteWeekSlotAsync_Blocked_WhenMinimumWouldExceedRemainingSlots()
+    {
+        LessonSerie series = BuildSeries(templateEntries: 3);
+        series.MinimumAvailableSlots = 3;
+        _lessonSeriesRepo
+            .Setup(r => r.GetByIdAsync(series.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+
+        Result result = await _service.DeleteWeekSlotAsync(
+            series.Id, series.WeeklyTemplate.First().Id, OrgId);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.Conflict);
+        _lessonSeriesRepo.Verify(
+            r => r.DeleteWeeklyTemplateRangeAsync(It.IsAny<IEnumerable<WeeklyTemplateEntry>>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Test]
+    public async Task DeleteWeekSlotAsync_Allowed_WhenMinimumStillReachable()
+    {
+        LessonSerie series = BuildSeries(templateEntries: 3);
+        series.MinimumAvailableSlots = 2;
+        _lessonSeriesRepo
+            .Setup(r => r.GetByIdAsync(series.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+        _scheduleAssignmentRepo
+            .Setup(r => r.GetBySeriesAsync(series.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ScheduleAssignment>());
+        _timeSlotPreferenceRepo
+            .Setup(r => r.GetBySeriesAsync(series.Id, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<TimeSlotPreference>());
+
+        Result result = await _service.DeleteWeekSlotAsync(
+            series.Id, series.WeeklyTemplate.First().Id, OrgId);
+
+        result.IsSuccess.Should().BeTrue();
+    }
 }

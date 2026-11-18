@@ -67,6 +67,7 @@ public class EnrollmentService(
             MinAge = series.MinAge,
             MaxAge = series.MaxAge,
             EnrollmentCount = enrollmentCount,
+            MinimumAvailableSlots = series.MinimumAvailableSlots,
             AllowSoloEnrollment = series.AllowSoloEnrollment,
             AllowGroupEnrollment = series.AllowGroupEnrollment,
             PriceOptions = series.Prices
@@ -289,6 +290,12 @@ public class EnrollmentService(
         Error? ageError = CheckAgeEligibility(request, series);
         if (ageError is not null)
             return Result<Guid>.Fail(ageError);
+
+        // 4a-bis. Minimum aantal beschikbare tijdvakken: enkel "Beschikbaar" en "Voorkeur" tellen mee,
+        //     enkel voor weekslots van déze reeks. Zonder weekslots valt er niets te kiezen.
+        Error? minimumSlotsError = CheckMinimumAvailableSlots(request, series);
+        if (minimumSlotsError is not null)
+            return Result<Guid>.Fail(minimumSlotsError);
 
         // 4b. Tariefcategorie afleiden. De leeftijdsgrens is org-specifiek; deze flow is
         //     anoniem, dus de settings komen via series.OrganizationId en niet uit een JWT.
@@ -1055,6 +1062,34 @@ public class EnrollmentService(
     /// </summary>
     private static DateOnly? ParseBirthDate(string? value)
         => DateOfBirthRules.TryParse(value, out DateOnly date) ? date : null;
+
+    /// <summary>
+    /// Controleert het minimum aantal beschikbare tijdvakken van de reeks. Enkel unieke weekslots van
+    /// deze reeks met voorkeur Beschikbaar of Voorkeur tellen mee; Niet beschikbaar telt niet mee.
+    /// Het vereiste aantal wordt begrensd door het aantal weekslots (zonder weekslots geen eis).
+    /// Alleen voor de publieke inschrijving; handmatige inschrijvingen door de admin zijn vrijgesteld.
+    /// </summary>
+    private static Error? CheckMinimumAvailableSlots(
+        SubmitEnrollmentRequest request, Domain.Entities.LessonSerie series)
+    {
+        if (series.WeeklyTemplate.Count == 0)
+            return null;
+
+        int required = Math.Min(series.MinimumAvailableSlots, series.WeeklyTemplate.Count);
+
+        HashSet<Guid> seriesSlotIds = series.WeeklyTemplate.Select(w => w.Id).ToHashSet();
+        int available = (request.TimeSlotPreferences ?? [])
+            .Where(p => (p.Preference == (int)SlotPreference.Available || p.Preference == (int)SlotPreference.Preferred)
+                        && seriesSlotIds.Contains(p.WeeklyTemplateEntryId))
+            .Select(p => p.WeeklyTemplateEntryId)
+            .Distinct()
+            .Count();
+
+        return available >= required
+            ? null
+            : new Error(ErrorCodes.Validation,
+                $"Kies minstens {required} tijdvak{(required == 1 ? "" : "ken")} waarop je kunt.");
+    }
 
     /// <summary>
     /// Controleert of elke deelnemer (leider + groepsleden) op de startdatum van de reeks
