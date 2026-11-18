@@ -82,7 +82,7 @@ public class CampExportServiceTests
                 {
                     Date = new DateOnly(2026, 7, 7),
                     StartTime = new TimeOnly(9, 0), EndTime = new TimeOnly(16, 0),
-                    TrainerAssignments = [new CampDayTrainer { TrainerId = TrainerId, StartTime = new TimeOnly(9, 0), EndTime = new TimeOnly(12, 0) }],
+                    TrainerAssignments = [new CampDayTrainer { TrainerId = TrainerId, StartTime = new TimeOnly(8, 0), EndTime = new TimeOnly(18, 0) }],
                 },
                 new CampDay { Date = new DateOnly(2026, 7, 6), StartTime = new TimeOnly(9, 0), EndTime = new TimeOnly(16, 0) },
             ],
@@ -104,7 +104,9 @@ public class CampExportServiceTests
         result.Value!.FileName.Should().StartWith("Zomerkamp-kamp-").And.EndWith(".xlsx");
         _captured!.Days.Select(d => d.Date).Should().BeInAscendingOrder();
         _captured.Days[1].DayName.Should().Be("Dinsdag");
-        _captured.Days[1].Trainers.Should().ContainSingle(t => t.Name == "Jan Janssen");
+        // Shift valt buiten de kampuren (9u-16u) en wordt niet afgekapt.
+        _captured.Days[1].Trainers.Should().ContainSingle(t =>
+            t.Name == "Jan Janssen" && t.StartTime == new TimeOnly(8, 0) && t.EndTime == new TimeOnly(18, 0));
         CampEnrollmentRow row = _captured.Enrollments.Should().ContainSingle().Subject;
         row.Status.Should().Be("Bevestigd");
         row.PaymentStatus.Should().Be("Betaald");

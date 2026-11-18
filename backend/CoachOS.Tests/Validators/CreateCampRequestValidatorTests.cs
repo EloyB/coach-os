@@ -28,7 +28,7 @@ public class CreateCampRequestValidatorTests
         {
             new("2026-04-14", "09:00", "16:00", new List<CreateCampDayTrainerRequest>
             {
-                new(Guid.NewGuid(), "09:00", "12:00"),
+                new CreateCampDayTrainerRequest(Guid.NewGuid(), "09:00", "12:00"),
             }),
         });
 
@@ -95,21 +95,22 @@ public class CreateCampRequestValidatorTests
     }
 
     [Test]
-    public void Validate_TrainerWindowOutsideCampHours_Fails()
+    public void Validate_TrainerWindowOutsideCampHours_Passes()
     {
-        CreateCampRequest req = Valid() with
-        {
-            Days = new List<CreateCampDayRequest>
-            {
-                new("2026-04-14", "09:00", "16:00", new List<CreateCampDayTrainerRequest>
-                {
-                    new(Guid.NewGuid(), "08:00", "16:00"), // start vóór kampstart
-                }),
-            },
-        };
-        ValidationResult result = _validator.Validate(req);
+        ValidationResult result = _validator.Validate(WithShifts(
+            new CreateCampDayTrainerRequest(Guid.NewGuid(), "08:00", "18:00"))); // kampdag 09:00-16:00
+
+        result.IsValid.Should().BeTrue();
+    }
+
+    [Test]
+    public void Validate_TrainerShiftEndNotAfterStart_Fails()
+    {
+        ValidationResult result = _validator.Validate(WithShifts(
+            new CreateCampDayTrainerRequest(Guid.NewGuid(), "12:00", "12:00")));
+
         result.IsValid.Should().BeFalse();
-        result.Errors.Should().Contain(e => e.ErrorMessage == "Trainer-uren moeten binnen de kampuren van die dag vallen");
+        result.Errors.Should().Contain(e => e.ErrorMessage == "Eindtijd van een shift moet na de starttijd liggen");
     }
 
     private static CreateCampRequest WithShifts(params CreateCampDayTrainerRequest[] shifts) => Valid() with
@@ -162,8 +163,8 @@ public class CreateCampRequestValidatorTests
     public void Validate_DifferentTrainersAtTheSameTime_Passes()
     {
         ValidationResult result = _validator.Validate(WithShifts(
-            new(Guid.NewGuid(), "09:00", "12:00"),
-            new(Guid.NewGuid(), "09:00", "12:00")));
+            new CreateCampDayTrainerRequest(Guid.NewGuid(), "09:00", "12:00"),
+            new CreateCampDayTrainerRequest(Guid.NewGuid(), "09:00", "12:00")));
 
         result.IsValid.Should().BeTrue();
     }
