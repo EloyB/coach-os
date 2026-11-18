@@ -1496,6 +1496,7 @@
     "withLimit": "{count} / {limit} actieve {count, plural, one {leerling} other {leerlingen}}",
     "withoutLimit": "{count, plural, one {# actieve leerling} other {# actieve leerlingen}}",
     "limitReached": "Limiet bereikt of overschreden",
+    "progressLabel": "Actieve leerlingen in het lopende abonnementsjaar",
     "periodUntil": "Abonnementsjaar tot {date}"
   },
   "subscription": {
