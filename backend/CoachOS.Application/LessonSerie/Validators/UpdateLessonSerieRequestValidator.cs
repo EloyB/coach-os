@@ -37,6 +37,10 @@ public class UpdateLessonSerieRequestValidator : AbstractValidator<UpdateLessonS
             .WithMessage("Minimumleeftijd mag niet groter zijn dan de maximumleeftijd.")
             .WithName("MinAge");
 
+        RuleFor(x => x.MinimumAvailableSlots)
+            .GreaterThanOrEqualTo(1).WithMessage("Het minimum aantal beschikbare tijdvakken moet minstens 1 zijn.")
+            .LessThanOrEqualTo(50).WithMessage("Het minimum aantal beschikbare tijdvakken is onrealistisch hoog.");
+
         RuleFor(x => x.RegistrationDeadline)
             .NotEmpty().WithMessage("Inschrijvingsdeadline is verplicht.");
 

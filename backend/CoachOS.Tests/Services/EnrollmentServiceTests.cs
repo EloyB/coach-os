@@ -1696,4 +1696,149 @@ public class EnrollmentServiceTests
         added!.Category.Should().Be(expected);
     }
 
+    [Test]
+    public async Task CreateManualEnrollmentAsync_IsExemptFromMinimumAvailableSlots()
+    {
+        LessonSerie series = BuildActiveSeries(templateEntries: 3);
+        series.MinimumAvailableSlots = 3;
+        _lessonSeriesRepo
+            .Setup(r => r.GetByIdPublicAsync(SeriesId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+        _enrollmentRepo
+            .Setup(r => r.CountActiveBySeriesAsync(SeriesId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(0);
+        _enrollmentRepo
+            .Setup(r => r.IsDuplicateParticipantAsync(
+                SeriesId, "parent@example.com", "Nieuwe speler", It.IsAny<DateOnly?>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+        _enrollmentFormRepo
+            .Setup(r => r.GetBySeriesIdReadOnlyAsync(SeriesId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((EnrollmentForm?)null);
+        _orgSettingsRepo
+            .Setup(r => r.GetByOrganizationReadOnlyAsync(OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((OrganizationSettings?)null);
+        _enrollmentRepo
+            .Setup(r => r.AddAsync(It.IsAny<Enrollment>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        _emailOutboxRepository
+            .Setup(r => r.AddRangeAsync(It.IsAny<IEnumerable<EmailOutboxMessage>>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        Result<Guid> result = await _service.CreateManualEnrollmentAsync(
+            SeriesId,
+            new CreateManualEnrollmentRequest
+            {
+                StudentName = "Nieuwe speler",
+                ContactEmail = "parent@example.com",
+                DateOfBirth = "2010-05-10",
+            },
+            OrgId);
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    // ── MinimumAvailableSlots ─────────────────────────────────────────────────
+
+    private static SubmitEnrollmentRequest RequestWithPreferences(params (Guid SlotId, int Preference)[] prefs) => new()
+    {
+        StudentName = "Alice",
+        StudentEmail = "alice@test.be",
+        EnrollmentType = "solo",
+        TimeSlotPreferences = prefs
+            .Select(p => new TimeSlotPreferenceDto { WeeklyTemplateEntryId = p.SlotId, Preference = p.Preference })
+            .ToList(),
+    };
+
+    [Test]
+    public async Task SubmitEnrollment_BelowMinimumAvailableSlots_IsRejected()
+    {
+        LessonSerie series = BuildActiveSeries(templateEntries: 4);
+        series.MinimumAvailableSlots = 3;
+        SetupSuccessfulEnrollment(series, "alice@test.be");
+        List<Guid> slots = series.WeeklyTemplate.Select(w => w.Id).ToList();
+
+        Result<Guid> result = await _service.SubmitEnrollmentAsync(SeriesId, RequestWithPreferences(
+            (slots[0], 1), (slots[1], 2)));
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.Validation
+            && e.Message == "Kies minstens 3 tijdvakken waarop je kunt.");
+        _enrollmentRepo.Verify(r => r.AddAsync(It.IsAny<Enrollment>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task SubmitEnrollment_UnavailableSlotsDoNotCount()
+    {
+        LessonSerie series = BuildActiveSeries(templateEntries: 4);
+        series.MinimumAvailableSlots = 3;
+        SetupSuccessfulEnrollment(series, "alice@test.be");
+        List<Guid> slots = series.WeeklyTemplate.Select(w => w.Id).ToList();
+
+        Result<Guid> result = await _service.SubmitEnrollmentAsync(SeriesId, RequestWithPreferences(
+            (slots[0], 1), (slots[1], 2), (slots[2], 3), (slots[3], 3)));
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.Validation);
+    }
+
+    [Test]
+    public async Task SubmitEnrollment_AvailableAndPreferredCountTowardsMinimum()
+    {
+        LessonSerie series = BuildActiveSeries(templateEntries: 4);
+        series.MinimumAvailableSlots = 3;
+        SetupSuccessfulEnrollment(series, "alice@test.be");
+        List<Guid> slots = series.WeeklyTemplate.Select(w => w.Id).ToList();
+
+        Result<Guid> result = await _service.SubmitEnrollmentAsync(SeriesId, RequestWithPreferences(
+            (slots[0], 1), (slots[1], 2), (slots[2], 1), (slots[3], 3)));
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Test]
+    public async Task SubmitEnrollment_UnknownSlotIdsDoNotCount()
+    {
+        LessonSerie series = BuildActiveSeries(templateEntries: 2);
+        series.MinimumAvailableSlots = 2;
+        SetupSuccessfulEnrollment(series, "alice@test.be");
+        Guid slot = series.WeeklyTemplate.First().Id;
+
+        Result<Guid> result = await _service.SubmitEnrollmentAsync(SeriesId, RequestWithPreferences(
+            (slot, 1), (Guid.NewGuid(), 1)));
+
+        result.IsSuccess.Should().BeFalse();
+    }
+
+    [Test]
+    public async Task SubmitEnrollment_WithoutPreferences_IsRejectedWhenSeriesHasSlots()
+    {
+        LessonSerie series = BuildActiveSeries(templateEntries: 2);
+        SetupSuccessfulEnrollment(series, "alice@test.be");
+
+        Result<Guid> result = await _service.SubmitEnrollmentAsync(SeriesId, new SubmitEnrollmentRequest
+        {
+            StudentName = "Alice",
+            StudentEmail = "alice@test.be",
+            EnrollmentType = "solo",
+        });
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.Message == "Kies minstens 1 tijdvak waarop je kunt.");
+    }
+
+    [Test]
+    public async Task GetPublicLessonSerie_ExposesMinimumAvailableSlots()
+    {
+        LessonSerie series = BuildActiveSeries(templateEntries: 3);
+        series.MinimumAvailableSlots = 2;
+        _lessonSeriesRepo
+            .Setup(r => r.GetByIdPublicAsync(SeriesId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(series);
+
+        Result<PublicLessonSerieDto> result = await _service.GetPublicLessonSerieAsync(SeriesId);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.MinimumAvailableSlots.Should().Be(2);
+    }
 }

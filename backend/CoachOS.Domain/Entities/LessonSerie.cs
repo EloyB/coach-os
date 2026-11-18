@@ -54,6 +54,13 @@ public class LessonSerie : BaseEntity
     /// <summary>Handmatig betalen (overschrijving/cash) toegestaan; bevestigd door de admin.</summary>
     public bool AcceptManualPayment { get; set; }
 
+    /// <summary>
+    /// Minimum aantal tijdvakken (weekslots) waarop een deelnemer "Beschikbaar" of "Voorkeur"
+    /// moet aanduiden bij een publieke inschrijving. Standaard 1. Mag niet hoger zijn dan het
+    /// aantal weekslots van de reeks. Geldt niet voor handmatige inschrijvingen door de admin.
+    /// </summary>
+    public int MinimumAvailableSlots { get; set; } = 1;
+
     public Guid TennisClubId { get; set; }
 
     // Navigation properties

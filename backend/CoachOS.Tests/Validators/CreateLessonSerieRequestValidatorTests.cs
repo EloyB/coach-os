@@ -103,4 +103,68 @@ public class CreateLessonSerieRequestValidatorTests
         };
         _validator.TestValidate(req).ShouldNotHaveAnyValidationErrors();
     }
+
+    // ── MinimumAvailableSlots ────────────────────────────────────────────────
+
+    private static List<WeeklyTemplateEntryRequest> Template(int count) =>
+        Enumerable.Range(0, count)
+            .Select(i => new WeeklyTemplateEntryRequest
+            {
+                DayOfWeek = i,
+                StartTime = "17:00",
+                EndTime = "18:00",
+                MaxStudents = 4,
+            })
+            .ToList();
+
+    [Test]
+    public void MinimumAvailableSlots_DefaultsToOne_AndPasses()
+    {
+        CreateLessonSerieRequest request = ValidRequest();
+
+        request.MinimumAvailableSlots.Should().Be(1);
+        _validator.Validate(request).IsValid.Should().BeTrue();
+    }
+
+    [Test]
+    public void MinimumAvailableSlots_BelowOne_Fails()
+    {
+        CreateLessonSerieRequest request = ValidRequest() with { MinimumAvailableSlots = 0 };
+
+        _validator.Validate(request).Errors
+            .Should().Contain(e => e.PropertyName == nameof(CreateLessonSerieRequest.MinimumAvailableSlots));
+    }
+
+    [Test]
+    public void MinimumAvailableSlots_EqualToTemplateCount_Passes()
+    {
+        CreateLessonSerieRequest request = ValidRequest() with
+        {
+            WeeklyTemplate = Template(3),
+            MinimumAvailableSlots = 3,
+        };
+
+        _validator.Validate(request).IsValid.Should().BeTrue();
+    }
+
+    [Test]
+    public void MinimumAvailableSlots_AboveTemplateCount_Fails()
+    {
+        CreateLessonSerieRequest request = ValidRequest() with
+        {
+            WeeklyTemplate = Template(2),
+            MinimumAvailableSlots = 3,
+        };
+
+        _validator.Validate(request).Errors.Should().Contain(e =>
+            e.ErrorMessage == "Het minimum aantal beschikbare tijdvakken mag niet hoger zijn dan het aantal tijdvakken van de reeks.");
+    }
+
+    [Test]
+    public void MinimumAvailableSlots_One_WithoutTemplate_Passes()
+    {
+        CreateLessonSerieRequest request = ValidRequest() with { WeeklyTemplate = [], MinimumAvailableSlots = 1 };
+
+        _validator.Validate(request).IsValid.Should().BeTrue();
+    }
 }

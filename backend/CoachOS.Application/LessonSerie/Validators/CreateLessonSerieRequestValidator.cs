@@ -40,6 +40,16 @@ public class CreateLessonSerieRequestValidator : AbstractValidator<CreateLessonS
             .WithMessage("Minimumleeftijd mag niet groter zijn dan de maximumleeftijd.")
             .WithName("MinAge");
 
+        RuleFor(x => x.MinimumAvailableSlots)
+            .GreaterThanOrEqualTo(1).WithMessage("Het minimum aantal beschikbare tijdvakken moet minstens 1 zijn.")
+            .LessThanOrEqualTo(50).WithMessage("Het minimum aantal beschikbare tijdvakken is onrealistisch hoog.");
+
+        // Bovengrens: niet hoger dan het aantal weekslots (zonder weekslots blijft 1 de standaard).
+        RuleFor(x => x)
+            .Must(x => x.MinimumAvailableSlots <= Math.Max(1, x.WeeklyTemplate.Count))
+            .WithMessage("Het minimum aantal beschikbare tijdvakken mag niet hoger zijn dan het aantal tijdvakken van de reeks.")
+            .WithName("MinimumAvailableSlots");
+
         RuleFor(x => x.StartDate)
             .NotEmpty().WithMessage("Startdatum is verplicht.")
             .Matches(@"^\d{4}-\d{2}-\d{2}$").WithMessage("Startdatum moet het formaat yyyy-MM-dd hebben.");

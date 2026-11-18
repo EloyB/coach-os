@@ -15,6 +15,7 @@ public class LessonSerieDto
     public int? MaxRegistrations { get; set; }
     public int MinAge { get; set; }
     public int MaxAge { get; set; }
+    public int MinimumAvailableSlots { get; set; }
     public Guid TennisClubId { get; set; }
     public bool AllowSoloEnrollment { get; set; }
     public bool AllowGroupEnrollment { get; set; }

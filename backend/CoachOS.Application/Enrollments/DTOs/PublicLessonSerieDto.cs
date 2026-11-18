@@ -17,6 +17,7 @@ public class PublicLessonSerieDto
     public int MinAge { get; set; }
     public int MaxAge { get; set; }
     public int EnrollmentCount { get; set; }
+    public int MinimumAvailableSlots { get; set; }
     public bool AllowSoloEnrollment { get; set; }
     public bool AllowGroupEnrollment { get; set; }
     public List<LessonSeriePriceDto> PriceOptions { get; set; } = [];
