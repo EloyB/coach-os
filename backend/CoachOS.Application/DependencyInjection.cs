@@ -60,6 +60,7 @@ public static class DependencyInjection
         services.AddScoped<IPlanningExportService, PlanningExportService>();
         services.AddScoped<ICampExportService, CampExportService>();
         services.AddScoped<ISubscriptionAccessService, SubscriptionAccessService>();
+        services.AddScoped<IActiveStudentCountService, ActiveStudentCountService>();
         services.AddScoped<IBillingService, BillingService>();
         services.AddScoped<PlayerErasureExecutor>();
         services.AddScoped<IPlayerErasureService, PlayerErasureService>();

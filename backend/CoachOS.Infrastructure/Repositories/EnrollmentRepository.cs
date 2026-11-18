@@ -1,6 +1,7 @@
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
 using CoachOS.Domain.Interfaces;
+using CoachOS.Domain.Models;
 using CoachOS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -128,6 +129,24 @@ public class EnrollmentRepository(ApplicationDbContext context) : IEnrollmentRep
             .CountAsync(e =>
                 e.OrganizationId == organizationId &&
                 (e.Status == EnrollmentStatus.Confirmed || e.Status == EnrollmentStatus.Pending || e.Status == EnrollmentStatus.PendingPayment), ct);
+    }
+
+    public async Task<IReadOnlyList<StudentIdentityKey>> GetConfirmedStudentKeysAsync(
+        Guid organizationId, DateTime fromUtc, DateTime toUtcExclusive, CancellationToken ct = default)
+    {
+        return await context.Enrollments
+            .AsNoTracking()
+            .Where(e => e.OrganizationId == organizationId
+                && e.Status == EnrollmentStatus.Confirmed
+                && e.AnonymizedAt == null
+                && e.EnrolledAt >= fromUtc && e.EnrolledAt < toUtcExclusive)
+            .Select(e => new StudentIdentityKey(
+                e.StudentName.Trim().ToLower(),
+                e.DateOfBirth,
+                e.StudentEmail == null ? null : e.StudentEmail.Trim().ToLower(),
+                e.ContactEmail.Trim().ToLower()))
+            .Distinct()
+            .ToListAsync(ct);
     }
 
     public async Task AddAsync(Enrollment enrollment, CancellationToken ct = default)
