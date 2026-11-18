@@ -1,6 +1,7 @@
 import { Page, Route } from "@playwright/test";
 import type { AuthResponse } from "@/lib/api/auth";
 import type { DashboardSummaryDto, MyCampDayDto, MyLessonDto } from "@/lib/api/dashboard";
+import type { ActiveStudentsDto } from "@/lib/api/subscription";
 import type { OnboardingStateDto } from "@/lib/api/onboarding";
 import type { PublicLessonSeriesDto } from "@/lib/api/enrollments";
 import type { LessonSeriesDto } from "@/lib/api/lessonSeries";
@@ -236,6 +237,13 @@ export const TEST_ONBOARDING_DONE: OnboardingStateDto = {
   dismissedAt: null,
 };
 
+export const TEST_ACTIVE_STUDENTS: ActiveStudentsDto = {
+  count: 42,
+  limit: 200,
+  periodStart: "2026-01-01",
+  periodEnd: "2026-12-31",
+};
+
 export async function mockAllDashboardApis(page: Page): Promise<void> {
   await mockApi(page, "GET", "/dashboard", TEST_DASHBOARD_SUMMARY);
   // Agenda op "Vandaag": leeg, zodat de pagina niet afhangt van de echte datum.
@@ -246,6 +254,7 @@ export async function mockAllDashboardApis(page: Page): Promise<void> {
   await mockApi(page, "GET", "/dashboard/my-camp-days", noCampDays);
   await mockApi(page, "GET", "/dashboard/organization-camp-days", noCampDays);
   await mockApi(page, "GET", "/onboarding/state", TEST_ONBOARDING_DONE);
+  await mockApi(page, "GET", "/subscription/active-students", TEST_ACTIVE_STUDENTS);
   await mockApi(page, "GET", "/lessonseries", TEST_SERIES);
   await mockApi(page, "GET", "/trainers", TEST_TRAINERS);
   await mockApi(page, "GET", "/tennisclubs", TEST_CLUBS);

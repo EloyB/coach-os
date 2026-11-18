@@ -1492,6 +1492,12 @@
     "paymentMollieId": "Mollie-referentie",
     "paymentCopyMollieId": "Mollie-referentie kopiëren"
   },
+  "activeStudents": {
+    "withLimit": "{count} / {limit} actieve {count, plural, one {leerling} other {leerlingen}}",
+    "withoutLimit": "{count, plural, one {# actieve leerling} other {# actieve leerlingen}}",
+    "limitReached": "Limiet bereikt of overschreden",
+    "periodUntil": "Abonnementsjaar tot {date}"
+  },
   "subscription": {
     "trialCardLabel": "Gratis proef",
     "trialCardDays": "{days, plural, =0 {Laatste dag} one {Nog # dag} other {Nog # dagen}}",
