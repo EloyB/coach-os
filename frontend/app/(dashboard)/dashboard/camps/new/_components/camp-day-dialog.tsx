@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/dialog";
 import { isAssignableTrainer, type TrainerDto } from "@/lib/api/trainers";
 import {
-  clampTime,
   findOverlappingShiftIndexes,
   formatDayHeading,
   shiftHours,
@@ -124,8 +123,6 @@ export function CampDayDialog({
 
   let formError: string | null = null;
   if (form.end <= form.start) formError = t("shiftEndBeforeStart");
-  else if (form.start < day.startTime || form.end > day.endTime)
-    formError = t("shiftOutsideCampHours");
   else if (
     day.trainers.some(
       (x) =>
@@ -169,7 +166,7 @@ export function CampDayDialog({
       ...day,
       trainers: day.trainers.map((tr, i) =>
         i === index
-          ? { ...tr, [field]: clampTime(value, day.startTime, day.endTime) }
+          ? { ...tr, [field]: value }
           : tr,
       ),
     });
@@ -291,8 +288,6 @@ export function CampDayDialog({
                                   <input
                                     type="time"
                                     value={shift.startTime}
-                                    min={day.startTime}
-                                    max={day.endTime}
                                     onChange={(e) =>
                                       updateShiftTime(
                                         shift.index,
@@ -306,8 +301,6 @@ export function CampDayDialog({
                                   <input
                                     type="time"
                                     value={shift.endTime}
-                                    min={day.startTime}
-                                    max={day.endTime}
                                     onChange={(e) =>
                                       updateShiftTime(
                                         shift.index,
