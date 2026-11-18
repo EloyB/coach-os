@@ -52,4 +52,23 @@ public class UpdateCampRequestValidatorTests
         result.Errors.Should().Contain(e =>
             e.ErrorMessage == "Een trainer kan niet twee overlappende shiften op dezelfde dag hebben");
     }
+
+    [Test]
+    public void Validate_ShiftOutsideCampHours_Passes()
+    {
+        ValidationResult result = _validator.Validate(WithShifts(
+            new CreateCampDayTrainerRequest(Guid.NewGuid(), "08:00", "18:00"))); // kampdag 09:00-16:00
+
+        result.IsValid.Should().BeTrue();
+    }
+
+    [Test]
+    public void Validate_ShiftEndNotAfterStart_Fails()
+    {
+        ValidationResult result = _validator.Validate(WithShifts(
+            new CreateCampDayTrainerRequest(Guid.NewGuid(), "12:00", "11:00")));
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.ErrorMessage == "Eindtijd van een shift moet na de starttijd liggen");
+    }
 }

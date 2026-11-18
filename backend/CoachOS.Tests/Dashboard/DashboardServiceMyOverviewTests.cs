@@ -160,6 +160,19 @@ public class DashboardServiceMyOverviewTests
     }
 
     [Test]
+    public async Task GetMyOverview_CampShiftOutsideCampHours_CountsFullShift()
+    {
+        // Kampdag zonder kampuren in deze fixture; shift 8u-18u telt volledig mee (10u).
+        _camps.Setup(r => r.GetTrainerDaysAsync(TrainerId, OrgId, MonthStart, RangeEnd, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([CampDay(new DateOnly(2026, 10, 14), 8, 18)]);
+
+        MyOverviewDto dto = (await _sut.GetMyOverviewAsync(OrgId, TrainerId)).Value!;
+
+        dto.HoursThisWeek.Should().Be(10);
+        dto.HoursThisMonth.Should().Be(10);
+    }
+
+    [Test]
     public async Task GetMyOverview_WeekCrossingMonthBoundary_CountsEachPeriodCorrectly()
     {
         // Donderdag 1 oktober 2026: de week (28 sep – 4 okt) loopt over de maandgrens,
