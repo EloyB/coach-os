@@ -210,6 +210,7 @@ test.describe("Live API — inschrijfwijze afdwingen op solo/group-only reeksen"
         data: {
           studentName: "E2E Groep Op Solo-Only",
           studentEmail: `e2e-group-on-solo-${Date.now()}@test.be`,
+          studentPhone: "0470 12 34 56",
           dateOfBirth: "1990-01-01",
           responses: [],
           enrollmentType: "group",
@@ -236,6 +237,7 @@ test.describe("Live API — inschrijfwijze afdwingen op solo/group-only reeksen"
         data: {
           studentName: "E2E Solo Op Group-Only",
           studentEmail: `e2e-solo-on-group-${Date.now()}@test.be`,
+          studentPhone: "0470 12 34 56",
           dateOfBirth: "1990-01-01",
           responses: [],
           enrollmentType: "solo",

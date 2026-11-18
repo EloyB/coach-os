@@ -145,7 +145,7 @@ export interface CampGroupMemberRequest {
 export interface SubmitCampEnrollmentRequest {
   participantName: string;
   participantEmail: string;
-  participantPhone?: string;
+  participantPhone: string;
   responses: { campFormFieldId: string; value: string }[];
   enrollmentType?: string; // "solo" | "group"
   groupMembers?: CampGroupMemberRequest[];

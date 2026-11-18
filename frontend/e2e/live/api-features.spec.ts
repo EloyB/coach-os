@@ -36,6 +36,7 @@ test.describe("Live API — inschrijving annuleren", () => {
           data: {
             studentName: `E2E Annuleerbaar ${i}`,
             studentEmail: `e2e-cancel-${Date.now()}-${i}@test.be`,
+            studentPhone: "0470 12 34 56",
             dateOfBirth: "1992-04-04",
             responses: [],
           },
@@ -431,6 +432,7 @@ test.describe("Live API — geboortedatum en tariefcategorie", () => {
         data: {
           studentName: "E2E Zonder Geboortedatum",
           studentEmail: `e2e-nodob-${Date.now()}@test.be`,
+          studentPhone: "0470 12 34 56",
           responses: [],
         },
       },
@@ -444,6 +446,7 @@ test.describe("Live API — geboortedatum en tariefcategorie", () => {
         data: {
           studentName: "E2E Toekomst",
           studentEmail: `e2e-future-${Date.now()}@test.be`,
+          studentPhone: "0470 12 34 56",
           dateOfBirth: futureDate(30),
           responses: [],
         },
@@ -459,6 +462,7 @@ test.describe("Live API — geboortedatum en tariefcategorie", () => {
         data: {
           studentName: "E2E Volwassene",
           studentEmail: email,
+          studentPhone: "0470 12 34 56",
           dateOfBirth: "1990-06-15",
           responses: [],
         },
@@ -492,6 +496,7 @@ test.describe("Live API — geboortedatum en tariefcategorie", () => {
         data: {
           studentName: "E2E Jeugdlid",
           studentEmail: email,
+          studentPhone: "0470 12 34 56",
           dateOfBirth: dob,
           responses: [],
         },
@@ -528,6 +533,7 @@ test.describe("Live API — geboortedatum en tariefcategorie", () => {
         data: {
           studentName: "E2E Ouder",
           studentEmail: leaderEmail,
+          studentPhone: "0470 12 34 56",
           dateOfBirth: "1985-02-20",
           enrollmentType: "group",
           isOpenToGrouping: false,

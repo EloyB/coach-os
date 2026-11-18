@@ -134,6 +134,7 @@ test.describe("Live UI — lessenreeks detailpagina", () => {
         data: {
           studentName,
           studentEmail: email,
+          studentPhone: "0470 12 34 56",
           dateOfBirth: "1991-03-03",
           responses: [],
         },
@@ -183,6 +184,7 @@ test.describe("Live UI — lessenreeks detailpagina", () => {
         data: {
           studentName,
           studentEmail: email,
+          studentPhone: "0470 12 34 56",
           dateOfBirth: child.toISOString().slice(0, 10),
           responses: [],
         },
@@ -247,6 +249,7 @@ test.describe("Live UI — publiek inschrijfformulier", () => {
     await textInputs.nth(0).fill("E2E");
     await textInputs.nth(1).fill("Formulier");
     await page.locator('input[type="email"]').fill(email);
+    await page.locator('input[type="tel"]').fill("0470 12 34 56");
     await page.getByLabel("Geboortedatum").fill("1988-09-09");
 
     await page.getByRole("button", { name: "Inschrijven" }).click();
