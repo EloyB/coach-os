@@ -158,6 +158,8 @@
     "indoor": "Overdekt"
   },
   "lessonSeries": {
+    "minimumAvailableSlots": "Min. aantal beschikbare tijdvakken",
+    "minimumAvailableSlotsHint": "Zoveel tijdvakken moet een deelnemer minstens aanduiden bij het inschrijven. Maximaal het aantal tijdvakken van de reeks.",
     "title": "Lesreeksen",
     "viewPlanning": "Bekijk planning",
     "subtitle": "Beheer je lesreeksen en lesmomenten",
@@ -273,6 +275,8 @@
     "form_error": "Inschrijven mislukt. Controleer je gegevens en probeer opnieuw.",
     "availability_title": "Beschikbaarheid",
     "availability_desc": "Geef aan wanneer je beschikbaar bent voor de lessen.",
+    "min_slots_hint": "Kies minstens {count, plural, one {# tijdvak} other {# tijdvakken}} waarop je kunt.",
+    "min_slots_error": "Kies minstens {count, plural, one {# tijdvak} other {# tijdvakken}} waarop je kunt (beschikbaar of voorkeur).",
     "pref_preferred": "Voorkeur",
     "pref_available": "Beschikbaar",
     "pref_unavailable": "Niet beschikbaar",
@@ -475,6 +479,9 @@
     "maxRegistrations": "Max. inschrijvingen",
     "minAge": "Min. leeftijd",
     "maxAge": "Max. leeftijd",
+    "minimumAvailableSlots": "Min. aantal beschikbare tijdvakken",
+    "minimumAvailableSlotsHint": "Zoveel tijdvakken moet een deelnemer minstens aanduiden bij het inschrijven. Maximaal het aantal tijdvakken van de reeks.",
+    "minimumAvailableSlotsTooHigh": "Het minimum aantal beschikbare tijdvakken ({minimum}) is hoger dan het aantal tijdvakken van de reeks ({count}). Verlaag het minimum of voeg tijdvakken toe.",
     "startDate": "Startdatum",
     "endDate": "Einddatum",
     "registrationDeadline": "Inschrijfdeadline",

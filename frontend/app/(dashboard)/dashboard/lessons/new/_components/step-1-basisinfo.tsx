@@ -54,6 +54,11 @@ const schema = z
       .int("Gebruik een heel getal")
       .min(0, "Minimaal 0")
       .max(120, "Maximaal 120"),
+    minimumAvailableSlots: z
+      .number({ message: "Minimum aantal tijdvakken is verplicht" })
+      .int("Gebruik een heel getal")
+      .min(1, "Minimaal 1")
+      .max(50, "Maximaal 50"),
     registrationDeadline: z.string().min(1, "Inschrijfdeadline is verplicht"),
     allowSoloEnrollment: z.boolean(),
     allowGroupEnrollment: z.boolean(),
@@ -137,6 +142,7 @@ export function Step1Basisinfo({ defaultValues, onNext }: Step1Props) {
       maxRegistrations: 0,
       minAge: 3,
       maxAge: 99,
+      minimumAvailableSlots: 1,
       allowSoloEnrollment: true,
       allowGroupEnrollment: true,
       acceptOnlinePayment: false,
@@ -242,6 +248,23 @@ export function Step1Basisinfo({ defaultValues, onNext }: Step1Props) {
             />
             <FieldError message={errors.maxAge?.message} />
           </div>
+        </div>
+
+        {/* Minimum aantal beschikbare tijdvakken */}
+        <div>
+          <Label required>{t("minimumAvailableSlots")}</Label>
+          <input
+            {...register("minimumAvailableSlots", { valueAsNumber: true })}
+            onFocus={(e) => e.currentTarget.select()}
+            type="number"
+            min={1}
+            max={50}
+            className={inputClass}
+          />
+          <p className="text-xs text-gray-400 mt-1">
+            {t("minimumAvailableSlotsHint")}
+          </p>
+          <FieldError message={errors.minimumAvailableSlots?.message} />
         </div>
 
         {/* Tennisclub */}

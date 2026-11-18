@@ -18,6 +18,7 @@ export interface PublicLessonSeriesDto {
   maxRegistrations: number | null;
   minAge: number;
   maxAge: number;
+  minimumAvailableSlots: number;
   allowSoloEnrollment: boolean;
   allowGroupEnrollment: boolean;
   priceOptions: LessonSeriePriceDto[];
