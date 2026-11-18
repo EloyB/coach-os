@@ -34,7 +34,6 @@ export function ActiveStudentsSidebarCard({ user }: { user: AuthUser | null }) {
 
   return (
     <div
-      role="status"
       data-testid="active-students-card"
       data-level={usage.level}
       className="relative z-10 mx-2.5 mb-2.5 rounded-lg bg-black/[.18] px-3 py-2.5"
@@ -53,6 +52,11 @@ export function ActiveStudentsSidebarCard({ user }: { user: AuthUser | null }) {
       </p>
       {usage.limit !== null && (
         <div
+          role="progressbar"
+          aria-label={t("progressLabel")}
+          aria-valuemin={0}
+          aria-valuemax={usage.limit}
+          aria-valuenow={Math.min(data.count, usage.limit)}
           data-testid="active-students-bar"
           className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-white/15"
         >

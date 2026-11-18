@@ -24,6 +24,9 @@ test.describe("Teller actieve leerlingen", () => {
     await expect(card(page)).toContainText("142 / 200 actieve leerlingen");
     await expect(card(page)).toContainText("Abonnementsjaar tot 31/12/2026");
     await expect(bar(page)).toBeVisible();
+    await expect(bar(page)).toHaveAttribute("role", "progressbar");
+    await expect(bar(page)).toHaveAttribute("aria-valuenow", "142");
+    await expect(bar(page)).toHaveAttribute("aria-valuemax", "200");
     await expect(card(page)).toHaveAttribute("data-level", "normal");
   });
 
