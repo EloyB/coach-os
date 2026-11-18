@@ -18,6 +18,7 @@ public class CreateManualCampEnrollmentRequestValidator : AbstractValidator<Crea
             .Must(e => EmailPattern.IsMatch(e)).WithMessage("Ongeldig e-mailadres")
             .MaximumLength(320).WithMessage("E-mailadres mag maximaal 320 karakters zijn");
         RuleFor(x => x.ParticipantPhone)
+            .NotEmpty().WithMessage("Telefoonnummer is verplicht")
             .MaximumLength(50).WithMessage("Telefoonnummer mag maximaal 50 karakters zijn");
     }
 }

@@ -22,9 +22,9 @@ public class SubmitEnrollmentRequestValidator : AbstractValidator<SubmitEnrollme
             .EmailAddress().WithMessage("Ongeldig e-mailadres");
 
         RuleFor(x => x.StudentPhone)
+            .NotEmpty().WithMessage("Telefoonnummer is verplicht")
             .MaximumLength(30).WithMessage("Telefoonnummer is te lang")
-            .Must(InputSanitizer.IsFreeOfHtmlNullable).WithMessage("Telefoonnummer mag geen HTML of scripttekens bevatten")
-            .When(x => !string.IsNullOrEmpty(x.StudentPhone));
+            .Must(InputSanitizer.IsFreeOfHtmlNullable).WithMessage("Telefoonnummer mag geen HTML of scripttekens bevatten");
 
         RuleFor(x => x.DateOfBirth)
             .NotEmpty().WithMessage("Geboortedatum is verplicht")
