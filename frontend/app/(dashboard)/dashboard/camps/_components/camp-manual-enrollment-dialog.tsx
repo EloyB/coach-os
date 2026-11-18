@@ -59,7 +59,7 @@ export function CampManualEnrollmentDialog({
       createManualCampEnrollment(campId, {
         participantName: name,
         participantEmail: email,
-        participantPhone: phone || null,
+        participantPhone: phone.trim(),
         paid: isPaidCamp && paid,
         campPriceId: priceId,
         responses: Object.entries(answers)
@@ -113,6 +113,7 @@ export function CampManualEnrollmentDialog({
               setAnswers((prev) => ({ ...prev, [fieldId]: value }))
             }
             idPrefix="manual"
+            phoneRequired
             campId={campId}
             priceId={priceId}
             onPriceChange={setPriceId}

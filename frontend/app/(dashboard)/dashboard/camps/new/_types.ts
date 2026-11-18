@@ -109,13 +109,6 @@ export function toDateOnly(value: string | null | undefined): string {
   return value.split("T")[0] ?? "";
 }
 
-/** Clamp a HH:mm value into [min, max] (lexicographic compare works for HH:mm). */
-export function clampTime(value: string, min: string, max: string): string {
-  if (value < min) return min;
-  if (value > max) return max;
-  return value;
-}
-
 /** Build the API request payload from wizard step-1 data + day drafts. */
 export function buildCampRequest(
   step1: CampStep1Data,

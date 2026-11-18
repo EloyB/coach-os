@@ -51,12 +51,9 @@ public class CreateCampRequestValidator : AbstractValidator<CreateCampRequest>
                 .WithMessage("Eindtijd moet na starttijd zijn")
                 .When(d => BeValidTime(d.StartTime) && BeValidTime(d.EndTime));
 
-            day.RuleForEach(d => d.Trainers).Must((d, trainer) =>
-                    string.Compare(trainer.StartTime, d.StartTime, StringComparison.Ordinal) >= 0
-                    && string.Compare(trainer.EndTime, d.EndTime, StringComparison.Ordinal) <= 0
-                    && string.Compare(trainer.EndTime, trainer.StartTime, StringComparison.Ordinal) > 0)
-                .WithMessage("Trainer-uren moeten binnen de kampuren van die dag vallen")
-                .When(d => BeValidTime(d.StartTime) && BeValidTime(d.EndTime));
+            day.RuleForEach(d => d.Trainers)
+                .Must(trainer => string.Compare(trainer.EndTime, trainer.StartTime, StringComparison.Ordinal) > 0)
+                .WithMessage("Eindtijd van een shift moet na de starttijd liggen");
 
             day.RuleFor(d => d.Trainers)
                 .Must(trainers => !CampShiftRules.HasOverlappingShifts(trainers))

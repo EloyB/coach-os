@@ -100,7 +100,7 @@ export interface CreateManualEnrollmentRequest {
   studentName: string;
   contactEmail: string;
   studentEmail?: string | null;
-  studentPhone?: string | null;
+  studentPhone: string;
   dateOfBirth: string;
   responses?: { formFieldId: string; value: string }[];
 }
@@ -131,7 +131,7 @@ export interface GroupMemberRequest {
 export interface SubmitEnrollmentRequest {
   studentName: string;
   studentEmail: string;
-  studentPhone?: string;
+  studentPhone: string;
   /** yyyy-MM-dd — verplicht, bepaalt het tarief (volwassene/jeugd). */
   dateOfBirth: string;
   responses: { formFieldId: string; value: string }[];

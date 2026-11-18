@@ -21,6 +21,7 @@ public class SubmitEnrollmentRequestValidatorTests
     {
         StudentName = "Leader",
         StudentEmail = "leader@test.be",
+        StudentPhone = "0470 12 34 56",
         DateOfBirth = AdultBirthDate,
         EnrollmentType = "group",
         GroupMembers = new()
@@ -102,6 +103,7 @@ public class SubmitEnrollmentRequestValidatorTests
         {
             StudentName = "Anna",
             StudentEmail = "anna@test.be",
+            StudentPhone = "0470 12 34 56",
             DateOfBirth = AdultBirthDate,
             EnrollmentType = "solo",
         };
@@ -176,5 +178,34 @@ public class SubmitEnrollmentRequestValidatorTests
 
         result.IsValid.Should().BeFalse();
         result.Errors.Should().Contain(e => e.ErrorMessage == "Geboortedatum is verplicht");
+    }
+
+    // ── Telefoonnummer ────────────────────────────────────────────────────────
+
+    [TestCase(null)]
+    [TestCase("")]
+    [TestCase("   ")]
+    public void Validate_MissingPhone_Fails(string? phone)
+    {
+        SubmitEnrollmentRequest request = ValidGroup() with { StudentPhone = phone };
+
+        ValidationResult result = _validator.Validate(request);
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.ErrorMessage == "Telefoonnummer is verplicht");
+    }
+
+    [Test]
+    public void Validate_GroupMemberWithoutPhone_IsValid()
+    {
+        SubmitEnrollmentRequest request = ValidGroup() with
+        {
+            GroupMembers = new()
+            {
+                new() { StudentName = "Member A", StudentEmail = "a@test.be", DateOfBirth = AdultBirthDate },
+            },
+        };
+
+        _validator.Validate(request).IsValid.Should().BeTrue();
     }
 }

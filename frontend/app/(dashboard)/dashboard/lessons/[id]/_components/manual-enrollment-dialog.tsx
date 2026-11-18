@@ -28,10 +28,10 @@ export function ManualEnrollmentDialog({
   const mutation = useMutation({
     mutationFn: () => (groupId
       ? addGroupMember(seriesId, groupId, {
-        studentName: name, contactEmail: email, studentPhone: phone || null, dateOfBirth,
+        studentName: name, contactEmail: email, studentPhone: phone.trim(), dateOfBirth,
       })
       : createManualEnrollment(seriesId, {
-        studentName: name, contactEmail: email, studentPhone: phone || null, dateOfBirth,
+        studentName: name, contactEmail: email, studentPhone: phone.trim(), dateOfBirth,
       })),
     onSuccess: () => {
       toast.success(groupId ? t("addMemberSuccess") : t("manualSuccess"));
@@ -60,8 +60,8 @@ export function ManualEnrollmentDialog({
           <label className="block text-sm font-medium">{t("manualEmail")}
             <Input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1" />
           </label>
-          <label className="block text-sm font-medium">{t("manualPhone")}
-            <Input value={phone} onChange={(e) => setPhone(e.target.value)} className="mt-1" />
+          <label className="block text-sm font-medium">{t("manualPhone")} *
+            <Input required value={phone} onChange={(e) => setPhone(e.target.value)} className="mt-1" />
           </label>
           <label className="block text-sm font-medium">{t("manualBirthDate")}
             <Input required type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} className="mt-1 appearance-none min-w-0" />

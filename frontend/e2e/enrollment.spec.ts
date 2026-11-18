@@ -127,6 +127,7 @@ test.describe("Public Enrollment", () => {
     await inputs.nth(0).fill("Sophie");
     await inputs.nth(1).fill("De Vries");
     await page.locator('input[type="email"]').fill("sophie@example.be");
+    await page.locator('input[type="tel"]').fill("0470 12 34 56");
     // Geboortedatum is verplicht sinds de tariefcategorieën (volwassene/jeugd).
     await page.locator('input[type="date"]').fill("1990-05-12");
     await page.getByRole("button", { name: "Inschrijven" }).click();
@@ -145,6 +146,7 @@ test.describe("Public Enrollment", () => {
     await inputs.nth(0).fill("Sophie");
     await inputs.nth(1).fill("De Vries");
     await page.locator('input[type="email"]').fill("sophie@example.be");
+    await page.locator('input[type="tel"]').fill("0470 12 34 56");
     // Geboortedatum is verplicht sinds de tariefcategorieën (volwassene/jeugd).
     await page.locator('input[type="date"]').fill("1990-05-12");
     await page.getByRole("button", { name: "Inschrijven" }).click();
@@ -180,6 +182,7 @@ test.describe("Public Enrollment", () => {
     await inputs.nth(0).fill("Els");
     await inputs.nth(1).fill("Peeters");
     await page.locator('input[type="email"]').fill("ouder@example.com");
+    await page.locator('input[type="tel"]').fill("0470 12 34 56");
     await page.getByLabel(/geboortedatum/i).first().fill("1985-01-01");
 
     // Switch to group enrollment. The radio input is visually hidden (sr-only),
@@ -254,6 +257,7 @@ test.describe("Public Enrollment", () => {
     await inputs.nth(0).fill("Sophie");
     await inputs.nth(1).fill("De Vries");
     await page.locator('input[type="email"]').fill("sophie@example.be");
+    await page.locator('input[type="tel"]').fill("0470 12 34 56");
     await page.locator('input[type="date"]').fill("1990-05-12");
     await page.getByRole("button", { name: "Inschrijven" }).click();
 

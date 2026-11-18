@@ -176,6 +176,7 @@ export default function EnrollPage() {
     firstName?: string;
     lastName?: string;
     email?: string;
+    phone?: string;
     dateOfBirth?: string;
   }>({});
 
@@ -375,6 +376,7 @@ export default function EnrollPage() {
     if (!email.trim()) errors.email = "E-mailadres is verplicht";
     else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))
       errors.email = "Ongeldig e-mailadres";
+    if (!phone.trim()) errors.phone = t("form_phone_required");
     const dobError = validateBirthDate(dateOfBirth);
     if (dobError) errors.dateOfBirth = dobError;
     if (series) {
@@ -483,7 +485,7 @@ export default function EnrollPage() {
       await submitEnrollment(seriesId, {
         studentName: `${firstName.trim()} ${lastName.trim()}`,
         studentEmail: email.trim(),
-        studentPhone: phone.trim() || undefined,
+        studentPhone: phone.trim(),
         dateOfBirth: dateOfBirth,
         responses,
         timeSlotPreferences:
@@ -892,15 +894,21 @@ export default function EnrollPage() {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                        {t("form_phone")}
+                        {t("form_phone")} *
                       </label>
                       <input
                         type="tel"
                         value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
+                        onChange={(e) => {
+                          setPhone(e.target.value);
+                          setBaseErrors((p) => ({ ...p, phone: undefined }));
+                        }}
                         placeholder="+32 471 23 45 67"
-                        className={inputClass(false)}
+                        className={inputClass(!!baseErrors.phone)}
                       />
+                      {baseErrors.phone && (
+                        <p className="text-xs text-red-500 mt-1">{baseErrors.phone}</p>
+                      )}
                     </div>
                     <div>
                       <label
