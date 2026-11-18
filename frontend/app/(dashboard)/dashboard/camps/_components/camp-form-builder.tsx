@@ -172,7 +172,7 @@ export function CampFormBuilder({ campId }: { campId: string }) {
                   key={f}
                   className="inline-flex items-center px-2.5 py-1 rounded-full text-xs bg-tennis-green/10 text-tennis-green font-medium"
                 >
-                  {f}
+                  {f} *
                 </span>
               ),
             )}

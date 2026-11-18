@@ -23,6 +23,8 @@ interface CampParticipantFieldsProps {
   campId: string;
   priceId: string | null;
   onPriceChange: (priceId: string | null) => void;
+  /** Telefoon is verplicht bij nieuwe inschrijvingen, optioneel bij bewerken/lid toevoegen. */
+  phoneRequired?: boolean;
 }
 
 /**
@@ -39,6 +41,7 @@ export function CampParticipantFields({
   campId,
   priceId,
   onPriceChange,
+  phoneRequired = false,
 }: CampParticipantFieldsProps) {
   const t = useTranslations("campEnrollmentsTable");
 
@@ -64,8 +67,9 @@ export function CampParticipantFields({
         />
       </label>
       <label className="block text-sm font-medium">
-        {t("memberPhone")}
+        {phoneRequired ? `${t("memberPhoneRequired")} *` : t("memberPhone")}
         <Input
+          required={phoneRequired}
           value={values.phone}
           onChange={(e) => onChange({ phone: e.target.value })}
           className="mt-1"

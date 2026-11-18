@@ -91,6 +91,7 @@ export default function CampEnrollPage() {
     firstName?: string;
     lastName?: string;
     email?: string;
+    phone?: string;
   }>({});
 
   // Enrollment type
@@ -174,6 +175,7 @@ export default function CampEnrollPage() {
     if (!email.trim()) errors.email = t("requiredField");
     else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))
       errors.email = t("requiredField");
+    if (!phone.trim()) errors.phone = t("requiredField");
     setBaseErrors(errors);
 
     const fErrors: Record<string, string> = {};
@@ -222,7 +224,7 @@ export default function CampEnrollPage() {
       const result = await submitCampEnrollment(campId, {
         participantName: `${firstName.trim()} ${lastName.trim()}`,
         participantEmail: email.trim(),
-        participantPhone: phone.trim() || undefined,
+        participantPhone: phone.trim(),
         responses,
         enrollmentType,
         groupMembers:
@@ -584,15 +586,21 @@ export default function CampEnrollPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      {t("formPhone")}
+                      {t("formPhone")} *
                     </label>
                     <input
                       type="tel"
                       value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
+                      onChange={(e) => {
+                        setPhone(e.target.value);
+                        setBaseErrors((p) => ({ ...p, phone: undefined }));
+                      }}
                       placeholder="+32 471 23 45 67"
-                      className={inputClass(false)}
+                      className={inputClass(!!baseErrors.phone)}
                     />
+                    {baseErrors.phone && (
+                      <p className="text-xs text-red-500 mt-1">{baseErrors.phone}</p>
+                    )}
                   </div>
                 </div>
               </div>
