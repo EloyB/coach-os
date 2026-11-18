@@ -311,6 +311,7 @@ test.describe("Public Enrollment", () => {
     await inputs.nth(0).fill("Sophie");
     await inputs.nth(1).fill("De Vries");
     await page.locator('input[type="email"]').fill("sophie@example.be");
+    await page.locator('input[type="tel"]').fill("0470 12 34 56");
     await page.locator('input[type="date"]').fill("1990-05-12");
 
     // Slechts één tijdvak gekozen: geblokkeerd met foutmelding.
