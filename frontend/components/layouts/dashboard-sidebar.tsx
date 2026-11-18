@@ -9,6 +9,7 @@ import { CourtLines } from "@/components/ui/court-lines";
 import { LogoMark } from "@/components/ui/logo-mark";
 import { Mono } from "@/components/ui/mono";
 import { TrialSidebarCard } from "@/components/dashboard/trial-sidebar-card";
+import { ActiveStudentsSidebarCard } from "@/components/dashboard/active-students-sidebar-card";
 import { OnboardingSidebarCard } from "@/components/dashboard/onboarding/onboarding-sidebar-card";
 import { navItems } from "@/lib/nav-items";
 import { switchOrganization } from "@/lib/api/auth";
@@ -199,6 +200,9 @@ export function DashboardSidebar() {
 
       {/* Status van de gratis proef (enkel voor admins) */}
       <TrialSidebarCard user={user} />
+
+      {/* Actieve leerlingen in het abonnementsjaar (enkel voor admins) */}
+      <ActiveStudentsSidebarCard user={user} />
 
       {/* Eerstvolgende onboardingstap (enkel voor admins) */}
       <OnboardingSidebarCard enabled={role === "Admin"} />
