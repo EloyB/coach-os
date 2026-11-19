@@ -207,6 +207,24 @@ public class ApplicationDbContext(
         return base.SaveChanges();
     }
 
+    /// <summary>Zet ConfirmedAt de eerste keer dat een (kamp)inschrijving de status Confirmed krijgt.</summary>
+    private void StampConfirmedAt(DateTime now)
+    {
+        foreach (var entry in ChangeTracker.Entries<Enrollment>())
+        {
+            if (entry.Entity.ConfirmedAt is null && entry.Entity.Status == Domain.Enums.EnrollmentStatus.Confirmed
+                && (entry.State == EntityState.Added || (entry.State == EntityState.Modified && entry.Property(e => e.Status).IsModified)))
+                entry.Entity.ConfirmedAt = now;
+        }
+
+        foreach (var entry in ChangeTracker.Entries<CampEnrollment>())
+        {
+            if (entry.Entity.ConfirmedAt is null && entry.Entity.Status == Domain.Enums.EnrollmentStatus.Confirmed
+                && (entry.State == EntityState.Added || (entry.State == EntityState.Modified && entry.Property(e => e.Status).IsModified)))
+                entry.Entity.ConfirmedAt = now;
+        }
+    }
+
     private void UpdateAuditFields()
     {
         var now = DateTime.UtcNow;
@@ -229,6 +247,8 @@ public class ApplicationDbContext(
                     subscription.ConcurrencyStamp = Guid.NewGuid();
             }
         }
+
+        StampConfirmedAt(now);
 
         foreach (var entry in
             ChangeTracker.Entries<ApplicationUser>())

@@ -139,7 +139,7 @@ public class EnrollmentRepository(ApplicationDbContext context) : IEnrollmentRep
             .Where(e => e.OrganizationId == organizationId
                 && e.Status == EnrollmentStatus.Confirmed
                 && e.AnonymizedAt == null
-                && e.EnrolledAt >= fromUtc && e.EnrolledAt < toUtcExclusive)
+                && e.ConfirmedAt >= fromUtc && e.ConfirmedAt < toUtcExclusive)
             .Select(e => new StudentIdentityKey(
                 e.StudentName.Trim().ToLower(),
                 e.DateOfBirth,

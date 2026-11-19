@@ -74,18 +74,21 @@ public class ActiveStudentCountServiceTests
             Id = Guid.NewGuid(), OrganizationId = org ?? OrgId, StudentName = name, DateOfBirth = dob,
             ContactEmail = contactEmail, StudentEmail = studentEmail, Status = status,
             EnrolledAt = enrolledAt ?? InPeriod, AnonymizedAt = anonymizedAt,
+            ConfirmedAt = status == EnrollmentStatus.Confirmed ? enrolledAt ?? InPeriod : null,
         });
         _db.SaveChanges();
     }
 
     private void Camp(
         string name, string email, DateTime? enrolledAt = null,
-        EnrollmentStatus status = EnrollmentStatus.Confirmed, Guid? org = null, DateTime? anonymizedAt = null)
+        EnrollmentStatus status = EnrollmentStatus.Confirmed, Guid? org = null, DateTime? anonymizedAt = null,
+        DateOnly? dob = null)
     {
         _db.CampEnrollments.Add(new CampEnrollment
         {
             Id = Guid.NewGuid(), OrganizationId = org ?? OrgId, CampId = Guid.NewGuid(), ParticipantName = name,
-            ParticipantEmail = email, Status = status, EnrolledAt = enrolledAt ?? InPeriod, AnonymizedAt = anonymizedAt,
+            ParticipantEmail = email, DateOfBirth = dob, Status = status, EnrolledAt = enrolledAt ?? InPeriod,
+            AnonymizedAt = anonymizedAt, ConfirmedAt = status == EnrollmentStatus.Confirmed ? enrolledAt ?? InPeriod : null,
         });
         _db.SaveChanges();
     }
@@ -164,16 +167,89 @@ public class ActiveStudentCountServiceTests
     }
 
     [Test]
-    public async Task SamePersonInCampAndSeries_CountsTwiceWhenSeriesHasDob_OnceWhenNot()
+    public async Task SamePersonInCampAndSeries_CountsOnce_WhenBothHaveSameDob()
     {
         Lesson("Sam Janssens", Dob, "s@x.be");
-        Camp("Sam Janssens", "s@x.be");
-        (await Run()).Count.Should().Be(2); // bewuste overschatting: kamp heeft geen DOB
-
-        _db.Enrollments.RemoveRange(_db.Enrollments);
-        _db.SaveChanges();
-        Lesson("Sam Janssens", null, "s@x.be");
+        Camp("sam  janssens", "S@x.be", dob: Dob);
         (await Run()).Count.Should().Be(1);
+    }
+
+    [Test]
+    public async Task CampWithoutDob_IsSeparateFromSeriesWithDob_ButCampsWithSameDobMerge()
+    {
+        Lesson("Sam Janssens", Dob, "s@x.be");
+        Camp("Sam Janssens", "s@x.be"); // oude kampinschrijving zonder geboortedatum: bewuste overschatting
+        (await Run()).Count.Should().Be(2);
+
+        Camp("Kim Peeters", "k@x.be", dob: Dob);
+        Camp("Kim Peeters", "k@x.be", dob: Dob);
+        Camp("Kim Peeters", "k@x.be", dob: new DateOnly(2013, 1, 1));
+        (await Run()).Count.Should().Be(4);
+    }
+
+    [Test]
+    public async Task CountsOnConfirmationMoment_NotEnrollmentMoment()
+    {
+        DateTime before = new(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc);
+        DateTime inside = new(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
+        // Ingeschreven voor het jaar, bevestigd erin: telt.
+        _db.Enrollments.Add(new Enrollment
+        {
+            Id = Guid.NewGuid(), OrganizationId = OrgId, StudentName = "Laat Bevestigd", DateOfBirth = Dob,
+            ContactEmail = "l@x.be", Status = EnrollmentStatus.Confirmed, EnrolledAt = before, ConfirmedAt = inside,
+        });
+        // Ingeschreven in het jaar, nog niet bevestigd: telt niet.
+        Lesson("Nog Pending", Dob, "p@x.be", status: EnrollmentStatus.Pending);
+        // Ingeschreven in het jaar, bevestigd na het jaar: telt niet.
+        _db.CampEnrollments.Add(new CampEnrollment
+        {
+            Id = Guid.NewGuid(), OrganizationId = OrgId, CampId = Guid.NewGuid(), ParticipantName = "Te Laat",
+            ParticipantEmail = "t@x.be", Status = EnrollmentStatus.Confirmed, EnrolledAt = inside,
+            ConfirmedAt = new DateTime(2027, 6, 1, 0, 0, 0, DateTimeKind.Utc),
+        });
+        _db.SaveChanges();
+
+        (await Run()).Count.Should().Be(1);
+    }
+
+    [Test]
+    public void ConfirmedAt_IsStampedOnceOnFirstConfirmation()
+    {
+        Enrollment pending = new()
+        {
+            Id = Guid.NewGuid(), OrganizationId = OrgId, StudentName = "Wacht", ContactEmail = "w@x.be",
+            Status = EnrollmentStatus.Pending, EnrolledAt = InPeriod,
+        };
+        CampEnrollment camp = new()
+        {
+            Id = Guid.NewGuid(), OrganizationId = OrgId, CampId = Guid.NewGuid(), ParticipantName = "Kamper",
+            ParticipantEmail = "k@x.be", Status = EnrollmentStatus.PendingPayment, EnrolledAt = InPeriod,
+        };
+        _db.Enrollments.Add(pending);
+        _db.CampEnrollments.Add(camp);
+        _db.SaveChanges();
+        pending.ConfirmedAt.Should().BeNull();
+        camp.ConfirmedAt.Should().BeNull();
+
+        pending.Status = EnrollmentStatus.Confirmed;
+        camp.Status = EnrollmentStatus.Confirmed;
+        _db.SaveChanges();
+        DateTime? first = pending.ConfirmedAt;
+        first.Should().NotBeNull();
+        camp.ConfirmedAt.Should().NotBeNull();
+
+        pending.Notes = "wijziging";
+        _db.SaveChanges();
+        pending.ConfirmedAt.Should().Be(first);
+
+        Enrollment direct = new()
+        {
+            Id = Guid.NewGuid(), OrganizationId = OrgId, StudentName = "Direct", ContactEmail = "d@x.be",
+            Status = EnrollmentStatus.Confirmed, EnrolledAt = InPeriod,
+        };
+        _db.Enrollments.Add(direct);
+        _db.SaveChanges();
+        direct.ConfirmedAt.Should().NotBeNull();
     }
 
     [Test]
@@ -280,7 +356,7 @@ public class ActiveStudentCountServiceTests
 
         string lessons = pg.Enrollments
             .Where(e => e.OrganizationId == OrgId && e.Status == EnrollmentStatus.Confirmed
-                && e.AnonymizedAt == null && e.EnrolledAt >= from && e.EnrolledAt < from)
+                && e.AnonymizedAt == null && e.ConfirmedAt >= from && e.ConfirmedAt < from)
             .Select(e => new StudentIdentityKey(
                 e.StudentName.Trim().ToLower(), e.DateOfBirth,
                 e.StudentEmail == null ? null : e.StudentEmail.Trim().ToLower(), e.ContactEmail.Trim().ToLower()))

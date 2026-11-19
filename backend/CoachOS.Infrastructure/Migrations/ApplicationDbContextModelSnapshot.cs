@@ -274,8 +274,14 @@ namespace CoachOS.Infrastructure.Migrations
                     b.Property<Guid?>("CampPriceId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTime?>("ConfirmedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly?>("DateOfBirth")
+                        .HasColumnType("date");
 
                     b.Property<DateTime>("EnrolledAt")
                         .HasColumnType("timestamp with time zone");
@@ -577,6 +583,9 @@ namespace CoachOS.Infrastructure.Migrations
 
                     b.Property<int?>("Category")
                         .HasColumnType("integer");
+
+                    b.Property<DateTime?>("ConfirmedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("ContactEmail")
                         .IsRequired()

@@ -133,10 +133,10 @@ public class CampEnrollmentRepository(ApplicationDbContext context) : ICampEnrol
             .Where(e => e.OrganizationId == organizationId
                 && e.Status == EnrollmentStatus.Confirmed
                 && e.AnonymizedAt == null
-                && e.EnrolledAt >= fromUtc && e.EnrolledAt < toUtcExclusive)
+                && e.ConfirmedAt >= fromUtc && e.ConfirmedAt < toUtcExclusive)
             .Select(e => new StudentIdentityKey(
                 e.ParticipantName.Trim().ToLower(),
-                null,
+                e.DateOfBirth,
                 e.ParticipantEmail.Trim().ToLower(),
                 null))
             .Distinct()

@@ -13,8 +13,14 @@ public class CampEnrollment : BaseEntity
     public string ParticipantEmail { get; set; } = string.Empty;
     public string? ParticipantPhone { get; set; }
 
+    /// <summary>Geboortedatum; null bij inschrijvingen van voor deze verplichting (en na anonimisering).</summary>
+    public DateOnly? DateOfBirth { get; set; }
+
     public EnrollmentStatus Status { get; set; }
     public DateTime EnrolledAt { get; set; }
+
+    /// <summary>Eerste moment waarop de status Confirmed werd; automatisch gezet in ApplicationDbContext. Basis voor de teller actieve leerlingen.</summary>
+    public DateTime? ConfirmedAt { get; set; }
     public string? Notes { get; set; }
 
     public Guid? CampEnrollmentGroupId { get; set; }

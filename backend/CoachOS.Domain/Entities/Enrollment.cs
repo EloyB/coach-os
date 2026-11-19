@@ -49,6 +49,9 @@ public class Enrollment : BaseEntity
 
     public EnrollmentStatus Status { get; set; }
     public DateTime EnrolledAt { get; set; }
+
+    /// <summary>Eerste moment waarop de status Confirmed werd; automatisch gezet in ApplicationDbContext. Basis voor de teller actieve leerlingen.</summary>
+    public DateTime? ConfirmedAt { get; set; }
     public string? Notes { get; set; }
     public Guid? EnrollmentGroupId { get; set; }
     public bool IsOpenToGrouping { get; set; }

@@ -46,6 +46,7 @@ public class ActiveStudentCountPostgresTests : PlayerErasurePostgresBase
             {
                 Organization = o, LessonSerie = s, StudentName = name, DateOfBirth = dob, ContactEmail = contact,
                 StudentEmail = own, Status = status, EnrolledAt = at, AnonymizedAt = anonymizedAt,
+                ConfirmedAt = status == EnrollmentStatus.Confirmed ? at : null,
             };
 
             db.Enrollments.AddRange(
@@ -61,8 +62,8 @@ public class ActiveStudentCountPostgresTests : PlayerErasurePostgresBase
                 Lesson(other, otherSeries, "Vreemd Vera", new DateOnly(1980, 1, 1), "vera@example.be", null, inPeriod));
 
             db.CampEnrollments.AddRange(
-                new CampEnrollment { OrganizationId = orgId, Camp = camp, ParticipantName = "Kamp Kim", ParticipantEmail = "kim@example.be", Status = EnrollmentStatus.Confirmed, EnrolledAt = inPeriod },
-                new CampEnrollment { OrganizationId = orgId, Camp = camp, ParticipantName = " kamp  KIM", ParticipantEmail = "KIM@example.be", Status = EnrollmentStatus.Confirmed, EnrolledAt = inPeriod },
+                new CampEnrollment { OrganizationId = orgId, Camp = camp, ParticipantName = "Kamp Kim", ParticipantEmail = "kim@example.be", Status = EnrollmentStatus.Confirmed, EnrolledAt = inPeriod, ConfirmedAt = inPeriod },
+                new CampEnrollment { OrganizationId = orgId, Camp = camp, ParticipantName = " kamp  KIM", ParticipantEmail = "KIM@example.be", Status = EnrollmentStatus.Confirmed, EnrolledAt = inPeriod, ConfirmedAt = inPeriod },
                 new CampEnrollment { OrganizationId = orgId, Camp = camp, ParticipantName = "Wacht Wout", ParticipantEmail = "wout@example.be", Status = EnrollmentStatus.Waitlisted, EnrolledAt = inPeriod });
             await db.SaveChangesAsync();
         }

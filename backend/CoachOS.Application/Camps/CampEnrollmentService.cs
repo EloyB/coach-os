@@ -144,6 +144,7 @@ public class CampEnrollmentService(
                 CampId = camp.Id,
                 ParticipantName = request.ParticipantName,
                 ParticipantEmail = request.ParticipantEmail,
+                DateOfBirth = DateOfBirthRules.ParseOrNull(request.DateOfBirth),
                 ParticipantPhone = request.ParticipantPhone,
                 Status = initialStatus,
                 EnrolledAt = DateTime.UtcNow,
@@ -181,6 +182,7 @@ public class CampEnrollmentService(
                         CampId = camp.Id,
                         ParticipantName = member.ParticipantName,
                         ParticipantEmail = member.ParticipantEmail,
+                        DateOfBirth = DateOfBirthRules.ParseOrNull(member.DateOfBirth),
                         ParticipantPhone = member.ParticipantPhone,
                         Status = initialStatus,
                         EnrolledAt = DateTime.UtcNow,
@@ -270,6 +272,7 @@ public class CampEnrollmentService(
                 CampId = campId,
                 ParticipantName = request.ParticipantName.Trim(),
                 ParticipantEmail = email,
+                DateOfBirth = DateOfBirthRules.ParseOrNull(request.DateOfBirth),
                 ParticipantPhone = string.IsNullOrWhiteSpace(request.ParticipantPhone)
                     ? null
                     : request.ParticipantPhone.Trim(),
