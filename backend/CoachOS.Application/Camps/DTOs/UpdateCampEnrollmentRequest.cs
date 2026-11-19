@@ -11,8 +11,11 @@ public record UpdateCampEnrollmentRequest
     public string ParticipantEmail { get; init; } = string.Empty;
     public string? ParticipantPhone { get; init; }
 
-    /// <summary>Geboortedatum, formaat yyyy-MM-dd (verplicht).</summary>
-    public string DateOfBirth { get; init; } = string.Empty;
+    /// <summary>
+    /// Geboortedatum, formaat yyyy-MM-dd. Optioneel: oude inschrijvingen hebben er geen en moeten
+    /// bewerkbaar blijven. Leeg/null laat de bestaande waarde ongemoeid.
+    /// </summary>
+    public string? DateOfBirth { get; init; }
 
     /// <summary>Gekozen tarief; null = hoofdprijs van het kamp.</summary>
     public Guid? CampPriceId { get; init; }

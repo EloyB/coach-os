@@ -71,13 +71,9 @@ export function CampEnrollmentDetailDialog({
 }: CampEnrollmentDetailDialogProps) {
   const t = useTranslations("campEnrollmentsTable");
   const queryClient = useQueryClient();
-  const missingDateOfBirth = enrollment.dateOfBirth === null;
   const priceMutation = useMutation({
-    mutationFn: (campPriceId: string | null) => {
-      if (enrollment.dateOfBirth === null) {
-        return Promise.reject(new Error("dateOfBirth ontbreekt"));
-      }
-      return updateCampEnrollment(campId, enrollment.id, {
+    mutationFn: (campPriceId: string | null) =>
+      updateCampEnrollment(campId, enrollment.id, {
         participantName: enrollment.participantName,
         participantEmail: enrollment.participantEmail,
         participantPhone: enrollment.participantPhone,
@@ -86,8 +82,7 @@ export function CampEnrollmentDetailDialog({
         responses: enrollment.formResponses
           .filter((r) => r.value.trim() !== "")
           .map((r) => ({ campFormFieldId: r.fieldId, value: r.value })),
-      });
-    },
+      }),
     onSuccess: () => {
       toast.success(t("toastUpdated"));
       queryClient.invalidateQueries({ queryKey: ["campEnrollments", campId] });
@@ -234,10 +229,7 @@ export function CampEnrollmentDetailDialog({
             )}
           </dl>
 
-          {canEditPrice && missingDateOfBirth && (
-            <p className="text-xs text-amber-600">{t("priceNeedsBirthDate")}</p>
-          )}
-          {canEditPrice && !missingDateOfBirth && (
+          {canEditPrice && (
             <div className={priceMutation.isPending ? "opacity-60" : undefined}>
               <CampPriceSelect
                 campId={campId}

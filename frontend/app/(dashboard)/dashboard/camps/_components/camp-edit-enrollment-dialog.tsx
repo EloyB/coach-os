@@ -92,7 +92,7 @@ function EditEnrollmentForm({
         participantName: name,
         participantEmail: email,
         participantPhone: phone.trim() ? phone : null,
-        dateOfBirth,
+        dateOfBirth: dateOfBirth || null,
         campPriceId: priceId,
         responses: Object.entries(answers)
           .filter(([, value]) => value.trim() !== "")
@@ -129,6 +129,7 @@ function EditEnrollmentForm({
           if (patch.phone !== undefined) setPhone(patch.phone);
               if (patch.dateOfBirth !== undefined) setDateOfBirth(patch.dateOfBirth);
         }}
+        dateOfBirthRequired={false}
         form={form}
         answers={answers}
         onAnswerChange={(fieldId, value) =>

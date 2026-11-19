@@ -1479,7 +1479,6 @@
     "memberDateOfBirth": "Geboortedatum",
     "detailBirthDate": "Geboortedatum",
     "bornOn": "Geboren op {date}",
-    "priceNeedsBirthDate": "Vul eerst de geboortedatum in via Aanpassen om het tarief te kunnen wijzigen.",
     "editAction": "Inschrijving aanpassen",
     "editTitle": "Inschrijving aanpassen",
     "editDescription": "Wijzig de gegevens, het tarief en de antwoorden van deze deelnemer. De status blijft ongewijzigd; een openstaande cash-betaling volgt het gekozen tarief.",

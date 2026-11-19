@@ -268,7 +268,7 @@ export interface UpdateCampEnrollmentRequest {
   participantEmail: string;
   participantPhone: string | null;
   /** yyyy-MM-dd */
-  dateOfBirth: string;
+  dateOfBirth?: string | null;
   /** Gekozen tarief; null = hoofdprijs. */
   campPriceId?: string | null;
   responses: { campFormFieldId: string; value: string }[];

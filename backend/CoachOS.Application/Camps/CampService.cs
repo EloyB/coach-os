@@ -305,7 +305,8 @@ public class CampService(
 
         enrollment.ParticipantName = request.ParticipantName.Trim();
         enrollment.ParticipantEmail = email;
-        enrollment.DateOfBirth = DateOfBirthRules.ParseOrNull(request.DateOfBirth);
+        if (DateOfBirthRules.ParseOrNull(request.DateOfBirth) is DateOnly dateOfBirth)
+            enrollment.DateOfBirth = dateOfBirth;
         enrollment.ParticipantPhone = string.IsNullOrWhiteSpace(request.ParticipantPhone)
             ? null
             : request.ParticipantPhone.Trim();

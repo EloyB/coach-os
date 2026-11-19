@@ -164,7 +164,7 @@ test.describe("Kamp-inschrijving: geboortedatum (dashboard)", () => {
     await expect(dialog.getByText("14/03/2015")).toBeVisible();
   });
 
-  test("oude inschrijving zonder geboortedatum: aanpassen vereist die eerst", async ({ page }) => {
+  test("oude inschrijving zonder geboortedatum blijft bewerkbaar zonder geboortedatum", async ({ page }) => {
     await mockApi(page, "GET", `/camps/${CAMP_ID}/enrollments`, [buildEnrollment({ dateOfBirth: null })]);
     const updates: UpdateCampEnrollmentRequest[] = [];
     await page.route(`${API_URL}/camps/${CAMP_ID}/enrollments/*`, (route) => {
@@ -180,12 +180,8 @@ test.describe("Kamp-inschrijving: geboortedatum (dashboard)", () => {
     const dateOfBirthInput = dialog.getByLabel("Geboortedatum");
     await expect(dateOfBirthInput).toHaveValue("");
     await dialog.getByRole("button", { name: "Opslaan" }).click();
-    expect(updates).toHaveLength(0);
-
-    await dateOfBirthInput.fill("2015-03-14");
-    await dialog.getByRole("button", { name: "Opslaan" }).click();
 
     await expect.poll(() => updates.length).toBe(1);
-    expect(updates[0].dateOfBirth).toBe("2015-03-14");
+    expect(updates[0].dateOfBirth ?? null).toBeNull();
   });
 });

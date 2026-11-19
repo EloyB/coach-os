@@ -27,6 +27,8 @@ interface CampParticipantFieldsProps {
   onPriceChange: (priceId: string | null) => void;
   /** Telefoon is verplicht bij nieuwe inschrijvingen, optioneel bij bewerken/lid toevoegen. */
   phoneRequired?: boolean;
+  /** false bij bewerken: oude inschrijvingen hebben geen geboortedatum en moeten bewerkbaar blijven. */
+  dateOfBirthRequired?: boolean;
 }
 
 /**
@@ -44,6 +46,7 @@ export function CampParticipantFields({
   priceId,
   onPriceChange,
   phoneRequired = false,
+  dateOfBirthRequired = true,
 }: CampParticipantFieldsProps) {
   const t = useTranslations("campEnrollmentsTable");
 
@@ -69,9 +72,9 @@ export function CampParticipantFields({
         />
       </label>
       <label className="block text-sm font-medium">
-        {t("memberDateOfBirth")}
+        {dateOfBirthRequired ? `${t("memberDateOfBirth")} *` : t("memberDateOfBirth")}
         <Input
-          required
+          required={dateOfBirthRequired}
           type="date"
           max={formatTodayAsIsoDate()}
           value={values.dateOfBirth}
