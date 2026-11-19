@@ -15,6 +15,7 @@ import { btnPrimary } from "@/lib/styles";
 import { enrollmentDisplayStatus } from "@/lib/status-styles";
 import { updateCampEnrollment, type CampEnrollmentDto } from "@/lib/api/camps";
 import { getAxiosErrorMessages } from "@/lib/utils/api-errors";
+import { formatDateNL } from "@/lib/date-utils";
 import { MolliePaymentId } from "@/components/dashboard/mollie-payment-id";
 import { CampPriceSelect } from "./camp-price-select";
 import { PlayerErasureAction } from "@/components/dashboard/player-erasure-action";
@@ -70,17 +71,23 @@ export function CampEnrollmentDetailDialog({
 }: CampEnrollmentDetailDialogProps) {
   const t = useTranslations("campEnrollmentsTable");
   const queryClient = useQueryClient();
+  const missingDateOfBirth = enrollment.dateOfBirth === null;
   const priceMutation = useMutation({
-    mutationFn: (campPriceId: string | null) =>
-      updateCampEnrollment(campId, enrollment.id, {
+    mutationFn: (campPriceId: string | null) => {
+      if (enrollment.dateOfBirth === null) {
+        return Promise.reject(new Error("dateOfBirth ontbreekt"));
+      }
+      return updateCampEnrollment(campId, enrollment.id, {
         participantName: enrollment.participantName,
         participantEmail: enrollment.participantEmail,
         participantPhone: enrollment.participantPhone,
+        dateOfBirth: enrollment.dateOfBirth,
         campPriceId,
         responses: enrollment.formResponses
           .filter((r) => r.value.trim() !== "")
           .map((r) => ({ campFormFieldId: r.fieldId, value: r.value })),
-      }),
+      });
+    },
     onSuccess: () => {
       toast.success(t("toastUpdated"));
       queryClient.invalidateQueries({ queryKey: ["campEnrollments", campId] });
@@ -166,6 +173,12 @@ export function CampEnrollmentDetailDialog({
                 href={`tel:${enrollment.participantPhone}`}
               />
             )}
+            {enrollment.dateOfBirth && (
+              <DetailRow
+                label={t("detailBirthDate")}
+                value={formatDateNL(enrollment.dateOfBirth)}
+              />
+            )}
             <DetailRow
               label={t("enrolledAt")}
               value={new Date(enrollment.enrolledAt).toLocaleDateString(
@@ -221,7 +234,10 @@ export function CampEnrollmentDetailDialog({
             )}
           </dl>
 
-          {canEditPrice && (
+          {canEditPrice && missingDateOfBirth && (
+            <p className="text-xs text-amber-600">{t("priceNeedsBirthDate")}</p>
+          )}
+          {canEditPrice && !missingDateOfBirth && (
             <div className={priceMutation.isPending ? "opacity-60" : undefined}>
               <CampPriceSelect
                 campId={campId}

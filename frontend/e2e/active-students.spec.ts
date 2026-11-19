@@ -124,3 +124,75 @@ test.describe("Teller actieve leerlingen", () => {
     expect(called).toBe(false);
   });
 });
+
+test.describe("Teller actieve leerlingen op de instellingenpagina", () => {
+  const pageCard = (page: Page) => page.getByTestId("active-students-page-card");
+
+  test("admin ziet de teller ook op mobiel, zonder zijbalk", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 800 });
+    await loginViaStorage(page);
+    await mockAllDashboardApis(page);
+    await mockApi(page, "GET", "/subscription/active-students", { count: 142, limit: 200, ...PERIOD });
+    await page.goto("/dashboard/settings");
+
+    await expect(pageCard(page)).toBeVisible();
+    await expect(pageCard(page)).toContainText("142 / 200 actieve leerlingen");
+    await expect(pageCard(page)).toContainText("Abonnementsjaar tot 31/12/2026");
+    await expect(page.getByTestId("active-students-page-bar")).toHaveAttribute("aria-valuenow", "142");
+  });
+
+  test("zelfde queryKey als de zijbalk: op desktop slechts een call", async ({ page }) => {
+    await loginViaStorage(page);
+    await mockAllDashboardApis(page);
+    let calls = 0;
+    await page.route(`${API_URL}/subscription/active-students*`, (route) => {
+      calls += 1;
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ count: 10, limit: 200, ...PERIOD }),
+      });
+    });
+    await page.goto("/dashboard/settings");
+
+    await expect(pageCard(page)).toBeVisible();
+    await expect(card(page)).toBeVisible();
+    expect(calls).toBe(1);
+  });
+
+  test("trainer ziet de teller niet op de instellingenpagina", async ({ page, baseURL }) => {
+    await page.context().addCookies([
+      { name: "has_token", value: "1", url: baseURL! },
+      { name: "user_role", value: "Trainer", url: baseURL! },
+    ]);
+    await page.addInitScript(() => {
+      localStorage.setItem("token", "fake-jwt-token-for-testing");
+      localStorage.setItem(
+        "auth_user",
+        JSON.stringify({
+          userId: "11111111-1111-1111-1111-111111111111",
+          email: "trainer@test.be",
+          firstName: "Piet",
+          lastName: "Pieters",
+          organizationId: "22222222-2222-2222-2222-222222222222",
+          role: "Trainer",
+        }),
+      );
+    });
+    await page.route(`${API_URL}/**`, (route) =>
+      route.fulfill({ status: 404, contentType: "application/json", body: "{}" }),
+    );
+    await mockApi(page, "GET", "/tennisclubs", TEST_CLUBS);
+    let called = false;
+    await page.route(`${API_URL}/subscription/active-students*`, (route) => {
+      called = true;
+      return route.fulfill({ status: 403, body: "{}" });
+    });
+
+    await page.goto("/dashboard/settings");
+    await page.waitForLoadState("networkidle");
+
+    await expect(pageCard(page)).toHaveCount(0);
+    expect(called).toBe(false);
+  });
+});

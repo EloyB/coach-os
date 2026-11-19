@@ -30,6 +30,8 @@ import { OrganizationSection } from "./organization-section";
 import { MollieSection } from "./mollie-section";
 import { SubscriptionLinkCard } from "./subscription-link-card";
 import { ClubExportCard } from "./club-export-card";
+import { ActiveStudentsCard } from "@/components/dashboard/active-students-card";
+import { useAuthUser } from "@/lib/hooks/use-auth-user";
 
 // ─── Form Schema ──────────────────────────────────────────────────────────────
 
@@ -115,6 +117,7 @@ function ClubRow({ club }: { club: TennisClubDto }) {
 export default function SettingsPage() {
   const t = useTranslations("tennisClubs");
   const queryClient = useQueryClient();
+  const user = useAuthUser() ?? null;
 
   const { data: clubs, isLoading } = useQuery({
     queryKey: ["tennisClubs"],
@@ -155,6 +158,8 @@ export default function SettingsPage() {
           Beheer de basisinstellingen van je organisatie.
         </p>
       </div>
+
+      <ActiveStudentsCard user={user} variant="page" />
 
       {/* Abonnement */}
       <SubscriptionLinkCard />
