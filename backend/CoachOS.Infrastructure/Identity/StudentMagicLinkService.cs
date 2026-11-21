@@ -70,7 +70,7 @@ public class StudentMagicLinkService(
         if (entity is null)
         {
             logger.LogWarning("Magic-link redeem: onbekende, verlopen of al gebruikte token");
-            return Result<StudentAuthResponseDto>.Fail("Ongeldige of verlopen link");
+            return Result<StudentAuthResponseDto>.Fail(new Error(ErrorCodes.Gone, "Ongeldige of verlopen link"));
         }
 
         (var jwt, var expiresAt) = tokenService.GenerateStudentToken(entity.Email);
