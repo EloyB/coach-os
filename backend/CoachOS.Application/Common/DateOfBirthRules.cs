@@ -27,6 +27,9 @@ public static class DateOfBirthRules
         return age <= MaxAge;
     }
 
+    public static DateOnly? ParseOrNull(string? value)
+        => TryParse(value, out DateOnly date) ? date : null;
+
     public static bool TryParse(string? value, out DateOnly date)
     {
         date = default;

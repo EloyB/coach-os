@@ -139,6 +139,8 @@ export interface CampGroupMemberRequest {
   participantName: string;
   participantEmail: string;
   participantPhone?: string;
+  /** yyyy-MM-dd */
+  dateOfBirth: string;
   responses: { campFormFieldId: string; value: string }[];
 }
 
@@ -146,6 +148,8 @@ export interface SubmitCampEnrollmentRequest {
   participantName: string;
   participantEmail: string;
   participantPhone: string;
+  /** yyyy-MM-dd */
+  dateOfBirth: string;
   responses: { campFormFieldId: string; value: string }[];
   enrollmentType?: string; // "solo" | "group"
   groupMembers?: CampGroupMemberRequest[];
@@ -166,6 +170,8 @@ export interface CampEnrollmentDto {
   participantName: string;
   participantEmail: string;
   participantPhone: string | null;
+  /** yyyy-MM-dd; oude inschrijvingen hebben er geen. */
+  dateOfBirth: string | null;
   status: string;
   enrolledAt: string;
   groupName: string | null;
@@ -218,6 +224,8 @@ export interface CreateManualCampEnrollmentRequest {
   participantName: string;
   participantEmail: string;
   participantPhone: string | null;
+  /** yyyy-MM-dd */
+  dateOfBirth: string;
   /** true = cash al ontvangen (bevestigd); false = nog te betalen. Enkel relevant voor betaalde kampen. */
   paid: boolean;
   /** Gekozen tarief; null = hoofdprijs. */
@@ -238,6 +246,8 @@ export interface AddCampGroupMemberRequest {
   participantName: string;
   participantEmail: string;
   participantPhone: string | null;
+  /** yyyy-MM-dd */
+  dateOfBirth: string;
   /** Gekozen tarief; null = hoofdprijs. */
   campPriceId?: string | null;
   responses: { campFormFieldId: string; value: string }[];
@@ -257,6 +267,8 @@ export interface UpdateCampEnrollmentRequest {
   participantName: string;
   participantEmail: string;
   participantPhone: string | null;
+  /** yyyy-MM-dd */
+  dateOfBirth?: string | null;
   /** Gekozen tarief; null = hoofdprijs. */
   campPriceId?: string | null;
   responses: { campFormFieldId: string; value: string }[];

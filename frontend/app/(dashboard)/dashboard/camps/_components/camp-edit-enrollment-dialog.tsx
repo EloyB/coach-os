@@ -73,6 +73,7 @@ function EditEnrollmentForm({
   const [name, setName] = useState(enrollment.participantName);
   const [email, setEmail] = useState(enrollment.participantEmail);
   const [phone, setPhone] = useState(enrollment.participantPhone ?? "");
+  const [dateOfBirth, setDateOfBirth] = useState(enrollment.dateOfBirth ?? "");
   const [priceId, setPriceId] = useState<string | null>(enrollment.campPriceId);
   const [answers, setAnswers] = useState<Record<string, string>>(() =>
     Object.fromEntries(
@@ -91,6 +92,7 @@ function EditEnrollmentForm({
         participantName: name,
         participantEmail: email,
         participantPhone: phone.trim() ? phone : null,
+        dateOfBirth: dateOfBirth || null,
         campPriceId: priceId,
         responses: Object.entries(answers)
           .filter(([, value]) => value.trim() !== "")
@@ -120,12 +122,14 @@ function EditEnrollmentForm({
         {new Date(enrollment.enrolledAt).toLocaleDateString("nl-BE")}
       </p>
       <CampParticipantFields
-        values={{ name, email, phone }}
+        values={{ name, email, phone, dateOfBirth }}
         onChange={(patch) => {
           if (patch.name !== undefined) setName(patch.name);
           if (patch.email !== undefined) setEmail(patch.email);
           if (patch.phone !== undefined) setPhone(patch.phone);
+              if (patch.dateOfBirth !== undefined) setDateOfBirth(patch.dateOfBirth);
         }}
+        dateOfBirthRequired={false}
         form={form}
         answers={answers}
         onAnswerChange={(fieldId, value) =>

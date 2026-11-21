@@ -37,6 +37,7 @@ export function CampManualEnrollmentDialog({
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [paid, setPaid] = useState(false);
   const [priceId, setPriceId] = useState<string | null>(null);
@@ -60,6 +61,7 @@ export function CampManualEnrollmentDialog({
         participantName: name,
         participantEmail: email,
         participantPhone: phone.trim(),
+        dateOfBirth,
         paid: isPaidCamp && paid,
         campPriceId: priceId,
         responses: Object.entries(answers)
@@ -74,6 +76,7 @@ export function CampManualEnrollmentDialog({
       setName("");
       setEmail("");
       setPhone("");
+      setDateOfBirth("");
       setAnswers({});
       setPaid(false);
       setPriceId(null);
@@ -101,11 +104,12 @@ export function CampManualEnrollmentDialog({
           }}
         >
           <CampParticipantFields
-            values={{ name, email, phone }}
+            values={{ name, email, phone, dateOfBirth }}
             onChange={(patch) => {
               if (patch.name !== undefined) setName(patch.name);
               if (patch.email !== undefined) setEmail(patch.email);
               if (patch.phone !== undefined) setPhone(patch.phone);
+              if (patch.dateOfBirth !== undefined) setDateOfBirth(patch.dateOfBirth);
             }}
             form={form}
             answers={answers}

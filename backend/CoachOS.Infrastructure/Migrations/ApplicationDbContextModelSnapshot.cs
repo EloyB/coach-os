@@ -262,6 +262,9 @@ namespace CoachOS.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<DateTime?>("ActiveSince")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTime?>("AnonymizedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -276,6 +279,9 @@ namespace CoachOS.Infrastructure.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly?>("DateOfBirth")
+                        .HasColumnType("date");
 
                     b.Property<DateTime>("EnrolledAt")
                         .HasColumnType("timestamp with time zone");
@@ -571,6 +577,9 @@ namespace CoachOS.Infrastructure.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ActiveSince")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime?>("AnonymizedAt")
                         .HasColumnType("timestamp with time zone");

@@ -213,7 +213,7 @@ public class CampService(
                     r.CampFormFieldId, r.CampFormField?.Label ?? string.Empty, r.Value)).ToList(),
                 payment?.Method?.ToString(), payment?.Status.ToString(),
                 payment?.Amount, payment?.PaidAt, payment?.MolliePaymentId,
-                e.CampPriceId, e.Price?.Label);
+                e.CampPriceId, e.Price?.Label, e.DateOfBirth?.ToString("yyyy-MM-dd"));
         }).ToList();
         return Result<List<CampEnrollmentDto>>.Ok(dtos);
     }
@@ -305,6 +305,8 @@ public class CampService(
 
         enrollment.ParticipantName = request.ParticipantName.Trim();
         enrollment.ParticipantEmail = email;
+        if (DateOfBirthRules.ParseOrNull(request.DateOfBirth) is DateOnly dateOfBirth)
+            enrollment.DateOfBirth = dateOfBirth;
         enrollment.ParticipantPhone = string.IsNullOrWhiteSpace(request.ParticipantPhone)
             ? null
             : request.ParticipantPhone.Trim();
@@ -411,6 +413,7 @@ public class CampService(
                 CampId = campId,
                 ParticipantName = request.ParticipantName.Trim(),
                 ParticipantEmail = email,
+                DateOfBirth = DateOfBirthRules.ParseOrNull(request.DateOfBirth),
                 ParticipantPhone = string.IsNullOrWhiteSpace(request.ParticipantPhone)
                     ? null
                     : request.ParticipantPhone.Trim(),
