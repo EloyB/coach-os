@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CoachOS.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20261119195524_AddCampDateOfBirthAndConfirmedAt")]
-    partial class AddCampDateOfBirthAndConfirmedAt
+    [Migration("20261121142455_AddCampDateOfBirthAndActiveSince")]
+    partial class AddCampDateOfBirthAndActiveSince
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -265,6 +265,9 @@ namespace CoachOS.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<DateTime?>("ActiveSince")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTime?>("AnonymizedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -276,9 +279,6 @@ namespace CoachOS.Infrastructure.Migrations
 
                     b.Property<Guid?>("CampPriceId")
                         .HasColumnType("uuid");
-
-                    b.Property<DateTime?>("ConfirmedAt")
-                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -581,14 +581,14 @@ namespace CoachOS.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<DateTime?>("ActiveSince")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTime?>("AnonymizedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<int?>("Category")
                         .HasColumnType("integer");
-
-                    b.Property<DateTime?>("ConfirmedAt")
-                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("ContactEmail")
                         .IsRequired()

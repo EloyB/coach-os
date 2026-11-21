@@ -207,21 +207,26 @@ public class ApplicationDbContext(
         return base.SaveChanges();
     }
 
-    /// <summary>Zet ConfirmedAt de eerste keer dat een (kamp)inschrijving de status Confirmed krijgt.</summary>
-    private void StampConfirmedAt(DateTime now)
+    /// <summary>
+    /// Zet ActiveSince bij inschrijvingen die zonder bevestigingslink meteen actief zijn: een nieuwe
+    /// kampinschrijving (PendingPayment of Confirmed) en een nieuwe les-inschrijving die direct Confirmed is
+    /// (handmatig). Lesinschrijvingen via de planning krijgen ActiveSince pas wanneer de leerling de
+    /// mail-link bevestigt (StudentConfirmationService).
+    /// </summary>
+    private void StampActiveSince(DateTime now)
     {
         foreach (var entry in ChangeTracker.Entries<Enrollment>())
         {
-            if (entry.Entity.ConfirmedAt is null && entry.Entity.Status == Domain.Enums.EnrollmentStatus.Confirmed
-                && (entry.State == EntityState.Added || (entry.State == EntityState.Modified && entry.Property(e => e.Status).IsModified)))
-                entry.Entity.ConfirmedAt = now;
+            if (entry.State == EntityState.Added && entry.Entity.ActiveSince is null
+                && entry.Entity.Status == Domain.Enums.EnrollmentStatus.Confirmed)
+                entry.Entity.ActiveSince = now;
         }
 
         foreach (var entry in ChangeTracker.Entries<CampEnrollment>())
         {
-            if (entry.Entity.ConfirmedAt is null && entry.Entity.Status == Domain.Enums.EnrollmentStatus.Confirmed
-                && (entry.State == EntityState.Added || (entry.State == EntityState.Modified && entry.Property(e => e.Status).IsModified)))
-                entry.Entity.ConfirmedAt = now;
+            if (entry.State == EntityState.Added && entry.Entity.ActiveSince is null
+                && entry.Entity.Status is Domain.Enums.EnrollmentStatus.Confirmed or Domain.Enums.EnrollmentStatus.PendingPayment)
+                entry.Entity.ActiveSince = now;
         }
     }
 
@@ -248,7 +253,7 @@ public class ApplicationDbContext(
             }
         }
 
-        StampConfirmedAt(now);
+        StampActiveSince(now);
 
         foreach (var entry in
             ChangeTracker.Entries<ApplicationUser>())

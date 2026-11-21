@@ -6,19 +6,19 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace CoachOS.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class AddCampDateOfBirthAndConfirmedAt : Migration
+    public partial class AddCampDateOfBirthAndActiveSince : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<DateTime>(
-                name: "ConfirmedAt",
+                name: "ActiveSince",
                 table: "Enrollments",
                 type: "timestamp with time zone",
                 nullable: true);
 
             migrationBuilder.AddColumn<DateTime>(
-                name: "ConfirmedAt",
+                name: "ActiveSince",
                 table: "CampEnrollments",
                 type: "timestamp with time zone",
                 nullable: true);
@@ -29,21 +29,21 @@ namespace CoachOS.Infrastructure.Migrations
                 type: "date",
                 nullable: true);
 
-            // Bestaande bevestigde inschrijvingen: benader het bevestigingsmoment met de laatste wijziging
-            // (fallback: inschrijfdatum). Status 2 = Confirmed.
-            migrationBuilder.Sql("UPDATE \"Enrollments\" SET \"ConfirmedAt\" = COALESCE(\"UpdatedAt\", \"EnrolledAt\") WHERE \"Status\" = 2;");
-            migrationBuilder.Sql("UPDATE \"CampEnrollments\" SET \"ConfirmedAt\" = COALESCE(\"UpdatedAt\", \"EnrolledAt\") WHERE \"Status\" = 2;");
+            // Bestaande bevestigde of op betaling wachtende inschrijvingen: benader het moment met de laatste
+            // wijziging (fallback: inschrijfdatum). Status 2 = Confirmed, 5 = PendingPayment.
+            migrationBuilder.Sql("UPDATE \"Enrollments\" SET \"ActiveSince\" = COALESCE(\"UpdatedAt\", \"EnrolledAt\") WHERE \"Status\" IN (2, 5);");
+            migrationBuilder.Sql("UPDATE \"CampEnrollments\" SET \"ActiveSince\" = COALESCE(\"UpdatedAt\", \"EnrolledAt\") WHERE \"Status\" IN (2, 5);");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropColumn(
-                name: "ConfirmedAt",
+                name: "ActiveSince",
                 table: "Enrollments");
 
             migrationBuilder.DropColumn(
-                name: "ConfirmedAt",
+                name: "ActiveSince",
                 table: "CampEnrollments");
 
             migrationBuilder.DropColumn(

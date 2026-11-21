@@ -137,9 +137,9 @@ public class EnrollmentRepository(ApplicationDbContext context) : IEnrollmentRep
         return await context.Enrollments
             .AsNoTracking()
             .Where(e => e.OrganizationId == organizationId
-                && e.Status == EnrollmentStatus.Confirmed
+                && (e.Status == EnrollmentStatus.Confirmed || e.Status == EnrollmentStatus.PendingPayment)
                 && e.AnonymizedAt == null
-                && e.ConfirmedAt >= fromUtc && e.ConfirmedAt < toUtcExclusive)
+                && e.ActiveSince >= fromUtc && e.ActiveSince < toUtcExclusive)
             .Select(e => new StudentIdentityKey(
                 e.StudentName.Trim().ToLower(),
                 e.DateOfBirth,

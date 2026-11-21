@@ -131,9 +131,9 @@ public class CampEnrollmentRepository(ApplicationDbContext context) : ICampEnrol
         return await context.CampEnrollments
             .AsNoTracking()
             .Where(e => e.OrganizationId == organizationId
-                && e.Status == EnrollmentStatus.Confirmed
+                && (e.Status == EnrollmentStatus.Confirmed || e.Status == EnrollmentStatus.PendingPayment)
                 && e.AnonymizedAt == null
-                && e.ConfirmedAt >= fromUtc && e.ConfirmedAt < toUtcExclusive)
+                && e.ActiveSince >= fromUtc && e.ActiveSince < toUtcExclusive)
             .Select(e => new StudentIdentityKey(
                 e.ParticipantName.Trim().ToLower(),
                 e.DateOfBirth,

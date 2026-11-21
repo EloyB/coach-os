@@ -91,7 +91,7 @@ public class StudentConfirmationService(
             await AddPerMemberCashPaymentsAsync(
                 cashPerMember!, token.OrganizationId, series.Name, ct);
 
-            ConfirmEnrollmentStatuses(assignment, EnrollmentStatus.PendingPayment);
+            ConfirmEnrollmentStatuses(assignment, EnrollmentStatus.PendingPayment, timeProvider.GetUtcNow().UtcDateTime);
             await unitOfWork.SaveChangesAsync(ct);
 
             try
@@ -117,7 +117,7 @@ public class StudentConfirmationService(
         // Online: enrollment(s) op PendingPayment zetten en Mollie payment maken.
         // De webhook (of de status-poll vanuit de thank-you-page) flipt enrollment
         // naar Confirmed bij geslaagde betaling.
-        ConfirmEnrollmentStatuses(assignment, EnrollmentStatus.PendingPayment);
+        ConfirmEnrollmentStatuses(assignment, EnrollmentStatus.PendingPayment, timeProvider.GetUtcNow().UtcDateTime);
         await unitOfWork.SaveChangesAsync(ct);
 
         var paymentResult = await paymentService.CreatePaymentForEnrollmentAsync(
@@ -276,7 +276,7 @@ public class StudentConfirmationService(
                 cashPerMember!, token.OrganizationId, series.Name, ct,
                 descriptionSuffix: " (alternatief)");
 
-            ConfirmEnrollmentStatuses(oldAssignment, EnrollmentStatus.PendingPayment);
+            ConfirmEnrollmentStatuses(oldAssignment, EnrollmentStatus.PendingPayment, timeProvider.GetUtcNow().UtcDateTime);
             await unitOfWork.SaveChangesAsync(ct);
 
             try
@@ -300,7 +300,7 @@ public class StudentConfirmationService(
         }
 
         // Online: zelfde flow als ConfirmAsync — PendingPayment + Mollie checkout.
-        ConfirmEnrollmentStatuses(oldAssignment, EnrollmentStatus.PendingPayment);
+        ConfirmEnrollmentStatuses(oldAssignment, EnrollmentStatus.PendingPayment, timeProvider.GetUtcNow().UtcDateTime);
         await unitOfWork.SaveChangesAsync(ct);
 
         var paymentResult = await paymentService.CreatePaymentForEnrollmentAsync(
@@ -796,16 +796,24 @@ public class StudentConfirmationService(
         }
     }
 
-    private static void ConfirmEnrollmentStatuses(ScheduleAssignment assignment, EnrollmentStatus newStatus)
+    /// <summary>
+    /// De leerling heeft via de mail-link bevestigd: status bijwerken en vanaf nu telt de persoon mee als
+    /// actieve leerling (ActiveSince, eenmalig gezet), los van wanneer er betaald wordt.
+    /// </summary>
+    private static void ConfirmEnrollmentStatuses(ScheduleAssignment assignment, EnrollmentStatus newStatus, DateTime confirmedAt)
     {
         if (assignment.EnrollmentGroupId.HasValue && assignment.EnrollmentGroup is not null)
         {
             foreach (var member in assignment.EnrollmentGroup.Members)
+            {
                 member.Status = newStatus;
+                member.ActiveSince ??= confirmedAt;
+            }
         }
         else if (assignment.Enrollment is not null)
         {
             assignment.Enrollment.Status = newStatus;
+            assignment.Enrollment.ActiveSince ??= confirmedAt;
         }
     }
 

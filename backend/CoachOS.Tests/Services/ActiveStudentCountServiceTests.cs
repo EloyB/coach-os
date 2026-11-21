@@ -74,7 +74,7 @@ public class ActiveStudentCountServiceTests
             Id = Guid.NewGuid(), OrganizationId = org ?? OrgId, StudentName = name, DateOfBirth = dob,
             ContactEmail = contactEmail, StudentEmail = studentEmail, Status = status,
             EnrolledAt = enrolledAt ?? InPeriod, AnonymizedAt = anonymizedAt,
-            ConfirmedAt = status == EnrollmentStatus.Confirmed ? enrolledAt ?? InPeriod : null,
+            ActiveSince = status is EnrollmentStatus.Confirmed or EnrollmentStatus.PendingPayment ? enrolledAt ?? InPeriod : null,
         });
         _db.SaveChanges();
     }
@@ -88,7 +88,7 @@ public class ActiveStudentCountServiceTests
         {
             Id = Guid.NewGuid(), OrganizationId = org ?? OrgId, CampId = Guid.NewGuid(), ParticipantName = name,
             ParticipantEmail = email, DateOfBirth = dob, Status = status, EnrolledAt = enrolledAt ?? InPeriod,
-            AnonymizedAt = anonymizedAt, ConfirmedAt = status == EnrollmentStatus.Confirmed ? enrolledAt ?? InPeriod : null,
+            AnonymizedAt = anonymizedAt, ActiveSince = status is EnrollmentStatus.Confirmed or EnrollmentStatus.PendingPayment ? enrolledAt ?? InPeriod : null,
         });
         _db.SaveChanges();
     }
@@ -132,10 +132,9 @@ public class ActiveStudentCountServiceTests
     }
 
     [TestCase(EnrollmentStatus.Pending)]
-    [TestCase(EnrollmentStatus.PendingPayment)]
     [TestCase(EnrollmentStatus.Waitlisted)]
     [TestCase(EnrollmentStatus.Cancelled)]
-    public async Task UnconfirmedStatuses_AreNotCounted(EnrollmentStatus status)
+    public async Task StatusesWithoutPersonAction_AreNotCounted(EnrollmentStatus status)
     {
         Lesson("Les Persoon", Dob, "a@x.be", status: status);
         Camp("Kamp Persoon", "b@x.be", status: status);
@@ -188,7 +187,7 @@ public class ActiveStudentCountServiceTests
     }
 
     [Test]
-    public async Task CountsOnConfirmationMoment_NotEnrollmentMoment()
+    public async Task CountsFromActiveSince_NotEnrollmentMoment()
     {
         DateTime before = new(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc);
         DateTime inside = new(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
@@ -196,7 +195,7 @@ public class ActiveStudentCountServiceTests
         _db.Enrollments.Add(new Enrollment
         {
             Id = Guid.NewGuid(), OrganizationId = OrgId, StudentName = "Laat Bevestigd", DateOfBirth = Dob,
-            ContactEmail = "l@x.be", Status = EnrollmentStatus.Confirmed, EnrolledAt = before, ConfirmedAt = inside,
+            ContactEmail = "l@x.be", Status = EnrollmentStatus.Confirmed, EnrolledAt = before, ActiveSince = inside,
         });
         // Ingeschreven in het jaar, nog niet bevestigd: telt niet.
         Lesson("Nog Pending", Dob, "p@x.be", status: EnrollmentStatus.Pending);
@@ -205,7 +204,7 @@ public class ActiveStudentCountServiceTests
         {
             Id = Guid.NewGuid(), OrganizationId = OrgId, CampId = Guid.NewGuid(), ParticipantName = "Te Laat",
             ParticipantEmail = "t@x.be", Status = EnrollmentStatus.Confirmed, EnrolledAt = inside,
-            ConfirmedAt = new DateTime(2027, 6, 1, 0, 0, 0, DateTimeKind.Utc),
+            ActiveSince = new DateTime(2027, 6, 1, 0, 0, 0, DateTimeKind.Utc),
         });
         _db.SaveChanges();
 
@@ -213,43 +212,50 @@ public class ActiveStudentCountServiceTests
     }
 
     [Test]
-    public void ConfirmedAt_IsStampedOnceOnFirstConfirmation()
+    public async Task PendingPaymentAfterPersonConfirmed_CountsEvenWhenCashNotMarkedPaid()
+    {
+        Lesson("Wacht Op Cash", Dob, "w@x.be", status: EnrollmentStatus.PendingPayment);
+        Camp("Kamp Cash", "k@x.be", status: EnrollmentStatus.PendingPayment);
+
+        (await Run()).Count.Should().Be(2);
+    }
+
+    [Test]
+    public void ActiveSince_IsOnlyStampedOnDirectInserts_NotOnStatusChanges()
     {
         Enrollment pending = new()
         {
             Id = Guid.NewGuid(), OrganizationId = OrgId, StudentName = "Wacht", ContactEmail = "w@x.be",
             Status = EnrollmentStatus.Pending, EnrolledAt = InPeriod,
         };
-        CampEnrollment camp = new()
+        CampEnrollment campPending = new()
+        {
+            Id = Guid.NewGuid(), OrganizationId = OrgId, CampId = Guid.NewGuid(), ParticipantName = "Wacht Kamp",
+            ParticipantEmail = "wk@x.be", Status = EnrollmentStatus.Pending, EnrolledAt = InPeriod,
+        };
+        CampEnrollment campPaid = new()
         {
             Id = Guid.NewGuid(), OrganizationId = OrgId, CampId = Guid.NewGuid(), ParticipantName = "Kamper",
             ParticipantEmail = "k@x.be", Status = EnrollmentStatus.PendingPayment, EnrolledAt = InPeriod,
         };
-        _db.Enrollments.Add(pending);
-        _db.CampEnrollments.Add(camp);
-        _db.SaveChanges();
-        pending.ConfirmedAt.Should().BeNull();
-        camp.ConfirmedAt.Should().BeNull();
-
-        pending.Status = EnrollmentStatus.Confirmed;
-        camp.Status = EnrollmentStatus.Confirmed;
-        _db.SaveChanges();
-        DateTime? first = pending.ConfirmedAt;
-        first.Should().NotBeNull();
-        camp.ConfirmedAt.Should().NotBeNull();
-
-        pending.Notes = "wijziging";
-        _db.SaveChanges();
-        pending.ConfirmedAt.Should().Be(first);
-
         Enrollment direct = new()
         {
             Id = Guid.NewGuid(), OrganizationId = OrgId, StudentName = "Direct", ContactEmail = "d@x.be",
             Status = EnrollmentStatus.Confirmed, EnrolledAt = InPeriod,
         };
-        _db.Enrollments.Add(direct);
+        _db.Enrollments.AddRange(pending, direct);
+        _db.CampEnrollments.AddRange(campPending, campPaid);
         _db.SaveChanges();
-        direct.ConfirmedAt.Should().NotBeNull();
+
+        pending.ActiveSince.Should().BeNull();
+        campPending.ActiveSince.Should().BeNull();
+        campPaid.ActiveSince.Should().NotBeNull(); // kamp: persoon schreef zichzelf in
+        direct.ActiveSince.Should().NotBeNull();   // handmatig bevestigd
+
+        // Een statuswijziging door de beheerder (bv. cash betaald) zet het moment niet.
+        pending.Status = EnrollmentStatus.Confirmed;
+        _db.SaveChanges();
+        pending.ActiveSince.Should().BeNull();
     }
 
     [Test]
@@ -356,7 +362,7 @@ public class ActiveStudentCountServiceTests
 
         string lessons = pg.Enrollments
             .Where(e => e.OrganizationId == OrgId && e.Status == EnrollmentStatus.Confirmed
-                && e.AnonymizedAt == null && e.ConfirmedAt >= from && e.ConfirmedAt < from)
+                && e.AnonymizedAt == null && e.ActiveSince >= from && e.ActiveSince < from)
             .Select(e => new StudentIdentityKey(
                 e.StudentName.Trim().ToLower(), e.DateOfBirth,
                 e.StudentEmail == null ? null : e.StudentEmail.Trim().ToLower(), e.ContactEmail.Trim().ToLower()))
