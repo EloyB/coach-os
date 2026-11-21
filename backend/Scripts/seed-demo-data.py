@@ -13,6 +13,7 @@ Default API_BASE is http://localhost:5142/api.
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 import time
@@ -27,8 +28,9 @@ from typing import Any
 
 DEFAULT_API_BASE = "http://localhost:5142/api"
 # Mailpit (docker-compose service 'mailpit') — SMTP catcher for local dev.
-# Web UI + JSON API both live on this port (see docker-compose.yml).
-MAILPIT_BASE = "http://localhost:3001"
+# Web UI + JSON API both live on this port (see docker-compose.yml). Override met de
+# omgevingsvariabele MAILPIT_BASE voor een parallelle stack op andere poorten.
+MAILPIT_BASE = os.environ.get("MAILPIT_BASE", "http://localhost:3001")
 SCRIPT_DIR = Path(__file__).resolve().parent
 DATA_FILE = SCRIPT_DIR / "seed-data.json"
 

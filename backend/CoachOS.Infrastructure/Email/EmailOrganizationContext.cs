@@ -18,6 +18,8 @@ internal sealed class EmailOrganizationContext(ITenantContext tenant) : IEmailOr
         _explicit = organizationId;
     }
 
+    public void Clear() => _explicit = null;
+
     public Guid? Current
         => _explicit ?? (tenant.OrganizationId == Guid.Empty ? null : tenant.OrganizationId);
 }

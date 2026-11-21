@@ -1,4 +1,5 @@
 using CoachOS.Domain.Entities;
+using CoachOS.Domain.Enums;
 
 namespace CoachOS.Domain.Interfaces;
 
@@ -44,4 +45,22 @@ public interface ISubscriptionRepository
     /// </summary>
     Task<bool> TrySetLastTrialReminderDayAsync(
         Guid subscriptionId, int? expectedCurrent, int? newValue, CancellationToken ct = default);
+
+    /// <summary>
+    /// AsNoTracking, cross-org, inclusief de organisatie: abonnementen met een einde (proef zonder
+    /// plan, vergrendeld, opgezegd) of met een geplande verwijdering. Enkel voor de systeemjob die
+    /// organisaties na de bewaartermijn verwijdert — nooit vanuit een request.
+    /// </summary>
+    Task<IReadOnlyList<Subscription>> ListForRetentionReadOnlyAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Zet <see cref="Subscription.ScheduledDeletionOn"/> en <see cref="Subscription.DeletionStage"/>
+    /// atomair, maar enkel als ze nog op de verwachte waarden staan. Geeft false terug als een
+    /// andere instantie (of een heractivatie) voor was.
+    /// </summary>
+    Task<bool> TrySetDeletionScheduleAsync(
+        Guid subscriptionId,
+        DateOnly? expectedScheduledOn, OrganizationDeletionStage? expectedStage,
+        DateOnly? newScheduledOn, OrganizationDeletionStage? newStage,
+        CancellationToken ct = default);
 }

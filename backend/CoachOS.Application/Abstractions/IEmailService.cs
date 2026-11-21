@@ -181,6 +181,27 @@ public interface IEmailService
         string appUrl,
         CancellationToken ct = default);
 
+    /// <summary>
+    /// Waarschuwing dat de organisatie na de bewaartermijn verwijderd wordt, met de datum en een
+    /// link naar de export. <paramref name="finalNotice"/> = de laatste mail (7 dagen vooraf).
+    /// </summary>
+    Task SendOrganizationDeletionNoticeAsync(
+        string toEmail,
+        string organizationName,
+        DateOnly deletionDate,
+        bool finalNotice,
+        string exportUrl,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// De eerder aangekondigde verwijdering van de organisatie gaat niet door (de club wordt
+    /// manueel afgehandeld).
+    /// </summary>
+    Task SendOrganizationDeletionCancelledAsync(
+        string toEmail,
+        string organizationName,
+        CancellationToken ct = default);
+
     /// <summary>Bevestiging dat een betaald abonnement is afgesloten (Mollie of overschrijving).</summary>
     Task SendSubscriptionStartedAsync(
         string toEmail,
