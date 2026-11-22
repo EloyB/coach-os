@@ -1,6 +1,7 @@
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
 using CoachOS.Domain.Interfaces;
+using CoachOS.Domain.Models;
 using CoachOS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -122,6 +123,24 @@ public class CampEnrollmentRepository(ApplicationDbContext context) : ICampEnrol
         List<Guid> ids = priceIds.ToList();
         return ids.Count > 0
             && await context.CampEnrollments.AnyAsync(e => e.CampPriceId != null && ids.Contains(e.CampPriceId.Value), ct);
+    }
+
+    public async Task<IReadOnlyList<StudentIdentityKey>> GetConfirmedStudentKeysAsync(
+        Guid organizationId, DateTime fromUtc, DateTime toUtcExclusive, CancellationToken ct = default)
+    {
+        return await context.CampEnrollments
+            .AsNoTracking()
+            .Where(e => e.OrganizationId == organizationId
+                && (e.Status == EnrollmentStatus.Confirmed || e.Status == EnrollmentStatus.PendingPayment)
+                && e.AnonymizedAt == null
+                && e.ActiveSince >= fromUtc && e.ActiveSince < toUtcExclusive)
+            .Select(e => new StudentIdentityKey(
+                e.ParticipantName.Trim().ToLower(),
+                e.DateOfBirth,
+                e.ParticipantEmail.Trim().ToLower(),
+                null))
+            .Distinct()
+            .ToListAsync(ct);
     }
 
     public async Task AddAsync(CampEnrollment enrollment, CancellationToken ct = default)

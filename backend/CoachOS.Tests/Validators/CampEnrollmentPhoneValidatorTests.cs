@@ -8,16 +8,16 @@ namespace CoachOS.Tests.Validators;
 [TestFixture]
 public class CampEnrollmentPhoneValidatorTests
 {
-    private readonly SubmitCampEnrollmentRequestValidator _submit = new();
-    private readonly CreateManualCampEnrollmentRequestValidator _manual = new();
-    private readonly UpdateCampEnrollmentRequestValidator _update = new();
+    private readonly SubmitCampEnrollmentRequestValidator _submit = new(TimeProvider.System);
+    private readonly CreateManualCampEnrollmentRequestValidator _manual = new(TimeProvider.System);
+    private readonly UpdateCampEnrollmentRequestValidator _update = new(TimeProvider.System);
 
     [Test]
     public void Submit_WithPhone_Passes()
     {
         var request = new SubmitCampEnrollmentRequest
         {
-            ParticipantName = "Anna", ParticipantEmail = "anna@test.be", ParticipantPhone = "0470 12 34 56",
+            ParticipantName = "Anna", ParticipantEmail = "anna@test.be", DateOfBirth = "2000-01-01", ParticipantPhone = "0470 12 34 56",
         };
 
         _submit.Validate(request).IsValid.Should().BeTrue();
@@ -30,7 +30,7 @@ public class CampEnrollmentPhoneValidatorTests
     {
         var request = new SubmitCampEnrollmentRequest
         {
-            ParticipantName = "Anna", ParticipantEmail = "anna@test.be", ParticipantPhone = phone,
+            ParticipantName = "Anna", ParticipantEmail = "anna@test.be", DateOfBirth = "2000-01-01", ParticipantPhone = phone,
         };
 
         var result = _submit.Validate(request);
@@ -45,7 +45,7 @@ public class CampEnrollmentPhoneValidatorTests
     {
         var request = new CreateManualCampEnrollmentRequest
         {
-            ParticipantName = "Anna", ParticipantEmail = "anna@test.be", ParticipantPhone = phone,
+            ParticipantName = "Anna", ParticipantEmail = "anna@test.be", DateOfBirth = "2000-01-01", ParticipantPhone = phone,
         };
 
         var result = _manual.Validate(request);
@@ -59,7 +59,7 @@ public class CampEnrollmentPhoneValidatorTests
     {
         var request = new CreateManualCampEnrollmentRequest
         {
-            ParticipantName = "Anna", ParticipantEmail = "anna@test.be", ParticipantPhone = "0470 12 34 56",
+            ParticipantName = "Anna", ParticipantEmail = "anna@test.be", DateOfBirth = "2000-01-01", ParticipantPhone = "0470 12 34 56",
         };
 
         _manual.Validate(request).IsValid.Should().BeTrue();
@@ -70,7 +70,7 @@ public class CampEnrollmentPhoneValidatorTests
     {
         var request = new UpdateCampEnrollmentRequest
         {
-            ParticipantName = "Anna", ParticipantEmail = "anna@test.be", ParticipantPhone = null,
+            ParticipantName = "Anna", ParticipantEmail = "anna@test.be", DateOfBirth = "2000-01-01", ParticipantPhone = null,
         };
 
         _update.Validate(request).IsValid.Should().BeTrue();

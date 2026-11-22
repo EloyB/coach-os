@@ -13,8 +13,18 @@ public class CampEnrollment : BaseEntity
     public string ParticipantEmail { get; set; } = string.Empty;
     public string? ParticipantPhone { get; set; }
 
+    /// <summary>Geboortedatum; null bij inschrijvingen van voor deze verplichting (en na anonimisering).</summary>
+    public DateOnly? DateOfBirth { get; set; }
+
     public EnrollmentStatus Status { get; set; }
     public DateTime EnrolledAt { get; set; }
+
+    /// <summary>
+    /// Vanaf wanneer deze persoon meetelt als actieve leerling: het moment waarop de leerling zelf bevestigde
+    /// (via de link in de mail), of bij een directe inschrijving (kamp, handmatig bevestigd) het inschrijfmoment.
+    /// Bewust niet gekoppeld aan betaling/Confirmed, zodat een beheerder de teller niet kan omzeilen door cash niet als betaald te markeren.
+    /// </summary>
+    public DateTime? ActiveSince { get; set; }
     public string? Notes { get; set; }
 
     public Guid? CampEnrollmentGroupId { get; set; }

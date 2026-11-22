@@ -207,6 +207,29 @@ public class ApplicationDbContext(
         return base.SaveChanges();
     }
 
+    /// <summary>
+    /// Zet ActiveSince bij inschrijvingen die zonder bevestigingslink meteen actief zijn: een nieuwe
+    /// kampinschrijving (PendingPayment of Confirmed) en een nieuwe les-inschrijving die direct Confirmed is
+    /// (handmatig). Lesinschrijvingen via de planning krijgen ActiveSince pas wanneer de leerling de
+    /// mail-link bevestigt (StudentConfirmationService).
+    /// </summary>
+    private void StampActiveSince(DateTime now)
+    {
+        foreach (var entry in ChangeTracker.Entries<Enrollment>())
+        {
+            if (entry.State == EntityState.Added && entry.Entity.ActiveSince is null
+                && entry.Entity.Status == Domain.Enums.EnrollmentStatus.Confirmed)
+                entry.Entity.ActiveSince = now;
+        }
+
+        foreach (var entry in ChangeTracker.Entries<CampEnrollment>())
+        {
+            if (entry.State == EntityState.Added && entry.Entity.ActiveSince is null
+                && entry.Entity.Status is Domain.Enums.EnrollmentStatus.Confirmed or Domain.Enums.EnrollmentStatus.PendingPayment)
+                entry.Entity.ActiveSince = now;
+        }
+    }
+
     private void UpdateAuditFields()
     {
         var now = DateTime.UtcNow;
@@ -229,6 +252,8 @@ public class ApplicationDbContext(
                     subscription.ConcurrencyStamp = Guid.NewGuid();
             }
         }
+
+        StampActiveSince(now);
 
         foreach (var entry in
             ChangeTracker.Entries<ApplicationUser>())

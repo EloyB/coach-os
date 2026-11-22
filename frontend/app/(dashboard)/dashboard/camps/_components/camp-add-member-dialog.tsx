@@ -35,6 +35,7 @@ export function CampAddMemberDialog({
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [priceId, setPriceId] = useState<string | null>(null);
 
@@ -50,6 +51,7 @@ export function CampAddMemberDialog({
         participantName: name,
         participantEmail: email,
         participantPhone: phone || null,
+        dateOfBirth,
         campPriceId: priceId,
         responses: Object.entries(answers)
           .filter(([, value]) => value !== "")
@@ -63,6 +65,7 @@ export function CampAddMemberDialog({
       setName("");
       setEmail("");
       setPhone("");
+      setDateOfBirth("");
       setAnswers({});
       setPriceId(null);
     },
@@ -86,11 +89,12 @@ export function CampAddMemberDialog({
           }}
         >
           <CampParticipantFields
-            values={{ name, email, phone }}
+            values={{ name, email, phone, dateOfBirth }}
             onChange={(patch) => {
               if (patch.name !== undefined) setName(patch.name);
               if (patch.email !== undefined) setEmail(patch.email);
               if (patch.phone !== undefined) setPhone(patch.phone);
+              if (patch.dateOfBirth !== undefined) setDateOfBirth(patch.dateOfBirth);
             }}
             form={form}
             answers={answers}

@@ -15,6 +15,7 @@ import { btnPrimary } from "@/lib/styles";
 import { enrollmentDisplayStatus } from "@/lib/status-styles";
 import { updateCampEnrollment, type CampEnrollmentDto } from "@/lib/api/camps";
 import { getAxiosErrorMessages } from "@/lib/utils/api-errors";
+import { formatDateNL } from "@/lib/date-utils";
 import { MolliePaymentId } from "@/components/dashboard/mollie-payment-id";
 import { CampPriceSelect } from "./camp-price-select";
 import { PlayerErasureAction } from "@/components/dashboard/player-erasure-action";
@@ -76,6 +77,7 @@ export function CampEnrollmentDetailDialog({
         participantName: enrollment.participantName,
         participantEmail: enrollment.participantEmail,
         participantPhone: enrollment.participantPhone,
+        dateOfBirth: enrollment.dateOfBirth,
         campPriceId,
         responses: enrollment.formResponses
           .filter((r) => r.value.trim() !== "")
@@ -164,6 +166,12 @@ export function CampEnrollmentDetailDialog({
                 label={t("detailPhone")}
                 value={enrollment.participantPhone}
                 href={`tel:${enrollment.participantPhone}`}
+              />
+            )}
+            {enrollment.dateOfBirth && (
+              <DetailRow
+                label={t("detailBirthDate")}
+                value={formatDateNL(enrollment.dateOfBirth)}
               />
             )}
             <DetailRow

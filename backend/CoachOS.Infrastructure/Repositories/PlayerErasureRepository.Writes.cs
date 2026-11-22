@@ -120,6 +120,7 @@ public sealed partial class PlayerErasureRepository
                 .SetProperty(x => x.ParticipantName, AnonymizedName)
                 .SetProperty(x => x.ParticipantEmail, email)
                 .SetProperty(x => x.ParticipantPhone, (string?)null)
+                .SetProperty(x => x.DateOfBirth, (DateOnly?)null)
                 .SetProperty(x => x.Notes, (string?)null)
                 .SetProperty(x => x.AnonymizedAt, anonymizedAt)
                 .SetProperty(x => x.UpdatedAt, anonymizedAt), ct);

@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
+import { formatTodayAsIsoDate } from "@/lib/birth-date";
 import type { CampEnrollmentFormDto } from "@/lib/api/camps";
 import { CampFormFieldInputs } from "./camp-form-field-inputs";
 import { CampPriceSelect } from "./camp-price-select";
@@ -10,6 +11,7 @@ export interface ParticipantValues {
   name: string;
   email: string;
   phone: string;
+  dateOfBirth: string;
 }
 
 interface CampParticipantFieldsProps {
@@ -25,11 +27,13 @@ interface CampParticipantFieldsProps {
   onPriceChange: (priceId: string | null) => void;
   /** Telefoon is verplicht bij nieuwe inschrijvingen, optioneel bij bewerken/lid toevoegen. */
   phoneRequired?: boolean;
+  /** false bij bewerken: oude inschrijvingen hebben geen geboortedatum en moeten bewerkbaar blijven. */
+  dateOfBirthRequired?: boolean;
 }
 
 /**
  * Gedeelde velden van de beheerder-dialogs voor kamp-deelnemers (lid toevoegen,
- * aanpassen, manueel inschrijven): naam, e-mail, telefoon + de custom formuliervelden.
+ * aanpassen, manueel inschrijven): naam, e-mail, geboortedatum, telefoon + de custom formuliervelden.
  */
 export function CampParticipantFields({
   values,
@@ -42,6 +46,7 @@ export function CampParticipantFields({
   priceId,
   onPriceChange,
   phoneRequired = false,
+  dateOfBirthRequired = true,
 }: CampParticipantFieldsProps) {
   const t = useTranslations("campEnrollmentsTable");
 
@@ -64,6 +69,17 @@ export function CampParticipantFields({
           value={values.email}
           onChange={(e) => onChange({ email: e.target.value })}
           className="mt-1"
+        />
+      </label>
+      <label className="block text-sm font-medium">
+        {dateOfBirthRequired ? `${t("memberDateOfBirth")} *` : t("memberDateOfBirth")}
+        <Input
+          required={dateOfBirthRequired}
+          type="date"
+          max={formatTodayAsIsoDate()}
+          value={values.dateOfBirth}
+          onChange={(e) => onChange({ dateOfBirth: e.target.value })}
+          className="mt-1 appearance-none min-w-0"
         />
       </label>
       <label className="block text-sm font-medium">

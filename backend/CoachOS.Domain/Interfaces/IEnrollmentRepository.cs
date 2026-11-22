@@ -1,5 +1,6 @@
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
+using CoachOS.Domain.Models;
 
 namespace CoachOS.Domain.Interfaces;
 
@@ -56,6 +57,14 @@ public interface IEnrollmentRepository
     /// </summary>
     Task<bool> AnyByLessonIdsAsync(
         IReadOnlyCollection<Guid> lessonIds, CancellationToken ct = default);
+
+    /// <summary>
+    /// Distincte identiteitsprojectie (naam, geboortedatum, e-mail; getrimd + lowercase) van bevestigde,
+    /// niet-geanonimiseerde inschrijvingen (reeks én losse les) van de organisatie met
+    /// <c>EnrolledAt</c> in [<paramref name="fromUtc"/>, <paramref name="toUtcExclusive"/>). Voor de leerlingenteller.
+    /// </summary>
+    Task<IReadOnlyList<StudentIdentityKey>> GetConfirmedStudentKeysAsync(
+        Guid organizationId, DateTime fromUtc, DateTime toUtcExclusive, CancellationToken ct = default);
 
     Task AddAsync(Enrollment enrollment, CancellationToken ct = default);
 

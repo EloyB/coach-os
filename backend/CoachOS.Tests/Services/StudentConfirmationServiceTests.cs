@@ -288,6 +288,8 @@ public class StudentConfirmationServiceTests
         result.IsSuccess.Should().BeTrue();
         series.PlanningStatus.Should().Be(PlanningStatus.Scheduled,
             "de serie moet finaliseren wanneer de no-tracking read aantoont dat alles bevestigd is");
+        enrollment.ActiveSince.Should().NotBeNull(
+            "de leerling telt mee als actieve leerling vanaf het bevestigen via de mail-link");
 
         _tokenRepo.Verify(
             r => r.GetBySeriesAsNoTrackingAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()),

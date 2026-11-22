@@ -1,4 +1,5 @@
 using CoachOS.Domain.Entities;
+using CoachOS.Domain.Models;
 
 namespace CoachOS.Domain.Interfaces;
 
@@ -37,6 +38,13 @@ public interface ICampEnrollmentRepository
 
     /// <summary>Of minstens één inschrijving (ook geannuleerd) een van deze tarieven gekozen heeft.</summary>
     Task<bool> AnyUsingPricesAsync(IEnumerable<Guid> priceIds, CancellationToken ct = default);
+
+    /// <summary>
+    /// Zoals <see cref="IEnrollmentRepository.GetConfirmedStudentKeysAsync"/>, voor kampinschrijvingen
+    /// (geen geboortedatum; e-mail = <c>ParticipantEmail</c>).
+    /// </summary>
+    Task<IReadOnlyList<StudentIdentityKey>> GetConfirmedStudentKeysAsync(
+        Guid organizationId, DateTime fromUtc, DateTime toUtcExclusive, CancellationToken ct = default);
 
     Task AddAsync(CampEnrollment enrollment, CancellationToken ct = default);
     Task AddGroupAsync(CampEnrollmentGroup group, CancellationToken ct = default);

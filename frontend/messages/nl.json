@@ -932,6 +932,11 @@
     "formLastName": "Achternaam",
     "formEmail": "E-mailadres",
     "formPhone": "Telefoonnummer",
+    "formDateOfBirth": "Geboortedatum",
+    "memberDateOfBirth": "Geboortedatum",
+    "birthDateInvalid": "Ongeldige geboortedatum",
+    "birthDateInFuture": "Geboortedatum kan niet in de toekomst liggen",
+    "birthDateImplausible": "Controleer de geboortedatum",
     "formPhoneOptional": "Telefoonnummer (optioneel)",
     "enrollmentType": "Type inschrijving",
     "typeSolo": "Solo",
@@ -1471,6 +1476,9 @@
     "memberEmail": "E-mailadres",
     "memberPhone": "Telefoonnummer (optioneel)",
     "memberPhoneRequired": "Telefoonnummer",
+    "memberDateOfBirth": "Geboortedatum",
+    "detailBirthDate": "Geboortedatum",
+    "bornOn": "Geboren op {date}",
     "editAction": "Inschrijving aanpassen",
     "editTitle": "Inschrijving aanpassen",
     "editDescription": "Wijzig de gegevens, het tarief en de antwoorden van deze deelnemer. De status blijft ongewijzigd; een openstaande cash-betaling volgt het gekozen tarief.",
@@ -1491,6 +1499,13 @@
     "paymentPaidAt": "Betaald op",
     "paymentMollieId": "Mollie-referentie",
     "paymentCopyMollieId": "Mollie-referentie kopiëren"
+  },
+  "activeStudents": {
+    "withLimit": "{count} / {limit} actieve {count, plural, one {leerling} other {leerlingen}}",
+    "withoutLimit": "{count, plural, one {# actieve leerling} other {# actieve leerlingen}}",
+    "limitReached": "Limiet bereikt of overschreden",
+    "progressLabel": "Actieve leerlingen in het lopende abonnementsjaar",
+    "periodUntil": "Abonnementsjaar tot {date}"
   },
   "subscription": {
     "trialCardLabel": "Gratis proef",

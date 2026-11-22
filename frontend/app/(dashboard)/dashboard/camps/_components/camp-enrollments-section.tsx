@@ -41,6 +41,7 @@ import {
   markCampEnrollmentCashPaid,
   type CampEnrollmentDto,
 } from "@/lib/api/camps";
+import { formatDateNL } from "@/lib/date-utils";
 import { enrollmentDisplayStatus } from "@/lib/status-styles";
 import { getAxiosErrorMessages } from "@/lib/utils/api-errors";
 import { canEditEnrollment, isEnrollmentManager } from "@/lib/auth";
@@ -660,6 +661,11 @@ function PersonRow({
               <p className="mt-0.5 break-all text-xs text-gray-500">
                 {contactLine(enrollment)}
               </p>
+              {enrollment.dateOfBirth && (
+                <p className="mt-0.5 text-xs text-gray-500">
+                  {t("bornOn", { date: formatDateNL(enrollment.dateOfBirth) })}
+                </p>
+              )}
               <p className="mt-0.5 text-xs text-gray-400">
                 {formatEnrolledAt(enrollment.enrolledAt)}
               </p>
@@ -696,6 +702,11 @@ function PersonRow({
         </td>
         <td className="px-4 py-2.5 text-xs text-gray-500">
           <span className="block truncate">{contactLine(enrollment)}</span>
+          {enrollment.dateOfBirth && (
+            <span className="block truncate text-gray-400">
+              {t("bornOn", { date: formatDateNL(enrollment.dateOfBirth) })}
+            </span>
+          )}
         </td>
         <td className="whitespace-nowrap px-4 py-2.5 text-xs text-gray-500">
           {formatEnrolledAt(enrollment.enrolledAt)}

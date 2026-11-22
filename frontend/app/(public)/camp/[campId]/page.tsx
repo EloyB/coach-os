@@ -32,6 +32,7 @@ import { Badge } from "@/components/ui/badge";
 import { LogoMark } from "@/components/ui/logo-mark";
 import { Spinner } from "@/components/ui/spinner";
 import { formatDateNL, formatDateShort } from "@/lib/date-utils";
+import { formatTodayAsIsoDate, getBirthDateError, type BirthDateError } from "@/lib/birth-date";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -44,7 +45,8 @@ const LEVEL_KEYS: Record<number, "level1" | "level2" | "level3"> = {
   3: "level3",
 };
 
-type GroupMember = { name: string; email: string };
+type GroupMember = { name: string; email: string; dateOfBirth: string };
+type MemberErrors = { name?: string; email?: string; dateOfBirth?: string };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -85,6 +87,7 @@ export default function CampEnrollPage() {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [baseErrors, setBaseErrors] = useState<{
@@ -92,14 +95,13 @@ export default function CampEnrollPage() {
     lastName?: string;
     email?: string;
     phone?: string;
+    dateOfBirth?: string;
   }>({});
 
   // Enrollment type
   const [enrollmentType, setEnrollmentType] = useState<"solo" | "group">("solo");
   const [groupMembers, setGroupMembers] = useState<GroupMember[]>([]);
-  const [memberErrors, setMemberErrors] = useState<
-    Record<number, { name?: string; email?: string }>
-  >({});
+  const [memberErrors, setMemberErrors] = useState<Record<number, MemberErrors>>({});
 
   const user = getAuthUser();
   const isAdminOrTrainer = user?.role === "Admin" || user?.role === "Trainer";
@@ -137,7 +139,7 @@ export default function CampEnrollPage() {
 
   function addGroupMember() {
     if (groupMembers.length >= 3) return;
-    setGroupMembers((prev) => [...prev, { name: "", email: "" }]);
+    setGroupMembers((prev) => [...prev, { name: "", email: "", dateOfBirth: "" }]);
   }
 
   function removeGroupMember(index: number) {
@@ -151,7 +153,7 @@ export default function CampEnrollPage() {
 
   function updateGroupMember(
     index: number,
-    field: "name" | "email",
+    field: keyof GroupMember,
     value: string
   ) {
     setGroupMembers((prev) =>
@@ -168,6 +170,18 @@ export default function CampEnrollPage() {
 
   // ─── Validation ─────────────────────────────────────────────────────────
 
+  const birthDateErrorMessages: Record<BirthDateError, string> = {
+    required: t("requiredField"),
+    invalid: t("birthDateInvalid"),
+    future: t("birthDateInFuture"),
+    implausible: t("birthDateImplausible"),
+  };
+
+  function validateBirthDate(value: string): string | undefined {
+    const error = getBirthDateError(value);
+    return error ? birthDateErrorMessages[error] : undefined;
+  }
+
   function validate(): boolean {
     const errors: typeof baseErrors = {};
     if (!firstName.trim()) errors.firstName = t("requiredField");
@@ -176,6 +190,8 @@ export default function CampEnrollPage() {
     else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))
       errors.email = t("requiredField");
     if (!phone.trim()) errors.phone = t("requiredField");
+    const birthDateError = validateBirthDate(dateOfBirth);
+    if (birthDateError) errors.dateOfBirth = birthDateError;
     setBaseErrors(errors);
 
     const fErrors: Record<string, string> = {};
@@ -188,15 +204,17 @@ export default function CampEnrollPage() {
     }
     setFieldErrors(fErrors);
 
-    const mErrors: Record<number, { name?: string; email?: string }> = {};
+    const mErrors: Record<number, MemberErrors> = {};
     if (enrollmentType === "group") {
       groupMembers.forEach((m, i) => {
-        const e: { name?: string; email?: string } = {};
+        const e: MemberErrors = {};
         if (!m.name.trim()) e.name = t("requiredField");
         if (!m.email.trim()) e.email = t("requiredField");
         else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(m.email))
           e.email = t("requiredField");
-        if (e.name || e.email) mErrors[i] = e;
+        const memberBirthDateError = validateBirthDate(m.dateOfBirth);
+        if (memberBirthDateError) e.dateOfBirth = memberBirthDateError;
+        if (e.name || e.email || e.dateOfBirth) mErrors[i] = e;
       });
     }
     setMemberErrors(mErrors);
@@ -225,6 +243,7 @@ export default function CampEnrollPage() {
         participantName: `${firstName.trim()} ${lastName.trim()}`,
         participantEmail: email.trim(),
         participantPhone: phone.trim(),
+        dateOfBirth,
         responses,
         enrollmentType,
         groupMembers:
@@ -232,6 +251,7 @@ export default function CampEnrollPage() {
             ? groupMembers.map((m) => ({
                 participantName: m.name.trim(),
                 participantEmail: m.email.trim(),
+                dateOfBirth: m.dateOfBirth,
                 responses: [],
               }))
             : undefined,
@@ -602,6 +622,28 @@ export default function CampEnrollPage() {
                       <p className="text-xs text-red-500 mt-1">{baseErrors.phone}</p>
                     )}
                   </div>
+                  <div>
+                    <label
+                      htmlFor="dateOfBirth"
+                      className="block text-sm font-medium text-gray-700 mb-1.5"
+                    >
+                      {t("formDateOfBirth")} *
+                    </label>
+                    <input
+                      id="dateOfBirth"
+                      type="date"
+                      max={formatTodayAsIsoDate()}
+                      value={dateOfBirth}
+                      onChange={(e) => {
+                        setDateOfBirth(e.target.value);
+                        setBaseErrors((p) => ({ ...p, dateOfBirth: undefined }));
+                      }}
+                      className={`${inputClass(!!baseErrors.dateOfBirth)} appearance-none min-w-0`}
+                    />
+                    {baseErrors.dateOfBirth && (
+                      <p className="text-xs text-red-500 mt-1">{baseErrors.dateOfBirth}</p>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -748,6 +790,23 @@ export default function CampEnrollPage() {
                             {memberErrors[i]?.email && (
                               <p className="text-xs text-red-500 mt-1">
                                 {memberErrors[i].email}
+                              </p>
+                            )}
+                          </div>
+                          <div>
+                            <input
+                              type="date"
+                              max={formatTodayAsIsoDate()}
+                              value={member.dateOfBirth}
+                              onChange={(e) =>
+                                updateGroupMember(i, "dateOfBirth", e.target.value)
+                              }
+                              aria-label={`${t("memberDateOfBirth")} ${i + 1}`}
+                              className={`${inputClass(!!memberErrors[i]?.dateOfBirth)} appearance-none min-w-0`}
+                            />
+                            {memberErrors[i]?.dateOfBirth && (
+                              <p className="text-xs text-red-500 mt-1">
+                                {memberErrors[i].dateOfBirth}
                               </p>
                             )}
                           </div>
