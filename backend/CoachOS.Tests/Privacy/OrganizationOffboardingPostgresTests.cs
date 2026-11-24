@@ -1,9 +1,11 @@
 using CoachOS.Application.Abstractions;
+using CoachOS.Application.Configuration;
 using CoachOS.Application.Privacy;
 using CoachOS.Application.Privacy.DTOs;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
 using CoachOS.Domain.Models;
+using CoachOS.Infrastructure.Email;
 using CoachOS.Infrastructure.Identity;
 using CoachOS.Infrastructure.Persistence;
 using CoachOS.Infrastructure.Repositories;
@@ -11,7 +13,10 @@ using CoachOS.Tests.TestHelpers;
 using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using Moq;
 using Npgsql;
 using NUnit.Framework;
 
@@ -164,6 +169,197 @@ public class OrganizationOffboardingPostgresTests
             foreach (ApplicationDbContext context in contexts)
                 await context.DisposeAsync();
         }
+    }
+
+    [Test]
+    public async Task RetentionJob_FullFlow_DeletesOnlyAfterFinalNoticeWasSent()
+    {
+        ApplicationUser shared;
+        SeededOrg target;
+        SeededOrg other;
+        await using (ApplicationDbContext db = CreateDb())
+        {
+            shared = await AddUserAsync(db, "retentie");
+            // Proef 60 dagen geleden afgelopen: over 30 dagen verwijderbaar → nu de eerste mail.
+            target = await SeedOrganizationAsync(db, "TC Retentie", trialEndedDaysAgo: 60, shared);
+            other = await SeedOrganizationAsync(db, "TC Recent", trialEndedDaysAgo: 5, shared);
+        }
+        DateOnly deletionOn = Today.AddDays(30);
+
+        await RunRetentionAsync(Today);
+        Subscription afterFirst = await ReadSubscriptionAsync(target.OrgId);
+        afterFirst.ScheduledDeletionOn.Should().Be(deletionOn);
+        afterFirst.DeletionStage.Should().Be(OrganizationDeletionStage.FirstNotice);
+        (await ReadSubscriptionAsync(other.OrgId)).ScheduledDeletionOn.Should().BeNull();
+
+        // Tweede run op dezelfde dag: niets dubbel. De mail hangt aan de organisatie.
+        await RunRetentionAsync(Today);
+        (await NoticeRowsAsync(target.OrgId)).Should().ContainSingle();
+
+        await RunRetentionAsync(deletionOn.AddDays(-7));
+        (await ReadSubscriptionAsync(target.OrgId)).DeletionStage.Should().Be(OrganizationDeletionStage.FinalNotice);
+        (await NoticeRowsAsync(target.OrgId)).Should().HaveCount(2);
+
+        // Laatste mail staat nog in de wachtrij: niet verwijderen.
+        await RunRetentionAsync(deletionOn);
+        (await OrganizationExistsAsync(target.OrgId)).Should().BeTrue("de laatste mail is nog niet verstuurd");
+
+        await MarkNoticesAsync(target.OrgId, EmailOutboxStatuses.Completed);
+        await RunRetentionAsync(deletionOn);
+        await using (ApplicationDbContext db = CreateDb())
+        {
+            (await CountRowsPerTableAsync(db, target.OrgId)).Values.Should().AllSatisfy(c => c.Should().Be(0));
+            (await db.Organizations.AsNoTracking().AnyAsync(o => o.Id == target.OrgId)).Should().BeFalse();
+            (await db.Organizations.AsNoTracking().AnyAsync(o => o.Id == other.OrgId)).Should().BeTrue();
+            (await db.Users.AsNoTracking().AnyAsync(u => u.Id == shared.Id)).Should().BeTrue("ook lid van een andere club");
+        }
+        (await NoticeRowsAsync(target.OrgId)).Should().BeEmpty("verwijdermails worden mee opgeruimd");
+    }
+
+    [Test]
+    public async Task RetentionJob_FinalNoticeFailed_PostponesAndSendsAgainInsteadOfDeleting()
+    {
+        SeededOrg target;
+        await using (ApplicationDbContext db = CreateDb())
+        {
+            ApplicationUser shared = await AddUserAsync(db, "mislukt");
+            target = await SeedOrganizationAsync(db, "TC Mislukt", trialEndedDaysAgo: 60, shared);
+        }
+        DateOnly deletionOn = Today.AddDays(30);
+        await RunRetentionAsync(Today);
+        await RunRetentionAsync(deletionOn.AddDays(-7));
+        await MarkNoticesAsync(target.OrgId, EmailOutboxStatuses.Failed);
+
+        await RunRetentionAsync(deletionOn);
+
+        (await OrganizationExistsAsync(target.OrgId)).Should().BeTrue();
+        Subscription after = await ReadSubscriptionAsync(target.OrgId);
+        after.ScheduledDeletionOn.Should().Be(deletionOn.AddDays(7));
+        after.DeletionStage.Should().Be(OrganizationDeletionStage.FinalNotice);
+        (await NoticeRowsAsync(target.OrgId)).Should().Contain(m => m.Status == EmailOutboxStatuses.Pending);
+    }
+
+    [Test]
+    public async Task NoticeStatus_OnlyCountsMailsQueuedSinceTheClaim_EvenWithScrubbedPayload()
+    {
+        Guid orgId;
+        await using (ApplicationDbContext db = CreateDb())
+        {
+            ApplicationUser shared = await AddUserAsync(db, "scrub");
+            orgId = (await SeedOrganizationAsync(db, "TC Scrub", trialEndedDaysAgo: 200, shared)).OrgId;
+            // Oude, verstuurde mail (vorige stap): inhoud gewist zoals na verzending.
+            db.EmailOutboxMessages.Add(new EmailOutboxMessage
+            {
+                OrganizationId = orgId, Type = "mail:organization-deletion-notice",
+                Payload = EmailOutboxMessage.ScrubbedPayload, Status = EmailOutboxStatuses.Completed
+            });
+            await db.SaveChangesAsync();
+            await db.EmailOutboxMessages.Where(m => m.OrganizationId == orgId)
+                .ExecuteUpdateAsync(s => s.SetProperty(m => m.CreatedAt, DateTime.UtcNow.AddDays(-8)));
+        }
+        DateTime claimedAt = DateTime.UtcNow.AddMinutes(-1);
+
+        await using (ApplicationDbContext read = CreateDb())
+            (await new OrganizationDeletionNoticeStatus(read).GetAsync(orgId, claimedAt))
+                .Should().Be(EmailDeliveryStatus.Missing, "de oude mail hoort bij een vorige stap");
+
+        await using (ApplicationDbContext db = CreateDb())
+        {
+            db.EmailOutboxMessages.Add(new EmailOutboxMessage
+            {
+                OrganizationId = orgId, Type = "mail:organization-deletion-notice",
+                Payload = EmailOutboxMessage.ScrubbedPayload, Status = EmailOutboxStatuses.Completed
+            });
+            await db.SaveChangesAsync();
+        }
+
+        await using (ApplicationDbContext read = CreateDb())
+            (await new OrganizationDeletionNoticeStatus(read).GetAsync(orgId, claimedAt))
+                .Should().Be(EmailDeliveryStatus.Sent);
+    }
+
+    [Test]
+    public async Task TrySetDeletionScheduleAsync_StaleExpectation_SecondClaimLoses()
+    {
+        Guid subscriptionId;
+        await using (ApplicationDbContext db = CreateDb())
+        {
+            ApplicationUser shared = await AddUserAsync(db, "claim");
+            SeededOrg org = await SeedOrganizationAsync(db, "TC Claim", trialEndedDaysAgo: 70, shared);
+            subscriptionId = (await db.Subscriptions.AsNoTracking().SingleAsync(s => s.OrganizationId == org.OrgId)).Id;
+        }
+
+        await using ApplicationDbContext first = CreateDb();
+        await using ApplicationDbContext second = CreateDb();
+        bool won = await new SubscriptionRepository(first).TrySetDeletionScheduleAsync(
+            subscriptionId, null, null, Today.AddDays(30), OrganizationDeletionStage.FirstNotice);
+        bool lost = await new SubscriptionRepository(second).TrySetDeletionScheduleAsync(
+            subscriptionId, null, null, Today.AddDays(30), OrganizationDeletionStage.FirstNotice);
+
+        won.Should().BeTrue();
+        lost.Should().BeFalse();
+    }
+
+    /// <summary>
+    /// Eén run met de echte outbox-keten (writer, organisatiecontext, statuslezer); de mails
+    /// blijven in de outbox staan zoals vóór de outbox-worker ze verstuurt.
+    /// </summary>
+    private async Task RunRetentionAsync(DateOnly day)
+    {
+        FixedTimeProvider clock = new(new DateTimeOffset(day.ToDateTime(new TimeOnly(10, 0)), TimeSpan.Zero));
+        ServiceCollection services = new();
+        services.AddScoped(_ => CreateDb());
+        await using ServiceProvider provider = services.BuildServiceProvider();
+        await using ApplicationDbContext db = CreateDb();
+        EmailOrganizationContext mailOrganization = new(new NoTenantContext());
+        OutboxEmailService email = new(new EmailOutboxWriter(
+            provider.GetRequiredService<IServiceScopeFactory>(), mailOrganization, NullLogger<EmailOutboxWriter>.Instance));
+        OrganizationOffboardingService offboarding = new(
+            new OrganizationRepository(db), new SubscriptionRepository(db), new OrganizationOffboardingRepository(db),
+            new UnitOfWork(db), clock, NullLogger<OrganizationOffboardingService>.Instance);
+        OrganizationRetentionService retention = new(
+            new SubscriptionRepository(db), new OrganizationOffboardingRepository(db), offboarding,
+            new OrganizationDeletionNoticeStatus(db), email, mailOrganization,
+            Options.Create(new AppOptions { FrontendBaseUrl = "https://app.coach-os.be" }),
+            Options.Create(new SuperAdminOptions { Email = "admin@coach-os.be" }),
+            Options.Create(new BillingOptions { EnforceTrialExpiry = true }),
+            clock, NullLogger<OrganizationRetentionService>.Instance);
+
+        Result<OrganizationRetentionReport> result = await retention.RunAsync(dryRun: false);
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Failed.Should().Be(0);
+    }
+
+    private async Task<List<EmailOutboxMessage>> NoticeRowsAsync(Guid organizationId)
+    {
+        await using ApplicationDbContext db = CreateDb();
+        return await db.EmailOutboxMessages.AsNoTracking()
+            .Where(m => m.OrganizationId == organizationId && m.Type == "mail:organization-deletion-notice")
+            .ToListAsync();
+    }
+
+    /// <summary>Zoals de outbox-worker: alle verwijdermails van de organisatie krijgen deze status.</summary>
+    private async Task MarkNoticesAsync(Guid organizationId, string status)
+    {
+        await using ApplicationDbContext db = CreateDb();
+        await db.EmailOutboxMessages
+            .Where(m => m.OrganizationId == organizationId && m.Type == "mail:organization-deletion-notice")
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(m => m.Status, status)
+                // Zoals de outbox-worker na verzending: de inhoud wordt gewist.
+                .SetProperty(m => m.Payload, EmailOutboxMessage.ScrubbedPayload));
+    }
+
+    private async Task<bool> OrganizationExistsAsync(Guid organizationId)
+    {
+        await using ApplicationDbContext db = CreateDb();
+        return await db.Organizations.AsNoTracking().AnyAsync(o => o.Id == organizationId);
+    }
+
+    private async Task<Subscription> ReadSubscriptionAsync(Guid organizationId)
+    {
+        await using ApplicationDbContext db = CreateDb();
+        return await db.Subscriptions.AsNoTracking().SingleAsync(s => s.OrganizationId == organizationId);
     }
 
     private sealed record SeededOrg(Guid OrgId, Guid AdminId);

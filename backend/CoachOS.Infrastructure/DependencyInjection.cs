@@ -141,6 +141,7 @@ public static class DependencyInjection
         services.AddScoped<IEmailOrganizationContext>(sp => sp.GetRequiredService<EmailOrganizationContext>());
         services.AddScoped<IEmailOutboxWriter, EmailOutboxWriter>();
         services.AddScoped<IEmailService, OutboxEmailService>();
+        services.AddScoped<IOrganizationDeletionNoticeStatus, OrganizationDeletionNoticeStatus>();
         services.AddSingleton<IPlanningWorkbookBuilder, ClosedXmlPlanningWorkbookBuilder>();
         services.AddSingleton<ICampWorkbookBuilder, ClosedXmlCampWorkbookBuilder>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
@@ -186,6 +187,10 @@ public static class DependencyInjection
         services.AddScoped<IPrivacyCleanupRepository, PrivacyCleanupRepository>();
         services.Configure<PlayerRetentionOptions>(configuration.GetSection(PlayerRetentionOptions.Section));
         services.AddHostedService<PlayerRetentionWorker>();
+
+        // Organisatie verwijderen na de bewaartermijn (#262). Standaard uit en dry-run.
+        services.Configure<OrganizationRetentionOptions>(configuration.GetSection(OrganizationRetentionOptions.Section));
+        services.AddHostedService<OrganizationRetentionWorker>();
 
         return services;
     }

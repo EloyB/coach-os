@@ -54,6 +54,8 @@ internal static class OutboxEmails
         ("mail:camp-enrollment-confirmed", typeof(CampEnrollmentConfirmedMail)),
         ("mail:email-verification", typeof(EmailVerificationMail)),
         ("mail:trial-reminder", typeof(TrialReminderMail)),
+        ("mail:organization-deletion-notice", typeof(OrganizationDeletionNoticeMail)),
+        ("mail:organization-deletion-cancelled", typeof(OrganizationDeletionCancelledMail)),
         ("mail:subscription-started", typeof(SubscriptionStartedMail)),
         ("mail:subscription-payment-failed", typeof(SubscriptionPaymentFailedMail)),
         ("mail:subscription-invitation", typeof(SubscriptionInvitationMail)),
@@ -69,6 +71,8 @@ internal static class OutboxEmails
     public static IReadOnlyCollection<string> Keys => TypeByKey.Keys;
 
     public static Type TypeOf(string key) => TypeByKey[key];
+
+    public static string KeyOf(Type type) => KeyByType[type];
 
     /// <summary>
     /// Typenamen van platformmails: geen <see cref="IClubOutboxEmail"/>, horen bij geen club en
@@ -312,6 +316,25 @@ internal sealed record TrialReminderMail(
 
     public Task SendAsync(IEmailService sender, CancellationToken ct)
         => sender.SendTrialReminderAsync(ToEmail, OrganizationName, DaysRemaining, TrialEndsAt, AppUrl, ct);
+}
+
+internal sealed record OrganizationDeletionNoticeMail(
+    string ToEmail, string OrganizationName, DateOnly DeletionDate, bool FinalNotice,
+    string ExportUrl) : IClubOutboxEmail
+{
+    [JsonIgnore] public string Recipient => ToEmail;
+
+    public Task SendAsync(IEmailService sender, CancellationToken ct)
+        => sender.SendOrganizationDeletionNoticeAsync(ToEmail, OrganizationName, DeletionDate, FinalNotice, ExportUrl, ct);
+}
+
+internal sealed record OrganizationDeletionCancelledMail(
+    string ToEmail, string OrganizationName) : IClubOutboxEmail
+{
+    [JsonIgnore] public string Recipient => ToEmail;
+
+    public Task SendAsync(IEmailService sender, CancellationToken ct)
+        => sender.SendOrganizationDeletionCancelledAsync(ToEmail, OrganizationName, ct);
 }
 
 internal sealed record SubscriptionStartedMail(

@@ -12,8 +12,8 @@ import { TrialSidebarCard } from "@/components/dashboard/trial-sidebar-card";
 import { ActiveStudentsSidebarCard } from "@/components/dashboard/active-students-sidebar-card";
 import { OnboardingSidebarCard } from "@/components/dashboard/onboarding/onboarding-sidebar-card";
 import { navItems } from "@/lib/nav-items";
-import { switchOrganization } from "@/lib/api/auth";
-import { getAuthUser, setAuthUser, setToken, clearAuth } from "@/lib/auth";
+import { clearAuth } from "@/lib/auth";
+import { switchToOrganization } from "@/lib/organization-switch";
 import { useAuthUser } from "@/lib/hooks/use-auth-user";
 import { getInitials } from "@/lib/utils/initials";
 
@@ -43,20 +43,7 @@ export function DashboardSidebar() {
     }
     setIsSwitching(true);
     try {
-      const response = await switchOrganization(organizationId);
-      setToken(response.token);
-      const current = getAuthUser();
-      setAuthUser({
-        userId: response.userId,
-        email: response.email,
-        firstName: response.firstName ?? current?.firstName,
-        lastName: response.lastName ?? current?.lastName,
-        organizationId: response.organizationId,
-        role: response.role,
-        memberships: response.memberships,
-        headTrainerClubIds: response.headTrainerClubIds,
-        emailVerified: response.emailVerified,
-      });
+      await switchToOrganization(organizationId);
       setSwitcherOpen(false);
       router.refresh();
       window.location.reload();

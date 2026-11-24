@@ -1667,6 +1667,12 @@ namespace CoachOS.Infrastructure.Migrations
                     b.Property<DateOnly?>("CurrentPeriodStart")
                         .HasColumnType("date");
 
+                    b.Property<int?>("DeletionStage")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeletionStageChangedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateOnly?>("EndDate")
                         .HasColumnType("date");
 
@@ -1710,6 +1716,9 @@ namespace CoachOS.Infrastructure.Migrations
                     b.Property<decimal>("Price")
                         .HasPrecision(10, 2)
                         .HasColumnType("numeric(10,2)");
+
+                    b.Property<DateOnly?>("ScheduledDeletionOn")
+                        .HasColumnType("date");
 
                     b.Property<DateOnly>("StartDate")
                         .HasColumnType("date");
