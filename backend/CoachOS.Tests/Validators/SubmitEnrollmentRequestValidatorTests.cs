@@ -208,4 +208,50 @@ public class SubmitEnrollmentRequestValidatorTests
 
         _validator.Validate(request).IsValid.Should().BeTrue();
     }
+
+    // ── Antwoorden van groepsleden (#411) ────────────────────────────────────
+
+    private static SubmitEnrollmentRequest GroupWithMemberResponses(params FormResponseValueDto[] responses)
+        => ValidGroup() with
+        {
+            GroupMembers = new()
+            {
+                new() { StudentName = "Member A", StudentEmail = "a@test.be", DateOfBirth = AdultBirthDate, Responses = responses.ToList() },
+            },
+        };
+
+    [Test]
+    public void Validate_GroupMemberAnswerWithinLimits_IsValid()
+    {
+        SubmitEnrollmentRequest request = GroupWithMemberResponses(
+            new FormResponseValueDto { FormFieldId = Guid.NewGuid(), Value = new string('x', 1000) });
+
+        _validator.Validate(request).IsValid.Should().BeTrue();
+    }
+
+    [Test]
+    public void Validate_GroupMemberAnswerLongerThanLimit_IsRejected()
+    {
+        SubmitEnrollmentRequest request = GroupWithMemberResponses(
+            new FormResponseValueDto { FormFieldId = Guid.NewGuid(), Value = new string('x', 1001) });
+
+        _validator.Validate(request).Errors
+            .Should().ContainSingle(e => e.ErrorMessage == "Antwoord mag maximaal 1000 karakters zijn");
+    }
+
+    [Test]
+    public void Validate_GroupMemberAnswerWithoutFieldId_IsRejected()
+    {
+        SubmitEnrollmentRequest request = GroupWithMemberResponses(
+            new FormResponseValueDto { FormFieldId = Guid.Empty, Value = "x" });
+
+        _validator.Validate(request).Errors
+            .Should().ContainSingle(e => e.ErrorMessage == "FormFieldId is verplicht");
+    }
+
+    [Test]
+    public void Validate_GroupMemberWithoutAnswers_IsValid()
+    {
+        _validator.Validate(ValidGroup()).IsValid.Should().BeTrue();
+    }
 }

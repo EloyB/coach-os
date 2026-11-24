@@ -129,6 +129,11 @@ public partial class EnrollmentService
                 return formError;
         }
 
+        // 4-bis. Elk groepslid beantwoordt dezelfde vragen als de leider (zelfde verplicht-regels).
+        Error? memberFormError = ValidateGroupMemberResponses(form, request);
+        if (memberFormError is not null)
+            return memberFormError;
+
         // 4a. Inschrijfwijze afdwingen: de admin bepaalt per reeks of solo, groep of
         //     beide toegelaten zijn. Vóór de transactie — geen DB-werk nodig voor een
         //     wijze die sowieso niet mag.
@@ -146,6 +151,32 @@ public partial class EnrollmentService
         // 4a-bis. Minimum aantal beschikbare tijdvakken: enkel "Beschikbaar" en "Voorkeur" tellen mee,
         //     enkel voor weekslots van déze reeks. Zonder weekslots valt er niets te kiezen.
         return CheckMinimumAvailableSlots(request, series);
+    }
+
+    /// <summary>
+    /// Valideert de antwoorden van elk groepslid tegen de velden van het formulier, net als die van de leider:
+    /// verplichte vragen moeten beantwoord zijn en onbekende velden worden geweigerd. Ook zonder formulier,
+    /// zodat een antwoord op een veld dat niet bestaat een nette fout geeft in plaats van een opslagfout.
+    /// Enkel bij een groepsinschrijving; bij solo worden meegestuurde leden genegeerd.
+    /// </summary>
+    private static Error? ValidateGroupMemberResponses(EnrollmentForm? form, SubmitEnrollmentRequest request)
+    {
+        if (request.EnrollmentType != "group" || request.GroupMembers is null)
+            return null;
+
+        List<(Guid Id, bool IsRequired, string Label)> fields =
+            (form?.Fields ?? []).Select(f => (f.Id, f.IsRequired, f.Label)).ToList();
+
+        foreach (GroupMemberDto member in request.GroupMembers)
+        {
+            Error? error = FormResponseValidator.Validate(
+                fields,
+                (member.Responses ?? []).Select(r => (r.FormFieldId, r.Value)));
+            if (error is not null)
+                return new Error(error.Code, $"{member.StudentName}: {error.Message}");
+        }
+
+        return null;
     }
 
     /// <summary>Aantal plaatsen dat deze inschrijving inneemt: leider plus groepsleden.</summary>

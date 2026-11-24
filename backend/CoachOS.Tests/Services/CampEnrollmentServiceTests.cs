@@ -449,4 +449,102 @@ public class CampEnrollmentServiceTests
         result.Errors[0].Code.Should().Be(ErrorCodes.Validation);
         _enrollments.Verify(r => r.AddAsync(It.IsAny<CampEnrollment>(), It.IsAny<CancellationToken>()), Times.Never);
     }
+
+    // ── Antwoorden per groepslid (#411) ──────────────────────────────────────
+
+    private static readonly Guid RequiredFieldId = Guid.NewGuid();
+
+    private void ArrangeGroupWithForm(decimal price, bool requiredField)
+    {
+        Happy(price);
+        _forms.Setup(r => r.GetByCampIdReadOnlyAsync(_campId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CampEnrollmentForm
+            {
+                Fields = [new CampFormField { Id = RequiredFieldId, Label = "Shirtmaat", IsRequired = requiredField }],
+            });
+        _enrollments.Setup(r => r.IsDuplicateAsync(_campId, "lars@example.com", It.IsAny<CancellationToken>())).ReturnsAsync(false);
+    }
+
+    private static SubmitCampEnrollmentRequest GroupReq(List<CampFormResponseValueDto> leader, List<CampFormResponseValueDto>? member) => new()
+    {
+        ParticipantName = "Emma", ParticipantEmail = "emma@example.com", EnrollmentType = "group",
+        Responses = leader,
+        GroupMembers = new List<CampGroupMemberDto>
+        {
+            new() { ParticipantName = "Lars", ParticipantEmail = "lars@example.com", Responses = member },
+        },
+    };
+
+    [Test]
+    public async Task Submit_GroupMemberMissingRequiredAnswer_ReturnsValidationNamingTheMember()
+    {
+        ArrangeGroupWithForm(0m, requiredField: true);
+        SubmitCampEnrollmentRequest request = GroupReq(
+            [new CampFormResponseValueDto { CampFormFieldId = RequiredFieldId, Value = "M" }], member: null);
+
+        Result<SubmitCampEnrollmentResultDto> result = await _sut.SubmitAsync(_campId, request, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Code.Should().Be(ErrorCodes.Validation);
+        result.Errors[0].Message.Should().Be("Lars: Veld 'Shirtmaat' is verplicht.");
+        _enrollments.Verify(r => r.AddAsync(It.IsAny<CampEnrollment>(), It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.BeginTransactionAsync(It.IsAny<System.Data.IsolationLevel>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task Submit_GroupMemberAnswerForUnknownField_ReturnsValidation()
+    {
+        ArrangeGroupWithForm(0m, requiredField: false);
+        SubmitCampEnrollmentRequest request = GroupReq(
+            [], member: [new CampFormResponseValueDto { CampFormFieldId = Guid.NewGuid(), Value = "x" }]);
+
+        Result<SubmitCampEnrollmentResultDto> result = await _sut.SubmitAsync(_campId, request, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Errors[0].Message.Should().Be("Lars: Ongeldig formulierveld.");
+        _enrollments.Verify(r => r.AddAsync(It.IsAny<CampEnrollment>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task Submit_GroupWithAnswersPerPerson_StoresEachAnswerOnItsOwnEnrollment()
+    {
+        ArrangeGroupWithForm(0m, requiredField: true);
+        Dictionary<string, Guid> ids = new();
+        _enrollments.Setup(r => r.AddAsync(It.IsAny<CampEnrollment>(), It.IsAny<CancellationToken>()))
+            .Callback<CampEnrollment, CancellationToken>((e, _) =>
+            {
+                e.Id = Guid.NewGuid();
+                ids[e.ParticipantName] = e.Id;
+            })
+            .Returns(Task.CompletedTask);
+        List<CampFormResponse> stored = [];
+        _enrollments.Setup(r => r.AddFormResponseAsync(It.IsAny<CampFormResponse>(), It.IsAny<CancellationToken>()))
+            .Callback<CampFormResponse, CancellationToken>((response, _) => stored.Add(response))
+            .Returns(Task.CompletedTask);
+        SubmitCampEnrollmentRequest request = GroupReq(
+            [new CampFormResponseValueDto { CampFormFieldId = RequiredFieldId, Value = "M" }],
+            member: [new CampFormResponseValueDto { CampFormFieldId = RequiredFieldId, Value = "XL" }]);
+
+        Result<SubmitCampEnrollmentResultDto> result = await _sut.SubmitAsync(_campId, request, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        stored.Should().HaveCount(2);
+        stored.Single(r => r.CampEnrollmentId == ids["Emma"]).Value.Should().Be("M");
+        stored.Single(r => r.CampEnrollmentId == ids["Lars"]).Value.Should().Be("XL");
+    }
+
+    [Test]
+    public async Task Submit_SoloIgnoresAnswersOfMembers()
+    {
+        ArrangeGroupWithForm(0m, requiredField: true);
+        SubmitCampEnrollmentRequest request = GroupReq(
+            [new CampFormResponseValueDto { CampFormFieldId = RequiredFieldId, Value = "M" }], member: null) with
+        {
+            EnrollmentType = "solo",
+        };
+
+        Result<SubmitCampEnrollmentResultDto> result = await _sut.SubmitAsync(_campId, request, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+    }
 }
