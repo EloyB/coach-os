@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import type { SubmitEnrollmentRequest } from "@/lib/api/enrollments";
+import type { LessonSeriesEnrollmentDto, SubmitEnrollmentRequest } from "@/lib/api/enrollments";
 import type { PlanningOverviewDto } from "@/lib/api/planning";
 import { API_URL, TEST_PUBLIC_SERIES, loginViaStorage, mockApi, TEST_SERIES } from "./helpers";
 
@@ -225,5 +225,80 @@ test.describe("Planning: tijdslot groter dan het gekozen maximum", () => {
     // Geen bevestigingsdialoog: de servermelding verschijnt zoals voorheen als foutmelding.
     await expect(page.getByText("Tijdslot heeft geen plaats meer (4/4).")).toBeVisible();
     await expect(page.getByRole("alertdialog")).toHaveCount(0);
+  });
+});
+
+test.describe("Beheer: maximum per inschrijving", () => {
+  const SERIES = "66666666-6666-6666-6666-666666666666";
+
+  function enrollment(overrides: Partial<LessonSeriesEnrollmentDto>): LessonSeriesEnrollmentDto {
+    return {
+      id: "e0000000-0000-0000-0000-000000000001", studentName: "Anna Solo", studentEmail: "anna@example.test",
+      studentPhone: "0470 12 34 56", contactEmail: "anna@example.test", hasOwnEmail: true, status: "Pending",
+      enrolledAt: "2026-11-01T10:00:00Z", notes: null, dateOfBirth: "1990-01-01", category: 1, categoryLabel: "Volwassenen",
+      enrollmentGroupId: null, isGroupLeader: false, maxGroupSize: 3, selectedPriceOptionId: null,
+      paymentMethod: null, paymentStatus: null, paymentAmount: null, paidAt: null, molliePaymentId: null,
+      isAwaitingConfirmation: false, formResponses: [], ...overrides,
+    };
+  }
+
+  const visible = (page: Page, text: string) => page.getByText(text, { exact: true }).locator("visible=true").first();
+
+  test.beforeEach(async ({ page }) => {
+    await loginViaStorage(page);
+    await mockApi(page, "GET", `/lessonseries/${SERIES}`, TEST_SERIES[0]);
+    await mockApi(page, "GET", `/lessonseries/${SERIES}/enrollments`, [
+      enrollment({}),
+      enrollment({ id: "e0000000-0000-0000-0000-000000000002", studentName: "Bram Eenling", studentEmail: "bram@example.test", contactEmail: "bram@example.test", maxGroupSize: 1 }),
+    ]);
+  });
+
+  test("toont een chip met het maximum, enkel als iemand met anderen wil zitten", async ({ page }) => {
+    await page.goto(`/dashboard/lessons/${SERIES}`);
+
+    await expect(visible(page, "Anna Solo")).toBeVisible();
+    await expect(page.getByText("max. 3").locator("visible=true")).toHaveCount(1);
+    await expect(page.getByText("max. 1")).toHaveCount(0);
+    // Geen ruwe vertaalsleutels in de interface.
+    await expect(page.getByText(/enrollmentsTable\.|enrollmentDetail\./)).toHaveCount(0);
+  });
+
+  test("detail en bewerken tonen het maximum met de juiste teksten en sturen de keuze mee", async ({ page }) => {
+    let put: Record<string, unknown> | undefined;
+    await page.route(`${API_URL}/lessonseries/${SERIES}/enrollments/e0000000-0000-0000-0000-000000000001`, (route) => {
+      if (route.request().method() !== "PUT") return route.continue();
+      put = route.request().postDataJSON() as Record<string, unknown>;
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(enrollment({ maxGroupSize: 4 })) });
+    });
+    await page.goto(`/dashboard/lessons/${SERIES}`);
+
+    await visible(page, "Anna Solo").click();
+    const detail = page.getByRole("dialog");
+    await expect(detail.getByText("Max. personen per les")).toBeVisible();
+    await detail.getByRole("button", { name: "Aanpassen" }).click();
+
+    const edit = page.getByRole("dialog", { name: "Inschrijving aanpassen" });
+    await expect(edit.getByText("Maximum aantal personen per les", { exact: true }).first()).toBeVisible();
+    const choice = edit.getByRole("radiogroup", { name: "Maximum aantal personen per les" });
+    await expect(choice.getByRole("radio")).toHaveCount(4);
+    await expect(choice.getByRole("radio", { name: /Trio/ })).toBeChecked();
+    await expect(page.getByText(/enrollmentsTable\./)).toHaveCount(0);
+
+    await choice.getByText("Groep van 4").click();
+    await edit.getByRole("button", { name: "Opslaan" }).click();
+
+    await expect.poll(() => put).toBeDefined();
+    expect(put?.maxGroupSize).toBe(4);
+  });
+
+  test("manueel toevoegen laat de admin een maximum kiezen", async ({ page }) => {
+    await page.goto(`/dashboard/lessons/${SERIES}`);
+
+    await page.getByRole("button", { name: "Manueel toevoegen" }).locator("visible=true").first().click();
+
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.getByText("Maximum aantal personen per les", { exact: true }).first()).toBeVisible();
+    await expect(dialog.getByRole("radiogroup", { name: "Maximum aantal personen per les" }).getByRole("radio", { name: /Solo/ })).toBeChecked();
+    await expect(page.getByText(/enrollmentsTable\./)).toHaveCount(0);
   });
 });
