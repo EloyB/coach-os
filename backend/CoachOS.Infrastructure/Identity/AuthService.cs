@@ -317,9 +317,9 @@ public class AuthService(
         var user = await userManager.Users.FirstOrDefaultAsync(u => u.InviteToken == hashedToken, cancellationToken);
 
         if (user is null)
-            return Result<AuthResponseDto>.Fail("Ongeldige uitnodigingslink");
+            return Result<AuthResponseDto>.Fail(new Error(ErrorCodes.Validation, "Ongeldige uitnodigingslink"));
         if (user.InviteTokenExpiry is null || user.InviteTokenExpiry < DateTime.UtcNow)
-            return Result<AuthResponseDto>.Fail("Uitnodigingslink is verlopen");
+            return Result<AuthResponseDto>.Fail(new Error(ErrorCodes.Validation, "Uitnodigingslink is verlopen"));
 
         await using var tx = await context.Database.BeginTransactionAsync(cancellationToken);
 

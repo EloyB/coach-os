@@ -66,6 +66,25 @@ public class AuthServiceInviteValidationTests
         ((IEnumerable<string>)body.Value!).Should().Equal(expectedMessage);
     }
 
+    [TestCase("unknown-token", "Ongeldige uitnodigingslink")]
+    [TestCase("expired-token", "Uitnodigingslink is verlopen")]
+    [TestCase("missing-expiry-token", "Uitnodigingslink is verlopen")]
+    public async Task AcceptInviteAsync_InvalidInvite_ReturnsValidationErrorMappedToBadRequest(
+        string token, string expectedMessage)
+    {
+        await SeedInviteAsync("expired-token", DateTime.UtcNow.AddHours(-1));
+        await SeedInviteAsync("missing-expiry-token", null);
+
+        Result<AuthResponseDto> result = await _service.AcceptInviteAsync(token, "Wachtwoord123!", CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        IStatusCodeHttpResult response = (IStatusCodeHttpResult)result.ToErrorResult();
+        response.StatusCode.Should().Be(StatusCodes.Status400BadRequest);
+        result.Errors.Should().ContainSingle();
+        result.Errors[0].Code.Should().Be(ErrorCodes.Validation);
+        result.Errors[0].Message.Should().Be(expectedMessage);
+    }
+
     [Test]
     public async Task ValidateInviteTokenAsync_ValidInvite_ReturnsFirstNameWithoutConsumingInvite()
     {
