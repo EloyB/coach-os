@@ -317,9 +317,9 @@ public class AuthService(
         var user = await userManager.Users.FirstOrDefaultAsync(u => u.InviteToken == hashedToken, cancellationToken);
 
         if (user is null)
-            return Result<AuthResponseDto>.Fail("Ongeldige uitnodigingslink");
+            return Result<AuthResponseDto>.Fail(new Error(ErrorCodes.Validation, "Ongeldige uitnodigingslink"));
         if (user.InviteTokenExpiry is null || user.InviteTokenExpiry < DateTime.UtcNow)
-            return Result<AuthResponseDto>.Fail("Uitnodigingslink is verlopen");
+            return Result<AuthResponseDto>.Fail(new Error(ErrorCodes.Validation, "Uitnodigingslink is verlopen"));
 
         await using var tx = await context.Database.BeginTransactionAsync(cancellationToken);
 
@@ -396,7 +396,7 @@ public class AuthService(
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(token))
-            return Result<InviteValidationDto>.Fail("Ongeldige uitnodigingslink");
+            return Result<InviteValidationDto>.Fail(new Error(ErrorCodes.Validation, "Ongeldige uitnodigingslink"));
 
         var hashedToken = HashToken(token);
         var user = await userManager.Users
@@ -404,9 +404,9 @@ public class AuthService(
             .FirstOrDefaultAsync(u => u.InviteToken == hashedToken, cancellationToken);
 
         if (user is null)
-            return Result<InviteValidationDto>.Fail("Ongeldige uitnodigingslink");
+            return Result<InviteValidationDto>.Fail(new Error(ErrorCodes.Validation, "Ongeldige uitnodigingslink"));
         if (user.InviteTokenExpiry is null || user.InviteTokenExpiry < DateTime.UtcNow)
-            return Result<InviteValidationDto>.Fail("Uitnodigingslink is verlopen");
+            return Result<InviteValidationDto>.Fail(new Error(ErrorCodes.Validation, "Uitnodigingslink is verlopen"));
 
         return Result<InviteValidationDto>.Ok(new InviteValidationDto(user.FirstName));
     }
