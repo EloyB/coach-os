@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { EnrollmentLegalNotice } from "@/components/forms/enrollment-legal-notice";
 import {
   CalendarDays,
   Clock,
@@ -846,6 +847,7 @@ export default function CampEnrollPage() {
               <p className="text-xs text-gray-400 text-center mt-3">
                 {t("submitNote")}
               </p>
+              <EnrollmentLegalNotice />
             </div>
           </form>
 

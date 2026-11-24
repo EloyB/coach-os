@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { EnrollmentLegalNotice } from "@/components/forms/enrollment-legal-notice";
 import {
   CalendarDays,
   MapPin,
@@ -1365,6 +1366,7 @@ export default function EnrollPage() {
                 <p className="text-xs text-gray-400 text-center mt-3">
                   Je ontvangt een bevestiging per e-mail
                 </p>
+                <EnrollmentLegalNotice />
               </div>
             </form>
           )}
