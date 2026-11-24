@@ -17,6 +17,11 @@ FROM node:24-alpine AS build
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+# Juridische teksten: één bron in docs/legal (buiten de buildcontext). Ze worden als named
+# build context aangereikt en bij de build omgezet naar statische pagina's (lib/legal.ts
+# leest ../docs/legal vanuit WORKDIR /app). Lokaal:
+#   docker build -f Dockerfile.prod --build-context legal=../docs/legal .
+COPY --from=legal . /docs/legal
 # NEXT_PUBLIC_* values are inlined into the client bundle at build time —
 # they MUST be set here, not as runtime env vars. Used by content/meta.ts
 # to point header/footer "Login" links at the actual app subdomain.

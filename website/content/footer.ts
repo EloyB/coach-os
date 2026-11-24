@@ -22,6 +22,8 @@ export const FOOTER = {
       links: [
         { href: "/privacy", label: "Privacy" },
         { href: "/voorwaarden", label: "Voorwaarden" },
+        { href: "/spelersvoorwaarden", label: "Voorwaarden inschrijving" },
+        { href: "/verwerkersovereenkomst", label: "Verwerkersovereenkomst" },
       ],
     },
   ],

@@ -1212,6 +1212,9 @@
     "verifyLaterHint": "Je kan CoachOS al verkennen. Mails naar trainers en leerlingen versturen kan pas na bevestiging.",
     "verifyFreshCodeSent": "Je vorige code was verlopen. We hebben je een nieuwe gestuurd."
   },
+  "legal": {
+    "enrollmentNotice": "Door in te schrijven ga je akkoord met de <terms>voorwaarden voor inschrijving</terms>. Lees ook de <privacy>privacyverklaring</privacy>."
+  },
   "studentAuth": {
     "title": "Inloggen als leerling",
     "subtitle": "Vul je e-mailadres in, we sturen je een inloglink.",

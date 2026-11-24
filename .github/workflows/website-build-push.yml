@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'website/**'
+      - 'docs/legal/**'
       - '!website/**/*.md'
       - '.github/workflows/website-build-push.yml'
   workflow_dispatch:
@@ -45,6 +46,8 @@ jobs:
         with:
           context: ./website
           file: ./website/Dockerfile.prod
+          build-contexts: |
+            legal=./docs/legal
           push: true
           build-args: |
             NEXT_PUBLIC_APP_URL=https://app.coach-os.be

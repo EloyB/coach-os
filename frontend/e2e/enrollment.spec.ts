@@ -115,6 +115,21 @@ test.describe("Public Enrollment", () => {
     await expect(page.getByRole("button", { name: "Inschrijven" })).toBeVisible();
   });
 
+  test("links to the player terms and privacy statement under the submit button", async ({ page }) => {
+    await mockPublicApi(page, "GET", `/public/lessonseries/${seriesId}`, TEST_PUBLIC_SERIES);
+    await mockPublicApi(page, "GET", `/public/lessonseries/${seriesId}/form`, null, 204);
+
+    await page.goto(`/enroll/${seriesId}`);
+
+    await expect(
+      page.getByRole("link", { name: "voorwaarden voor inschrijving" })
+    ).toHaveAttribute("href", /\/spelersvoorwaarden$/);
+    await expect(page.getByRole("link", { name: "privacyverklaring" })).toHaveAttribute(
+      "href",
+      /\/privacy$/
+    );
+  });
+
   test("submits enrollment successfully", async ({ page }) => {
     await mockPublicApi(page, "GET", `/public/lessonseries/${seriesId}`, TEST_PUBLIC_SERIES);
     await mockPublicApi(page, "GET", `/public/lessonseries/${seriesId}/form`, null, 204);

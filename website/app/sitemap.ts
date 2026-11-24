@@ -38,5 +38,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
       : []),
     { url: `${base}/privacy`, changeFrequency: "yearly", priority: 0.3 },
     { url: `${base}/voorwaarden`, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${base}/spelersvoorwaarden`, changeFrequency: "yearly", priority: 0.3 },
+    {
+      url: `${base}/verwerkersovereenkomst`,
+      changeFrequency: "yearly",
+      priority: 0.3,
+    },
   ];
 }

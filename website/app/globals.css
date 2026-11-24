@@ -137,3 +137,63 @@
     @apply bg-background text-foreground;
   }
 }
+/* Juridische documenten (markdown uit docs/legal, bij de build omgezet naar HTML). */
+.legal-prose {
+  color: var(--color-ink-2);
+  font-size: 1rem;
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+}
+.legal-prose > * + * { margin-top: 1rem; }
+.legal-prose h2,
+.legal-prose h3,
+.legal-prose h4 {
+  color: var(--color-ink);
+  font-weight: 700;
+  line-height: 1.25;
+  scroll-margin-top: 6rem;
+}
+.legal-prose h2 { margin-top: 2.5rem; font-size: 1.5rem; }
+.legal-prose h3 { margin-top: 1.75rem; font-size: 1.15rem; }
+.legal-prose h4 { margin-top: 1.5rem; font-size: 1rem; }
+.legal-prose .legal-anchor { color: inherit; text-decoration: none; }
+.legal-prose .legal-anchor:hover { text-decoration: underline; text-underline-offset: 4px; }
+.legal-prose a:not(.legal-anchor) {
+  color: var(--color-ink);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.legal-prose strong { color: var(--color-ink); font-weight: 600; }
+.legal-prose ul,
+.legal-prose ol { padding-left: 1.5rem; }
+.legal-prose ul { list-style: disc; }
+.legal-prose ol { list-style: decimal; }
+.legal-prose li + li { margin-top: 0.4rem; }
+.legal-prose hr { margin: 2rem 0; border: 0; border-top: 1px solid rgb(0 0 0 / 0.1); }
+.legal-prose code {
+  border-radius: 0.25rem;
+  background: rgb(0 0 0 / 0.05);
+  padding: 0.1rem 0.35rem;
+  font-size: 0.9em;
+}
+.legal-prose blockquote {
+  border-left: 3px solid var(--color-tennis-green);
+  padding-left: 1rem;
+  color: var(--color-ink-2);
+}
+.legal-prose table {
+  display: block;
+  width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+.legal-prose th,
+.legal-prose td {
+  border: 1px solid rgb(0 0 0 / 0.12);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  vertical-align: top;
+}
+.legal-prose th { background: rgb(0 0 0 / 0.04); color: var(--color-ink); }
