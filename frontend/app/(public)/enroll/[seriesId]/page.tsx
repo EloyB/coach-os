@@ -780,7 +780,7 @@ export default function EnrollPage() {
                           className="mt-1 w-4 h-4 text-tennis-green focus:ring-tennis-green"
                         />
                         <div className="flex-1">
-                          <div className="flex items-start justify-between gap-3">
+                          <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
                             <span className="text-sm font-medium text-gray-800">{option.label}</span>
                             <span className="text-sm font-semibold text-tennis-green whitespace-nowrap">{formatPriceOption(option)}</span>
                           </div>
