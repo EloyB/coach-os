@@ -1,0 +1,40 @@
+[    1095ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5318/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[    1207ms] [LOG] [HMR] connected @ http://localhost:5318/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  111435ms] [LOG] [HMR] connected @ http://localhost:5318/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[ 1869247ms] [LOG] [HMR] connected @ http://localhost:5318/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[ 1869458ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:5318/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[ 1869470ms] [LOG] [Fast Refresh] done in 113ms @ http://localhost:5318/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[ 5080549ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:5318/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[ 5081113ms] [WARNING] [HMR] Invalid message: {"isTrusted":true}
+TypeError: Cannot convert undefined or null to object
+    at Object.keys (<anonymous>)
+    at extractModulesFromTurbopackMessage (http://localhost:5318/_next/static/chunks/node_modules_next_dist_client_17643121._.js:11210:39)
+    at TurbopackHmr.onTurbopackMessage (http://localhost:5318/_next/static/chunks/node_modules_next_dist_client_17643121._.js:11157:32)
+    at processMessage (http://localhost:5318/_next/static/chunks/node_modules_next_dist_client_17643121._.js:11589:30)
+    at WebSocket.handleMessage (http://localhost:5318/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10914:52) @ http://localhost:5318/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[ 5081115ms] [LOG] [Fast Refresh] done in 732ms @ http://localhost:5318/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[ 5081564ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:5318/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[ 5082216ms] [LOG] [Fast Refresh] done in 752ms @ http://localhost:5318/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[ 5082330ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:5318/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[ 5082396ms] [LOG] [Fast Refresh] done in 167ms @ http://localhost:5318/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[ 5083408ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:5318/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[ 5083453ms] [LOG] [Fast Refresh] done in 148ms @ http://localhost:5318/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[30494472ms] [LOG] [HMR] connected @ http://localhost:5318/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[30494902ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:5318/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[30495265ms] [LOG] [Fast Refresh] done in 467ms @ http://localhost:5318/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[33868973ms] [LOG] [HMR] connected @ http://localhost:5318/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[33869197ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:5318/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[33869242ms] [LOG] [Fast Refresh] done in 149ms @ http://localhost:5318/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[82037556ms] [ERROR] WebSocket connection to 'ws://localhost:5318/_next/webpack-hmr?id=-yN-0GDmzgAgPa-G8m4WK' failed:  @ http://localhost:5318/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10878
+[82038706ms] [ERROR] WebSocket connection to 'ws://localhost:5318/_next/webpack-hmr?id=-yN-0GDmzgAgPa-G8m4WK' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5318/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10878
+[82039762ms] [ERROR] WebSocket connection to 'ws://localhost:5318/_next/webpack-hmr?id=-yN-0GDmzgAgPa-G8m4WK' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5318/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10878
+[82040831ms] [ERROR] WebSocket connection to 'ws://localhost:5318/_next/webpack-hmr?id=-yN-0GDmzgAgPa-G8m4WK' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5318/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10878
+[82042032ms] [ERROR] WebSocket connection to 'ws://localhost:5318/_next/webpack-hmr?id=-yN-0GDmzgAgPa-G8m4WK' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5318/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10878
+[82043484ms] [ERROR] WebSocket connection to 'ws://localhost:5318/_next/webpack-hmr?id=-yN-0GDmzgAgPa-G8m4WK' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5318/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10878
+[82048536ms] [ERROR] WebSocket connection to 'ws://localhost:5318/_next/webpack-hmr?id=-yN-0GDmzgAgPa-G8m4WK' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5318/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10878
+[82053545ms] [ERROR] WebSocket connection to 'ws://localhost:5318/_next/webpack-hmr?id=-yN-0GDmzgAgPa-G8m4WK' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5318/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10878
+[82058565ms] [ERROR] WebSocket connection to 'ws://localhost:5318/_next/webpack-hmr?id=-yN-0GDmzgAgPa-G8m4WK' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5318/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10878
+[82063616ms] [ERROR] WebSocket connection to 'ws://localhost:5318/_next/webpack-hmr?id=-yN-0GDmzgAgPa-G8m4WK' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5318/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10878
+[82068706ms] [ERROR] WebSocket connection to 'ws://localhost:5318/_next/webpack-hmr?id=-yN-0GDmzgAgPa-G8m4WK' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5318/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10878
+[82073786ms] [ERROR] WebSocket connection to 'ws://localhost:5318/_next/webpack-hmr?id=-yN-0GDmzgAgPa-G8m4WK' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5318/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10878
+[82079004ms] [ERROR] WebSocket connection to 'ws://localhost:5318/_next/webpack-hmr?id=-yN-0GDmzgAgPa-G8m4WK' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5318/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10878

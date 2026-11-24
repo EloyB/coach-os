@@ -1,0 +1,222 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e67]:
+    - complementary [ref=e68]:
+      - img [ref=e69]
+      - generic [ref=e71]:
+        - generic [ref=e72]:
+          - generic "CoachOS" [ref=e73]:
+            - img [ref=e74]
+          - generic [ref=e78]: CoachOS
+        - button "T Organisatie TC De Aces" [ref=e80] [cursor=pointer]:
+          - generic [ref=e82]: T
+          - generic [ref=e83]:
+            - paragraph [ref=e84]: Organisatie
+            - paragraph [ref=e85]: TC De Aces
+          - img [ref=e86]
+      - navigation [ref=e88]:
+        - paragraph [ref=e89]: Werk
+        - link "Vandaag" [ref=e90] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e91]
+          - generic [ref=e96]: Vandaag
+        - link "Lesreeksen" [ref=e97] [cursor=pointer]:
+          - /url: /dashboard/lessons
+          - img [ref=e98]
+          - generic [ref=e100]: Lesreeksen
+        - link "Losse lessen" [ref=e101] [cursor=pointer]:
+          - /url: /dashboard/standalone-lessons
+          - img [ref=e102]
+          - generic [ref=e104]: Losse lessen
+        - link "Kampen" [ref=e105] [cursor=pointer]:
+          - /url: /dashboard/camps
+          - img [ref=e106]
+          - generic [ref=e110]: Kampen
+        - link "Trainers" [ref=e111] [cursor=pointer]:
+          - /url: /dashboard/trainers
+          - img [ref=e112]
+          - generic [ref=e115]: Trainers
+        - link "Instellingen" [ref=e116] [cursor=pointer]:
+          - /url: /dashboard/settings
+          - img [ref=e117]
+          - generic [ref=e120]: Instellingen
+      - generic [ref=e121]:
+        - generic [ref=e123]: JJ
+        - generic [ref=e124]:
+          - paragraph [ref=e125]: Jan Janssen
+          - paragraph [ref=e126]: Beheerder
+        - button "Uitloggen" [ref=e127] [cursor=pointer]:
+          - img [ref=e128]
+    - generic [ref=e131]:
+      - banner [ref=e132]:
+        - paragraph [ref=e133]: ZO · 14 JUN 2026 · WEEK 24
+      - main [ref=e134]:
+        - generic [ref=e135]:
+          - heading "Vandaag" [level=1] [ref=e137]
+          - link "Nieuwe les" [ref=e138] [cursor=pointer]:
+            - /url: /dashboard/lessons/new
+            - img [ref=e139]
+            - text: Nieuwe les
+        - generic [ref=e140]:
+          - generic [ref=e142]:
+            - generic [ref=e143]:
+              - generic [ref=e144]: Aan de slag
+              - paragraph [ref=e145]: 2 van 4 stappen voltooid
+            - button "Sluiten" [ref=e146]
+          - generic [ref=e149]:
+            - generic [ref=e150]:
+              - generic [ref=e153]:
+                - paragraph [ref=e154]: Verbind Mollie
+                - paragraph [ref=e155]: Koppel een Mollie-account zodat leerlingen betalingen kunnen voltooien.
+              - link "Verbinden" [ref=e156] [cursor=pointer]:
+                - /url: /dashboard/settings
+                - text: Verbinden
+                - img
+            - generic [ref=e157]:
+              - generic [ref=e158]:
+                - img [ref=e160]
+                - generic [ref=e162]:
+                  - paragraph [ref=e163]: Voeg een tennisclub toe
+                  - paragraph [ref=e164]: Lesreeksen vinden plaats bij een tennisclub. Voeg er minstens één toe.
+              - generic [ref=e165]: Voltooid
+            - generic [ref=e166]:
+              - generic [ref=e169]:
+                - paragraph [ref=e170]: Kies je trainer-setup
+                - paragraph [ref=e171]: Werk je alleen, of met meerdere trainers?
+              - button "Kiezen" [ref=e172]:
+                - text: Kiezen
+                - img
+            - generic [ref=e173]:
+              - generic [ref=e174]:
+                - img [ref=e176]
+                - generic [ref=e178]:
+                  - paragraph [ref=e179]: Maak je eerste lesreeks
+                  - paragraph [ref=e180]: Plan een reeks lessen en open de inschrijving.
+              - generic [ref=e181]: Voltooid
+        - generic [ref=e182]:
+          - generic [ref=e183]:
+            - text: "0"
+            - generic [ref=e184]: lessen vandaag
+          - generic [ref=e185]:
+            - text: "3"
+            - generic [ref=e186]: deze week
+          - generic [ref=e187]:
+            - text: "38"
+            - generic [ref=e188]: inschrijvingen
+          - generic [ref=e189]:
+            - text: "2"
+            - generic [ref=e190]: trainers
+          - generic [ref=e191]:
+            - text: "4"
+            - generic [ref=e192]: reeksen
+        - generic [ref=e193]:
+          - generic [ref=e195]:
+            - paragraph [ref=e196]: /vraagt-actie
+            - paragraph [ref=e197]: 10 dingen om nu aan te pakken
+          - generic [ref=e198]:
+            - generic [ref=e199]:
+              - generic [ref=e200]:
+                - paragraph [ref=e201]:
+                  - generic [ref=e203]: Bart Peeters
+                - paragraph [ref=e204]: heeft nog niet bevestigd
+                - generic [ref=e205]: 2d 12u resterend
+              - link "Bekijk" [ref=e206] [cursor=pointer]:
+                - /url: /dashboard/lessons/019ec257-148f-76d7-a35a-5c4c6335a8da/planning
+            - generic [ref=e207]:
+              - generic [ref=e208]:
+                - paragraph [ref=e209]:
+                  - generic [ref=e211]: Sofie De Boer
+                - paragraph [ref=e212]: heeft nog niet bevestigd
+                - generic [ref=e213]: 2d 12u resterend
+              - link "Bekijk" [ref=e214] [cursor=pointer]:
+                - /url: /dashboard/lessons/019ec257-148f-76d7-a35a-5c4c6335a8da/planning
+            - generic [ref=e215]:
+              - generic [ref=e216]:
+                - paragraph [ref=e217]:
+                  - generic [ref=e219]: Kevin Goossens
+                - paragraph [ref=e220]: heeft nog niet bevestigd
+                - generic [ref=e221]: 2d 12u resterend
+              - link "Bekijk" [ref=e222] [cursor=pointer]:
+                - /url: /dashboard/lessons/019ec257-148f-76d7-a35a-5c4c6335a8da/planning
+          - button "+ 7 meer tonen" [ref=e223] [cursor=pointer]
+        - generic [ref=e224]:
+          - generic [ref=e225]:
+            - heading "Komende lessen — 5" [level=2] [ref=e227]
+            - generic [ref=e228]:
+              - generic [ref=e229]:
+                - generic [ref=e230]:
+                  - img [ref=e232]
+                  - generic [ref=e234]:
+                    - paragraph [ref=e235]: Voorjaarslessen Beginners
+                    - paragraph [ref=e236]: Jan Janssen · Baan 1
+                - generic [ref=e237]:
+                  - text: 15/06/2026
+                  - paragraph [ref=e238]:
+                    - img [ref=e239]
+                    - generic [ref=e242]: 09:00 – 10:00
+              - generic [ref=e243]:
+                - generic [ref=e244]:
+                  - img [ref=e246]
+                  - generic [ref=e248]:
+                    - paragraph [ref=e249]: Zomerlessen 2026
+                    - paragraph [ref=e250]: Jan Janssen · Baan 2
+                - generic [ref=e251]:
+                  - text: 16/06/2026
+                  - paragraph [ref=e252]:
+                    - img [ref=e253]
+                    - generic [ref=e256]: 18:00 – 19:00
+              - generic [ref=e257]:
+                - generic [ref=e258]:
+                  - img [ref=e260]
+                  - generic [ref=e262]:
+                    - paragraph [ref=e263]: Zomerlessen 2026
+                    - paragraph [ref=e264]: Jan Janssen · Baan 1
+                - generic [ref=e265]:
+                  - text: 16/06/2026
+                  - paragraph [ref=e266]:
+                    - img [ref=e267]
+                    - generic [ref=e270]: 18:00 – 19:00
+              - generic [ref=e271]:
+                - generic [ref=e272]:
+                  - img [ref=e274]
+                  - generic [ref=e276]:
+                    - paragraph [ref=e277]: Zomerlessen 2026
+                    - paragraph [ref=e278]: Jan Janssen · Baan 1
+                - generic [ref=e279]:
+                  - text: 16/06/2026
+                  - paragraph [ref=e280]:
+                    - img [ref=e281]
+                    - generic [ref=e284]: 19:00 – 20:00
+              - generic [ref=e285]:
+                - generic [ref=e286]:
+                  - img [ref=e288]
+                  - generic [ref=e290]:
+                    - paragraph [ref=e291]: Competitietraining Gevorderd
+                    - paragraph [ref=e292]: Jan Janssen · Baan 2
+                - generic [ref=e293]:
+                  - text: 17/06/2026
+                  - paragraph [ref=e294]:
+                    - img [ref=e295]
+                    - generic [ref=e298]: 10:30 – 12:00
+          - generic [ref=e299]:
+            - generic [ref=e300]:
+              - generic [ref=e301]:
+                - paragraph [ref=e302]: Lessen deze week
+                - paragraph [ref=e303]: "3"
+                - paragraph [ref=e304]: t.o.v. vorige week
+              - img [ref=e305]
+            - generic [ref=e308]:
+              - generic [ref=e309]:
+                - paragraph [ref=e310]: Bezettingsgraad
+                - paragraph [ref=e311]: 48%
+                - paragraph [ref=e312]: gemiddeld
+              - img [ref=e313]
+            - generic [ref=e316]:
+              - generic [ref=e317]:
+                - paragraph [ref=e318]: Openstaand
+                - paragraph [ref=e319]: €0
+                - paragraph [ref=e320]: te ontvangen
+              - img [ref=e321]
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e55] [cursor=pointer]:
+    - img [ref=e56]
+  - alert [ref=e59]

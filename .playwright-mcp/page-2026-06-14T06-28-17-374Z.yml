@@ -1,0 +1,229 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - img [ref=e4]
+      - generic [ref=e6]:
+        - generic [ref=e7]:
+          - generic "CoachOS" [ref=e8]:
+            - img [ref=e9]
+          - generic [ref=e13]: CoachOS
+        - button "T Organisatie TC De Aces" [ref=e15] [cursor=pointer]:
+          - generic [ref=e17]: T
+          - generic [ref=e18]:
+            - paragraph [ref=e19]: Organisatie
+            - paragraph [ref=e20]: TC De Aces
+          - img [ref=e21]
+      - navigation [ref=e23]:
+        - paragraph [ref=e24]: Werk
+        - link "Vandaag" [ref=e25] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e26]
+          - generic [ref=e31]: Vandaag
+        - link "Lesreeksen" [ref=e32] [cursor=pointer]:
+          - /url: /dashboard/lessons
+          - img [ref=e33]
+          - generic [ref=e35]: Lesreeksen
+        - link "Losse lessen" [ref=e36] [cursor=pointer]:
+          - /url: /dashboard/standalone-lessons
+          - img [ref=e37]
+          - generic [ref=e39]: Losse lessen
+        - link "Kampen" [ref=e40] [cursor=pointer]:
+          - /url: /dashboard/camps
+          - img [ref=e41]
+          - generic [ref=e45]: Kampen
+        - link "Trainers" [ref=e46] [cursor=pointer]:
+          - /url: /dashboard/trainers
+          - img [ref=e47]
+          - generic [ref=e50]: Trainers
+        - link "Instellingen" [ref=e51] [cursor=pointer]:
+          - /url: /dashboard/settings
+          - img [ref=e52]
+          - generic [ref=e55]: Instellingen
+      - generic [ref=e56]:
+        - generic [ref=e58]: JJ
+        - generic [ref=e59]:
+          - paragraph [ref=e60]: Jan Janssen
+          - paragraph [ref=e61]: Beheerder
+        - button "Uitloggen" [ref=e62] [cursor=pointer]:
+          - img [ref=e63]
+    - generic [ref=e66]:
+      - banner [ref=e67]:
+        - paragraph [ref=e68]: ZO · 14 JUN 2026 · WEEK 24
+      - main [ref=e69]:
+        - link "Terug naar kampen" [ref=e70] [cursor=pointer]:
+          - /url: /dashboard/camps
+          - img [ref=e71]
+          - text: Terug naar kampen
+        - generic [ref=e86]:
+          - generic [ref=e88]:
+            - generic [ref=e89]:
+              - generic [ref=e90]:
+                - heading "Paaskamp Gevorderden" [level=1] [ref=e91]
+                - generic [ref=e92]: Actief
+              - paragraph [ref=e93]: Drie dagen intensief trainen tijdens de paasvakantie.
+              - generic [ref=e94]:
+                - generic [ref=e95]:
+                  - img [ref=e96]
+                  - text: €120
+                - generic [ref=e98]:
+                  - img [ref=e99]
+                  - text: 04/07/2026 - 06/07/2026
+                - generic [ref=e101]:
+                  - img [ref=e102]
+                  - text: Gevorderd
+                - generic [ref=e105]:
+                  - img [ref=e106]
+                  - text: TC De Aces
+                - generic [ref=e110]:
+                  - img [ref=e111]
+                  - text: 2 / 20 deelnemers
+                - generic [ref=e116]:
+                  - img [ref=e117]
+                  - text: "Inschrijven kan tot: 13/09/2026"
+            - button "Bewerken" [ref=e120]:
+              - img [ref=e121]
+              - text: Bewerken
+          - generic [ref=e124]:
+            - generic [ref=e125]:
+              - generic [ref=e126]:
+                - img [ref=e128]
+                - generic [ref=e131]:
+                  - heading "Dagen & trainers" [level=2] [ref=e132]
+                  - paragraph [ref=e133]: Voeg per kampdag een datum, kampuren en de aanwezige trainers toe.
+              - generic [ref=e134]:
+                - generic [ref=e135]:
+                  - generic [ref=e136]: zaterdag 4 juli
+                  - paragraph [ref=e137]: Kampuren
+                  - generic [ref=e138]:
+                    - textbox [ref=e139]: 09:00
+                    - generic [ref=e140]: Tot
+                    - textbox [ref=e141]: 16:00
+                  - paragraph [ref=e142]: Trainers
+                  - generic [ref=e144]:
+                    - generic [ref=e145]: Jan Janssen
+                    - textbox [ref=e146]: 09:00
+                    - generic [ref=e147]: "-"
+                    - textbox [ref=e148]: 12:00
+                    - button "Trainer verwijderen" [ref=e149]:
+                      - img [ref=e150]
+                  - generic [ref=e153]:
+                    - img [ref=e154]
+                    - generic [ref=e155]:
+                      - combobox [ref=e156] [cursor=pointer]:
+                        - option "Trainer toevoegen" [selected]
+                        - option "Pieter Mertens"
+                      - img
+                - generic [ref=e157]:
+                  - generic [ref=e158]: zondag 5 juli
+                  - paragraph [ref=e159]: Kampuren
+                  - generic [ref=e160]:
+                    - textbox [ref=e161]: 09:00
+                    - generic [ref=e162]: Tot
+                    - textbox [ref=e163]: 16:00
+                  - paragraph [ref=e164]: Trainers
+                  - generic [ref=e165]:
+                    - img [ref=e166]
+                    - generic [ref=e167]:
+                      - combobox [ref=e168] [cursor=pointer]:
+                        - option "Trainer toevoegen" [selected]
+                        - option "Jan Janssen"
+                        - option "Pieter Mertens"
+                      - img
+                - generic [ref=e169]:
+                  - generic [ref=e170]: maandag 6 juli
+                  - paragraph [ref=e171]: Kampuren
+                  - generic [ref=e172]:
+                    - textbox [ref=e173]: 10:00
+                    - generic [ref=e174]: Tot
+                    - textbox [ref=e175]: 15:00
+                  - paragraph [ref=e176]: Trainers
+                  - generic [ref=e177]:
+                    - img [ref=e178]
+                    - generic [ref=e179]:
+                      - combobox [ref=e180] [cursor=pointer]:
+                        - option "Trainer toevoegen" [selected]
+                        - option "Jan Janssen"
+                        - option "Pieter Mertens"
+                      - img
+            - button "Opslaan" [disabled] [ref=e182]
+          - generic [ref=e183]:
+            - generic [ref=e184]:
+              - img [ref=e186]
+              - generic [ref=e189]:
+                - heading "Inschrijfformulier" [level=2] [ref=e190]
+                - paragraph [ref=e191]: Voeg extra vragen toe die deelnemers bij inschrijving beantwoorden.
+            - generic [ref=e192]:
+              - generic [ref=e193]:
+                - paragraph [ref=e194]: Vaste velden (altijd zichtbaar)
+                - generic [ref=e195]:
+                  - generic [ref=e196]: Voornaam
+                  - generic [ref=e197]: Achternaam
+                  - generic [ref=e198]: E-mailadres
+                  - generic [ref=e199]: Telefoonnummer
+              - generic [ref=e201]:
+                - textbox "Veldlabel, bijv. 'Telefoonnummer'" [ref=e202]: Allergieen
+                - generic [ref=e203]:
+                  - generic [ref=e204]:
+                    - combobox [ref=e205] [cursor=pointer]:
+                      - option "Vrije tekst" [selected]
+                      - option "Meerkeuze"
+                      - option "Ja/Nee"
+                    - img
+                  - generic [ref=e206] [cursor=pointer]:
+                    - checkbox "Verplicht" [ref=e207]
+                    - text: Verplicht
+                  - generic [ref=e208]:
+                    - button [disabled] [ref=e209]:
+                      - img [ref=e210]
+                    - button [disabled] [ref=e212]:
+                      - img [ref=e213]
+                    - button [ref=e215]:
+                      - img [ref=e216]
+              - generic [ref=e219]:
+                - button "Veld toevoegen" [ref=e220]:
+                  - img [ref=e221]
+                  - text: Veld toevoegen
+                - button "Formulier opslaan" [ref=e222]
+          - generic [ref=e223]:
+            - generic [ref=e224]:
+              - generic [ref=e225]:
+                - img [ref=e227]
+                - heading "Inschrijvingen" [level=2] [ref=e232]
+                - generic [ref=e233]: "2"
+              - button "Inschrijflink kopiëren" [ref=e234]:
+                - img [ref=e235]
+                - text: Inschrijflink kopiëren
+            - generic [ref=e238]:
+              - generic [ref=e239]:
+                - generic [ref=e240] [cursor=pointer]:
+                  - generic [ref=e241]:
+                    - paragraph [ref=e242]: Tester Cash
+                    - paragraph [ref=e243]: tester+cash614@example.com
+                  - generic [ref=e244]:
+                    - generic [ref=e245]: 14/6/2026
+                    - generic [ref=e246]: Cash - wacht op betaling
+                    - generic [ref=e247]: Betaling in afwachting
+                    - img [ref=e248]
+                - button "Markeer als betaald" [ref=e251]:
+                  - img [ref=e252]
+                  - text: Markeer als betaald
+              - generic [ref=e256]:
+                - generic [ref=e257]:
+                  - paragraph [ref=e258]: Pay Test
+                  - paragraph [ref=e259]: paytest1@example.com
+                - generic [ref=e260]:
+                  - generic [ref=e261]: 14/6/2026
+                  - generic [ref=e262]: Betaald
+                  - generic [ref=e263]: Bevestigd
+          - generic [ref=e265]:
+            - img [ref=e267]
+            - generic [ref=e269]:
+              - heading "Kamp verwijderen" [level=3] [ref=e270]
+              - paragraph [ref=e271]: Dit verwijdert het kamp inclusief alle dagen en trainers permanent. Dit is niet mogelijk als er actieve inschrijvingen zijn.
+              - button "Kamp verwijderen" [ref=e272]:
+                - img [ref=e273]
+                - text: Kamp verwijderen
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e81] [cursor=pointer]:
+    - img [ref=e82]
+  - alert [ref=e85]
