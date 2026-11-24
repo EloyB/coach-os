@@ -1003,7 +1003,7 @@ export default function EnrollPage() {
                     </div>
 
                     {/* Extra vragen van de club, direct onder de vaste vragen */}
-                    {form?.fields.map((field) => renderCustomField(field, leaderAnswers))}
+                    {form?.fields?.map((field) => renderCustomField(field, leaderAnswers))}
                   </div>
                 </div>
 

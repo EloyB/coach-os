@@ -149,7 +149,8 @@ export async function getPublicLessonSeries(id: string): Promise<PublicLessonSer
 
 export async function getEnrollmentForm(seriesId: string): Promise<EnrollmentFormDto | null> {
   const { data } = await publicApiClient.get<EnrollmentFormDto | null>(`/public/lessonseries/${seriesId}/form`);
-  return data;
+  // Een reeks zonder formulier geeft 200 met een lege body: axios levert dan "" i.p.v. null.
+  return data || null;
 }
 
 export async function saveEnrollmentForm(seriesId: string, fields: SaveFormFieldRequest[]): Promise<string> {

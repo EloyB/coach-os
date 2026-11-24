@@ -122,6 +122,33 @@ test.describe("Extra vragen per groepslid: lessenreeks", () => {
   });
 });
 
+test.describe("Reeks of kamp zonder formulier (echte API: 200 met lege body)", () => {
+  // De echte API geeft voor een reeks of kamp zonder formulier 200 met een lege body terug: axios levert dan ""
+  // i.p.v. null. De pagina mag daar niet op crashen.
+  test("lessenreeks: de pagina laadt en toont het formulier", async ({ page }) => {
+    await page.route(`${API_URL}/public/lessonseries/${SERIES_ID}/timeslots`, (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
+    await mockApi(page, "GET", `/public/lessonseries/${SERIES_ID}`, TEST_PUBLIC_SERIES);
+    await page.route(`${API_URL}/public/lessonseries/${SERIES_ID}/form`, (route) =>
+      route.fulfill({ status: 200, body: "" }));
+
+    await page.goto(`/enroll/${SERIES_ID}`);
+
+    await expect(page.locator('input[type="email"]')).toBeVisible();
+    await expect(page.getByText("This page couldn")).toHaveCount(0);
+  });
+
+  test("kamp: de pagina laadt en toont het formulier", async ({ page }) => {
+    await mockApi(page, "GET", `/public/camps/${CAMP_ID}`, PUBLIC_CAMP);
+    await page.route(`${API_URL}/public/camps/${CAMP_ID}/form`, (route) =>
+      route.fulfill({ status: 200, body: "" }));
+
+    await page.goto(`/camp/${CAMP_ID}`);
+
+    await expect(page.locator('input[type="email"]')).toBeVisible();
+  });
+});
+
 test.describe("Extra vragen per groepslid: kamp", () => {
   async function arrange(page: Page) {
     await mockApi(page, "GET", `/public/camps/${CAMP_ID}`, PUBLIC_CAMP);

@@ -210,7 +210,8 @@ export async function deleteCamp(id: string): Promise<void> {
 }
 export async function getCampForm(campId: string): Promise<CampEnrollmentFormDto | null> {
   const { data } = await publicApiClient.get<CampEnrollmentFormDto | null>(`/public/camps/${campId}/form`);
-  return data;
+  // Een kamp zonder formulier geeft 200 met een lege body: axios levert dan "" i.p.v. null.
+  return data || null;
 }
 export async function saveCampForm(campId: string, fields: SaveCampFormFieldRequest[]): Promise<string> {
   const { data } = await apiClient.put<string>(`/camps/${campId}/form`, { fields });
