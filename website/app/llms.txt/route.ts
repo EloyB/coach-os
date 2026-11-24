@@ -75,7 +75,9 @@ export function GET() {
   lines.push("## Juridisch");
   lines.push("");
   lines.push(`- [Privacyverklaring](${SITE_URL}/privacy)`);
-  lines.push(`- [Algemene voorwaarden](${SITE_URL}/voorwaarden)`);
+  lines.push(`- [Algemene voorwaarden voor clubs](${SITE_URL}/voorwaarden)`);
+  lines.push(`- [Voorwaarden voor inschrijving](${SITE_URL}/spelersvoorwaarden)`);
+  lines.push(`- [Verwerkersovereenkomst](${SITE_URL}/verwerkersovereenkomst)`);
   lines.push("");
 
   lines.push("## Contact");

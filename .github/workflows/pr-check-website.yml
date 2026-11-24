@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'website/**'
+      - 'docs/legal/**'
       - '!website/**/*.md'
       - '.github/workflows/pr-check-website.yml'
 
