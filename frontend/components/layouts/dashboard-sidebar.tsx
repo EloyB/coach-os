@@ -11,7 +11,7 @@ import { Mono } from "@/components/ui/mono";
 import { TrialSidebarCard } from "@/components/dashboard/trial-sidebar-card";
 import { ActiveStudentsSidebarCard } from "@/components/dashboard/active-students-sidebar-card";
 import { OnboardingSidebarCard } from "@/components/dashboard/onboarding/onboarding-sidebar-card";
-import { navItems } from "@/lib/nav-items";
+import { useVisibleNavItems } from "@/lib/hooks/use-visible-nav-items";
 import { switchOrganization } from "@/lib/api/auth";
 import { getAuthUser, setAuthUser, setToken, clearAuth } from "@/lib/auth";
 import { useAuthUser } from "@/lib/hooks/use-auth-user";
@@ -66,11 +66,7 @@ export function DashboardSidebar() {
   }
 
   const role = user?.role ?? null;
-  const visibleItems = navItems.filter(
-    (item) =>
-      (!item.adminOnly || role === "Admin") &&
-      (!item.trainerOnly || role === "Trainer")
-  );
+  const visibleItems = useVisibleNavItems();
 
   const fullName = user
     ? `${user.firstName} ${user.lastName}`.trim() || "Coach"

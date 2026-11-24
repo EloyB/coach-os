@@ -15,7 +15,7 @@ public class UpdateOwnTrainerAvailabilityEndpoint : IEndpoint
             Result result = await service.UpdateForTrainerAsync(id, ctx.GetOrganizationId(), ctx.GetUserId(), request, ct);
             return result.IsSuccess ? Results.NoContent() : result.ToErrorResult();
         })
-        .RequireAuthorization(policy => policy.RequireRole("Trainer"))
+        .RequireAuthorization(policy => policy.RequireRole("Trainer", "Admin"))
         .AddEndpointFilter<ValidationFilter<SaveOwnTrainerAvailabilityRequest>>()
         .WithTags("TrainerAvailabilities");
     }

@@ -15,7 +15,8 @@ const PUBLIC_ROUTES = [
 // blijft de uiteindelijke autoriteit (RequireRole("Admin")) — dit is UX, geen security.
 const ADMIN_ONLY_DASHBOARD_PATHS = ["/dashboard/settings", "/dashboard/trainers"];
 
-// Dashboard-paden die alleen voor Trainer bedoeld zijn (eigen instellingen). Ook UX, geen security.
+// Dashboard-paden die voor Trainer bedoeld zijn (eigen instellingen). Een Admin die zelf lesgeeft
+// (AdminsActAsTrainers) mag er ook naartoe; de pagina zelf controleert die instelling. Ook UX, geen security.
 const TRAINER_ONLY_DASHBOARD_PATHS = ["/dashboard/trainer-settings"];
 
 function isPublicRoute(pathname: string): boolean {
@@ -95,10 +96,10 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  // Trainer-only dashboard-paden: niet-trainers worden teruggestuurd naar /dashboard.
+  // Trainer-dashboard-paden: alleen Trainer en Admin; anderen gaan terug naar /dashboard.
   if (isTrainerOnlyDashboardPath(pathname) && hasToken) {
     const role = request.cookies.get("user_role")?.value;
-    if (role && role !== "Trainer") {
+    if (role && role !== "Trainer" && role !== "Admin") {
       return NextResponse.redirect(new URL("/dashboard", request.url));
     }
   }

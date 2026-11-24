@@ -49,17 +49,30 @@ test.describe("Route Protection Middleware", () => {
     await expect(page).toHaveURL(/\/login/);
   });
 
-  test("sends an Admin away from the trainer-only settings page", async ({ page, baseURL }) => {
+  test("sends a Student away from the trainer settings page", async ({ page, baseURL }) => {
+    await page.context().addCookies([
+      { name: "has_token", value: "1", url: baseURL! },
+      { name: "user_role", value: "Student", url: baseURL! },
+    ]);
+
+    // Zonder redirects te volgen: de middleware zelf moet doorsturen.
+    const response = await page.request.get("/dashboard/trainer-settings", { maxRedirects: 0 });
+
+    expect(response.status()).toBe(307);
+  });
+
+  test("lets an Admin open the trainer settings page (the page checks AdminsActAsTrainers itself)", async ({
+    page,
+    baseURL,
+  }) => {
     await page.context().addCookies([
       { name: "has_token", value: "1", url: baseURL! },
       { name: "user_role", value: "Admin", url: baseURL! },
     ]);
 
-    // Zonder redirects te volgen: de middleware zelf moet naar /dashboard sturen.
     const response = await page.request.get("/dashboard/trainer-settings", { maxRedirects: 0 });
 
-    expect(response.status()).toBe(307);
-    expect(new URL(response.headers()["location"], baseURL).pathname).toBe("/dashboard");
+    expect(response.status()).toBe(200);
   });
 
   test("lets a Trainer open the trainer-only settings page", async ({ page, baseURL }) => {
