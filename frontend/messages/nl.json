@@ -915,7 +915,6 @@
     "formBuilderDescription": "Voeg extra vragen toe die deelnemers bij inschrijving beantwoorden.",
     "publicTitle": "Inschrijving",
     "publicPersonalTitle": "Persoonlijke gegevens",
-    "publicExtraQuestions": "Extra vragen",
     "pricePerParticipant": "per deelnemer",
     "enrolledOfMax": "{enrolled} van {max} ingeschreven",
     "enrolledLabel": "ingeschreven",
