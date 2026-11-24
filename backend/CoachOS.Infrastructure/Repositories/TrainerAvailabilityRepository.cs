@@ -59,6 +59,16 @@ public class TrainerAvailabilityRepository(ApplicationDbContext db) : ITrainerAv
             .OrderBy(a => a.StartTime)
             .ToListAsync(ct);
 
+    public async Task LockTrainerAsync(Guid organizationId, Guid trainerId, CancellationToken ct = default)
+    {
+        // Enkel Postgres kent advisory locks; andere providers (InMemory in tests) slaan het over.
+        if (db.Database.ProviderName?.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) != true)
+            return;
+
+        string key = $"coachos:trainer-availability:{organizationId}:{trainerId}";
+        await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({key}, 0))", ct);
+    }
+
     public async Task AddAsync(TrainerAvailability availability, CancellationToken ct = default)
         => await db.TrainerAvailabilities.AddAsync(availability, ct);
 }

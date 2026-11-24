@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { AvailabilitySection } from "./_components/availability-section";
+import { AvailabilitySection } from "@/components/trainer-availability/availability-section";
 
 export default function TrainerSettingsPage() {
   const t = useTranslations("trainerSettings");
