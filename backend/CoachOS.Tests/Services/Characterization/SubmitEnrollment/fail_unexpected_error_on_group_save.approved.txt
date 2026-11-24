@@ -1,0 +1,19 @@
+series.GetByIdPublic(00000000-0000-0000-0000-0000000000b1)
+form.GetBySeriesIdReadOnly(00000000-0000-0000-0000-0000000000b1)
+settings.GetByOrganizationReadOnly(00000000-0000-0000-0000-0000000000a1)
+userLookup.GetUserInfoById(00000000-0000-0000-0000-0000000000c1)
+uow.BeginTransaction(Serializable)
+enrollments.CountActiveBySeries(00000000-0000-0000-0000-0000000000b1) => 0
+enrollments.IsDuplicateParticipant(00000000-0000-0000-0000-0000000000b1, 'gus@test.be', 'Gus', 1990-01-01) => False
+enrollments.IsDuplicateParticipant(00000000-0000-0000-0000-0000000000b1, 'gus@test.be', 'Hannah', 1991-01-01) => False
+enrollments.Add Enrollment {"organizationId":"00000000-0000-0000-0000-0000000000a1","studentName":"Gus","contactEmail":"gus@test.be","studentEmail":"gus@test.be","studentPhone":null,"dateOfBirth":"1990-01-01","category":"Adult","lessonId":null,"lessonSerieId":"00000000-0000-0000-0000-0000000000b1","status":"Pending","enrolledAt":"2026-06-15T10:00:00Z","activeSince":null,"notes":null,"enrollmentGroupId":null,"isOpenToGrouping":false,"selectedPriceOptionId":null,"anonymizedAt":null,"organization":null,"lesson":null,"lessonSerie":null,"enrollmentGroup":null,"timeSlotPreferences":[],"payments":[],"formResponses":[],"id":"00000000-0000-0000-0000-000000001001"}
+uow.SaveChanges#1
+  state Enrollment {"organizationId":"00000000-0000-0000-0000-0000000000a1","studentName":"Gus","contactEmail":"gus@test.be","studentEmail":"gus@test.be","studentPhone":null,"dateOfBirth":"1990-01-01","category":"Adult","lessonId":null,"lessonSerieId":"00000000-0000-0000-0000-0000000000b1","status":"Pending","enrolledAt":"2026-06-15T10:00:00Z","activeSince":null,"notes":null,"enrollmentGroupId":null,"isOpenToGrouping":false,"selectedPriceOptionId":null,"anonymizedAt":null,"organization":null,"lesson":null,"lessonSerie":null,"enrollmentGroup":null,"timeSlotPreferences":[],"payments":[],"formResponses":[],"id":"00000000-0000-0000-0000-000000001001"}
+groups.CountBySeries(00000000-0000-0000-0000-0000000000b1, 00000000-0000-0000-0000-0000000000a1) => 0
+groups.Add EnrollmentGroup {"organizationId":"00000000-0000-0000-0000-0000000000a1","lessonSerieId":"00000000-0000-0000-0000-0000000000b1","name":"Groep A","leaderEnrollmentId":"00000000-0000-0000-0000-000000001001","organization":null,"lessonSerie":null,"leaderEnrollment":null,"members":[],"id":"00000000-0000-0000-0000-000000001002"}
+uow.SaveChanges#2
+  state Enrollment {"organizationId":"00000000-0000-0000-0000-0000000000a1","studentName":"Gus","contactEmail":"gus@test.be","studentEmail":"gus@test.be","studentPhone":null,"dateOfBirth":"1990-01-01","category":"Adult","lessonId":null,"lessonSerieId":"00000000-0000-0000-0000-0000000000b1","status":"Pending","enrolledAt":"2026-06-15T10:00:00Z","activeSince":null,"notes":null,"enrollmentGroupId":null,"isOpenToGrouping":false,"selectedPriceOptionId":null,"anonymizedAt":null,"organization":null,"lesson":null,"lessonSerie":null,"enrollmentGroup":null,"timeSlotPreferences":[],"payments":[],"formResponses":[],"id":"00000000-0000-0000-0000-000000001001"}
+  state EnrollmentGroup {"organizationId":"00000000-0000-0000-0000-0000000000a1","lessonSerieId":"00000000-0000-0000-0000-0000000000b1","name":"Groep A","leaderEnrollmentId":"00000000-0000-0000-0000-000000001001","organization":null,"lessonSerie":null,"leaderEnrollment":null,"members":[],"id":"00000000-0000-0000-0000-000000001002"}
+uow.RollbackTransaction
+RESULT fail [unexpected: Inschrijving mislukt. Probeer het opnieuw.]
+LOG Error: Inschrijving mislukt voor reeks 00000000-0000-0000-0000-0000000000b1 [InvalidOperationException: boom]

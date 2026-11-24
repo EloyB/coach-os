@@ -1,0 +1,10 @@
+series.GetByIdPublic(00000000-0000-0000-0000-0000000000b1)
+form.GetBySeriesIdReadOnly(00000000-0000-0000-0000-0000000000b1)
+settings.GetByOrganizationReadOnly(00000000-0000-0000-0000-0000000000a1)
+userLookup.GetUserInfoById(00000000-0000-0000-0000-0000000000c1)
+uow.BeginTransaction(Serializable)
+enrollments.CountActiveBySeries(00000000-0000-0000-0000-0000000000b1) => 0
+enrollments.IsDuplicateParticipant(00000000-0000-0000-0000-0000000000b1, 'cas@test.be', 'Cas', 1990-01-01) => False
+enrollments.IsDuplicateParticipant(00000000-0000-0000-0000-0000000000b1, 'cato@test.be', 'Cato', 1991-01-01) => True
+uow.RollbackTransaction
+RESULT fail [conflict: Cato is al ingeschreven voor deze lessenreeks.]

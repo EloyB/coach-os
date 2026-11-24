@@ -1,0 +1,3 @@
+series.GetByIdPublic(00000000-0000-0000-0000-0000000000b1)
+form.GetBySeriesIdReadOnly(00000000-0000-0000-0000-0000000000b1)
+RESULT fail [validation: Solo inschrijven is niet mogelijk voor deze lessenreeks.]

@@ -1,0 +1,2 @@
+series.GetByIdPublic(00000000-0000-0000-0000-0000000000b1)
+RESULT fail [not_found: Lessenreeks niet gevonden.]
