@@ -22,6 +22,10 @@ public class LessonSerieRepository(ApplicationDbContext context) : ILessonSerieR
             .Include(ls => ls.Lessons)
             .Include(ls => ls.Enrollments)
             .Include(ls => ls.WeeklyTemplate)
+            .Include(ls => ls.EnrollmentForm)
+                .ThenInclude(form => form!.Fields)
+            .Include(ls => ls.Prices)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(ls => ls.Id == id && ls.OrganizationId == organizationId, ct);
     }
 
@@ -71,6 +75,14 @@ public class LessonSerieRepository(ApplicationDbContext context) : ILessonSerieR
 
     public Task DeleteAsync(LessonSerie series, CancellationToken ct = default)
     {
+        // These configuration rows use Restrict FKs. Stage their removal alongside the
+        // series so the service's single SaveChanges persists the entire deletion atomically.
+        if (series.EnrollmentForm is not null)
+        {
+            context.FormFields.RemoveRange(series.EnrollmentForm.Fields);
+            context.EnrollmentForms.Remove(series.EnrollmentForm);
+        }
+        context.LessonSeriePrices.RemoveRange(series.Prices);
         context.LessonSeries.Remove(series);
         return Task.CompletedTask;
     }
