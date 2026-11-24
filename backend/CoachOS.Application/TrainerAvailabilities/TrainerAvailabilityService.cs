@@ -22,15 +22,29 @@ public class TrainerAvailabilityService(
 
     public async Task<Result<Guid>> CreateAsync(Guid organizationId, CreateTrainerAvailabilityRequest request, CancellationToken ct = default)
     {
-        Error? error = await ValidateAsync(organizationId, request.TrainerId, request.TennisClubId, request.DayOfWeek,
-            request.StartTime, request.EndTime, excludeId: null, ct);
-        if (error is not null)
-            return Result<Guid>.Fail(error);
+        // Lock + overlapcontrole + opslaan in één transactie: zonder dit kunnen twee gelijktijdige
+        // requests elk "geen overlap" lezen en samen twee overlappende tijdvakken opslaan.
+        await unitOfWork.BeginTransactionAsync(ct);
+        try
+        {
+            await repo.LockTrainerAsync(organizationId, request.TrainerId, ct);
 
-        TrainerAvailability availability = mapper.ToTrainerAvailability(request, organizationId);
-        await repo.AddAsync(availability, ct);
-        await unitOfWork.SaveChangesAsync(ct);
-        return Result<Guid>.Ok(availability.Id);
+            Error? error = await ValidateAsync(organizationId, request.TrainerId, request.TennisClubId, request.DayOfWeek,
+                request.StartTime, request.EndTime, excludeId: null, ct);
+            if (error is not null)
+                return Result<Guid>.Fail(error);
+
+            TrainerAvailability availability = mapper.ToTrainerAvailability(request, organizationId);
+            await repo.AddAsync(availability, ct);
+            await unitOfWork.SaveChangesAsync(ct);
+            await unitOfWork.CommitTransactionAsync(ct);
+            return Result<Guid>.Ok(availability.Id);
+        }
+        finally
+        {
+            // No-op na een geslaagde commit; draait de transactie terug bij een fout of validatiefout.
+            await unitOfWork.RollbackTransactionAsync(ct);
+        }
     }
 
     // Een tijdvak kan niet naar een andere trainer verhuizen: een afwijkend TrainerId geeft NotFound.
@@ -52,21 +66,33 @@ public class TrainerAvailabilityService(
 
     public async Task<Result> UpdateForTrainerAsync(Guid id, Guid organizationId, Guid trainerId, SaveOwnTrainerAvailabilityRequest request, CancellationToken ct = default)
     {
-        TrainerAvailability? availability = await repo.GetByIdAsync(id, organizationId, ct);
-        if (availability is null || availability.TrainerId != trainerId)
-            return Result.Fail(new Error(ErrorCodes.NotFound, "Beschikbaarheid niet gevonden"));
+        // Zelfde serialisatie als bij aanmaken: lock vóór het lezen en de overlapcontrole.
+        await unitOfWork.BeginTransactionAsync(ct);
+        try
+        {
+            await repo.LockTrainerAsync(organizationId, trainerId, ct);
 
-        Error? error = await ValidateAsync(organizationId, trainerId, request.TennisClubId, request.DayOfWeek,
-            request.StartTime, request.EndTime, excludeId: id, ct);
-        if (error is not null)
-            return Result.Fail(error);
+            TrainerAvailability? availability = await repo.GetByIdAsync(id, organizationId, ct);
+            if (availability is null || availability.TrainerId != trainerId)
+                return Result.Fail(new Error(ErrorCodes.NotFound, "Beschikbaarheid niet gevonden"));
 
-        availability.TennisClubId = request.TennisClubId;
-        availability.DayOfWeek = request.DayOfWeek;
-        availability.StartTime = TimeOnly.ParseExact(request.StartTime, "HH:mm");
-        availability.EndTime = TimeOnly.ParseExact(request.EndTime, "HH:mm");
-        await unitOfWork.SaveChangesAsync(ct);
-        return Result.Ok();
+            Error? error = await ValidateAsync(organizationId, trainerId, request.TennisClubId, request.DayOfWeek,
+                request.StartTime, request.EndTime, excludeId: id, ct);
+            if (error is not null)
+                return Result.Fail(error);
+
+            availability.TennisClubId = request.TennisClubId;
+            availability.DayOfWeek = request.DayOfWeek;
+            availability.StartTime = TimeOnly.ParseExact(request.StartTime, "HH:mm");
+            availability.EndTime = TimeOnly.ParseExact(request.EndTime, "HH:mm");
+            await unitOfWork.SaveChangesAsync(ct);
+            await unitOfWork.CommitTransactionAsync(ct);
+            return Result.Ok();
+        }
+        finally
+        {
+            await unitOfWork.RollbackTransactionAsync(ct);
+        }
     }
 
     public async Task<Result> DeleteForTrainerAsync(Guid id, Guid organizationId, Guid trainerId, CancellationToken ct = default)
