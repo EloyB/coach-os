@@ -1,6 +1,6 @@
 "use client";
 
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
@@ -15,7 +15,9 @@ import {
 } from "@/components/ui/dialog";
 import { FieldError } from "@/components/forms/field-error";
 import { inputClass, btnPrimary, btnSecondary } from "@/lib/styles";
-import { updateBasicEnrollment } from "@/lib/api/enrollments";
+import { getLessonSeriesEnrollments, updateBasicEnrollment } from "@/lib/api/enrollments";
+import { getLessonSeriesById } from "@/lib/api/lessonSeries";
+import { MaxGroupSizeField } from "@/components/forms/max-group-size-field";
 import type { LessonSeriesEnrollmentDto } from "@/lib/api/enrollments";
 import { getLessonSeriePrices } from "@/lib/api/lessonSeriePrices";
 
@@ -25,7 +27,7 @@ const basicEnrollmentSchema = z.object({
   studentEmail: z.string().email("Ongeldig e-mailadres").or(z.literal("")),
   studentPhone: z.string(),
   dateOfBirth: z.string().min(1, "Geboortedatum is verplicht"),
-  isOpenToGrouping: z.boolean(),
+  maxGroupSize: z.number().int().min(1).max(4),
   selectedPriceOptionId: z.string().optional(),
 });
 
@@ -57,6 +59,29 @@ export function EditEnrollmentDialog({
     enrollment.status === "Cancelled";
   const inGroup = enrollment.enrollmentGroupId !== null;
 
+  // Keuzes voor het maximum: van de eigen groepsgrootte tot wat de reeks toelaat.
+  const { data: series } = useQuery({
+    queryKey: ["lessonSeries", seriesId],
+    queryFn: () => getLessonSeriesById(seriesId),
+    enabled: open,
+  });
+  const { data: seriesEnrollments } = useQuery({
+    queryKey: ["enrollments", seriesId],
+    queryFn: () => getLessonSeriesEnrollments(seriesId),
+    enabled: open && inGroup,
+  });
+  const ownSize = inGroup
+    ? Math.max(
+        1,
+        (seriesEnrollments ?? []).filter(
+          (e) =>
+            e.enrollmentGroupId === enrollment.enrollmentGroupId &&
+            (e.status === "Confirmed" || e.status === "Pending" || e.status === "PendingPayment"),
+        ).length,
+      )
+    : 1;
+  const maxGroupSizeLimit = Math.max(series?.maxGroupSize ?? 4, ownSize, enrollment.maxGroupSize);
+
   const form = useForm<BasicEnrollmentFormValues>({
     resolver: zodResolver(basicEnrollmentSchema),
     values: {
@@ -65,10 +90,12 @@ export function EditEnrollmentDialog({
       studentEmail: enrollment.studentEmail ?? "",
       studentPhone: enrollment.studentPhone ?? "",
       dateOfBirth: enrollment.dateOfBirth ?? "",
-      isOpenToGrouping: enrollment.isOpenToGrouping,
+      maxGroupSize: enrollment.maxGroupSize,
       selectedPriceOptionId: enrollment.selectedPriceOptionId ?? "",
     },
   });
+
+  const maxGroupSizeValue = useWatch({ control: form.control, name: "maxGroupSize" });
 
   const mutation = useMutation({
     mutationFn: (values: BasicEnrollmentFormValues) =>
@@ -78,7 +105,7 @@ export function EditEnrollmentDialog({
         studentEmail: values.studentEmail?.trim() ? values.studentEmail : null,
         studentPhone: values.studentPhone?.trim() ? values.studentPhone : null,
         dateOfBirth: values.dateOfBirth,
-        isOpenToGrouping: values.isOpenToGrouping,
+        maxGroupSize: values.maxGroupSize,
         selectedPriceOptionId: values.selectedPriceOptionId || undefined,
       }),
     onSuccess: () => {
@@ -180,10 +207,22 @@ export function EditEnrollmentDialog({
               )}
             </div>
           )}
-          <label className="flex items-center gap-2 text-xs text-gray-600">
-            <input type="checkbox" {...form.register("isOpenToGrouping")} />
-            Open voor groepering met andere deelnemers
-          </label>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">
+              {t("maxGroupSizeEdit")}
+            </label>
+            <MaxGroupSizeField
+              name={`edit-max-group-size-${enrollment.id}`}
+              value={maxGroupSizeValue}
+              onChange={(value) => form.setValue("maxGroupSize", value, { shouldDirty: true })}
+              min={ownSize}
+              max={maxGroupSizeLimit}
+            />
+            <p className="mt-1 text-xs text-gray-400">
+              {inGroup ? `${t("maxGroupSizeGroupHint")} ` : ""}
+              {t("maxGroupSizeLowerHint")}
+            </p>
+          </div>
           <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
             Deze wijziging past geen betaalstatus, betalingsbedrag of planningstoewijzing aan.
           </p>

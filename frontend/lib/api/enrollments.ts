@@ -19,6 +19,8 @@ export interface PublicLessonSeriesDto {
   minAge: number;
   maxAge: number;
   minimumAvailableSlots: number;
+  /** Hoogste maximum aantal personen per tijdslot dat een deelnemer kan kiezen (1 tot 4). */
+  maxGroupSize: number;
   allowSoloEnrollment: boolean;
   allowGroupEnrollment: boolean;
   priceOptions: LessonSeriePriceDto[];
@@ -64,7 +66,8 @@ export interface LessonSeriesEnrollmentDto {
   enrollmentGroupId: string | null;
   /** True als deze inschrijving de groepsleider is (draagt de gedeelde betaling). */
   isGroupLeader: boolean;
-  isOpenToGrouping: boolean;
+  /** Maximum aantal personen waarmee deze inschrijving (of groep) in één tijdslot wil zitten (1 tot 4). */
+  maxGroupSize: number;
   /** Gekozen prijsoptie (null = geen/legacy). */
   selectedPriceOptionId: string | null;
   /** Eigen betaalmethode: "Online" | "Cash", of null zonder eigen betaling. */
@@ -91,7 +94,8 @@ export interface UpdateBasicEnrollmentRequest {
   studentEmail?: string | null;
   studentPhone?: string | null;
   dateOfBirth: string;
-  isOpenToGrouping: boolean;
+  /** Nieuw maximum aantal personen per tijdslot; bij een groep voor alle leden (weglaten = ongemoeid). */
+  maxGroupSize?: number;
   /** Nieuwe prijsoptie (weglaten = ongemoeid). */
   selectedPriceOptionId?: string | null;
 }
@@ -103,6 +107,8 @@ export interface CreateManualEnrollmentRequest {
   studentPhone: string;
   dateOfBirth: string;
   responses?: { formFieldId: string; value: string }[];
+  /** Maximum aantal personen per tijdslot (1 tot 4); weglaten = 1 (solo). Genegeerd bij een lid van een groep. */
+  maxGroupSize?: number;
 }
 export interface SaveFormFieldRequest {
   id?: string;
@@ -137,7 +143,8 @@ export interface SubmitEnrollmentRequest {
   responses: { formFieldId: string; value: string }[];
   timeSlotPreferences?: TimeSlotPreferenceRequest[];
   enrollmentType?: string; // "solo" | "group"
-  isOpenToGrouping?: boolean;
+  /** Maximum aantal personen per tijdslot (1 tot 4); weglaten = de eigen groepsgrootte. */
+  maxGroupSize?: number;
   selectedPriceOptionId?: string;
   groupMembers?: GroupMemberRequest[];
 }
@@ -201,7 +208,7 @@ export interface EnrollmentWithPreferencesDto {
   studentName: string;
   studentEmail: string | null;
   status: string;
-  isOpenToGrouping: boolean;
+  maxGroupSize: number;
   enrollmentGroupId: string | null;
   groupName: string | null;
   isGroupLeader: boolean;

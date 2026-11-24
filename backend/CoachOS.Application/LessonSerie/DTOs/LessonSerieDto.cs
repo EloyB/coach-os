@@ -16,6 +16,9 @@ public class LessonSerieDto
     public int MinAge { get; set; }
     public int MaxAge { get; set; }
     public int MinimumAvailableSlots { get; set; }
+
+    /// <summary>Hoogste maximum aantal personen per tijdslot dat voor deze reeks gekozen kan worden (1 tot 4).</summary>
+    public int MaxGroupSize { get; set; }
     public Guid TennisClubId { get; set; }
     public bool AllowSoloEnrollment { get; set; }
     public bool AllowGroupEnrollment { get; set; }

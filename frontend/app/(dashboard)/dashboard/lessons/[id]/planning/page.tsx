@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
+import { isAxiosError } from "axios";
 import { toast } from "sonner";
 import {
   ChevronLeft,
@@ -190,7 +191,6 @@ export default function PlanningPage({
         studentEmail: leader.studentEmail,
         studentPhone: leader.studentPhone,
         dateOfBirth: leader.dateOfBirth ?? "",
-        isOpenToGrouping: leader.isOpenToGrouping,
         selectedPriceOptionId: optionId,
       }),
     onSuccess: () => {
@@ -201,6 +201,17 @@ export default function PlanningPage({
     onError: () => toast.error(te("groupPriceError")),
   });
 
+
+  // Een slot dat groter wordt dan iemands gekozen maximum is een waarschuwing, geen blokkade: de server antwoordt met
+  // een 409 en de admin kan bewust doorgaan (bv. na overleg met de deelnemer). Daarna sturen we dezelfde aanvraag
+  // opnieuw met de bevestiging mee.
+  const [overMaxPrompt, setOverMaxPrompt] = useState<{ message: string; confirm: () => void } | null>(null);
+
+  function getOverMaxMessage(error: unknown): string | null {
+    if (!isAxiosError(error) || error.response?.status !== 409) return null;
+    const data: unknown = error.response.data;
+    return Array.isArray(data) ? data.join(" ") : typeof data === "string" ? data : null;
+  }
 
   const generateMutation = useMutation({
     mutationFn: (force: boolean = false) => generatePlanning(id, force),
@@ -223,20 +234,33 @@ export default function PlanningPage({
       assignmentId,
       slotId,
       notifyStudent,
+      acknowledgeExceedsMaxGroupSize,
     }: {
       assignmentId: string;
       slotId: string;
       notifyStudent: boolean;
+      acknowledgeExceedsMaxGroupSize?: boolean;
     }) =>
       updateAssignment(id, assignmentId, {
         weeklyTemplateEntryId: slotId,
         notifyStudent,
+        acknowledgeExceedsMaxGroupSize,
       }),
     onSuccess: (_data, { notifyStudent }) => {
       toast.success(notifyStudent ? t("moveSuccessNotified") : t("moveSuccess"));
       queryClient.invalidateQueries({ queryKey: ["planning", id] });
     },
-    onError: () => toast.error(t("moveError")),
+    onError: (error, variables) => {
+      const message = getOverMaxMessage(error);
+      if (message) {
+        setOverMaxPrompt({
+          message,
+          confirm: () => moveMutation.mutate({ ...variables, acknowledgeExceedsMaxGroupSize: true }),
+        });
+        return;
+      }
+      toast.error(t("moveError"));
+    },
   });
 
   const lockMutation = useMutation({
@@ -318,11 +342,35 @@ export default function PlanningPage({
   });
 
   const assignMutation = useMutation({
-    mutationFn: ({ enrollmentId, groupId, slotId }: { enrollmentId?: string; groupId?: string; slotId: string }) =>
-      createAssignment(id, { enrollmentId, groupId, weeklyTemplateEntryId: slotId }),
+    mutationFn: ({
+      enrollmentId,
+      groupId,
+      slotId,
+      acknowledgeExceedsMaxGroupSize,
+    }: {
+      enrollmentId?: string;
+      groupId?: string;
+      slotId: string;
+      acknowledgeExceedsMaxGroupSize?: boolean;
+    }) =>
+      createAssignment(id, {
+        enrollmentId,
+        groupId,
+        weeklyTemplateEntryId: slotId,
+        acknowledgeExceedsMaxGroupSize,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["planning", id] });
       setAssignTarget(null);
+    },
+    onError: (error, variables) => {
+      const message = getOverMaxMessage(error);
+      if (message) {
+        setOverMaxPrompt({
+          message,
+          confirm: () => assignMutation.mutate({ ...variables, acknowledgeExceedsMaxGroupSize: true }),
+        });
+      }
     },
   });
 
@@ -333,15 +381,28 @@ export default function PlanningPage({
     mutationFn: ({
       target,
       slotId,
+      acknowledgeExceedsMaxGroupSize,
     }: {
       target: { enrollmentId?: string; groupId?: string };
       slotId: string;
-    }) => createAssignment(id, { ...target, weeklyTemplateEntryId: slotId }),
+      acknowledgeExceedsMaxGroupSize?: boolean;
+    }) =>
+      createAssignment(id, { ...target, weeklyTemplateEntryId: slotId, acknowledgeExceedsMaxGroupSize }),
     onSuccess: () => {
       toast.success(t("extraSlotAddedSuccess"));
       queryClient.invalidateQueries({ queryKey: ["planning", id] });
     },
-    onError: () => toast.error(t("extraSlotAddError")),
+    onError: (error, variables) => {
+      const message = getOverMaxMessage(error);
+      if (message) {
+        setOverMaxPrompt({
+          message,
+          confirm: () => addExtraSlotMutation.mutate({ ...variables, acknowledgeExceedsMaxGroupSize: true }),
+        });
+        return;
+      }
+      toast.error(t("extraSlotAddError"));
+    },
   });
 
   // Esc sluit de toewijs-modus.
@@ -2248,6 +2309,33 @@ export default function PlanningPage({
               className="bg-tennis-green hover:bg-tennis-green/90"
             >
               {t("offerConfirmButton")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Waarschuwing: het tijdslot wordt groter dan iemands gekozen maximum aantal personen */}
+      <AlertDialog
+        open={overMaxPrompt !== null}
+        onOpenChange={(open) => !open && setOverMaxPrompt(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("overMaxTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {overMaxPrompt?.message} {t("overMaxHint")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("overMaxCancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                overMaxPrompt?.confirm();
+                setOverMaxPrompt(null);
+              }}
+              className="bg-tennis-green hover:bg-tennis-green/90"
+            >
+              {t("overMaxConfirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { EnrollmentLegalNotice } from "@/components/forms/enrollment-legal-notice";
+import { MaxGroupSizeField } from "@/components/forms/max-group-size-field";
 import {
   CalendarDays,
   MapPin,
@@ -210,7 +211,8 @@ export default function EnrollPage() {
   const [enrollmentType, setEnrollmentType] = useState<"solo" | "group">(
     "solo"
   );
-  const [isOpenToGrouping, setIsOpenToGrouping] = useState(false);
+  // Gekozen maximum aantal personen per tijdslot; null = nog niet gekozen (dan de eigen groepsgrootte).
+  const [maxGroupSizeChoice, setMaxGroupSizeChoice] = useState<number | null>(null);
   const [groupMembers, setGroupMembers] = useState<GroupMember[]>([]);
   const [selectedPriceOptionId, setSelectedPriceOptionId] = useState<string>("");
   const [memberErrors, setMemberErrors] = useState<Record<number, MemberErrors>>({});
@@ -290,7 +292,7 @@ export default function EnrollPage() {
     setFieldErrors({});
     setBaseErrors({});
     setPreferences({});
-    setIsOpenToGrouping(false);
+    setMaxGroupSizeChoice(null);
     setGroupMembers([]);
     setMemberErrors({});
     setEnrollmentType(series?.allowSoloEnrollment ? "solo" : "group");
@@ -391,6 +393,12 @@ export default function EnrollPage() {
       )
     );
   }
+
+  // Het maximum aantal personen per tijdslot: tussen de eigen groepsgrootte (leider + leden) en wat de reeks
+  // toelaat, maar nooit lager dan de eigen groep. Zonder keuze: enkel de eigen groep (niet samenvoegen).
+  const ownGroupSize = enrollmentType === "group" ? 1 + groupMembers.length : 1;
+  const maxGroupSizeLimit = Math.max(series?.maxGroupSize ?? 1, ownGroupSize);
+  const maxGroupSize = Math.min(Math.max(maxGroupSizeChoice ?? ownGroupSize, ownGroupSize), maxGroupSizeLimit);
 
   function priceOptions(): LessonSeriePriceDto[] {
     return series?.priceOptions ?? [];
@@ -531,7 +539,7 @@ export default function EnrollPage() {
         timeSlotPreferences:
           timeSlotPreferences.length > 0 ? timeSlotPreferences : undefined,
         enrollmentType,
-        isOpenToGrouping,
+        maxGroupSize,
         selectedPriceOptionId: selectedPriceOptionId || undefined,
         groupMembers:
           enrollmentType === "group" && groupMembers.length > 0
@@ -1086,25 +1094,28 @@ export default function EnrollPage() {
                     </>
                   )}
 
-                  {/* Open to grouping (both solo and group) */}
-                  {(enrollmentType === "solo" || enrollmentType === "group") && (
+                  {/* Maximum aantal personen per tijdslot (solo en groep) */}
+                  {maxGroupSizeLimit > ownGroupSize && (
                     <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
-                      <label className="flex items-start gap-3 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={isOpenToGrouping}
-                          onChange={(e) => setIsOpenToGrouping(e.target.checked)}
-                          className="mt-0.5 w-4 h-4 rounded border-gray-300 text-tennis-green focus:ring-tennis-green"
-                        />
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">
-                            {t("open_to_grouping")}
-                          </div>
-                          <div className="text-xs text-gray-500 mt-0.5">
-                            {t("open_to_grouping_desc")}
-                          </div>
-                        </div>
-                      </label>
+                      <div className="text-sm font-medium text-gray-900">
+                        {t("max_group_size_title")}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-0.5 mb-2">
+                        {t("max_group_size_desc")}
+                        {ownGroupSize > 1 && (
+                          <>
+                            {" "}
+                            {t("max_group_size_own_group", { count: ownGroupSize })}
+                          </>
+                        )}
+                      </div>
+                      <MaxGroupSizeField
+                        name="max-group-size"
+                        value={maxGroupSize}
+                        onChange={setMaxGroupSizeChoice}
+                        min={ownGroupSize}
+                        max={maxGroupSizeLimit}
+                      />
                     </div>
                   )}
 

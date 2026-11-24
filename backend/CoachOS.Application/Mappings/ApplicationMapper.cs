@@ -1,3 +1,4 @@
+using CoachOS.Domain.Common;
 using CoachOS.Application.Enrollments.DTOs;
 using CoachOS.Application.LessonSerie.DTOs;
 using CoachOS.Application.OrganizationSettings.DTOs;
@@ -57,6 +58,7 @@ public partial class ApplicationMapper
             MinAge = ls.MinAge,
             MaxAge = ls.MaxAge,
             MinimumAvailableSlots = ls.MinimumAvailableSlots,
+            MaxGroupSize = GroupSizeRules.SeriesMax(ls.WeeklyTemplate.Select(w => w.MaxStudents)),
             LessonCount = lessonCount,
             EnrolledCount = enrolledCount,
             TotalCapacity = totalCapacity,

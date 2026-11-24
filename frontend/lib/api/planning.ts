@@ -18,7 +18,8 @@ export interface PlanningEnrollmentDto {
   studentName: string;
   studentEmail: string;
   studentPhone: string | null;
-  isOpenToGrouping: boolean;
+  /** Maximum aantal personen waarmee deze deelnemer (of groep) in één tijdslot wil zitten. */
+  maxGroupSize: number;
   groupId: string | null;
   /** Map of timeSlotId → "Preferred" | "Available" | "Unavailable" */
   preferences: Record<string, string>;
@@ -56,12 +57,16 @@ export interface UpdateAssignmentRequest {
   weeklyTemplateEntryId: string;
   /** Bij een bevestigde verplaatsing: mail de lesnemer/groep over het nieuwe moment. */
   notifyStudent?: boolean;
+  /** De admin bevestigt dat het slot groter mag worden dan het gekozen maximum van iemand die erin zit. */
+  acknowledgeExceedsMaxGroupSize?: boolean;
 }
 
 export interface CreateAssignmentRequest {
   enrollmentId?: string;
   groupId?: string;
   weeklyTemplateEntryId: string;
+  /** De admin bevestigt dat het slot groter mag worden dan het gekozen maximum van iemand die erin zit. */
+  acknowledgeExceedsMaxGroupSize?: boolean;
 }
 
 export interface CreateGroupRequest {
@@ -103,7 +108,9 @@ export async function createAssignment(
 ): Promise<string> {
   const { data } = await apiClient.post<string>(
     `/lessonseries/${seriesId}/planning/assignments`,
-    request
+    request,
+    // Een 409 is een waarschuwing (slot groter dan iemands maximum): de pagina vraagt dan bevestiging.
+    { skipConflictToast: true }
   );
   return data;
 }
@@ -115,7 +122,8 @@ export async function updateAssignment(
 ): Promise<void> {
   await apiClient.put(
     `/lessonseries/${seriesId}/planning/assignments/${assignmentId}`,
-    request
+    request,
+    { skipConflictToast: true }
   );
 }
 
