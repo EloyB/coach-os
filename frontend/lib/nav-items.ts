@@ -17,11 +17,6 @@ export interface NavItem {
   exact?: boolean;
   adminOnly?: boolean;
   trainerOnly?: boolean;
-  /** Een admin die zelf lesgeeft (AdminsActAsTrainers) ziet dit trainer-item ook. */
-  adminActsAsTrainer?: boolean;
-  /** Label voor die admin, zodat het niet naast "Instellingen" (admin) dubbel staat. */
-  adminLabel?: string;
-  adminShortLabel?: string;
 }
 
 export const navItems: NavItem[] = [
@@ -82,8 +77,5 @@ export const navItems: NavItem[] = [
     icon: Settings,
     exact: false,
     trainerOnly: true,
-    adminActsAsTrainer: true,
-    adminLabel: "Mijn beschikbaarheid",
-    adminShortLabel: "Beschikbaar",
   },
 ];

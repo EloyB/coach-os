@@ -1697,6 +1697,8 @@
     "subtitle": "Beheer je eigen beschikbaarheid.",
     "availabilityTitle": "Beschikbaarheid",
     "availabilityIntro": "Geef per weekdag aan wanneer je kunt lesgeven. Je admin ziet dit en gebruikt het bij het plannen.",
+    "availabilityTitleAdmin": "Mijn beschikbaarheid",
+    "availabilityIntroAdmin": "Geef per weekdag aan wanneer je zelf kunt lesgeven. Dit gebruik je bij het plannen van lessen.",
     "loadError": "Je beschikbaarheid kon niet geladen worden.",
     "saveError": "Opslaan is mislukt. Probeer het opnieuw.",
     "days": {

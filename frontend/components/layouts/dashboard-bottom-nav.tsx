@@ -2,11 +2,19 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useVisibleNavItems } from "@/lib/hooks/use-visible-nav-items";
+import { navItems } from "@/lib/nav-items";
+import { getAuthUser } from "@/lib/auth";
+import { useClientValue } from "@/lib/hooks/use-client-value";
 
 export function MobileBottomNav() {
   const pathname = usePathname();
-  const visibleItems = useVisibleNavItems();
+  const role = useClientValue(() => getAuthUser()?.role ?? null);
+
+  const visibleItems = navItems.filter(
+    (item) =>
+      (!item.adminOnly || role === "Admin") &&
+      (!item.trainerOnly || role === "Trainer")
+  );
 
   return (
     <nav
