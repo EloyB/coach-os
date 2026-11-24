@@ -77,11 +77,40 @@ test.describe("Student portal — magic-link auth", () => {
     ).toBeVisible();
   });
 
+  test("magic-link redeem fires only one request per token (strict-mode double effect)", async ({
+    page,
+  }) => {
+    let redeemCalls = 0;
+    await page.route("**/auth/magic/redeem*", (route) => {
+      if (route.request().method() !== "POST") return route.continue();
+      redeemCalls += 1;
+      // Eenmalige link: elke volgende redeem is al verbruikt.
+      if (redeemCalls > 1) {
+        return route.fulfill({
+          status: 410,
+          contentType: "application/json",
+          body: JSON.stringify(["Ongeldige of verlopen link"]),
+        });
+      }
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(STUDENT_AUTH),
+      });
+    });
+    await mockApi(page, "GET", "/student/lessons", [STUDENT_LESSON]);
+
+    await page.goto("/auth/magic?token=single-use");
+    await page.waitForURL("**/student/lessons");
+
+    expect(redeemCalls).toBe(1);
+  });
+
   test("invalid magic-link token shows error state", async ({ page }) => {
     await page.route("**/auth/magic/redeem*", (route) => {
       if (route.request().method() === "POST") {
         return route.fulfill({
-          status: 400,
+          status: 410,
           contentType: "application/json",
           body: JSON.stringify(["Ongeldige of verlopen link"]),
         });

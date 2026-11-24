@@ -8,6 +8,9 @@ import Link from "next/link";
 import { redeemMagicLink } from "@/lib/api/auth";
 import { setToken, setAuthUser, setSuperAdminCookie } from "@/lib/auth";
 
+// Per token één lopende redeem, zodat een dubbele effect-run dezelfde aanroep deelt.
+const redeemsInFlight = new Map<string, ReturnType<typeof redeemMagicLink>>();
+
 function MagicRedeem() {
   const t = useTranslations("studentAuth");
   const router = useRouter();
@@ -18,15 +21,31 @@ function MagicRedeem() {
 
   useEffect(() => {
     if (!token) return;
-    redeemMagicLink(token)
+    // In dev draait dit effect twee keer (strict mode). Een magic link is eenmalig, dus één
+    // gedeelde redeem per token: beide runs wachten op hetzelfde antwoord en de laatste
+    // (niet-afgebroken) run verwerkt het resultaat. Zo kan een tweede POST geen 410 geven
+    // terwijl de eerste het inloggen al gelukt is.
+    let ignore = false;
+    let redeem = redeemsInFlight.get(token);
+    if (!redeem) {
+      redeem = redeemMagicLink(token);
+      redeemsInFlight.set(token, redeem);
+    }
+    redeem
       .then((res) => {
+        if (ignore) return;
         setToken(res.token);
         // Een achtergebleven super-admin-cookie van een vorige sessie mag de routing niet sturen.
         setSuperAdminCookie(false);
         setAuthUser({ email: res.email, role: res.role });
         router.replace("/student/lessons");
       })
-      .catch(() => setRedeemFailed(true));
+      .catch(() => {
+        if (!ignore) setRedeemFailed(true);
+      });
+    return () => {
+      ignore = true;
+    };
   }, [token, router]);
 
   return (
