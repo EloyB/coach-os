@@ -5,6 +5,7 @@ using CoachOS.Application.Common;
 using CoachOS.Application.Enrollments.DTOs;
 using CoachOS.Application.LessonSerie.DTOs;
 using CoachOS.Application.Mappings;
+using CoachOS.Application.Planning;
 using CoachOS.Application.Pricing;
 using CoachOS.Domain.Common;
 using CoachOS.Domain.Entities;
@@ -68,6 +69,7 @@ public partial class EnrollmentService(
             MaxAge = series.MaxAge,
             EnrollmentCount = enrollmentCount,
             MinimumAvailableSlots = series.MinimumAvailableSlots,
+            MaxGroupSize = GroupSizeRules.SeriesMax(series.WeeklyTemplate.Select(w => w.MaxStudents)),
             AllowSoloEnrollment = series.AllowSoloEnrollment,
             AllowGroupEnrollment = series.AllowGroupEnrollment,
             PriceOptions = series.Prices
@@ -151,7 +153,7 @@ public partial class EnrollmentService(
             EnrollmentGroupId = e.EnrollmentGroupId,
             IsGroupLeader = e.EnrollmentGroupId.HasValue
                 && groupsById.GetValueOrDefault(e.EnrollmentGroupId.Value)?.LeaderEnrollmentId == e.Id,
-            IsOpenToGrouping = e.IsOpenToGrouping,
+            MaxGroupSize = e.MaxGroupSize,
             SelectedPriceOptionId = e.SelectedPriceOptionId,
             PaymentMethod = paymentByEnrollment.GetValueOrDefault(e.Id)?.Method?.ToString(),
             PaymentStatus = paymentByEnrollment.GetValueOrDefault(e.Id)?.Status.ToString(),
@@ -260,6 +262,13 @@ public partial class EnrollmentService(
         if (ageError is not null)
             return Result<Guid>.Fail(ageError);
 
+        // Maximum aantal personen per tijdslot: standaard solo (1), tenzij de admin een hoger maximum kiest.
+        int maxGroupSize = request.MaxGroupSize ?? 1;
+        Error? maxGroupSizeError = GroupSizeRules.Validate(
+            maxGroupSize, ownSize: 1, GroupSizeRules.SeriesMax(series.WeeklyTemplate.Select(w => w.MaxStudents)));
+        if (maxGroupSizeError is not null)
+            return Result<Guid>.Fail(maxGroupSizeError);
+
         EnrollmentForm? form = await enrollmentFormRepo.GetBySeriesIdReadOnlyAsync(lessonSeriesId, ct);
         if (form is not null)
         {
@@ -306,7 +315,7 @@ public partial class EnrollmentService(
                 Category = ResolveCategory(request.DateOfBirth, youthMaxAge, timeProvider.GetBrusselsToday()),
                 Status = EnrollmentStatus.Confirmed,
                 EnrolledAt = timeProvider.GetUtcNow().UtcDateTime,
-                IsOpenToGrouping = false,
+                MaxGroupSize = maxGroupSize,
             };
             await enrollmentRepo.AddAsync(enrollment, ct);
 
@@ -406,6 +415,20 @@ public partial class EnrollmentService(
                     ErrorCodes.Conflict, $"{request.StudentName} is al ingeschreven voor deze lessenreeks."));
             }
 
+            // Het lid erft het maximum van de groep. Wordt de groep door dit lid groter dan dat maximum, dan gaat het
+            // maximum voor iedereen mee omhoog: een groep kan niet groter zijn dan het maximum dat ze zelf koos.
+            int newGroupSize = group.Members.Count(m =>
+                m.Status is EnrollmentStatus.Confirmed or EnrollmentStatus.Pending or EnrollmentStatus.PendingPayment) + 1;
+            int groupMaxGroupSize = Math.Max(leader.MaxGroupSize, newGroupSize);
+            if (groupMaxGroupSize != leader.MaxGroupSize)
+            {
+                foreach (Enrollment existingMember in group.Members)
+                {
+                    existingMember.MaxGroupSize = groupMaxGroupSize;
+                    existingMember.UpdatedAt = timeProvider.GetUtcNow().UtcDateTime;
+                }
+            }
+
             Enrollment enrollment = new()
             {
                 OrganizationId = organizationId,
@@ -422,7 +445,7 @@ public partial class EnrollmentService(
                 Status = leader.Status,                                // status geërfd van de groep
                 SelectedPriceOptionId = leader.SelectedPriceOptionId,  // prijsoptie geërfd
                 EnrolledAt = timeProvider.GetUtcNow().UtcDateTime,
-                IsOpenToGrouping = false,
+                MaxGroupSize = groupMaxGroupSize,                      // maximum geërfd van de groep
             };
             await enrollmentRepo.AddAsync(enrollment, ct);
 
@@ -515,7 +538,7 @@ public partial class EnrollmentService(
                     // Contactadres: deze DTO voedt de planning, waar dit het verzendadres is.
                     StudentEmail = e.ContactEmail,
                     Status = e.Status.ToString(),
-                    IsOpenToGrouping = e.IsOpenToGrouping,
+                    MaxGroupSize = e.MaxGroupSize,
                     EnrollmentGroupId = e.EnrollmentGroupId,
                     GroupName = group?.Name,
                     IsGroupLeader = group?.LeaderEnrollmentId == e.Id,
@@ -558,6 +581,11 @@ public partial class EnrollmentService(
         int youthMaxAge = orgSettings?.YouthMaxAge ?? 17;
         DateOnly updatedOn = timeProvider.GetBrusselsToday();
 
+        Error? maxGroupSizeError = await ApplyMaxGroupSizeAsync(
+            enrollment, request.MaxGroupSize, lessonSeriesId, organizationId, ct);
+        if (maxGroupSizeError is not null)
+            return Result<LessonSerieEnrollmentDto>.Fail(maxGroupSizeError);
+
         enrollment.StudentName = studentName;
         enrollment.ContactEmail = contactEmail;
         enrollment.StudentEmail = string.IsNullOrWhiteSpace(studentEmail) ? null : studentEmail;
@@ -566,7 +594,6 @@ public partial class EnrollmentService(
             : request.StudentPhone.Trim();
         enrollment.DateOfBirth = dateOfBirth;
         enrollment.Category = ResolveCategory(request.DateOfBirth, youthMaxAge, updatedOn);
-        enrollment.IsOpenToGrouping = request.IsOpenToGrouping;
         enrollment.UpdatedAt = timeProvider.GetUtcNow().UtcDateTime;
 
         // Prijsoptie: enkel behandelen wanneer ze effectief wijzigt.
@@ -629,7 +656,7 @@ public partial class EnrollmentService(
                 _ => null,
             },
             EnrollmentGroupId = enrollment.EnrollmentGroupId,
-            IsOpenToGrouping = enrollment.IsOpenToGrouping,
+            MaxGroupSize = enrollment.MaxGroupSize,
             SelectedPriceOptionId = enrollment.SelectedPriceOptionId,
         };
 
@@ -638,6 +665,64 @@ public partial class EnrollmentService(
             enrollmentId, organizationId);
 
         return Result<LessonSerieEnrollmentDto>.Ok(dto);
+    }
+
+    /// <summary>
+    /// Past het maximum aantal personen per tijdslot aan (bij een groep voor alle leden). Null of een
+    /// ongewijzigde waarde doet niets. Het maximum moet binnen de grenzen van de reeks en de eigen groepsgrootte
+    /// vallen, en mag niet lager worden dan het tijdslot waarin de inschrijving nu al ingepland staat: de admin
+    /// haalt ze dan eerst uit dat tijdslot.
+    /// </summary>
+    private async Task<Error?> ApplyMaxGroupSizeAsync(
+        Enrollment enrollment, int? requested, Guid lessonSeriesId, Guid organizationId, CancellationToken ct)
+    {
+        if (requested is null || requested == enrollment.MaxGroupSize)
+            return null;
+
+        List<Enrollment> members = [enrollment];
+        if (enrollment.EnrollmentGroupId is not null)
+        {
+            Enrollment? withGroup = await enrollmentRepo.GetByIdWithGroupAsync(enrollment.Id, organizationId, ct);
+            if (withGroup?.EnrollmentGroup is not null)
+                members = withGroup.EnrollmentGroup.Members.ToList();
+        }
+
+        int ownSize = members.Count(m =>
+            m.Status is EnrollmentStatus.Confirmed or EnrollmentStatus.Pending or EnrollmentStatus.PendingPayment);
+        ownSize = Math.Max(ownSize, 1);
+
+        Domain.Entities.LessonSerie? series = await lessonSeriesRepo.GetByIdAsync(lessonSeriesId, organizationId, ct);
+        int seriesMax = GroupSizeRules.SeriesMax((series?.WeeklyTemplate ?? []).Select(w => w.MaxStudents));
+        Error? boundsError = GroupSizeRules.Validate(requested.Value, ownSize, seriesMax);
+        if (boundsError is not null)
+            return boundsError;
+
+        // Verlagen onder de grootte van het tijdslot waarin ze nu al staat, is niet toegestaan.
+        HashSet<Guid> memberIds = members.Select(m => m.Id).ToHashSet();
+        Guid? groupId = enrollment.EnrollmentGroupId;
+        IReadOnlyList<ScheduleAssignment> assignments =
+            await scheduleAssignmentRepo.GetBySeriesAsync(lessonSeriesId, organizationId, ct);
+        foreach (ScheduleAssignment own in assignments.Where(a =>
+                     a.Status != ScheduleAssignmentStatus.Declined
+                     && ((a.EnrollmentId.HasValue && memberIds.Contains(a.EnrollmentId.Value))
+                         || (groupId.HasValue && a.EnrollmentGroupId == groupId))))
+        {
+            int slotSize = assignments
+                .Where(a => a.WeeklyTemplateEntryId == own.WeeklyTemplateEntryId)
+                .Sum(PlanningProposalBuilder.GetEffectiveAssignmentSize);
+            if (slotSize > requested.Value)
+                return new Error(ErrorCodes.Validation,
+                    $"Het maximum kan niet verlaagd worden naar {requested.Value}: deze inschrijving staat in een tijdslot " +
+                    $"met {slotSize} personen. Haal ze eerst uit dat tijdslot.");
+        }
+
+        foreach (Enrollment member in members)
+        {
+            member.MaxGroupSize = requested.Value;
+            member.UpdatedAt = timeProvider.GetUtcNow().UtcDateTime;
+        }
+
+        return null;
     }
 
     /// <summary>

@@ -86,10 +86,19 @@ public class PlanningService(
         var (units, _) = PlanningProposalBuilder.BuildUnits(
             activeEnrollments, groups, prefsByEnrollment, lockedGroupIds, lockedEnrollmentIds);
 
+        // Wie er al vastligt bepaalt ook hoe groot het slot nog mag worden: het kleinste maximum telt.
+        var ceilingBySlot = lockedAssignments
+            .GroupBy(a => a.WeeklyTemplateEntryId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.Min(PlanningProposalBuilder.GetAssignmentMaxGroupSize));
+
         var slotInfos = slots
             .Select(s => new SlotInfo(
                 s.Id,
-                Math.Max(0, s.MaxStudents - capacityUsedBySlot.GetValueOrDefault(s.Id, 0))))
+                Math.Max(0, s.MaxStudents - capacityUsedBySlot.GetValueOrDefault(s.Id, 0)),
+                capacityUsedBySlot.GetValueOrDefault(s.Id, 0),
+                ceilingBySlot.GetValueOrDefault(s.Id, int.MaxValue)))
             .ToList();
         var input = new SchedulingInput(units, slotInfos);
 
@@ -177,7 +186,7 @@ public class PlanningService(
                 StudentName = e.StudentName,
                 StudentEmail = e.ContactEmail,
                 StudentPhone = e.StudentPhone,
-                IsOpenToGrouping = e.IsOpenToGrouping,
+                MaxGroupSize = e.MaxGroupSize,
                 GroupId = e.EnrollmentGroupId,
                 Preferences = prefsByEnrollment.GetValueOrDefault(e.Id, new()),
             })

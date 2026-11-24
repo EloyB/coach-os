@@ -91,7 +91,7 @@ public class EnrollmentPriceOptionTests
     private static UpdateBasicEnrollmentRequest Request(Guid? option) => new()
     {
         StudentName = "Lars Peeters", ContactEmail = "lars@test.local",
-        DateOfBirth = "2000-01-01", IsOpenToGrouping = false, SelectedPriceOptionId = option,
+        DateOfBirth = "2000-01-01", SelectedPriceOptionId = option,
     };
 
     [Test]

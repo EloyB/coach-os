@@ -302,7 +302,7 @@ for e in enrollments:
         'studentEmail': e['email'],
         'responses': [],
         'enrollmentType': e['type'],
-        'isOpenToGrouping': e['openToGrouping'],
+        'maxGroupSize': 4 if e['openToGrouping'] else None,
         'timeSlotPreferences': e['prefs'],
     }
     if e['members']:

@@ -604,14 +604,14 @@ namespace CoachOS.Infrastructure.Migrations
                     b.Property<Guid?>("EnrollmentGroupId")
                         .HasColumnType("uuid");
 
-                    b.Property<bool>("IsOpenToGrouping")
-                        .HasColumnType("boolean");
-
                     b.Property<Guid?>("LessonId")
                         .HasColumnType("uuid");
 
                     b.Property<Guid?>("LessonSerieId")
                         .HasColumnType("uuid");
+
+                    b.Property<int>("MaxGroupSize")
+                        .HasColumnType("integer");
 
                     b.Property<string>("Notes")
                         .HasMaxLength(500)

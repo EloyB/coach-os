@@ -27,6 +27,13 @@ public class UpdateBasicEnrollmentRequestValidator : AbstractValidator<UpdateBas
         RuleFor(x => x.StudentPhone)
             .MaximumLength(50);
 
+        // Maximum aantal personen per tijdslot: 1 (solo) tot 4. De ondergrens (eigen groepsgrootte) en de
+        // bovengrens van de reeks controleert de service, want die hebben de reeks nodig.
+        RuleFor(x => x.MaxGroupSize)
+            .InclusiveBetween(1, GroupSizeRules.AbsoluteMax)
+            .WithMessage($"Het maximum aantal personen moet tussen 1 en {GroupSizeRules.AbsoluteMax} liggen.")
+            .When(x => x.MaxGroupSize.HasValue);
+
         RuleFor(x => x.DateOfBirth)
             .NotEmpty().WithMessage("Geboortedatum is verplicht")
             .Must(DateOfBirthRules.IsParseable).WithMessage("Geboortedatum moet het formaat yyyy-MM-dd hebben")

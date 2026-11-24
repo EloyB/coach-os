@@ -215,9 +215,9 @@ public class SchedulingAlgorithmTests
     [Test]
     public void Generate_OpenSolosWithSharedPreference_AutoGrouped()
     {
-        var alice = MakeSolo("Alice", new() { { Slot1, SlotPreference.Preferred } }, isOpenToGrouping: true);
-        var bob = MakeSolo("Bob", new() { { Slot1, SlotPreference.Preferred } }, isOpenToGrouping: true);
-        var carol = MakeSolo("Carol", new() { { Slot1, SlotPreference.Preferred } }, isOpenToGrouping: true);
+        var alice = MakeSolo("Alice", new() { { Slot1, SlotPreference.Preferred } }, maxGroupSize: 4);
+        var bob = MakeSolo("Bob", new() { { Slot1, SlotPreference.Preferred } }, maxGroupSize: 4);
+        var carol = MakeSolo("Carol", new() { { Slot1, SlotPreference.Preferred } }, maxGroupSize: 4);
 
         var input = new SchedulingInput(
             [alice, bob, carol],
@@ -231,10 +231,11 @@ public class SchedulingAlgorithmTests
     }
 
     [Test]
-    public void Generate_ClosedSolosNotAutoGrouped()
+    public void Generate_ClosedSolos_NeverShareASlot()
     {
-        var alice = MakeSolo("Alice", new() { { Slot1, SlotPreference.Preferred } }, isOpenToGrouping: false);
-        var bob = MakeSolo("Bob", new() { { Slot1, SlotPreference.Preferred } }, isOpenToGrouping: false);
+        // Max 1 = solo: ook al is er capaciteit voor 4, nooit samen met iemand anders.
+        var alice = MakeSolo("Alice", new() { { Slot1, SlotPreference.Preferred } }, maxGroupSize: 1);
+        var bob = MakeSolo("Bob", new() { { Slot1, SlotPreference.Preferred } }, maxGroupSize: 1);
 
         var input = new SchedulingInput(
             [alice, bob],
@@ -242,8 +243,24 @@ public class SchedulingAlgorithmTests
 
         var result = Generate(input);
 
-        // Both should still be assigned (capacity allows), just not via auto-grouping step
+        result.Assignments.Should().HaveCount(1);
+        result.Conflicts.Should().HaveCount(1);
+    }
+
+    [Test]
+    public void Generate_ClosedSolos_EachGetTheirOwnSlotWhenThereAreEnough()
+    {
+        var alice = MakeSolo("Alice", new() { { Slot1, SlotPreference.Preferred }, { Slot2, SlotPreference.Available } }, maxGroupSize: 1);
+        var bob = MakeSolo("Bob", new() { { Slot1, SlotPreference.Preferred }, { Slot2, SlotPreference.Available } }, maxGroupSize: 1);
+
+        var input = new SchedulingInput(
+            [alice, bob],
+            [new SlotInfo(Slot1, 4), new SlotInfo(Slot2, 4)]);
+
+        var result = Generate(input);
+
         result.Assignments.Should().HaveCount(2);
+        result.Assignments.Select(a => a.WeeklyTemplateEntryId).Should().OnlyHaveUniqueItems();
         result.Conflicts.Should().BeEmpty();
     }
 
@@ -304,7 +321,7 @@ public class SchedulingAlgorithmTests
     private static EnrollmentUnit MakeSolo(
         string name,
         Dictionary<Guid, SlotPreference> prefs,
-        bool isOpenToGrouping = false)
+        int maxGroupSize = 4)
     {
         var id = Guid.NewGuid();
         return new EnrollmentUnit(
@@ -314,14 +331,15 @@ public class SchedulingAlgorithmTests
             EnrollmentIds: [id],
             StudentNames: [name],
             Size: 1,
-            IsOpenToGrouping: isOpenToGrouping,
+            MaxGroupSize: maxGroupSize,
             Preferences: prefs);
     }
 
     private static EnrollmentUnit MakeGroup(
         string name,
         int size,
-        Dictionary<Guid, SlotPreference> prefs)
+        Dictionary<Guid, SlotPreference> prefs,
+        int maxGroupSize = 4)
     {
         var groupId = Guid.NewGuid();
         var enrollmentIds = Enumerable.Range(0, size).Select(_ => Guid.NewGuid()).ToList();
@@ -333,7 +351,7 @@ public class SchedulingAlgorithmTests
             EnrollmentIds: enrollmentIds,
             StudentNames: names,
             Size: size,
-            IsOpenToGrouping: false,
+            MaxGroupSize: maxGroupSize,
             Preferences: prefs);
     }
 }

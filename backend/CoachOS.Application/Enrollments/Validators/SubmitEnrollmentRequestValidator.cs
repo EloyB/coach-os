@@ -32,6 +32,13 @@ public class SubmitEnrollmentRequestValidator : AbstractValidator<SubmitEnrollme
             .Must(v => DateOfBirthRules.IsNotInFuture(v, today)).WithMessage("Geboortedatum kan niet in de toekomst liggen")
             .Must(v => DateOfBirthRules.IsRealistic(v, today)).WithMessage("Controleer de geboortedatum");
 
+        // Maximum aantal personen per tijdslot: 1 (solo) tot 4. De ondergrens (eigen groepsgrootte) en de
+        // bovengrens van de reeks controleert de service, want die hebben de reeks nodig.
+        RuleFor(x => x.MaxGroupSize)
+            .InclusiveBetween(1, GroupSizeRules.AbsoluteMax)
+            .WithMessage($"Het maximum aantal personen moet tussen 1 en {GroupSizeRules.AbsoluteMax} liggen.")
+            .When(x => x.MaxGroupSize.HasValue);
+
         RuleForEach(x => x.Responses).ChildRules(r =>
         {
             r.RuleFor(v => v.FormFieldId)

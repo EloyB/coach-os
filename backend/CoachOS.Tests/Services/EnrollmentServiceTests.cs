@@ -57,6 +57,9 @@ public class EnrollmentServiceTests
         _priceRepo = new Mock<ILessonSeriePriceRepository>();
         _scheduleAssignmentRepo = new Mock<IScheduleAssignmentRepository>();
         _scheduleAssignmentRepo
+            .Setup(r => r.GetBySeriesAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ScheduleAssignment>());
+        _scheduleAssignmentRepo
             .Setup(r => r.GetAwaitingConfirmationParticipantIdsAsync(
                 It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
@@ -766,7 +769,7 @@ public class EnrollmentServiceTests
             StudentName = "Alice",
             StudentEmail = "alice@test.be",
             EnrollmentType = "solo",
-            IsOpenToGrouping = true,
+            MaxGroupSize = 2,
             TimeSlotPreferences = new()
             {
                 new() { WeeklyTemplateEntryId = slot1, Preference = 2 },
@@ -967,7 +970,7 @@ public class EnrollmentServiceTests
             Status = EnrollmentStatus.Confirmed,
             EnrolledAt = DateTime.UtcNow,
             EnrollmentGroupId = groupId,
-            IsOpenToGrouping = false,
+            MaxGroupSize = 1,
         };
 
         var slotId = Guid.NewGuid();
@@ -1054,7 +1057,7 @@ public class EnrollmentServiceTests
             DateOfBirth = new DateOnly(2012, 5, 10),
             Category = ParticipantCategory.Youth,
             Status = EnrollmentStatus.PendingPayment,
-            IsOpenToGrouping = true,
+            MaxGroupSize = 2,
         };
         _enrollmentRepo
             .Setup(r => r.GetByIdAsync(enrollmentId, OrgId, It.IsAny<CancellationToken>()))
@@ -1075,7 +1078,7 @@ public class EnrollmentServiceTests
             StudentEmail = " Piet@Example.BE ",
             StudentPhone = "0499000000",
             DateOfBirth = "2010-04-03",
-            IsOpenToGrouping = false,
+            MaxGroupSize = 1,
         };
 
         Result<LessonSerieEnrollmentDto> result = await _service.UpdateBasicEnrollmentAsync(
@@ -1088,12 +1091,12 @@ public class EnrollmentServiceTests
         enrollment.StudentPhone.Should().Be("0499000000");
         enrollment.DateOfBirth.Should().Be(new DateOnly(2010, 4, 3));
         enrollment.Category.Should().Be(ParticipantCategory.Youth);
-        enrollment.IsOpenToGrouping.Should().BeFalse();
+        enrollment.MaxGroupSize.Should().Be(1);
         enrollment.Status.Should().Be(EnrollmentStatus.PendingPayment);
         enrollment.EnrollmentGroupId.Should().Be(groupId);
         result.Value!.ContactEmail.Should().Be("parent@example.be");
         result.Value.StudentPhone.Should().Be("0499000000");
-        result.Value.IsOpenToGrouping.Should().BeFalse();
+        result.Value.MaxGroupSize.Should().Be(1);
         _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -1129,7 +1132,7 @@ public class EnrollmentServiceTests
             StudentEmail = null,
             StudentPhone = null,
             DateOfBirth = "2014-01-02",
-            IsOpenToGrouping = true,
+            MaxGroupSize = 2,
         };
 
         Result<LessonSerieEnrollmentDto> result = await _service.UpdateBasicEnrollmentAsync(
@@ -1167,7 +1170,7 @@ public class EnrollmentServiceTests
             StudentName = "Kind Een",
             ContactEmail = "ouder@example.be",
             DateOfBirth = "2014-01-02",
-            IsOpenToGrouping = true,
+            MaxGroupSize = 2,
         };
 
         Result<LessonSerieEnrollmentDto> result = await _service.UpdateBasicEnrollmentAsync(
@@ -1200,7 +1203,7 @@ public class EnrollmentServiceTests
             StudentName = "Jan Jansen",
             ContactEmail = "jan@test.be",
             DateOfBirth = "2014-01-02",
-            IsOpenToGrouping = true,
+            MaxGroupSize = 2,
         };
 
         Result<LessonSerieEnrollmentDto> result = await _service.UpdateBasicEnrollmentAsync(

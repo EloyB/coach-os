@@ -32,6 +32,7 @@ public class AssignmentService(
         var existingAssignments = await scheduleAssignmentRepo.GetBySeriesAsync(seriesId, organizationId, ct);
 
         int addSize;
+        List<Participant> addedParticipants;
         Guid? enrollmentId = null;
         Guid? groupId = null;
 
@@ -57,6 +58,7 @@ public class AssignmentService(
             }
 
             groupId = group.Id;
+            addedParticipants = GetParticipants(group.Members);
             addSize = PlanningProposalBuilder.GetEffectiveAssignmentSize(new ScheduleAssignment
             {
                 EnrollmentGroup = group,
@@ -80,6 +82,7 @@ public class AssignmentService(
             }
 
             enrollmentId = enrollment.Id;
+            addedParticipants = GetParticipants([enrollment]);
             addSize = 1;
         }
 
@@ -89,6 +92,13 @@ public class AssignmentService(
             seriesId, organizationId, request.WeeklyTemplateEntryId, addSize, excludeAssignmentId: null, ct);
         if (capacityError is not null)
             return Result<Guid>.Fail(capacityError);
+
+        // Waarschuwing (geen blokkade) als het slot groter wordt dan iemands gekozen maximum.
+        var exceedsError = await WarnWhenSlotExceedsMaxGroupSizeAsync(
+            seriesId, organizationId, request.WeeklyTemplateEntryId,
+            addedParticipants, excludeAssignmentId: null, request.AcknowledgeExceedsMaxGroupSize, ct);
+        if (exceedsError is not null)
+            return Result<Guid>.Fail(exceedsError);
 
         // Heractiveer de geweigerde toewijzing (hergebruik de rij i.p.v. een duplicaat
         // te maken die de unieke index zou schenden).
@@ -140,6 +150,14 @@ public class AssignmentService(
             excludeAssignmentId: assignment.Id, ct);
         if (capacityError is not null)
             return Result<bool>.Fail(capacityError);
+
+        // Waarschuwing (geen blokkade) als het nieuwe slot groter wordt dan iemands gekozen maximum.
+        var exceedsError = await WarnWhenSlotExceedsMaxGroupSizeAsync(
+            seriesId, organizationId, request.WeeklyTemplateEntryId,
+            addedParticipants: GetParticipants(assignment),
+            excludeAssignmentId: assignment.Id, request.AcknowledgeExceedsMaxGroupSize, ct);
+        if (exceedsError is not null)
+            return Result<bool>.Fail(exceedsError);
 
         // Oud slot vastleggen vóór de wijziging (nodig voor de "verplaatst"-mail).
         var wasConfirmed = assignment.Status == ScheduleAssignmentStatus.Confirmed;
@@ -367,6 +385,61 @@ public class AssignmentService(
 
         await unitOfWork.SaveChangesAsync(ct);
         return Result<bool>.Ok(true);
+    }
+
+    private sealed record Participant(string Name, int MaxGroupSize);
+
+    private static List<Participant> GetParticipants(IEnumerable<Enrollment> enrollments)
+    {
+        List<Enrollment> active = enrollments
+            .Where(e => e.Status is EnrollmentStatus.Confirmed or EnrollmentStatus.Pending or EnrollmentStatus.PendingPayment)
+            .ToList();
+
+        // Het maximum is nooit lager dan de eigen groep, ook niet bij onverwachte data (zoals in de planner).
+        return active
+            .Select(e => new Participant(e.StudentName, Math.Max(e.MaxGroupSize, active.Count)))
+            .ToList();
+    }
+
+    private static List<Participant> GetParticipants(ScheduleAssignment assignment)
+    {
+        if (assignment.Status == ScheduleAssignmentStatus.Declined)
+            return [];
+
+        if (assignment.EnrollmentGroup is not null)
+            return GetParticipants(assignment.EnrollmentGroup.Members);
+
+        return assignment.Enrollment is not null ? GetParticipants([assignment.Enrollment]) : [];
+    }
+
+    /// <summary>
+    /// Een slot mag niet groter worden dan het gekozen maximum aantal personen van wie erin zit. Anders dan bij
+    /// de capaciteit is dit een waarschuwing: de admin kan ze bewust negeren (bv. na overleg met de speler) door
+    /// <paramref name="acknowledged"/> mee te sturen. De automatische planning houdt het maximum wel altijd aan.
+    /// Geeft een <see cref="ErrorCodes.Conflict"/> (HTTP 409) terug zolang het niet bevestigd is.
+    /// </summary>
+    private async Task<Error?> WarnWhenSlotExceedsMaxGroupSizeAsync(
+        Guid seriesId, Guid organizationId, Guid slotId, List<Participant> addedParticipants,
+        Guid? excludeAssignmentId, bool acknowledged, CancellationToken ct)
+    {
+        if (acknowledged || addedParticipants.Count == 0)
+            return null;
+
+        var existing = await scheduleAssignmentRepo.GetBySeriesAsync(seriesId, organizationId, ct);
+        List<Participant> inSlot = existing
+            .Where(a => a.WeeklyTemplateEntryId == slotId && a.Id != excludeAssignmentId)
+            .SelectMany(GetParticipants)
+            .Concat(addedParticipants)
+            .ToList();
+
+        int total = inSlot.Count;
+        List<Participant> tooSmall = inSlot.Where(p => p.MaxGroupSize < total).ToList();
+        if (tooSmall.Count == 0)
+            return null;
+
+        string who = string.Join(", ", tooSmall.Select(p => $"{p.Name} (max. {p.MaxGroupSize})"));
+        return new Error(ErrorCodes.Conflict,
+            $"Dit tijdslot zou {total} personen tellen, meer dan het gekozen maximum van: {who}.");
     }
 
     private async Task<Error?> EnsureSlotCapacityAsync(

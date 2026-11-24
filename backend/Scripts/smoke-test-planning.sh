@@ -100,7 +100,7 @@ resp=$(invoke_api POST "/public/lessonseries/$seriesId/enroll" "{
     \"studentEmail\": \"solo.test@smoke.com\",
     \"responses\": [],
     \"enrollmentType\": \"solo\",
-    \"isOpenToGrouping\": true,
+    \"maxGroupSize\": 4,
     \"timeSlotPreferences\": [{\"weeklyTemplateEntryId\": \"$slotId\", \"preference\": 2}]
 }")
 check "Solo enrollment with preferences" "200" "$resp"
@@ -113,7 +113,7 @@ resp=$(invoke_api POST "/public/lessonseries/$seriesId/enroll" "{
     \"studentEmail\": \"solo2.test@smoke.com\",
     \"responses\": [],
     \"enrollmentType\": \"solo\",
-    \"isOpenToGrouping\": true,
+    \"maxGroupSize\": 4,
     \"timeSlotPreferences\": [{\"weeklyTemplateEntryId\": \"$slotId\", \"preference\": 2}]
 }")
 check "Second solo enrollment" "200" "$resp"
@@ -126,7 +126,7 @@ resp=$(invoke_api POST "/public/lessonseries/$seriesId/enroll" "{
     \"studentEmail\": \"group.leader@smoke.com\",
     \"responses\": [],
     \"enrollmentType\": \"group\",
-    \"isOpenToGrouping\": false,
+    \"maxGroupSize\": null,
     \"groupMembers\": [
         {\"studentName\": \"Member One\", \"studentEmail\": \"member1@smoke.com\"},
         {\"studentName\": \"Member Two\", \"studentEmail\": \"member2@smoke.com\"}
@@ -146,7 +146,7 @@ echo "  Enrollments with preferences: $enrollCount"
 soloIds=$(echo "$LAST_BODY" | python3 -c "
 import sys, json
 data = json.load(sys.stdin)
-solos = [e['id'] for e in data if not e.get('enrollmentGroupId') and e.get('isOpenToGrouping')]
+solos = [e['id'] for e in data if not e.get('enrollmentGroupId') and (e.get('maxGroupSize') or 1) > 1]
 print(','.join(solos[:2]) if len(solos) >= 2 else '')
 " 2>/dev/null)
 echo ""

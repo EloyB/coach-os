@@ -58,7 +58,14 @@ public class Enrollment : BaseEntity
     public DateTime? ActiveSince { get; set; }
     public string? Notes { get; set; }
     public Guid? EnrollmentGroupId { get; set; }
-    public bool IsOpenToGrouping { get; set; }
+
+    /// <summary>
+    /// Maximum aantal personen (inclusief de eigen groep) waarmee deze inschrijving in één tijdslot mag zitten:
+    /// 1 = solo, 2 = duo, 3 = trio, 4 = groep van vier. Een groep kiest één waarde voor iedereen: de leden
+    /// erven die van de leider. De automatische planning plaatst niemand in een slot met meer personen.
+    /// Vervangt de vroegere vlag "open voor groepering".
+    /// </summary>
+    public int MaxGroupSize { get; set; } = 1;
 
     /// <summary>
     /// Prijsoptie die de speler koos bij mode ManualOption. Null voor automatische

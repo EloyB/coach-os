@@ -17,6 +17,9 @@ public class PublicLessonSerieDto
     public int MinAge { get; set; }
     public int MaxAge { get; set; }
     public int EnrollmentCount { get; set; }
+    /// <summary>Hoogste maximum aantal personen per tijdslot dat een deelnemer voor deze reeks kan kiezen (1 tot 4).</summary>
+    public int MaxGroupSize { get; init; }
+
     public int MinimumAvailableSlots { get; set; }
     public bool AllowSoloEnrollment { get; set; }
     public bool AllowGroupEnrollment { get; set; }

@@ -67,7 +67,8 @@ internal static class PlanningProposalBuilder
                 EnrollmentIds: memberEnrollments.Select(e => e.Id).ToList(),
                 StudentNames: memberEnrollments.Select(e => e.StudentName).ToList(),
                 Size: memberEnrollments.Count,
-                IsOpenToGrouping: leaderEnrollment?.IsOpenToGrouping ?? false,
+                // Een groep kiest één maximum voor iedereen: dat van de leider (leden erven het).
+                MaxGroupSize: leaderEnrollment?.MaxGroupSize ?? memberEnrollments.Min(e => e.MaxGroupSize),
                 Preferences: groupPrefs));
 
             foreach (var e in memberEnrollments)
@@ -85,7 +86,7 @@ internal static class PlanningProposalBuilder
                 EnrollmentIds: [enrollment.Id],
                 StudentNames: [enrollment.StudentName],
                 Size: 1,
-                IsOpenToGrouping: enrollment.IsOpenToGrouping,
+                MaxGroupSize: enrollment.MaxGroupSize,
                 Preferences: prefs));
         }
 
@@ -156,6 +157,29 @@ internal static class PlanningProposalBuilder
         return assignment.Enrollment is not null && IsActiveEnrollment(assignment.Enrollment)
             ? 1
             : 0;
+    }
+
+    /// <summary>
+    /// Het strengste maximum van wie in deze toewijzing zit (een groep telt als één: het kleinste van haar leden).
+    /// <see cref="int.MaxValue"/> als er niemand actief in zit (bv. een geweigerde toewijzing).
+    /// </summary>
+    public static int GetAssignmentMaxGroupSize(ScheduleAssignment assignment)
+    {
+        if (assignment.Status == ScheduleAssignmentStatus.Declined)
+            return int.MaxValue;
+
+        if (assignment.EnrollmentGroup is not null)
+        {
+            List<int> maxima = assignment.EnrollmentGroup.Members
+                .Where(IsActiveEnrollment)
+                .Select(m => m.MaxGroupSize)
+                .ToList();
+            return maxima.Count > 0 ? Math.Max(maxima.Min(), maxima.Count) : int.MaxValue;
+        }
+
+        return assignment.Enrollment is not null && IsActiveEnrollment(assignment.Enrollment)
+            ? Math.Max(assignment.Enrollment.MaxGroupSize, 1)
+            : int.MaxValue;
     }
 
     private static bool IsActiveEnrollment(Enrollment enrollment)

@@ -6,7 +6,7 @@ public record EnrollmentWithPreferencesDto
     public string StudentName { get; init; } = string.Empty;
     public string StudentEmail { get; init; } = string.Empty;
     public string Status { get; init; } = string.Empty;
-    public bool IsOpenToGrouping { get; init; }
+    public int MaxGroupSize { get; init; }
     public Guid? EnrollmentGroupId { get; init; }
     public string? GroupName { get; init; }
     public bool IsGroupLeader { get; init; }

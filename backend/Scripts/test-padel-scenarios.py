@@ -144,7 +144,7 @@ def fetch_slots(series_id):
 def enroll(series_id, name, email, prefs, enroll_type="solo", open_to_grouping=False, group_members=None):
     body = {
         "studentName": name, "studentEmail": email, "responses": [],
-        "enrollmentType": enroll_type, "isOpenToGrouping": open_to_grouping,
+        "enrollmentType": enroll_type, "maxGroupSize": 4 if open_to_grouping else None,
         "timeSlotPreferences": prefs,
     }
     if group_members:

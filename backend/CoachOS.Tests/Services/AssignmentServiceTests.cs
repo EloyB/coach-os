@@ -130,6 +130,7 @@ public class AssignmentServiceTests
         };
         var enrollment = new Enrollment
         {
+            MaxGroupSize = 4, // capaciteitstests: het maximum aantal personen speelt hier geen rol
             Id = Guid.NewGuid(), LessonSerieId = SeriesId,
             StudentName = "Bram", ContactEmail = "bram@test.be",
         };
@@ -231,13 +232,14 @@ public class AssignmentServiceTests
             LessonSerieId = SeriesId,
             Members =
             [
-                new() { Status = EnrollmentStatus.Cancelled },
-                new() { Status = EnrollmentStatus.Cancelled },
-                new() { Status = EnrollmentStatus.Cancelled },
+                new() { MaxGroupSize = 4, Status = EnrollmentStatus.Cancelled },
+                new() { MaxGroupSize = 4, Status = EnrollmentStatus.Cancelled },
+                new() { MaxGroupSize = 4, Status = EnrollmentStatus.Cancelled },
             ],
         };
         var activeExistingEnrollment = new Enrollment
         {
+            MaxGroupSize = 4, // capaciteitstests: het maximum aantal personen speelt hier geen rol
             Id = Guid.NewGuid(),
             LessonSerieId = SeriesId,
             Status = EnrollmentStatus.Pending,
@@ -254,6 +256,7 @@ public class AssignmentServiceTests
         };
         var newEnrollment = new Enrollment
         {
+            MaxGroupSize = 4, // capaciteitstests: het maximum aantal personen speelt hier geen rol
             Id = Guid.NewGuid(),
             LessonSerieId = SeriesId,
             Status = EnrollmentStatus.Pending,
@@ -296,9 +299,9 @@ public class AssignmentServiceTests
             LessonSerieId = SeriesId,
             Members =
             [
-                new() { Status = EnrollmentStatus.Confirmed },
-                new() { Status = EnrollmentStatus.Cancelled },
-                new() { Status = EnrollmentStatus.Cancelled },
+                new() { MaxGroupSize = 4, Status = EnrollmentStatus.Confirmed },
+                new() { MaxGroupSize = 4, Status = EnrollmentStatus.Cancelled },
+                new() { MaxGroupSize = 4, Status = EnrollmentStatus.Cancelled },
             ],
         };
         var existing = Enumerable.Range(0, 3).Select(_ => new ScheduleAssignment
@@ -306,7 +309,7 @@ public class AssignmentServiceTests
             Id = Guid.NewGuid(),
             LessonSerieId = SeriesId,
             WeeklyTemplateEntryId = SlotId,
-            Enrollment = new Enrollment { Status = EnrollmentStatus.Confirmed },
+            Enrollment = new Enrollment { MaxGroupSize = 4, Status = EnrollmentStatus.Confirmed },
             Status = ScheduleAssignmentStatus.Proposed,
         }).ToList();
 
@@ -338,6 +341,7 @@ public class AssignmentServiceTests
 
         var enrollment = new Enrollment
         {
+            MaxGroupSize = 4, // capaciteitstests: het maximum aantal personen speelt hier geen rol
             Id = Guid.NewGuid(), LessonSerieId = SeriesId,
             Status = EnrollmentStatus.Pending, StudentName = "Emma Claes",
         };
@@ -375,6 +379,7 @@ public class AssignmentServiceTests
         var series = PlanningServiceTests.BuildSeries(withSlots: true, slotId: SlotId);
         var enrollment = new Enrollment
         {
+            MaxGroupSize = 4, // capaciteitstests: het maximum aantal personen speelt hier geen rol
             Id = Guid.NewGuid(), LessonSerieId = SeriesId,
             Status = EnrollmentStatus.Pending, StudentName = "Emma Claes",
         };
@@ -411,6 +416,7 @@ public class AssignmentServiceTests
         var series = PlanningServiceTests.BuildSeries(withSlots: true, slotId: SlotId);
         var enrollment = new Enrollment
         {
+            MaxGroupSize = 4, // capaciteitstests: het maximum aantal personen speelt hier geen rol
             Id = Guid.NewGuid(), LessonSerieId = SeriesId,
             Status = EnrollmentStatus.Pending, StudentName = "Emma Claes",
         };
@@ -459,9 +465,9 @@ public class AssignmentServiceTests
             {
                 Members =
                 [
-                    new() { Status = EnrollmentStatus.Confirmed },
-                    new() { Status = EnrollmentStatus.Cancelled },
-                    new() { Status = EnrollmentStatus.Cancelled },
+                    new() { MaxGroupSize = 4, Status = EnrollmentStatus.Confirmed },
+                    new() { MaxGroupSize = 4, Status = EnrollmentStatus.Cancelled },
+                    new() { MaxGroupSize = 4, Status = EnrollmentStatus.Cancelled },
                 ],
             },
             Status = ScheduleAssignmentStatus.Proposed,
@@ -471,7 +477,7 @@ public class AssignmentServiceTests
             Id = Guid.NewGuid(),
             LessonSerieId = SeriesId,
             WeeklyTemplateEntryId = newSlotId,
-            Enrollment = new Enrollment { Status = EnrollmentStatus.Confirmed },
+            Enrollment = new Enrollment { MaxGroupSize = 4, Status = EnrollmentStatus.Confirmed },
             Status = ScheduleAssignmentStatus.Proposed,
         }).Append(assignment).ToList();
 
@@ -544,6 +550,7 @@ public class AssignmentServiceTests
         {
             members.Add(new Enrollment
             {
+                MaxGroupSize = 4, // capaciteitstests: het maximum aantal personen speelt hier geen rol
                 Id = Guid.NewGuid(), OrganizationId = OrgId, LessonSerieId = SeriesId,
                 StudentName = $"Lid {i}", EnrolledAt = new DateTime(2026, 1, 1).AddDays(i),
                 Status = status, EnrollmentGroupId = groupId,

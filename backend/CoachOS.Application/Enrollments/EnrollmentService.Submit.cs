@@ -150,8 +150,23 @@ public partial class EnrollmentService
 
         // 4a-bis. Minimum aantal beschikbare tijdvakken: enkel "Beschikbaar" en "Voorkeur" tellen mee,
         //     enkel voor weekslots van déze reeks. Zonder weekslots valt er niets te kiezen.
-        return CheckMinimumAvailableSlots(request, series);
+        Error? minimumSlotsError = CheckMinimumAvailableSlots(request, series);
+        if (minimumSlotsError is not null)
+            return minimumSlotsError;
+
+        // 4a-ter. Het gekozen maximum aantal personen per tijdslot: tussen de eigen groepsgrootte en wat de reeks toelaat.
+        return GroupSizeRules.Validate(
+            ResolveMaxGroupSize(request),
+            CalculateGroupSize(request),
+            GroupSizeRules.SeriesMax(series.WeeklyTemplate.Select(w => w.MaxStudents)));
     }
+
+    /// <summary>
+    /// Het gekozen maximum aantal personen per tijdslot. Zonder keuze (bv. een oudere pagina) is dat de eigen
+    /// groepsgrootte: niet samenvoegen met anderen. Leden erven het van de leider.
+    /// </summary>
+    private static int ResolveMaxGroupSize(SubmitEnrollmentRequest request)
+        => request.MaxGroupSize ?? CalculateGroupSize(request);
 
     /// <summary>
     /// Valideert de antwoorden van elk groepslid tegen de velden van het formulier, net als die van de leider:
@@ -313,7 +328,7 @@ public partial class EnrollmentService
             StudentPhone = request.StudentPhone,
             Status = EnrollmentStatus.Pending,
             EnrolledAt = timeProvider.GetUtcNow().UtcDateTime,
-            IsOpenToGrouping = request.IsOpenToGrouping,
+            MaxGroupSize = ResolveMaxGroupSize(request),
             DateOfBirth = ParseBirthDate(request.DateOfBirth),
             Category = ResolveCategory(request.DateOfBirth, context.YouthMaxAge, context.EnrolledOn),
             SelectedPriceOptionId = request.SelectedPriceOptionId,
@@ -376,6 +391,7 @@ public partial class EnrollmentService
                 DateOfBirth = ParseBirthDate(member.DateOfBirth),
                 Category = ResolveCategory(member.DateOfBirth, context.YouthMaxAge, context.EnrolledOn),
                 SelectedPriceOptionId = request.SelectedPriceOptionId,
+                MaxGroupSize = ResolveMaxGroupSize(request),
             };
 
             await enrollmentRepo.AddAsync(memberEnrollment, ct);

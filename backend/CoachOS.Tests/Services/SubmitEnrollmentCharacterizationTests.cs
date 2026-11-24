@@ -145,7 +145,7 @@ public partial class SubmitEnrollmentCharacterizationTests
                 StudentEmail = "  Anna@Test.BE ",
                 StudentPhone = "0470 12 34 56",
                 DateOfBirth = "2016-05-12",
-                IsOpenToGrouping = true,
+                MaxGroupSize = 3,
                 SelectedPriceOptionId = PriceOptionId,
                 Responses =
                 [
@@ -525,6 +525,146 @@ public partial class SubmitEnrollmentCharacterizationTests
                         Responses = [new FormResponseValueDto { FormFieldId = FieldRequiredId, Value = "Lore antwoord" }],
                     },
                 ],
+            },
+        });
+
+        // Maximum aantal personen per tijdslot (#387)
+        yield return Case("group_max_group_size_is_inherited_by_members", () => new Scenario
+        {
+            Series = BaseSeries(),
+            Request = new SubmitEnrollmentRequest
+            {
+                StudentName = "Mira",
+                StudentEmail = "mira@test.be",
+                DateOfBirth = "1980-01-01",
+                EnrollmentType = "group",
+                MaxGroupSize = 4,
+                TimeSlotPreferences = Prefs((SlotMonId, 1)),
+                GroupMembers =
+                [
+                    new GroupMemberDto { StudentName = "Nore", DateOfBirth = "2010-01-01" },
+                    new GroupMemberDto { StudentName = "Oscar", DateOfBirth = "2011-01-01" },
+                ],
+            },
+        });
+
+        yield return Case("fail_max_group_size_lower_than_own_group_size", () => new Scenario
+        {
+            Series = BaseSeries(),
+            Request = new SubmitEnrollmentRequest
+            {
+                StudentName = "Pol",
+                StudentEmail = "pol@test.be",
+                DateOfBirth = "1980-01-01",
+                EnrollmentType = "group",
+                MaxGroupSize = 2,
+                TimeSlotPreferences = Prefs((SlotMonId, 1)),
+                GroupMembers =
+                [
+                    new GroupMemberDto { StudentName = "Quin", DateOfBirth = "2010-01-01" },
+                    new GroupMemberDto { StudentName = "Rosa", DateOfBirth = "2011-01-01" },
+                ],
+            },
+        });
+
+        yield return Case("fail_max_group_size_above_series_maximum", () =>
+        {
+            LessonSerie series = BaseSeries();
+            foreach (WeeklyTemplateEntry slot in series.WeeklyTemplate) slot.MaxStudents = 2;
+            return new Scenario
+            {
+                Series = series,
+                Request = new SubmitEnrollmentRequest
+                {
+                    StudentName = "Sam",
+                    StudentEmail = "sam2@test.be",
+                    DateOfBirth = "1980-01-01",
+                    MaxGroupSize = 3,
+                    TimeSlotPreferences = Prefs((SlotMonId, 1)),
+                },
+            };
+        });
+
+        yield return Case("ok_max_group_size_equals_series_maximum", () =>
+        {
+            LessonSerie series = BaseSeries();
+            foreach (WeeklyTemplateEntry slot in series.WeeklyTemplate) slot.MaxStudents = 2;
+            return new Scenario
+            {
+                Series = series,
+                Request = new SubmitEnrollmentRequest
+                {
+                    StudentName = "Tina",
+                    StudentEmail = "tina@test.be",
+                    DateOfBirth = "1980-01-01",
+                    MaxGroupSize = 2,
+                    TimeSlotPreferences = Prefs((SlotMonId, 1)),
+                },
+            };
+        });
+
+        yield return Case("fail_max_group_size_out_of_range", () => new Scenario
+        {
+            Series = BaseSeries(),
+            Request = new SubmitEnrollmentRequest
+            {
+                StudentName = "Ulla",
+                StudentEmail = "ulla@test.be",
+                DateOfBirth = "1980-01-01",
+                MaxGroupSize = 5,
+                TimeSlotPreferences = Prefs((SlotMonId, 1)),
+            },
+        });
+
+        yield return Case("ok_group_larger_than_series_maximum_is_not_blocked", () =>
+        {
+            LessonSerie series = BaseSeries();
+            foreach (WeeklyTemplateEntry slot in series.WeeklyTemplate) slot.MaxStudents = 2;
+            return new Scenario
+            {
+                Series = series,
+                Request = new SubmitEnrollmentRequest
+                {
+                    StudentName = "Vic",
+                    StudentEmail = "vic@test.be",
+                    DateOfBirth = "1980-01-01",
+                    EnrollmentType = "group",
+                    TimeSlotPreferences = Prefs((SlotMonId, 1)),
+                    GroupMembers =
+                    [
+                        new GroupMemberDto { StudentName = "Wout", DateOfBirth = "2010-01-01" },
+                        new GroupMemberDto { StudentName = "Xavi", DateOfBirth = "2011-01-01" },
+                    ],
+                },
+            };
+        });
+
+        yield return Case("ok_series_without_weekly_template_allows_up_to_four", () =>
+        {
+            LessonSerie series = BaseSeries();
+            series.WeeklyTemplate = [];
+            return new Scenario
+            {
+                Series = series,
+                Request = new SubmitEnrollmentRequest
+                {
+                    StudentName = "Yara2",
+                    StudentEmail = "yara2@test.be",
+                    DateOfBirth = "1980-01-01",
+                    MaxGroupSize = 4,
+                },
+            };
+        });
+
+        yield return Case("fail_precedence_minimum_slots_before_max_group_size", () => new Scenario
+        {
+            Series = BaseSeries(),
+            Request = new SubmitEnrollmentRequest
+            {
+                StudentName = "Zeno",
+                StudentEmail = "zeno@test.be",
+                DateOfBirth = "1980-01-01",
+                MaxGroupSize = 5,
             },
         });
 
