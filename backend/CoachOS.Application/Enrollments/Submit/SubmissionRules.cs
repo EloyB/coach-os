@@ -1,4 +1,5 @@
 using CoachOS.Application.Common;
+using CoachOS.Domain.Common;
 using CoachOS.Domain.Enums;
 using CoachOS.Domain.Models;
 
@@ -24,6 +25,7 @@ internal static class SubmissionRules
         new EnrollmentModeRule(),
         new AgeLimitRule(),
         new MinimumAvailableSlotsRule(),
+        new MaxGroupSizeRule(),
     ];
 
     public static Error? FirstViolation(Submission submission)
@@ -116,4 +118,14 @@ internal sealed class MinimumAvailableSlotsRule : ISubmissionRule
             : new Error(ErrorCodes.Validation,
                 $"Kies minstens {required} tijdvak{(required == 1 ? "" : "ken")} waarop je kunt.");
     }
+}
+
+/// <summary>Het gekozen maximum aantal personen per tijdslot: tussen de eigen groepsgrootte en wat de reeks toelaat.</summary>
+internal sealed class MaxGroupSizeRule : ISubmissionRule
+{
+    public Error? Check(Submission submission)
+        => GroupSizeRules.Validate(
+            Submission.ResolveMaxGroupSize(submission.Request),
+            submission.Participants.Count,
+            GroupSizeRules.SeriesMax(submission.Series.WeeklyTemplate.Select(w => w.MaxStudents)));
 }

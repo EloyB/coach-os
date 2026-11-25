@@ -12,7 +12,7 @@ internal sealed record Participant(
     string ContactEmail,
     string? StudentEmail,
     string? Phone,
-    bool IsOpenToGrouping,
+    int MaxGroupSize,
     IReadOnlyList<FormResponseValueDto> Responses);
 
 /// <summary>
@@ -57,7 +57,7 @@ internal sealed class Submission
             EnrollmentEmails.ResolveContactEmail(request, null),
             EnrollmentEmails.Normalize(request.StudentEmail),
             request.StudentPhone,
-            request.IsOpenToGrouping,
+            ResolveMaxGroupSize(request),
             request.Responses);
 
         List<Participant> members = request.EnrollmentType == "group" && request.GroupMembers is not null
@@ -67,12 +67,20 @@ internal sealed class Submission
                 EnrollmentEmails.ResolveContactEmail(request, member),
                 string.IsNullOrWhiteSpace(member.StudentEmail) ? null : EnrollmentEmails.Normalize(member.StudentEmail),
                 member.StudentPhone,
-                IsOpenToGrouping: false,
+                ResolveMaxGroupSize(request),
                 member.Responses ?? [])).ToList()
             : [];
 
         return new Submission(series, form, request, leader, members);
     }
+
+    /// <summary>
+    /// Het gekozen maximum aantal personen per tijdslot. Zonder keuze (bv. een oudere pagina) is dat de eigen
+    /// groepsgrootte: niet samenvoegen met anderen. Leden erven het van de leider.
+    /// </summary>
+    public static int ResolveMaxGroupSize(SubmitEnrollmentRequest request)
+        => request.MaxGroupSize
+           ?? (request.EnrollmentType == "group" ? 1 + (request.GroupMembers?.Count ?? 0) : 1);
 
     /// <summary>
     /// Bouwt de rijen die de inschrijving wegschrijft: een inschrijving per deelnemer met zijn antwoorden,
@@ -133,7 +141,7 @@ internal sealed class Submission
             StudentPhone = participant.Phone,
             Status = EnrollmentStatus.Pending,
             EnrolledAt = enrolledAt,
-            IsOpenToGrouping = participant.IsOpenToGrouping,
+            MaxGroupSize = participant.MaxGroupSize,
             EnrollmentGroupId = groupId,
             DateOfBirth = DateOfBirthRules.ParseOrNull(participant.DateOfBirth),
             Category = EnrollmentAgeRules.ResolveCategory(participant.DateOfBirth, youthMaxAge, enrolledOn),

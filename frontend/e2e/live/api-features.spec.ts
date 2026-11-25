@@ -536,7 +536,6 @@ test.describe("Live API — geboortedatum en tariefcategorie", () => {
           studentPhone: "0470 12 34 56",
           dateOfBirth: "1985-02-20",
           enrollmentType: "group",
-          isOpenToGrouping: false,
           responses: [],
           groupMembers: [
             {

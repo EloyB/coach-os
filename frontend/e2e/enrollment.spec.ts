@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { TEST_PUBLIC_SERIES } from "./helpers";
+import { TEST_PUBLIC_SERIES, answerNotTogether } from "./helpers";
 
 const seriesId = "66666666-6666-6666-6666-666666666666";
 const API_BASE = "http://localhost:5142/api";
@@ -112,7 +112,7 @@ test.describe("Public Enrollment", () => {
     await expect(page.getByText("Voornaam")).toBeVisible();
     await expect(page.getByText("Achternaam")).toBeVisible();
     await expect(page.getByText("E-mailadres")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Inschrijven" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Inschrijven", exact: true })).toBeVisible();
   });
 
   test("links to the player terms and privacy statement under the submit button", async ({ page }) => {
@@ -145,7 +145,8 @@ test.describe("Public Enrollment", () => {
     await page.locator('input[type="tel"]').fill("0470 12 34 56");
     // Geboortedatum is verplicht sinds de tariefcategorieën (volwassene/jeugd).
     await page.locator('input[type="date"]').fill("1990-05-12");
-    await page.getByRole("button", { name: "Inschrijven" }).click();
+    await answerNotTogether(page);
+    await page.getByRole("button", { name: "Inschrijven", exact: true }).click();
 
     await expect(page.getByText("Ingeschreven!")).toBeVisible();
   });
@@ -164,7 +165,8 @@ test.describe("Public Enrollment", () => {
     await page.locator('input[type="tel"]').fill("0470 12 34 56");
     // Geboortedatum is verplicht sinds de tariefcategorieën (volwassene/jeugd).
     await page.locator('input[type="date"]').fill("1990-05-12");
-    await page.getByRole("button", { name: "Inschrijven" }).click();
+    await answerNotTogether(page);
+    await page.getByRole("button", { name: "Inschrijven", exact: true }).click();
 
     await expect(page.getByText("Inschrijven mislukt.")).toBeVisible();
   });
@@ -200,12 +202,9 @@ test.describe("Public Enrollment", () => {
     await page.locator('input[type="tel"]').fill("0470 12 34 56");
     await page.getByLabel(/geboortedatum/i).first().fill("1985-01-01");
 
-    // Switch to group enrollment. The radio input is visually hidden (sr-only),
-    // so click the label via its unique descriptive text.
-    await page.getByText("Ik schrijf meerdere personen in").click();
-
-    // Add a group member and fill it, leaving "eigen e-mailadres" unchecked.
-    await page.getByRole("button", { name: "Lid toevoegen" }).click();
+    // Add a group member (the enrollment type follows from the people) and fill it,
+    // leaving "eigen e-mailadres" unchecked.
+    await page.getByRole("button", { name: "Nog iemand inschrijven" }).click();
     await page.getByPlaceholder("Naam").fill("Lotte Peeters");
     await page.getByLabel(/geboortedatum 1/i).fill("2015-03-04");
 
@@ -214,7 +213,8 @@ test.describe("Public Enrollment", () => {
       page.getByText("Alle communicatie loopt via ouder@example.com")
     ).toBeVisible();
 
-    await page.getByRole("button", { name: "Inschrijven" }).click();
+    await answerNotTogether(page);
+    await page.getByRole("button", { name: "Inschrijven", exact: true }).click();
 
     await expect
       .poll(() => postBody?.groupMembers)
@@ -274,7 +274,8 @@ test.describe("Public Enrollment", () => {
     await page.locator('input[type="email"]').fill("sophie@example.be");
     await page.locator('input[type="tel"]').fill("0470 12 34 56");
     await page.locator('input[type="date"]').fill("1990-05-12");
-    await page.getByRole("button", { name: "Inschrijven" }).click();
+    await answerNotTogether(page);
+    await page.getByRole("button", { name: "Inschrijven", exact: true }).click();
 
     await expect(page.getByText("Ingeschreven!")).toBeVisible();
 
@@ -332,7 +333,8 @@ test.describe("Public Enrollment", () => {
     // Slechts één tijdvak gekozen: geblokkeerd met foutmelding.
     const rows = page.locator(".sm\\:grid");
     await rows.filter({ hasText: "10:00 — 11:00" }).first().getByRole("radio").first().check({ force: true });
-    await page.getByRole("button", { name: "Inschrijven" }).click();
+    await answerNotTogether(page);
+    await page.getByRole("button", { name: "Inschrijven", exact: true }).click();
     await expect(page.getByRole("alert").filter({ hasText: "Kies minstens 2 tijdvakken" })).toBeVisible();
     expect(postCount).toBe(0);
   });

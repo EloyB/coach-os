@@ -15,7 +15,11 @@ public record UpdateBasicEnrollmentRequest
     /// <summary>Geboortedatum in formaat yyyy-MM-dd.</summary>
     public string DateOfBirth { get; init; } = string.Empty;
 
-    public bool IsOpenToGrouping { get; init; }
+    /// <summary>
+    /// Nieuw maximum aantal personen per tijdslot (1 tot 4). Bij een groep geldt het voor alle leden.
+    /// Null laat het ongemoeid.
+    /// </summary>
+    public int? MaxGroupSize { get; init; }
 
     /// <summary>Nieuwe prijsoptie voor deze inschrijving (en, bij een groep, alle leden). Null laat ze ongemoeid/leeg.</summary>
     public Guid? SelectedPriceOptionId { get; init; }

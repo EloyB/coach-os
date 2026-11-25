@@ -254,4 +254,22 @@ public class SubmitEnrollmentRequestValidatorTests
     {
         _validator.Validate(ValidGroup()).IsValid.Should().BeTrue();
     }
+
+    // ── Maximum aantal personen per tijdslot (#387) ──────────────────────────
+
+    [TestCase(1)]
+    [TestCase(4)]
+    public void Validate_MaxGroupSizeBetweenOneAndFour_IsValid(int max)
+        => _validator.Validate(ValidGroup() with { MaxGroupSize = max }).IsValid.Should().BeTrue();
+
+    [Test]
+    public void Validate_NoMaxGroupSize_IsValid()
+        => _validator.Validate(ValidGroup() with { MaxGroupSize = null }).IsValid.Should().BeTrue();
+
+    [TestCase(0)]
+    [TestCase(5)]
+    [TestCase(-1)]
+    public void Validate_MaxGroupSizeOutsideOneToFour_IsRejected(int max)
+        => _validator.Validate(ValidGroup() with { MaxGroupSize = max }).Errors
+            .Should().ContainSingle(e => e.ErrorMessage.Contains("tussen 1 en 4"));
 }

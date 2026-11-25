@@ -39,6 +39,8 @@ export interface LessonSeriesDto {
   minAge: number;
   maxAge: number;
   minimumAvailableSlots: number;
+  /** Hoogste maximum aantal personen per tijdslot dat voor deze reeks gekozen kan worden (1 tot 4). */
+  maxGroupSize: number;
   createdAt: string;
   lessons: LessonDto[];
   allowSoloEnrollment: boolean;

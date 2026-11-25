@@ -6,7 +6,7 @@ uow.BeginTransaction(Serializable)
 enrollments.CountActiveBySeries(00000000-0000-0000-0000-0000000000b1) => 0
 enrollments.IsDuplicateParticipant(00000000-0000-0000-0000-0000000000b1, 'sam@test.be', 'Sam', 1990-01-01) => False
 uow.CommitTransaction
-  persisted Enrollment {"organizationId":"00000000-0000-0000-0000-0000000000a1","studentName":"Sam","contactEmail":"sam@test.be","studentEmail":"sam@test.be","studentPhone":null,"dateOfBirth":"1990-01-01","category":"Adult","lessonId":null,"lessonSerieId":"00000000-0000-0000-0000-0000000000b1","status":"Pending","enrolledAt":"2026-06-15T10:00:00Z","activeSince":null,"notes":null,"enrollmentGroupId":null,"isOpenToGrouping":false,"selectedPriceOptionId":null,"anonymizedAt":null,"id":"<guid-1>"}
+  persisted Enrollment {"organizationId":"00000000-0000-0000-0000-0000000000a1","studentName":"Sam","contactEmail":"sam@test.be","studentEmail":"sam@test.be","studentPhone":null,"dateOfBirth":"1990-01-01","category":"Adult","lessonId":null,"lessonSerieId":"00000000-0000-0000-0000-0000000000b1","status":"Pending","enrolledAt":"2026-06-15T10:00:00Z","activeSince":null,"notes":null,"enrollmentGroupId":null,"maxGroupSize":1,"selectedPriceOptionId":null,"anonymizedAt":null,"id":"<guid-1>"}
   persisted FormResponse {"enrollmentId":"<guid-1>","formFieldId":"00000000-0000-0000-0000-0000000000d1","value":"Sam ervaring"}
   persisted FormResponse {"enrollmentId":"<guid-1>","formFieldId":"00000000-0000-0000-0000-0000000000d3","value":"Via een vriend"}
   persisted TimeSlotPreference {"organizationId":"00000000-0000-0000-0000-0000000000a1","enrollmentId":"<guid-1>","weeklyTemplateEntryId":"00000000-0000-0000-0000-0000000000e1","preference":"Available"}

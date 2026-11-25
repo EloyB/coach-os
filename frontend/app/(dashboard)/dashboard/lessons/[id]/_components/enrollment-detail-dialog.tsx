@@ -291,8 +291,8 @@ export function EnrollmentDetailDialog({
                 </div>
               )}
               <DetailRow
-                label={t("openToGrouping")}
-                value={enrollment.isOpenToGrouping ? t("yes") : t("no")}
+                label={t("maxGroupSize")}
+                value={String(enrollment.maxGroupSize)}
               />
             </dl>
 

@@ -105,7 +105,7 @@ echo "   ├──────────────────────�
 # Solo 1: Emma — prefers Monday, available Wednesday, can't Friday
 invoke POST "/public/lessonseries/$seriesId/enroll" "{
     \"studentName\": \"Emma Claes\", \"studentEmail\": \"emma@test.be\", \"responses\": [],
-    \"enrollmentType\": \"solo\", \"isOpenToGrouping\": true,
+    \"enrollmentType\": \"solo\", \"maxGroupSize\": 4,
     \"timeSlotPreferences\": [
         {\"weeklyTemplateEntryId\": \"$slot1\", \"preference\": 2},
         {\"weeklyTemplateEntryId\": \"$slot2\", \"preference\": 1},
@@ -117,7 +117,7 @@ echo "   │ Emma Claes (solo/open)│    P    │    A    │    X    │"
 # Solo 2: Lucas — prefers Monday, available Wednesday, can't Friday
 invoke POST "/public/lessonseries/$seriesId/enroll" "{
     \"studentName\": \"Lucas Peeters\", \"studentEmail\": \"lucas@test.be\", \"responses\": [],
-    \"enrollmentType\": \"solo\", \"isOpenToGrouping\": true,
+    \"enrollmentType\": \"solo\", \"maxGroupSize\": 4,
     \"timeSlotPreferences\": [
         {\"weeklyTemplateEntryId\": \"$slot1\", \"preference\": 2},
         {\"weeklyTemplateEntryId\": \"$slot2\", \"preference\": 1},
@@ -129,7 +129,7 @@ echo "   │ Lucas Peeters(solo/op)│    P    │    A    │    X    │"
 # Solo 3: Lotte — prefers Wednesday, available Friday
 invoke POST "/public/lessonseries/$seriesId/enroll" "{
     \"studentName\": \"Lotte Van Damme\", \"studentEmail\": \"lotte@test.be\", \"responses\": [],
-    \"enrollmentType\": \"solo\", \"isOpenToGrouping\": true,
+    \"enrollmentType\": \"solo\", \"maxGroupSize\": 4,
     \"timeSlotPreferences\": [
         {\"weeklyTemplateEntryId\": \"$slot1\", \"preference\": 3},
         {\"weeklyTemplateEntryId\": \"$slot2\", \"preference\": 2},
@@ -141,7 +141,7 @@ echo "   │ Lotte Van Dam(solo/op)│    X    │    P    │    A    │"
 # Solo 4: Noah — prefers Friday, available Wednesday
 invoke POST "/public/lessonseries/$seriesId/enroll" "{
     \"studentName\": \"Noah Willems\", \"studentEmail\": \"noah@test.be\", \"responses\": [],
-    \"enrollmentType\": \"solo\", \"isOpenToGrouping\": false,
+    \"enrollmentType\": \"solo\", \"maxGroupSize\": null,
     \"timeSlotPreferences\": [
         {\"weeklyTemplateEntryId\": \"$slot1\", \"preference\": 3},
         {\"weeklyTemplateEntryId\": \"$slot2\", \"preference\": 1},
@@ -153,7 +153,7 @@ echo "   │ Noah Willems (solo)   │    X    │    A    │    P    │"
 # Solo 5: Julie — available everywhere, prefers Friday
 invoke POST "/public/lessonseries/$seriesId/enroll" "{
     \"studentName\": \"Julie Maes\", \"studentEmail\": \"julie@test.be\", \"responses\": [],
-    \"enrollmentType\": \"solo\", \"isOpenToGrouping\": true,
+    \"enrollmentType\": \"solo\", \"maxGroupSize\": 4,
     \"timeSlotPreferences\": [
         {\"weeklyTemplateEntryId\": \"$slot1\", \"preference\": 1},
         {\"weeklyTemplateEntryId\": \"$slot2\", \"preference\": 1},
@@ -165,7 +165,7 @@ echo "   │ Julie Maes (solo/open)│    A    │    A    │    P    │"
 # Group 1: Familie Dubois — parent + 2 kids, prefer Monday
 invoke POST "/public/lessonseries/$seriesId/enroll" "{
     \"studentName\": \"Axel Dubois\", \"studentEmail\": \"axel@test.be\", \"responses\": [],
-    \"enrollmentType\": \"group\", \"isOpenToGrouping\": false,
+    \"enrollmentType\": \"group\", \"maxGroupSize\": null,
     \"groupMembers\": [
         {\"studentName\": \"Marie Dubois\", \"studentEmail\": \"marie.d@test.be\"},
         {\"studentName\": \"Tom Dubois\", \"studentEmail\": \"tom.d@test.be\"}
@@ -181,7 +181,7 @@ echo "   │ Groep Dubois (3 pers) │    P    │    A    │    X    │"
 # Solo 6: Sarah — only Wednesday
 invoke POST "/public/lessonseries/$seriesId/enroll" "{
     \"studentName\": \"Sarah Jacobs\", \"studentEmail\": \"sarah@test.be\", \"responses\": [],
-    \"enrollmentType\": \"solo\", \"isOpenToGrouping\": false,
+    \"enrollmentType\": \"solo\", \"maxGroupSize\": null,
     \"timeSlotPreferences\": [
         {\"weeklyTemplateEntryId\": \"$slot1\", \"preference\": 3},
         {\"weeklyTemplateEntryId\": \"$slot2\", \"preference\": 2},
@@ -193,7 +193,7 @@ echo "   │ Sarah Jacobs (solo)   │    X    │    P    │    X    │"
 # Solo 7: Thomas — prefers Monday, no other option
 invoke POST "/public/lessonseries/$seriesId/enroll" "{
     \"studentName\": \"Thomas Hermans\", \"studentEmail\": \"thomas@test.be\", \"responses\": [],
-    \"enrollmentType\": \"solo\", \"isOpenToGrouping\": true,
+    \"enrollmentType\": \"solo\", \"maxGroupSize\": 4,
     \"timeSlotPreferences\": [
         {\"weeklyTemplateEntryId\": \"$slot1\", \"preference\": 2},
         {\"weeklyTemplateEntryId\": \"$slot2\", \"preference\": 3},

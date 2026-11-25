@@ -6,7 +6,8 @@ public record PlanningEnrollmentDto
     public string StudentName { get; init; } = string.Empty;
     public string StudentEmail { get; init; } = string.Empty;
     public string? StudentPhone { get; init; }
-    public bool IsOpenToGrouping { get; init; }
+    /// <summary>Maximum aantal personen waarmee deze deelnemer (of groep) in één tijdslot wil zitten.</summary>
+    public int MaxGroupSize { get; init; }
     public Guid? GroupId { get; init; }
     /// <summary>Map of WeeklyTemplateEntryId → "Preferred" | "Available" | "Unavailable". Slots not in the map have no stated preference.</summary>
     public Dictionary<Guid, string> Preferences { get; init; } = new();

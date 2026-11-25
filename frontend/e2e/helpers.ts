@@ -97,6 +97,7 @@ export const TEST_SERIES: LessonSeriesDto[] = [
     minAge: 6,
     maxAge: 99,
     minimumAvailableSlots: 1,
+  maxGroupSize: 4,
     allowSoloEnrollment: true,
     allowGroupEnrollment: true,
     acceptOnlinePayment: false,
@@ -143,6 +144,7 @@ export const TEST_PUBLIC_SERIES: PublicLessonSeriesDto = {
   minAge: 6,
   maxAge: 99,
   minimumAvailableSlots: 1,
+  maxGroupSize: 4,
   allowSoloEnrollment: true,
   allowGroupEnrollment: true,
   priceOptions: [],
@@ -182,6 +184,15 @@ export async function loginViaStorage(page: Page): Promise<void> {
       },
     }
   );
+}
+
+/**
+ * Beantwoordt de verplichte vraag "Samen met andere spelers?" op het inschrijfformulier van een lessenreeks met
+ * "Liever niet". Doet niets als de vraag er niet staat (een reeks die maar één persoon toelaat).
+ */
+export async function answerNotTogether(page: Page): Promise<void> {
+  const question = page.getByRole("radiogroup", { name: "Samen met andere spelers?" });
+  if ((await question.count()) > 0) await question.getByText("Liever niet").click();
 }
 
 // ─── API mock helpers ───────────────────────────────────────────────────────

@@ -609,7 +609,7 @@ def planning_enrollments(api: ApiClient, planning_series_id: str,
             "studentPhone": e.get("studentPhone"),
             "dateOfBirth":  e["dateOfBirth"],
             "enrollmentType": e.get("enrollmentType", "solo"),
-            "isOpenToGrouping": e.get("isOpenToGrouping", False),
+            "maxGroupSize": e.get("maxGroupSize"),
             "timeSlotPreferences": time_slot_prefs,
             "responses": [],
         }

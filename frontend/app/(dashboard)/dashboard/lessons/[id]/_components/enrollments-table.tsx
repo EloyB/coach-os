@@ -164,6 +164,20 @@ function SectionHeading({ label, count }: { label: string; count: number }) {
   );
 }
 
+/**
+ * Toont het gekozen maximum aantal personen per tijdslot, maar enkel als de inschrijving (of groep) bereid is om
+ * met anderen samen te zitten: een solo met maximum 1 of een groep die op zichzelf blijft heeft niets te tonen.
+ */
+function MaxGroupSizeChip({ max, own }: { max: number; own: number }) {
+  const t = useTranslations("enrollmentsTable");
+  if (max <= own) return null;
+  return (
+    <Badge className="shrink-0 border-0 bg-blue-50 text-blue-700 text-[10px]" title={t("maxGroupSize")}>
+      {t("maxChip", { count: max })}
+    </Badge>
+  );
+}
+
 // ─── Person row (solo of groepslid) ────────────────────────────────────────────
 
 function PersonRow({
@@ -394,6 +408,7 @@ function PersonRow({
                     {t("possibleDuplicate")}
                   </Badge>
                 )}
+                {!enrollment.enrollmentGroupId && <MaxGroupSizeChip max={enrollment.maxGroupSize} own={1} />}
               </div>
               <p className="mt-1 break-all text-xs text-gray-500">
                 {enrollment.hasOwnEmail
@@ -452,6 +467,7 @@ function PersonRow({
                 {t("possibleDuplicate")}
               </Badge>
             )}
+            {!enrollment.enrollmentGroupId && <MaxGroupSizeChip max={enrollment.maxGroupSize} own={1} />}
           </div>
         </td>
 
@@ -593,7 +609,6 @@ function GroupBlockRows({
         studentEmail: leader.studentEmail,
         studentPhone: leader.studentPhone,
         dateOfBirth: leader.dateOfBirth ?? "",
-        isOpenToGrouping: leader.isOpenToGrouping,
         selectedPriceOptionId: optionId,
       }),
     onSuccess: () => {
@@ -816,6 +831,7 @@ function GroupBlockRows({
                 <Badge className="shrink-0 border-0 bg-tennis-green/10 text-tennis-green text-[11px]">
                   {t("members", { count: members.length })}
                 </Badge>
+                <MaxGroupSizeChip max={leader.maxGroupSize} own={members.length} />
               </div>
               <p className="mt-1 text-xs text-gray-500">
                 {formatEnrolledAt(leader.enrolledAt)}
@@ -867,6 +883,7 @@ function GroupBlockRows({
             <Badge className="shrink-0 border-0 bg-tennis-green/10 text-tennis-green text-[11px]">
               {t("members", { count: members.length })}
             </Badge>
+            <MaxGroupSizeChip max={leader.maxGroupSize} own={members.length} />
           </div>
         </td>
 

@@ -7,6 +7,8 @@ declare module 'axios' {
   interface AxiosRequestConfig {
     /** Achtergrond-calls waarvan een fout de gebruiker niet mag storen: geen foutmelding tonen. */
     skipErrorToast?: boolean;
+    /** Een 409 is hier een waarschuwing die de aanroeper zelf afhandelt (bv. met een bevestigingsdialoog): geen toast. */
+    skipConflictToast?: boolean;
   }
 }
 
@@ -36,7 +38,8 @@ apiClient.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    if (!error.config?.skipErrorToast) {
+    const isHandledConflict = error.config?.skipConflictToast && error.response?.status === 409;
+    if (!error.config?.skipErrorToast && !isHandledConflict) {
       showApiErrorToast(error, { suppressForbidden: true });
     }
 

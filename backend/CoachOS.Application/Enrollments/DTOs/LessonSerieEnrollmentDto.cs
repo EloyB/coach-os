@@ -30,7 +30,8 @@ public class LessonSerieEnrollmentDto
     /// <summary>True als deze inschrijving de groepsleider is (draagt de gedeelde betaling).</summary>
     public bool IsGroupLeader { get; set; }
 
-    public bool IsOpenToGrouping { get; set; }
+    /// <summary>Maximum aantal personen waarmee deze inschrijving (of groep) in één tijdslot wil zitten.</summary>
+    public int MaxGroupSize { get; set; }
 
     /// <summary>Gekozen prijsoptie (null = geen optie/legacy prijs). Voor de aanpas-dialog.</summary>
     public Guid? SelectedPriceOptionId { get; set; }
