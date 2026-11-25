@@ -4,11 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { EnrollmentLegalNotice } from "@/components/forms/enrollment-legal-notice";
-import { MaxGroupSizeField } from "@/components/forms/max-group-size-field";
+import { TogetherWithOthersField } from "@/components/forms/together-with-others-field";
 import {
   CalendarDays,
   MapPin,
-  User,
   Users,
   Euro,
   Cake,
@@ -68,6 +67,10 @@ type GroupMember = {
   /** Antwoorden op de extra vragen van dit groepslid, per formulierveld. */
   fieldValues: Record<string, string>;
 };
+
+function emptyMember(): GroupMember {
+  return { name: "", email: "", dateOfBirth: "", hasOwnEmail: false, fieldValues: {} };
+}
 
 type MemberErrors = {
   name?: string;
@@ -205,15 +208,11 @@ export default function EnrollPage() {
   // niet per individueel slot — parallelle banen op hetzelfde uur delen één keuze.
   const [preferences, setPreferences] = useState<Record<string, number>>({});
 
-  // Enrollment type. De reeks bepaalt welke wijzen toegelaten zijn; "solo" is
-  // hier enkel een placeholder tot de reeks geladen is (zie loadData hieronder,
-  // die het type corrigeert naar de eerst-toegelaten wijze).
-  const [enrollmentType, setEnrollmentType] = useState<"solo" | "group">(
-    "solo"
-  );
   // Gekozen maximum aantal personen per tijdslot; null = nog niet gekozen (dan de eigen groepsgrootte).
   const [maxGroupSizeChoice, setMaxGroupSizeChoice] = useState<number | null>(null);
   const [groupMembers, setGroupMembers] = useState<GroupMember[]>([]);
+  // Het inschrijvingstype volgt uit de personen: voeg je iemand toe, dan is het een groepsinschrijving.
+  const enrollmentType: "solo" | "group" = groupMembers.length > 0 ? "group" : "solo";
   const [selectedPriceOptionId, setSelectedPriceOptionId] = useState<string>("");
   const [memberErrors, setMemberErrors] = useState<Record<number, MemberErrors>>({});
 
@@ -260,10 +259,8 @@ export default function EnrollPage() {
         setSeries(seriesData);
         setForm(formData);
         setTimeSlots(slotsData);
-        // Default naar de eerst-toegelaten inschrijfwijze zodra de reeks bekend is.
-        setEnrollmentType(
-          seriesData.allowSoloEnrollment ? "solo" : "group"
-        );
+        // Een reeks die enkel groepen toelaat begint met één extra persoon: solo kan er niet.
+        setGroupMembers(seriesData.allowSoloEnrollment ? [] : [emptyMember()]);
         // Eén optie? Automatisch geselecteerd. Meerdere? De speler kiest.
         setSelectedPriceOptionId(
           seriesData.priceOptions.length === 1 ? seriesData.priceOptions[0].id : ""
@@ -293,9 +290,8 @@ export default function EnrollPage() {
     setBaseErrors({});
     setPreferences({});
     setMaxGroupSizeChoice(null);
-    setGroupMembers([]);
+    setGroupMembers(series && !series.allowSoloEnrollment ? [emptyMember()] : []);
     setMemberErrors({});
-    setEnrollmentType(series?.allowSoloEnrollment ? "solo" : "group");
     setSelectedPriceOptionId(
       series && series.priceOptions.length === 1 ? series.priceOptions[0].id : ""
     );
@@ -339,10 +335,7 @@ export default function EnrollPage() {
 
   function addGroupMember() {
     if (groupMembers.length >= 3) return;
-    setGroupMembers((prev) => [
-      ...prev,
-      { name: "", email: "", dateOfBirth: "", hasOwnEmail: false, fieldValues: {} },
-    ]);
+    setGroupMembers((prev) => [...prev, emptyMember()]);
   }
 
   function removeGroupMember(index: number) {
@@ -399,6 +392,11 @@ export default function EnrollPage() {
   const ownGroupSize = enrollmentType === "group" ? 1 + groupMembers.length : 1;
   const maxGroupSizeLimit = Math.max(series?.maxGroupSize ?? 1, ownGroupSize);
   const maxGroupSize = Math.min(Math.max(maxGroupSizeChoice ?? ownGroupSize, ownGroupSize), maxGroupSizeLimit);
+
+  // Vetgedrukte delen van de samenvattende zin.
+  const highlight = (chunks: React.ReactNode) => (
+    <b className="rounded bg-tennis-lime px-1 font-semibold text-tennis-green">{chunks}</b>
+  );
 
   function priceOptions(): LessonSeriePriceDto[] {
     return series?.priceOptions ?? [];
@@ -1017,238 +1015,164 @@ export default function EnrollPage() {
 
                 <hr className="border-gray-100" />
 
-                {/* ── Enrollment type ── */}
-                {/* Enkel tonen als er echt een keuze is: bij één toegelaten wijze staat
-                    enrollmentType al vast (zie loadData) en is er niets te kiezen. */}
-                <div>
-                  {series.allowSoloEnrollment && series.allowGroupEnrollment && (
-                    <>
-                      <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-                        {t("enrollment_type")}
-                      </h3>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {series.allowSoloEnrollment && (
-                          <label
-                            className={`border-2 rounded-lg p-4 cursor-pointer transition ${
-                              enrollmentType === "solo"
-                                ? "border-tennis-green bg-tennis-green/5"
-                                : "border-gray-200 hover:border-tennis-green/30"
-                            }`}
-                          >
-                            <input
-                              type="radio"
-                              name="enrollType"
-                              value="solo"
-                              checked={enrollmentType === "solo"}
-                              onChange={() => setEnrollmentType("solo")}
-                              className="sr-only"
-                            />
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
-                                <User className="w-5 h-5 text-gray-600" />
-                              </div>
-                              <div>
-                                <div className="font-medium text-gray-900 text-sm">
-                                  {t("type_solo")}
-                                </div>
-                                <div className="text-xs text-gray-500">
-                                  Ik schrijf mezelf in
-                                </div>
-                              </div>
-                            </div>
-                          </label>
-                        )}
+                {/* ── Wie schrijf je in? ── */}
+                {/* Het type (solo of groep) volgt uit de personen. Bovenaan staat een zin die meebouwt,
+                    daaronder de extra personen en de keuze om samen met andere spelers te zitten. */}
+                <div className="space-y-3">
+                  <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    {t("registration_title")}
+                  </h3>
 
-                        {series.allowGroupEnrollment && (
-                          <label
-                            className={`border-2 rounded-lg p-4 cursor-pointer transition ${
-                              enrollmentType === "group"
-                                ? "border-tennis-green bg-tennis-green/5"
-                                : "border-gray-200 hover:border-tennis-green/30"
-                            }`}
-                          >
-                            <input
-                              type="radio"
-                              name="enrollType"
-                              value="group"
-                              checked={enrollmentType === "group"}
-                              onChange={() => setEnrollmentType("group")}
-                              className="sr-only"
-                            />
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
-                                <Users className="w-5 h-5 text-gray-600" />
-                              </div>
-                              <div>
-                                <div className="font-medium text-gray-900 text-sm">
-                                  {t("type_group")}
-                                </div>
-                                <div className="text-xs text-gray-500">
-                                  Ik schrijf meerdere personen in
-                                </div>
-                              </div>
-                            </div>
-                          </label>
-                        )}
-                      </div>
-                    </>
-                  )}
+                  <p
+                    aria-live="polite"
+                    className="rounded-lg border border-gray-100 bg-tennis-green/5 px-3 py-2.5 text-sm text-gray-800"
+                  >
+                    {t.rich(ownGroupSize === 1 ? "summary_people_solo" : "summary_people_group", {
+                      count: ownGroupSize,
+                      b: highlight,
+                    })}{" "}
+                    {t.rich(
+                      maxGroupSize === ownGroupSize
+                        ? ownGroupSize === 1
+                          ? "summary_lesson_alone_solo"
+                          : "summary_lesson_alone_group"
+                        : ownGroupSize === 1
+                          ? "summary_lesson_max_solo"
+                          : "summary_lesson_max_group",
+                      { max: maxGroupSize, b: highlight }
+                    )}
+                  </p>
 
-                  {/* Maximum aantal personen per tijdslot (solo en groep) */}
-                  {maxGroupSizeLimit > ownGroupSize && (
-                    <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
-                      <div className="text-sm font-medium text-gray-900">
-                        {t("max_group_size_title")}
-                      </div>
-                      <div className="text-xs text-gray-500 mt-0.5 mb-2">
-                        {t("max_group_size_desc")}
-                        {ownGroupSize > 1 && (
-                          <>
-                            {" "}
-                            {t("max_group_size_own_group", { count: ownGroupSize })}
-                          </>
-                        )}
-                      </div>
-                      <MaxGroupSizeField
-                        name="max-group-size"
-                        value={maxGroupSize}
-                        onChange={setMaxGroupSizeChoice}
-                        min={ownGroupSize}
-                        max={maxGroupSizeLimit}
-                      />
-                    </div>
-                  )}
-
-                  {/* Group: member fields */}
-                  {enrollmentType === "group" && (
-                    <div className="mt-4 space-y-3">
+                  {groupMembers.map((member, i) => (
+                    <div
+                      key={i}
+                      className="border border-gray-200 rounded-lg p-3 space-y-3"
+                    >
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-gray-700">
-                          {t("group_members_title")} (max 3 extra)
-                        </span>
-                        {groupMembers.length < 3 && (
+                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                          <span className="w-5 h-5 rounded-full bg-tennis-green text-white flex items-center justify-center text-xs font-medium">
+                            {i + 1}
+                          </span>
+                          {t("extra_person")}
+                        </div>
+                        {(series.allowSoloEnrollment || groupMembers.length > 1) && (
                           <button
                             type="button"
-                            onClick={addGroupMember}
-                            className="text-sm text-tennis-green hover:underline font-medium flex items-center gap-1"
+                            onClick={() => removeGroupMember(i)}
+                            className="text-xs text-gray-400 hover:text-red-500 flex items-center gap-1 transition-colors"
                           >
-                            <Plus size={14} />
-                            {t("add_member")}
+                            <X size={12} />
+                            {t("remove_member")}
                           </button>
                         )}
                       </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <input
+                            type="text"
+                            value={member.name}
+                            onChange={(e) =>
+                              updateGroupMember(i, "name", e.target.value)
+                            }
+                            placeholder={t("member_name")}
+                            className={inputClass(!!memberErrors[i]?.name)}
+                          />
+                          {memberErrors[i]?.name && (
+                            <p className="text-xs text-red-500 mt-1">
+                              {memberErrors[i].name}
+                            </p>
+                          )}
+                        </div>
+                        <div className="sm:col-span-2">
+                          <label className="flex items-center gap-2 text-xs text-gray-600">
+                            <input
+                              type="checkbox"
+                              checked={member.hasOwnEmail}
+                              onChange={(e) =>
+                                toggleMemberOwnEmail(i, e.target.checked)
+                              }
+                              className="rounded border-gray-300 text-tennis-green focus:ring-tennis-green/20"
+                            />
+                            {t("member_has_own_email")}
+                          </label>
 
-                      <p className="text-xs text-gray-500">
-                        {t("group_contact_explainer")}
-                      </p>
-
-                      {groupMembers.map((member, i) => (
-                        <div
-                          key={i}
-                          className="border border-gray-200 rounded-lg p-3 space-y-3"
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2 text-xs text-gray-500">
-                              <span className="w-5 h-5 rounded-full bg-tennis-green text-white flex items-center justify-center text-xs font-medium">
-                                {i + 1}
-                              </span>
-                              Groepslid
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => removeGroupMember(i)}
-                              className="text-xs text-gray-400 hover:text-red-500 flex items-center gap-1 transition-colors"
-                            >
-                              <X size={12} />
-                              {t("remove_member")}
-                            </button>
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div>
+                          {member.hasOwnEmail ? (
+                            <div className="mt-2">
                               <input
-                                type="text"
-                                value={member.name}
+                                type="email"
+                                value={member.email}
                                 onChange={(e) =>
-                                  updateGroupMember(i, "name", e.target.value)
+                                  updateGroupMember(i, "email", e.target.value)
                                 }
-                                placeholder={t("member_name")}
-                                className={inputClass(!!memberErrors[i]?.name)}
+                                placeholder={t("member_email")}
+                                className={inputClass(!!memberErrors[i]?.email)}
                               />
-                              {memberErrors[i]?.name && (
+                              {memberErrors[i]?.email && (
                                 <p className="text-xs text-red-500 mt-1">
-                                  {memberErrors[i].name}
+                                  {memberErrors[i].email}
                                 </p>
                               )}
                             </div>
-                            <div className="sm:col-span-2">
-                              <label className="flex items-center gap-2 text-xs text-gray-600">
-                                <input
-                                  type="checkbox"
-                                  checked={member.hasOwnEmail}
-                                  onChange={(e) =>
-                                    toggleMemberOwnEmail(i, e.target.checked)
-                                  }
-                                  className="rounded border-gray-300 text-tennis-green focus:ring-tennis-green/20"
-                                />
-                                {t("member_has_own_email")}
-                              </label>
-
-                              {member.hasOwnEmail ? (
-                                <div className="mt-2">
-                                  <input
-                                    type="email"
-                                    value={member.email}
-                                    onChange={(e) =>
-                                      updateGroupMember(i, "email", e.target.value)
-                                    }
-                                    placeholder={t("member_email")}
-                                    className={inputClass(!!memberErrors[i]?.email)}
-                                  />
-                                  {memberErrors[i]?.email && (
-                                    <p className="text-xs text-red-500 mt-1">
-                                      {memberErrors[i].email}
-                                    </p>
-                                  )}
-                                </div>
-                              ) : (
-                                <p className="text-xs text-gray-400 mt-1">
-                                  {t("member_contact_via_leader", {
-                                    email: email.trim() || "…",
-                                  })}
-                                </p>
-                              )}
-                            </div>
-                            <div className="sm:col-span-2">
-                              <label className="block text-xs text-gray-500 mb-1">
-                                {t("form_member_date_of_birth")} *
-                              </label>
-                              <input
-                                type="date"
-                                aria-label={`${t("form_member_date_of_birth")} ${i + 1}`}
-                                value={member.dateOfBirth}
-                                onChange={(e) =>
-                                  updateGroupMember(i, "dateOfBirth", e.target.value)
-                                }
-                                max={new Date().toISOString().slice(0, 10)}
-                                className={dateInputClass(!!memberErrors[i]?.dateOfBirth)}
-                              />
-                              {memberErrors[i]?.dateOfBirth && (
-                                <p className="text-xs text-red-500 mt-1">
-                                  {memberErrors[i].dateOfBirth}
-                                </p>
-                              )}
-                            </div>
-                            {/* Dezelfde extra vragen als de leider, voor dit groepslid */}
-                            {form && form.fields.length > 0 && (
-                              <div className="sm:col-span-2 space-y-4">
-                                {form.fields.map((field) =>
-                                  renderCustomField(field, memberAnswers(i))
-                                )}
-                              </div>
+                          ) : (
+                            <p className="text-xs text-gray-400 mt-1">
+                              {t("member_contact_via_leader", {
+                                email: email.trim() || "…",
+                              })}
+                            </p>
+                          )}
+                        </div>
+                        <div className="sm:col-span-2">
+                          <label className="block text-xs text-gray-500 mb-1">
+                            {t("form_member_date_of_birth")} *
+                          </label>
+                          <input
+                            type="date"
+                            aria-label={`${t("form_member_date_of_birth")} ${i + 1}`}
+                            value={member.dateOfBirth}
+                            onChange={(e) =>
+                              updateGroupMember(i, "dateOfBirth", e.target.value)
+                            }
+                            max={new Date().toISOString().slice(0, 10)}
+                            className={dateInputClass(!!memberErrors[i]?.dateOfBirth)}
+                          />
+                          {memberErrors[i]?.dateOfBirth && (
+                            <p className="text-xs text-red-500 mt-1">
+                              {memberErrors[i].dateOfBirth}
+                            </p>
+                          )}
+                        </div>
+                        {/* Dezelfde extra vragen als de leider, voor deze persoon */}
+                        {form && form.fields.length > 0 && (
+                          <div className="sm:col-span-2 space-y-4">
+                            {form.fields.map((field) =>
+                              renderCustomField(field, memberAnswers(i))
                             )}
                           </div>
-                        </div>
-                      ))}
+                        )}
+                      </div>
+                    </div>
+                  ))}
+
+                  {series.allowGroupEnrollment && groupMembers.length < 3 && (
+                    <button
+                      type="button"
+                      onClick={addGroupMember}
+                      className="w-full rounded-lg border-2 border-dashed border-tennis-green/60 px-3 py-2.5 text-sm font-semibold text-tennis-green transition hover:bg-tennis-green/5 flex items-center justify-center gap-1.5"
+                    >
+                      <Plus size={14} />
+                      {t("add_person")}
+                    </button>
+                  )}
+
+                  {maxGroupSizeLimit > ownGroupSize && (
+                    <div className="pt-1">
+                      <p className="mb-2 text-sm font-medium text-gray-900">{t("together_title")}</p>
+                      <TogetherWithOthersField
+                        value={maxGroupSize}
+                        onChange={setMaxGroupSizeChoice}
+                        own={ownGroupSize}
+                        max={maxGroupSizeLimit}
+                      />
                     </div>
                   )}
                 </div>

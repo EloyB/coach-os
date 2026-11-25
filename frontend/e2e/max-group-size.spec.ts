@@ -9,10 +9,10 @@ import { API_URL, TEST_PUBLIC_SERIES, loginViaStorage, mockApi, TEST_SERIES } fr
 const SERIES_ID = "66666666-6666-6666-6666-666666666666";
 
 test.describe("Inschrijven: maximum aantal personen per les", () => {
-  async function arrange(page: Page, maxGroupSize: number) {
+  async function arrange(page: Page, overrides: Record<string, unknown> = {}) {
     await page.route(`${API_URL}/public/lessonseries/${SERIES_ID}/timeslots`, (route) =>
       route.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
-    await mockApi(page, "GET", `/public/lessonseries/${SERIES_ID}`, { ...TEST_PUBLIC_SERIES, maxGroupSize });
+    await mockApi(page, "GET", `/public/lessonseries/${SERIES_ID}`, { ...TEST_PUBLIC_SERIES, ...overrides });
     await mockApi(page, "GET", `/public/lessonseries/${SERIES_ID}/form`, null, 204);
 
     const submitted: { body?: SubmitEnrollmentRequest } = {};
@@ -34,87 +34,140 @@ test.describe("Inschrijven: maximum aantal personen per les", () => {
     await page.getByLabel(/geboortedatum/i).first().fill("1985-01-01");
   }
 
-  const choice = (page: Page) => page.getByRole("radiogroup", { name: "Maximum aantal personen per les" });
+  async function addPerson(page: Page, name = "Lotte Peeters") {
+    await page.getByRole("button", { name: "Nog iemand inschrijven" }).click();
+    await page.getByPlaceholder("Naam").last().fill(name);
+    await page.getByLabel(/geboortedatum \d/i).last().fill("2015-03-04");
+  }
 
-  test("solo kiest tussen solo, duo, trio en groep van 4 en start bij solo", async ({ page }) => {
-    const submitted = await arrange(page, 4);
+  const together = (page: Page) => page.getByRole("radiogroup", { name: "Samen met andere spelers?" });
+  const summary = (page: Page) => page.locator("p[aria-live='polite']");
+
+  test("solo: liever niet, of tot 2, 3 of 4 personen, en start bij liever niet", async ({ page }) => {
+    const submitted = await arrange(page);
     await fillLeader(page);
 
-    await expect(page.getByText("Met hoeveel personen wil je maximaal les volgen?")).toBeVisible();
-    await expect(choice(page).getByRole("radio")).toHaveCount(4);
-    await expect(choice(page).getByRole("radio", { name: /Solo/ })).toBeChecked();
+    await expect(summary(page)).toHaveText("Je schrijft 1 persoon in (jezelf). Je zit alleen in je les.");
+    await expect(together(page).getByRole("radio")).toHaveCount(4);
+    await expect(together(page).getByRole("radio", { name: "Liever niet" })).toBeChecked();
 
-    await choice(page).getByText("Trio").click();
-    await page.getByRole("button", { name: "Inschrijven" }).click();
+    await together(page).getByText("Tot 3 personen").click();
+    await expect(summary(page)).toHaveText("Je schrijft 1 persoon in (jezelf). In je les mogen er maximaal 3 zitten.");
+    await page.getByRole("button", { name: "Inschrijven", exact: true }).click();
 
     await expect.poll(() => submitted.body).toBeDefined();
     expect(submitted.body?.maxGroupSize).toBe(3);
+    expect(submitted.body?.enrollmentType).toBe("solo");
   });
 
   test("zonder keuze blijft het maximum de eigen groepsgrootte", async ({ page }) => {
-    const submitted = await arrange(page, 4);
+    const submitted = await arrange(page);
     await fillLeader(page);
 
-    await page.getByRole("button", { name: "Inschrijven" }).click();
+    await page.getByRole("button", { name: "Inschrijven", exact: true }).click();
 
     await expect.poll(() => submitted.body).toBeDefined();
     expect(submitted.body?.maxGroupSize).toBe(1);
   });
 
-  test("een groep van twee kan niet lager dan duo kiezen en de keuze volgt de groepsgrootte", async ({ page }) => {
-    const submitted = await arrange(page, 4);
+  test("een extra persoon maakt er vanzelf een groepsinschrijving van en de keuze volgt de groepsgrootte", async ({ page }) => {
+    const submitted = await arrange(page);
     await fillLeader(page);
-    await page.getByText("Ik schrijf meerdere personen in").click();
-    await page.getByRole("button", { name: "Lid toevoegen" }).click();
-    await page.getByPlaceholder("Naam").fill("Lotte Peeters");
-    await page.getByLabel(/geboortedatum 1/i).fill("2015-03-04");
+    await addPerson(page);
 
-    // Leider + lid = 2: "Solo" bestaat niet meer, "Duo" is de eigen groep.
-    await expect(choice(page).getByRole("radio")).toHaveCount(3);
-    await expect(choice(page).getByRole("radio", { name: /Solo/ })).toHaveCount(0);
-    await expect(choice(page).getByRole("radio", { name: /Duo/ })).toBeChecked();
-    await expect(page.getByText("Jullie zijn al met 2.")).toBeVisible();
+    await expect(summary(page)).toHaveText("Je schrijft 2 personen in. Jullie zitten alleen met jullie groep in de les.");
+    // Twee personen: "Liever niet" is de eigen groep, daarna tot 3 of 4.
+    await expect(together(page).getByRole("radio")).toHaveCount(3);
+    await expect(together(page).getByRole("radio", { name: "Liever niet" })).toBeChecked();
+    await expect(together(page).getByRole("radio", { name: "Tot 3 personen" })).toHaveCount(1);
 
-    await page.getByRole("button", { name: "Inschrijven" }).click();
+    await page.getByRole("button", { name: "Inschrijven", exact: true }).click();
 
     await expect.poll(() => submitted.body).toBeDefined();
+    expect(submitted.body?.enrollmentType).toBe("group");
     expect(submitted.body?.maxGroupSize).toBe(2);
   });
 
-  test("een gekozen maximum schuift mee omhoog als de groep groter wordt", async ({ page }) => {
-    await arrange(page, 4);
+  test("een gekozen maximum blijft staan als er een persoon bijkomt, en 'liever niet' volgt de groep", async ({ page }) => {
+    await arrange(page);
     await fillLeader(page);
-    await page.getByText("Ik schrijf meerdere personen in").click();
-    await page.getByRole("button", { name: "Lid toevoegen" }).click();
-    await page.getByPlaceholder("Naam").fill("Lotte Peeters");
-    await page.getByLabel(/geboortedatum 1/i).fill("2015-03-04");
-    await expect(choice(page).getByRole("radio", { name: /Duo/ })).toBeChecked();
+    await addPerson(page);
+    await together(page).getByText("Tot 4 personen").click();
 
-    await page.getByRole("button", { name: "Lid toevoegen" }).click();
+    await page.getByRole("button", { name: "Nog iemand inschrijven" }).click();
+    await expect(summary(page)).toHaveText("Je schrijft 3 personen in. In jullie les mogen er maximaal 4 zitten.");
+    await expect(together(page).getByRole("radio", { name: "Tot 4 personen" })).toBeChecked();
 
-    // Groep van drie: de laagste keuze is nu "Trio" en dat staat geselecteerd.
-    await expect(choice(page).getByRole("radio", { name: /Solo/ })).toHaveCount(0);
-    await expect(choice(page).getByRole("radio", { name: /Duo/ })).toHaveCount(0);
-    await expect(choice(page).getByRole("radio", { name: /Trio/ })).toBeChecked();
+    // Wie op "Liever niet" stond, blijft dat na het toevoegen van een persoon.
+    await together(page).getByText("Liever niet").click();
+    await page.getByRole("button", { name: "Verwijderen" }).last().click();
+    await expect(summary(page)).toHaveText("Je schrijft 2 personen in. Jullie zitten alleen met jullie groep in de les.");
   });
 
-  test("een reeks die maar één persoon toelaat toont geen keuze en stuurt maximum 1", async ({ page }) => {
-    const submitted = await arrange(page, 1);
+  test("de laatste persoon verwijderen maakt er weer een solo-inschrijving van", async ({ page }) => {
+    const submitted = await arrange(page);
+    await fillLeader(page);
+    await addPerson(page);
+
+    await page.getByRole("button", { name: "Verwijderen" }).click();
+    await expect(summary(page)).toHaveText("Je schrijft 1 persoon in (jezelf). Je zit alleen in je les.");
+
+    await page.getByRole("button", { name: "Inschrijven", exact: true }).click();
+    await expect.poll(() => submitted.body).toBeDefined();
+    expect(submitted.body?.enrollmentType).toBe("solo");
+    expect(submitted.body?.groupMembers).toBeUndefined();
+  });
+
+  test("er is geen apart type meer om te kiezen", async ({ page }) => {
+    await arrange(page);
     await fillLeader(page);
 
-    await expect(page.getByText("Met hoeveel personen wil je maximaal les volgen?")).toHaveCount(0);
-    await page.getByRole("button", { name: "Inschrijven" }).click();
+    await expect(page.getByText("Wie schrijf je in?")).toBeVisible();
+    await expect(page.getByText("Ik schrijf meerdere personen in")).toHaveCount(0);
+    await expect(page.getByText("Inschrijving type")).toHaveCount(0);
+  });
+
+  test("een reeks die maar één persoon toelaat toont de vraag niet en stuurt maximum 1", async ({ page }) => {
+    const submitted = await arrange(page, { maxGroupSize: 1 });
+    await fillLeader(page);
+
+    await expect(page.getByText("Samen met andere spelers?")).toHaveCount(0);
+    await page.getByRole("button", { name: "Inschrijven", exact: true }).click();
 
     await expect.poll(() => submitted.body).toBeDefined();
     expect(submitted.body?.maxGroupSize).toBe(1);
   });
 
   test("een reeks met maximum 2 laat geen trio toe", async ({ page }) => {
-    await arrange(page, 2);
+    await arrange(page, { maxGroupSize: 2 });
     await fillLeader(page);
 
-    await expect(choice(page).getByRole("radio")).toHaveCount(2);
-    await expect(choice(page).getByRole("radio", { name: /Trio/ })).toHaveCount(0);
+    await expect(together(page).getByRole("radio")).toHaveCount(2);
+    await expect(together(page).getByRole("radio", { name: "Tot 3 personen" })).toHaveCount(0);
+  });
+
+  test("een reeks die enkel solo toelaat toont geen 'Nog iemand inschrijven'", async ({ page }) => {
+    await arrange(page, { allowGroupEnrollment: false });
+    await fillLeader(page);
+
+    await expect(page.getByRole("button", { name: "Nog iemand inschrijven" })).toHaveCount(0);
+    await expect(summary(page)).toBeVisible();
+  });
+
+  test("een reeks die enkel groepen toelaat begint met een extra persoon die je niet kunt verwijderen", async ({ page }) => {
+    const submitted = await arrange(page, { allowSoloEnrollment: false });
+    await fillLeader(page);
+
+    await expect(page.getByText("Extra persoon")).toHaveCount(1);
+    await expect(page.getByRole("button", { name: "Verwijderen" })).toHaveCount(0);
+    await expect(summary(page)).toContainText("Je schrijft 2 personen in.");
+
+    await page.getByPlaceholder("Naam").fill("Lotte Peeters");
+    await page.getByLabel(/geboortedatum 1/i).fill("2015-03-04");
+    await page.getByRole("button", { name: "Inschrijven", exact: true }).click();
+
+    await expect.poll(() => submitted.body).toBeDefined();
+    expect(submitted.body?.enrollmentType).toBe("group");
   });
 });
 

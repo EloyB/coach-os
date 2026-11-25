@@ -68,8 +68,7 @@ test.describe("Extra vragen per groepslid: lessenreeks", () => {
     await page.locator('input[type="tel"]').fill("0470 12 34 56");
     await page.getByLabel(/geboortedatum/i).first().fill("1985-01-01");
 
-    await page.getByText("Ik schrijf meerdere personen in").click();
-    await page.getByRole("button", { name: "Lid toevoegen" }).click();
+    await page.getByRole("button", { name: "Nog iemand inschrijven" }).click();
     await page.getByPlaceholder("Naam").fill("Lotte Peeters");
     await page.getByLabel(/geboortedatum 1/i).fill("2015-03-04");
   }
@@ -82,10 +81,10 @@ test.describe("Extra vragen per groepslid: lessenreeks", () => {
     await expect(answerInputs(page, "Ervaring")).toHaveCount(2);
     await expect(page.getByText("Extra vragen", { exact: true })).toHaveCount(0);
 
-    // Leider: de vraag staat onder de geboortedatum en boven de keuze solo/groep.
+    // Leider: de vraag staat onder de geboortedatum en boven het blok "Wie schrijf je in?".
     const leaderDob = await page.locator("#dateOfBirth").boundingBox();
     const leaderQuestion = await answerInputs(page, "Ervaring").nth(0).boundingBox();
-    const enrollmentType = await page.getByText("Ik schrijf meerdere personen in").boundingBox();
+    const enrollmentType = await page.getByText("Wie schrijf je in?").boundingBox();
     expect(leaderDob && leaderQuestion && enrollmentType).toBeTruthy();
     expect(leaderQuestion!.y).toBeGreaterThan(leaderDob!.y);
     expect(leaderQuestion!.y).toBeLessThan(enrollmentType!.y);
@@ -101,7 +100,7 @@ test.describe("Extra vragen per groepslid: lessenreeks", () => {
     await fillLeaderAndAddMember(page);
     await answerInputs(page, "Ervaring").nth(0).fill("Gevorderd");
 
-    await page.getByRole("button", { name: "Inschrijven" }).click();
+    await page.getByRole("button", { name: "Inschrijven", exact: true }).click();
 
     // Enkel het groepslid mist een antwoord; de leider heeft geen fout.
     await expect(page.getByText("Ervaring is verplicht")).toHaveCount(1);
@@ -114,7 +113,7 @@ test.describe("Extra vragen per groepslid: lessenreeks", () => {
     await answerInputs(page, "Ervaring").nth(0).fill("Gevorderd");
     await answerInputs(page, "Ervaring").nth(1).fill("Beginner");
 
-    await page.getByRole("button", { name: "Inschrijven" }).click();
+    await page.getByRole("button", { name: "Inschrijven", exact: true }).click();
 
     await expect.poll(() => submitted.body).toBeDefined();
     expect(submitted.body?.responses).toEqual([{ formFieldId: FIELD_ID, value: "Gevorderd" }]);

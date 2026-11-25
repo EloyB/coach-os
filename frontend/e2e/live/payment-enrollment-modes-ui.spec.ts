@@ -113,11 +113,9 @@ test.describe("Live UI — publiek inschrijfformulier toont enkel toegelaten ins
     // Formulier moet effectief geladen zijn.
     await expect(page.getByLabel("Geboortedatum")).toBeVisible();
 
-    // Bij een enkele toegelaten wijze toont de pagina de keuzekaarten
-    // helemaal niet (enrollmentType ligt al vast) — dus geen "Groep"-optie.
-    await expect(page.getByText("Inschrijving type")).toHaveCount(0);
+    // Een solo-only reeks laat geen extra personen toe: geen "Nog iemand inschrijven".
     await expect(
-      page.getByText("Ik schrijf meerdere personen in"),
+      page.getByRole("button", { name: "Nog iemand inschrijven" }),
     ).toHaveCount(0);
   });
 
@@ -128,7 +126,9 @@ test.describe("Live UI — publiek inschrijfformulier toont enkel toegelaten ins
 
     await expect(page.getByLabel("Geboortedatum")).toBeVisible();
 
-    await expect(page.getByText("Inschrijving type")).toHaveCount(0);
-    await expect(page.getByText("Ik schrijf mezelf in")).toHaveCount(0);
+    // Een group-only reeks begint met één extra persoon, die niet verwijderd kan worden: solo kan er niet.
+    await expect(page.getByText("Extra persoon")).toHaveCount(1);
+    await expect(page.getByRole("button", { name: "Verwijderen" })).toHaveCount(0);
+    await expect(page.getByText("Je schrijft 2 personen in.")).toBeVisible();
   });
 });
