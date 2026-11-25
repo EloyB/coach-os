@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 import type { LessonSeriePriceDto } from "@/lib/api/lessonSeriePrices";
+import { answerNotTogether } from "../helpers";
 import {
   API_URL,
   apiLogin,
@@ -232,6 +233,7 @@ test.describe("Live UI — publiek inschrijfformulier", () => {
     await textInputs.nth(1).fill("Validatie");
     await page.locator('input[type="email"]').fill(`e2e-val-${Date.now()}@test.be`);
 
+    await answerNotTogether(page); // verplichte vraag over de lesgrootte
     await page.getByRole("button", { name: "Inschrijven", exact: true }).click();
 
     await expect(page.getByText("Geboortedatum is verplicht")).toBeVisible();
@@ -252,6 +254,7 @@ test.describe("Live UI — publiek inschrijfformulier", () => {
     await page.locator('input[type="tel"]').fill("0470 12 34 56");
     await page.getByLabel("Geboortedatum").fill("1988-09-09");
 
+    await answerNotTogether(page); // verplichte vraag over de lesgrootte
     await page.getByRole("button", { name: "Inschrijven", exact: true }).click();
 
     // Wacht op de bevestiging: zonder dit bevragen we de API vóór de POST rond is.

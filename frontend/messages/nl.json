@@ -294,6 +294,7 @@
     "together_title": "Samen met andere spelers?",
     "together_none": "Liever niet",
     "together_up_to": "Tot {count} personen",
+    "together_required": "Kies of je liever niet samen met andere spelers les volgt, of tot hoeveel personen.",
     "remove_member": "Verwijderen",
     "member_name": "Naam",
     "member_email": "E-mailadres",

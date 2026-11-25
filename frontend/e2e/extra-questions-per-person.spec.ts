@@ -1,7 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import type { EnrollmentFormDto, SubmitEnrollmentRequest } from "@/lib/api/enrollments";
 import type { CampEnrollmentFormDto, PublicCampDto, SubmitCampEnrollmentRequest } from "@/lib/api/camps";
-import { API_URL, TEST_PUBLIC_SERIES, mockApi } from "./helpers";
+import { API_URL, TEST_PUBLIC_SERIES, answerNotTogether, mockApi } from "./helpers";
 
 // Extra vragen van het inschrijfformulier (#411): elke persoon van een groepsinschrijving
 // beantwoordt ze, direct onder de eigen vaste vragen.
@@ -100,6 +100,7 @@ test.describe("Extra vragen per groepslid: lessenreeks", () => {
     await fillLeaderAndAddMember(page);
     await answerInputs(page, "Ervaring").nth(0).fill("Gevorderd");
 
+    await answerNotTogether(page);
     await page.getByRole("button", { name: "Inschrijven", exact: true }).click();
 
     // Enkel het groepslid mist een antwoord; de leider heeft geen fout.
@@ -113,6 +114,7 @@ test.describe("Extra vragen per groepslid: lessenreeks", () => {
     await answerInputs(page, "Ervaring").nth(0).fill("Gevorderd");
     await answerInputs(page, "Ervaring").nth(1).fill("Beginner");
 
+    await answerNotTogether(page);
     await page.getByRole("button", { name: "Inschrijven", exact: true }).click();
 
     await expect.poll(() => submitted.body).toBeDefined();

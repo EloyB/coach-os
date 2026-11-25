@@ -186,6 +186,15 @@ export async function loginViaStorage(page: Page): Promise<void> {
   );
 }
 
+/**
+ * Beantwoordt de verplichte vraag "Samen met andere spelers?" op het inschrijfformulier van een lessenreeks met
+ * "Liever niet". Doet niets als de vraag er niet staat (een reeks die maar één persoon toelaat).
+ */
+export async function answerNotTogether(page: Page): Promise<void> {
+  const question = page.getByRole("radiogroup", { name: "Samen met andere spelers?" });
+  if ((await question.count()) > 0) await question.getByText("Liever niet").click();
+}
+
 // ─── API mock helpers ───────────────────────────────────────────────────────
 
 export async function mockApi(

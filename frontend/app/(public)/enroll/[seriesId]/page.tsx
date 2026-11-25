@@ -210,6 +210,10 @@ export default function EnrollPage() {
 
   // Gekozen maximum aantal personen per tijdslot; null = nog niet gekozen (dan de eigen groepsgrootte).
   const [maxGroupSizeChoice, setMaxGroupSizeChoice] = useState<number | null>(null);
+  // De vraag "Samen met andere spelers?" is verplicht en heeft bewust geen voorselectie, zodat ze niet
+  // zomaar overgeslagen wordt. "Liever niet" is een keuze (maximum = eigen groep), geen ontbrekend antwoord.
+  const [togetherAnswered, setTogetherAnswered] = useState(false);
+  const [togetherError, setTogetherError] = useState(false);
   const [groupMembers, setGroupMembers] = useState<GroupMember[]>([]);
   // Het inschrijvingstype volgt uit de personen: voeg je iemand toe, dan is het een groepsinschrijving.
   const enrollmentType: "solo" | "group" = groupMembers.length > 0 ? "group" : "solo";
@@ -290,6 +294,8 @@ export default function EnrollPage() {
     setBaseErrors({});
     setPreferences({});
     setMaxGroupSizeChoice(null);
+    setTogetherAnswered(false);
+    setTogetherError(false);
     setGroupMembers(series && !series.allowSoloEnrollment ? [emptyMember()] : []);
     setMemberErrors({});
     setSelectedPriceOptionId(
@@ -483,6 +489,21 @@ export default function EnrollPage() {
     }
     setMemberErrors(mErrors);
 
+    // Verplichte vraag over de lesgrootte (enkel als er iets te kiezen valt).
+    const togetherMissing = maxGroupSizeLimit > ownGroupSize && !togetherAnswered;
+    setTogetherError(togetherMissing);
+    // De vraag staat midden in het formulier, de verzendknop onderaan: scroll er naartoe als het de enige fout is.
+    if (
+      togetherMissing &&
+      Object.keys(errors).length === 0 &&
+      Object.keys(fErrors).length === 0 &&
+      Object.keys(mErrors).length === 0
+    ) {
+      requestAnimationFrame(() =>
+        document.getElementById("together-question")?.scrollIntoView({ behavior: "smooth", block: "center" })
+      );
+    }
+
     if (availableSlotCount < requiredSlots) {
       setSlotsError(t("min_slots_error", { count: requiredSlots }));
       return false;
@@ -498,7 +519,8 @@ export default function EnrollPage() {
     return (
       Object.keys(errors).length === 0 &&
       Object.keys(fErrors).length === 0 &&
-      Object.keys(mErrors).length === 0
+      Object.keys(mErrors).length === 0 &&
+      !togetherMissing
     );
   }
 
@@ -1031,16 +1053,17 @@ export default function EnrollPage() {
                       count: ownGroupSize,
                       b: highlight,
                     })}{" "}
-                    {t.rich(
-                      maxGroupSize === ownGroupSize
-                        ? ownGroupSize === 1
-                          ? "summary_lesson_alone_solo"
-                          : "summary_lesson_alone_group"
-                        : ownGroupSize === 1
-                          ? "summary_lesson_max_solo"
-                          : "summary_lesson_max_group",
-                      { max: maxGroupSize, b: highlight }
-                    )}
+                    {(togetherAnswered || maxGroupSizeLimit <= ownGroupSize) &&
+                      t.rich(
+                        maxGroupSize === ownGroupSize
+                          ? ownGroupSize === 1
+                            ? "summary_lesson_alone_solo"
+                            : "summary_lesson_alone_group"
+                          : ownGroupSize === 1
+                            ? "summary_lesson_max_solo"
+                            : "summary_lesson_max_group",
+                        { max: maxGroupSize, b: highlight }
+                      )}
                   </p>
 
                   {groupMembers.map((member, i) => (
@@ -1165,14 +1188,28 @@ export default function EnrollPage() {
                   )}
 
                   {maxGroupSizeLimit > ownGroupSize && (
-                    <div className="pt-1">
-                      <p className="mb-2 text-sm font-medium text-gray-900">{t("together_title")}</p>
+                    <div id="together-question" className="pt-1">
+                      <p className="mb-2 text-sm font-medium text-gray-900">
+                        {t("together_title")}
+                        <span className="text-red-500 ml-1">*</span>
+                      </p>
                       <TogetherWithOthersField
                         value={maxGroupSize}
-                        onChange={setMaxGroupSizeChoice}
+                        answered={togetherAnswered}
+                        onChange={(value) => {
+                          setMaxGroupSizeChoice(value);
+                          setTogetherAnswered(true);
+                          setTogetherError(false);
+                        }}
                         own={ownGroupSize}
                         max={maxGroupSizeLimit}
+                        invalid={togetherError}
                       />
+                      {togetherError && (
+                        <p role="alert" className="mt-1.5 text-xs text-red-500">
+                          {t("together_required")}
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>

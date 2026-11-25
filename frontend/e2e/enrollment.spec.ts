@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { TEST_PUBLIC_SERIES } from "./helpers";
+import { TEST_PUBLIC_SERIES, answerNotTogether } from "./helpers";
 
 const seriesId = "66666666-6666-6666-6666-666666666666";
 const API_BASE = "http://localhost:5142/api";
@@ -145,6 +145,7 @@ test.describe("Public Enrollment", () => {
     await page.locator('input[type="tel"]').fill("0470 12 34 56");
     // Geboortedatum is verplicht sinds de tariefcategorieën (volwassene/jeugd).
     await page.locator('input[type="date"]').fill("1990-05-12");
+    await answerNotTogether(page);
     await page.getByRole("button", { name: "Inschrijven", exact: true }).click();
 
     await expect(page.getByText("Ingeschreven!")).toBeVisible();
@@ -164,6 +165,7 @@ test.describe("Public Enrollment", () => {
     await page.locator('input[type="tel"]').fill("0470 12 34 56");
     // Geboortedatum is verplicht sinds de tariefcategorieën (volwassene/jeugd).
     await page.locator('input[type="date"]').fill("1990-05-12");
+    await answerNotTogether(page);
     await page.getByRole("button", { name: "Inschrijven", exact: true }).click();
 
     await expect(page.getByText("Inschrijven mislukt.")).toBeVisible();
@@ -211,6 +213,7 @@ test.describe("Public Enrollment", () => {
       page.getByText("Alle communicatie loopt via ouder@example.com")
     ).toBeVisible();
 
+    await answerNotTogether(page);
     await page.getByRole("button", { name: "Inschrijven", exact: true }).click();
 
     await expect
@@ -271,6 +274,7 @@ test.describe("Public Enrollment", () => {
     await page.locator('input[type="email"]').fill("sophie@example.be");
     await page.locator('input[type="tel"]').fill("0470 12 34 56");
     await page.locator('input[type="date"]').fill("1990-05-12");
+    await answerNotTogether(page);
     await page.getByRole("button", { name: "Inschrijven", exact: true }).click();
 
     await expect(page.getByText("Ingeschreven!")).toBeVisible();
@@ -329,6 +333,7 @@ test.describe("Public Enrollment", () => {
     // Slechts één tijdvak gekozen: geblokkeerd met foutmelding.
     const rows = page.locator(".sm\\:grid");
     await rows.filter({ hasText: "10:00 — 11:00" }).first().getByRole("radio").first().check({ force: true });
+    await answerNotTogether(page);
     await page.getByRole("button", { name: "Inschrijven", exact: true }).click();
     await expect(page.getByRole("alert").filter({ hasText: "Kies minstens 2 tijdvakken" })).toBeVisible();
     expect(postCount).toBe(0);
