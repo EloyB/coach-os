@@ -40,7 +40,7 @@ test.describe("Inschrijven: maximum aantal personen per les", () => {
     await page.getByLabel(/geboortedatum \d/i).last().fill("2015-03-04");
   }
 
-  const together = (page: Page) => page.getByRole("radiogroup", { name: "Met hoeveel spelers wil je maximum les volgen?" });
+  const together = (page: Page) => page.getByRole("radiogroup", { name: "Samen met andere spelers?" });
   const summary = (page: Page) => page.locator("p[aria-live='polite']");
 
   test("solo: liever niet, of tot 2, 3 of 4 personen, en start bij liever niet", async ({ page }) => {
@@ -131,7 +131,7 @@ test.describe("Inschrijven: maximum aantal personen per les", () => {
     const submitted = await arrange(page, { maxGroupSize: 1 });
     await fillLeader(page);
 
-    await expect(page.getByText("Met hoeveel spelers wil je maximum les volgen?")).toHaveCount(0);
+    await expect(page.getByText("Samen met andere spelers?")).toHaveCount(0);
     await page.getByRole("button", { name: "Inschrijven", exact: true }).click();
 
     await expect.poll(() => submitted.body).toBeDefined();

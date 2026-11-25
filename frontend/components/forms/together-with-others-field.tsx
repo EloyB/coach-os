@@ -15,7 +15,7 @@ interface TogetherWithOthersFieldProps {
 }
 
 /**
- * "Met hoeveel spelers wil je maximum les volgen?": liever niet, of toelaten tot een bepaald aantal personen. Een groep van twee
+ * "Samen met andere spelers?": liever niet, of toelaten tot een bepaald aantal personen. Een groep van twee
  * ziet bijvoorbeeld "Liever niet", "Tot 3 personen" en "Tot 4 personen".
  */
 export function TogetherWithOthersField({ value, onChange, own, max }: TogetherWithOthersFieldProps) {
