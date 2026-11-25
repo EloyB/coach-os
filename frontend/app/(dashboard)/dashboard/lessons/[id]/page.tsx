@@ -1315,6 +1315,7 @@ interface DraftField extends SaveFormFieldRequest {
 }
 
 function FormBuilderSection({ seriesId }: { seriesId: string }) {
+  const t = useTranslations("formBuilder");
   const queryClient = useQueryClient();
   const [fields, setFields] = useState<DraftField[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -1336,6 +1337,7 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
           label: f.label,
           type: f.type,
           isRequired: f.isRequired,
+          scope: f.scope,
           order: f.order,
           options: f.options ?? undefined,
         })),
@@ -1350,6 +1352,7 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
         label: f.label,
         type: f.type,
         isRequired: f.isRequired,
+        scope: f.scope,
         order: i,
         options: f.type === 2 ? f.options : undefined,
       }));
@@ -1360,7 +1363,7 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
     },
   });
 
-  function addField() {
+  function addField(scope: number) {
     setFields((prev) => [
       ...prev,
       {
@@ -1368,6 +1371,7 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
         label: "",
         type: 1,
         isRequired: false,
+        scope,
         order: prev.length,
       },
     ]);
@@ -1383,11 +1387,16 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
     setFields((prev) => prev.filter((f) => f._key !== key));
   }
 
+  // Verplaatst een vraag binnen haar eigen lijst (per speler of algemeen): ze wisselt met de
+  // dichtstbijzijnde vraag van hetzelfde bereik.
   function moveField(key: string, direction: -1 | 1) {
     setFields((prev) => {
       const idx = prev.findIndex((f) => f._key === key);
       if (idx < 0) return prev;
-      const newIdx = idx + direction;
+      let newIdx = idx + direction;
+      while (newIdx >= 0 && newIdx < prev.length && prev[newIdx].scope !== prev[idx].scope) {
+        newIdx += direction;
+      }
       if (newIdx < 0 || newIdx >= prev.length) return prev;
       const next = [...prev];
       [next[idx], next[newIdx]] = [next[newIdx], next[idx]];
@@ -1421,6 +1430,140 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
         const opts = (f.options ?? []).filter((_, i) => i !== optIdx);
         return { ...f, options: opts };
       }),
+    );
+  }
+
+  const perParticipantFields = fields.filter((f) => f.scope !== 1);
+  const generalFields = fields.filter((f) => f.scope === 1);
+
+  function renderFieldRow(field: DraftField, idx: number, listLength: number) {
+    return (
+            <div
+              key={field._key}
+              className="border border-gray-100 rounded-xl p-4 space-y-3 bg-[#FAFAF8]"
+            >
+              {/* Row 1: label (full width) */}
+              <input
+                type="text"
+                placeholder="Veldlabel, bijv. 'Telefoonnummer'"
+                value={field.label}
+                onChange={(e) =>
+                  updateField(field._key, { label: e.target.value })
+                }
+                className={inputCls}
+              />
+
+              {/* Row 2: type + required + reorder + delete */}
+              <div className="flex items-center gap-2">
+                <NativeSelect
+                  value={field.type}
+                  onChange={(e) =>
+                    updateField(field._key, {
+                      type: parseInt(e.target.value),
+                      options: undefined,
+                    })
+                  }
+                >
+                  {FIELD_TYPES.map((t) => (
+                    <option key={t.value} value={t.value}>
+                      {t.label}
+                    </option>
+                  ))}
+                </NativeSelect>
+
+                <label className="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={field.isRequired}
+                    onChange={(e) =>
+                      updateField(field._key, { isRequired: e.target.checked })
+                    }
+                    className="accent-tennis-green"
+                  />
+                  Verplicht
+                </label>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    updateField(field._key, {
+                      scope: field.scope === 1 ? 0 : 1,
+                    })
+                  }
+                  className="text-xs text-tennis-green hover:underline whitespace-nowrap"
+                >
+                  {field.scope === 1 ? t("makePerParticipant") : t("makeGeneral")}
+                </button>
+
+                <div className="flex items-center gap-1 ml-auto">
+                  <button
+                    type="button"
+                    onClick={() => moveField(field._key, -1)}
+                    disabled={idx === 0}
+                    className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 disabled:opacity-30 transition-colors"
+                  >
+                    <ChevronUp size={13} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => moveField(field._key, 1)}
+                    disabled={idx === listLength - 1}
+                    className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 disabled:opacity-30 transition-colors"
+                  >
+                    <ChevronDown size={13} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => removeField(field._key)}
+                    className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              </div>
+
+              {existingForm?.fields.some(
+                (f) => f.id === field.id && f.scope !== field.scope,
+              ) && (
+                <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2">
+                  {t("scopeChangedHint")}
+                </p>
+              )}
+
+              {/* Options for MultipleChoice */}
+              {field.type === 2 && (
+                <div className="space-y-2 pt-1 border-t border-gray-100">
+                  {(field.options ?? []).map((opt, optIdx) => (
+                    <div key={optIdx} className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        placeholder={`Optie ${optIdx + 1}`}
+                        value={opt}
+                        onChange={(e) =>
+                          updateOption(field._key, optIdx, e.target.value)
+                        }
+                        className={inputCls + " flex-1"}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeOption(field._key, optIdx)}
+                        className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                      >
+                        <X size={13} />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => addOption(field._key)}
+                    className="flex items-center gap-1 text-xs text-tennis-green hover:underline"
+                  >
+                    <Plus size={11} />
+                    Optie toevoegen
+                  </button>
+                </div>
+              )}
+            </div>
     );
   }
 
@@ -1467,131 +1610,55 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
         {/* Custom fields */}
         {fields.length === 0 && (
           <p className="text-xs text-gray-400 py-2">
-            Nog geen aangepaste velden. Klik &apos;Veld toevoegen&apos; om te
-            beginnen.
+            {t("no_fields")}
           </p>
         )}
 
-        <div className="space-y-3">
-          {fields.map((field, idx) => (
-            <div
-              key={field._key}
-              className="border border-gray-100 rounded-xl p-4 space-y-3 bg-[#FAFAF8]"
-            >
-              {/* Row 1: label (full width) */}
-              <input
-                type="text"
-                placeholder="Veldlabel, bijv. 'Telefoonnummer'"
-                value={field.label}
-                onChange={(e) =>
-                  updateField(field._key, { label: e.target.value })
-                }
-                className={inputCls}
-              />
+        <div className="space-y-2">
+          <div>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+              {t("perParticipantTitle")}
+            </h3>
+            <p className="text-xs text-gray-400">{t("perParticipantHint")}</p>
+          </div>
+          <div className="space-y-3">
+            {perParticipantFields.map((field, idx) =>
+              renderFieldRow(field, idx, perParticipantFields.length),
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => addField(0)}
+            className="flex w-full items-center justify-center gap-1.5 px-3 py-2 border border-dashed border-gray-200 text-xs font-medium text-tennis-green rounded-lg hover:border-tennis-green transition-colors"
+          >
+            <Plus size={12} />
+            {t("addPerParticipant")}
+          </button>
+        </div>
 
-              {/* Row 2: type + required + reorder + delete */}
-              <div className="flex items-center gap-2">
-                <NativeSelect
-                  value={field.type}
-                  onChange={(e) =>
-                    updateField(field._key, {
-                      type: parseInt(e.target.value),
-                      options: undefined,
-                    })
-                  }
-                >
-                  {FIELD_TYPES.map((t) => (
-                    <option key={t.value} value={t.value}>
-                      {t.label}
-                    </option>
-                  ))}
-                </NativeSelect>
-
-                <label className="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={field.isRequired}
-                    onChange={(e) =>
-                      updateField(field._key, { isRequired: e.target.checked })
-                    }
-                    className="accent-tennis-green"
-                  />
-                  Verplicht
-                </label>
-
-                <div className="flex items-center gap-1 ml-auto">
-                  <button
-                    type="button"
-                    onClick={() => moveField(field._key, -1)}
-                    disabled={idx === 0}
-                    className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 disabled:opacity-30 transition-colors"
-                  >
-                    <ChevronUp size={13} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => moveField(field._key, 1)}
-                    disabled={idx === fields.length - 1}
-                    className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 disabled:opacity-30 transition-colors"
-                  >
-                    <ChevronDown size={13} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => removeField(field._key)}
-                    className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
-                  >
-                    <Trash2 size={13} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Options for MultipleChoice */}
-              {field.type === 2 && (
-                <div className="space-y-2 pt-1 border-t border-gray-100">
-                  {(field.options ?? []).map((opt, optIdx) => (
-                    <div key={optIdx} className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        placeholder={`Optie ${optIdx + 1}`}
-                        value={opt}
-                        onChange={(e) =>
-                          updateOption(field._key, optIdx, e.target.value)
-                        }
-                        className={inputCls + " flex-1"}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeOption(field._key, optIdx)}
-                        className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
-                      >
-                        <X size={13} />
-                      </button>
-                    </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => addOption(field._key)}
-                    className="flex items-center gap-1 text-xs text-tennis-green hover:underline"
-                  >
-                    <Plus size={11} />
-                    Optie toevoegen
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
+        <div className="space-y-2 pt-2">
+          <div>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+              {t("generalTitle")}
+            </h3>
+            <p className="text-xs text-gray-400">{t("generalHint")}</p>
+          </div>
+          <div className="space-y-3">
+            {generalFields.map((field, idx) =>
+              renderFieldRow(field, idx, generalFields.length),
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => addField(1)}
+            className="flex w-full items-center justify-center gap-1.5 px-3 py-2 border border-dashed border-gray-200 text-xs font-medium text-tennis-green rounded-lg hover:border-tennis-green transition-colors"
+          >
+            <Plus size={12} />
+            {t("addGeneral")}
+          </button>
         </div>
 
         <div className="flex items-center gap-3 pt-1">
-          <button
-            type="button"
-            onClick={addField}
-            className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 text-xs font-medium text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            <Plus size={12} />
-            Veld toevoegen
-          </button>
           <button
             type="button"
             onClick={() => saveMutation.mutate()}

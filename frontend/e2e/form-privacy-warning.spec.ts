@@ -32,13 +32,15 @@ for (const kind of ["lessons", "camps"] as const) {
       });
       await loginViaStorage(page);
       await page.goto(`/dashboard/${kind}/${id}`);
+      // De lessenreeks heeft twee lijsten (per speler en algemeen); het kampformulier heeft één lijst.
+      const addLabel = kind === "lessons" ? "Vraag per speler toevoegen" : "Veld toevoegen";
       const builder = page.getByRole("heading", { name: "Inschrijfformulier", exact: true })
-        .locator('xpath=ancestor::div[.//button[contains(., "Veld toevoegen")]][1]');
+        .locator(`xpath=ancestor::div[.//button[contains(., "${addLabel}")]][1]`);
       await expect(builder).toBeVisible();
       const warning = builder.getByRole("note");
       await expect(warning).toContainText(warningTitle);
       await expect(warning).toContainText(warningText);
-      await builder.getByRole("button", { name: "Veld toevoegen" }).click();
+      await builder.getByRole("button", { name: addLabel }).click();
       await builder.locator('input[type="text"]').fill("Allergieën voor de veiligheid");
       await expect(warning).toBeVisible();
       expect(await warning.evaluate((element) => {
@@ -48,7 +50,9 @@ for (const kind of ["lessons", "camps"] as const) {
       })).toBe(true);
       await builder.getByRole("button", { name: "Formulier opslaan" }).click();
       await expect.poll(() => savedFields).toEqual([
-        { label: "Allergieën voor de veiligheid", type: 1, isRequired: false, order: 0 },
+        kind === "lessons"
+          ? { label: "Allergieën voor de veiligheid", type: 1, isRequired: false, scope: 0, order: 0 }
+          : { label: "Allergieën voor de veiligheid", type: 1, isRequired: false, order: 0 },
       ]);
       await expect(warning).toBeVisible();
       await warning.scrollIntoViewIfNeeded();

@@ -17,6 +17,9 @@ public class FormFieldConfiguration : IEntityTypeConfiguration<FormField>
         builder.Property(f => f.Type)
             .IsRequired();
 
+        builder.Property(f => f.Scope)
+            .IsRequired();
+
         builder.Property(f => f.Options)
             .HasMaxLength(2000);
 

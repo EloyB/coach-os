@@ -30,6 +30,8 @@ export interface FormFieldDto {
   label: string;
   type: number;
   isRequired: boolean;
+  /** 0 = per speler, 1 = één keer voor de hele inschrijving (antwoord hoort bij de leider). */
+  scope: number;
   order: number;
   options: string[] | null;
 }
@@ -43,6 +45,8 @@ export interface EnrollmentFormDto {
 export interface EnrollmentResponseItem {
   fieldLabel: string;
   value: string;
+  /** 0 = antwoord van deze speler, 1 = algemeen antwoord van de inschrijving. */
+  scope: number;
 }
 
 export interface LessonSeriesEnrollmentDto {
@@ -109,6 +113,7 @@ export interface SaveFormFieldRequest {
   label: string;
   type: number;
   isRequired: boolean;
+  scope: number;
   order: number;
   options?: string[];
 }

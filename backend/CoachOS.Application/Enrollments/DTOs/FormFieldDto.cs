@@ -6,6 +6,8 @@ public class FormFieldDto
     public string Label { get; set; } = string.Empty;
     public int Type { get; set; }
     public bool IsRequired { get; set; }
+    /// <summary>0 = per persoon, 1 = één keer voor de hele inschrijving (<see cref="CoachOS.Domain.Enums.FormFieldScope"/>).</summary>
+    public int Scope { get; set; }
     public int Order { get; set; }
     public List<string>? Options { get; set; }
 }

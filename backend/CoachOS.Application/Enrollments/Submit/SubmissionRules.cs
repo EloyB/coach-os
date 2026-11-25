@@ -51,7 +51,11 @@ internal sealed class MemberFormResponsesRule : ISubmissionRule
 {
     public Error? Check(Submission submission)
     {
-        var fields = (submission.Form?.Fields ?? []).Select(f => (f.Id, f.IsRequired, f.Label)).ToList();
+        // Algemene vragen (één keer per inschrijving) beantwoordt enkel de leider: een lid dat er een beantwoordt, krijgt
+        // dezelfde fout als bij een onbekend veld.
+        var fields = (submission.Form?.Fields ?? [])
+            .Where(f => f.Scope == FormFieldScope.PerParticipant)
+            .Select(f => (f.Id, f.IsRequired, f.Label)).ToList();
 
         foreach (var member in submission.Members)
         {
