@@ -23,7 +23,6 @@ public class EnrollmentPriceOptionTests
     private Mock<IPaymentRepository> _paymentRepo = null!;
     private Mock<ITimeSlotPreferenceRepository> _timeSlotPreferenceRepo = null!;
     private Mock<IOrganizationSettingsRepository> _orgSettingsRepo = null!;
-    private Mock<IUserLookupService> _userLookup = null!;
     private Mock<IEmailOutboxRepository> _emailOutboxRepository = null!;
     private Mock<ILessonSeriePriceRepository> _priceRepo = null!;
     private Mock<ILogger<EnrollmentService>> _logger = null!;
@@ -50,7 +49,6 @@ public class EnrollmentPriceOptionTests
             .ReturnsAsync(new Dictionary<Guid, Payment>());
         _timeSlotPreferenceRepo = new Mock<ITimeSlotPreferenceRepository>();
         _orgSettingsRepo = new Mock<IOrganizationSettingsRepository>();
-        _userLookup = new Mock<IUserLookupService>();
         _emailOutboxRepository = new Mock<IEmailOutboxRepository>();
         _priceRepo = new Mock<ILessonSeriePriceRepository>();
         _logger = new Mock<ILogger<EnrollmentService>>();
@@ -61,7 +59,7 @@ public class EnrollmentPriceOptionTests
             _enrollmentRepo.Object, _enrollmentFormRepo.Object, _lessonSeriesRepo.Object,
             _enrollmentGroupRepo.Object, _paymentRepo.Object, _timeSlotPreferenceRepo.Object,
             _orgSettingsRepo.Object,
-            _userLookup.Object, _emailOutboxRepository.Object, _priceRepo.Object,
+            _emailOutboxRepository.Object, _priceRepo.Object,
             CoachOS.Tests.TestHelpers.ScheduleAssignmentRepositoryStub.NoneAwaitingConfirmation(),
             _unitOfWork.Object, _mapper, _logger.Object,
             TimeProvider.System);

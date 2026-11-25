@@ -17,9 +17,6 @@ public interface IEnrollmentService
     Task<Result<Guid>> SaveFormAsync(
         Guid lessonSeriesId, Guid organizationId, SaveEnrollmentFormRequest request, CancellationToken ct = default);
 
-    Task<Result<Guid>> SubmitEnrollmentAsync(
-        Guid lessonSeriesId, SubmitEnrollmentRequest request, CancellationToken ct = default);
-
     Task<Result<Guid>> CreateManualEnrollmentAsync(
         Guid lessonSeriesId, CreateManualEnrollmentRequest request, Guid organizationId,
         CancellationToken ct = default);

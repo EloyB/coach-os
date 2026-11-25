@@ -3,6 +3,7 @@ using System.Reflection;
 using CoachOS.Application.Camps;
 using CoachOS.Application.Dashboard;
 using CoachOS.Application.Enrollments;
+using CoachOS.Application.Enrollments.Submit;
 using CoachOS.Application.Export;
 using CoachOS.Application.LessonReschedule;
 using CoachOS.Application.LessonSerie;
@@ -41,6 +42,7 @@ public static class DependencyInjection
         services.AddScoped<ITennisClubService, TennisClubService>();
         services.AddScoped<ITrainerAvailabilityService, TrainerAvailabilityService>();
         services.AddScoped<IEnrollmentService, EnrollmentService>();
+        services.AddScoped<IEnrollmentSubmissionService, EnrollmentSubmissionService>();
         services.AddScoped<IPricingService, PricingService>();
         services.AddScoped<ILessonSeriePricingService, LessonSeriePricingService>();
         services.AddScoped<IPlanningService, PlanningService>();

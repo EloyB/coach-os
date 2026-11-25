@@ -10,7 +10,7 @@ using AwesomeAssertions;
 using CoachOS.Application.Abstractions;
 using CoachOS.Application.Enrollments;
 using CoachOS.Application.Enrollments.DTOs;
-using CoachOS.Application.Mappings;
+using CoachOS.Application.Enrollments.Submit;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
 using CoachOS.Domain.Interfaces;
@@ -22,7 +22,7 @@ using NUnit.Framework;
 namespace CoachOS.Tests.Services;
 
 /// <summary>
-/// Karakteriseringstests (#171) voor <see cref="EnrollmentService.SubmitEnrollmentAsync"/>.
+/// Karakteriseringstests (#171) voor <see cref="EnrollmentSubmissionService.SubmitAsync"/>.
 /// Elk scenario legt het waarneembare gedrag vast: de leesacties en controles in volgorde
 /// (wat er gelezen wordt, capaciteit, dubbelcheck), begin/commit/rollback van de transactie,
 /// precies welke rijen een commit wegschrijft (incl. outbox-payloads), het resultaat en de logregels.
@@ -756,15 +756,11 @@ public partial class SubmitEnrollmentCharacterizationTests
         Mock<IEnrollmentFormRepository> formRepo = new();
         Mock<ILessonSerieRepository> seriesRepo = new();
         Mock<IEnrollmentGroupRepository> groupRepo = new();
-        Mock<IPaymentRepository> paymentRepo = new();
-        Mock<ITimeSlotPreferenceRepository> prefRepo = new();
         Mock<IOrganizationSettingsRepository> settingsRepo = new();
         Mock<IUserLookupService> userLookup = new();
         Mock<IEmailOutboxRepository> outboxRepo = new();
-        Mock<ILessonSeriePriceRepository> priceRepo = new();
-        Mock<IScheduleAssignmentRepository> assignmentRepo = new();
         Mock<IUnitOfWork> uow = new();
-        Mock<ILogger<EnrollmentService>> logger = new();
+        Mock<ILogger<EnrollmentSubmissionService>> logger = new();
 
         seriesRepo.Setup(r => r.GetByIdPublicAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .Returns((Guid id, CancellationToken _) =>
@@ -895,13 +891,6 @@ public partial class SubmitEnrollmentCharacterizationTests
                 return Task.CompletedTask;
             });
 
-        prefRepo.Setup(r => r.AddRangeAsync(It.IsAny<IEnumerable<TimeSlotPreference>>(), It.IsAny<CancellationToken>()))
-            .Returns((IEnumerable<TimeSlotPreference> preferences, CancellationToken _) =>
-            {
-                tracked.AddRange(preferences);
-                return Task.CompletedTask;
-            });
-
         outboxRepo.Setup(r => r.AddRangeAsync(It.IsAny<IEnumerable<EmailOutboxMessage>>(), It.IsAny<CancellationToken>()))
             .Returns((IEnumerable<EmailOutboxMessage> messages, CancellationToken _) =>
             {
@@ -909,12 +898,11 @@ public partial class SubmitEnrollmentCharacterizationTests
                 return Task.CompletedTask;
             });
 
-        EnrollmentService service = new(
-            enrollmentRepo.Object, formRepo.Object, seriesRepo.Object, groupRepo.Object, paymentRepo.Object,
-            prefRepo.Object, settingsRepo.Object, userLookup.Object, outboxRepo.Object, priceRepo.Object,
-            assignmentRepo.Object, uow.Object, new ApplicationMapper(), logger.Object, new FixedClock());
+        EnrollmentSubmissionService service = new(
+            seriesRepo.Object, formRepo.Object, settingsRepo.Object, enrollmentRepo.Object, groupRepo.Object,
+            outboxRepo.Object, userLookup.Object, uow.Object, logger.Object, new FixedClock());
 
-        Result<Guid> result = await service.SubmitEnrollmentAsync(SeriesId, scenario.Request);
+        Result<Guid> result = await service.SubmitAsync(SeriesId, scenario.Request);
 
         log.Add(result.IsSuccess
             ? $"RESULT ok value={Fmt(result.Value)}"
