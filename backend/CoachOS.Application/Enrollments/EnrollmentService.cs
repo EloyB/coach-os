@@ -19,7 +19,7 @@ using OrganizationSettingsEntity = CoachOS.Domain.Entities.OrganizationSettings;
 
 namespace CoachOS.Application.Enrollments;
 
-public partial class EnrollmentService(
+public class EnrollmentService(
     IEnrollmentRepository enrollmentRepo,
     IEnrollmentFormRepository enrollmentFormRepo,
     ILessonSerieRepository lessonSeriesRepo,
@@ -27,7 +27,6 @@ public partial class EnrollmentService(
     IPaymentRepository paymentRepo,
     ITimeSlotPreferenceRepository timeSlotPreferenceRepo,
     IOrganizationSettingsRepository orgSettingsRepo,
-    IUserLookupService userLookup,
     IEmailOutboxRepository emailOutboxRepository,
     ILessonSeriePriceRepository priceRepo,
     IScheduleAssignmentRepository scheduleAssignmentRepo,
@@ -257,8 +256,7 @@ public partial class EnrollmentService(
         if (!DateOfBirthRules.TryParse(request.DateOfBirth, out DateOnly dateOfBirth))
             return Result<Guid>.Fail(new Error(ErrorCodes.Validation, "Geboortedatum is ongeldig."));
 
-        Error? ageError = CheckAgeEligibility(
-            new SubmitEnrollmentRequest { StudentName = request.StudentName, DateOfBirth = request.DateOfBirth }, series);
+        Error? ageError = EnrollmentAgeRules.CheckSeriesAgeLimit(series, [(request.StudentName, request.DateOfBirth)]);
         if (ageError is not null)
             return Result<Guid>.Fail(ageError);
 
@@ -312,7 +310,7 @@ public partial class EnrollmentService(
                     : EnrollmentEmails.Normalize(request.StudentEmail),
                 StudentPhone = request.StudentPhone,
                 DateOfBirth = dateOfBirth,
-                Category = ResolveCategory(request.DateOfBirth, youthMaxAge, timeProvider.GetBrusselsToday()),
+                Category = EnrollmentAgeRules.ResolveCategory(request.DateOfBirth, youthMaxAge, timeProvider.GetBrusselsToday()),
                 Status = EnrollmentStatus.Confirmed,
                 EnrolledAt = timeProvider.GetUtcNow().UtcDateTime,
                 MaxGroupSize = maxGroupSize,
@@ -378,8 +376,7 @@ public partial class EnrollmentService(
         if (!DateOfBirthRules.TryParse(request.DateOfBirth, out DateOnly dateOfBirth))
             return Result<Guid>.Fail(new Error(ErrorCodes.Validation, "Geboortedatum is ongeldig."));
 
-        Error? ageError = CheckAgeEligibility(
-            new SubmitEnrollmentRequest { StudentName = request.StudentName, DateOfBirth = request.DateOfBirth }, series);
+        Error? ageError = EnrollmentAgeRules.CheckSeriesAgeLimit(series, [(request.StudentName, request.DateOfBirth)]);
         if (ageError is not null)
             return Result<Guid>.Fail(ageError);
 
@@ -441,7 +438,7 @@ public partial class EnrollmentService(
                     : EnrollmentEmails.Normalize(request.StudentEmail),
                 StudentPhone = request.StudentPhone,
                 DateOfBirth = dateOfBirth,
-                Category = ResolveCategory(request.DateOfBirth, youthMaxAge, timeProvider.GetBrusselsToday()),
+                Category = EnrollmentAgeRules.ResolveCategory(request.DateOfBirth, youthMaxAge, timeProvider.GetBrusselsToday()),
                 Status = leader.Status,                                // status geërfd van de groep
                 SelectedPriceOptionId = leader.SelectedPriceOptionId,  // prijsoptie geërfd
                 EnrolledAt = timeProvider.GetUtcNow().UtcDateTime,
@@ -563,7 +560,7 @@ public partial class EnrollmentService(
             return Result<LessonSerieEnrollmentDto>.Fail(
                 new Error(ErrorCodes.NotFound, "Inschrijving niet gevonden."));
 
-        DateOnly? dateOfBirth = ParseBirthDate(request.DateOfBirth);
+        DateOnly? dateOfBirth = DateOfBirthRules.ParseOrNull(request.DateOfBirth);
         string contactEmail = EnrollmentEmails.Normalize(request.ContactEmail);
         string studentEmail = string.IsNullOrWhiteSpace(request.StudentEmail)
             ? string.Empty
@@ -593,7 +590,7 @@ public partial class EnrollmentService(
             ? null
             : request.StudentPhone.Trim();
         enrollment.DateOfBirth = dateOfBirth;
-        enrollment.Category = ResolveCategory(request.DateOfBirth, youthMaxAge, updatedOn);
+        enrollment.Category = EnrollmentAgeRules.ResolveCategory(request.DateOfBirth, youthMaxAge, updatedOn);
         enrollment.UpdatedAt = timeProvider.GetUtcNow().UtcDateTime;
 
         // Prijsoptie: enkel behandelen wanneer ze effectief wijzigt.
@@ -725,25 +722,6 @@ public partial class EnrollmentService(
         return null;
     }
 
-    /// <summary>
-    /// Herkent een PostgreSQL unique violation (SQLSTATE 23505) ergens in de exception-keten.
-    /// Bewust via reflectie: de Application-laag kent Npgsql noch EF Core.
-    /// </summary>
-    private static bool IsUniqueViolation(Exception exception)
-    {
-        for (Exception? current = exception; current is not null; current = current.InnerException)
-        {
-            object? sqlState = current.GetType()
-                .GetProperty("SqlState")
-                ?.GetValue(current);
-
-            if (sqlState as string == "23505")
-                return true;
-        }
-
-        return false;
-    }
-
     public async Task<Result<bool>> CancelEnrollmentAsync(
         Guid lessonSeriesId, Guid enrollmentId, Guid organizationId, CancellationToken ct = default)
     {
@@ -810,95 +788,6 @@ public partial class EnrollmentService(
             groupId, active.Count, organizationId);
 
         return Result<bool>.Ok(true);
-    }
-
-    /// <summary>
-    /// Parseert de geboortedatum uit het request. De validator heeft het formaat al
-    /// afgedwongen; faalt het hier toch, dan slaan we null op in plaats van te crashen —
-    /// de inschrijving zelf mag hier niet op stuklopen.
-    /// </summary>
-    private static DateOnly? ParseBirthDate(string? value)
-        => DateOfBirthRules.TryParse(value, out DateOnly date) ? date : null;
-
-    /// <summary>
-    /// Controleert het minimum aantal beschikbare tijdvakken van de reeks. Enkel unieke weekslots van
-    /// deze reeks met voorkeur Beschikbaar of Voorkeur tellen mee; Niet beschikbaar telt niet mee.
-    /// Het vereiste aantal wordt begrensd door het aantal weekslots (zonder weekslots geen eis).
-    /// Alleen voor de publieke inschrijving; handmatige inschrijvingen door de admin zijn vrijgesteld.
-    /// </summary>
-    private static Error? CheckMinimumAvailableSlots(
-        SubmitEnrollmentRequest request, Domain.Entities.LessonSerie series)
-    {
-        if (series.WeeklyTemplate.Count == 0)
-            return null;
-
-        int required = Math.Min(series.MinimumAvailableSlots, series.WeeklyTemplate.Count);
-
-        HashSet<Guid> seriesSlotIds = series.WeeklyTemplate.Select(w => w.Id).ToHashSet();
-        int available = (request.TimeSlotPreferences ?? [])
-            .Where(p => (p.Preference == (int)SlotPreference.Available || p.Preference == (int)SlotPreference.Preferred)
-                        && seriesSlotIds.Contains(p.WeeklyTemplateEntryId))
-            .Select(p => p.WeeklyTemplateEntryId)
-            .Distinct()
-            .Count();
-
-        return available >= required
-            ? null
-            : new Error(ErrorCodes.Validation,
-                $"Kies minstens {required} tijdvak{(required == 1 ? "" : "ken")} waarop je kunt.");
-    }
-
-    /// <summary>
-    /// Controleert of elke deelnemer (leider + groepsleden) op de startdatum van de reeks
-    /// binnen [MinAge, MaxAge] valt. Zonder bruikbare geboortedatum wordt niet geblokkeerd,
-    /// consistent met de tariefcategorie en de partiële unique index.
-    /// </summary>
-    private static Error? CheckAgeEligibility(
-        SubmitEnrollmentRequest request, Domain.Entities.LessonSerie series)
-    {
-        List<(string Name, string? Dob)> people = [(request.StudentName, request.DateOfBirth)];
-        if (request.EnrollmentType == "group" && request.GroupMembers is not null)
-            people.AddRange(request.GroupMembers.Select(m => (m.StudentName, (string?)m.DateOfBirth)));
-
-        foreach ((string name, string? dob) in people)
-        {
-            if (!DateOfBirthRules.TryParse(dob, out DateOnly parsed)) continue;
-
-            int age = ParticipantCategoryResolver.CalculateAge(parsed, series.StartDate);
-            if (age < series.MinAge || age > series.MaxAge)
-            {
-                return new Error(ErrorCodes.Validation,
-                    $"{name} ({age} jaar) valt buiten de leeftijdsgrens van deze reeks " +
-                    $"({series.MinAge}–{series.MaxAge} jaar).");
-            }
-        }
-
-        return null;
-    }
-
-    /// <summary>
-    /// Leidt de tariefcategorie af. Zonder bruikbare geboortedatum blijft de categorie
-    /// null; <c>PricingService</c> behandelt dat als volwassene.
-    /// </summary>
-    private static ParticipantCategory? ResolveCategory(
-        string? dateOfBirth, int youthMaxAge, DateOnly onDate)
-    {
-        if (!DateOfBirthRules.TryParse(dateOfBirth, out DateOnly date)) return null;
-        return ParticipantCategoryResolver.Resolve(date, youthMaxAge, onDate);
-    }
-
-    private static string BuildGroupName(int index)
-    {
-        // 0 → A, 25 → Z, 26 → AA, 27 → AB, …, 701 → ZZ, 702 → AAA, enz.
-        var name = string.Empty;
-        var n = index;
-        while (true)
-        {
-            name = (char)('A' + n % 26) + name;
-            n = n / 26 - 1;
-            if (n < 0) break;
-        }
-        return name;
     }
 
     private List<string>? DeserializeOptions(string? json)

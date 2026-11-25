@@ -2,6 +2,7 @@ using System.Data;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
 using System.Text.RegularExpressions;
@@ -9,7 +10,7 @@ using AwesomeAssertions;
 using CoachOS.Application.Abstractions;
 using CoachOS.Application.Enrollments;
 using CoachOS.Application.Enrollments.DTOs;
-using CoachOS.Application.Mappings;
+using CoachOS.Application.Enrollments.Submit;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
 using CoachOS.Domain.Interfaces;
@@ -21,11 +22,13 @@ using NUnit.Framework;
 namespace CoachOS.Tests.Services;
 
 /// <summary>
-/// Karakteriseringstests (#171) voor <see cref="EnrollmentService.SubmitEnrollmentAsync"/>.
-/// Elk scenario legt het volledige waarneembare gedrag vast: de volgorde van alle aanroepen op
-/// repositories, unit of work en gebruikerslookup, de inhoud van elke aangemaakte entiteit
-/// (incl. outbox-payloads), het resultaat en de logregels. Het transcript wordt vergeleken met
-/// een goedgekeurd bestand onder <c>Characterization/SubmitEnrollment/</c>.
+/// Karakteriseringstests (#171) voor <see cref="EnrollmentSubmissionService.SubmitAsync"/>.
+/// Elk scenario legt het waarneembare gedrag vast: de leesacties en controles in volgorde
+/// (wat er gelezen wordt, capaciteit, dubbelcheck), begin/commit/rollback van de transactie,
+/// precies welke rijen een commit wegschrijft (incl. outbox-payloads), het resultaat en de logregels.
+/// Hoe de implementatie de rijen toevoegt (welke repository, hoeveel saves) hoort er bewust niet bij:
+/// dat mag een refactor veranderen. Het transcript wordt vergeleken met een goedgekeurd bestand onder
+/// <c>Characterization/SubmitEnrollment/</c>.
 ///
 /// De goedgekeurde bestanden zijn opgenomen tegen de code VÓÓR de refactor. Een refactor die het
 /// gedrag niet wijzigt, laat ze ongewijzigd. Opnieuw genereren kan alleen bewust, met
@@ -73,6 +76,12 @@ public partial class SubmitEnrollmentCharacterizationTests
 
         /// <summary>Gooit bij de n-de aanroep van <c>uow.SaveChangesAsync</c> (1-gebaseerd).</summary>
         public int? ThrowOnSaveNumber { get; set; }
+
+        /// <summary>
+        /// Gooit bij de eerste save die een entiteit van dit type wegschrijft. Onafhankelijk van hoeveel
+        /// saves de implementatie doet: "de save met de groep" of "de save met de outbox" faalt.
+        /// </summary>
+        public Type? ThrowOnSaveWith { get; set; }
         public Exception? SaveException { get; set; }
         public Exception? CommitException { get; set; }
         public Exception? EnrollmentAddException { get; set; }
@@ -987,7 +996,7 @@ public partial class SubmitEnrollmentCharacterizationTests
         yield return Case("fail_unexpected_error_on_group_save", () => new Scenario
         {
             Series = BaseSeries(),
-            ThrowOnSaveNumber = 2,
+            ThrowOnSaveWith = typeof(EnrollmentGroup),
             SaveException = new InvalidOperationException("boom"),
             Request = new SubmitEnrollmentRequest
             {
@@ -1000,10 +1009,10 @@ public partial class SubmitEnrollmentCharacterizationTests
             },
         });
 
-        yield return Case("fail_unexpected_error_on_last_save_after_outbox", () => new Scenario
+        yield return Case("fail_unexpected_error_on_outbox_save", () => new Scenario
         {
             Series = BaseSeries(),
-            ThrowOnSaveNumber = 3,
+            ThrowOnSaveWith = typeof(EmailOutboxMessage),
             SaveException = new InvalidOperationException("outbox boom"),
             Request = new SubmitEnrollmentRequest
             {
@@ -1051,25 +1060,23 @@ public partial class SubmitEnrollmentCharacterizationTests
     {
         Scenario scenario = build();
         List<string> log = [];
-        // Alles wat aan de "context" is toegevoegd. Bij elke SaveChanges loggen we de toestand ervan,
-        // zodat ook wijzigingen ná de Add (bv. de groep van de leider) deel van het gedrag zijn.
+        // Alles wat aan de "context" is toegevoegd. Kinderen via navigaties (antwoorden, leden) vindt
+        // PersistedRows zelf, zoals EF dat doet.
         List<object> tracked = [];
-        long nextId = 1000;
-        Guid NewId() => new($"00000000-0000-0000-0000-{++nextId:D12}");
+        // Wat de laatste geslaagde save wegschreef: dat is wat een commit vastlegt.
+        string persisted = string.Empty;
+        // Willekeurig, zoals EF client-side sleutels maakt; Normalize nummert ze op volgorde van verschijnen.
+        Guid NewId() => Guid.NewGuid();
 
         Mock<IEnrollmentRepository> enrollmentRepo = new();
         Mock<IEnrollmentFormRepository> formRepo = new();
         Mock<ILessonSerieRepository> seriesRepo = new();
         Mock<IEnrollmentGroupRepository> groupRepo = new();
-        Mock<IPaymentRepository> paymentRepo = new();
-        Mock<ITimeSlotPreferenceRepository> prefRepo = new();
         Mock<IOrganizationSettingsRepository> settingsRepo = new();
         Mock<IUserLookupService> userLookup = new();
         Mock<IEmailOutboxRepository> outboxRepo = new();
-        Mock<ILessonSeriePriceRepository> priceRepo = new();
-        Mock<IScheduleAssignmentRepository> assignmentRepo = new();
         Mock<IUnitOfWork> uow = new();
-        Mock<ILogger<EnrollmentService>> logger = new();
+        Mock<ILogger<EnrollmentSubmissionService>> logger = new();
 
         seriesRepo.Setup(r => r.GetByIdPublicAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .Returns((Guid id, CancellationToken _) =>
@@ -1118,19 +1125,31 @@ public partial class SubmitEnrollmentCharacterizationTests
             .Returns((CancellationToken _) =>
             {
                 saveCount++;
-                log.Add($"uow.SaveChanges#{saveCount}");
-                foreach (object entity in tracked)
-                    log.Add($"  state {Snapshot(entity)}");
-                if (scenario.ThrowOnSaveNumber == saveCount && scenario.SaveException is not null)
-                    throw scenario.SaveException;
+                List<object> rows = PersistedRows(tracked);
+                bool throws = scenario.SaveException is not null
+                    && (scenario.ThrowOnSaveNumber == saveCount
+                        || (scenario.ThrowOnSaveWith is { } type && rows.Any(type.IsInstanceOfType)));
+                if (throws)
+                {
+                    log.Add("uow.SaveChanges => throws");
+                    throw scenario.SaveException!;
+                }
+
+                persisted = DescribeRows(rows);
                 return Task.CompletedTask;
             });
         uow.Setup(u => u.CommitTransactionAsync(It.IsAny<CancellationToken>()))
             .Returns((CancellationToken _) =>
             {
-                log.Add("uow.CommitTransaction");
                 if (scenario.CommitException is not null)
+                {
+                    log.Add("uow.CommitTransaction => throws");
                     throw scenario.CommitException;
+                }
+
+                log.Add("uow.CommitTransaction");
+                if (persisted.Length > 0)
+                    log.Add(persisted);
                 return Task.CompletedTask;
             });
         uow.Setup(u => u.RollbackTransactionAsync(It.IsAny<CancellationToken>()))
@@ -1163,19 +1182,14 @@ public partial class SubmitEnrollmentCharacterizationTests
                     throw scenario.EnrollmentAddException;
                 }
 
-                // Simuleert de client-side sleutelgeneratie van EF, zodat de koppelingen tussen
-                // leider, leden, groep en antwoorden in het transcript zichtbaar zijn.
                 if (enrollment.Id == Guid.Empty) enrollment.Id = NewId();
                 tracked.Add(enrollment);
-                log.Add($"enrollments.Add {Snapshot(enrollment)}");
                 return Task.CompletedTask;
             });
         enrollmentRepo.Setup(r => r.AddFormResponseAsync(It.IsAny<FormResponse>(), It.IsAny<CancellationToken>()))
             .Returns((FormResponse response, CancellationToken _) =>
             {
-                if (response.Id == Guid.Empty) response.Id = NewId();
                 tracked.Add(response);
-                log.Add($"enrollments.AddFormResponse {Snapshot(response)}");
                 return Task.CompletedTask;
             });
 
@@ -1190,32 +1204,21 @@ public partial class SubmitEnrollmentCharacterizationTests
             {
                 if (group.Id == Guid.Empty) group.Id = NewId();
                 tracked.Add(group);
-                log.Add($"groups.Add {Snapshot(group)}");
-                return Task.CompletedTask;
-            });
-
-        prefRepo.Setup(r => r.AddRangeAsync(It.IsAny<IEnumerable<TimeSlotPreference>>(), It.IsAny<CancellationToken>()))
-            .Returns((IEnumerable<TimeSlotPreference> preferences, CancellationToken _) =>
-            {
-                List<TimeSlotPreference> items = preferences.ToList();
-                log.Add($"preferences.AddRange [{string.Join(", ", items.Select(Snapshot))}]");
                 return Task.CompletedTask;
             });
 
         outboxRepo.Setup(r => r.AddRangeAsync(It.IsAny<IEnumerable<EmailOutboxMessage>>(), It.IsAny<CancellationToken>()))
             .Returns((IEnumerable<EmailOutboxMessage> messages, CancellationToken _) =>
             {
-                List<EmailOutboxMessage> items = messages.ToList();
-                log.Add($"outbox.AddRange [{string.Join(", ", items.Select(Snapshot))}]");
+                tracked.AddRange(messages);
                 return Task.CompletedTask;
             });
 
-        EnrollmentService service = new(
-            enrollmentRepo.Object, formRepo.Object, seriesRepo.Object, groupRepo.Object, paymentRepo.Object,
-            prefRepo.Object, settingsRepo.Object, userLookup.Object, outboxRepo.Object, priceRepo.Object,
-            assignmentRepo.Object, uow.Object, new ApplicationMapper(), logger.Object, new FixedClock());
+        EnrollmentSubmissionService service = new(
+            seriesRepo.Object, formRepo.Object, settingsRepo.Object, enrollmentRepo.Object, groupRepo.Object,
+            outboxRepo.Object, userLookup.Object, uow.Object, logger.Object, new FixedClock());
 
-        Result<Guid> result = await service.SubmitEnrollmentAsync(SeriesId, scenario.Request);
+        Result<Guid> result = await service.SubmitAsync(SeriesId, scenario.Request);
 
         log.Add(result.IsSuccess
             ? $"RESULT ok value={Fmt(result.Value)}"
@@ -1239,10 +1242,70 @@ public partial class SubmitEnrollmentCharacterizationTests
 
     private static string Fmt(Guid id) => id.ToString();
 
-    private static readonly JsonSerializerOptions SnapshotOptions = new()
+    /// <summary>Alle entiteiten die een save zou wegschrijven: wat toegevoegd is, plus alles eronder via navigaties.</summary>
+    private static List<object> PersistedRows(IEnumerable<object> roots)
+    {
+        List<object> rows = [];
+        HashSet<object> seen = new(ReferenceEqualityComparer.Instance);
+        Stack<object> todo = new(roots.Reverse());
+        while (todo.Count > 0)
+        {
+            object entity = todo.Pop();
+            if (!seen.Add(entity))
+                continue;
+
+            rows.Add(entity);
+            IEnumerable<object?> children = entity switch
+            {
+                Enrollment e => [.. e.FormResponses, .. e.TimeSlotPreferences, e.EnrollmentGroup],
+                EnrollmentGroup g => [.. g.Members, g.LeaderEnrollment],
+                _ => [],
+            };
+            foreach (object? child in children)
+            {
+                if (child is not null)
+                    todo.Push(child);
+            }
+        }
+
+        return rows;
+    }
+
+    /// <summary>
+    /// De weggeschreven rijen in een vaste volgorde op inhoud, zodat het transcript niet afhangt van
+    /// de volgorde of het aantal saves waarin de implementatie ze toevoegt.
+    /// </summary>
+    private static string DescribeRows(List<object> rows)
+    {
+        Dictionary<Guid, string> names = rows.OfType<Enrollment>().ToDictionary(e => e.Id, e => e.StudentName);
+        string Owner(Guid enrollmentId) => names.GetValueOrDefault(enrollmentId, "?");
+
+        return string.Join("\n", rows
+            .Select(row => row switch
+            {
+                EnrollmentGroup g => (Rank: 0, Key: g.Name, Row: row),
+                Enrollment e => (Rank: 1, Key: e.StudentName, Row: row),
+                FormResponse r => (Rank: 2, Key: $"{Owner(r.EnrollmentId)}|{r.FormFieldId}", Row: row),
+                TimeSlotPreference p => (Rank: 3, Key: $"{Owner(p.EnrollmentId)}|{p.WeeklyTemplateEntryId}", Row: row),
+                EmailOutboxMessage m => (Rank: 4, Key: $"{m.Type}|{m.Payload}", Row: row),
+                _ => (Rank: 9, Key: row.GetType().Name, Row: row),
+            })
+            .OrderBy(k => k.Rank)
+            .ThenBy(k => k.Key, StringComparer.Ordinal)
+            .Select(k => $"  persisted {RowSnapshot(k.Row)}"));
+    }
+
+    private static bool IsScalar(Type type)
+    {
+        type = Nullable.GetUnderlyingType(type) ?? type;
+        return type.IsPrimitive || type.IsEnum || type == typeof(string) || type == typeof(Guid)
+            || type == typeof(decimal) || type == typeof(DateTime) || type == typeof(DateOnly)
+            || type == typeof(TimeOnly) || type == typeof(DateTimeOffset);
+    }
+
+    private static readonly JsonSerializerOptions RowOptions = new()
     {
         WriteIndented = false,
-        ReferenceHandler = ReferenceHandler.IgnoreCycles,
         Converters = { new JsonStringEnumConverter() },
         TypeInfoResolver = new DefaultJsonTypeInfoResolver
         {
@@ -1250,11 +1313,12 @@ public partial class SubmitEnrollmentCharacterizationTests
             {
                 typeInfo =>
                 {
-                    // Audit-tijdstempels en AvailableAt (entiteit-default op de wandklok) zijn niet deterministisch;
-                    // de service zet ze niet, dus ze maken geen deel uit van het gedrag.
+                    // Navigaties zijn eigen rijen. Audit-tijdstempels en AvailableAt (entiteit-default op de
+                    // wandklok) zijn niet deterministisch; de service zet ze niet.
                     foreach (JsonPropertyInfo property in typeInfo.Properties.ToList())
                     {
-                        if (property.Name is "createdAt" or "updatedAt" or "availableAt")
+                        if (!IsScalar(property.PropertyType)
+                            || property.Name is "createdAt" or "updatedAt" or "availableAt")
                             typeInfo.Properties.Remove(property);
                     }
                 },
@@ -1263,7 +1327,14 @@ public partial class SubmitEnrollmentCharacterizationTests
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 
-    private static string Snapshot(object value) => $"{value.GetType().Name} {JsonSerializer.Serialize(value, value.GetType(), SnapshotOptions)}";
+    private static string RowSnapshot(object row)
+    {
+        JsonObject json = JsonSerializer.SerializeToNode(row, row.GetType(), RowOptions)!.AsObject();
+        // Naar antwoorden, voorkeuren en outbox verwijst niemand; hun sleutel kiest EF.
+        if (row is not (Enrollment or EnrollmentGroup))
+            json.Remove("id");
+        return $"{row.GetType().Name} {json.ToJsonString()}";
+    }
 
     /// <summary>Vervangt de willekeurige guids (nieuwe lessen) door stabiele nummers.</summary>
     private static string Normalize(string transcript)

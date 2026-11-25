@@ -375,4 +375,72 @@ public class TrainerAvailabilityServiceTests
         entity.IsActive.Should().BeTrue();
         _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
+
+    [Test]
+    public async Task CreateAsync_TakesTrainerLockInsideTransactionBeforeOverlapCheckAndCommits()
+    {
+        SetupHappyPath();
+        List<string> calls = [];
+        _unitOfWork.Setup(u => u.BeginTransactionAsync(It.IsAny<CancellationToken>())).Callback(() => calls.Add("begin")).Returns(Task.CompletedTask);
+        _repo.Setup(r => r.LockTrainerAsync(_orgId, _trainerId, It.IsAny<CancellationToken>())).Callback(() => calls.Add("lock")).Returns(Task.CompletedTask);
+        _repo.Setup(r => r.HasOverlapAsync(_trainerId, _orgId, 0, It.IsAny<TimeOnly>(), It.IsAny<TimeOnly>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
+            .Callback(() => calls.Add("overlap")).ReturnsAsync(false);
+        _unitOfWork.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>())).Callback(() => calls.Add("save")).Returns(Task.CompletedTask);
+        _unitOfWork.Setup(u => u.CommitTransactionAsync(It.IsAny<CancellationToken>())).Callback(() => calls.Add("commit")).Returns(Task.CompletedTask);
+
+        Result<Guid> result = await _sut.CreateAsync(_orgId, ValidRequest(), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        calls.Should().Equal("begin", "lock", "overlap", "save", "commit");
+    }
+
+    [Test]
+    public async Task CreateAsync_OverlapConflict_RollsBackAndNeverCommits()
+    {
+        SetupHappyPath();
+        _repo.Setup(r => r.HasOverlapAsync(_trainerId, _orgId, 0, It.IsAny<TimeOnly>(), It.IsAny<TimeOnly>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        Result<Guid> result = await _sut.CreateAsync(_orgId, ValidRequest(), CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        _unitOfWork.Verify(u => u.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.RollbackTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task UpdateForTrainerAsync_TakesTrainerLockBeforeOverlapCheckAndCommits()
+    {
+        TrainerAvailability entity = OwnEntity(trainerId: _trainerId);
+        SetupHappyPath();
+        _repo.Setup(r => r.GetByIdAsync(entity.Id, _orgId, It.IsAny<CancellationToken>())).ReturnsAsync(entity);
+        List<string> calls = [];
+        _repo.Setup(r => r.LockTrainerAsync(_orgId, _trainerId, It.IsAny<CancellationToken>())).Callback(() => calls.Add("lock")).Returns(Task.CompletedTask);
+        _repo.Setup(r => r.HasOverlapAsync(_trainerId, _orgId, 0, It.IsAny<TimeOnly>(), It.IsAny<TimeOnly>(), entity.Id, It.IsAny<CancellationToken>()))
+            .Callback(() => calls.Add("overlap")).ReturnsAsync(false);
+        _unitOfWork.Setup(u => u.CommitTransactionAsync(It.IsAny<CancellationToken>())).Callback(() => calls.Add("commit")).Returns(Task.CompletedTask);
+
+        Result result = await _sut.UpdateForTrainerAsync(
+            entity.Id, _orgId, _trainerId, new SaveOwnTrainerAvailabilityRequest(_clubId, 0, "17:00", "21:00"), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        calls.Should().Equal("lock", "overlap", "commit");
+    }
+
+    [Test]
+    public async Task UpdateForTrainerAsync_Overlap_RollsBackAndNeverCommits()
+    {
+        TrainerAvailability entity = OwnEntity(trainerId: _trainerId);
+        SetupHappyPath();
+        _repo.Setup(r => r.GetByIdAsync(entity.Id, _orgId, It.IsAny<CancellationToken>())).ReturnsAsync(entity);
+        _repo.Setup(r => r.HasOverlapAsync(_trainerId, _orgId, 0, It.IsAny<TimeOnly>(), It.IsAny<TimeOnly>(), entity.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        Result result = await _sut.UpdateForTrainerAsync(
+            entity.Id, _orgId, _trainerId, new SaveOwnTrainerAvailabilityRequest(_clubId, 0, "17:00", "21:00"), CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        _unitOfWork.Verify(u => u.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.RollbackTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
 }

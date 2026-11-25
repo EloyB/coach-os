@@ -1,0 +1,11 @@
+series.GetByIdPublic(00000000-0000-0000-0000-0000000000b1)
+form.GetBySeriesIdReadOnly(00000000-0000-0000-0000-0000000000b1)
+settings.GetByOrganizationReadOnly(00000000-0000-0000-0000-0000000000a1)
+userLookup.GetUserInfoById(00000000-0000-0000-0000-0000000000c1)
+uow.BeginTransaction(Serializable)
+enrollments.CountActiveBySeries(00000000-0000-0000-0000-0000000000b1) => 0
+enrollments.IsDuplicateParticipant(00000000-0000-0000-0000-0000000000b1, 'ivo@test.be', 'Ivo', 1990-01-01) => False
+uow.SaveChanges => throws
+uow.RollbackTransaction
+RESULT fail [unexpected: Inschrijving mislukt. Probeer het opnieuw.]
+LOG Error: Inschrijving mislukt voor reeks 00000000-0000-0000-0000-0000000000b1 [InvalidOperationException: outbox boom]

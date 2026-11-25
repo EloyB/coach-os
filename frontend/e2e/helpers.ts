@@ -266,6 +266,11 @@ export async function mockAllDashboardApis(page: Page): Promise<void> {
   await mockApi(page, "GET", "/dashboard/organization-camp-days", noCampDays);
   await mockApi(page, "GET", "/onboarding/state", TEST_ONBOARDING_DONE);
   await mockApi(page, "GET", "/subscription/active-students", TEST_ACTIVE_STUDENTS);
+  // De navigatie vraagt dit op voor admins; standaard geeft de admin niet zelf les.
+  await mockApi(page, "GET", "/organization/settings", {
+    adminsActAsTrainers: false,
+    currentUserUpcomingLessonsAsTrainer: 0,
+  });
   await mockApi(page, "GET", "/lessonseries", TEST_SERIES);
   await mockApi(page, "GET", "/trainers", TEST_TRAINERS);
   await mockApi(page, "GET", "/tennisclubs", TEST_CLUBS);

@@ -14,7 +14,8 @@ import type { AvailabilityFormValues } from "@/components/trainer-availability/a
 
 const AVAILABILITIES_KEY = ["ownTrainerAvailabilities"];
 
-export function AvailabilitySection() {
+/** "admin" is een beheerder die zelf lesgeeft: eigen titel en uitleg, want er is geen andere admin die het leest. */
+export function AvailabilitySection({ audience = "trainer" }: { audience?: "trainer" | "admin" }) {
   const t = useTranslations("trainerSettings");
   const queryClient = useQueryClient();
 
@@ -44,10 +45,10 @@ export function AvailabilitySection() {
   return (
     <section className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
       <h2 className="text-lg font-semibold text-gray-900">
-        {t("availabilityTitle")}
+        {t(audience === "admin" ? "availabilityTitleAdmin" : "availabilityTitle")}
       </h2>
       <p className="text-sm text-gray-500 mt-0.5 mb-4">
-        {t("availabilityIntro")}
+        {t(audience === "admin" ? "availabilityIntroAdmin" : "availabilityIntro")}
       </p>
 
       <AvailabilityEditor

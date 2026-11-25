@@ -78,7 +78,7 @@ public class EnrollmentMaxGroupSizeTests
         _service = new EnrollmentService(
             _enrollmentRepo.Object, _formRepo.Object, _seriesRepo.Object, _groupRepo.Object,
             new Mock<IPaymentRepository>().Object, new Mock<ITimeSlotPreferenceRepository>().Object, _settingsRepo.Object,
-            new Mock<IUserLookupService>().Object, _outboxRepo.Object, new Mock<ILessonSeriePriceRepository>().Object,
+            _outboxRepo.Object, new Mock<ILessonSeriePriceRepository>().Object,
             _assignmentRepo.Object, new Mock<IUnitOfWork>().Object, new ApplicationMapper(),
             NullLogger<EnrollmentService>.Instance, TimeProvider.System);
     }
