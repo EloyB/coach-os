@@ -27,6 +27,8 @@ import {
 import { FieldError } from "@/components/forms/field-error";
 import { inputClass } from "@/lib/styles";
 import { OrganizationSection } from "./organization-section";
+import { AvailabilitySection } from "@/components/trainer-availability/availability-section";
+import { getOrganizationSettings } from "@/lib/api/organizationSettings";
 import { MollieSection } from "./mollie-section";
 import { SubscriptionLinkCard } from "./subscription-link-card";
 import { ClubExportCard } from "./club-export-card";
@@ -124,6 +126,13 @@ export default function SettingsPage() {
     queryFn: getTennisClubs,
   });
 
+  // Een beheerder die zelf lesgeeft (AdminsActAsTrainers) vult hier zijn eigen beschikbaarheid in, net als een trainer.
+  const { data: orgSettings } = useQuery({
+    queryKey: ["organizationSettings"],
+    queryFn: getOrganizationSettings,
+    staleTime: 5 * 60 * 1000,
+  });
+
   const createMutation = useMutation({
     mutationFn: createTennisClub,
     onSuccess: () => {
@@ -169,6 +178,13 @@ export default function SettingsPage() {
 
       {/* Organisatie-instellingen */}
       <OrganizationSection />
+
+      {/* Eigen beschikbaarheid: enkel voor een beheerder die zelf lesgeeft */}
+      {orgSettings?.adminsActAsTrainers && (
+        <div className="mb-6">
+          <AvailabilitySection audience="admin" />
+        </div>
+      )}
 
       {/* Mollie online betalingen */}
       <MollieSection />

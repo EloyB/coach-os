@@ -34,5 +34,13 @@ public interface ITrainerAvailabilityRepository
         TimeOnly endTime,
         CancellationToken ct = default);
 
+    /// <summary>
+    /// Serialiseert schrijfacties op de beschikbaarheid van één trainer met een transactioneel
+    /// lock (vervalt bij commit/rollback). Moet binnen een transactie en vóór de overlapcontrole
+    /// genomen worden; anders kunnen twee gelijktijdige requests elk "geen overlap" lezen en
+    /// samen twee overlappende tijdvakken opslaan.
+    /// </summary>
+    Task LockTrainerAsync(Guid organizationId, Guid trainerId, CancellationToken ct = default);
+
     Task AddAsync(TrainerAvailability availability, CancellationToken ct = default);
 }

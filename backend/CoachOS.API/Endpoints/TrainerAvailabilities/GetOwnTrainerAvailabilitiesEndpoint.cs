@@ -14,7 +14,7 @@ public class GetOwnTrainerAvailabilitiesEndpoint : IEndpoint
             Result<List<TrainerAvailabilityDto>> result = await service.GetForTrainerAsync(ctx.GetOrganizationId(), ctx.GetUserId(), ct);
             return result.IsSuccess ? Results.Ok(result.Value) : result.ToErrorResult();
         })
-        .RequireAuthorization(policy => policy.RequireRole("Trainer"))
+        .RequireAuthorization(policy => policy.RequireRole("Trainer", "Admin"))
         .WithTags("TrainerAvailabilities");
     }
 }

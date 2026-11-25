@@ -13,7 +13,7 @@ public class DeleteOwnTrainerAvailabilityEndpoint : IEndpoint
             Result result = await service.DeleteForTrainerAsync(id, ctx.GetOrganizationId(), ctx.GetUserId(), ct);
             return result.IsSuccess ? Results.NoContent() : result.ToErrorResult();
         })
-        .RequireAuthorization(policy => policy.RequireRole("Trainer"))
+        .RequireAuthorization(policy => policy.RequireRole("Trainer", "Admin"))
         .WithTags("TrainerAvailabilities");
     }
 }
