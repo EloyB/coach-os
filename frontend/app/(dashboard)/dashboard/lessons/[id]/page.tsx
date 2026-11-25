@@ -1437,133 +1437,161 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
   const generalFields = fields.filter((f) => f.scope === 1);
 
   function renderFieldRow(field: DraftField, idx: number, listLength: number) {
+    const isGeneral = field.scope === 1;
+    const iconBtn =
+      "w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 disabled:opacity-30 transition-colors";
     return (
-            <div
-              key={field._key}
-              className="border border-gray-100 rounded-xl p-4 space-y-3 bg-[#FAFAF8]"
-            >
-              {/* Row 1: label (full width) */}
-              <input
-                type="text"
-                placeholder="Veldlabel, bijv. 'Telefoonnummer'"
-                value={field.label}
-                onChange={(e) =>
-                  updateField(field._key, { label: e.target.value })
-                }
-                className={inputCls}
-              />
+      <div
+        key={field._key}
+        className="border border-gray-100 rounded-xl bg-[#FAFAF8]"
+      >
+        {/* De vraag als titel, met de acties ernaast */}
+        <div className="flex items-center gap-1 pl-3 pr-2 pt-2.5">
+          <input
+            type="text"
+            aria-label={t("questionLabel")}
+            placeholder={t("questionPlaceholder")}
+            value={field.label}
+            onChange={(e) => updateField(field._key, { label: e.target.value })}
+            className="flex-1 min-w-0 px-2 py-1.5 text-[15px] font-semibold text-gray-800 bg-transparent border border-transparent rounded-lg hover:border-gray-200 focus:outline-none focus:border-tennis-green focus:bg-white"
+          />
+          <button
+            type="button"
+            aria-label={t("moveUp")}
+            onClick={() => moveField(field._key, -1)}
+            disabled={idx === 0}
+            className={iconBtn}
+          >
+            <ChevronUp size={14} />
+          </button>
+          <button
+            type="button"
+            aria-label={t("moveDown")}
+            onClick={() => moveField(field._key, 1)}
+            disabled={idx === listLength - 1}
+            className={iconBtn}
+          >
+            <ChevronDown size={14} />
+          </button>
+          <button
+            type="button"
+            aria-label={t("remove")}
+            onClick={() => removeField(field._key)}
+            className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
 
-              {/* Row 2: type + required + reorder + delete */}
-              <div className="flex items-center gap-2">
-                <NativeSelect
-                  value={field.type}
-                  onChange={(e) =>
-                    updateField(field._key, {
-                      type: parseInt(e.target.value),
-                      options: undefined,
-                    })
+        {/* Elke instelling met een eigen label: type, verplicht, voor wie */}
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-3 pt-1 pb-3">
+          <label className="flex items-center gap-2 text-xs text-gray-500">
+            {t("fieldType")}
+            <div className="w-36">
+              <NativeSelect
+                value={field.type}
+                onChange={(e) =>
+                  updateField(field._key, {
+                    type: parseInt(e.target.value),
+                    options: undefined,
+                  })
+                }
+              >
+                {FIELD_TYPES.map((ft) => (
+                  <option key={ft.value} value={ft.value}>
+                    {ft.label}
+                  </option>
+                ))}
+              </NativeSelect>
+            </div>
+          </label>
+
+          <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={field.isRequired}
+              onChange={(e) =>
+                updateField(field._key, { isRequired: e.target.checked })
+              }
+              className="peer sr-only"
+            />
+            <span className="relative w-8 h-[18px] rounded-full bg-gray-200 transition-colors peer-checked:bg-tennis-green peer-focus-visible:ring-2 peer-focus-visible:ring-tennis-green peer-focus-visible:ring-offset-2 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:w-3.5 after:h-3.5 after:rounded-full after:bg-white after:shadow-sm after:transition-transform peer-checked:after:translate-x-3.5" />
+            {t("field_required")}
+          </label>
+
+          <div className="flex items-center gap-2 text-xs text-gray-500">
+            {t("forWho")}
+            <div
+              role="group"
+              aria-label={t("forWho")}
+              className="inline-flex overflow-hidden rounded-lg border border-gray-200 bg-white"
+            >
+              {[
+                { scope: 0, label: t("perParticipantShort") },
+                { scope: 1, label: t("generalShort") },
+              ].map((option) => (
+                <button
+                  key={option.scope}
+                  type="button"
+                  aria-pressed={isGeneral === (option.scope === 1)}
+                  onClick={() => updateField(field._key, { scope: option.scope })}
+                  className={
+                    "px-2.5 py-1.5 text-[12.5px] border-r border-gray-200 last:border-r-0 transition-colors " +
+                    (isGeneral === (option.scope === 1)
+                      ? "bg-tennis-green/10 text-tennis-green font-semibold"
+                      : "text-gray-600 hover:bg-gray-50")
                   }
                 >
-                  {FIELD_TYPES.map((t) => (
-                    <option key={t.value} value={t.value}>
-                      {t.label}
-                    </option>
-                  ))}
-                </NativeSelect>
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
 
-                <label className="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={field.isRequired}
-                    onChange={(e) =>
-                      updateField(field._key, { isRequired: e.target.checked })
-                    }
-                    className="accent-tennis-green"
-                  />
-                  Verplicht
-                </label>
+        {existingForm?.fields.some(
+          (f) => f.id === field.id && f.scope !== field.scope,
+        ) && (
+          <p className="mx-3 mb-3 text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2">
+            {t("scopeChangedHint")}
+          </p>
+        )}
 
+        {/* Options for MultipleChoice */}
+        {field.type === 2 && (
+          <div className="space-y-2 mx-3 mb-3 pt-3 border-t border-gray-100">
+            {(field.options ?? []).map((opt, optIdx) => (
+              <div key={optIdx} className="flex items-center gap-2">
+                <input
+                  type="text"
+                  placeholder={`Optie ${optIdx + 1}`}
+                  value={opt}
+                  onChange={(e) =>
+                    updateOption(field._key, optIdx, e.target.value)
+                  }
+                  className={inputCls + " flex-1"}
+                />
                 <button
                   type="button"
-                  onClick={() =>
-                    updateField(field._key, {
-                      scope: field.scope === 1 ? 0 : 1,
-                    })
-                  }
-                  className="text-xs text-tennis-green hover:underline whitespace-nowrap"
+                  aria-label={t("remove")}
+                  onClick={() => removeOption(field._key, optIdx)}
+                  className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
                 >
-                  {field.scope === 1 ? t("makePerParticipant") : t("makeGeneral")}
+                  <X size={13} />
                 </button>
-
-                <div className="flex items-center gap-1 ml-auto">
-                  <button
-                    type="button"
-                    onClick={() => moveField(field._key, -1)}
-                    disabled={idx === 0}
-                    className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 disabled:opacity-30 transition-colors"
-                  >
-                    <ChevronUp size={13} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => moveField(field._key, 1)}
-                    disabled={idx === listLength - 1}
-                    className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 disabled:opacity-30 transition-colors"
-                  >
-                    <ChevronDown size={13} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => removeField(field._key)}
-                    className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
-                  >
-                    <Trash2 size={13} />
-                  </button>
-                </div>
               </div>
-
-              {existingForm?.fields.some(
-                (f) => f.id === field.id && f.scope !== field.scope,
-              ) && (
-                <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2">
-                  {t("scopeChangedHint")}
-                </p>
-              )}
-
-              {/* Options for MultipleChoice */}
-              {field.type === 2 && (
-                <div className="space-y-2 pt-1 border-t border-gray-100">
-                  {(field.options ?? []).map((opt, optIdx) => (
-                    <div key={optIdx} className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        placeholder={`Optie ${optIdx + 1}`}
-                        value={opt}
-                        onChange={(e) =>
-                          updateOption(field._key, optIdx, e.target.value)
-                        }
-                        className={inputCls + " flex-1"}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeOption(field._key, optIdx)}
-                        className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
-                      >
-                        <X size={13} />
-                      </button>
-                    </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => addOption(field._key)}
-                    className="flex items-center gap-1 text-xs text-tennis-green hover:underline"
-                  >
-                    <Plus size={11} />
-                    Optie toevoegen
-                  </button>
-                </div>
-              )}
-            </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => addOption(field._key)}
+              className="flex items-center gap-1 text-xs text-tennis-green hover:underline"
+            >
+              <Plus size={11} />
+              {t("add_option")}
+            </button>
+          </div>
+        )}
+      </div>
     );
   }
 
@@ -1614,6 +1642,7 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
           </p>
         )}
 
+        <div className="max-w-3xl space-y-6">
         <div className="space-y-2">
           <div>
             <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
@@ -1636,7 +1665,7 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
           </button>
         </div>
 
-        <div className="space-y-2 pt-2">
+        <div className="space-y-2">
           <div>
             <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
               {t("generalTitle")}
@@ -1656,6 +1685,7 @@ function FormBuilderSection({ seriesId }: { seriesId: string }) {
             <Plus size={12} />
             {t("addGeneral")}
           </button>
+        </div>
         </div>
 
         <div className="flex items-center gap-3 pt-1">

@@ -455,9 +455,16 @@
     "generalTitle": "Algemene vragen",
     "generalHint": "Eén keer per inschrijving, bijvoorbeeld \"Hoe heb je ons gevonden?\". De contactpersoon beantwoordt ze.",
     "addGeneral": "Algemene vraag toevoegen",
-    "makeGeneral": "Maak algemeen",
-    "makePerParticipant": "Maak per speler",
-    "scopeChangedHint": "Bestaande antwoorden blijven bewaard. Ze worden na het opslaan wel anders getoond en gevraagd."
+    "scopeChangedHint": "Bestaande antwoorden blijven bewaard. Ze worden na het opslaan wel anders getoond en gevraagd.",
+    "questionLabel": "Vraag",
+    "questionPlaceholder": "Vraag, bijvoorbeeld \"Telefoonnummer\"",
+    "fieldType": "Type",
+    "forWho": "Voor wie",
+    "perParticipantShort": "Per speler",
+    "generalShort": "Algemeen",
+    "moveUp": "Omhoog",
+    "moveDown": "Omlaag",
+    "remove": "Verwijderen"
   },
   "lessonWizard": {
     "availableBadge": "beschikbaar",

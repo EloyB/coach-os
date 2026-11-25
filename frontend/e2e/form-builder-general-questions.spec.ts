@@ -53,9 +53,9 @@ test("een nieuwe vraag krijgt het bereik van de lijst waarin ze wordt toegevoegd
   const { builder, saved } = await arrange(page, null);
 
   await builder.getByRole("button", { name: "Vraag per speler toevoegen" }).click();
-  await builder.getByPlaceholder(/Veldlabel/).first().fill("T-shirtmaat");
+  await builder.getByRole("textbox", { name: "Vraag", exact: true }).first().fill("T-shirtmaat");
   await builder.getByRole("button", { name: "Algemene vraag toevoegen" }).click();
-  await builder.getByPlaceholder(/Veldlabel/).last().fill("Opmerking voor de trainer");
+  await builder.getByRole("textbox", { name: "Vraag", exact: true }).last().fill("Opmerking voor de trainer");
   await builder.getByRole("button", { name: "Formulier opslaan" }).click();
 
   await expect.poll(() => saved.fields).toEqual([
@@ -64,10 +64,13 @@ test("een nieuwe vraag krijgt het bereik van de lijst waarin ze wordt toegevoegd
   ]);
 });
 
-test("een vraag verplaatsen naar de andere lijst wijzigt haar bereik, met een melding bij bestaande antwoorden", async ({ page }) => {
+test("het bereik van een vraag wijzigen verplaatst ze naar de andere lijst, met een melding bij bestaande antwoorden", async ({ page }) => {
   const { builder, saved } = await arrange(page, EXISTING_FORM);
 
-  await builder.getByRole("button", { name: "Maak algemeen" }).click();
+  const row = builder.locator('input[value="Ervaringsniveau"]').locator("xpath=ancestor::div[contains(@class, 'rounded-xl')][1]");
+  await expect(row.getByRole("button", { name: "Per speler" })).toHaveAttribute("aria-pressed", "true");
+  await row.getByRole("button", { name: "Algemeen" }).click();
+  await expect(row.getByRole("button", { name: "Algemeen" })).toHaveAttribute("aria-pressed", "true");
   await expect(builder.getByText("Bestaande antwoorden blijven bewaard")).toBeVisible();
   await builder.getByRole("button", { name: "Formulier opslaan" }).click();
 
@@ -90,7 +93,7 @@ test("omhoog en omlaag werken binnen de eigen lijst", async ({ page }) => {
 
   // "A" omlaag: wisselt met "C" (de volgende per-speler-vraag), niet met de algemene vraag ertussen.
   const rowA = builder.locator('input[value="A per speler"]').locator("xpath=ancestor::div[contains(@class, 'rounded-xl')][1]");
-  await rowA.locator("button").nth(2).click();
+  await rowA.getByRole("button", { name: "Omlaag" }).click();
   await builder.getByRole("button", { name: "Formulier opslaan" }).click();
 
   await expect.poll(() => saved.fields?.filter((f) => f.scope === 0).map((f) => f.label)).toEqual(["C per speler", "A per speler"]);
