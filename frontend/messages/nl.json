@@ -291,7 +291,7 @@
     "summary_lesson_max_group": "In jullie les mogen er <b>maximaal {max}</b> zitten.",
     "add_person": "Nog iemand inschrijven",
     "extra_person": "Extra persoon",
-    "together_title": "Samen met andere spelers?",
+    "together_title": "Met hoeveel spelers wil je maximum les volgen?",
     "together_none": "Liever niet",
     "together_up_to": "Tot {count} personen",
     "remove_member": "Verwijderen",
