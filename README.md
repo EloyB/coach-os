@@ -140,6 +140,7 @@ All UI strings in resource files from day 1 (easy to add FR later).
 - `/docs/project-analysis.md` - Full technical & business analysis
 - `/docs/market-analysis.md` - Market size, target customers
 - `/docs/competition-analysis.md` - Competitive landscape Benelux
+- `/docs/mollie-payments-setup.md` - Mollie Payments instellen voor organisaties
 
 ## 🏃 Development Workflow
 
