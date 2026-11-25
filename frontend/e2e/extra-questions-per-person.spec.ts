@@ -13,7 +13,7 @@ const FIELD_ID = "aaaaaaaa-0000-0000-0000-0000000000f1";
 const LESSON_FORM: EnrollmentFormDto = {
   id: "bbbbbbbb-0000-0000-0000-000000000001",
   lessonSeriesId: SERIES_ID,
-  fields: [{ id: FIELD_ID, label: "Ervaring", type: 1, isRequired: true, order: 0, options: null }],
+  fields: [{ id: FIELD_ID, label: "Ervaring", type: 1, isRequired: true, scope: 0, order: 0, options: null }],
 };
 
 const CAMP_FORM: CampEnrollmentFormDto = {
@@ -120,6 +120,102 @@ test.describe("Extra vragen per groepslid: lessenreeks", () => {
     await expect.poll(() => submitted.body).toBeDefined();
     expect(submitted.body?.responses).toEqual([{ formFieldId: FIELD_ID, value: "Gevorderd" }]);
     expect(submitted.body?.groupMembers?.[0].responses).toEqual([{ formFieldId: FIELD_ID, value: "Beginner" }]);
+  });
+});
+
+test.describe("Algemene vragen: één keer per inschrijving", () => {
+  const GENERAL_ID = "aaaaaaaa-0000-0000-0000-0000000000f2";
+  const FORM: EnrollmentFormDto = {
+    id: "bbbbbbbb-0000-0000-0000-000000000003",
+    lessonSeriesId: SERIES_ID,
+    fields: [
+      { id: FIELD_ID, label: "Ervaring", type: 1, isRequired: true, scope: 0, order: 0, options: null },
+      { id: GENERAL_ID, label: "Hoe heb je ons gevonden?", type: 1, isRequired: true, scope: 1, order: 1, options: null },
+    ],
+  };
+
+  async function arrange(page: Page) {
+    await page.route(`${API_URL}/public/lessonseries/${SERIES_ID}/timeslots`, (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
+    await mockApi(page, "GET", `/public/lessonseries/${SERIES_ID}`, TEST_PUBLIC_SERIES);
+    await mockApi(page, "GET", `/public/lessonseries/${SERIES_ID}/form`, FORM);
+    const submitted: { body?: SubmitEnrollmentRequest } = {};
+    await page.route(`${API_URL}/public/lessonseries/${SERIES_ID}/enroll`, (route) => {
+      if (route.request().method() !== "POST") return route.continue();
+      submitted.body = route.request().postDataJSON() as SubmitEnrollmentRequest;
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify("enrollment-id") });
+    });
+    return submitted;
+  }
+
+  async function fillLeaderAndAddMember(page: Page) {
+    await page.goto(`/enroll/${SERIES_ID}`);
+    const inputs = page.locator('input[type="text"]');
+    await inputs.nth(0).fill("Els");
+    await inputs.nth(1).fill("Peeters");
+    await page.locator('input[type="email"]').fill("ouder@example.com");
+    await page.locator('input[type="tel"]').fill("0470 12 34 56");
+    await page.getByLabel(/geboortedatum/i).first().fill("1985-01-01");
+    await page.getByRole("button", { name: "Nog iemand inschrijven" }).click();
+    await page.getByPlaceholder("Naam").fill("Lotte Peeters");
+    await page.getByLabel(/geboortedatum 1/i).fill("2015-03-04");
+  }
+
+  test("de algemene vraag staat één keer, onderaan; de vraag per speler bij elke persoon", async ({ page }) => {
+    await arrange(page);
+    await fillLeaderAndAddMember(page);
+
+    await expect(answerInputs(page, "Ervaring")).toHaveCount(2);
+    await expect(answerInputs(page, "Hoe heb je ons gevonden?")).toHaveCount(1);
+    await expect(page.getByRole("heading", { name: "Over deze inschrijving" })).toBeVisible();
+
+    // De algemene vraag staat onder het groepslid en boven de verzendknop.
+    const member = await answerInputs(page, "Ervaring").nth(1).boundingBox();
+    const general = await answerInputs(page, "Hoe heb je ons gevonden?").boundingBox();
+    const submit = await page.getByRole("button", { name: "Inschrijven", exact: true }).boundingBox();
+    expect(general!.y).toBeGreaterThan(member!.y);
+    expect(general!.y).toBeLessThan(submit!.y);
+  });
+
+  test("een verplichte algemene vraag blokkeert het versturen, ook als alles per speler ingevuld is", async ({ page }) => {
+    const submitted = await arrange(page);
+    await fillLeaderAndAddMember(page);
+    await answerInputs(page, "Ervaring").nth(0).fill("Gevorderd");
+    await answerInputs(page, "Ervaring").nth(1).fill("Beginner");
+
+    await answerNotTogether(page);
+    await page.getByRole("button", { name: "Inschrijven", exact: true }).click();
+
+    await expect(page.getByText("Hoe heb je ons gevonden? is verplicht")).toBeVisible();
+    // Het groepslid krijgt geen fout voor de algemene vraag.
+    await expect(page.getByText("is verplicht")).toHaveCount(1);
+    expect(submitted.body).toBeUndefined();
+  });
+
+  test("het antwoord op de algemene vraag gaat enkel mee met de leider", async ({ page }) => {
+    const submitted = await arrange(page);
+    await fillLeaderAndAddMember(page);
+    await answerInputs(page, "Ervaring").nth(0).fill("Gevorderd");
+    await answerInputs(page, "Ervaring").nth(1).fill("Beginner");
+    await answerInputs(page, "Hoe heb je ons gevonden?").fill("Via de club");
+    await answerNotTogether(page);
+
+    await page.getByRole("button", { name: "Inschrijven", exact: true }).click();
+
+    await expect.poll(() => submitted.body).toBeDefined();
+    expect(submitted.body?.responses).toEqual([
+      { formFieldId: FIELD_ID, value: "Gevorderd" },
+      { formFieldId: GENERAL_ID, value: "Via de club" },
+    ]);
+    expect(submitted.body?.groupMembers?.[0].responses).toEqual([{ formFieldId: FIELD_ID, value: "Beginner" }]);
+  });
+
+  test("solo: beide vragen staan gewoon op de pagina", async ({ page }) => {
+    await arrange(page);
+    await page.goto(`/enroll/${SERIES_ID}`);
+
+    await expect(answerInputs(page, "Ervaring")).toHaveCount(1);
+    await expect(answerInputs(page, "Hoe heb je ons gevonden?")).toHaveCount(1);
   });
 });
 

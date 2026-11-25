@@ -462,7 +462,7 @@ export default function EnrollPage() {
         }
         // Elk groepslid beantwoordt dezelfde verplichte vragen als de leider.
         const memberFieldErrors: Record<string, string> = {};
-        for (const field of form?.fields ?? []) {
+        for (const field of (form?.fields ?? []).filter((f) => f.scope !== 1)) {
           if (field.isRequired && !m.fieldValues[field.id]?.trim()) {
             memberFieldErrors[field.id] = `${field.label} is verplicht`;
           }
@@ -516,12 +516,27 @@ export default function EnrollPage() {
       return false;
     }
 
-    return (
+    const isValid =
       Object.keys(errors).length === 0 &&
       Object.keys(fErrors).length === 0 &&
       Object.keys(mErrors).length === 0 &&
-      !togetherMissing
-    );
+      !togetherMissing;
+
+    // De algemene vragen staan onderaan, ver van de verzendknop: scroll er naartoe als hier de enige fout zit.
+    const generalIds = new Set(generalFields.map((f) => f.id));
+    const onlyGeneralErrors =
+      Object.keys(errors).length === 0 &&
+      Object.keys(mErrors).length === 0 &&
+      !togetherMissing &&
+      Object.keys(fErrors).length > 0 &&
+      Object.keys(fErrors).every((id) => generalIds.has(id));
+    if (onlyGeneralErrors) {
+      requestAnimationFrame(() =>
+        document.getElementById("general-questions")?.scrollIntoView({ behavior: "smooth", block: "center" })
+      );
+    }
+
+    return isValid;
   }
 
   // ─── Submit ─────────────────────────────────────────────────────────────
@@ -584,6 +599,10 @@ export default function EnrollPage() {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
+
+  // Vragen per speler stelt elke persoon; algemene vragen (scope 1) komen één keer, onderaan, bij de leider.
+  const perParticipantFields = (form?.fields ?? []).filter((f) => f.scope !== 1);
+  const generalFields = (form?.fields ?? []).filter((f) => f.scope === 1);
 
   // ─── Custom field renderer ──────────────────────────────────────────────
 
@@ -1031,7 +1050,7 @@ export default function EnrollPage() {
                     </div>
 
                     {/* Extra vragen van de club, direct onder de vaste vragen */}
-                    {form?.fields?.map((field) => renderCustomField(field, leaderAnswers))}
+                    {perParticipantFields.map((field) => renderCustomField(field, leaderAnswers))}
                   </div>
                 </div>
 
@@ -1165,9 +1184,9 @@ export default function EnrollPage() {
                           )}
                         </div>
                         {/* Dezelfde extra vragen als de leider, voor deze persoon */}
-                        {form && form.fields.length > 0 && (
+                        {perParticipantFields.length > 0 && (
                           <div className="sm:col-span-2 space-y-4">
-                            {form.fields.map((field) =>
+                            {perParticipantFields.map((field) =>
                               renderCustomField(field, memberAnswers(i))
                             )}
                           </div>
@@ -1372,6 +1391,21 @@ export default function EnrollPage() {
                       {/* Legend — desktop only (mobile has inline labels) */}
                       <div className="hidden sm:flex items-center gap-4 mt-3 text-xs text-gray-500">
                         <PrefLegend />
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* ── Algemene vragen: één keer voor de hele inschrijving ── */}
+                {generalFields.length > 0 && (
+                  <>
+                    <hr className="border-gray-100" />
+                    <div id="general-questions">
+                      <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                        {t("general_title")}
+                      </h3>
+                      <div className="space-y-4">
+                        {generalFields.map((field) => renderCustomField(field, leaderAnswers))}
                       </div>
                     </div>
                   </>

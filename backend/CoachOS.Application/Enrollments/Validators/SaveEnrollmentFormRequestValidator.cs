@@ -17,6 +17,10 @@ public class SaveEnrollmentFormRequestValidator : AbstractValidator<SaveEnrollme
             field.RuleFor(f => f.Type)
                 .Must(t => Enum.IsDefined(typeof(FormFieldType), t))
                 .WithMessage("Ongeldig veldtype");
+
+            field.RuleFor(f => f.Scope)
+                .Must(s => Enum.IsDefined(typeof(FormFieldScope), s))
+                .WithMessage("Ongeldig veldbereik");
         });
     }
 }

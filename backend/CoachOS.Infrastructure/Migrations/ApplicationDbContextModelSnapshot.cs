@@ -759,6 +759,9 @@ namespace CoachOS.Infrastructure.Migrations
                     b.Property<int>("Order")
                         .HasColumnType("integer");
 
+                    b.Property<int>("Scope")
+                        .HasColumnType("integer");
+
                     b.Property<int>("Type")
                         .HasColumnType("integer");
 

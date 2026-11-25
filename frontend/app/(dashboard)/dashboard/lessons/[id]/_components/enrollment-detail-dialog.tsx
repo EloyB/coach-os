@@ -120,6 +120,9 @@ export function EnrollmentDetailDialog({
   const waPhone = enrollment.studentPhone?.replace(/[^0-9+]/g, "").replace(/^\+/, "");
 
   const hasGroup = !!(groupMembers && groupMembers.length > 0);
+  // Algemene antwoorden (één keer per inschrijving) staan bij de leider en krijgen een eigen kop.
+  const generalResponses = enrollment.formResponses.filter((r) => r.scope === 1);
+  const personalResponses = enrollment.formResponses.filter((r) => r.scope !== 1);
   const tabs: { id: TabId; label: string }[] = [
     { id: "gegevens", label: t("sectionBasic") },
     ...(hasGroup ? [{ id: "leden" as TabId, label: t("tabMembers") }] : []),
@@ -293,15 +296,31 @@ export function EnrollmentDetailDialog({
               />
             </dl>
 
+            {generalResponses.length > 0 && (
+              <div className="space-y-2">
+                <h3 className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                  {t("sectionGeneralResponses")}
+                </h3>
+                <dl className="space-y-3">
+                  {generalResponses.map((r, i) => (
+                    <div key={i}>
+                      <dt className="text-xs text-gray-500">{r.fieldLabel}</dt>
+                      <dd className="mt-0.5 text-sm text-gray-800">{r.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            )}
+
             <div className="space-y-2">
               <h3 className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
                 {t("sectionResponses")}
               </h3>
-              {enrollment.formResponses.length === 0 ? (
+              {personalResponses.length === 0 ? (
                 <p className="text-sm text-gray-400">{t("noResponses")}</p>
               ) : (
                 <dl className="space-y-3">
-                  {enrollment.formResponses.map((r, i) => (
+                  {personalResponses.map((r, i) => (
                     <div key={i}>
                       <dt className="text-xs text-gray-500">{r.fieldLabel}</dt>
                       <dd className="mt-0.5 text-sm text-gray-800">{r.value}</dd>
