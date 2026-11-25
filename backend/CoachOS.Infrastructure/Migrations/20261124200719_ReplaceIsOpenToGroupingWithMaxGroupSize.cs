@@ -18,15 +18,13 @@ namespace CoachOS.Infrastructure.Migrations
                 nullable: false,
                 defaultValue: 1);
 
-            // 2. Bestaande inschrijvingen omzetten zodat de planning zich gedraagt zoals de keuze van toen:
-            //    - niet open voor groepering: het maximum is de eigen groepsgrootte (solo = 1);
-            //    - wel open voor groepering: het maximum van de reeks (grootste weekslot, hoogstens 4), maar nooit
-            //      lager dan de eigen groep.
-            //    Voor een groep telt de keuze van de leider voor iedereen (alleen de leider had de vlag). Actief =
-            //    Pending (1), Confirmed (2) of PendingPayment (5).
+            // 2. Bestaande inschrijvingen krijgen het maximum van de reeks: het grootste weekslot, hoogstens 4 (zonder
+            //    weekslots 4), maar nooit lager dan de eigen groep. De oude vlag "open voor groepering" speelt dus geen
+            //    rol meer. Voor een groep krijgen alle leden dezelfde waarde. Actief = Pending (1), Confirmed (2) of
+            //    PendingPayment (5); geannuleerde leden tellen niet mee voor de groepsgrootte.
             migrationBuilder.Sql(@"
 UPDATE ""Enrollments"" AS e
-SET ""MaxGroupSize"" = LEAST(4, GREATEST(sz.own_size, CASE WHEN sz.is_open THEN sz.series_max ELSE 1 END))
+SET ""MaxGroupSize"" = LEAST(4, GREATEST(sz.own_size, sz.series_max))
 FROM (
     SELECT
         e2.""Id"" AS id,
@@ -34,11 +32,6 @@ FROM (
              ELSE GREATEST(1, (SELECT COUNT(*) FROM ""Enrollments"" m
                                WHERE m.""EnrollmentGroupId"" = e2.""EnrollmentGroupId"" AND m.""Status"" IN (1, 2, 5)))
         END AS own_size,
-        CASE WHEN e2.""EnrollmentGroupId"" IS NULL THEN e2.""IsOpenToGrouping""
-             ELSE COALESCE((SELECT l.""IsOpenToGrouping"" FROM ""EnrollmentGroups"" g
-                            JOIN ""Enrollments"" l ON l.""Id"" = g.""LeaderEnrollmentId""
-                            WHERE g.""Id"" = e2.""EnrollmentGroupId""), e2.""IsOpenToGrouping"")
-        END AS is_open,
         COALESCE((SELECT CASE WHEN MAX(w.""MaxStudents"") < 1 THEN 4 ELSE LEAST(4, MAX(w.""MaxStudents"")) END
                   FROM ""WeeklyTemplateEntries"" w WHERE w.""LessonSerieId"" = e2.""LessonSerieId""), 4) AS series_max
     FROM ""Enrollments"" e2
@@ -62,7 +55,8 @@ WHERE sz.id = e.""Id"";");
                 defaultValue: false);
 
             // Terug naar de vlag: open als het maximum groter is dan de eigen groep. Zoals vroeger krijgt enkel een
-            // solo of een groepsleider de vlag; leden blijven false.
+            // solo of een groepsleider de vlag; leden blijven false. De oorspronkelijke vlaggen zijn niet meer
+            // te herstellen: na de omzetting stonden alle inschrijvingen op het reeksmaximum.
             migrationBuilder.Sql(@"
 UPDATE ""Enrollments"" AS e
 SET ""IsOpenToGrouping"" = e.""MaxGroupSize"" > CASE WHEN e.""EnrollmentGroupId"" IS NULL THEN 1

@@ -11,7 +11,8 @@ namespace CoachOS.Tests.Privacy;
 /// <summary>
 /// Opt-in (zet <c>COACHOS_TEST_PG</c>): bewijst de dataconversie van de migratie
 /// <c>ReplaceIsOpenToGroupingWithMaxGroupSize</c> op echte data. Migreert een wegwerpdatabase tot vlak vóór de
-/// migratie, zet inschrijvingen met de oude vlag erin, migreert door en controleert het maximum (en de weg terug).
+/// migratie, zet inschrijvingen met de oude vlag erin, migreert door en controleert dat iedereen het maximum van de
+/// reeks krijgt (nooit lager dan de eigen groep), en de weg terug.
 /// </summary>
 [TestFixture]
 public class MaxGroupSizeMigrationPostgresTests
@@ -168,7 +169,7 @@ public class MaxGroupSizeMigrationPostgresTests
     }
 
     [Test]
-    public async Task ExistingEnrollments_GetAMaximumThatKeepsTheirOldChoice_AndTheWayBackRestoresTheFlag()
+    public async Task ExistingEnrollments_GetTheSeriesMaximum_AndTheWayBackDerivesTheFlag()
     {
         await MigrateToAsync(PreviousMigration);
 
@@ -186,35 +187,40 @@ public class MaxGroupSizeMigrationPostgresTests
 
         Guid closedSolo = await SeedEnrollmentAsync(connection, orgId, seriesThree, open: false);
         Guid openSolo = await SeedEnrollmentAsync(connection, orgId, seriesThree, open: true);
+        Guid closedSoloNoSlots = await SeedEnrollmentAsync(connection, orgId, seriesNone, open: false);
         Guid openSoloNoSlots = await SeedEnrollmentAsync(connection, orgId, seriesNone, open: true);
         Guid openSoloPrivate = await SeedEnrollmentAsync(connection, orgId, seriesOne, open: true);
         Guid openSoloBig = await SeedEnrollmentAsync(connection, orgId, seriesBig, open: true);
         (_, List<Guid> closedGroup) = await SeedGroupAsync(connection, orgId, seriesThree, leaderOpen: false, 1);
-        (_, List<Guid> openGroup) = await SeedGroupAsync(connection, orgId, seriesThree, leaderOpen: true, 1);          // leden hadden de vlag nooit
-        (_, List<Guid> openGroupOfThreeInPrivateSeries) = await SeedGroupAsync(connection, orgId, seriesOne, leaderOpen: true, 1, 1);
-        (_, List<Guid> groupWithCancelledMember) = await SeedGroupAsync(connection, orgId, seriesThree, leaderOpen: false, 3); // geannuleerd lid telt niet mee
+        (_, List<Guid> openGroup) = await SeedGroupAsync(connection, orgId, seriesThree, leaderOpen: true, 1);
+        (_, List<Guid> groupOfThreeInPrivateSeries) = await SeedGroupAsync(connection, orgId, seriesOne, leaderOpen: true, 1, 1);
+        (_, List<Guid> groupWithCancelledMember) = await SeedGroupAsync(connection, orgId, seriesThree, leaderOpen: false, 3);
 
         await MigrateToAsync(ThisMigration);
 
-        (await MaxOfAsync(connection, closedSolo)).Should().Be(1, "niet open: solo");
-        (await MaxOfAsync(connection, openSolo)).Should().Be(3, "open: het maximum van de reeks");
-        (await MaxOfAsync(connection, openSoloNoSlots)).Should().Be(4, "open, reeks zonder weekslots: 4");
-        (await MaxOfAsync(connection, openSoloPrivate)).Should().Be(1, "open, maar de reeks laat maximum 1 toe");
+        // Iedereen krijgt het maximum van de reeks, ook wie "niet open voor groepering" was.
+        (await MaxOfAsync(connection, closedSolo)).Should().Be(3, "reeksmaximum 3, ook voor een gesloten solo");
+        (await MaxOfAsync(connection, openSolo)).Should().Be(3, "het maximum van de reeks");
+        (await MaxOfAsync(connection, closedSoloNoSlots)).Should().Be(4, "reeks zonder weekslots: 4, ook voor een gesloten solo");
+        (await MaxOfAsync(connection, openSoloNoSlots)).Should().Be(4, "reeks zonder weekslots: 4");
+        (await MaxOfAsync(connection, openSoloPrivate)).Should().Be(1, "de reeks laat maximum 1 toe");
         (await MaxOfAsync(connection, openSoloBig)).Should().Be(4, "begrensd tot 4");
-        foreach (Guid id in closedGroup) (await MaxOfAsync(connection, id)).Should().Be(2, "niet open: de eigen groepsgrootte, voor iedereen");
-        foreach (Guid id in openGroup) (await MaxOfAsync(connection, id)).Should().Be(3, "open: leden volgen de keuze van de leider");
-        foreach (Guid id in openGroupOfThreeInPrivateSeries) (await MaxOfAsync(connection, id)).Should().Be(3, "nooit lager dan de eigen groep");
-        foreach (Guid id in groupWithCancelledMember) (await MaxOfAsync(connection, id)).Should().Be(1, "een geannuleerd lid telt niet mee");
+        foreach (Guid id in closedGroup) (await MaxOfAsync(connection, id)).Should().Be(3, "reeksmaximum, voor iedereen in de groep");
+        foreach (Guid id in openGroup) (await MaxOfAsync(connection, id)).Should().Be(3, "reeksmaximum, voor iedereen in de groep");
+        foreach (Guid id in groupOfThreeInPrivateSeries) (await MaxOfAsync(connection, id)).Should().Be(3, "nooit lager dan de eigen groep");
+        foreach (Guid id in groupWithCancelledMember) (await MaxOfAsync(connection, id)).Should().Be(3, "een geannuleerd lid telt niet mee voor de groepsgrootte, het reeksmaximum geldt");
 
-        // De weg terug: open = het maximum is groter dan de eigen groep; leden krijgen de vlag niet.
+        // De weg terug: open = het maximum is groter dan de eigen groep; leden krijgen de vlag niet. De oorspronkelijke
+        // vlaggen zijn niet te herstellen, want alles stond op het reeksmaximum.
         await MigrateToAsync(PreviousMigration);
 
-        (await OpenOfAsync(connection, closedSolo)).Should().BeFalse();
+        (await OpenOfAsync(connection, closedSolo)).Should().BeTrue();
         (await OpenOfAsync(connection, openSolo)).Should().BeTrue();
         (await OpenOfAsync(connection, openSoloNoSlots)).Should().BeTrue();
-        (await OpenOfAsync(connection, closedGroup[0])).Should().BeFalse();
-        (await OpenOfAsync(connection, openGroup[0])).Should().BeTrue("de leider van een open groep");
-        (await OpenOfAsync(connection, openGroup[1])).Should().BeFalse("een lid had de vlag nooit");
-        (await OpenOfAsync(connection, groupWithCancelledMember[0])).Should().BeFalse();
+        (await OpenOfAsync(connection, openSoloPrivate)).Should().BeFalse("maximum 1 is niet groter dan de eigen groep");
+        (await OpenOfAsync(connection, closedGroup[0])).Should().BeTrue("de leider: 3 is groter dan de groep van 2");
+        (await OpenOfAsync(connection, closedGroup[1])).Should().BeFalse("een lid had de vlag nooit");
+        (await OpenOfAsync(connection, groupOfThreeInPrivateSeries[0])).Should().BeFalse("maximum 3 is gelijk aan de groep van 3");
+        (await OpenOfAsync(connection, groupWithCancelledMember[0])).Should().BeTrue();
     }
 }
