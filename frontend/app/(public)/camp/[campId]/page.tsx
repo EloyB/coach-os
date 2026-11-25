@@ -46,8 +46,29 @@ const LEVEL_KEYS: Record<number, "level1" | "level2" | "level3"> = {
   3: "level3",
 };
 
-type GroupMember = { name: string; email: string; dateOfBirth: string };
-type MemberErrors = { name?: string; email?: string; dateOfBirth?: string };
+type GroupMember = {
+  name: string;
+  email: string;
+  dateOfBirth: string;
+  /** Antwoorden van dit groepslid op de extra vragen, per formulierveld. */
+  fieldValues: Record<string, string>;
+};
+type MemberErrors = {
+  name?: string;
+  email?: string;
+  dateOfBirth?: string;
+  /** Fouten op de extra vragen van dit groepslid, per formulierveld. */
+  fields?: Record<string, string>;
+};
+
+/** De antwoorden van één persoon (leider of groepslid) op de extra vragen. */
+type AnswerScope = {
+  /** Maakt de radio-groepen per persoon uniek. */
+  idPrefix: string;
+  values: Record<string, string>;
+  errors: Record<string, string>;
+  onChange: (fieldId: string, value: string) => void;
+};
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -140,7 +161,10 @@ export default function CampEnrollPage() {
 
   function addGroupMember() {
     if (groupMembers.length >= 3) return;
-    setGroupMembers((prev) => [...prev, { name: "", email: "", dateOfBirth: "" }]);
+    setGroupMembers((prev) => [
+      ...prev,
+      { name: "", email: "", dateOfBirth: "", fieldValues: {} },
+    ]);
   }
 
   function removeGroupMember(index: number) {
@@ -154,7 +178,7 @@ export default function CampEnrollPage() {
 
   function updateGroupMember(
     index: number,
-    field: keyof GroupMember,
+    field: "name" | "email" | "dateOfBirth",
     value: string
   ) {
     setGroupMembers((prev) =>
@@ -165,6 +189,21 @@ export default function CampEnrollPage() {
         const next = { ...prev };
         if (next[index]) next[index] = { ...next[index], [field]: undefined };
         return next;
+      });
+    }
+  }
+
+  function setMemberFieldValue(index: number, fieldId: string, value: string) {
+    setGroupMembers((prev) =>
+      prev.map((m, i) =>
+        i === index ? { ...m, fieldValues: { ...m.fieldValues, [fieldId]: value } } : m
+      )
+    );
+    if (memberErrors[index]?.fields?.[fieldId]) {
+      setMemberErrors((prev) => {
+        const fields = { ...prev[index]?.fields };
+        delete fields[fieldId];
+        return { ...prev, [index]: { ...prev[index], fields } };
       });
     }
   }
@@ -215,7 +254,15 @@ export default function CampEnrollPage() {
           e.email = t("requiredField");
         const memberBirthDateError = validateBirthDate(m.dateOfBirth);
         if (memberBirthDateError) e.dateOfBirth = memberBirthDateError;
-        if (e.name || e.email || e.dateOfBirth) mErrors[i] = e;
+        // Elk groepslid beantwoordt dezelfde verplichte vragen als de leider.
+        const memberFieldErrors: Record<string, string> = {};
+        for (const field of form?.fields ?? []) {
+          if (field.isRequired && !m.fieldValues[field.id]?.trim()) {
+            memberFieldErrors[field.id] = t("requiredField");
+          }
+        }
+        if (Object.keys(memberFieldErrors).length > 0) e.fields = memberFieldErrors;
+        if (e.name || e.email || e.dateOfBirth || e.fields) mErrors[i] = e;
       });
     }
     setMemberErrors(mErrors);
@@ -227,6 +274,23 @@ export default function CampEnrollPage() {
     );
   }
 
+  /** Antwoorden van de leider op de extra vragen. */
+  const leaderAnswers: AnswerScope = {
+    idPrefix: "leader",
+    values: fieldValues,
+    errors: fieldErrors,
+    onChange: setFieldValue,
+  };
+
+  function memberAnswers(index: number): AnswerScope {
+    return {
+      idPrefix: `member-${index}`,
+      values: groupMembers[index]?.fieldValues ?? {},
+      errors: memberErrors[index]?.fields ?? {},
+      onChange: (fieldId, value) => setMemberFieldValue(index, fieldId, value),
+    };
+  }
+
   // ─── Submit ─────────────────────────────────────────────────────────────
 
   async function handleSubmit(e: React.FormEvent) {
@@ -236,9 +300,11 @@ export default function CampEnrollPage() {
 
     setSubmitting(true);
     try {
-      const responses = Object.entries(fieldValues)
-        .filter(([, v]) => v.trim())
-        .map(([campFormFieldId, value]) => ({ campFormFieldId, value }));
+      const toResponses = (values: Record<string, string>) =>
+        Object.entries(values)
+          .filter(([, v]) => v.trim())
+          .map(([campFormFieldId, value]) => ({ campFormFieldId, value }));
+      const responses = toResponses(fieldValues);
 
       const result = await submitCampEnrollment(campId, {
         participantName: `${firstName.trim()} ${lastName.trim()}`,
@@ -253,7 +319,7 @@ export default function CampEnrollPage() {
                 participantName: m.name.trim(),
                 participantEmail: m.email.trim(),
                 dateOfBirth: m.dateOfBirth,
-                responses: [],
+                responses: toResponses(m.fieldValues),
               }))
             : undefined,
       });
@@ -283,13 +349,14 @@ export default function CampEnrollPage() {
 
   // ─── Custom field renderer ──────────────────────────────────────────────
 
-  function renderCustomField(field: CampFormFieldDto) {
-    const value = fieldValues[field.id] ?? "";
-    const hasError = !!fieldErrors[field.id];
+  function renderCustomField(field: CampFormFieldDto, scope: AnswerScope) {
+    const value = scope.values[field.id] ?? "";
+    const hasError = !!scope.errors[field.id];
+    const setValue = (v: string) => scope.onChange(field.id, v);
 
     if (field.type === FIELD_TYPE_MULTIPLE_CHOICE && field.options) {
       return (
-        <div key={field.id} className="space-y-1.5">
+        <div key={`${scope.idPrefix}_${field.id}`} className="space-y-1.5">
           <label className="block text-sm font-medium text-gray-700">
             {field.label}
             {field.isRequired && <span className="text-red-500 ml-1">*</span>}
@@ -299,24 +366,24 @@ export default function CampEnrollPage() {
               <label key={opt} className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="radio"
-                  name={`field_${field.id}`}
+                  name={`field_${scope.idPrefix}_${field.id}`}
                   value={opt}
                   checked={value === opt}
-                  onChange={() => setFieldValue(field.id, opt)}
+                  onChange={() => setValue(opt)}
                   className="w-4 h-4 text-tennis-green focus:ring-tennis-green"
                 />
                 <span className="text-sm text-gray-700">{opt}</span>
               </label>
             ))}
           </div>
-          {hasError && <p className="text-xs text-red-500">{fieldErrors[field.id]}</p>}
+          {hasError && <p className="text-xs text-red-500">{scope.errors[field.id]}</p>}
         </div>
       );
     }
 
     if (field.type === FIELD_TYPE_YES_NO) {
       return (
-        <div key={field.id} className="space-y-1.5">
+        <div key={`${scope.idPrefix}_${field.id}`} className="space-y-1.5">
           <label className="block text-sm font-medium text-gray-700">
             {field.label}
             {field.isRequired && <span className="text-red-500 ml-1">*</span>}
@@ -326,23 +393,23 @@ export default function CampEnrollPage() {
               <label key={opt} className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="radio"
-                  name={`field_${field.id}`}
+                  name={`field_${scope.idPrefix}_${field.id}`}
                   value={opt}
                   checked={value === opt}
-                  onChange={() => setFieldValue(field.id, opt)}
+                  onChange={() => setValue(opt)}
                   className="w-4 h-4 text-tennis-green focus:ring-tennis-green"
                 />
                 <span className="text-sm text-gray-700">{opt}</span>
               </label>
             ))}
           </div>
-          {hasError && <p className="text-xs text-red-500">{fieldErrors[field.id]}</p>}
+          {hasError && <p className="text-xs text-red-500">{scope.errors[field.id]}</p>}
         </div>
       );
     }
 
     return (
-      <div key={field.id} className="space-y-1.5">
+      <div key={`${scope.idPrefix}_${field.id}`} className="space-y-1.5">
         <label className="block text-sm font-medium text-gray-700">
           {field.label}
           {field.isRequired && <span className="text-red-500 ml-1">*</span>}
@@ -350,10 +417,10 @@ export default function CampEnrollPage() {
         <input
           type="text"
           value={value}
-          onChange={(e) => setFieldValue(field.id, e.target.value)}
+          onChange={(e) => setValue(e.target.value)}
           className={inputClass(hasError)}
         />
-        {hasError && <p className="text-xs text-red-500">{fieldErrors[field.id]}</p>}
+        {hasError && <p className="text-xs text-red-500">{scope.errors[field.id]}</p>}
       </div>
     );
   }
@@ -645,6 +712,9 @@ export default function CampEnrollPage() {
                       <p className="text-xs text-red-500 mt-1">{baseErrors.dateOfBirth}</p>
                     )}
                   </div>
+
+                  {/* Extra vragen van de club, direct onder de vaste vragen */}
+                  {form?.fields?.map((field) => renderCustomField(field, leaderAnswers))}
                 </div>
               </div>
 
@@ -811,27 +881,20 @@ export default function CampEnrollPage() {
                               </p>
                             )}
                           </div>
+                          {/* Dezelfde extra vragen als de leider, voor dit groepslid */}
+                          {form && form.fields.length > 0 && (
+                            <div className="sm:col-span-2 space-y-4">
+                              {form.fields.map((field) =>
+                                renderCustomField(field, memberAnswers(i))
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
-
-              {/* ── Custom form fields ── */}
-              {form && form.fields.length > 0 && (
-                <>
-                  <hr className="border-gray-100" />
-                  <div>
-                    <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-                      {t("publicExtraQuestions")}
-                    </h3>
-                    <div className="space-y-4">
-                      {form.fields.map((field) => renderCustomField(field))}
-                    </div>
-                  </div>
-                </>
-              )}
             </div>
 
             {/* Submit footer */}

@@ -44,6 +44,7 @@ public partial class SubmitEnrollmentCharacterizationTests
     private static readonly Guid TrainerId = new("00000000-0000-0000-0000-0000000000c1");
     private static readonly Guid FieldRequiredId = new("00000000-0000-0000-0000-0000000000d1");
     private static readonly Guid FieldChoiceId = new("00000000-0000-0000-0000-0000000000d2");
+    private static readonly Guid FieldGeneralId = new("00000000-0000-0000-0000-0000000000d3");
     private static readonly Guid UnknownFieldId = new("00000000-0000-0000-0000-0000000000d9");
     private static readonly Guid SlotMonId = new("00000000-0000-0000-0000-0000000000e1");
     private static readonly Guid SlotTueId = new("00000000-0000-0000-0000-0000000000e2");
@@ -131,6 +132,23 @@ public partial class SubmitEnrollmentCharacterizationTests
         [
             new FormField { Id = FieldRequiredId, Label = "Ervaring", Type = FormFieldType.Text, IsRequired = true, Order = 0 },
             new FormField { Id = FieldChoiceId, Label = "Niveau", Type = FormFieldType.Text, IsRequired = false, Order = 1 },
+        ],
+    };
+
+    /// <summary>Eén vraag per persoon (verplicht) en één algemene vraag voor de hele inschrijving (verplicht).</summary>
+    private static EnrollmentForm FormWithGeneralQuestion() => new()
+    {
+        Id = new Guid("00000000-0000-0000-0000-0000000000aa"),
+        OrganizationId = OrgId,
+        LessonSerieId = SeriesId,
+        Fields =
+        [
+            new FormField { Id = FieldRequiredId, Label = "Ervaring", Type = FormFieldType.Text, IsRequired = true, Order = 0 },
+            new FormField
+            {
+                Id = FieldGeneralId, Label = "Bron", Type = FormFieldType.Text, IsRequired = true, Order = 1,
+                Scope = FormFieldScope.PerEnrollment,
+            },
         ],
     };
 
@@ -253,7 +271,11 @@ public partial class SubmitEnrollmentCharacterizationTests
                         Responses = [new FormResponseValueDto { FormFieldId = FieldRequiredId, Value = "Gert antwoord" }],
                     },
                     // Geen adres: valt terug op de leider.
-                    new GroupMemberDto { StudentName = "Hilde", DateOfBirth = "2012-05-05" },
+                    new GroupMemberDto
+                    {
+                        StudentName = "Hilde", DateOfBirth = "2012-05-05",
+                        Responses = [new FormResponseValueDto { FormFieldId = FieldRequiredId, Value = "Hilde antwoord" }],
+                    },
                     // Alleen spaties: telt als leeg, dus ook terug op de leider.
                     new GroupMemberDto
                     {
@@ -357,6 +379,279 @@ public partial class SubmitEnrollmentCharacterizationTests
                 StudentEmail = "olaf@test.be",
                 DateOfBirth = "1990-01-01",
                 Responses = [new FormResponseValueDto { FormFieldId = FieldChoiceId, Value = "Enkel optioneel" }],
+                TimeSlotPreferences = Prefs((SlotMonId, 1)),
+            },
+        });
+
+        // Antwoorden per groepslid (#411): elk lid beantwoordt dezelfde vragen als de leider.
+        yield return Case("fail_group_member_missing_required_answer", () => new Scenario
+        {
+            Series = BaseSeries(),
+            Form = FormWithTwoFields(),
+            Request = new SubmitEnrollmentRequest
+            {
+                StudentName = "Ward",
+                StudentEmail = "ward@test.be",
+                DateOfBirth = "1980-01-01",
+                EnrollmentType = "group",
+                Responses = [new FormResponseValueDto { FormFieldId = FieldRequiredId, Value = "Leider antwoord" }],
+                TimeSlotPreferences = Prefs((SlotMonId, 1)),
+                GroupMembers =
+                [
+                    new GroupMemberDto
+                    {
+                        StudentName = "Xander", DateOfBirth = "2010-01-01",
+                        Responses = [new FormResponseValueDto { FormFieldId = FieldRequiredId, Value = "Xander antwoord" }],
+                    },
+                    new GroupMemberDto { StudentName = "Yvon", DateOfBirth = "2011-01-01" },
+                ],
+            },
+        });
+
+        yield return Case("fail_group_member_blank_answer_counts_as_missing", () => new Scenario
+        {
+            Series = BaseSeries(),
+            Form = FormWithTwoFields(),
+            Request = new SubmitEnrollmentRequest
+            {
+                StudentName = "Zita",
+                StudentEmail = "zita@test.be",
+                DateOfBirth = "1980-01-01",
+                EnrollmentType = "group",
+                Responses = [new FormResponseValueDto { FormFieldId = FieldRequiredId, Value = "Leider antwoord" }],
+                TimeSlotPreferences = Prefs((SlotMonId, 1)),
+                GroupMembers =
+                [
+                    new GroupMemberDto
+                    {
+                        StudentName = "Arne", DateOfBirth = "2010-01-01",
+                        Responses = [new FormResponseValueDto { FormFieldId = FieldRequiredId, Value = "   " }],
+                    },
+                ],
+            },
+        });
+
+        yield return Case("fail_group_member_unknown_form_field", () => new Scenario
+        {
+            Series = BaseSeries(),
+            Form = FormWithTwoFields(),
+            Request = new SubmitEnrollmentRequest
+            {
+                StudentName = "Bavo",
+                StudentEmail = "bavo@test.be",
+                DateOfBirth = "1980-01-01",
+                EnrollmentType = "group",
+                Responses = [new FormResponseValueDto { FormFieldId = FieldRequiredId, Value = "Leider antwoord" }],
+                TimeSlotPreferences = Prefs((SlotMonId, 1)),
+                GroupMembers =
+                [
+                    new GroupMemberDto
+                    {
+                        StudentName = "Cleo", DateOfBirth = "2010-01-01",
+                        Responses =
+                        [
+                            new FormResponseValueDto { FormFieldId = FieldRequiredId, Value = "Cleo antwoord" },
+                            new FormResponseValueDto { FormFieldId = UnknownFieldId, Value = "Onbekend veld" },
+                        ],
+                    },
+                ],
+            },
+        });
+
+        yield return Case("fail_group_member_answer_without_any_form", () => new Scenario
+        {
+            Series = BaseSeries(),
+            Form = null,
+            Request = new SubmitEnrollmentRequest
+            {
+                StudentName = "Dries",
+                StudentEmail = "dries@test.be",
+                DateOfBirth = "1980-01-01",
+                EnrollmentType = "group",
+                TimeSlotPreferences = Prefs((SlotMonId, 1)),
+                GroupMembers =
+                [
+                    new GroupMemberDto
+                    {
+                        StudentName = "Eline", DateOfBirth = "2010-01-01",
+                        Responses = [new FormResponseValueDto { FormFieldId = FieldRequiredId, Value = "Antwoord zonder formulier" }],
+                    },
+                ],
+            },
+        });
+
+        yield return Case("fail_precedence_leader_answer_before_member_answer", () => new Scenario
+        {
+            Series = BaseSeries(),
+            Form = FormWithTwoFields(),
+            Request = new SubmitEnrollmentRequest
+            {
+                StudentName = "Fons",
+                StudentEmail = "fons@test.be",
+                DateOfBirth = "1980-01-01",
+                EnrollmentType = "group",
+                TimeSlotPreferences = Prefs((SlotMonId, 1)),
+                GroupMembers = [new GroupMemberDto { StudentName = "Gaby", DateOfBirth = "2010-01-01" }],
+            },
+        });
+
+        yield return Case("fail_precedence_member_answer_before_mode_error", () =>
+        {
+            LessonSerie series = BaseSeries();
+            series.AllowGroupEnrollment = false;
+            return new Scenario
+            {
+                Series = series,
+                Form = FormWithTwoFields(),
+                Request = new SubmitEnrollmentRequest
+                {
+                    StudentName = "Hugo",
+                    StudentEmail = "hugo@test.be",
+                    DateOfBirth = "1980-01-01",
+                    EnrollmentType = "group",
+                    Responses = [new FormResponseValueDto { FormFieldId = FieldRequiredId, Value = "Leider antwoord" }],
+                    GroupMembers = [new GroupMemberDto { StudentName = "Ilse", DateOfBirth = "2010-01-01" }],
+                },
+            };
+        });
+
+        yield return Case("solo_type_does_not_validate_member_answers", () => new Scenario
+        {
+            Series = BaseSeries(),
+            Form = FormWithTwoFields(),
+            Request = new SubmitEnrollmentRequest
+            {
+                StudentName = "Jules",
+                StudentEmail = "jules@test.be",
+                DateOfBirth = "1980-01-01",
+                EnrollmentType = "solo",
+                Responses = [new FormResponseValueDto { FormFieldId = FieldRequiredId, Value = "Solo antwoord" }],
+                TimeSlotPreferences = Prefs((SlotMonId, 1)),
+                GroupMembers = [new GroupMemberDto { StudentName = "Genegeerd", DateOfBirth = "2010-01-01" }],
+            },
+        });
+
+        yield return Case("group_member_optional_answers_may_be_omitted", () => new Scenario
+        {
+            Series = BaseSeries(),
+            Form = FormWithTwoFields(),
+            Request = new SubmitEnrollmentRequest
+            {
+                StudentName = "Kato",
+                StudentEmail = "kato@test.be",
+                DateOfBirth = "1980-01-01",
+                EnrollmentType = "group",
+                Responses = [new FormResponseValueDto { FormFieldId = FieldRequiredId, Value = "Leider antwoord" }],
+                TimeSlotPreferences = Prefs((SlotMonId, 1)),
+                GroupMembers =
+                [
+                    new GroupMemberDto
+                    {
+                        StudentName = "Lore", DateOfBirth = "2010-01-01",
+                        // Alleen het verplichte veld; het optionele "Niveau" blijft leeg.
+                        Responses = [new FormResponseValueDto { FormFieldId = FieldRequiredId, Value = "Lore antwoord" }],
+                    },
+                ],
+            },
+        });
+
+        // Algemene vraag (één keer per inschrijving): enkel de leider beantwoordt ze.
+        yield return Case("group_general_question_is_answered_once_by_the_leader", () => new Scenario
+        {
+            Series = BaseSeries(),
+            Form = FormWithGeneralQuestion(),
+            Request = new SubmitEnrollmentRequest
+            {
+                StudentName = "Mats",
+                StudentEmail = "mats@test.be",
+                DateOfBirth = "1980-01-01",
+                EnrollmentType = "group",
+                Responses =
+                [
+                    new FormResponseValueDto { FormFieldId = FieldRequiredId, Value = "Leider ervaring" },
+                    new FormResponseValueDto { FormFieldId = FieldGeneralId, Value = "Via de club" },
+                ],
+                TimeSlotPreferences = Prefs((SlotMonId, 1)),
+                GroupMembers =
+                [
+                    new GroupMemberDto
+                    {
+                        StudentName = "Noor", DateOfBirth = "2010-01-01",
+                        Responses = [new FormResponseValueDto { FormFieldId = FieldRequiredId, Value = "Noor ervaring" }],
+                    },
+                ],
+            },
+        });
+
+        yield return Case("fail_group_general_question_missing_from_the_leader", () => new Scenario
+        {
+            Series = BaseSeries(),
+            Form = FormWithGeneralQuestion(),
+            Request = new SubmitEnrollmentRequest
+            {
+                StudentName = "Odile",
+                StudentEmail = "odile@test.be",
+                DateOfBirth = "1980-01-01",
+                EnrollmentType = "group",
+                Responses = [new FormResponseValueDto { FormFieldId = FieldRequiredId, Value = "Leider ervaring" }],
+                TimeSlotPreferences = Prefs((SlotMonId, 1)),
+                GroupMembers =
+                [
+                    new GroupMemberDto
+                    {
+                        StudentName = "Pien", DateOfBirth = "2010-01-01",
+                        Responses = [new FormResponseValueDto { FormFieldId = FieldRequiredId, Value = "Pien ervaring" }],
+                    },
+                ],
+            },
+        });
+
+        yield return Case("fail_group_member_answers_the_general_question", () => new Scenario
+        {
+            Series = BaseSeries(),
+            Form = FormWithGeneralQuestion(),
+            Request = new SubmitEnrollmentRequest
+            {
+                StudentName = "Quinn",
+                StudentEmail = "quinn@test.be",
+                DateOfBirth = "1980-01-01",
+                EnrollmentType = "group",
+                Responses =
+                [
+                    new FormResponseValueDto { FormFieldId = FieldRequiredId, Value = "Leider ervaring" },
+                    new FormResponseValueDto { FormFieldId = FieldGeneralId, Value = "Via de club" },
+                ],
+                TimeSlotPreferences = Prefs((SlotMonId, 1)),
+                GroupMembers =
+                [
+                    new GroupMemberDto
+                    {
+                        StudentName = "Rune", DateOfBirth = "2010-01-01",
+                        Responses =
+                        [
+                            new FormResponseValueDto { FormFieldId = FieldRequiredId, Value = "Rune ervaring" },
+                            new FormResponseValueDto { FormFieldId = FieldGeneralId, Value = "Ook via de club" },
+                        ],
+                    },
+                ],
+            },
+        });
+
+        yield return Case("solo_general_question_is_asked_like_any_other", () => new Scenario
+        {
+            Series = BaseSeries(),
+            Form = FormWithGeneralQuestion(),
+            Request = new SubmitEnrollmentRequest
+            {
+                StudentName = "Sam",
+                StudentEmail = "sam@test.be",
+                DateOfBirth = "1990-01-01",
+                EnrollmentType = "solo",
+                Responses =
+                [
+                    new FormResponseValueDto { FormFieldId = FieldRequiredId, Value = "Sam ervaring" },
+                    new FormResponseValueDto { FormFieldId = FieldGeneralId, Value = "Via een vriend" },
+                ],
                 TimeSlotPreferences = Prefs((SlotMonId, 1)),
             },
         });

@@ -298,7 +298,8 @@
     "member_has_own_email": "Dit lid heeft een eigen e-mailadres",
     "member_contact_via_leader": "Alle communicatie loopt via {email}",
     "group_contact_explainer": "De contactpersoon ontvangt alle e-mails en de betaallink voor de hele groep.",
-    "duplicate_participant": "Deze deelnemer staat al in de groep."
+    "duplicate_participant": "Deze deelnemer staat al in de groep.",
+    "general_title": "Over deze inschrijving"
   },
   "enrollmentsTable": {
     "title": "Inschrijvingen",
@@ -426,7 +427,8 @@
     "paymentAmount": "Bedrag",
     "paymentPaidAt": "Betaald op",
     "paymentMollieId": "Mollie-referentie",
-    "paymentCopyMollieId": "Mollie-referentie kopiëren"
+    "paymentCopyMollieId": "Mollie-referentie kopiëren",
+    "sectionGeneralResponses": "Algemene vragen"
   },
   "formBuilder": {
     "privacyWarningTitle": "Let op met medische vragen",
@@ -446,7 +448,23 @@
     "add_option": "Optie toevoegen",
     "no_fields": "Nog geen aangepaste velden. Voeg een veld toe.",
     "saving": "Opslaan...",
-    "saved": "Formulier opgeslagen"
+    "saved": "Formulier opgeslagen",
+    "perParticipantTitle": "Vragen per speler",
+    "perParticipantHint": "Elke speler van de inschrijving beantwoordt deze vragen.",
+    "addPerParticipant": "Vraag per speler toevoegen",
+    "generalTitle": "Algemene vragen",
+    "generalHint": "Eén keer per inschrijving, bijvoorbeeld \"Hoe heb je ons gevonden?\". De contactpersoon beantwoordt ze.",
+    "addGeneral": "Algemene vraag toevoegen",
+    "scopeChangedHint": "Bestaande antwoorden blijven bewaard. Ze worden na het opslaan wel anders getoond en gevraagd.",
+    "questionLabel": "Vraag",
+    "questionPlaceholder": "Vraag, bijvoorbeeld \"Telefoonnummer\"",
+    "fieldType": "Type",
+    "forWho": "Voor wie",
+    "perParticipantShort": "Per speler",
+    "generalShort": "Algemeen",
+    "moveUp": "Omhoog",
+    "moveDown": "Omlaag",
+    "remove": "Verwijderen"
   },
   "lessonWizard": {
     "availableBadge": "beschikbaar",
@@ -915,7 +933,6 @@
     "formBuilderDescription": "Voeg extra vragen toe die deelnemers bij inschrijving beantwoorden.",
     "publicTitle": "Inschrijving",
     "publicPersonalTitle": "Persoonlijke gegevens",
-    "publicExtraQuestions": "Extra vragen",
     "pricePerParticipant": "per deelnemer",
     "enrolledOfMax": "{enrolled} van {max} ingeschreven",
     "enrolledLabel": "ingeschreven",

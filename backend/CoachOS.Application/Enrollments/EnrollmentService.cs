@@ -102,6 +102,7 @@ public class EnrollmentService(
                 Label = f.Label,
                 Type = (int)f.Type,
                 IsRequired = f.IsRequired,
+                Scope = (int)f.Scope,
                 Order = f.Order,
                 Options = DeserializeOptions(f.Options),
             }).ToList(),
@@ -164,6 +165,7 @@ public class EnrollmentService(
                 {
                     FieldLabel = System.Net.WebUtility.HtmlEncode(r.FormField.Label),
                     Value = System.Net.WebUtility.HtmlEncode(r.Value),
+                    Scope = (int)r.FormField.Scope,
                 }).ToList(),
         }).ToList();
 
@@ -218,6 +220,7 @@ public class EnrollmentService(
                     existing.Label = dto.Label;
                     existing.Type = (FormFieldType)dto.Type;
                     existing.IsRequired = dto.IsRequired;
+                    existing.Scope = (FormFieldScope)dto.Scope;
                     existing.Order = order;
                     existing.Options = optionsJson;
                 }
@@ -230,6 +233,7 @@ public class EnrollmentService(
                     Label = dto.Label,
                     Type = (FormFieldType)dto.Type,
                     IsRequired = dto.IsRequired,
+                    Scope = (FormFieldScope)dto.Scope,
                     Order = order,
                     Options = optionsJson,
                 };
@@ -375,7 +379,7 @@ public class EnrollmentService(
         if (form is not null)
         {
             Error? formError = FormResponseValidator.Validate(
-                form.Fields.Select(f => (f.Id, f.IsRequired, f.Label)),
+                form.Fields.Where(f => f.Scope == FormFieldScope.PerParticipant).Select(f => (f.Id, f.IsRequired, f.Label)),
                 request.Responses.Select(r => (r.FormFieldId, r.Value)));
             if (formError is not null) return Result<Guid>.Fail(formError);
         }

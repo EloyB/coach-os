@@ -9,6 +9,9 @@ public class FormField : BaseEntity
     public string Label { get; set; } = string.Empty;
     public FormFieldType Type { get; set; }
     public bool IsRequired { get; set; }
+
+    /// <summary>Per persoon van de inschrijving, of één keer voor de hele inschrijving (bewaard bij de leider).</summary>
+    public FormFieldScope Scope { get; set; } = FormFieldScope.PerParticipant;
     public int Order { get; set; }
 
     /// <summary>JSON array of option strings for MultipleChoice fields.</summary>

@@ -30,6 +30,8 @@ export interface FormFieldDto {
   label: string;
   type: number;
   isRequired: boolean;
+  /** 0 = per speler, 1 = één keer voor de hele inschrijving (antwoord hoort bij de leider). */
+  scope: number;
   order: number;
   options: string[] | null;
 }
@@ -43,6 +45,8 @@ export interface EnrollmentFormDto {
 export interface EnrollmentResponseItem {
   fieldLabel: string;
   value: string;
+  /** 0 = antwoord van deze speler, 1 = algemeen antwoord van de inschrijving. */
+  scope: number;
 }
 
 export interface LessonSeriesEnrollmentDto {
@@ -109,6 +113,7 @@ export interface SaveFormFieldRequest {
   label: string;
   type: number;
   isRequired: boolean;
+  scope: number;
   order: number;
   options?: string[];
 }
@@ -149,7 +154,8 @@ export async function getPublicLessonSeries(id: string): Promise<PublicLessonSer
 
 export async function getEnrollmentForm(seriesId: string): Promise<EnrollmentFormDto | null> {
   const { data } = await publicApiClient.get<EnrollmentFormDto | null>(`/public/lessonseries/${seriesId}/form`);
-  return data;
+  // Een reeks zonder formulier geeft 200 met een lege body: axios levert dan "" i.p.v. null.
+  return data || null;
 }
 
 export async function saveEnrollmentForm(seriesId: string, fields: SaveFormFieldRequest[]): Promise<string> {

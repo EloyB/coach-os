@@ -86,6 +86,11 @@ public class CampEnrollmentService(
         if (formError is not null)
             return Result<SubmitCampEnrollmentResultDto>.Fail(formError);
 
+        // Elk groepslid beantwoordt dezelfde vragen als de leider (zelfde verplicht-regels).
+        Error? memberFormError = ValidateGroupMemberResponses(form, request);
+        if (memberFormError is not null)
+            return Result<SubmitCampEnrollmentResultDto>.Fail(memberFormError);
+
         int groupSize = request.EnrollmentType == "group" && request.GroupMembers is not null
             ? request.GroupMembers.Count + 1
             : 1;
@@ -221,6 +226,30 @@ public class CampEnrollmentService(
 
         return Result<SubmitCampEnrollmentResultDto>.Ok(
             new SubmitCampEnrollmentResultDto(enrollment.Id, RequiresPayment: isPaid));
+    }
+
+    /// <summary>
+    /// Valideert de antwoorden van elk groepslid tegen de velden van het kampformulier, net als die van
+    /// de leider. Enkel bij een groepsinschrijving; bij solo worden meegestuurde leden genegeerd.
+    /// </summary>
+    private static Error? ValidateGroupMemberResponses(CampEnrollmentForm? form, SubmitCampEnrollmentRequest request)
+    {
+        if (request.EnrollmentType != "group" || request.GroupMembers is null)
+            return null;
+
+        List<(Guid Id, bool IsRequired, string Label)> fields =
+            (form?.Fields ?? []).Select(f => (f.Id, f.IsRequired, f.Label)).ToList();
+
+        foreach (CampGroupMemberDto member in request.GroupMembers)
+        {
+            Error? error = FormResponseValidator.Validate(
+                fields,
+                (member.Responses ?? []).Select(r => (r.CampFormFieldId, r.Value)));
+            if (error is not null)
+                return new Error(error.Code, $"{member.ParticipantName}: {error.Message}");
+        }
+
+        return null;
     }
 
     public async Task<Result<Guid>> CreateManualAsync(

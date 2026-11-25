@@ -20,6 +20,7 @@ internal static class SubmissionRules
     public static readonly IReadOnlyList<ISubmissionRule> All =
     [
         new FormResponsesRule(),
+        new MemberFormResponsesRule(),
         new EnrollmentModeRule(),
         new AgeLimitRule(),
         new MinimumAvailableSlotsRule(),
@@ -39,6 +40,32 @@ internal sealed class FormResponsesRule : ISubmissionRule
             : FormResponseValidator.Validate(
                 submission.Form.Fields.Select(f => (f.Id, f.IsRequired, f.Label)),
                 submission.Leader.Responses.Select(r => (r.FormFieldId, r.Value)));
+}
+
+/// <summary>
+/// Elk groepslid beantwoordt dezelfde vragen als de leider (zelfde verplicht-regels, #411). Ook zonder formulier,
+/// zodat een antwoord op een veld dat niet bestaat een nette fout geeft in plaats van een opslagfout. Bij een
+/// solo-aanvraag zijn er geen leden en valt er niets te toetsen.
+/// </summary>
+internal sealed class MemberFormResponsesRule : ISubmissionRule
+{
+    public Error? Check(Submission submission)
+    {
+        // Algemene vragen (één keer per inschrijving) beantwoordt enkel de leider: een lid dat er een beantwoordt, krijgt
+        // dezelfde fout als bij een onbekend veld.
+        var fields = (submission.Form?.Fields ?? [])
+            .Where(f => f.Scope == FormFieldScope.PerParticipant)
+            .Select(f => (f.Id, f.IsRequired, f.Label)).ToList();
+
+        foreach (var member in submission.Members)
+        {
+            var error = FormResponseValidator.Validate(fields, member.Responses.Select(r => (r.FormFieldId, r.Value)));
+            if (error is not null)
+                return new Error(error.Code, $"{member.Name}: {error.Message}");
+        }
+
+        return null;
+    }
 }
 
 /// <summary>De admin bepaalt per reeks of solo, groep of beide toegelaten zijn.</summary>

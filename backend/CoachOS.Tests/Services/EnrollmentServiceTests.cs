@@ -433,6 +433,56 @@ public class EnrollmentServiceTests
         _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
+    [Test]
+    public async Task SaveForm_StoresTheScopeOfEachField()
+    {
+        _lessonSeriesRepo
+            .Setup(r => r.ExistsAsync(SeriesId, OrgId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        _enrollmentFormRepo
+            .Setup(r => r.GetBySeriesIdWithFieldsAsync(SeriesId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((EnrollmentForm?)null);
+        EnrollmentForm? saved = null;
+        _enrollmentFormRepo
+            .Setup(r => r.AddAsync(It.IsAny<EnrollmentForm>(), It.IsAny<CancellationToken>()))
+            .Callback<EnrollmentForm, CancellationToken>((f, _) => saved = f)
+            .Returns(Task.CompletedTask);
+
+        SaveEnrollmentFormRequest request = new()
+        {
+            Fields = new()
+            {
+                new() { Label = "Ervaring", Type = (int)FormFieldType.Text },
+                new() { Label = "Hoe gevonden?", Type = (int)FormFieldType.Text, Scope = (int)FormFieldScope.PerEnrollment },
+            },
+        };
+
+        var result = await _service.SaveFormAsync(SeriesId, OrgId, request);
+
+        result.IsSuccess.Should().BeTrue();
+        saved!.Fields.Select(f => f.Scope).Should().Equal(FormFieldScope.PerParticipant, FormFieldScope.PerEnrollment);
+    }
+
+    [Test]
+    public async Task GetForm_ReturnsTheScopeOfEachField()
+    {
+        _enrollmentFormRepo
+            .Setup(r => r.GetBySeriesIdReadOnlyAsync(SeriesId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new EnrollmentForm
+            {
+                Id = Guid.NewGuid(), OrganizationId = OrgId, LessonSerieId = SeriesId,
+                Fields =
+                [
+                    new FormField { Id = Guid.NewGuid(), Label = "Ervaring", Type = FormFieldType.Text, Order = 0 },
+                    new FormField { Id = Guid.NewGuid(), Label = "Hoe gevonden?", Type = FormFieldType.Text, Order = 1, Scope = FormFieldScope.PerEnrollment },
+                ],
+            });
+
+        var result = await _service.GetEnrollmentFormAsync(SeriesId);
+
+        result.Value!.Fields.Select(f => f.Scope).Should().Equal(0, 1);
+    }
+
     // ── SubmitEnrollmentAsync ────────────────────────────────────────────────
 
     [Test]
@@ -1522,6 +1572,32 @@ public class EnrollmentServiceTests
             It.Is<IEnumerable<EmailOutboxMessage>>(m =>
                 m.Any(x => x.Type == EmailOutboxMessageTypes.GroupMemberAdded)),
             It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Test]
+    public async Task AddGroupMember_GeneralRequiredQuestion_IsNotAskedOfTheNewMember()
+    {
+        var (_, group, _) = SetupGroup();
+        Guid perParticipantId = Guid.NewGuid();
+        Guid generalId = Guid.NewGuid();
+        _enrollmentFormRepo.Setup(r => r.GetBySeriesIdReadOnlyAsync(SeriesIdG, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new EnrollmentForm
+            {
+                Id = Guid.NewGuid(), OrganizationId = OrgIdG, LessonSerieId = SeriesIdG,
+                Fields =
+                [
+                    new FormField { Id = perParticipantId, Label = "Ervaring", Type = FormFieldType.Text, IsRequired = true },
+                    new FormField { Id = generalId, Label = "Bron", Type = FormFieldType.Text, IsRequired = true, Scope = FormFieldScope.PerEnrollment },
+                ],
+            });
+        CreateManualEnrollmentRequest request = MemberRequest() with
+        {
+            Responses = [new FormResponseValueDto { FormFieldId = perParticipantId, Value = "Beginner" }],
+        };
+
+        Result<Guid> result = await _service.AddGroupMemberAsync(SeriesIdG, group.Id, request, OrgIdG, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
     }
 
     [Test]

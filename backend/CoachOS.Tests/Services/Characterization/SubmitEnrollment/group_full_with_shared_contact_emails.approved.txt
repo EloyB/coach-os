@@ -17,6 +17,7 @@ uow.CommitTransaction
   persisted Enrollment {"organizationId":"00000000-0000-0000-0000-0000000000a1","studentName":"Ine","contactEmail":"ouder@test.be","studentEmail":null,"studentPhone":null,"dateOfBirth":"2014-06-06","category":"Youth","lessonId":null,"lessonSerieId":"00000000-0000-0000-0000-0000000000b1","status":"Pending","enrolledAt":"2026-06-15T10:00:00Z","activeSince":null,"notes":null,"enrollmentGroupId":"<guid-2>","isOpenToGrouping":false,"selectedPriceOptionId":"00000000-0000-0000-0000-0000000000f1","anonymizedAt":null,"id":"<guid-5>"}
   persisted FormResponse {"enrollmentId":"<guid-1>","formFieldId":"00000000-0000-0000-0000-0000000000d1","value":"Leider antwoord"}
   persisted FormResponse {"enrollmentId":"<guid-3>","formFieldId":"00000000-0000-0000-0000-0000000000d1","value":"Gert antwoord"}
+  persisted FormResponse {"enrollmentId":"<guid-4>","formFieldId":"00000000-0000-0000-0000-0000000000d1","value":"Hilde antwoord"}
   persisted FormResponse {"enrollmentId":"<guid-5>","formFieldId":"00000000-0000-0000-0000-0000000000d1","value":"Ine 1"}
   persisted FormResponse {"enrollmentId":"<guid-5>","formFieldId":"00000000-0000-0000-0000-0000000000d2","value":"Ine 2"}
   persisted TimeSlotPreference {"organizationId":"00000000-0000-0000-0000-0000000000a1","enrollmentId":"<guid-1>","weeklyTemplateEntryId":"00000000-0000-0000-0000-0000000000e1","preference":"Preferred"}

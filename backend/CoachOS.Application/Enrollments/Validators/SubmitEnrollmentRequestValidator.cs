@@ -88,6 +88,15 @@ public class SubmitEnrollmentRequestValidator : AbstractValidator<SubmitEnrollme
                     .Must(DateOfBirthRules.IsParseable).WithMessage("Geboortedatum moet het formaat yyyy-MM-dd hebben")
                     .Must(v => DateOfBirthRules.IsNotInFuture(v, today)).WithMessage("Geboortedatum kan niet in de toekomst liggen")
                     .Must(v => DateOfBirthRules.IsRealistic(v, today)).WithMessage("Controleer de geboortedatum");
+
+                m.RuleForEach(v => v.Responses).ChildRules(r =>
+                {
+                    r.RuleFor(a => a.FormFieldId)
+                        .NotEmpty().WithMessage("FormFieldId is verplicht");
+
+                    r.RuleFor(a => a.Value)
+                        .MaximumLength(1000).WithMessage("Antwoord mag maximaal 1000 karakters zijn");
+                });
             });
         });
     }
