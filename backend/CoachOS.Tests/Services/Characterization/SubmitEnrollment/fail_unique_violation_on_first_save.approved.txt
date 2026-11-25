@@ -1,0 +1,11 @@
+series.GetByIdPublic(00000000-0000-0000-0000-0000000000b1)
+form.GetBySeriesIdReadOnly(00000000-0000-0000-0000-0000000000b1)
+settings.GetByOrganizationReadOnly(00000000-0000-0000-0000-0000000000a1)
+userLookup.GetUserInfoById(00000000-0000-0000-0000-0000000000c1)
+uow.BeginTransaction(Serializable)
+enrollments.CountActiveBySeries(00000000-0000-0000-0000-0000000000b1) => 0
+enrollments.IsDuplicateParticipant(00000000-0000-0000-0000-0000000000b1, 'finn@test.be', 'Finn', 1990-01-01) => False
+uow.SaveChanges => throws
+uow.RollbackTransaction
+RESULT fail [conflict: Dit e-mailadres is al ingeschreven voor deze lessenreeks.]
+LOG Warning: Dubbele inschrijving voor reeks 00000000-0000-0000-0000-0000000000b1 [InvalidOperationException: update failed]

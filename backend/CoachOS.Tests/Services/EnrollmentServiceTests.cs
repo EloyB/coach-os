@@ -1,6 +1,7 @@
 using CoachOS.Application.Abstractions;
 using CoachOS.Application.Enrollments;
 using CoachOS.Application.Enrollments.DTOs;
+using CoachOS.Application.Enrollments.Submit;
 using CoachOS.Application.Mappings;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
@@ -32,6 +33,7 @@ public class EnrollmentServiceTests
     private Mock<ILogger<EnrollmentService>> _logger = null!;
     private Mock<IUnitOfWork> _unitOfWork = null!;
     private EnrollmentService _service = null!;
+    private EnrollmentSubmissionService _submitService = null!;
 
     private static readonly Guid OrgId = Guid.NewGuid();
     private static readonly Guid SeriesId = Guid.NewGuid();
@@ -72,7 +74,6 @@ public class EnrollmentServiceTests
             _paymentRepo.Object,
             _timeSlotPreferenceRepo.Object,
             _orgSettingsRepo.Object,
-            _userLookup.Object,
             _emailOutboxRepository.Object,
             _priceRepo.Object,
             _scheduleAssignmentRepo.Object,
@@ -80,7 +81,13 @@ public class EnrollmentServiceTests
             _mapper,
             _logger.Object,
             TimeProvider.System);
+        _submitService = NewSubmitService(TimeProvider.System);
     }
+
+    private EnrollmentSubmissionService NewSubmitService(TimeProvider clock) => new(
+        _lessonSeriesRepo.Object, _enrollmentFormRepo.Object, _orgSettingsRepo.Object, _enrollmentRepo.Object,
+        _enrollmentGroupRepo.Object, _emailOutboxRepository.Object, _userLookup.Object, _unitOfWork.Object,
+        new Mock<ILogger<EnrollmentSubmissionService>>().Object, clock);
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -441,7 +448,7 @@ public class EnrollmentServiceTests
             StudentEmail = "test@test.be",
         };
 
-        var result = await _service.SubmitEnrollmentAsync(SeriesId, request);
+        var result = await _submitService.SubmitAsync(SeriesId, request);
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.NotFound);
@@ -470,7 +477,7 @@ public class EnrollmentServiceTests
             DateOfBirth = "1990-05-12",
         };
 
-        var result = await _service.SubmitEnrollmentAsync(SeriesId, request);
+        var result = await _submitService.SubmitAsync(SeriesId, request);
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.Conflict);
@@ -489,7 +496,7 @@ public class EnrollmentServiceTests
             DateOfBirth = "1990-05-12",
         };
 
-        var result = await _service.SubmitEnrollmentAsync(SeriesId, request);
+        var result = await _submitService.SubmitAsync(SeriesId, request);
 
         result.IsSuccess.Should().BeTrue();
         _emailOutboxRepository.Verify(r => r.AddRangeAsync(
@@ -531,7 +538,7 @@ public class EnrollmentServiceTests
             DateOfBirth = "1990-05-12",
         };
 
-        var result = await _service.SubmitEnrollmentAsync(SeriesId, request);
+        var result = await _submitService.SubmitAsync(SeriesId, request);
 
         result.IsSuccess.Should().BeTrue();
         _enrollmentRepo.Verify(
@@ -559,7 +566,7 @@ public class EnrollmentServiceTests
             StudentEmail = "anna@test.be",
         };
 
-        var result = await _service.SubmitEnrollmentAsync(SeriesId, request);
+        var result = await _submitService.SubmitAsync(SeriesId, request);
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.Conflict);
@@ -585,7 +592,7 @@ public class EnrollmentServiceTests
             Responses = new(), // Missing required field response
         };
 
-        var result = await _service.SubmitEnrollmentAsync(SeriesId, request);
+        var result = await _submitService.SubmitAsync(SeriesId, request);
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.Validation);
@@ -617,7 +624,7 @@ public class EnrollmentServiceTests
             },
         };
 
-        var result = await _service.SubmitEnrollmentAsync(SeriesId, request);
+        var result = await _submitService.SubmitAsync(SeriesId, request);
 
         result.IsSuccess.Should().BeTrue();
         // Leader enrollment
@@ -632,9 +639,10 @@ public class EnrollmentServiceTests
         _enrollmentRepo.Verify(
             r => r.AddAsync(It.Is<Enrollment>(e => e.StudentName == "Member A" || e.StudentName == "Member B"), It.IsAny<CancellationToken>()),
             Times.Exactly(2));
-        // Preferences saved
-        _timeSlotPreferenceRepo.Verify(
-            r => r.AddRangeAsync(It.IsAny<IEnumerable<TimeSlotPreference>>(), It.IsAny<CancellationToken>()),
+        // Voorkeuren staan op de inschrijving van de leider
+        _enrollmentRepo.Verify(
+            r => r.AddAsync(It.Is<Enrollment>(e => e.StudentName == "Leader" && e.TimeSlotPreferences.Count == 1),
+                It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -663,7 +671,7 @@ public class EnrollmentServiceTests
             },
         };
 
-        var result = await _service.SubmitEnrollmentAsync(SeriesId, request);
+        var result = await _submitService.SubmitAsync(SeriesId, request);
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.Conflict);
@@ -691,7 +699,7 @@ public class EnrollmentServiceTests
             },
         };
 
-        var result = await _service.SubmitEnrollmentAsync(SeriesId, request);
+        var result = await _submitService.SubmitAsync(SeriesId, request);
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.Conflict);
@@ -725,7 +733,7 @@ public class EnrollmentServiceTests
             StudentEmail = "anna@test.be",
         };
 
-        var result = await _service.SubmitEnrollmentAsync(SeriesId, request);
+        var result = await _submitService.SubmitAsync(SeriesId, request);
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.Conflict);
@@ -746,7 +754,7 @@ public class EnrollmentServiceTests
             StudentEmail = "anna@test.be",
         };
 
-        var result = await _service.SubmitEnrollmentAsync(SeriesId, request);
+        var result = await _submitService.SubmitAsync(SeriesId, request);
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.Unexpected);
@@ -774,13 +782,11 @@ public class EnrollmentServiceTests
             },
         };
 
-        var result = await _service.SubmitEnrollmentAsync(SeriesId, request);
+        var result = await _submitService.SubmitAsync(SeriesId, request);
 
         result.IsSuccess.Should().BeTrue();
-        _timeSlotPreferenceRepo.Verify(
-            r => r.AddRangeAsync(
-                It.Is<IEnumerable<TimeSlotPreference>>(prefs => prefs.Count() == 2),
-                It.IsAny<CancellationToken>()),
+        _enrollmentRepo.Verify(
+            r => r.AddAsync(It.Is<Enrollment>(e => e.TimeSlotPreferences.Count == 2), It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -797,12 +803,12 @@ public class EnrollmentServiceTests
             EnrollmentType = "solo",
         };
 
-        var result = await _service.SubmitEnrollmentAsync(SeriesId, request);
+        var result = await _submitService.SubmitAsync(SeriesId, request);
 
         result.IsSuccess.Should().BeTrue();
-        _timeSlotPreferenceRepo.Verify(
-            r => r.AddRangeAsync(It.IsAny<IEnumerable<TimeSlotPreference>>(), It.IsAny<CancellationToken>()),
-            Times.Never);
+        _enrollmentRepo.Verify(
+            r => r.AddAsync(It.Is<Enrollment>(e => e.TimeSlotPreferences.Count == 0), It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     // ── Enrollment-mode gating ───────────────────────────────────────────────
@@ -827,7 +833,7 @@ public class EnrollmentServiceTests
             },
         };
 
-        Result<Guid> result = await _service.SubmitEnrollmentAsync(SeriesId, request);
+        Result<Guid> result = await _submitService.SubmitAsync(SeriesId, request);
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().Contain(e => e.Code == ErrorCodes.Validation);
@@ -850,7 +856,7 @@ public class EnrollmentServiceTests
             EnrollmentType = "solo",
         };
 
-        Result<Guid> result = await _service.SubmitEnrollmentAsync(SeriesId, request);
+        Result<Guid> result = await _submitService.SubmitAsync(SeriesId, request);
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().Contain(e => e.Code == ErrorCodes.Validation);
@@ -876,7 +882,7 @@ public class EnrollmentServiceTests
             DateOfBirth = "2023-01-01",
         };
 
-        Result<Guid> result = await _service.SubmitEnrollmentAsync(SeriesId, request);
+        Result<Guid> result = await _submitService.SubmitAsync(SeriesId, request);
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.Validation);
@@ -900,7 +906,7 @@ public class EnrollmentServiceTests
             DateOfBirth = "2023-01-01",
         };
 
-        Result<Guid> result = await _service.SubmitEnrollmentAsync(SeriesId, request);
+        Result<Guid> result = await _submitService.SubmitAsync(SeriesId, request);
 
         result.IsSuccess.Should().BeTrue();
     }
@@ -926,7 +932,7 @@ public class EnrollmentServiceTests
             },
         };
 
-        Result<Guid> result = await _service.SubmitEnrollmentAsync(SeriesId, request);
+        Result<Guid> result = await _submitService.SubmitAsync(SeriesId, request);
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.Code == ErrorCodes.Validation);
@@ -1614,13 +1620,14 @@ public class EnrollmentServiceTests
             _paymentRepo.Object,
             _timeSlotPreferenceRepo.Object,
             _orgSettingsRepo.Object,
-            _userLookup.Object,
             _emailOutboxRepository.Object,
             _priceRepo.Object,
             _scheduleAssignmentRepo.Object,
             _unitOfWork.Object,
             _mapper,
             _logger.Object,
+            new TestHelpers.FixedTimeProvider(new DateTimeOffset(2026, 6, 9, 22, 30, 0, TimeSpan.Zero)));
+        _submitService = NewSubmitService(
             new TestHelpers.FixedTimeProvider(new DateTimeOffset(2026, 6, 9, 22, 30, 0, TimeSpan.Zero)));
     }
 
@@ -1758,7 +1765,7 @@ public class EnrollmentServiceTests
         SetupSuccessfulEnrollment(series, "alice@test.be");
         List<Guid> slots = series.WeeklyTemplate.Select(w => w.Id).ToList();
 
-        Result<Guid> result = await _service.SubmitEnrollmentAsync(SeriesId, RequestWithPreferences(
+        Result<Guid> result = await _submitService.SubmitAsync(SeriesId, RequestWithPreferences(
             (slots[0], 1), (slots[1], 2)));
 
         result.IsSuccess.Should().BeFalse();
@@ -1775,7 +1782,7 @@ public class EnrollmentServiceTests
         SetupSuccessfulEnrollment(series, "alice@test.be");
         List<Guid> slots = series.WeeklyTemplate.Select(w => w.Id).ToList();
 
-        Result<Guid> result = await _service.SubmitEnrollmentAsync(SeriesId, RequestWithPreferences(
+        Result<Guid> result = await _submitService.SubmitAsync(SeriesId, RequestWithPreferences(
             (slots[0], 1), (slots[1], 2), (slots[2], 3), (slots[3], 3)));
 
         result.IsSuccess.Should().BeFalse();
@@ -1790,7 +1797,7 @@ public class EnrollmentServiceTests
         SetupSuccessfulEnrollment(series, "alice@test.be");
         List<Guid> slots = series.WeeklyTemplate.Select(w => w.Id).ToList();
 
-        Result<Guid> result = await _service.SubmitEnrollmentAsync(SeriesId, RequestWithPreferences(
+        Result<Guid> result = await _submitService.SubmitAsync(SeriesId, RequestWithPreferences(
             (slots[0], 1), (slots[1], 2), (slots[2], 1), (slots[3], 3)));
 
         result.IsSuccess.Should().BeTrue();
@@ -1804,7 +1811,7 @@ public class EnrollmentServiceTests
         SetupSuccessfulEnrollment(series, "alice@test.be");
         Guid slot = series.WeeklyTemplate.First().Id;
 
-        Result<Guid> result = await _service.SubmitEnrollmentAsync(SeriesId, RequestWithPreferences(
+        Result<Guid> result = await _submitService.SubmitAsync(SeriesId, RequestWithPreferences(
             (slot, 1), (Guid.NewGuid(), 1)));
 
         result.IsSuccess.Should().BeFalse();
@@ -1816,7 +1823,7 @@ public class EnrollmentServiceTests
         LessonSerie series = BuildActiveSeries(templateEntries: 2);
         SetupSuccessfulEnrollment(series, "alice@test.be");
 
-        Result<Guid> result = await _service.SubmitEnrollmentAsync(SeriesId, new SubmitEnrollmentRequest
+        Result<Guid> result = await _submitService.SubmitAsync(SeriesId, new SubmitEnrollmentRequest
         {
             StudentName = "Alice",
             StudentEmail = "alice@test.be",

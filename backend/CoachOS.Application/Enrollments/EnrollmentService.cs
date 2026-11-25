@@ -26,7 +26,6 @@ public class EnrollmentService(
     IPaymentRepository paymentRepo,
     ITimeSlotPreferenceRepository timeSlotPreferenceRepo,
     IOrganizationSettingsRepository orgSettingsRepo,
-    IUserLookupService userLookup,
     IEmailOutboxRepository emailOutboxRepository,
     ILessonSeriePriceRepository priceRepo,
     IScheduleAssignmentRepository scheduleAssignmentRepo,
@@ -244,334 +243,6 @@ public class EnrollmentService(
         return Result<Guid>.Ok(form.Id);
     }
 
-    public async Task<Result<Guid>> SubmitEnrollmentAsync(
-        Guid lessonSeriesId, SubmitEnrollmentRequest request, CancellationToken ct = default)
-    {
-        // 1. Load active lesson series
-        var series = await lessonSeriesRepo.GetByIdPublicAsync(lessonSeriesId, ct);
-        if (series is null)
-            return Result<Guid>.Fail(new Error(ErrorCodes.NotFound, "Lessenreeks niet gevonden."));
-
-        // 2. Registration deadline check
-        if (timeProvider.GetUtcNow().UtcDateTime > series.RegistrationDeadline)
-            return Result<Guid>.Fail(
-                new Error(ErrorCodes.Validation, "De inschrijvingsdeadline is verstreken."));
-
-        // 3. Load enrollment form with fields (may be null)
-        var form = await enrollmentFormRepo.GetBySeriesIdReadOnlyAsync(lessonSeriesId, ct);
-
-        // 4. Validate form responses against actual form fields (pre-transaction: cheap, no race risk)
-        if (form is not null)
-        {
-            Error? formError = FormResponseValidator.Validate(
-                form.Fields.Select(f => (f.Id, f.IsRequired, f.Label)),
-                request.Responses.Select(r => (r.FormFieldId, r.Value)));
-            if (formError is not null)
-                return Result<Guid>.Fail(formError);
-        }
-
-        // 4a. Inschrijfwijze afdwingen: de admin bepaalt per reeks of solo, groep of
-        //     beide toegelaten zijn. Vóór de transactie — geen DB-werk nodig voor een
-        //     wijze die sowieso niet mag.
-        bool wantsGroup = request.EnrollmentType == "group";
-        if (wantsGroup && !series.AllowGroupEnrollment)
-            return Result<Guid>.Fail(new Error(
-                ErrorCodes.Validation, "Inschrijven in groep is niet mogelijk voor deze lessenreeks."));
-        if (!wantsGroup && !series.AllowSoloEnrollment)
-            return Result<Guid>.Fail(new Error(
-                ErrorCodes.Validation, "Solo inschrijven is niet mogelijk voor deze lessenreeks."));
-
-        var groupSize = request.EnrollmentType == "group" && request.GroupMembers is not null
-            ? request.GroupMembers.Count + 1
-            : 1;
-
-        // Leeftijdsgrens: toets elke deelnemer op de startdatum van de reeks. Fail-fast
-        // vóór de transactie — geen DB-werk als iemand buiten de grens valt.
-        Error? ageError = CheckAgeEligibility(request, series);
-        if (ageError is not null)
-            return Result<Guid>.Fail(ageError);
-
-        // 4a-bis. Minimum aantal beschikbare tijdvakken: enkel "Beschikbaar" en "Voorkeur" tellen mee,
-        //     enkel voor weekslots van déze reeks. Zonder weekslots valt er niets te kiezen.
-        Error? minimumSlotsError = CheckMinimumAvailableSlots(request, series);
-        if (minimumSlotsError is not null)
-            return Result<Guid>.Fail(minimumSlotsError);
-
-        // 4b. Tariefcategorie afleiden. De leeftijdsgrens is org-specifiek; deze flow is
-        //     anoniem, dus de settings komen via series.OrganizationId en niet uit een JWT.
-        //     De categorie wordt één keer vastgelegd bij inschrijving: wie tijdens de reeks
-        //     jarig is, mag niet halverwege van tarief wisselen.
-        OrganizationSettingsEntity? orgSettings =
-            await orgSettingsRepo.GetByOrganizationReadOnlyAsync(series.OrganizationId, ct);
-        int youthMaxAge = orgSettings?.YouthMaxAge ?? 17;
-        DateOnly enrolledOn = timeProvider.GetBrusselsToday();
-
-        // Prepare notification payloads before opening the transaction. The messages themselves
-        // are persisted inside the transaction below, so a committed enrollment always has
-        // durable notification work attached to it.
-        var firstTrainerId = series.Lessons
-            .OrderBy(l => l.Date).ThenBy(l => l.StartTime)
-            .Select(l => l.TrainerId)
-            .FirstOrDefault(id => id.HasValue);
-        (string FullName, string Email)? trainerInfo = null;
-        if (firstTrainerId.HasValue)
-        {
-            try
-            {
-                trainerInfo = await userLookup.GetUserInfoByIdAsync(firstTrainerId.Value, ct);
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning(ex,
-                    "Trainergegevens konden niet worden geladen voor inschrijving in reeks {SeriesId}; " +
-                    "de trainernotificatie wordt overgeslagen",
-                    lessonSeriesId);
-            }
-        }
-
-        List<EmailResponseItem> responseItems = new();
-        if (form is not null)
-        {
-            foreach (var response in request.Responses)
-            {
-                var field = form.Fields.FirstOrDefault(f => f.Id == response.FormFieldId);
-                if (field is not null)
-                    responseItems.Add(new EmailResponseItem(field.Label, response.Value));
-            }
-        }
-
-        List<(string Email, string Name)> confirmationRecipients =
-            [(EnrollmentEmails.ResolveContactEmail(request, null), request.StudentName)];
-        if (request.EnrollmentType == "group" && request.GroupMembers is { Count: > 0 })
-        {
-            confirmationRecipients.AddRange(request.GroupMembers.Select(member =>
-                (EnrollmentEmails.ResolveContactEmail(request, member), member.StudentName)));
-        }
-
-        // 5. Begin SERIALIZABLE transaction: capacity + duplicate checks moeten ATOMIC zijn
-        //    met de insert, anders kunnen twee parallelle submitters beide de check passeren
-        //    en samen MaxRegistrations overschrijden of een duplicate email creëren.
-        Enrollment enrollment;
-        try
-        {
-            await unitOfWork.BeginTransactionAsync(IsolationLevel.Serializable, ct);
-            // 6. Capacity check INSIDE transaction (accounts for group size)
-            if (series.MaxRegistrations.HasValue)
-            {
-                var activeCount = await enrollmentRepo.CountActiveBySeriesAsync(lessonSeriesId, ct);
-                if (activeCount + groupSize > series.MaxRegistrations.Value)
-                {
-                    await unitOfWork.RollbackTransactionAsync(ct);
-                    return Result<Guid>.Fail(
-                        new Error(ErrorCodes.Conflict, "Deze lessenreeks is volzet."));
-                }
-            }
-
-            // 7. Dubbelcheck INSIDE transaction op persoon, niet op adres: één contactadres
-            //    mag meerdere deelnemers dragen (ouder met kinderen, vriend die alles regelt),
-            //    maar dezelfde persoon mag niet twee keer in de reeks staan. De partiële unique
-            //    index IX_Enrollments_Participant dekt hetzelfde; dit vangt het als een nette
-            //    409 vóór de insert i.p.v. een 23505 halverwege de transactie.
-            List<(string ContactEmail, string Name, DateOnly? Dob)> participants =
-            [
-                (EnrollmentEmails.ResolveContactEmail(request, null),
-                 request.StudentName, ParseBirthDate(request.DateOfBirth)),
-            ];
-
-            if (request.EnrollmentType == "group" && request.GroupMembers is not null)
-            {
-                participants.AddRange(request.GroupMembers.Select(m =>
-                    (EnrollmentEmails.ResolveContactEmail(request, m),
-                     m.StudentName, ParseBirthDate(m.DateOfBirth))));
-            }
-
-            foreach ((string contactEmail, string name, DateOnly? dob) in participants)
-            {
-                if (!await enrollmentRepo.IsDuplicateParticipantAsync(
-                        lessonSeriesId, contactEmail, name, dob, ct))
-                    continue;
-
-                await unitOfWork.RollbackTransactionAsync(ct);
-                return Result<Guid>.Fail(new Error(
-                    ErrorCodes.Conflict, $"{name} is al ingeschreven voor deze lessenreeks."));
-            }
-
-        // 8. Create enrollment. Status blijft Pending tot de student via de
-        //    confirmation-mail bevestigt — Mollie payment wordt dan getriggerd
-        //    door StudentConfirmationService, niet hier.
-        enrollment = new()
-        {
-            OrganizationId = series.OrganizationId,
-            LessonSerieId = series.Id,
-            StudentName = request.StudentName,
-            ContactEmail = EnrollmentEmails.ResolveContactEmail(request, null),
-            StudentEmail = EnrollmentEmails.Normalize(request.StudentEmail),
-            StudentPhone = request.StudentPhone,
-            Status = EnrollmentStatus.Pending,
-            EnrolledAt = timeProvider.GetUtcNow().UtcDateTime,
-            IsOpenToGrouping = request.IsOpenToGrouping,
-            DateOfBirth = ParseBirthDate(request.DateOfBirth),
-            Category = ResolveCategory(request.DateOfBirth, youthMaxAge, enrolledOn),
-            SelectedPriceOptionId = request.SelectedPriceOptionId,
-        };
-
-        await enrollmentRepo.AddAsync(enrollment, ct);
-
-        // 8. Create form responses
-        foreach (var responseDto in request.Responses)
-        {
-            FormResponse response = new()
-            {
-                EnrollmentId = enrollment.Id,
-                FormFieldId = responseDto.FormFieldId,
-                Value = responseDto.Value,
-            };
-            await enrollmentRepo.AddFormResponseAsync(response, ct);
-        }
-
-        // 9. Save enrollment + form responses first (needed before group creation to avoid circular FK)
-        await unitOfWork.SaveChangesAsync(ct);
-
-        // 10. Group enrollment: create group + member enrollments
-        if (request.EnrollmentType == "group" && request.GroupMembers is { Count: > 0 })
-        {
-            var existingGroupCount = await enrollmentGroupRepo.CountBySeriesAsync(
-                lessonSeriesId, series.OrganizationId, ct);
-            // Naming: A–Z voor eerste 26 groepen, dan AA, AB, …, BA, BB, … zodat de namen
-            // leesbaar blijven (geen non-printables zoals [ of \ bij 'A'+26).
-            var groupName = BuildGroupName(existingGroupCount);
-
-            EnrollmentGroup group = new()
-            {
-                OrganizationId = series.OrganizationId,
-                LessonSerieId = series.Id,
-                Name = $"Groep {groupName}",
-                LeaderEnrollmentId = enrollment.Id,
-            };
-
-            await enrollmentGroupRepo.AddAsync(group, ct);
-            await unitOfWork.SaveChangesAsync(ct);
-
-            enrollment.EnrollmentGroupId = group.Id;
-
-            foreach (var member in request.GroupMembers)
-            {
-                Enrollment memberEnrollment = new()
-                {
-                    OrganizationId = series.OrganizationId,
-                    LessonSerieId = series.Id,
-                    StudentName = member.StudentName,
-                    ContactEmail = EnrollmentEmails.ResolveContactEmail(request, member),
-                    StudentEmail = string.IsNullOrWhiteSpace(member.StudentEmail)
-                        ? null
-                        : EnrollmentEmails.Normalize(member.StudentEmail),
-                    StudentPhone = member.StudentPhone,
-                    Status = EnrollmentStatus.Pending,
-                    EnrolledAt = timeProvider.GetUtcNow().UtcDateTime,
-                    EnrollmentGroupId = group.Id,
-                    DateOfBirth = ParseBirthDate(member.DateOfBirth),
-                    Category = ResolveCategory(member.DateOfBirth, youthMaxAge, enrolledOn),
-                    SelectedPriceOptionId = request.SelectedPriceOptionId,
-                };
-
-                await enrollmentRepo.AddAsync(memberEnrollment, ct);
-
-                if (member.Responses is { Count: > 0 })
-                {
-                    foreach (var responseDto in member.Responses)
-                    {
-                        FormResponse response = new()
-                        {
-                            EnrollmentId = memberEnrollment.Id,
-                            FormFieldId = responseDto.FormFieldId,
-                            Value = responseDto.Value,
-                        };
-                        await enrollmentRepo.AddFormResponseAsync(response, ct);
-                    }
-                }
-            }
-
-            await unitOfWork.SaveChangesAsync(ct);
-        }
-
-        // 12. Save time slot preferences
-        if (request.TimeSlotPreferences is { Count: > 0 })
-        {
-            var preferences = request.TimeSlotPreferences.Select(p => new TimeSlotPreference
-            {
-                OrganizationId = series.OrganizationId,
-                EnrollmentId = enrollment.Id,
-                WeeklyTemplateEntryId = p.WeeklyTemplateEntryId,
-                Preference = (SlotPreference)p.Preference,
-            });
-
-            await timeSlotPreferenceRepo.AddRangeAsync(preferences, ct);
-            await unitOfWork.SaveChangesAsync(ct);
-        }
-
-        var outboxMessages = new List<EmailOutboxMessage>();
-        foreach (IGrouping<string, (string Email, string Name)> contact in
-                 confirmationRecipients.GroupBy(r => r.Email))
-        {
-            var names = contact.Select(r => r.Name).ToList();
-            var payload = new EnrollmentConfirmationEmailPayload(
-                contact.Key,
-                names[0],
-                series.Name,
-                names);
-            outboxMessages.Add(new EmailOutboxMessage
-            {
-                OrganizationId = series.OrganizationId,
-                EnrollmentId = enrollment.Id,
-                Type = EmailOutboxMessageTypes.EnrollmentConfirmation,
-                Payload = JsonSerializer.Serialize(payload),
-            });
-        }
-
-        if (trainerInfo.HasValue)
-        {
-            var payload = new TrainerEnrollmentNotificationEmailPayload(
-                trainerInfo.Value.Email,
-                trainerInfo.Value.FullName,
-                request.StudentName,
-                EnrollmentEmails.ResolveContactEmail(request, null),
-                series.Name,
-                responseItems);
-            outboxMessages.Add(new EmailOutboxMessage
-            {
-                OrganizationId = series.OrganizationId,
-                EnrollmentId = enrollment.Id,
-                Type = EmailOutboxMessageTypes.TrainerNotification,
-                Payload = JsonSerializer.Serialize(payload),
-            });
-        }
-
-        await emailOutboxRepository.AddRangeAsync(outboxMessages, ct);
-        await unitOfWork.SaveChangesAsync(ct);
-        await unitOfWork.CommitTransactionAsync(ct);
-
-        }
-        catch (Exception ex)
-        {
-            await unitOfWork.RollbackTransactionAsync(ct);
-
-            // Een unique violation betekent dat een parallelle submitter ons voor was tussen
-            // de check en de insert. Dat is een conflict (409), geen serverfout — retryen met
-            // dezelfde gegevens gaat nooit lukken, dus zeg dat ook.
-            if (IsUniqueViolation(ex))
-            {
-                logger.LogWarning(ex, "Dubbele inschrijving voor reeks {SeriesId}", lessonSeriesId);
-                return Result<Guid>.Fail(new Error(
-                    ErrorCodes.Conflict, "Dit e-mailadres is al ingeschreven voor deze lessenreeks."));
-            }
-
-            logger.LogError(ex, "Inschrijving mislukt voor reeks {SeriesId}", lessonSeriesId);
-            return Result<Guid>.Fail(new Error(ErrorCodes.Unexpected, "Inschrijving mislukt. Probeer het opnieuw."));
-        }
-
-        return Result<Guid>.Ok(enrollment.Id);
-    }
-
     public async Task<Result<Guid>> CreateManualEnrollmentAsync(
         Guid lessonSeriesId, CreateManualEnrollmentRequest request, Guid organizationId,
         CancellationToken ct = default)
@@ -583,8 +254,7 @@ public class EnrollmentService(
         if (!DateOfBirthRules.TryParse(request.DateOfBirth, out DateOnly dateOfBirth))
             return Result<Guid>.Fail(new Error(ErrorCodes.Validation, "Geboortedatum is ongeldig."));
 
-        Error? ageError = CheckAgeEligibility(
-            new SubmitEnrollmentRequest { StudentName = request.StudentName, DateOfBirth = request.DateOfBirth }, series);
+        Error? ageError = EnrollmentAgeRules.CheckSeriesAgeLimit(series, [(request.StudentName, request.DateOfBirth)]);
         if (ageError is not null)
             return Result<Guid>.Fail(ageError);
 
@@ -631,7 +301,7 @@ public class EnrollmentService(
                     : EnrollmentEmails.Normalize(request.StudentEmail),
                 StudentPhone = request.StudentPhone,
                 DateOfBirth = dateOfBirth,
-                Category = ResolveCategory(request.DateOfBirth, youthMaxAge, timeProvider.GetBrusselsToday()),
+                Category = EnrollmentAgeRules.ResolveCategory(request.DateOfBirth, youthMaxAge, timeProvider.GetBrusselsToday()),
                 Status = EnrollmentStatus.Confirmed,
                 EnrolledAt = timeProvider.GetUtcNow().UtcDateTime,
                 IsOpenToGrouping = false,
@@ -697,8 +367,7 @@ public class EnrollmentService(
         if (!DateOfBirthRules.TryParse(request.DateOfBirth, out DateOnly dateOfBirth))
             return Result<Guid>.Fail(new Error(ErrorCodes.Validation, "Geboortedatum is ongeldig."));
 
-        Error? ageError = CheckAgeEligibility(
-            new SubmitEnrollmentRequest { StudentName = request.StudentName, DateOfBirth = request.DateOfBirth }, series);
+        Error? ageError = EnrollmentAgeRules.CheckSeriesAgeLimit(series, [(request.StudentName, request.DateOfBirth)]);
         if (ageError is not null)
             return Result<Guid>.Fail(ageError);
 
@@ -746,7 +415,7 @@ public class EnrollmentService(
                     : EnrollmentEmails.Normalize(request.StudentEmail),
                 StudentPhone = request.StudentPhone,
                 DateOfBirth = dateOfBirth,
-                Category = ResolveCategory(request.DateOfBirth, youthMaxAge, timeProvider.GetBrusselsToday()),
+                Category = EnrollmentAgeRules.ResolveCategory(request.DateOfBirth, youthMaxAge, timeProvider.GetBrusselsToday()),
                 Status = leader.Status,                                // status geërfd van de groep
                 SelectedPriceOptionId = leader.SelectedPriceOptionId,  // prijsoptie geërfd
                 EnrolledAt = timeProvider.GetUtcNow().UtcDateTime,
@@ -868,7 +537,7 @@ public class EnrollmentService(
             return Result<LessonSerieEnrollmentDto>.Fail(
                 new Error(ErrorCodes.NotFound, "Inschrijving niet gevonden."));
 
-        DateOnly? dateOfBirth = ParseBirthDate(request.DateOfBirth);
+        DateOnly? dateOfBirth = DateOfBirthRules.ParseOrNull(request.DateOfBirth);
         string contactEmail = EnrollmentEmails.Normalize(request.ContactEmail);
         string studentEmail = string.IsNullOrWhiteSpace(request.StudentEmail)
             ? string.Empty
@@ -893,7 +562,7 @@ public class EnrollmentService(
             ? null
             : request.StudentPhone.Trim();
         enrollment.DateOfBirth = dateOfBirth;
-        enrollment.Category = ResolveCategory(request.DateOfBirth, youthMaxAge, updatedOn);
+        enrollment.Category = EnrollmentAgeRules.ResolveCategory(request.DateOfBirth, youthMaxAge, updatedOn);
         enrollment.IsOpenToGrouping = request.IsOpenToGrouping;
         enrollment.UpdatedAt = timeProvider.GetUtcNow().UtcDateTime;
 
@@ -968,25 +637,6 @@ public class EnrollmentService(
         return Result<LessonSerieEnrollmentDto>.Ok(dto);
     }
 
-    /// <summary>
-    /// Herkent een PostgreSQL unique violation (SQLSTATE 23505) ergens in de exception-keten.
-    /// Bewust via reflectie: de Application-laag kent Npgsql noch EF Core.
-    /// </summary>
-    private static bool IsUniqueViolation(Exception exception)
-    {
-        for (Exception? current = exception; current is not null; current = current.InnerException)
-        {
-            object? sqlState = current.GetType()
-                .GetProperty("SqlState")
-                ?.GetValue(current);
-
-            if (sqlState as string == "23505")
-                return true;
-        }
-
-        return false;
-    }
-
     public async Task<Result<bool>> CancelEnrollmentAsync(
         Guid lessonSeriesId, Guid enrollmentId, Guid organizationId, CancellationToken ct = default)
     {
@@ -1053,95 +703,6 @@ public class EnrollmentService(
             groupId, active.Count, organizationId);
 
         return Result<bool>.Ok(true);
-    }
-
-    /// <summary>
-    /// Parseert de geboortedatum uit het request. De validator heeft het formaat al
-    /// afgedwongen; faalt het hier toch, dan slaan we null op in plaats van te crashen —
-    /// de inschrijving zelf mag hier niet op stuklopen.
-    /// </summary>
-    private static DateOnly? ParseBirthDate(string? value)
-        => DateOfBirthRules.TryParse(value, out DateOnly date) ? date : null;
-
-    /// <summary>
-    /// Controleert het minimum aantal beschikbare tijdvakken van de reeks. Enkel unieke weekslots van
-    /// deze reeks met voorkeur Beschikbaar of Voorkeur tellen mee; Niet beschikbaar telt niet mee.
-    /// Het vereiste aantal wordt begrensd door het aantal weekslots (zonder weekslots geen eis).
-    /// Alleen voor de publieke inschrijving; handmatige inschrijvingen door de admin zijn vrijgesteld.
-    /// </summary>
-    private static Error? CheckMinimumAvailableSlots(
-        SubmitEnrollmentRequest request, Domain.Entities.LessonSerie series)
-    {
-        if (series.WeeklyTemplate.Count == 0)
-            return null;
-
-        int required = Math.Min(series.MinimumAvailableSlots, series.WeeklyTemplate.Count);
-
-        HashSet<Guid> seriesSlotIds = series.WeeklyTemplate.Select(w => w.Id).ToHashSet();
-        int available = (request.TimeSlotPreferences ?? [])
-            .Where(p => (p.Preference == (int)SlotPreference.Available || p.Preference == (int)SlotPreference.Preferred)
-                        && seriesSlotIds.Contains(p.WeeklyTemplateEntryId))
-            .Select(p => p.WeeklyTemplateEntryId)
-            .Distinct()
-            .Count();
-
-        return available >= required
-            ? null
-            : new Error(ErrorCodes.Validation,
-                $"Kies minstens {required} tijdvak{(required == 1 ? "" : "ken")} waarop je kunt.");
-    }
-
-    /// <summary>
-    /// Controleert of elke deelnemer (leider + groepsleden) op de startdatum van de reeks
-    /// binnen [MinAge, MaxAge] valt. Zonder bruikbare geboortedatum wordt niet geblokkeerd,
-    /// consistent met de tariefcategorie en de partiële unique index.
-    /// </summary>
-    private static Error? CheckAgeEligibility(
-        SubmitEnrollmentRequest request, Domain.Entities.LessonSerie series)
-    {
-        List<(string Name, string? Dob)> people = [(request.StudentName, request.DateOfBirth)];
-        if (request.EnrollmentType == "group" && request.GroupMembers is not null)
-            people.AddRange(request.GroupMembers.Select(m => (m.StudentName, (string?)m.DateOfBirth)));
-
-        foreach ((string name, string? dob) in people)
-        {
-            if (!DateOfBirthRules.TryParse(dob, out DateOnly parsed)) continue;
-
-            int age = ParticipantCategoryResolver.CalculateAge(parsed, series.StartDate);
-            if (age < series.MinAge || age > series.MaxAge)
-            {
-                return new Error(ErrorCodes.Validation,
-                    $"{name} ({age} jaar) valt buiten de leeftijdsgrens van deze reeks " +
-                    $"({series.MinAge}–{series.MaxAge} jaar).");
-            }
-        }
-
-        return null;
-    }
-
-    /// <summary>
-    /// Leidt de tariefcategorie af. Zonder bruikbare geboortedatum blijft de categorie
-    /// null; <c>PricingService</c> behandelt dat als volwassene.
-    /// </summary>
-    private static ParticipantCategory? ResolveCategory(
-        string? dateOfBirth, int youthMaxAge, DateOnly onDate)
-    {
-        if (!DateOfBirthRules.TryParse(dateOfBirth, out DateOnly date)) return null;
-        return ParticipantCategoryResolver.Resolve(date, youthMaxAge, onDate);
-    }
-
-    private static string BuildGroupName(int index)
-    {
-        // 0 → A, 25 → Z, 26 → AA, 27 → AB, …, 701 → ZZ, 702 → AAA, enz.
-        var name = string.Empty;
-        var n = index;
-        while (true)
-        {
-            name = (char)('A' + n % 26) + name;
-            n = n / 26 - 1;
-            if (n < 0) break;
-        }
-        return name;
     }
 
     private List<string>? DeserializeOptions(string? json)

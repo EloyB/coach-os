@@ -1,0 +1,12 @@
+series.GetByIdPublic(00000000-0000-0000-0000-0000000000b1)
+form.GetBySeriesIdReadOnly(00000000-0000-0000-0000-0000000000b1)
+settings.GetByOrganizationReadOnly(00000000-0000-0000-0000-0000000000a1)
+userLookup.GetUserInfoById(00000000-0000-0000-0000-0000000000c1)
+uow.BeginTransaction(Serializable)
+enrollments.CountActiveBySeries(00000000-0000-0000-0000-0000000000b1) => 0
+enrollments.IsDuplicateParticipant(00000000-0000-0000-0000-0000000000b1, 'dirk@test.be', 'Dirk', 1970-12-31) => False
+uow.CommitTransaction
+  persisted Enrollment {"organizationId":"00000000-0000-0000-0000-0000000000a1","studentName":"Dirk","contactEmail":"dirk@test.be","studentEmail":"dirk@test.be","studentPhone":null,"dateOfBirth":"1970-12-31","category":"Adult","lessonId":null,"lessonSerieId":"00000000-0000-0000-0000-0000000000b1","status":"Pending","enrolledAt":"2026-06-15T10:00:00Z","activeSince":null,"notes":null,"enrollmentGroupId":null,"isOpenToGrouping":false,"selectedPriceOptionId":null,"anonymizedAt":null,"id":"<guid-1>"}
+  persisted TimeSlotPreference {"organizationId":"00000000-0000-0000-0000-0000000000a1","enrollmentId":"<guid-1>","weeklyTemplateEntryId":"00000000-0000-0000-0000-0000000000e2","preference":"Preferred"}
+  persisted EmailOutboxMessage {"organizationId":"00000000-0000-0000-0000-0000000000a1","enrollmentId":"<guid-1>","recipientEmail":null,"type":"enrollment-confirmation","payload":"{\u0022Email\u0022:\u0022dirk@test.be\u0022,\u0022Name\u0022:\u0022Dirk\u0022,\u0022SeriesName\u0022:\u0022Beginners A\u0022,\u0022ParticipantNames\u0022:[\u0022Dirk\u0022]}","status":"pending","attempts":0,"processedAt":null,"lastError":null}
+RESULT ok value=<guid-1>

@@ -1,7 +1,7 @@
 using CoachOS.Application.Abstractions;
 using CoachOS.Application.Enrollments;
 using CoachOS.Application.Enrollments.DTOs;
-using CoachOS.Application.Mappings;
+using CoachOS.Application.Enrollments.Submit;
 using CoachOS.Domain.Entities;
 using CoachOS.Domain.Enums;
 using CoachOS.Domain.Interfaces;
@@ -25,16 +25,12 @@ public class SharedContactEmailTests
     private Mock<IEnrollmentFormRepository> _enrollmentFormRepo = null!;
     private Mock<ILessonSerieRepository> _lessonSeriesRepo = null!;
     private Mock<IEnrollmentGroupRepository> _enrollmentGroupRepo = null!;
-    private Mock<IPaymentRepository> _paymentRepo = null!;
-    private Mock<ITimeSlotPreferenceRepository> _timeSlotPreferenceRepo = null!;
     private Mock<IOrganizationSettingsRepository> _orgSettingsRepo = null!;
     private Mock<IUserLookupService> _userLookup = null!;
     private Mock<IEmailOutboxRepository> _emailOutboxRepository = null!;
-    private Mock<ILessonSeriePriceRepository> _priceRepo = null!;
-    private ApplicationMapper _mapper = null!;
-    private Mock<ILogger<EnrollmentService>> _logger = null!;
+    private Mock<ILogger<EnrollmentSubmissionService>> _logger = null!;
     private Mock<IUnitOfWork> _unitOfWork = null!;
-    private EnrollmentService _service = null!;
+    private EnrollmentSubmissionService _service = null!;
 
     private static readonly Guid OrgId = Guid.NewGuid();
     private static readonly Guid SeriesId = Guid.NewGuid();
@@ -46,18 +42,10 @@ public class SharedContactEmailTests
         _enrollmentFormRepo = new Mock<IEnrollmentFormRepository>();
         _lessonSeriesRepo = new Mock<ILessonSerieRepository>();
         _enrollmentGroupRepo = new Mock<IEnrollmentGroupRepository>();
-        _paymentRepo = new Mock<IPaymentRepository>();
-        _paymentRepo
-            .Setup(r => r.GetLatestByEnrollmentIdsAsync(
-                It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Dictionary<Guid, Payment>());
-        _timeSlotPreferenceRepo = new Mock<ITimeSlotPreferenceRepository>();
         _orgSettingsRepo = new Mock<IOrganizationSettingsRepository>();
         _userLookup = new Mock<IUserLookupService>();
         _emailOutboxRepository = new Mock<IEmailOutboxRepository>();
-        _priceRepo = new Mock<ILessonSeriePriceRepository>();
-        _mapper = new ApplicationMapper();
-        _logger = new Mock<ILogger<EnrollmentService>>();
+        _logger = new Mock<ILogger<EnrollmentSubmissionService>>();
         _unitOfWork = new Mock<IUnitOfWork>();
 
         // Reeks bestaat met ruime capaciteit, geen formulier, standaard org-instellingen.
@@ -85,20 +73,15 @@ public class SharedContactEmailTests
             .Setup(r => r.CountBySeriesAsync(SeriesId, It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(0);
 
-        _service = new EnrollmentService(
-            _enrollmentRepo.Object,
-            _enrollmentFormRepo.Object,
+        _service = new EnrollmentSubmissionService(
             _lessonSeriesRepo.Object,
-            _enrollmentGroupRepo.Object,
-            _paymentRepo.Object,
-            _timeSlotPreferenceRepo.Object,
+            _enrollmentFormRepo.Object,
             _orgSettingsRepo.Object,
-            _userLookup.Object,
+            _enrollmentRepo.Object,
+            _enrollmentGroupRepo.Object,
             _emailOutboxRepository.Object,
-            _priceRepo.Object,
-            CoachOS.Tests.TestHelpers.ScheduleAssignmentRepositoryStub.NoneAwaitingConfirmation(),
+            _userLookup.Object,
             _unitOfWork.Object,
-            _mapper,
             _logger.Object,
             TimeProvider.System);
     }
@@ -116,7 +99,7 @@ public class SharedContactEmailTests
                 ("Sofie Peeters", null, "2017-06-11"),
             ]);
 
-        Result<Guid> result = await _service.SubmitEnrollmentAsync(SeriesId, request);
+        Result<Guid> result = await _service.SubmitAsync(SeriesId, request);
 
         result.IsSuccess.Should().BeTrue();
         added.Should().HaveCount(3);
@@ -134,7 +117,7 @@ public class SharedContactEmailTests
             leaderEmail: "els@example.com",
             members: [("Jan Peeters", "jan@example.com", "1990-02-02")]);
 
-        await _service.SubmitEnrollmentAsync(SeriesId, request);
+        await _service.SubmitAsync(SeriesId, request);
 
         Enrollment member = added.Single(e => e.StudentName == "Jan Peeters");
         member.ContactEmail.Should().Be("jan@example.com");
@@ -154,7 +137,7 @@ public class SharedContactEmailTests
             leaderEmail: "ouder@example.com",
             members: [("Lotte Peeters", null, "2015-03-04")]);
 
-        Result<Guid> result = await _service.SubmitEnrollmentAsync(SeriesId, request);
+        Result<Guid> result = await _service.SubmitAsync(SeriesId, request);
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().Contain(e => e.Code == ErrorCodes.Conflict);
@@ -172,7 +155,7 @@ public class SharedContactEmailTests
                 ("Sofie Peeters", null, "2017-06-11"),
             ]);
 
-        await _service.SubmitEnrollmentAsync(SeriesId, request);
+        await _service.SubmitAsync(SeriesId, request);
 
         _emailOutboxRepository.Verify(r => r.AddRangeAsync(
             It.Is<IEnumerable<EmailOutboxMessage>>(messages =>

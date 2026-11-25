@@ -1,0 +1,8 @@
+series.GetByIdPublic(00000000-0000-0000-0000-0000000000b1)
+form.GetBySeriesIdReadOnly(00000000-0000-0000-0000-0000000000b1)
+settings.GetByOrganizationReadOnly(00000000-0000-0000-0000-0000000000a1)
+userLookup.GetUserInfoById(00000000-0000-0000-0000-0000000000c1)
+uow.BeginTransaction(Serializable)
+enrollments.CountActiveBySeries(00000000-0000-0000-0000-0000000000b1) => 20
+uow.RollbackTransaction
+RESULT fail [conflict: Deze lessenreeks is volzet.]
