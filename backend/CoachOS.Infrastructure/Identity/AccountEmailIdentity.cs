@@ -28,11 +28,12 @@ public class AccountEmailIdentity(
         return Result<EmailChangeChallenge>.Ok(new(user.FirstName, token));
     }
 
-    public async Task<Result> ConfirmAsync(Guid userId, string newEmail, string token, CancellationToken ct = default)
+    public async Task<Result<EmailChanged>> ConfirmAsync(Guid userId, string newEmail, string token, CancellationToken ct = default)
     {
         ApplicationUser? user = await users.FindByIdAsync(userId.ToString());
         if (user is null || !user.IsActive)
-            return Result.Fail(Validation("LinkInvalid"));
+            return Result<EmailChanged>.Fail(Validation("LinkInvalid"));
+        string previousEmail = user.Email!;
         await unitOfWork.BeginTransactionAsync(ct);
         try
         {
@@ -42,7 +43,7 @@ public class AccountEmailIdentity(
             if (!changed.Succeeded)
             {
                 await unitOfWork.RollbackTransactionAsync(CancellationToken.None);
-                return Result.Fail(Validation("LinkInvalid"));
+                return Result<EmailChanged>.Fail(Validation("LinkInvalid"));
             }
             // NormalizedUserName has a UNIQUE index; unlike the non-unique EmailIndex this
             // is the final arbiter against registrations/invitations racing our email check.
@@ -50,16 +51,16 @@ public class AccountEmailIdentity(
             if (!renamed.Succeeded)
             {
                 await unitOfWork.RollbackTransactionAsync(CancellationToken.None);
-                return Result.Fail(Validation("EmailUnavailable"));
+                return Result<EmailChanged>.Fail(Validation("EmailUnavailable"));
             }
             await unitOfWork.CommitTransactionAsync(ct);
-            return Result.Ok();
+            return Result<EmailChanged>.Ok(new(previousEmail, user.FirstName));
         }
         catch (DbUpdateException ex) when (ex is DbUpdateConcurrencyException ||
             ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
         {
             await unitOfWork.RollbackTransactionAsync(CancellationToken.None);
-            return Result.Fail(Validation("EmailUnavailable"));
+            return Result<EmailChanged>.Fail(Validation("EmailUnavailable"));
         }
         catch
         {

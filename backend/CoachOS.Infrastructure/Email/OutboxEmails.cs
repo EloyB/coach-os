@@ -50,6 +50,7 @@ internal static class OutboxEmails
         ("mail:assignment-moved", typeof(AssignmentMovedMail)),
         ("mail:standalone-lesson-invitation", typeof(StandaloneLessonInvitationMail)),
         ("mail:account-email-change", typeof(AccountEmailChangeMail)),
+        ("mail:account-email-changed", typeof(AccountEmailChangedNoticeMail)),
         ("mail:password-reset", typeof(PasswordResetMail)),
         ("mail:camp-enrollment-payment-link", typeof(CampEnrollmentPaymentLinkMail)),
         ("mail:camp-enrollment-confirmed", typeof(CampEnrollmentConfirmedMail)),
@@ -272,6 +273,13 @@ internal sealed record AccountEmailChangeMail(string ToEmail, string FirstName, 
     [JsonIgnore] public string Recipient => ToEmail;
     public Task SendAsync(IEmailService sender, CancellationToken ct)
         => sender.SendAccountEmailChangeAsync(ToEmail, FirstName, ConfirmationUrl, ct);
+}
+
+internal sealed record AccountEmailChangedNoticeMail(string ToEmail, string FirstName, string NewEmail) : IOutboxEmail
+{
+    [JsonIgnore] public string Recipient => ToEmail;
+    public Task SendAsync(IEmailService sender, CancellationToken ct)
+        => sender.SendAccountEmailChangedNoticeAsync(ToEmail, FirstName, NewEmail, ct);
 }
 
 internal sealed record PasswordResetMail(string ToEmail, string FirstName, string ResetUrl) : IOutboxEmail

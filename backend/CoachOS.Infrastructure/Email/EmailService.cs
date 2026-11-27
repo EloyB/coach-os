@@ -425,6 +425,18 @@ public class EmailService(
         await SendAsync(toEmail, firstName, "Bevestig je nieuwe e-mailadres — CoachOS", html, ct);
     }
 
+    public async Task SendAccountEmailChangedNoticeAsync(
+        string toEmail, string firstName, string newEmail, CancellationToken ct = default)
+    {
+        var html = renderer.Render("account-email-changed", new Dictionary<string, string>
+        {
+            ["firstName"] = firstName,
+            ["newEmail"] = newEmail,
+            ["year"] = DateTime.UtcNow.Year.ToString(),
+        });
+        await SendAsync(toEmail, firstName, "Je e-mailadres is gewijzigd — CoachOS", html, ct);
+    }
+
     public async Task SendPasswordResetAsync(
         string toEmail, string firstName, string resetUrl, CancellationToken ct = default)
     {

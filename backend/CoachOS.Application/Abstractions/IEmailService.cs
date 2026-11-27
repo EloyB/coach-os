@@ -5,6 +5,9 @@ public interface IEmailService
 {
     Task SendAccountEmailChangeAsync(string toEmail, string firstName, string confirmationUrl, CancellationToken ct = default);
 
+    /// <summary>Notice to the previous address after an account email change.</summary>
+    Task SendAccountEmailChangedNoticeAsync(string toEmail, string firstName, string newEmail, CancellationToken ct = default);
+
     /// <summary>Fixed platform waitlist template; never accepts an arbitrary URL/body.</summary>
     Task SendWebsiteWaitlistAsync(string email, string token, CancellationToken ct = default);
 

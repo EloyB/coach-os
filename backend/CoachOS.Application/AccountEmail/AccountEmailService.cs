@@ -14,8 +14,11 @@ public class AccountEmailService(
     public async Task<Result<CoachOS.Application.Auth.DTOs.AuthResponseDto>> ConfirmAsync(
         Guid userId, Guid organizationId, ConfirmAccountEmailChange request, CancellationToken ct = default)
     {
-        Result result = await identity.ConfirmAsync(userId, request.NewEmail.Trim(), request.Token, ct);
-        if (!result.IsSuccess) return Result<CoachOS.Application.Auth.DTOs.AuthResponseDto>.Fail(result.Errors);
+        string newEmail = request.NewEmail.Trim();
+        Result<EmailChanged> changed = await identity.ConfirmAsync(userId, newEmail, request.Token, ct);
+        if (!changed.IsSuccess) return Result<CoachOS.Application.Auth.DTOs.AuthResponseDto>.Fail(changed.Errors);
+        // The previous owner must learn about a takeover: password reset now goes to the new address.
+        await email.SendAccountEmailChangedNoticeAsync(changed.Value!.PreviousEmail, changed.Value.FirstName, newEmail, ct);
         return await auth.SwitchOrganizationAsync(userId, organizationId, ct);
     }
 

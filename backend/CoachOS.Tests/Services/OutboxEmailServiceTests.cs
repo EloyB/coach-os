@@ -93,6 +93,7 @@ public class OutboxEmailServiceTests
             "sl@x.be", "Saar", D2, T1, T2, "Baan 6", "Beginner", "Neem water mee", "https://x/inv/9"));
         yield return Case("PasswordReset", s => s.SendPasswordResetAsync("pr@x.be", "Pieter", "https://x/reset/r1"));
         yield return Case("AccountEmailChange", s => s.SendAccountEmailChangeAsync("ae@x.be", "Anne", "https://x/dashboard/account#email=ae%40x.be&token=bound"));
+        yield return Case("AccountEmailChangedNotice", s => s.SendAccountEmailChangedNoticeAsync("old@x.be", "Anne", "ae@x.be"));
         yield return Case("CampEnrollmentPaymentLink", s => s.SendCampEnrollmentPaymentLinkAsync(
             "cp@x.be", "Cleo", "Paaskamp", D1, D2, "https://x/checkout/c1"));
         yield return Case("CampEnrollmentConfirmed", s => s.SendCampEnrollmentConfirmedAsync(
@@ -318,7 +319,7 @@ public class OutboxEmailServiceTests
         string[] platformMails =
         [
             "mail:website-waitlist", "mail:website-contact-notification", "mail:trainer-invite",
-            "mail:admin-invite", "mail:student-magic-link", "mail:password-reset", "mail:account-email-change",
+            "mail:admin-invite", "mail:student-magic-link", "mail:password-reset", "mail:account-email-change", "mail:account-email-changed",
             "mail:email-verification", "mail:trial-reminder", "mail:subscription-started",
             "mail:subscription-payment-failed", "mail:subscription-invitation",
             "mail:billing-super-admin-notice",
