@@ -15,7 +15,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using NSubstitute;
+using Moq;
 using NUnit.Framework;
 
 namespace CoachOS.Tests.Identity;
@@ -50,11 +50,11 @@ public class AccountEmailEndpointTests
         builder.Services.AddAuthorization();
         builder.Services.AddAuthentication("test").AddScheme<AuthenticationSchemeOptions, StaffAuthentication>("test", _ => { });
         builder.Services.AddRateLimiting(builder.Configuration);
-        IAccountEmailService service = Substitute.For<IAccountEmailService>();
-        service.RequestAsync(Arg.Any<Guid>(), Arg.Any<RequestAccountEmailChange>(), Arg.Any<CancellationToken>()).Returns(Result.Ok());
-        service.ConfirmAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<ConfirmAccountEmailChange>(), Arg.Any<CancellationToken>())
-            .Returns(Result<AuthResponseDto>.Ok(new() { Email = "new@example.be", Token = "fresh-session", Role = "Trainer" }));
-        builder.Services.AddSingleton(service);
+        var service = new Mock<IAccountEmailService>();
+        service.Setup(s => s.RequestAsync(It.IsAny<Guid>(), It.IsAny<RequestAccountEmailChange>(), It.IsAny<CancellationToken>())).ReturnsAsync(Result.Ok());
+        service.Setup(s => s.ConfirmAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<ConfirmAccountEmailChange>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<AuthResponseDto>.Ok(new() { Email = "new@example.be", Token = "fresh-session", Role = "Trainer" }));
+        builder.Services.AddSingleton(service.Object);
         await using WebApplication app = builder.Build();
         app.Urls.Add("http://127.0.0.1:0");
         app.Use((context, next) =>
@@ -84,9 +84,9 @@ public class AccountEmailEndpointTests
         HttpResponseMessage confirmed = await client.PostAsJsonAsync("/api/auth/email-change/confirm", new ConfirmAccountEmailChange("new@example.be", "token"));
         confirmed.StatusCode.Should().Be(HttpStatusCode.OK);
         (await confirmed.Content.ReadFromJsonAsync<AuthResponseDto>())!.Token.Should().Be("fresh-session");
-        await service.Received(1).ConfirmAsync(userId, organizationId, Arg.Any<ConfirmAccountEmailChange>(), Arg.Any<CancellationToken>());
-        service.RequestAsync(Arg.Any<Guid>(), Arg.Any<RequestAccountEmailChange>(), Arg.Any<CancellationToken>())
-            .Returns(Result.Fail(new Error(ErrorCodes.Validation, "Controleer je huidige wachtwoord.")));
+        service.Verify(s => s.ConfirmAsync(userId, organizationId, It.IsAny<ConfirmAccountEmailChange>(), It.IsAny<CancellationToken>()), Times.Once);
+        service.Setup(s => s.RequestAsync(It.IsAny<Guid>(), It.IsAny<RequestAccountEmailChange>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Fail(new Error(ErrorCodes.Validation, "Controleer je huidige wachtwoord.")));
         (await client.PostAsJsonAsync("/api/auth/email-change/request", request)).StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await client.PostAsJsonAsync("/api/auth/email-change/request", request)).StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await client.PostAsJsonAsync("/api/auth/email-change/request", request)).StatusCode.Should().Be(HttpStatusCode.TooManyRequests);

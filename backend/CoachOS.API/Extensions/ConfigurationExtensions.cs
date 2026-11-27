@@ -243,7 +243,6 @@ public static class ConfigurationExtensions
                             QueueLimit = 0,
                         }));
 
-                // Websiteformulieren: per IP, plus een globale noodrem in de GlobalLimiter hieronder.
                 // Per account across IPs: bounds password guessing and mail volume. The global
                 // IP limiter remains in force, including for malformed/unauthenticated calls.
                 options.AddPolicy("account-email-change", context =>
@@ -257,6 +256,7 @@ public static class ConfigurationExtensions
                             QueueLimit = 0,
                         }));
 
+                // Websiteformulieren: per IP, plus een globale noodrem in de GlobalLimiter hieronder.
                 options.AddWebsitePolicies();
 
                 // Mollie-webhooks: eigen, ruime limiet (niet de gedeelde "public").
