@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="EmailRequired" xml:space="preserve"><value>E-mailadres is verplicht.</value></data>
+  <data name="EmailInvalid" xml:space="preserve"><value>Vul een geldig e-mailadres in (maximaal 256 tekens).</value></data>
+  <data name="PasswordRequired" xml:space="preserve"><value>Je huidige wachtwoord is verplicht.</value></data>
+  <data name="PasswordInvalid" xml:space="preserve"><value>Controleer je huidige wachtwoord.</value></data>
+  <data name="EmailUnavailable" xml:space="preserve"><value>Kies een ander beschikbaar e-mailadres.</value></data>
+  <data name="LinkInvalid" xml:space="preserve"><value>Bevestigingslink is ongeldig of verlopen. Vraag een nieuwe link aan.</value></data>
+  <data name="Retry" xml:space="preserve"><value>Vraag opnieuw een bevestigingslink aan.</value></data>
+</root>

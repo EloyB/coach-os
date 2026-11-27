@@ -21,6 +21,7 @@ export function DashboardSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const tSwitcher = useTranslations("orgSwitcher");
+  const tAccount = useTranslations("account");
   const user = useAuthUser() ?? null;
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [isSwitching, setIsSwitching] = useState(false);
@@ -208,6 +209,9 @@ export function DashboardSidebar() {
       <OnboardingSidebarCard enabled={role === "Admin"} />
 
       {/* Profile */}
+      <Link href="/dashboard/account" className="relative z-10 mx-5 mb-2 text-xs font-medium text-white/80 hover:text-tennis-lime">
+        {tAccount("title")}
+      </Link>
       <div className="relative z-10 mx-2.5 mb-2.5 px-3 py-2.5 bg-black/[.18] rounded-lg flex items-center gap-2.5">
         <div className="w-7 h-7 rounded-full bg-tennis-lime grid place-items-center shrink-0">
           <span className="text-tennis-green font-bold text-[11px]">

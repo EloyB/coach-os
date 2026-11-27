@@ -1,0 +1,25 @@
+<mjml>
+  <mj-head>
+    <mj-title>Bevestig je nieuwe e-mailadres — CoachOS</mj-title>
+    <mj-preview>Bevestig de wijziging van je CoachOS-account</mj-preview>
+    <mj-attributes>
+      <mj-all font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" />
+      <mj-text color="#6b7280" font-size="15px" line-height="1.6" />
+    </mj-attributes>
+  </mj-head>
+  <mj-body background-color="#FAFAF8" width="600px">
+    <mj-section background-color="#2D5016" padding="28px 40px">
+      <mj-column><mj-text color="#FFFFFF" font-size="22px" font-weight="700">CoachOS</mj-text></mj-column>
+    </mj-section>
+    <mj-section background-color="#FFFFFF" padding="40px">
+      <mj-column>
+        <mj-text font-size="26px" font-weight="700" color="#111827">Bevestig je nieuwe e-mailadres</mj-text>
+        <mj-text>Hoi {{firstName}},<br /><br />Je hebt gevraagd om dit adres als nieuw e-mailadres voor je CoachOS-account te gebruiken. Open de link en bevestig de wijziging in je account.</mj-text>
+        <mj-button background-color="#2D5016" color="#FFFFFF" border-radius="8px" href="{{confirmationUrl}}">E-mailadres bevestigen</mj-button>
+        <mj-text font-size="13px">Of kopieer deze link:<br /><a href="{{confirmationUrl}}">{{confirmationUrl}}</a></mj-text>
+        <mj-text font-size="13px">Deze link is 30 minuten geldig. Je huidige e-mailadres blijft bruikbaar totdat je de wijziging bevestigt. Een nieuwe aanvraag maakt eerdere links ongeldig. Heb jij dit niet aangevraagd? Negeer deze e-mail dan veilig.</mj-text>
+      </mj-column>
+    </mj-section>
+    <mj-section><mj-column><mj-text align="center" font-size="11px">© {{year}} CoachOS</mj-text></mj-column></mj-section>
+  </mj-body>
+</mjml>

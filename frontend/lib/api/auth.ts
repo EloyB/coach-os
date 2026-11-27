@@ -23,6 +23,25 @@ export interface AuthResponse {
   emailVerified?: boolean;
 }
 
+export interface RequestEmailChange {
+  newEmail: string;
+  currentPassword: string;
+}
+
+export async function requestEmailChange(request: RequestEmailChange): Promise<void> {
+  await apiClient.post('/auth/email-change/request', request, { skipErrorToast: true });
+}
+
+export interface ConfirmEmailChange {
+  newEmail: string;
+  token: string;
+}
+
+export async function confirmEmailChange(request: ConfirmEmailChange): Promise<AuthResponse> {
+  const { data } = await apiClient.post<AuthResponse>('/auth/email-change/confirm', request, { skipErrorToast: true });
+  return data;
+}
+
 export interface AcceptInviteRequest {
   token: string;
   password: string;

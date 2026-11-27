@@ -56,10 +56,12 @@ public static class DependencyInjection
                 options.Password.RequireUppercase = true;
                 options.Password.RequireNonAlphanumeric = false;
                 options.User.RequireUniqueEmail = true;
+                options.Tokens.ChangeEmailTokenProvider = "AccountEmailChange";
             })
             .AddRoles<IdentityRole<Guid>>()
             .AddEntityFrameworkStores<ApplicationDbContext>()
-            .AddDefaultTokenProviders();
+            .AddDefaultTokenProviders()
+            .AddTokenProvider<AccountEmailTokenProvider>("AccountEmailChange");
 
         services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.Section));
         services.Configure<AppOptions>(configuration.GetSection(AppOptions.Section));
@@ -129,6 +131,7 @@ public static class DependencyInjection
 
         services.AddScoped<TokenService>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<CoachOS.Application.AccountEmail.IAccountEmailIdentity, AccountEmailIdentity>();
         services.AddScoped<ISuperAdminService, SuperAdminService>();
         services.AddHostedService<SuperAdminBootstrapHostedService>();
         services.AddScoped<ITrainerService, TrainerService>();

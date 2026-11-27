@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { safeRedirectPath } from "@/lib/redirect";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -64,6 +64,15 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = safeRedirectPath(searchParams.get("redirect"));
+  const tAccount = useTranslations("account");
+  const accountEmailReturn = redirectTo === "/dashboard/account";
+  useEffect(() => {
+    // Browsers inherit the original fragment across an HTTP redirect. Never
+    // retain email-change secrets on the login screen or forward them after login.
+    if (accountEmailReturn && window.location.hash) {
+      window.history.replaceState(window.history.state, "", window.location.pathname + window.location.search);
+    }
+  }, [accountEmailReturn]);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
 
@@ -176,6 +185,8 @@ function LoginForm() {
               {t("roleStudent")}
             </Link>
           </div>
+
+          {accountEmailReturn && <p role="status" className="mb-5 rounded-lg border border-rule bg-canvas p-3 text-sm text-ink-2">{tAccount("loginHint")}</p>}
 
           {/* Error banner */}
           {errors.length > 0 && (

@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect } from "react";
+import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { InboxBell } from "@/components/dashboard/inbox-bell";
 import { DashboardSidebar } from "@/components/layouts/dashboard-sidebar";
@@ -34,6 +37,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const tAccount = useTranslations("account");
   // null tijdens SSR/hydration; daarna true/false.
   const authenticated = useClientValue(isAuthenticated);
   const user = useAuthUser();
@@ -65,8 +69,13 @@ export default function DashboardLayout({
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Topbar */}
         <header className="bg-paper border-b border-rule px-7 py-3.5 flex items-center justify-between shrink-0">
-          <SlashLabel>{formatDayHeader()}</SlashLabel>
-          {user.role === "Admin" && <InboxBell />}
+          <SlashLabel><span className="hidden sm:inline">{formatDayHeader()}</span></SlashLabel>
+          <div className="flex items-center gap-3">
+            <Link href="/dashboard/account" className="lg:hidden flex items-center gap-2 min-h-9 text-xs font-medium text-tennis-green">
+              <UserRound size={16} aria-hidden="true" />{tAccount("title")}
+            </Link>
+            {user.role === "Admin" && <InboxBell />}
+          </div>
         </header>
 
         <AccountBanners user={user} />
