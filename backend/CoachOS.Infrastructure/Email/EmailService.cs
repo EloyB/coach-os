@@ -413,6 +413,18 @@ public class EmailService(
             $"Uitnodiging tennisles op {dateText}", html, ct);
     }
 
+    public async Task SendAccountEmailChangeAsync(
+        string toEmail, string firstName, string confirmationUrl, CancellationToken ct = default)
+    {
+        string html = renderer.Render("account-email-change", new Dictionary<string, string>
+        {
+            ["firstName"] = firstName,
+            ["confirmationUrl"] = confirmationUrl,
+            ["year"] = DateTime.UtcNow.Year.ToString(),
+        });
+        await SendAsync(toEmail, firstName, "Bevestig je nieuwe e-mailadres — CoachOS", html, ct);
+    }
+
     public async Task SendPasswordResetAsync(
         string toEmail, string firstName, string resetUrl, CancellationToken ct = default)
     {

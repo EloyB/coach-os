@@ -244,6 +244,19 @@ public static class ConfigurationExtensions
                         }));
 
                 // Websiteformulieren: per IP, plus een globale noodrem in de GlobalLimiter hieronder.
+                // Per account across IPs: bounds password guessing and mail volume. The global
+                // IP limiter remains in force, including for malformed/unauthenticated calls.
+                options.AddPolicy("account-email-change", context =>
+                    RateLimitPartition.GetFixedWindowLimiter(
+                        context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                            ?? context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                        _ => new FixedWindowRateLimiterOptions
+                        {
+                            PermitLimit = 5,
+                            Window = TimeSpan.FromMinutes(1),
+                            QueueLimit = 0,
+                        }));
+
                 options.AddWebsitePolicies();
 
                 // Mollie-webhooks: eigen, ruime limiet (niet de gedeelde "public").

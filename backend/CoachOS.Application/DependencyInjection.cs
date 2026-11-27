@@ -30,6 +30,8 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
+        services.AddLocalization();
+        services.AddScoped<AccountEmail.IAccountEmailService, AccountEmail.AccountEmailService>();
         services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
         services.AddScoped<ApplicationMapper>();
         services.AddScoped<WebsiteContact.IWebsiteContactService, WebsiteContact.WebsiteContactService>();

@@ -82,8 +82,7 @@ try
 
     app.UseHttpsRedirection();
     app.UseCors("Frontend");
-    app.UseRateLimiter();
-    app.UseAuthentication();
+    app.UseAuthenticatedRateLimiting();
     app.UseAuthorization();
     app.UseMiddleware<UserActiveValidationMiddleware>();
     app.UseMiddleware<TenantContextMiddleware>();

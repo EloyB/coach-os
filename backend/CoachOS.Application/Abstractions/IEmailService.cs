@@ -3,6 +3,8 @@ namespace CoachOS.Application.Abstractions;
 
 public interface IEmailService
 {
+    Task SendAccountEmailChangeAsync(string toEmail, string firstName, string confirmationUrl, CancellationToken ct = default);
+
     /// <summary>Fixed platform waitlist template; never accepts an arbitrary URL/body.</summary>
     Task SendWebsiteWaitlistAsync(string email, string token, CancellationToken ct = default);
 

@@ -15,6 +15,9 @@ namespace CoachOS.Infrastructure.Email;
 /// </remarks>
 internal sealed class OutboxEmailService(IEmailOutboxWriter outbox) : IEmailService
 {
+    public Task SendAccountEmailChangeAsync(string toEmail, string firstName, string confirmationUrl, CancellationToken ct = default)
+        => outbox.EnqueueAsync(new AccountEmailChangeMail(toEmail, firstName, confirmationUrl));
+
     public Task SendWebsiteWaitlistAsync(string email, string token, CancellationToken ct = default)
         => outbox.EnqueueAsync(new WebsiteWaitlistOutboxMail(email, token));
 
